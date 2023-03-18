@@ -3,7 +3,7 @@ import React from "react";
 
 import { t } from "ttag";
 
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";

@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import type { FormikHelpers } from "formik";
 import { FormState } from "metabase/core/context/FormContext";
+import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { FormError } from "./types";
 
 export interface UseFormSubmitProps<T> {
@@ -53,11 +54,7 @@ const getFormErrors = (error: unknown) => {
 
 const getFormMessage = (error: unknown) => {
   if (isFormError(error)) {
-    if (typeof error.data !== "string") {
-      return error.data?.message ?? error.message;
-    } else {
-      return error.data;
-    }
+    return getResponseErrorMessage(error);
   }
 };
 

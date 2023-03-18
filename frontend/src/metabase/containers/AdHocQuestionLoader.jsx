@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 
 // things that will eventually load the quetsion
 import { deserializeCardFromUrl } from "metabase/lib/card";
-import { loadMetadataForCard } from "metabase/query_builder/actions";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import Question from "metabase-lib/Question";

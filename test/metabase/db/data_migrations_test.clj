@@ -1,16 +1,17 @@
 (ns metabase.db.data-migrations-test
   "Tests to make sure the data migrations actually work as expected and don't break things. Shamefully, we have way less
   of these than we should... but that doesn't mean we can't write them for our new ones :)"
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [metabase.db.data-migrations :as migrations]
-            [metabase.models :refer [Card Dashboard DashboardCard Setting]]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.setting :as setting]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [metabase.db.data-migrations :as migrations]
+   [metabase.models :refer [Card Dashboard DashboardCard Setting]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.setting :as setting]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -326,7 +327,7 @@
                                     :linkType         "url",
                                     :linkTemplate     "http://example.com//{{id}}",
                                     :linkTextTemplate "here is my id: {{id}}"}}}}
-              get-settings!     #(:visualization_settings (db/select-one DashboardCard :id dashcard-id))]
+              get-settings!     #(:visualization_settings (t2/select-one DashboardCard :id dashcard-id))]
           (#'migrations/migrate-click-through)
           (is (= expected-settings (get-settings!)))
           (testing "And it is idempotent"
@@ -335,7 +336,7 @@
 
 (defn- get-json-setting
   [setting-k]
-  (json/parse-string (db/select-one-field :value Setting :key (name setting-k))))
+  (json/parse-string (t2/select-one-fn :value Setting :key (name setting-k))))
 
 (defn- call-with-ldap-and-sso-configured [ldap-group-mappings sso-group-mappings f]
   (mt/with-temporary-raw-setting-values

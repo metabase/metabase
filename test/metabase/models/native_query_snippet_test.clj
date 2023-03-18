@@ -1,27 +1,32 @@
 (ns metabase.models.native-query-snippet-test
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Collection NativeQuerySnippet]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.test :as mt]
-            [toucan.db :as db])
-  (:import java.time.LocalDateTime))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [Collection NativeQuerySnippet]]
+   [metabase.models.serialization :as serdes]
+   [metabase.test :as mt]
+   [toucan.db :as db]
+   [toucan2.core :as t2])
+  (:import
+   (java.time LocalDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (deftest disallow-updating-creator-id-test
   (testing "You shouldn't be allowed to update the creator_id of a NativeQuerySnippet"
     (mt/with-temp NativeQuerySnippet [{snippet-id :id} {:name "my-snippet", :content "wow", :creator_id (mt/user->id :lucky)}]
       (is (thrown-with-msg?
-           UnsupportedOperationException
+           Exception
            #"You cannot update the creator_id of a NativeQuerySnippet\."
            (db/update! NativeQuerySnippet snippet-id :creator_id (mt/user->id :rasta))))
       (is (= (mt/user->id :lucky)
-             (db/select-one-field :creator_id NativeQuerySnippet :id snippet-id))))))
+             (t2/select-one-fn :creator_id NativeQuerySnippet :id snippet-id))))))
 
 (deftest snippet-collection-test
   (testing "Should be allowed to create snippets in a Collection in the :snippets namespace"
     (mt/with-temp* [Collection         [{collection-id :id} {:namespace "snippets"}]
                     NativeQuerySnippet [{snippet-id :id} {:collection_id collection-id}]]
       (is (= collection-id
-             (db/select-one-field :collection_id NativeQuerySnippet :id snippet-id)))))
+             (t2/select-one-fn :collection_id NativeQuerySnippet :id snippet-id)))))
 
   (doseq [[source dest] [[nil "snippets"]
                          ["snippets" "snippets"]
@@ -35,7 +40,7 @@
                                                              {:collection_id source-collection-id})]]
         (db/update! NativeQuerySnippet snippet-id :collection_id (when dest dest-collection-id))
         (is (= (when dest dest-collection-id)
-               (db/select-one-field :collection_id NativeQuerySnippet :id snippet-id))))))
+               (t2/select-one-fn :collection_id NativeQuerySnippet :id snippet-id))))))
 
   (doseq [collection-namespace [nil "x"]]
     (testing (format "Should *not* be allowed to create snippets in a Collection in the %s namespace"
@@ -65,5 +70,5 @@
       (mt/with-temp* [Collection         [coll    {:name "field-db" :namespace :snippets :location "/" :created_at now}]
                       NativeQuerySnippet [snippet {:name "my snippet" :collection_id (:id coll) :created_at now}]]
         (is (= "7ac51ad0"
-               (serdes.hash/raw-hash ["my snippet" (serdes.hash/identity-hash coll) now])
-               (serdes.hash/identity-hash snippet)))))))
+               (serdes/raw-hash ["my snippet" (serdes/identity-hash coll) now])
+               (serdes/identity-hash snippet)))))))

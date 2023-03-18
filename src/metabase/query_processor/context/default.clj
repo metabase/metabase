@@ -1,12 +1,13 @@
 (ns metabase.query-processor.context.default
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]))
+  (:require
+   [clojure.core.async :as a]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]))
 
 (def query-timeout-ms
   "Maximum amount of time to wait for a running query to complete before throwing an Exception."
@@ -56,7 +57,7 @@
     (when-let [reduced-rows (try
                               (transduce identity rf reducible-rows)
                               (catch Throwable e
-                                (qp.context/raisef (ex-info (tru "Error reducing result rows")
+                                (qp.context/raisef (ex-info (tru "Error reducing result rows: {0}" (ex-message e))
                                                             {:type qp.error-type/qp}
                                                             e)
                                                    context)))]

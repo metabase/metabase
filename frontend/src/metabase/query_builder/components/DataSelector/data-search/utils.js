@@ -9,7 +9,7 @@ export function convertSearchResultToTableLikeItem(searchResultItem) {
   ) {
     return {
       ...searchResultItem,
-      id: getQuestionVirtualTableId(searchResultItem),
+      id: getQuestionVirtualTableId(searchResultItem.id),
     };
   }
 

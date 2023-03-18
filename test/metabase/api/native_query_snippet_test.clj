@@ -1,14 +1,16 @@
 (ns metabase.api.native-query-snippet-test
   "Tests for /api/native-query-snippet endpoints."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.models :refer [Collection]]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.test :as mt]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.models :refer [Collection]]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.test :as mt]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (def ^:private test-snippet-fields [:content :creator_id :description :name])
 
@@ -113,7 +115,7 @@
                   (let [response (mt/user-http-request :rasta :post expected-status-code (snippet-url)
                                   {:name "test-snippet", :description "Just null", :content "NULL", :collection_id collection-id})]
                     {:response response
-                     :db       (some->> (:id response) (db/select-one NativeQuerySnippet :id))})
+                     :db       (some->> (:id response) (t2/select-one NativeQuerySnippet :id))})
                   (finally
                     (db/delete! NativeQuerySnippet :name "test-snippet"))))]
         (mt/with-temp Collection [{collection-id :id} {:namespace "snippets"}]
@@ -168,7 +170,7 @@
         (mt/with-temp NativeQuerySnippet [snippet {:name "test-snippet", :content "1", :creator_id (mt/user->id :lucky)}]
           (mt/user-http-request :crowberto :put 200 (snippet-url (:id snippet)) {:creator_id (mt/user->id :rasta)})
           (is (= (mt/user->id :lucky)
-                 (db/select-one-field :creator_id NativeQuerySnippet :id (:id snippet)))))))))
+                 (t2/select-one-fn :creator_id NativeQuerySnippet :id (:id snippet)))))))))
 
 (deftest update-snippet-collection-test
   (testing "PUT /api/native-query-snippet/:id"
@@ -187,7 +189,7 @@
                              (select-keys [:collection_id :errors])))))
                 (testing "\nvalue in app DB"
                   (is (= (:id dest)
-                         (db/select-one-field :collection_id NativeQuerySnippet :id snippet-id)))))))))
+                         (t2/select-one-fn :collection_id NativeQuerySnippet :id snippet-id)))))))))
 
       (testing "\nShould throw an error if you try to move it to a Collection not in the 'snippets' namespace"
         (tt/with-temp* [Collection         [{collection-id :id}]

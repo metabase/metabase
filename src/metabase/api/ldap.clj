@@ -1,15 +1,17 @@
 (ns metabase.api.ldap
   "/api/ldap endpoints"
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [PUT]]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.integrations.ldap :as ldap]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [compojure.core :refer [PUT]]
+   [metabase.api.common :as api]
+   [metabase.integrations.ldap :as ldap]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our LDAP tests into our normal api error response structure."
@@ -96,11 +98,12 @@
       current-password
       new-password)))
 
-(api/defendpoint PUT "/settings"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/settings"
   "Update LDAP related settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
   {settings su/Map}
-  (validation/check-has-application-permission :setting)
+  (api/check-superuser)
   (let [ldap-settings (-> settings
                           (select-keys (keys ldap/mb-settings->ldap-details))
                           (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]

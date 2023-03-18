@@ -1,19 +1,22 @@
 (ns metabase.api.alert-test
   "Tests for `/api/alert` endpoints."
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.email-test :as et]
-            [metabase.http-client :as client]
-            [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.pulse :as pulse]
-            [metabase.models.pulse-test :as pulse-test]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.test.mock.util :refer [pulse-channel-defaults]]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.email-test :as et]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse-test :as pulse-test]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.test.mock.util :refer [pulse-channel-defaults]]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |
@@ -76,11 +79,11 @@
     (assert (db/exists? PulseCard :card_id (u/the-id card), :pulse_id (u/the-id alert)))
     ;; Make this Alert actually be an alert
     (db/update! Pulse (u/the-id alert) :alert_condition "rows")
-    (let [alert (db/select-one Pulse :id (u/the-id alert))]
+    (let [alert (t2/select-one Pulse :id (u/the-id alert))]
       (assert (pulse/is-alert? alert))
       ;; Since Alerts do not actually go in Collections, but rather their Cards do, put the Card in the Collection
       (db/update! Card (u/the-id card) :collection_id (u/the-id collection))
-      (let [card (db/select-one Card :id (u/the-id card))]
+      (let [card (t2/select-one Card :id (u/the-id card))]
         (f db collection alert card)))))
 
 (defmacro ^:private with-alert-in-collection
@@ -394,20 +397,6 @@
                (et/regex-email-bodies #"https://metabase.com/testmb"
                                       #"meets its goal"
                                       #"My question")))))))
-
-(deftest disallow-creating-alert-with-is-write-card-test
-  (testing "POST /api/alert"
-    (testing "Disallow creating an Alert with a QueryAction is_write Card (#22846)"
-      (mt/with-temp Card [{card-id :id} {:is_write true}]
-        (is (= "You cannot create an Alert for an is_write Card."
-               (mt/user-http-request :crowberto :post 400 "alert"
-                                     {:card             {:id                card-id
-                                                         :include_csv       false
-                                                         :include_xls       false
-                                                         :dashboard_card_id nil}
-                                      :alert_condition  "goal"
-                                      :alert_first_only false
-                                      :channels         [daily-email-channel]})))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -807,7 +796,7 @@
                (with-alert-setup
                  (et/with-expected-messages 1 (api:unsubscribe! :rasta 204 alert))
                  (array-map
-                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :archived? (t2/select-one-fn :archived Pulse :id (u/the-id alert))
                   :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
                                                     #"Foo"))))))))
 
@@ -824,7 +813,7 @@
                (with-alert-setup
                  (et/with-expected-messages 1 (api:unsubscribe! :rasta 204 alert))
                  (array-map
-                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :archived? (t2/select-one-fn :archived Pulse :id (u/the-id alert))
                   :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
                                                     #"Foo"))))))))
 
@@ -845,7 +834,7 @@
                    ((alert-client :crowberto)
                     :put 200 (alert-url alert) (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] false)))
                  (array-map
-                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :archived? (t2/select-one-fn :archived Pulse :id (u/the-id alert))
                   :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
                                                     #"letting you know that Crowberto Corv"))))))))
 
@@ -866,7 +855,7 @@
                    ((alert-client :crowberto)
                     :put 200 (alert-url alert) (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] true)))
                  (array-map
-                  :archived? (db/select-one-field :archived Pulse :id (u/the-id alert))
+                  :archived? (t2/select-one-fn :archived Pulse :id (u/the-id alert))
                   :emails    (et/regex-email-bodies #"https://metabase.com/testmb"
                                                     #"now getting alerts about .*Foo")
                   :emails  (et/regex-email-bodies #"https://metabase.com/testmb"

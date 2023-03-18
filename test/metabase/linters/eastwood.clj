@@ -1,6 +1,7 @@
 (ns metabase.linters.eastwood
-  (:require [eastwood.lint :as eastwood]
-            [metabase.linters.common :as common]))
+  (:require
+   [eastwood.lint :as eastwood]
+   [metabase.linters.common :as common]))
 
 (defn eastwood
   "Entrypoint for running Eastwood from the CLI. Adds some programatically-determined config options. See comments in

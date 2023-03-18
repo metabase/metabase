@@ -1,14 +1,13 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 
 import Icon from "metabase/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
-import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
-import type { Database } from "metabase-types/api/database";
-import DataSelectorLoading from "../DataSelectorLoading";
 
-import { RawDataBackButton } from "../DataSelector.styled";
+import type { Database } from "metabase-types/api/database";
 
 import type { Schema } from "../types";
+import DataSelectorLoading from "../DataSelectorLoading";
+import { RawDataBackButton } from "../DataSelector.styled";
 
 type DataSelectorDatabasePickerProps = {
   databases: Database[];
@@ -17,7 +16,6 @@ type DataSelectorDatabasePickerProps = {
   hasInitialFocus?: boolean;
   hasNextStep?: boolean;
   isLoading?: boolean;
-  requireWriteback?: boolean;
   selectedDatabase?: Database;
   selectedSchema?: Schema;
   onBack?: () => void;
@@ -26,14 +24,14 @@ type DataSelectorDatabasePickerProps = {
 };
 
 type Item = {
-  database: Database;
-  index: number;
   name: string;
-  writebackEnabled?: boolean;
+  index: number;
+  database: Database;
 };
 
 type Section = {
-  items: Item[];
+  name?: JSX.Element;
+  items?: Item[];
 };
 
 const DataSelectorDatabasePicker = ({
@@ -43,34 +41,38 @@ const DataSelectorDatabasePicker = ({
   hasNextStep,
   onBack,
   hasInitialFocus,
-  requireWriteback = false,
 }: DataSelectorDatabasePickerProps) => {
+  const sections = useMemo(() => {
+    const sections: Section[] = [];
+
+    if (onBack) {
+      sections.push({ name: <RawDataBackButton /> });
+    }
+
+    sections.push({
+      items: databases.map((database, index) => ({
+        name: database.name,
+        index,
+        database,
+      })),
+    });
+
+    return sections;
+  }, [databases, onBack]);
+
+  const handleChangeSection = useCallback(
+    (section: Section, sectionIndex: number) => {
+      const isNavigationSection = onBack && sectionIndex === 0;
+      if (isNavigationSection) {
+        onBack();
+      }
+      return false;
+    },
+    [onBack],
+  );
+
   if (databases.length === 0) {
     return <DataSelectorLoading />;
-  }
-
-  const sections: Section[] = [
-    {
-      items: databases.map((database: Database, index: number) => ({
-        name: database.name,
-        writebackEnabled: isDatabaseWritebackEnabled(database as any),
-        index,
-        database: database,
-      })),
-    },
-  ];
-
-  const handleChangeSection = (_section: Section, sectionIndex: number) => {
-    const isNavigationSection = onBack && sectionIndex === 0;
-
-    if (isNavigationSection) {
-      onBack();
-    }
-    return false;
-  };
-
-  if (onBack) {
-    sections.unshift({ name: <RawDataBackButton /> } as any);
   }
 
   return (
@@ -82,9 +84,6 @@ const DataSelectorDatabasePicker = ({
       sections={sections}
       onChange={(item: Item) => onChangeDatabase(item.database)}
       onChangeSection={handleChangeSection}
-      itemIsClickable={
-        requireWriteback ? (item: Item) => item.writebackEnabled : undefined
-      }
       itemIsSelected={(item: Item) =>
         selectedDatabase && item.database.id === selectedDatabase.id
       }

@@ -1,17 +1,25 @@
 (ns metabase.driver.h2-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [metabase.db.spec :as mdb.spec]
-            [metabase.driver :as driver]
-            [metabase.driver.h2 :as h2]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models :refer [Database]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models :refer [Database]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]))
+
+(set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk]
+                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these tests.
+                      (binding [hx/*honey-sql-version* 2]
+                        (thunk))))
 
 (deftest parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
@@ -25,15 +33,15 @@
 
 (deftest set-safe-options-test
   (testing "Check that we add safe connection options to connection strings"
-    (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
+    (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE"
            (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY"))))
 
   (testing "Check that we override shady connection string options set by shady admins with safe ones"
-    (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
-           (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=FALSE;ACCESS_MODE_DATA=rws"))))
+    (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE"
+           (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=FALSE;"))))
 
   (testing "Check that we override the INIT connection string option"
-    (is (= "file:my-file;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
+    (is (= "file:my-file;IFEXISTS=TRUE"
            (#'h2/connection-string-set-safe-options "file:my-file;INIT=ANYTHING_HERE_WILL_BE_IGNORED")))))
 
 (deftest db-details->user-test
@@ -53,8 +61,8 @@
   (testing "Make sure we *cannot* connect to a non-existent database by default"
     (is (= ::exception-thrown
            (try (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
-                (catch org.h2.jdbc.JdbcSQLException e
-                  (and (re-matches #"Database .+ not found .+" (.getMessage e))
+                (catch org.h2.jdbc.JdbcSQLNonTransientConnectionException e
+                  (and (re-matches #"Database .+ not found, .+" (.getMessage e))
                        ::exception-thrown)))))))
 
 (deftest db-default-timezone-test
@@ -78,17 +86,17 @@
 
 (deftest add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
-    (is (= (hsql/call :dateadd
-             (hx/literal "millisecond")
-             (hx/with-database-type-info (hsql/call :cast 100500.0 (hsql/raw "long")) "long")
-             :%now)
+    (is (= (hx/call :dateadd
+                    (hx/literal "millisecond")
+                    (hx/with-database-type-info (hx/call :cast [:inline 100500.0] (hx/raw "long")) "long")
+                    (hx/with-database-type-info (hx/call :cast :%now (hx/raw "datetime")) "datetime"))
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.5 :second))))
 
   (testing "Non-fractional seconds should remain seconds, but be cast to longs"
-    (is (= (hsql/call :dateadd
-             (hx/literal "second")
-             (hx/with-database-type-info (hsql/call :cast 100.0 (hsql/raw "long")) "long")
-             :%now)
+    (is (= (hx/call :dateadd
+                    (hx/literal "second")
+                    (hx/with-database-type-info (hx/call :cast [:inline 100.0] (hx/raw "long")) "long")
+                    (hx/with-database-type-info (hx/call :cast :%now (hx/raw "datetime")) "datetime"))
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
 
 (deftest clob-test
@@ -111,10 +119,10 @@
   (mt/test-driver :h2
     (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
       (is (= [{:display_name "D"
-               :base_type    :type/DateTime
-               :effective_type :type/DateTime
+               :base_type    :type/Date
+               :effective_type :type/Date
                :source       :native
-               :field_ref    [:field "D" {:base-type :type/DateTime}]
+               :field_ref    [:field "D" {:base-type :type/Date}]
                :name         "D"}]
              (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
 
@@ -153,43 +161,114 @@
         (let [query (mt/mbql-query attempts
                       {:aggregation [[:count]]
                        :breakout    [!day.date]})]
-          (is (= (str "SELECT ATTEMPTS.DATE AS DATE, count(*) AS count "
+          (is (= (str "SELECT ATTEMPTS.DATE AS DATE, COUNT(*) AS count "
                       "FROM ATTEMPTS "
                       "GROUP BY ATTEMPTS.DATE "
                       "ORDER BY ATTEMPTS.DATE ASC")
                  (some-> (qp/compile query) :query pretty-sql))))))))
 
-(deftest classify-ddl-test
+
+(deftest check-action-commands-test
   (mt/test-driver :h2
-    (is (= [org.h2.command.dml.Select]
-           (mapv type (#'h2/parse (u/the-id (mt/db)) "select 1"))))
-    (is (= [org.h2.command.dml.Update]
-           (mapv type (#'h2/parse (u/the-id (mt/db)) "update venues set name = 'bill'"))))
-    (is (= [org.h2.command.dml.Delete]
-           (mapv type (#'h2/parse (u/the-id (mt/db)) "delete venues"))))
-    (is (= [org.h2.command.dml.Select
-            org.h2.command.dml.Update
-            org.h2.command.dml.Delete]
-           (mapv type (#'h2/parse (u/the-id (mt/db))
-                                  (str/join "; "
-                                            ["select 1"
-                                             "update venues set name = 'bill'"
-                                             "delete venues"])))))
-    (is (= nil (#'h2/check-disallow-ddl-commands
+    (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
+      "select 1"
+      "update venues set name = 'bill'"
+      "delete venues"
+      "select 1;
+       update venues set name = 'bill';
+       delete venues;"
+      "update venues set name = 'stomp';"
+      "select * from venues; update venues set name = 'stomp';"
+      "update venues set name = 'stomp'; select * from venues;"
+      "truncate table venues"
+      "insert into venues values (1, 'Chicken Chow')"
+      "merge into venues key(1) values (1, 'Chicken Chow')"
+      "merge into venues using (select 1 as id) as source on (venues.id = source.id) when matched then update set name = 'Chicken Chow';")
+
+    (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
+      "create table venues (id int, name varchar(255))"
+      "alter table venues add column address varchar(255)"
+      "drop table venues"
+      "select * from venues; update venues set name = 'stomp';
+       CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
+       EXEC ('open -a Calculator.app')"
+      "select * from venues; update venues set name = 'stomp';
+       CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';"
+      "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")
+
+    (is (= nil (#'h2/check-action-commands-allowed {:database (u/the-id (mt/db)) :native {:query nil}})))
+
+    (is (= nil (#'h2/check-action-commands-allowed
                 {:database (u/the-id (mt/db))
                  :engine :h2
                  :native {:query (str/join "; "
                                            ["select 1"
                                             "update venues set name = 'bill'"
                                             "delete venues"])}})))
-    (let [trigger-creation-attempt
-          (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
-                          "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
-                          "SELECT * FROM INFORMATION_SCHEMA.Users;"])]
-      (is (thrown?
-           clojure.lang.ExceptionInfo
-           #"DDL commands are not allowed to be used with h2."
-           (#'h2/check-disallow-ddl-commands
-            {:database (u/the-id (mt/db))
-             :engine :h2
-             :native {:query trigger-creation-attempt}}))))))
+    (let [trigger-creation-attempt (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
+                                                   "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
+                                                   "SELECT * FROM INFORMATION_SCHEMA.Users;"])]
+      (is (thrown? clojure.lang.ExceptionInfo
+                   #"DDL commands are not allowed to be used with h2."
+                   (#'h2/check-action-commands-allowed
+                    {:database (u/the-id (mt/db))
+                     :engine :h2
+                     :native {:query trigger-creation-attempt}}))))))
+
+(deftest check-read-only-test
+  (testing "read only statements should pass"
+    (are [query] (nil?
+                  (#'h2/check-read-only-statements
+                   {:database (u/the-id (mt/db))
+                    :engine :h2
+                    :native {:query query}}))
+      "select * from orders"
+      "select 1; select 2;"
+      "explain select * from orders"
+      "values (1, 'Hello'), (2, 'World');"
+      "show tables"
+      "table orders"
+      "call 1 + 1"
+      ;; Note this passes the check, but will fail on execution
+      "update venues set name = 'bill'; some query that can't be parsed;"))
+  (testing "not read only statements should fail"
+    (are [query] (thrown?
+                  clojure.lang.ExceptionInfo
+                  #"Only SELECT statements are allowed in a native query."
+                  (#'h2/check-read-only-statements
+                   {:database (u/the-id (mt/db))
+                    :engine :h2
+                    :native {:query query}}))
+      "update venues set name = 'bill'"
+      "insert into venues (name) values ('bill')"
+      "delete venues"
+      "select 1; update venues set name = 'bill'; delete venues;"
+      (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
+                        "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
+                        "SELECT * FROM INFORMATION_SCHEMA.Users;"]))))
+
+(deftest disallowed-commands-in-action-test
+  (mt/test-driver :h2
+    (mt/with-actions-test-data-and-actions-enabled
+      (testing "Should not be able to execute query actions with disallowed commands"
+        (let [sql "select * from categories; update categories set name = 'stomp';
+                 CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
+                 EXEC ('open -a Calculator.app')"]
+          (mt/with-actions [{:keys [action-id]} {:type :query
+                                                 :dataset_query {:database (mt/id)
+                                                                 :type     "native"
+                                                                 :native   {:query sql}}}]
+            (is (=? {:message "Error executing Action: DDL commands are not allowed to be used with H2."}
+                    (mt/user-http-request :crowberto
+                                          :post 500
+                                          (format "action/%s/execute" action-id)))))))
+      (testing "Should be able to execute query actions with allowed commands"
+        (let [sql "update categories set name = 'stomp' where id = 1; update categories set name = 'stomp' where id = 2;"]
+          (mt/with-actions [{:keys [action-id]} {:type :query
+                                                 :dataset_query {:database (mt/id)
+                                                                 :type     "native"
+                                                                 :native   {:query sql}}}]
+            (is (=? {:rows-affected 1}
+                    (mt/user-http-request :crowberto
+                                          :post 200
+                                          (format "action/%s/execute" action-id))))))))))

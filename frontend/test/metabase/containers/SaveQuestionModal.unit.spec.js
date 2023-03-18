@@ -1,57 +1,48 @@
 import React from "react";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import mock from "xhr-mock";
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 
-import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
-import MetabaseSettings from "metabase/lib/settings";
-
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   SAMPLE_DATABASE,
   ORDERS,
   metadata,
 } from "__support__/sample_database_fixture";
 import { setupEnterpriseTest } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+
+import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
+
 import Question from "metabase-lib/Question";
 
-function mockCachingEnabled(enabled = true) {
-  const original = MetabaseSettings.get.bind(MetabaseSettings);
-  const spy = jest.spyOn(MetabaseSettings, "get");
-  spy.mockImplementation(key => {
-    if (key === "enable-query-caching") {
-      return enabled;
-    }
-    if (key === "application-name") {
-      return "Metabase Test";
-    }
-    if (key === "version") {
-      return { tag: "" };
-    }
-    if (key === "is-hosted?") {
-      return false;
-    }
-    if (key === "enable-enhancements?") {
-      return false;
-    }
-    return original(key);
-  });
-}
-
-const setup = async (question, originalQuestion) => {
+const setup = async (
+  question,
+  originalQuestion,
+  { isCachingEnabled = false } = {},
+) => {
   const onCreateMock = jest.fn(() => Promise.resolve());
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
+
+  const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
+
   renderWithProviders(
     <SaveQuestionModal
-      card={question.card()}
-      originalCard={originalQuestion && originalQuestion.card()}
+      question={question}
+      originalQuestion={originalQuestion}
       tableMetadata={question.table()}
       onCreate={onCreateMock}
       onSave={onSaveMock}
       onClose={onCloseMock}
     />,
+    {
+      storeInitialState: {
+        settings,
+      },
+    },
   );
-  await waitFor(() => screen.getByRole("button", { name: "Save" }));
+  await screen.findByRole("button", { name: "Save" });
+
   return { onSaveMock, onCreateMock, onCloseMock };
 };
 
@@ -95,28 +86,23 @@ function getQuestion({
 const EXPECTED_DIRTY_SUGGESTED_NAME = "Orders, Count, Grouped by Total";
 
 function getDirtyQuestion(originalQuestion) {
-  const question = originalQuestion
+  return originalQuestion
     .query()
     .breakout(["field", ORDERS.TOTAL.id, null])
-    .question();
-  return question.setCard({
-    ...question.card(),
-    // After a saved question is edited, the ID gets removed
-    // and a user can either overwrite a question or save it as a new one
-    id: undefined,
-  });
+    .question()
+    .markDirty();
 }
 
-async function fillForm({ name, description }) {
+function fillForm({ name, description }) {
   if (name) {
     const input = screen.getByLabelText("Name");
-    await userEvent.clear(input);
-    await userEvent.type(input, name);
+    userEvent.clear(input);
+    userEvent.type(input, name);
   }
   if (description) {
     const input = screen.getByLabelText("Description");
-    await userEvent.clear(input);
-    await userEvent.type(input, description);
+    userEvent.clear(input);
+    userEvent.type(input, description);
   }
 }
 
@@ -150,17 +136,8 @@ describe("SaveQuestionModal", () => {
   ];
 
   beforeEach(() => {
-    mock.setup();
-    mock.get("/api/collection", {
-      body: JSON.stringify(TEST_COLLECTIONS),
-    });
-    mock.get("/api/collection/root", {
-      body: JSON.stringify(TEST_COLLECTIONS)[0],
-    });
-  });
-
-  afterEach(() => {
-    mock.teardown();
+    fetchMock.get("path:/api/collection", TEST_COLLECTIONS);
+    fetchMock.get("path:/api/collection/root", TEST_COLLECTIONS);
   });
 
   describe("new question", () => {
@@ -200,59 +177,68 @@ describe("SaveQuestionModal", () => {
       const question = getQuestion();
       const { onCreateMock } = await setup(question);
 
-      await act(async () => {
-        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      expect(onCreateMock).toHaveBeenCalledTimes(1);
-      expect(onCreateMock).toHaveBeenCalledWith({
-        ...question.card(),
-        name: EXPECTED_SUGGESTED_NAME,
-        description: null,
-        collection_id: null,
-      });
+      const call = onCreateMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBeUndefined();
+      expect(newQuestion.displayName()).toBe(EXPECTED_SUGGESTED_NAME);
+      expect(newQuestion.description()).toBe(null);
+      expect(newQuestion.collectionId()).toBe(null);
     });
 
     it("should call onCreate correctly with edited form", async () => {
       const question = getQuestion();
       const { onCreateMock } = await setup(question);
 
-      await act(async () => {
-        await fillForm({
-          name: "My favorite orders",
-          description: "So many of them",
-        });
-        await userEvent.click(screen.getByRole("button", { name: "Save" }));
-      });
-
-      expect(onCreateMock).toHaveBeenCalledTimes(1);
-      expect(onCreateMock).toHaveBeenCalledWith({
-        ...question.card(),
+      fillForm({
         name: "My favorite orders",
         description: "So many of them",
-        collection_id: null,
       });
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(onCreateMock).toHaveBeenCalledTimes(1);
+      });
+
+      const call = onCreateMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBeUndefined();
+      expect(newQuestion.displayName()).toBe("My favorite orders");
+      expect(newQuestion.description()).toBe("So many of them");
+      expect(newQuestion.collectionId()).toBe(null);
     });
 
     it("should trim name and description", async () => {
       const question = getQuestion();
       const { onCreateMock } = await setup(question);
 
-      await act(async () => {
-        await fillForm({
-          name: "    My favorite orders ",
-          description: "  So many of them   ",
-        });
-        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      fillForm({
+        name: "    My favorite orders ",
+        description: "  So many of them   ",
+      });
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      expect(onCreateMock).toHaveBeenCalledTimes(1);
-      expect(onCreateMock).toHaveBeenCalledWith({
-        ...question.card(),
-        name: "My favorite orders",
-        description: "So many of them",
-        collection_id: null,
-      });
+      const call = onCreateMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBeUndefined();
+      expect(newQuestion.displayName()).toBe("My favorite orders");
+      expect(newQuestion.description()).toBe("So many of them");
+      expect(newQuestion.collectionId()).toBe(null);
     });
 
     it('should correctly handle saving a question in the "root" collection', async () => {
@@ -261,27 +247,28 @@ describe("SaveQuestionModal", () => {
       });
       const { onCreateMock } = await setup(question);
 
-      await act(async () => {
-        await fillForm({ name: "foo", description: "bar" });
-        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      fillForm({ name: "foo", description: "bar" });
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      expect(onCreateMock).toHaveBeenCalledTimes(1);
-      expect(onCreateMock).toHaveBeenCalledWith({
-        ...question.card(),
-        name: "foo",
-        description: "bar",
-        collection_id: null,
-      });
+      const call = onCreateMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBeUndefined();
+      expect(newQuestion.displayName()).toBe("foo");
+      expect(newQuestion.description()).toBe("bar");
+      expect(newQuestion.collectionId()).toBe(null);
     });
 
     it("shouldn't call onSave when form is submitted", async () => {
       const question = getQuestion();
       const { onSaveMock } = await setup(question);
 
-      await act(async () => {
-        await userEvent.click(screen.getByRole("button", { name: "Save" }));
-      });
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       expect(onSaveMock).not.toHaveBeenCalled();
     });
@@ -318,9 +305,7 @@ describe("SaveQuestionModal", () => {
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
       await setup(dirtyQuestion, originalQuestion);
 
-      await act(async () => {
-        await userEvent.click(screen.getByText("Save as new question"));
-      });
+      userEvent.click(screen.getByText("Save as new question"));
 
       expect(screen.getByLabelText("Name")).toHaveValue(
         EXPECTED_DIRTY_SUGGESTED_NAME,
@@ -328,25 +313,29 @@ describe("SaveQuestionModal", () => {
       expect(screen.getByLabelText("Description")).toHaveValue(
         CARD.description,
       );
-      expect(screen.queryByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByText("Our analytics")).toBeInTheDocument();
     });
 
-    // one
     it("should allow to save a question with default form values", async () => {
       const originalQuestion = getQuestion({ isSaved: true });
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
       const { onCreateMock } = await setup(dirtyQuestion, originalQuestion);
 
-      await act(async () => {
-        await userEvent.click(screen.getByText("Save as new question"));
-        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByText("Save as new question"));
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      expect(onCreateMock).toHaveBeenCalledTimes(1);
-      expect(onCreateMock).toHaveBeenCalledWith({
-        ...dirtyQuestion.card(),
-        name: EXPECTED_DIRTY_SUGGESTED_NAME,
-      });
+      const call = onCreateMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBeUndefined();
+      expect(newQuestion.displayName()).toBe(EXPECTED_DIRTY_SUGGESTED_NAME);
+      expect(newQuestion.description()).toBe("Example");
+      expect(newQuestion.collectionId()).toBe(null);
     });
 
     it("show allow to save a question with an edited form", async () => {
@@ -354,31 +343,35 @@ describe("SaveQuestionModal", () => {
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
       const { onCreateMock } = await setup(dirtyQuestion, originalQuestion);
 
-      await act(async () => {
-        await userEvent.click(screen.getByText("Save as new question"));
-        await fillForm({ name: "My Q", description: "Sample" });
-        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByText("Save as new question"));
+      fillForm({ name: "My Q", description: "Sample" });
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      expect(onCreateMock).toHaveBeenCalledTimes(1);
-      expect(onCreateMock).toHaveBeenCalledWith({
-        ...dirtyQuestion.card(),
-        name: "My Q",
-        description: "Sample",
-      });
+      const call = onCreateMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBeUndefined();
+      expect(newQuestion.displayName()).toBe("My Q");
+      expect(newQuestion.description()).toBe("Sample");
+      expect(newQuestion.collectionId()).toBe(null);
     });
 
     it("shouldn't allow to save a question if form is invalid", async () => {
       const originalQuestion = getQuestion({ isSaved: true });
       await setup(getDirtyQuestion(originalQuestion), originalQuestion);
 
-      await act(async () => {
-        await userEvent.click(screen.getByText("Save as new question"));
-        await userEvent.clear(screen.getByLabelText("Name"));
-        await userEvent.clear(screen.getByLabelText("Description"));
-      });
+      userEvent.click(screen.getByText("Save as new question"));
+      userEvent.clear(screen.getByLabelText("Name"));
+      userEvent.clear(screen.getByLabelText("Description"));
 
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      });
     });
   });
 
@@ -392,7 +385,7 @@ describe("SaveQuestionModal", () => {
       await setup(dirtyQuestion, originalQuestion);
 
       expect(
-        screen.queryByText('Replace original question, "Beautiful Orders"'),
+        screen.getByText('Replace original question, "Beautiful Orders"'),
       ).toBeInTheDocument();
     });
 
@@ -401,15 +394,20 @@ describe("SaveQuestionModal", () => {
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
       const { onSaveMock } = await setup(dirtyQuestion, originalQuestion);
 
-      await act(async () => {
-        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(onSaveMock).toHaveBeenCalledTimes(1);
       });
 
-      expect(onSaveMock).toHaveBeenCalledTimes(1);
-      expect(onSaveMock).toHaveBeenCalledWith({
-        ...dirtyQuestion.card(),
-        id: originalQuestion.id(),
-      });
+      const call = onSaveMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBe(originalQuestion.id());
+      expect(newQuestion.displayName()).toBe(originalQuestion.displayName());
+      expect(newQuestion.description()).toBe(originalQuestion.description());
+      expect(newQuestion.collectionId()).toBe(originalQuestion.collectionId());
     });
 
     it("should allow switching to 'save as new' and back", async () => {
@@ -417,19 +415,22 @@ describe("SaveQuestionModal", () => {
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
       const { onSaveMock } = await setup(dirtyQuestion, originalQuestion);
 
-      await act(async () => {
-        await userEvent.click(screen.getByText("Save as new question"));
-        await userEvent.click(
-          screen.getByText(/Replace original question, ".*"/),
-        );
-        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByText("Save as new question"));
+      userEvent.click(screen.getByText(/Replace original question, ".*"/));
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(onSaveMock).toHaveBeenCalledTimes(1);
       });
 
-      expect(onSaveMock).toHaveBeenCalledTimes(1);
-      expect(onSaveMock).toHaveBeenCalledWith({
-        ...dirtyQuestion.card(),
-        id: originalQuestion.id(),
-      });
+      const call = onSaveMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBe(originalQuestion.id());
+      expect(newQuestion.displayName()).toBe(originalQuestion.displayName());
+      expect(newQuestion.description()).toBe(originalQuestion.description());
+      expect(newQuestion.collectionId()).toBe(originalQuestion.collectionId());
     });
 
     it("should preserve original question's collection id", async () => {
@@ -437,31 +438,34 @@ describe("SaveQuestionModal", () => {
         isSaved: true,
         collection_id: 5,
       });
-      const { onSaveMock } = await setup(
-        getDirtyQuestion(originalQuestion),
-        originalQuestion,
-      );
+      const dirtyQuestion = getDirtyQuestion(originalQuestion);
+      const { onSaveMock } = await setup(dirtyQuestion, originalQuestion);
 
-      await act(async () => {
-        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(onSaveMock).toHaveBeenCalledTimes(1);
       });
 
-      expect(onSaveMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          collection_id: originalQuestion.collectionId(),
-        }),
-      );
+      const call = onSaveMock.mock.calls[0];
+      expect(call.length).toBe(1);
+
+      const newQuestion = call[0];
+      expect(newQuestion.id()).toBe(originalQuestion.id());
+      expect(newQuestion.displayName()).toBe(originalQuestion.displayName());
+      expect(newQuestion.description()).toBe(originalQuestion.description());
+      expect(newQuestion.collectionId()).toBe(originalQuestion.collectionId());
     });
 
     it("shouldn't allow to save a question if form is invalid", async () => {
       await setup(getQuestion());
 
-      await act(async () => {
-        await userEvent.clear(screen.getByLabelText("Name"));
-        await userEvent.clear(screen.getByLabelText("Description"));
-      });
+      userEvent.clear(screen.getByLabelText("Name"));
+      userEvent.clear(screen.getByLabelText("Description"));
 
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      });
     });
 
     it("shouldn't call onCreate when form is submitted", async () => {
@@ -469,30 +473,30 @@ describe("SaveQuestionModal", () => {
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
       const { onCreateMock } = await setup(dirtyQuestion, originalQuestion);
 
-      await act(async () => {
-        await userEvent.click(screen.getByRole("button", { name: "Save" }));
-      });
+      userEvent.click(screen.getByRole("button", { name: "Save" }));
 
-      expect(onCreateMock).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(onCreateMock).not.toHaveBeenCalled();
+      });
     });
 
     it("should keep 'save as new' form values while switching saving modes", async () => {
       const originalQuestion = getQuestion({ isSaved: true });
       await setup(getDirtyQuestion(originalQuestion), originalQuestion);
 
-      await act(async () => {
-        await userEvent.click(screen.getByText("Save as new question"));
-        await fillForm({
-          name: "Should not be erased",
-          description: "This should not be erased too",
-        });
-        await userEvent.click(
-          screen.getByText(/Replace original question, ".*"/),
-        );
-        await userEvent.click(screen.getByText("Save as new question"));
+      userEvent.click(screen.getByText("Save as new question"));
+      fillForm({
+        name: "Should not be erased",
+        description: "This should not be erased too",
       });
+      userEvent.click(screen.getByText(/Replace original question, ".*"/));
+      userEvent.click(screen.getByText("Save as new question"));
 
-      expect(screen.getByLabelText("Name")).toHaveValue("Should not be erased");
+      await waitFor(() => {
+        expect(screen.getByLabelText("Name")).toHaveValue(
+          "Should not be erased",
+        );
+      });
       expect(screen.getByLabelText("Description")).toHaveValue(
         "This should not be erased too",
       );
@@ -502,15 +506,11 @@ describe("SaveQuestionModal", () => {
       const originalQuestion = getQuestion({ isSaved: true });
       await setup(getDirtyQuestion(originalQuestion), originalQuestion);
 
-      await act(async () => {
-        await userEvent.click(screen.getByText("Save as new question"));
-        await userEvent.clear(screen.getByLabelText("Name"));
-        await userEvent.click(
-          screen.getByText(/Replace original question, ".*"/),
-        );
-      });
+      userEvent.click(screen.getByText("Save as new question"));
+      userEvent.clear(screen.getByLabelText("Name"));
+      userEvent.click(screen.getByText(/Replace original question, ".*"/));
 
-      expect(await screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
     });
 
     it("should not allow overwriting when user does not have curate permission on collection (metabase#20717)", async () => {
@@ -533,25 +533,17 @@ describe("SaveQuestionModal", () => {
 
   it("should call onClose when Cancel button is clicked", async () => {
     const { onCloseMock } = await setup(getQuestion());
-    await act(async () => {
-      userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    });
+    userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onCloseMock).toHaveBeenCalledTimes(1);
   });
 
   it("should call onClose when close icon is clicked", async () => {
     const { onCloseMock } = await setup(getQuestion());
-    await act(async () => {
-      userEvent.click(screen.getByLabelText("close icon"));
-    });
+    userEvent.click(screen.getByLabelText("close icon"));
     expect(onCloseMock).toHaveBeenCalledTimes(1);
   });
 
   describe("Cache TTL field", () => {
-    beforeEach(() => {
-      mockCachingEnabled();
-    });
-
     const question = Question.create({
       databaseId: SAMPLE_DATABASE.id,
       tableId: ORDERS.id,
@@ -563,7 +555,7 @@ describe("SaveQuestionModal", () => {
 
     describe("OSS", () => {
       it("is not shown", async () => {
-        await setup(question);
+        await setup(question, null, { isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
@@ -577,7 +569,7 @@ describe("SaveQuestionModal", () => {
       });
 
       it("is not shown", async () => {
-        await setup(question);
+        await setup(question, null, { isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),

@@ -9,12 +9,14 @@ import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
 import ErrorMessage from "metabase/components/ErrorMessage";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
-import Icon from "metabase/components/Icon";
 import {
   QueryError,
+  QueryErrorHeader,
   QueryErrorIcon,
+  QueryErrorTitle,
+  QueryErrorLink,
   QueryErrorMessage,
-  QueryLink,
+  QueryErrorContent,
 } from "./VisualizationError.styled";
 
 const EmailAdmin = () => {
@@ -85,14 +87,14 @@ class VisualizationError extends Component {
   }
   static propTypes = {
     via: PropTypes.object.isRequired,
-    card: PropTypes.object.isRequired,
+    question: PropTypes.object.isRequired,
     duration: PropTypes.number.isRequired,
     error: PropTypes.object.isRequired,
     className: PropTypes.string,
   };
 
   render() {
-    const { via, card, duration, error, className } = this.props;
+    const { via, question, duration, error, className } = this.props;
     console.log("error", error);
 
     if (error && typeof error.status === "number") {
@@ -129,11 +131,7 @@ class VisualizationError extends Component {
           </div>
         </div>
       );
-    } else if (
-      card &&
-      card.dataset_query &&
-      card.dataset_query.type === "native"
-    ) {
+    } else if (question?.isNative()) {
       // always show errors for native queries
       let processedError = error;
       const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
@@ -145,15 +143,18 @@ class VisualizationError extends Component {
       }
       return (
         <QueryError className={className}>
-          <QueryErrorIcon>
-            <Icon name="warning" size="40" />
-          </QueryErrorIcon>
-          <QueryErrorMessage>{processedError}</QueryErrorMessage>
-          <QueryLink
-            href={MetabaseSettings.learnUrl("debugging-sql/sql-syntax")}
-          >
-            {t`Learn how to debug SQL errors`}
-          </QueryLink>
+          <QueryErrorContent>
+            <QueryErrorHeader>
+              <QueryErrorIcon name="warning" />
+              <QueryErrorTitle>{t`An error occurred in your query`}</QueryErrorTitle>
+            </QueryErrorHeader>
+            <QueryErrorMessage>{processedError}</QueryErrorMessage>
+            <QueryErrorLink
+              href={MetabaseSettings.learnUrl("debugging-sql/sql-syntax")}
+            >
+              {t`Learn how to debug SQL errors`}
+            </QueryErrorLink>
+          </QueryErrorContent>
         </QueryError>
       );
     } else {

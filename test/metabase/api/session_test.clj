@@ -1,24 +1,34 @@
-(ns metabase.api.session-test
+(ns ^:mb/once metabase.api.session-test
   "Tests for /api/session"
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.test :refer :all]
-            [metabase.api.session :as api.session]
-            [metabase.driver.h2 :as h2]
-            [metabase.http-client :as client]
-            [metabase.models :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Session User]]
-            [metabase.models.setting :as setting]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.integrations.ldap :as ldap.test]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.test :refer :all]
+   [metabase.api.session :as api.session]
+   [metabase.driver.h2 :as h2]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [LoginHistory
+            PermissionsGroup
+            PermissionsGroupMembership
+            Session
+            User]]
+   [metabase.models.setting :as setting]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.integrations.ldap :as ldap.test]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan2.core :as t2])
+  (:import
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 ;; one of the tests below compares the way properties for the H2 driver are translated, so we need to make sure it's
 ;; loaded
@@ -56,7 +66,7 @@
                         :ip_address         su/NonBlankString
                         :active             (s/eq true)
                         s/Keyword s/Any}
-                       (db/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
+                       (t2/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
     (testing "Test that 'remember me' checkbox sets Max-Age attribute on session cookie"
       (let [body (assoc (mt/user->credentials :rasta) :remember true)
             response (mt/client-full-response :post 200 "session" body)]
@@ -189,7 +199,7 @@
       ;; Session
       (test.users/clear-cached-session-tokens!)
       (let [session-id       (test.users/username->token :rasta)
-            login-history-id (db/select-one-id LoginHistory :session_id session-id)]
+            login-history-id (t2/select-one-pk LoginHistory :session_id session-id)]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
         ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
@@ -197,7 +207,7 @@
         (mt/user-http-request :rasta :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
-               (db/select-one Session :id session-id)))
+               (t2/select-one Session :id session-id)))
         (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
           (is (schema= {:id                 (s/eq login-history-id)
                         :timestamp          java.time.OffsetDateTime
@@ -207,7 +217,7 @@
                         :ip_address         su/NonBlankString
                         :active             (s/eq false)
                         s/Keyword           s/Any}
-                       (db/select-one LoginHistory :id login-history-id))))))))
+                       (t2/select-one LoginHistory :id login-history-id))))))))
 
 (deftest forgot-password-test
   (testing "POST /api/session/forgot_password"
@@ -218,7 +228,7 @@
       (testing "Test that we can initiate password reset"
         (mt/with-fake-inbox
           (letfn [(reset-fields-set? []
-                    (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered]
+                    (let [{:keys [reset_token reset_triggered]} (t2/select-one [User :reset_token :reset_triggered]
                                                                                :id (mt/user->id :rasta))]
                       (boolean (and reset_token reset_triggered))))]
             ;; make sure user is starting with no values
@@ -295,7 +305,7 @@
               (testing "check that reset token was cleared"
                 (is (= {:reset_token     nil
                         :reset_triggered nil}
-                       (mt/derecordize (db/select-one [User :reset_token :reset_triggered], :id id))))))))))))
+                       (mt/derecordize (t2/select-one [User :reset_token :reset_triggered], :id id))))))))))))
 
 (deftest reset-password-validation-test
   (testing "POST /api/session/reset_password"
@@ -343,20 +353,20 @@
 (deftest properties-test
   (testing "GET /session/properties"
     (testing "Unauthenticated"
-      (is (= (set (keys (setting/user-readable-values-map :public)))
+      (is (= (set (keys (setting/user-readable-values-map #{:public})))
              (set (keys (mt/client :get 200 "session/properties"))))))
 
     (testing "Authenticated normal user"
-      (is (= (set (keys (merge
-                         (setting/user-readable-values-map :public)
-                         (setting/user-readable-values-map :authenticated))))
+      (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated})))
              (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))
 
+    (testing "Authenticated settings manager"
+      (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
+               (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
+
     (testing "Authenticated super user"
-      (is (= (set (keys (merge
-                         (setting/user-readable-values-map :public)
-                         (setting/user-readable-values-map :authenticated)
-                         (setting/user-readable-values-map :admin))))
+      (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin})))
              (set (keys (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
 
 (deftest properties-i18n-test
@@ -433,9 +443,9 @@
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
         (mt/with-temp User [_ {:email    "ngoc@metabase.com"
                                :password "securedpassword"}]
-            (is (schema= SessionResponse
-                         (mt/client :post 200 "session" {:username "ngoc@metabase.com"
-                                                         :password "securedpassword"}))))))
+          (is (schema= SessionResponse
+                       (mt/client :post 200 "session" {:username "ngoc@metabase.com"
+                                                       :password "securedpassword"}))))))
 
     (testing "Test that we can login with LDAP with new user"
       (try
@@ -462,8 +472,9 @@
           [ldap-group-mappings (json/generate-string {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
           (is (schema= SessionResponse
                        (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
-          (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
-            (is (= true (db/exists? PermissionsGroupMembership :group_id (:id group) (:user_id user-id))))))))))
+          (testing "PermissionsGroupMembership should exist"
+            (let [user-id (t2/select-one-pk User :email "fred.taylor@metabase.com")]
+              (is (db/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))
 
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"

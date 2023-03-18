@@ -1,31 +1,34 @@
 (ns metabase.core
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.tools.trace :as trace]
-            [java-time :as t]
-            [metabase.analytics.prometheus :as prometheus]
-            [metabase.config :as config]
-            [metabase.core.config-from-file :as config-from-file]
-            [metabase.core.initialization-status :as init-status]
-            [metabase.db :as mdb]
-            metabase.driver.h2
-            metabase.driver.mysql
-            metabase.driver.postgres
-            [metabase.events :as events]
-            [metabase.logger :as mb.logger]
-            [metabase.models.user :refer [User]]
-            [metabase.plugins :as plugins]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings :as public-settings]
-            [metabase.sample-data :as sample-data]
-            [metabase.server :as server]
-            [metabase.server.handler :as handler]
-            [metabase.setup :as setup]
-            [metabase.task :as task]
-            [metabase.troubleshooting :as troubleshooting]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-trs trs]]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.trace :as trace]
+   [java-time :as t]
+   [metabase.analytics.prometheus :as prometheus]
+   [metabase.config :as config]
+   [metabase.core.config-from-file :as config-from-file]
+   [metabase.core.initialization-status :as init-status]
+   [metabase.db :as mdb]
+   [metabase.driver.h2]
+   [metabase.driver.mysql]
+   [metabase.driver.postgres]
+   [metabase.events :as events]
+   [metabase.logger :as mb.logger]
+   [metabase.models.user :refer [User]]
+   [metabase.plugins :as plugins]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings :as public-settings]
+   [metabase.sample-data :as sample-data]
+   [metabase.server :as server]
+   [metabase.server.handler :as handler]
+   [metabase.setup :as setup]
+   [metabase.task :as task]
+   [metabase.troubleshooting :as troubleshooting]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-trs trs]]
+   [metabase.util.log :as log]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (comment
   ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
@@ -111,9 +114,6 @@
   ;; Bootstrap the event system
   (events/initialize-events!)
   (init-status/set-progress! 0.7)
-  ;; Now initialize the task runner
-  (task/init-scheduler!)
-  (init-status/set-progress! 0.8)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (db/exists? User))]
@@ -123,14 +123,14 @@
       (create-setup-token-and-log-setup-url!)
       ;; publish install event
       (events/publish-event! :install {}))
-    (init-status/set-progress! 0.9)
+    (init-status/set-progress! 0.8)
     ;; deal with our sample database as needed
     (if new-install?
       ;; add the sample database DB for fresh installs
       (sample-data/add-sample-database!)
       ;; otherwise update if appropriate
       (sample-data/update-sample-database-if-needed!))
-    (init-status/set-progress! 0.95))
+    (init-status/set-progress! 0.9))
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)

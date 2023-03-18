@@ -1,30 +1,34 @@
 (ns metabase.analytics.snowplow
   "Functions for sending Snowplow analytics events"
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.models.setting :as setting :refer [defsetting Setting]]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
-            [toucan.db :as db])
-  (:import [com.snowplowanalytics.snowplow.tracker Subject$SubjectBuilder Tracker Tracker$TrackerBuilder]
-           [com.snowplowanalytics.snowplow.tracker.emitter BatchEmitter BatchEmitter$Builder Emitter]
-           [com.snowplowanalytics.snowplow.tracker.events Unstructured Unstructured$Builder]
-           [com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter ApacheHttpClientAdapter$Builder]
-           com.snowplowanalytics.snowplow.tracker.payload.SelfDescribingJson
-           [org.apache.http.client.config CookieSpecs RequestConfig]
-           org.apache.http.impl.client.HttpClients
-           org.apache.http.impl.conn.PoolingHttpClientConnectionManager))
+  (:require
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.models.setting :as setting :refer [defsetting Setting]]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.log :as log]
+   [toucan.db :as db]
+   [toucan2.core :as t2])
+  (:import
+   (com.snowplowanalytics.snowplow.tracker Snowplow Subject Tracker)
+   (com.snowplowanalytics.snowplow.tracker.configuration EmitterConfiguration NetworkConfiguration SubjectConfiguration TrackerConfiguration)
+   (com.snowplowanalytics.snowplow.tracker.events SelfDescribing SelfDescribing$Builder2)
+   (com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter)
+   (com.snowplowanalytics.snowplow.tracker.payload SelfDescribingJson)
+   (org.apache.http.client.config CookieSpecs RequestConfig)
+   (org.apache.http.impl.client HttpClients)
+   (org.apache.http.impl.conn PoolingHttpClientConnectionManager)))
+
+(set! *warn-on-reflection* true)
 
 (defsetting analytics-uuid
   (deferred-tru
-   (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
-        "This is a public setting since some analytics events are sent prior to initial setup."))
+    (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
+         "This is a public setting since some analytics events are sent prior to initial setup."))
   :visibility :public
   :setter     :none
   :type       ::public-settings/uuid-nonce
@@ -62,7 +66,7 @@
 (defn- first-user-creation
   "Returns the earliest user creation timestamp in the database"
   []
-  (:min (db/select-one [User [:%min.date_joined :min]])))
+  (:min (t2/select-one [User [:%min.date_joined :min]])))
 
 ;; We need to declare `track-event!` up front so that we can use it in the custom getter of `instance-creation`.
 ;; We can't move `instance-creation` below `track-event!` because it has to be defined before `context`, which is called
@@ -84,43 +88,50 @@
                 (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation)))
   :doc false)
 
-(def ^:private emitter
-  "Returns an instance of a Snowplow emitter"
-  (let [emitter* (delay
-                   (let [request-config (-> (RequestConfig/custom)
-                                            ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
-                                            ;; header in request response (PR #24579)
-                                            (.setCookieSpec CookieSpecs/STANDARD)
-                                            (.build))
-                         client (-> (HttpClients/custom)
-                                    (.setConnectionManager (PoolingHttpClientConnectionManager.))
-                                    (.setDefaultRequestConfig request-config)
-                                    (.build))
-                         builder (-> (ApacheHttpClientAdapter/builder)
-                                     (.httpClient client)
-                                     (.url (snowplow-url)))
-                         adapter (.build ^ApacheHttpClientAdapter$Builder builder)
-                         batch-emitter-builder (-> (BatchEmitter/builder)
-                                                   (.batchSize 1)
-                                                   (.httpClientAdapter adapter))]
-                     (.build ^BatchEmitter$Builder batch-emitter-builder)))]
-     (fn [] @emitter*)))
+(def ^:private tracker-config
+  "Returns instance of a Snowplow tracker config"
+  (let [tracker-config* (delay (TrackerConfiguration. "sp" "metabase"))]
+    (fn [] @tracker-config*)))
+
+(def ^:private network-config
+  "Returns instance of a Snowplow network config"
+  (let [network-config* (delay
+                         (let [request-config (-> (RequestConfig/custom)
+                                                  ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
+                                                  ;; header in request response (PR #24579)
+                                                  (.setCookieSpec CookieSpecs/STANDARD)
+                                                  (.build))
+                               client (-> (HttpClients/custom)
+                                          (.setConnectionManager (PoolingHttpClientConnectionManager.))
+                                          (.setDefaultRequestConfig request-config)
+                                          (.build))
+                               http-client-adapter (ApacheHttpClientAdapter. (snowplow-url) client)]
+                           (NetworkConfiguration. http-client-adapter)))]
+    (fn [] @network-config*)))
+
+(def ^:private emitter-config
+  "Returns an instance of a Snowplow emitter config"
+  (let [emitter-config* (delay (-> (EmitterConfiguration.)
+                                   (.batchSize 1)))]
+     (fn [] @emitter-config*)))
 
 (def ^:private tracker
   "Returns instance of a Snowplow tracker"
   (let [tracker* (delay
-                  (-> (Tracker$TrackerBuilder. ^Emitter (emitter) "sp" "metabase")
-                      .build))]
+                  (Snowplow/createTracker
+                   ^TrackerConfiguration (tracker-config)
+                   ^NetworkConfiguration (network-config)
+                   ^EmitterConfiguration (emitter-config)))]
     (fn [] @tracker*)))
 
 (defn- subject
   "Create a Subject object for a given user ID, to be included in analytics events"
   [user-id]
-  (-> (Subject$SubjectBuilder.)
-      (.userId (str user-id))
-      ;; Override with localhost IP to avoid logging actual user IP addresses
-      (.ipAddress "127.0.0.1")
-      .build))
+  (Subject.
+   (-> (SubjectConfiguration.)
+       (.userId (str user-id))
+       ;; Override with localhost IP to avoid logging actual user IP addresses
+       (.ipAddress "127.0.0.1"))))
 
 (def ^:private schema->version
   "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
@@ -131,19 +142,21 @@
    ::database  "1-0-0"
    ::instance  "1-1-0"
    ::timeline  "1-0-0"
-   ::task      "1-0-0"})
+   ::task      "1-0-0"
+   ::action    "1-0-0"})
 
 (defn- app-db-type
   "Returns the type of the Metabase application database as a string (e.g. PostgreSQL, MySQL)"
   []
-  (jdbc/with-db-metadata [metadata (db/connection)]
-    (.getDatabaseProductName metadata)))
+  (t2/with-connection [^java.sql.Connection conn]
+    (.. conn getMetaData getDatabaseProductName)))
 
 (defn- app-db-version
   "Returns the version of the Metabase application database as a string"
   []
-  (jdbc/with-db-metadata [metadata (db/connection)]
-    (format "%d.%d" (.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata))))
+  (t2/with-connection [^java.sql.Connection conn]
+    (let [metadata (.getMetaData conn)]
+      (format "%d.%d" (.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata)))))
 
 (defn- context
   "Common context included in every analytics event"
@@ -176,7 +189,7 @@
   "Wrapper function around the `.track` method on a Snowplow tracker. Can be redefined in tests to instead append
   event data to an in-memory store."
   [tracker event]
-  (.track ^Tracker tracker ^Unstructured event))
+  (.track ^Tracker tracker ^SelfDescribing event))
 
 (def ^:private event->schema
   "The schema to use for each analytics event."
@@ -188,7 +201,11 @@
    ::database-connection-successful ::database
    ::database-connection-failed     ::database
    ::new-event-created              ::timeline
-   ::new-task-history               ::task})
+   ::new-task-history               ::task
+   ::action-created                 ::action
+   ::action-updated                 ::action
+   ::action-deleted                 ::action
+   ::action-executed                ::action})
 
 (defn track-event!
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector
@@ -197,11 +214,11 @@
   (when (snowplow-enabled)
     (try
       (let [schema (event->schema event-kw)
-            ^Unstructured$Builder builder (-> (. Unstructured builder)
-                                              (.eventData (payload schema (schema->version schema) event-kw data))
-                                              (.customContext [(context)])
-                                              (cond-> user-id (.subject (subject user-id))))
-            ^Unstructured event (.build builder)]
+            ^SelfDescribing$Builder2 builder (-> (. SelfDescribing builder)
+                                                 (.eventData (payload schema (schema->version schema) event-kw data))
+                                                 (.customContext [(context)])
+                                                 (cond-> user-id (.subject (subject user-id))))
+            ^SelfDescribing event (.build builder)]
         (track-event-impl! (tracker) event))
       (catch Throwable e
         (log/debug e (trs "Error sending Snowplow analytics event {0}" event-kw))))))

@@ -1,13 +1,14 @@
 (ns metabase.test.data.sql
   "Common test extension functionality for all SQL drivers."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.query-processor :as qp]
-            [metabase.test.data :as data]
-            [metabase.test.data.interface :as tx]))
+  (:require
+   [clojure.string :as str]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.query-processor :as qp]
+   [metabase.test.data :as data]
+   [metabase.test.data.interface :as tx]
+   [metabase.util.log :as log]))
 
 (driver/register! :sql/test-extensions, :abstract? true)
 

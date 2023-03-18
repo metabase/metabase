@@ -2,20 +2,16 @@
   "A Metric is a saved MBQL 'macro' expanding to a combination of `:aggregation` and/or `:filter` clauses.
   It is passed in as an `:aggregation` clause but is replaced by the `expand-macros` middleware with the appropriate
   clauses."
-  (:require [clojure.set :as set]
-            [medley.core :as m]
-            [metabase.models.interface :as mi]
-            [metabase.models.revision :as revision]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [clojure.set :as set]
+   [medley.core :as m]
+   [metabase.models.interface :as mi]
+   [metabase.models.revision :as revision]
+   [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel Metric :metric)
 
@@ -28,27 +24,25 @@
   (u/prog1 updates
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? updates :creator_id)
-      (when (not= creator_id (db/select-one-field :creator_id Metric :id id))
+      (when (not= creator_id (t2/select-one-fn :creator_id Metric :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Metric.")))))))
 
 (defmethod mi/perms-objects-set Metric
   [metric read-or-write]
   (let [table (or (:table metric)
-                  (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
+                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
     (mi/perms-objects-set table read-or-write)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Metric)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:types      (constantly {:definition :metric-segment-definition})
-    :properties (constantly {:timestamped? true
-                             :entity_id    true})
-    :pre-update pre-update}))
+(mi/define-methods
+ Metric
+ {:types      (constantly {:definition :metric-segment-definition})
+  :properties (constantly {::mi/timestamped? true
+                           ::mi/entity-id    true})
+  :pre-update pre-update})
 
-(defmethod serdes.hash/identity-hash-fields Metric
+(defmethod serdes/hash-fields Metric
   [_metric]
-  [:name (serdes.hash/hydrated-hash :table "<none>") :created_at])
+  [:name (serdes/hydrated-hash :table) :created_at])
 
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
@@ -76,38 +70,28 @@
 
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
-(defmethod serdes.base/extract-one "Metric"
+(defmethod serdes/extract-one "Metric"
   [_model-name _opts metric]
-  (-> (serdes.base/extract-one-basics "Metric" metric)
-      (update :table_id   serdes.util/export-table-fk)
-      (update :creator_id serdes.util/export-user)
-      (update :definition serdes.util/export-mbql)))
+  (-> (serdes/extract-one-basics "Metric" metric)
+      (update :table_id   serdes/export-table-fk)
+      (update :creator_id serdes/export-user)
+      (update :definition serdes/export-mbql)))
 
-(defmethod serdes.base/load-xform "Metric" [metric]
+(defmethod serdes/load-xform "Metric" [metric]
   (-> metric
-      serdes.base/load-xform-basics
-      (update :table_id   serdes.util/import-table-fk)
-      (update :creator_id serdes.util/import-user)
-      (update :definition serdes.util/import-mbql)))
+      serdes/load-xform-basics
+      (update :table_id   serdes/import-table-fk)
+      (update :creator_id serdes/import-user)
+      (update :definition serdes/import-mbql)))
 
-(defmethod serdes.base/serdes-dependencies "Metric" [{:keys [definition table_id]}]
-  (into [] (set/union #{(serdes.util/table->path table_id)}
-                      (serdes.util/mbql-deps definition))))
+(defmethod serdes/dependencies "Metric" [{:keys [definition table_id]}]
+  (into [] (set/union #{(serdes/table->path table_id)}
+                      (serdes/mbql-deps definition))))
 
-;;; ----------------------------------------------------- OTHER ------------------------------------------------------
-
-(s/defn retrieve-metrics :- [(mi/InstanceOf Metric)]
-  "Fetch all `Metrics` for a given `Table`. Optional second argument allows filtering by active state by providing one
-  of 3 keyword values: `:active`, `:deleted`, `:all`. Default filtering is for `:active`."
-  ([table-id :- su/IntGreaterThanZero]
-   (retrieve-metrics table-id :active))
-
-  ([table-id :- su/IntGreaterThanZero, state :- (s/enum :all :active :deleted)]
-   (-> (db/select Metric
-         {:where    [:and [:= :table_id table-id]
-                     (case state
-                       :all     true
-                       :active  [:= :archived false]
-                       :deleted [:= :archived true])]
-          :order-by [[:name :asc]]})
-       (hydrate :creator))))
+(defmethod serdes/storage-path "Metric" [metric _ctx]
+  (let [{:keys [id label]} (-> metric serdes/path last)]
+    (-> metric
+        :table_id
+        serdes/table->path
+        serdes/storage-table-path-prefix
+        (concat ["metrics" (serdes/storage-leaf-file-name id label)]))))

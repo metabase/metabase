@@ -1,10 +1,13 @@
 (ns metabase.api.testing-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [metabase.api.testing :as testing]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [metabase.api.testing :as testing]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
+
+(set! *warn-on-reflection* true)
 
 (deftest snapshot-test
   (when (= (mdb.connection/db-type) :h2)

@@ -3,11 +3,6 @@ import { t, jt } from "ttag";
 
 import Icon from "metabase/components/Icon";
 
-import {
-  isActionDashCard,
-  getActionButtonLabel,
-} from "metabase/writeback/utils";
-
 import type { DashboardOrderedCard, DatasetColumn } from "metabase-types/api";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
@@ -45,10 +40,6 @@ function HeaderContent({ dashcard, selectedColumn, onUnsetColumn }: Props) {
       );
     }
     return <Heading>{t`On-click behavior for each column`}</Heading>;
-  }
-  if (isActionDashCard(dashcard)) {
-    const label = getActionButtonLabel(dashcard);
-    return <DefaultHeader>{label || t`an action button`}</DefaultHeader>;
   }
   return <DefaultHeader>{dashcard.card.name}</DefaultHeader>;
 }

@@ -204,6 +204,12 @@ export default class ExtendedOptions extends React.Component {
     },
   };
 
+  constructor(props, context) {
+    super(props, context);
+
+    this.rootRef = React.createRef();
+  }
+
   render() {
     const { features } = this.props;
     if (!features.sort && !features.limit) {
@@ -215,7 +221,10 @@ export default class ExtendedOptions extends React.Component {
       : null;
 
     return (
-      <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center">
+      <div
+        className="GuiBuilder-section GuiBuilder-sort-limit flex align-center"
+        ref={this.rootRef}
+      >
         <span
           className={cx("EllipsisButton no-decoration text-light px1", {
             "cursor-pointer": onClick,
@@ -225,6 +234,7 @@ export default class ExtendedOptions extends React.Component {
           …
         </span>
         <Popover
+          target={this.rootRef.current}
           isOpen={this.state.isOpen}
           onClose={() => this.setState({ isOpen: false })}
         >

@@ -1,15 +1,16 @@
 (ns metabase.sync.analyze.classify-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.field-values :as field-values]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync.analyze.classify :as classify]
-            [metabase.sync.interface :as i]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field-values :as field-values]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync.analyze.classify :as classify]
+   [metabase.sync.interface :as i]
+   [metabase.util :as u]
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (deftest fields-to-classify-test
   (testing "Finds current fingerprinted versions that are not analyzed"
@@ -74,9 +75,9 @@
                                                                                   :avg "NaN"}}
                                                            :global {:distinct-count 3}}
                                      :last_analyzed       nil}]]
-      (is (nil? (:semantic_type (db/select-one Field :id (u/the-id field)))))
+      (is (nil? (:semantic_type (t2/select-one Field :id (u/the-id field)))))
       (classify/classify-fields-for-db! db [table] (constantly nil))
-      (is (= :type/Income (:semantic_type (db/select-one Field :id (u/the-id field)))))))
+      (is (= :type/Income (:semantic_type (t2/select-one Field :id (u/the-id field)))))))
   (testing "We can classify decimal fields that have specially handled infinity values"
     (tt/with-temp* [Database [db]
                     Table    [table {:db_id (u/the-id db)}]
@@ -90,9 +91,9 @@
                                                                                   :avg "Infinity"}}
                                                            :global {:distinct-count 3}}
                                      :last_analyzed       nil}]]
-      (is (nil? (:semantic_type (db/select-one Field :id (u/the-id field)))))
+      (is (nil? (:semantic_type (t2/select-one Field :id (u/the-id field)))))
       (classify/classify-fields-for-db! db [table] (constantly nil))
-      (is (= :type/Income (:semantic_type (db/select-one Field :id (u/the-id field))))))))
+      (is (= :type/Income (:semantic_type (t2/select-one Field :id (u/the-id field))))))))
 
 (defn- ->field [field]
   (mi/instance

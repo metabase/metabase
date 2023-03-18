@@ -4,7 +4,8 @@ import { SetupApi, UtilApi } from "metabase/services";
 import { createThunkAction } from "metabase/lib/redux";
 import { loadLocalization } from "metabase/lib/i18n";
 import MetabaseSettings from "metabase/lib/settings";
-import { DatabaseInfo, Locale } from "metabase-types/store";
+import { DatabaseData } from "metabase-types/api";
+import { Locale } from "metabase-types/store";
 import { getUserToken, getDefaultLocale, getLocales } from "./utils";
 
 export const SET_STEP = "metabase/setup/SET_STEP";
@@ -51,7 +52,7 @@ export const LOAD_LOCALE_DEFAULTS = "metabase/setup/LOAD_LOCALE_DEFAULTS";
 export const loadLocaleDefaults = createThunkAction(
   LOAD_LOCALE_DEFAULTS,
   () => async (dispatch: any) => {
-    const data = MetabaseSettings.get("available-locales");
+    const data = MetabaseSettings.get("available-locales") || [];
     const locale = getDefaultLocale(getLocales(data));
     await dispatch(setLocale(locale));
   },
@@ -73,7 +74,7 @@ export const validatePassword = async (password: string) => {
 export const VALIDATE_DATABASE = "metabase/setup/VALIDATE_DATABASE";
 export const validateDatabase = createThunkAction(
   VALIDATE_DATABASE,
-  (database: DatabaseInfo) => async () => {
+  (database: DatabaseData) => async () => {
     await SetupApi.validate_db({
       token: MetabaseSettings.get("setup-token"),
       details: database,
@@ -84,7 +85,7 @@ export const validateDatabase = createThunkAction(
 export const SUBMIT_DATABASE = "metabase/setup/SUBMIT_DATABASE";
 export const submitDatabase = createThunkAction(
   SUBMIT_DATABASE,
-  (database: DatabaseInfo) => async (dispatch: any) => {
+  (database: DatabaseData) => async (dispatch: any) => {
     const sslDetails = { ...database.details, ssl: true };
     const sslDatabase = { ...database, details: sslDetails };
     const nonSslDetails = { ...database.details, ssl: false };

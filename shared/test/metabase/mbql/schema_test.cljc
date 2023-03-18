@@ -1,7 +1,8 @@
 (ns metabase.mbql.schema-test
-  (:require [clojure.test :as t]
-            [metabase.mbql.schema :as mbql.s]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :as t]
+   [metabase.mbql.schema :as mbql.s]
+   [schema.core :as s]))
 
 #?(:clj
    (t/deftest ^:parallel temporal-literal-test

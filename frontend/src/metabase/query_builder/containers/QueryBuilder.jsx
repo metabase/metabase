@@ -11,10 +11,12 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useMount, useUnmount, usePrevious } from "react-use";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
+import { getSetting } from "metabase/selectors/settings";
 
 import { closeNavbar, getIsNavbarOpen } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -25,9 +27,7 @@ import {
 } from "metabase/selectors/user";
 
 import { useForceUpdate } from "metabase/hooks/use-force-update";
-import { useOnMount } from "metabase/hooks/use-on-mount";
-import { useOnUnmount } from "metabase/hooks/use-on-unmount";
-import { usePrevious } from "metabase/hooks/use-previous";
+
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 
@@ -66,7 +66,6 @@ import {
   getQuery,
   getQuestion,
   getOriginalQuestion,
-  getSettings,
   getQueryStartTime,
   getRawSeries,
   getQuestionAlerts,
@@ -77,8 +76,8 @@ import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getIsBookmarked,
-  getVisibleTimelineIds,
   getVisibleTimelineEvents,
+  getVisibleTimelineEventIds,
   getSelectedTimelineEventIds,
   getFilteredTimelines,
   getTimeseriesXDomain,
@@ -130,8 +129,8 @@ const mapStateToProps = (state, props) => {
 
     timelines: getFilteredTimelines(state),
     timelineEvents: getVisibleTimelineEvents(state),
-    visibleTimelineIds: getVisibleTimelineIds(state),
     selectedTimelineEventIds: getSelectedTimelineEventIds(state),
+    visibleTimelineEventIds: getVisibleTimelineEventIds(state),
     xDomain: getTimeseriesXDomain(state),
 
     result: getFirstQueryResult(state),
@@ -169,8 +168,6 @@ const mapStateToProps = (state, props) => {
     autocompleteResultsFn: getAutocompleteResultsFn(state),
     cardAutocompleteResultsFn: getCardAutocompleteResultsFn(state),
 
-    instanceSettings: getSettings(state),
-
     initialCollectionId: Collections.selectors.getInitialCollectionId(
       state,
       props,
@@ -184,6 +181,8 @@ const mapStateToProps = (state, props) => {
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
     loadingMessage: PLUGIN_SELECTORS.getLoadingMessage(state),
+
+    reportTimezone: getSetting(state, "report-timezone-long"),
   };
 };
 
@@ -268,26 +267,20 @@ function QueryBuilder(props) {
   };
 
   const handleCreate = useCallback(
-    async card => {
-      const shouldBePinned = Boolean(card.dataset);
-
-      const questionWithUpdatedCard = question
-        .setCard(card)
-        .setPinned(shouldBePinned);
-
-      await apiCreateQuestion(questionWithUpdatedCard);
+    async newQuestion => {
+      const shouldBePinned = newQuestion.isDataset();
+      await apiCreateQuestion(newQuestion.setPinned(shouldBePinned));
 
       setRecentlySaved("created");
     },
-    [question, apiCreateQuestion, setRecentlySaved],
+    [apiCreateQuestion, setRecentlySaved],
   );
 
   const handleSave = useCallback(
-    async (card, { rerunQuery = false } = {}) => {
-      const questionWithUpdatedCard = question.setCard(card);
-      await apiUpdateQuestion(questionWithUpdatedCard, { rerunQuery });
+    async (updatedQuestion, { rerunQuery = false } = {}) => {
+      await apiUpdateQuestion(updatedQuestion, { rerunQuery });
       if (!rerunQuery) {
-        await updateUrl(questionWithUpdatedCard.card(), { dirty: false });
+        await updateUrl(updatedQuestion, { dirty: false });
       }
       if (fromUrl) {
         onChangeLocation(fromUrl);
@@ -295,26 +288,19 @@ function QueryBuilder(props) {
         setRecentlySaved("updated");
       }
     },
-    [
-      question,
-      fromUrl,
-      apiUpdateQuestion,
-      updateUrl,
-      onChangeLocation,
-      setRecentlySaved,
-    ],
+    [fromUrl, apiUpdateQuestion, updateUrl, onChangeLocation, setRecentlySaved],
   );
 
-  useOnMount(() => {
+  useMount(() => {
     initializeQB(location, params);
   }, []);
 
-  useOnMount(() => {
+  useMount(() => {
     window.addEventListener("resize", forceUpdateDebounced);
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   }, []);
 
-  useOnUnmount(() => {
+  useUnmount(() => {
     cancelQuery();
     closeModal();
     clearTimeout(timeout.current);

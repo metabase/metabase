@@ -14,6 +14,7 @@ import {
   LimitClause,
   OrderBy,
   DependentMetadataItem,
+  ExpressionClause,
 } from "metabase-types/types/Query";
 import {
   DatasetQuery,
@@ -99,7 +100,7 @@ export interface SegmentOption {
 
 class StructuredQueryInner extends AtomicQuery {
   static isDatasetQueryType(datasetQuery: DatasetQuery) {
-    return datasetQuery && datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
+    return datasetQuery?.type === STRUCTURED_QUERY_TEMPLATE.type;
   }
 
   // For Flow type completion
@@ -506,6 +507,7 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   hasAnyClauses() {
+    // this list should be kept in sync with BE in `metabase.models.card/model-supports-implicit-actions?`
     return (
       this.hasJoins() ||
       this.hasExpressions() ||
@@ -1079,7 +1081,7 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   // EXPRESSIONS
-  expressions(): Record<string, any> {
+  expressions(): ExpressionClause {
     return Q.getExpressions(this.query());
   }
 

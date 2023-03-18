@@ -1,21 +1,13 @@
 import React from "react";
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
+import { isWithinIframe } from "metabase/lib/dom";
 import { getEngineNativeType } from "metabase/lib/engine";
-import Icon from "metabase/components/Icon";
-import Question from "metabase-lib/Question";
 import { nativeDrillFallback } from "metabase-lib/queries/drills/native-drill-fallback";
-import {
-  DrillLearnLink,
-  DrillMessage,
-  DrillRoot,
-} from "./NativeDrillFallback.styled";
 
-interface NativeDrillFallbackProps {
-  question: Question;
-}
+import type { ClickAction, Drill } from "../../../types";
+import { DrillMessage, DrillRoot } from "./NativeDrillFallback.styled";
 
-const NativeDrillFallback = ({ question }: NativeDrillFallbackProps) => {
+const NativeDrillFallback: Drill = ({ question }) => {
   const drill = nativeDrillFallback({ question });
   if (!drill) {
     return [];
@@ -23,7 +15,10 @@ const NativeDrillFallback = ({ question }: NativeDrillFallbackProps) => {
 
   const { database } = drill;
   const isSql = getEngineNativeType(database.engine) === "sql";
-  const learnUrl = MetabaseSettings.learnUrl("questions/drill-through");
+
+  if (isWithinIframe()) {
+    return [];
+  }
 
   return [
     {
@@ -37,13 +32,9 @@ const NativeDrillFallback = ({ question }: NativeDrillFallbackProps) => {
               ? t`Drill-through doesn’t work on SQL questions.`
               : t`Drill-through doesn’t work on native questions.`}
           </DrillMessage>
-          <DrillLearnLink href={learnUrl}>
-            <Icon name="reference" />
-            {t`Learn more`}
-          </DrillLearnLink>
         </DrillRoot>
       ),
-    },
+    } as ClickAction,
   ];
 };
 

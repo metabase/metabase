@@ -1,10 +1,13 @@
 (ns metabase.query-processor.middleware.format-rows-test
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.format-rows :as format-rows]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.middleware.format-rows :as format-rows]
+   [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
 
 (driver/register! ::timezone-driver, :abstract? true)
 
@@ -13,11 +16,13 @@
 ;; TIMEZONE FIXME
 (def ^:private dbs-exempt-from-format-rows-tests
   "DBs to skip the tests below for. TIMEZONE FIXME — why are so many databases not running these tests? Most of these
-  should be able to pass with a few tweaks."
-  #{:bigquery-cloud-sdk :oracle :mongo :redshift :presto :sparksql :snowflake})
+  should be able to pass with a few tweaks. Some of them are excluded because they do not have a TIME data type and
+  can't load the `test-data-with-time` dataset; but that's not true of ALL of these. Please make sure you add a note
+  as to why a certain database is explicitly skipped if you skip it -- Cam"
+  #{:bigquery-cloud-sdk :oracle :mongo :redshift :sparksql :snowflake})
 
 (deftest format-rows-test
-  (mt/test-drivers (mt/normal-drivers-except dbs-exempt-from-format-rows-tests)
+  (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers-except dbs-exempt-from-format-rows-tests))
     (mt/dataset test-data-with-time
       (testing "without report timezone"
         (is (= (if (= driver/*driver* :sqlite)

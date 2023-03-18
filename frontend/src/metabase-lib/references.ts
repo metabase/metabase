@@ -9,7 +9,7 @@ import {
   FieldReference,
   ReferenceOptions,
   TemplateTagReference,
-} from "metabase-types/api/query";
+} from "metabase-types/api";
 
 export const isFieldReference = (mbql: any): mbql is FieldReference => {
   return Array.isArray(mbql) && mbql.length === 3 && mbql[0] === "field";

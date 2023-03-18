@@ -1,27 +1,36 @@
 import styled from "@emotion/styled";
+import Alert from "metabase/core/components/Alert";
+import EntityMenu from "metabase/components/EntityMenu";
+import { breakpointMaxMedium } from "metabase/styled-components/theme";
 
-import Link from "metabase/core/components/Link";
-
-import { color } from "metabase/lib/colors";
-
-export const ActionTitle = styled.span`
-  font-weight: 700;
+export const Root = styled.div`
+  width: 100%;
+  height: 100%;
 `;
 
-export const ActionListItem = styled(Link)`
+export const ActionsHeader = styled.div`
   display: flex;
-  flex-direction: row;
+  justify-content: flex-end;
   align-items: center;
+`;
 
-  width: 100%;
-  border-radius: 8px;
-  padding: 1rem;
+export const ActionMenu = styled(EntityMenu)`
+  margin-left: 0.5rem;
+`;
 
-  ${ActionTitle} {
-    margin-left: 1rem;
+export const ActionList = styled.ul`
+  width: 70%;
+  margin-top: 1rem;
+
+  li:not(:first-of-type) {
+    margin-top: 2.25rem;
   }
 
-  &:hover {
-    background-color: ${color("brand-light")};
+  ${breakpointMaxMedium} {
+    width: 100%;
   }
+`;
+
+export const ActionAlert = styled(Alert)`
+  width: 70%;
 `;

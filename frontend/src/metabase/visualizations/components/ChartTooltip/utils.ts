@@ -1,6 +1,5 @@
-import { MouseEvent } from "react";
-import { Column } from "metabase-types/types/Dataset";
 import { formatValue } from "metabase/lib/formatting";
+import { RemappingHydratedDatasetColumn } from "metabase/visualizations/shared/types/data";
 import { VisualizationSettings } from "./types";
 
 export const formatValueForTooltip = ({
@@ -9,7 +8,7 @@ export const formatValueForTooltip = ({
   settings,
 }: {
   value?: unknown;
-  column?: Column;
+  column?: RemappingHydratedDatasetColumn;
   settings?: VisualizationSettings;
 }) =>
   formatValue(value, {

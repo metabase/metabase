@@ -1,39 +1,42 @@
 (ns metabase.api.setup
-  (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [GET POST]]
-            [java-time :as t]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.database :as api.database :refer [DBEngineString]]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.email :as email]
-            [metabase.events :as events]
-            [metabase.integrations.slack :as slack]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.session :refer [Session]]
-            [metabase.models.setting.cache :as setting.cache]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.setup :as setup]
-            [metabase.sync.schedules :as sync.schedules]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models])
-  (:import java.util.UUID))
+  (:require
+   [compojure.core :refer [GET POST]]
+   [java-time :as t]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.database :as api.database :refer [DBEngineString]]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.email :as email]
+   [metabase.events :as events]
+   [metabase.integrations.slack :as slack]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.session :refer [Session]]
+   [metabase.models.setting.cache :as setting.cache]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.setup :as setup]
+   [metabase.sync.schedules :as sync.schedules]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private SetupToken
   "Schema for a string that matches the instance setup token."
@@ -55,20 +58,18 @@
             {:status-code 403})))
   (let [session-id (str (UUID/randomUUID))
         new-user   (db/insert! User
-                     :email        email
-                     :first_name   first-name
-                     :last_name    last-name
-                     :password     (str (UUID/randomUUID))
-                     :is_superuser true)
+                               :email        email
+                               :first_name   first-name
+                               :last_name    last-name
+                               :password     (str (UUID/randomUUID))
+                               :is_superuser true)
         user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! user-id password)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
-    (let [session (or (db/insert! Session
-                        :id      session-id
-                        :user_id user-id)
-                      ;; HACK -- Toucan doesn't seem to work correctly with models with string IDs
-                      (models/post-insert (db/select-one Session :id (str session-id))))]
+    (let [session (db/insert! Session
+                              :id      session-id
+                              :user_id user-id)]
       ;; return user ID, session ID, and the Session object itself
       {:session-id session-id, :user-id user-id, :session session})))
 
@@ -106,7 +107,8 @@
   (public-settings/anon-tracking-enabled! (or (nil? allow-tracking?)
                                               allow-tracking?)))
 
-(api/defendpoint POST "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
   returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or
   set specific settings from the setup flow."
@@ -168,7 +170,8 @@
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
-(api/defendpoint POST "/validate"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/validate"
   "Validate that we can connect to a database given a set of details."
   [:as {{{:keys [engine details]} :details, token :token} :body}]
   {token  SetupToken
@@ -297,7 +300,8 @@
 (defn- admin-checklist []
   (partition-steps-into-groups (add-next-step-info (admin-checklist-values))))
 
-(api/defendpoint GET "/admin_checklist"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/admin_checklist"
   "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
   []
   (validation/check-has-application-permission :setting)
@@ -305,7 +309,8 @@
 
 ;; User defaults endpoint
 
-(api/defendpoint GET "/user_defaults"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/user_defaults"
   "Returns object containing default user details for initial setup, if configured,
    and if the provided token value matches the token in the configuration value."
   [token]

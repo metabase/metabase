@@ -1,19 +1,20 @@
 (ns metabase.models.pulse-channel
-  (:require [cheshire.generate :refer [add-encoder encode-map]]
-            [clojure.set :as set]
-            [medley.core :as m]
-            [metabase.models.interface :as mi]
-            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [clojure.set :as set]
+   [medley.core :as m]
+   [metabase.db.query :as mdb.query]
+   [metabase.models.interface :as mi]
+   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.models.serialization :as serdes]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [methodical.core :as methodical]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;; ## Static Definitions
 
@@ -119,21 +120,22 @@
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser))
 
-(defn ^:hydrate recipients
+(mi/define-simple-hydration-method recipients
+  :recipients
   "Return the `PulseChannelRecipients` associated with this `pulse-channel`."
   [{pulse-channel-id :id, {:keys [emails]} :details}]
   (concat
    (for [email emails]
      {:email email})
-   (for [user (db/query
-               {:select    [:u.id :u.email :u.first_name :u.last_name]
-                :from      [[User :u]]
-                :left-join [[PulseChannelRecipient :pcr] [:= :u.id :pcr.user_id]]
-                :where     [:and
-                            [:= :pcr.pulse_channel_id pulse-channel-id]
-                            [:= :u.is_active true]]
-                :order-by [[:u.id :asc]]})]
-     (user/add-common-name user))))
+   (t2/select
+    [User :id :email :first_name :last_name]
+    {:select    [:u.id :u.email :u.first_name :u.last_name]
+     :from      [[:core_user :u]]
+     :left-join [[:pulse_channel_recipient :pcr] [:= :u.id :pcr.user_id]]
+     :where     [:and
+                 [:= :pcr.pulse_channel_id pulse-channel-id]
+                 [:= :u.is_active true]]
+     :order-by [[:u.id :asc]]})))
 
 (defn- pre-delete [pulse-channel]
   ;; Call [[metabase.models.pulse/will-delete-channel]] to let it know we're about to delete a PulseChannel; that
@@ -184,21 +186,22 @@
               (throw (ex-info (tru "Wrong email address for User {0}." id)
                               {:status-code 403})))))))))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PulseChannel)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:hydration-keys (constantly [:pulse_channel])
-    :types          (constantly {:details :json, :channel_type :keyword, :schedule_type :keyword, :schedule_frame :keyword})
-    :properties     (constantly {:timestamped? true
-                                 :entity_id    true})
-    :pre-delete     pre-delete
-    :pre-insert     validate-email-domains
-    :pre-update     validate-email-domains}))
+(mi/define-methods
+ PulseChannel
+ {:hydration-keys (constantly [:pulse_channel])
+  :types          (constantly {:details        :json
+                               :channel_type   :keyword
+                               :schedule_type  :keyword
+                               :schedule_frame :keyword})
+  :properties     (constantly {::mi/timestamped? true
+                               ::mi/entity-id    true})
+  :pre-delete     pre-delete
+  :pre-insert     validate-email-domains
+  :pre-update     validate-email-domains})
 
-(defmethod serdes.hash/identity-hash-fields PulseChannel
+(defmethod serdes/hash-fields PulseChannel
   [_pulse-channel]
-  [(serdes.hash/hydrated-hash :pulse) :channel_type :details :created_at])
+  [(serdes/hydrated-hash :pulse) :channel_type :details :created_at])
 
 (defn will-delete-recipient
   "This function is called by [[metabase.models.pulse-channel-recipient/pre-delete]] when a `PulseChannelRecipient` is
@@ -210,7 +213,7 @@
         last-recipient?        (zero? other-recipients-count)]
     (when last-recipient?
       ;; make sure this channel doesn't have any email-address (non-User) recipients.
-      (let [details              (db/select-one-field :details PulseChannel :id channel-id)
+      (let [details              (t2/select-one-fn :details PulseChannel :id channel-id)
             has-email-addresses? (seq (:emails details))]
         (when-not has-email-addresses?
           (db/delete! PulseChannel :id channel-id))))))
@@ -344,40 +347,36 @@
     ;; return the id of our newly created channel
     id))
 
-
-;; don't include `:emails`, we use that purely internally
-(add-encoder
- #_{:clj-kondo/ignore [:unresolved-symbol]}
- PulseChannelInstance
- (fn [pulse-channel json-generator]
-   (encode-map (m/dissoc-in pulse-channel [:details :emails])
-               json-generator)))
+(methodical/defmethod mi/to-json PulseChannel
+  "Don't include `:emails`, we use that purely internally"
+  [pulse-channel json-generator]
+  (next-method (m/dissoc-in pulse-channel [:details :emails]) json-generator))
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes.base/serdes-generate-path "PulseChannel"
+(defmethod serdes/generate-path "PulseChannel"
   [_ {:keys [pulse_id] :as channel}]
-  [(serdes.base/infer-self-path "Pulse" (db/select-one 'Pulse :id pulse_id))
-   (serdes.base/infer-self-path "PulseChannel" channel)])
+  [(serdes/infer-self-path "Pulse" (t2/select-one 'Pulse :id pulse_id))
+   (serdes/infer-self-path "PulseChannel" channel)])
 
-(defmethod serdes.base/extract-one "PulseChannel"
+(defmethod serdes/extract-one "PulseChannel"
   [_model-name _opts channel]
-  (let [recipients (mapv :email (db/query {:select [:user.email]
-                                           :from [[:pulse_channel_recipient :pcr]]
-                                           :join [[:core_user :user] [:= :user.id :pcr.user_id]]
-                                           :where [:= :pcr.pulse_channel_id (:id channel)]}))]
-    (-> (serdes.base/extract-one-basics "PulseChannel" channel)
-        (update :pulse_id   serdes.util/export-fk 'Pulse)
+  (let [recipients (mapv :email (mdb.query/query {:select [:user.email]
+                                                  :from   [[:pulse_channel_recipient :pcr]]
+                                                  :join   [[:core_user :user] [:= :user.id :pcr.user_id]]
+                                                  :where  [:= :pcr.pulse_channel_id (:id channel)]}))]
+    (-> (serdes/extract-one-basics "PulseChannel" channel)
+        (update :pulse_id   serdes/export-fk 'Pulse)
         (assoc  :recipients recipients))))
 
-(defmethod serdes.base/load-xform "PulseChannel" [channel]
+(defmethod serdes/load-xform "PulseChannel" [channel]
   (-> channel
-      serdes.base/load-xform-basics
-      (update :pulse_id serdes.util/import-fk 'Pulse)))
+      serdes/load-xform-basics
+      (update :pulse_id serdes/import-fk 'Pulse)))
 
 (defn- import-recipients [channel-id emails]
   (let [incoming-users (set (for [email emails
-                                  :let [id (db/select-one-id 'User :email email)]]
+                                  :let [id (t2/select-one-pk 'User :email email)]]
                               (or id
                                   (:id (user/serdes-synthesize-user! {:email email})))))
         current-users  (set (db/select-field :user_id PulseChannelRecipient :pulse_channel_id channel-id))
@@ -386,18 +385,18 @@
       (update-recipients! channel-id combined))))
 
 ;; Customized load-insert! and load-update! to handle the embedded recipients field - it's really a separate table.
-(defmethod serdes.base/load-insert! "PulseChannel" [_ ingested]
+(defmethod serdes/load-insert! "PulseChannel" [_ ingested]
   (let [;; Call through to the default load-insert!
-        chan ((get-method serdes.base/load-insert! "") "PulseChannel" (dissoc ingested :recipients))]
+        chan ((get-method serdes/load-insert! "") "PulseChannel" (dissoc ingested :recipients))]
     (import-recipients (:id chan) (:recipients ingested))
     chan))
 
-(defmethod serdes.base/load-update! "PulseChannel" [_ ingested local]
+(defmethod serdes/load-update! "PulseChannel" [_ ingested local]
   ;; Call through to the default load-update!
-  (let [chan ((get-method serdes.base/load-update! "") "PulseChannel" (dissoc ingested :recipients) local)]
+  (let [chan ((get-method serdes/load-update! "") "PulseChannel" (dissoc ingested :recipients) local)]
     (import-recipients (:id local) (:recipients ingested))
     chan))
 
 ;; Depends on the Pulse.
-(defmethod serdes.base/serdes-dependencies "PulseChannel" [{:keys [pulse_id]}]
+(defmethod serdes/dependencies "PulseChannel" [{:keys [pulse_id]}]
   [[{:model "Pulse" :id pulse_id}]])

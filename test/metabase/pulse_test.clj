@@ -1,25 +1,30 @@
 (ns metabase.pulse-test
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.email :as email]
-            [metabase.integrations.slack :as slack]
-            [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.pulse :as pulse]
-            metabase.pulse
-            [metabase.pulse.render :as render]
-            [metabase.pulse.render.body :as body]
-            [metabase.pulse.test-util :as pulse.test-util]
-            [metabase.pulse.util :as pu]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.email :as email]
+   [metabase.integrations.slack :as slack]
+   [metabase.models
+    :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.pulse :as pulse]
+   [metabase.pulse]
+   [metabase.pulse.render :as render]
+   [metabase.pulse.render.body :as body]
+   [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.pulse.util :as pu]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.test :as mt]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Util Fns & Macros                                                |
@@ -367,7 +372,7 @@
       :fixture
       (fn [{:keys [pulse-id]} thunk]
         (mt/with-temp PulseChannelRecipient [_ {:user_id          (mt/user->id :crowberto)
-                                                :pulse_channel_id (db/select-one-id PulseChannel :pulse_id pulse-id)}]
+                                                :pulse_channel_id (t2/select-one-pk PulseChannel :pulse_id pulse-id)}]
           (thunk)))
 
       :assert
@@ -822,7 +827,8 @@
              (send-pulse-created-by-user!* :rasta)))))))
 
 (defn- get-retry-metrics []
-  (-> @@#'metabase.pulse/retry-state :retry .getMetrics bean))
+  (let [^io.github.resilience4j.retry.Retry retry (:retry @@#'metabase.pulse/retry-state)]
+    (bean (.getMetrics retry))))
 
 (defn- pos-metrics [m]
   (into {}

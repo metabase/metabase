@@ -1,4 +1,4 @@
-import SortAction from "../drill/SortAction";
+import SortDrill from "../drill/SortDrill";
 import ObjectDetailDrill from "../drill/ObjectDetailDrill";
 import QuickFilterDrill from "../drill/QuickFilterDrill";
 import ForeignKeyDrill from "../drill/ForeignKeyDrill";
@@ -7,14 +7,14 @@ import UnderlyingRecordsDrill from "../drill/UnderlyingRecordsDrill";
 import AutomaticDashboardDrill from "../drill/AutomaticDashboardDrill";
 import CompareToRestDrill from "../drill/CompareToRestDrill";
 import ZoomDrill from "../drill/ZoomDrill";
-import FormatAction from "../drill/FormatAction";
+import FormatDrill from "../drill/FormatDrill";
 import DashboardClickDrill from "../drill/DashboardClickDrill";
 
 const DefaultMode = {
   name: "default",
   drills: [
     ZoomDrill,
-    SortAction,
+    SortDrill,
     ObjectDetailDrill,
     QuickFilterDrill,
     ForeignKeyDrill,
@@ -22,7 +22,7 @@ const DefaultMode = {
     UnderlyingRecordsDrill,
     AutomaticDashboardDrill,
     CompareToRestDrill,
-    FormatAction,
+    FormatDrill,
     DashboardClickDrill,
   ],
 };

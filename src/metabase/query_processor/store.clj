@@ -9,18 +9,20 @@
 
     (qp.store/field 10) ;; get Field 10
 
-   Of course, it would be entirely possible to call `(db/select-one Field :id 10)` every time you needed information about that Field,
+   Of course, it would be entirely possible to call `(t2/select-one Field :id 10)` every time you needed information about that Field,
   but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
   those Fields potentially dozens of times in a single query execution."
-  (:require [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :refer [Table]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :refer [Table]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------- Setting up the Store ----------------------------------------------
 
@@ -56,6 +58,7 @@
   [:id
    :engine
    :name
+   :dbms_version
    :details
    :settings])
 
@@ -108,6 +111,7 @@
   (s/both
    (mi/InstanceOf Field)
    {:name                               su/NonBlankString
+    :table_id                           su/IntGreaterThanZero
     :display_name                       su/NonBlankString
     :description                        (s/maybe s/Str)
     :database_type                      su/NonBlankString
@@ -165,7 +169,7 @@
                {:existing-id existing-db-id, :attempted-to-fetch database-id})))
     ;; if there's no DB, fetch + save
     (store-database!
-     (or (db/select-one (into [Database] database-columns-to-fetch) :id database-id)
+     (or (t2/select-one (into [Database] database-columns-to-fetch) :id database-id)
          (throw (ex-info (tru "Database {0} does not exist." (str database-id))
                   {:database database-id}))))))
 
@@ -203,23 +207,23 @@
   [field-ids :- IDs]
   ;; remove any IDs for Fields that have already been fetched
   (when-let [ids-to-fetch (seq (remove (set (keys (:fields @*store*))) field-ids))]
-    (let [fetched-fields (db/do-post-select Field
-                           (db/query
-                            {:select    (for [column-kw field-columns-to-fetch]
-                                          [(keyword (str "field." (name column-kw)))
-                                           column-kw])
-                             :from      [[Field :field]]
-                             :left-join [[Table :table] [:= :field.table_id :table.id]]
-                             :where     [:and
-                                         [:in :field.id (set ids-to-fetch)]
-                                         [:= :table.db_id (db-id)]]}))
+    (let [fetched-fields (t2/select
+                          Field
+                          {:select    (for [column-kw field-columns-to-fetch]
+                                        [(keyword (str "field." (name column-kw)))
+                                         column-kw])
+                           :from      [[:metabase_field :field]]
+                           :left-join [[:metabase_table :table] [:= :field.table_id :table.id]]
+                           :where     [:and
+                                       [:in :field.id (set ids-to-fetch)]
+                                       [:= :table.db_id (db-id)]]})
           fetched-ids    (set (map :id fetched-fields))]
       ;; make sure all Fields in field-ids were fetched, or throw an Exception
       (doseq [id ids-to-fetch]
         (when-not (fetched-ids id)
           (throw
            (ex-info (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database." id)
-             {:field id, :database (db-id)}))))
+                    {:field id, :database (db-id)}))))
       ;; ok, now store them all in the Store
       (doseq [field fetched-fields]
         (store-field! field)))))
@@ -306,7 +310,7 @@
 
     ;; cache lookups of Card.dataset_query
     (qp.store/cached card-id
-      (db/select-one-field :dataset_query Card :id card-id))"
+      (t2/select-one-fn :dataset_query Card :id card-id))"
   {:style/indent 1}
   [k-or-ks & body]
   ;; for the unique key use a gensym prefixed by the namespace to make for easier store debugging if needed

@@ -26,3 +26,9 @@ export const WithIcon = Template.bind({});
 WithIcon.args = {
   icon: "chevrondown",
 };
+
+export const OnlyText = Template.bind({});
+OnlyText.args = {
+  onlyText: true,
+  children: "Click Me",
+};

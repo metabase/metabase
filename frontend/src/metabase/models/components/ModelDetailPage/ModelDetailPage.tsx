@@ -1,102 +1,111 @@
-import React, { useCallback, useState } from "react";
+import React from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
 import TabContent from "metabase/core/components/TabContent";
+import TabLink from "metabase/core/components/TabLink";
 
 import * as Urls from "metabase/lib/urls";
 
-import type { Card } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 import type Table from "metabase-lib/metadata/Table";
 
 import ModelActionDetails from "./ModelActionDetails";
+import ModelDetailHeader from "./ModelDetailHeader";
 import ModelInfoSidePanel from "./ModelInfoSidePanel";
 import ModelSchemaDetails from "./ModelSchemaDetails";
 import ModelUsageDetails from "./ModelUsageDetails";
 import {
   RootLayout,
   ModelMain,
-  ModelHeader,
-  ModelTitle,
-  ModelFootnote,
   TabList,
   TabPanel,
+  TabPanelContent,
 } from "./ModelDetailPage.styled";
 
 interface Props {
   model: Question;
   mainTable?: Table | null;
-  onChangeModel: (model: Card) => void;
+  tab: string;
+  hasDataPermissions: boolean;
+  hasActionsTab: boolean;
+  canRunActions: boolean;
+  onChangeName: (name?: string) => void;
+  onChangeDescription: (description?: string | null) => void;
+  onChangeCollection: (collection: Collection) => void;
 }
 
-type ModelTab = "schema" | "actions" | "usage";
-
-function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
-  const [tab, setTab] = useState<ModelTab>("usage");
-
+function ModelDetailPage({
+  model,
+  tab,
+  mainTable,
+  hasDataPermissions,
+  hasActionsTab,
+  canRunActions,
+  onChangeName,
+  onChangeDescription,
+  onChangeCollection,
+}: Props) {
   const modelCard = model.card();
-
-  const exploreDataLink = Urls.question(modelCard);
-
-  const handleNameChange = useCallback(
-    name => {
-      if (name && name !== model.displayName()) {
-        onChangeModel(model.setDisplayName(name).card() as Card);
-      }
-    },
-    [model, onChangeModel],
-  );
-
-  const handleChangeDescription = useCallback(
-    description => {
-      if (model.description() !== description) {
-        onChangeModel(model.setDescription(description).card() as Card);
-      }
-    },
-    [model, onChangeModel],
-  );
 
   return (
     <RootLayout>
       <ModelMain>
-        <ModelHeader>
-          <div>
-            <ModelTitle
-              initialValue={model.displayName()}
-              isDisabled={!model.canWrite()}
-              onChange={handleNameChange}
-            />
-            <ModelFootnote>{t`Model`}</ModelFootnote>
-          </div>
-          <Button primary as={Link} to={exploreDataLink}>{t`Explore`}</Button>
-        </ModelHeader>
-        <TabContent value={tab} onChange={setTab}>
-          <TabList
-            value={tab}
-            options={[
-              { value: "usage", name: t`Used by` },
-              { value: "schema", name: t`Schema` },
-              { value: "actions", name: t`Actions` },
-            ]}
-            onChange={tab => setTab(tab as ModelTab)}
-          />
+        <ModelDetailHeader
+          model={model}
+          hasEditDefinitionLink={hasDataPermissions}
+          onChangeName={onChangeName}
+          onChangeCollection={onChangeCollection}
+        />
+        <TabContent value={tab}>
+          <TabList>
+            <TabLink
+              value="usage"
+              to={Urls.modelDetail(modelCard, "usage")}
+            >{t`Used by`}</TabLink>
+            <TabLink
+              value="schema"
+              to={Urls.modelDetail(modelCard, "schema")}
+            >{t`Schema`}</TabLink>
+            {hasActionsTab && (
+              <TabLink
+                value="actions"
+                to={Urls.modelDetail(modelCard, "actions")}
+              >{t`Actions`}</TabLink>
+            )}
+          </TabList>
           <TabPanel value="usage">
-            <ModelUsageDetails model={model} />
+            <TabPanelContent>
+              <ModelUsageDetails
+                model={model}
+                hasNewQuestionLink={hasDataPermissions}
+              />
+            </TabPanelContent>
           </TabPanel>
           <TabPanel value="schema">
-            <ModelSchemaDetails model={model} />
+            <TabPanelContent>
+              <ModelSchemaDetails
+                model={model}
+                hasEditMetadataLink={hasDataPermissions}
+              />
+            </TabPanelContent>
           </TabPanel>
-          <TabPanel value="actions">
-            <ModelActionDetails modelId={model.id()} />
-          </TabPanel>
+          {hasActionsTab && (
+            <TabPanel value="actions">
+              <TabPanelContent>
+                <ModelActionDetails
+                  model={model}
+                  canRunActions={canRunActions}
+                />
+              </TabPanelContent>
+            </TabPanel>
+          )}
         </TabContent>
       </ModelMain>
       <ModelInfoSidePanel
         model={model}
         mainTable={mainTable}
-        onChangeDescription={handleChangeDescription}
+        onChangeDescription={onChangeDescription}
       />
     </RootLayout>
   );

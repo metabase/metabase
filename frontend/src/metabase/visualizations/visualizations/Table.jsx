@@ -34,10 +34,22 @@ import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 import TableSimple from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 
+const getTitleForColumn = (column, series, settings) => {
+  const isPivoted = Table.isPivoted(series, settings);
+  if (isPivoted) {
+    return formatColumn(column) || t`Unset`;
+  } else {
+    return (
+      settings.column(column)["_column_title_full"] || formatColumn(column)
+    );
+  }
+};
+
 export default class Table extends Component {
   static uiName = t`Table`;
   static identifier = "table";
   static iconName = "table";
+  static canSavePng = false;
 
   static minSize = { width: 4, height: 3 };
 
@@ -188,13 +200,26 @@ export default class Table extends Component {
           fieldRef: col.field_ref,
           enabled: col.visibility_type !== "details-only",
         })),
-      getProps: ([
-        {
-          data: { cols },
-        },
-      ]) => ({
-        columns: cols,
-      }),
+      getProps: (series, settings) => {
+        const [
+          {
+            data: { cols },
+          },
+        ] = series;
+
+        return {
+          columns: cols,
+          getColumnName: columnSetting => {
+            const columnIndex = findColumnIndexForColumnSetting(
+              cols,
+              columnSetting,
+            );
+            if (columnIndex >= 0) {
+              return getTitleForColumn(cols[columnIndex], series, settings);
+            }
+          },
+        };
+      },
     },
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
@@ -418,15 +443,7 @@ export default class Table extends Component {
       return null;
     }
     const { series, settings } = this.props;
-    const isPivoted = Table.isPivoted(series, settings);
-    const column = cols[columnIndex];
-    if (isPivoted) {
-      return formatColumn(column) || (columnIndex !== 0 ? t`Unset` : null);
-    } else {
-      return (
-        settings.column(column)["_column_title_full"] || formatColumn(column)
-      );
-    }
+    return getTitleForColumn(cols[columnIndex], series, settings);
   };
 
   render() {

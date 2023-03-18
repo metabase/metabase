@@ -1,8 +1,9 @@
-(ns metabase.util.i18n-test
-  (:require [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [metabase.test :as mt]
-            [metabase.util.i18n :as i18n]))
+(ns ^:mb/once metabase.util.i18n-test
+  (:require
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [metabase.test :as mt]
+   [metabase.util.i18n :as i18n]))
 
 (deftest ^:parallel available-locales-test
   (testing "Should return locale in normalized format"

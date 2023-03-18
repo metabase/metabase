@@ -32,6 +32,7 @@ Metabase is a deep product with a lot of tools to simplify business intelligence
 ## Documentation topics
 
 Metabase's reference documentation.
+
 ### Installation
 
 - [Installation overview](./installation-and-operation/start.md)
@@ -77,8 +78,8 @@ Metabase's reference documentation.
 #### Sharing
 
 - [Sharing answers](./questions/sharing/answers.md)
-- [Setting and getting alerts](./questions/sharing/alerts.md)
-- [Public links](./questions/sharing/public-links.md)
+- [Alerts](./questions/sharing/alerts.md)
+- [Public sharing](./questions/sharing/public-links.md)
 
 ### Dashboards
 
@@ -88,15 +89,23 @@ Metabase's reference documentation.
 - [Interactive dashboards](./dashboards/interactive.md)
 - [Charts with multiple series](./dashboards/multiple-series.md)
 - [Dashboard subscriptions](./dashboards/subscriptions.md)
+- [Actions on dashboards](./dashboards/actions.md)
 
 ### Data modeling
 
 - [Data modeling overview](./data-modeling/start.md)
 - [Models](./data-modeling/models.md)
-- [Metadata editing](./data-modeling/metadata-editing.md)
+- [Data model admin settings](./data-modeling/metadata-editing.md)
 - [Field types](./data-modeling/field-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
 - [Segments and metrics](./data-modeling/segments-and-metrics.md)
+
+### Actions
+
+- [Actions overview](./actions/start.md)
+- [Introduction to actions](./actions/introduction.md)
+- [Basic actions](./actions/basic.md)
+- [Custom actions](./actions/custom.md)
 
 ### Organization
 
@@ -141,9 +150,9 @@ Metabase's reference documentation.
 
 - [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
-- [Signed embedding](./embedding/signed-embedding.md)
 - [Full-app embedding](./embedding/full-app-embedding.md)
-- [Embedding example apps](https://github.com/metabase/embedding-reference-apps)
+- [Signed embedding](./embedding/signed-embedding.md)
+- [Parameters for signed embeds](./embedding/signed-embedding-parameters.md)
 
 ### Configuration
 
@@ -153,7 +162,8 @@ Metabase's reference documentation.
 - [Email](./configuring-metabase/email.md)
 - [Slack](./configuring-metabase/slack.md)
 - [Environment variables](./configuring-metabase/environment-variables.md)
-- [Metabase logs](./configuring-metabase/log-configuration.md)
+- [Configuration file](./configuring-metabase/config-file.md)
+- [Metabase log configuration](./configuring-metabase/log-configuration.md)
 - [Timezones](./configuring-metabase/timezones.md)
 - [Languages and localization](./configuring-metabase/localization.md)
 - [Appearance](./configuring-metabase/appearance.md)
@@ -193,10 +203,6 @@ Metabase's reference documentation.
 [Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase, data best practices, and more.
 
 ## More resources
-
-### [Learn Metabase](https://www.metabase.com/learn)
-
-Guides on working with data.
 
 ### [Discussion](https://discourse.metabase.com)
 

@@ -16,20 +16,24 @@
   errors themselves.
 
   In the future, we plan to add more classifiers, including ML ones that run offline."
-  (:require [clojure.data :as data]
-            [clojure.tools.logging :as log]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync.analyze.classifiers.category :as classifiers.category]
-            [metabase.sync.analyze.classifiers.name :as classifiers.name]
-            [metabase.sync.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
-            [metabase.sync.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]
-            [metabase.sync.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.data :as data]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync.analyze.classifiers.category :as classifiers.category]
+   [metabase.sync.analyze.classifiers.name :as classifiers.name]
+   [metabase.sync.analyze.classifiers.no-preview-display
+    :as classifiers.no-preview-display]
+   [metabase.sync.analyze.classifiers.text-fingerprint
+    :as classifiers.text-fingerprint]
+   [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CLASSIFYING INDIVIDUAL FIELDS                                          |
@@ -93,7 +97,7 @@
   "Run various classifiers on `field` and its `fingerprint`, and save any detected changes."
   ([field :- i/FieldInstance]
    (classify! field (or (:fingerprint field)
-                        (db/select-one-field :fingerprint Field :id (u/the-id field)))))
+                        (t2/select-one-fn :fingerprint Field :id (u/the-id field)))))
 
   ([field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))

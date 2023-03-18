@@ -1,11 +1,17 @@
 (ns metabase.query-processor.streaming.csv-test
-  (:require [cheshire.core :as json]
-            [clojure.data.csv :as csv]
-            [clojure.test :refer :all]
-            [metabase.query-processor.streaming.interface :as qp.si]
-            [metabase.test :as mt]
-            [metabase.test.data.dataset-definitions :as defs])
-  (:import [java.io BufferedOutputStream ByteArrayOutputStream]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.data.csv :as csv]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.test :as mt]
+   [metabase.test.data.dataset-definitions :as defs])
+  (:import
+   (java.io BufferedOutputStream ByteArrayOutputStream)))
+
+(set! *warn-on-reflection* true)
 
 (defn- parse-and-sort-csv [response]
   (assert (some? response))
@@ -61,16 +67,18 @@
 (defn- csv-export
   "Given a seq of result rows, write it as a CSV, then read the CSV and return the resulting data."
   [rows]
-  (with-open [bos (ByteArrayOutputStream.)
-              os  (BufferedOutputStream. bos)]
-    (let [results-writer (qp.si/streaming-results-writer :csv os)]
-      (qp.si/begin! results-writer {:data {:ordered-cols []}} {})
-      (doall (map-indexed
-              (fn [i row] (qp.si/write-row! results-writer row i [] {}))
-              rows))
-      (qp.si/finish! results-writer {:row_count (count rows)}))
-    (let [bytea (.toByteArray bos)]
-      (rest (csv/read-csv (String. bytea))))))
+  (driver/with-driver :h2
+    (mt/with-everything-store
+      (with-open [bos (ByteArrayOutputStream.)
+                  os  (BufferedOutputStream. bos)]
+        (let [results-writer (qp.si/streaming-results-writer :csv os)]
+          (qp.si/begin! results-writer {:data {:ordered-cols []}} {})
+          (doall (map-indexed
+                  (fn [i row] (qp.si/write-row! results-writer row i [] {}))
+                  rows))
+          (qp.si/finish! results-writer {:row_count (count rows)}))
+        (let [bytea (.toByteArray bos)]
+          (rest (csv/read-csv (String. bytea))))))))
 
 (deftest lazy-seq-realized-test
   (testing "Lazy seqs within rows are automatically realized during exports (#26261)"
@@ -78,6 +86,13 @@
       (is (= ["[1 2 3]"] row))))
 
   (testing "LocalDate in a lazy seq (checking that elements in a lazy seq are formatted correctly as strings)"
-   (mt/with-everything-store
-     (let [row (first (csv-export [[(lazy-seq [#t "2021-03-30T"])]]))]
-       (is (= ["[\"2021-03-30\"]"] row))))))
+    (let [row (first (csv-export [[(lazy-seq [#t "2021-03-30T"])]]))]
+      (is (= ["[\"2021-03-30\"]"] row)))))
+
+(deftest format-datetimes-test
+  (testing "Format datetime columns the way we expect (#10803)"
+    (let [query   (str "SELECT cast(parsedatetime('2020-06-03', 'yyyy-MM-dd') AS timestamp) AS \"birth_date\",\n"
+                       "       cast(parsedatetime('2020-06-03 23:41:23', 'yyyy-MM-dd HH:mm:ss') AS timestamp) AS \"created_at\"")
+          results (qp/process-query (assoc (mt/native-query {:query query}) :middleware {:format-rows? false}))]
+      (is (= [["2020-06-03" "2020-06-03T23:41:23"]]
+             (csv-export (mt/rows results)))))))

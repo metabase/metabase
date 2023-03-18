@@ -64,6 +64,8 @@ Possible destinations include:
 - Saved questions
 - URLs
 
+Internal Metabase destinations (dashboards or saved questions) will load in the same browser tab or window. External URLs will open in a new tab or window.
+
 ## Passing values to the destination
 
 If you're linking to a dashboard or a SQL question that has filters, you can pass values from the current dashboard to filters in the destination.

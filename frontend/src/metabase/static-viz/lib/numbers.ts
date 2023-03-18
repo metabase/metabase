@@ -1,4 +1,3 @@
-import { merge } from "icepick";
 import { formatNumber as appFormatNumber } from "metabase/lib/formatting/numbers";
 
 export type NumberFormatOptions = {
@@ -35,4 +34,4 @@ export const formatNumber = (number: number, options?: NumberFormatOptions) => {
 };
 
 export const formatPercent = (percent: number) =>
-  `${(100 * percent).toFixed(2)} %`;
+  `${(100 * percent).toFixed(percent === 1 ? 0 : 2)} %`;

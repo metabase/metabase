@@ -9,7 +9,8 @@ export interface AppBarProps {
   currentUser: User;
   collectionId?: CollectionId;
   isNavBarOpen?: boolean;
-  isNavBarVisible?: boolean;
+  isNavBarEnabled?: boolean;
+  isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isNewButtonVisible?: boolean;
   isProfileLinkVisible?: boolean;

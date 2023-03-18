@@ -1,4 +1,4 @@
-import mock from "xhr-mock";
+import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
 
@@ -10,18 +10,13 @@ describe("schema entity", () => {
   let store;
   beforeEach(() => {
     store = getStore();
-    mock.setup();
   });
 
-  afterEach(() => mock.teardown());
-
   it("should save metadata from fetching a schema's tables", async () => {
-    mock.get("/api/database/1/schema/public", {
-      body: JSON.stringify([
-        { id: 123, name: "foo" },
-        { id: 234, name: "bar" },
-      ]),
-    });
+    fetchMock.get("path:/api/database/1/schema/public", [
+      { id: 123, name: "foo" },
+      { id: 234, name: "bar" },
+    ]);
 
     await store.dispatch(Schemas.actions.fetch({ id: "1:public" }));
     const { schemas, tables } = store.getState().entities;
@@ -40,9 +35,7 @@ describe("schema entity", () => {
   });
 
   it("should save metadata from listing schemas", async () => {
-    mock.get("/api/database/1/schemas", {
-      body: JSON.stringify(["foo", "bar"]),
-    });
+    fetchMock.get("path:/api/database/1/schemas", ["foo", "bar"]);
 
     await store.dispatch(Schemas.actions.fetchList({ dbId: "1" }));
     const { schemas } = store.getState().entities;
@@ -53,7 +46,7 @@ describe("schema entity", () => {
   });
 
   it("should handle schema-less databases", async () => {
-    mock.get("/api/database/1/schemas", { body: JSON.stringify([""]) });
+    fetchMock.get("path:/api/database/1/schemas", [""]);
 
     await store.dispatch(Schemas.actions.fetchList({ dbId: "1" }));
     const { schemas } = store.getState().entities;
@@ -61,12 +54,10 @@ describe("schema entity", () => {
   });
 
   it("should fetch schema tables for a schema-less database", async () => {
-    mock.get("/api/database/1/schema/", {
-      body: JSON.stringify([
-        { id: 123, name: "foo" },
-        { id: 234, name: "bar" },
-      ]),
-    });
+    fetchMock.get("path:/api/database/1/schema/", [
+      { id: 123, name: "foo" },
+      { id: 234, name: "bar" },
+    ]);
 
     await store.dispatch(Schemas.actions.fetch({ id: "1:" }));
     const { schemas, tables } = store.getState().entities;

@@ -13,9 +13,9 @@ describe("DatePicker", () => {
       />,
     );
 
-    screen.getByText("Previous");
-    screen.getByDisplayValue("30");
-    screen.getByText("days");
+    expect(screen.getByText("Previous")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("30")).toBeInTheDocument();
+    expect(screen.getByText("days")).toBeInTheDocument();
   });
 
   it("should render 'Next 1 Month'", () => {
@@ -25,9 +25,9 @@ describe("DatePicker", () => {
         onFilterChange={nop}
       />,
     );
-    screen.getByText("Next");
-    screen.getByDisplayValue("1");
-    screen.getByText("month");
+    expect(screen.getByText("Next")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("1")).toBeInTheDocument();
+    expect(screen.getByText("month")).toBeInTheDocument();
   });
 
   it("should render 'Current Week'", () => {
@@ -37,8 +37,8 @@ describe("DatePicker", () => {
         onFilterChange={nop}
       />,
     );
-    screen.getByText("Current");
-    screen.getByText("week");
+    expect(screen.getByText("Current")).toBeInTheDocument();
+    expect(screen.getByText("week")).toBeInTheDocument();
   });
 
   it("should render 'Between'", () => {
@@ -49,13 +49,13 @@ describe("DatePicker", () => {
       />,
     );
     const NEXT = screen.getByRole("img", { name: /chevronright icon/i });
-    screen.getByText("Between");
-    screen.getByText("January 2018");
+    expect(screen.getByText("Between")).toBeInTheDocument();
+    expect(screen.getByText("January 2018")).toBeInTheDocument();
 
     for (let i = 0; i < 24; i++) {
       fireEvent.click(NEXT);
     }
-    screen.getByText("January 2020");
+    expect(screen.getByText("January 2020")).toBeInTheDocument();
   });
 
   it("should call onFilterChange with updated filter", () => {

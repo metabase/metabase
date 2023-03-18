@@ -1,7 +1,8 @@
 (ns metabase.events-test
-  (:require [clojure.core.async :as a]
-            [clojure.test :refer :all]
-            [metabase.events :as events]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.test :refer :all]
+   [metabase.events :as events]))
 
 (def ^:private testing-topic ::event-test-topic)
 

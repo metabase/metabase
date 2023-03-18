@@ -1,7 +1,11 @@
 (ns metabase.async.streaming-response.thread-pool
-  (:require [metabase.config :as config])
-  (:import [java.util.concurrent Executors ThreadPoolExecutor]
-           org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder))
+  (:require
+   [metabase.config :as config])
+  (:import
+   (java.util.concurrent Executors ThreadPoolExecutor)
+   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^Long thread-pool-max-size
   (or (config/config-int :mb-async-query-thread-pool-size)

@@ -1,16 +1,20 @@
 (ns metabase.util.i18n.impl
   "Lower-level implementation functions for `metabase.util.i18n`. Most of this is not meant to be used directly; use the
   functions and macros in `metabase.util.i18n` instead."
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.tools.reader.edn :as edn]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util.i18n.plural :as i18n.plural]
-            [potemkin.types :as p.types])
-  (:import java.text.MessageFormat
-           java.util.Locale
-           org.apache.commons.lang3.LocaleUtils))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.reader.edn :as edn]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util.i18n.plural :as i18n.plural]
+   [metabase.util.log :as log]
+   [potemkin.types :as p.types])
+  (:import
+   (java.text MessageFormat)
+   (java.util Locale)
+   (org.apache.commons.lang3 LocaleUtils)))
+
+(set! *warn-on-reflection* true)
 
 (p.types/defprotocol+ CoerceToLocale
   "Protocol for anything that can be coerced to a `java.util.Locale`."
@@ -25,6 +29,7 @@
   Returns `nil` for invalid strings -- you can use this to check whether a String is valid."
   ^String [s]
   {:pre [((some-fn nil? string?) s)]}
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (when (string? s)
     (when-let [[_ language country] (re-matches #"^(\w{2})(?:[-_](\w{2}))?$" s)]
       (let [language (str/lower-case language)]

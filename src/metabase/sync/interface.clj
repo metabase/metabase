@@ -1,13 +1,12 @@
 (ns metabase.sync.interface
   "Schemas and constants used by the sync code."
-  (:require [clj-time.core :as time]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :refer [Table]]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :refer [Table]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
@@ -23,21 +22,23 @@
 
 (def TableMetadataField
   "Schema for a given Field as provided in `describe-table`."
-  {:name                               su/NonBlankString
-   :database-type                      (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
-   :base-type                          su/FieldType
-   :database-position                  su/IntGreaterThanOrEqualToZero
-   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
-   (s/optional-key :effective-type)    (s/maybe su/FieldType)
-   (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
-   (s/optional-key :field-comment)     (s/maybe su/NonBlankString)
-   (s/optional-key :pk?)               s/Bool
-   (s/optional-key :nested-fields)     #{(s/recursive #'TableMetadataField)}
-   (s/optional-key :nfc-path)          [s/Any]
-   (s/optional-key :custom)            {s/Any s/Any}
-   (s/optional-key :database-required) s/Bool
+
+  {:name                                        su/NonBlankString
+   :database-type                               (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
+   :base-type                                   su/FieldType
+   :database-position                           su/IntGreaterThanOrEqualToZero
+   (s/optional-key :semantic-type)              (s/maybe su/FieldSemanticOrRelationType)
+   (s/optional-key :effective-type)             (s/maybe su/FieldType)
+   (s/optional-key :coercion-strategy)          (s/maybe su/CoercionStrategy)
+   (s/optional-key :field-comment)              (s/maybe su/NonBlankString)
+   (s/optional-key :pk?)                        s/Bool
+   (s/optional-key :nested-fields)              #{(s/recursive #'TableMetadataField)}
+   (s/optional-key :nfc-path)                   [s/Any]
+   (s/optional-key :custom)                     {s/Any s/Any}
+   (s/optional-key :database-is-auto-increment) s/Bool
+   (s/optional-key :database-required)          s/Bool
    ;; for future backwards compatability, when adding things
-   s/Keyword                           s/Any})
+   s/Keyword                                    s/Any})
 
 (def TableMetadata
   "Schema for the expected output of `describe-table`."
@@ -61,12 +62,6 @@
   "Schema for the expected output of `describe-table-fks`."
   (s/maybe #{FKMetadataEntry}))
 
-(def TimeZoneId
-  "Schema predicate ensuring a valid time zone string"
-  (s/pred (fn [tz-str]
-            (u/ignore-exceptions (time/time-zone-for-id tz-str)))
-          'time/time-zone-for-id))
-
 ;; These schemas are provided purely as conveniences since adding `:import` statements to get the corresponding
 ;; classes from the model namespaces also requires a `:require`, which `clj-refactor` seems more than happy to strip
 ;; out from the ns declaration when running `cljr-clean-ns`. Plus as a bonus in the future we could add additional
@@ -81,25 +76,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            SAMPLING & FINGERPRINTS                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(def FieldSample
-  "Schema for a sample of values returned by the `sample` sub-stage of analysis and passed into the `fingerprint`
-   stage. Guaranteed to be non-empty and non-nil."
-  ;; Validating against this is actually pretty quick, in the order of microseconds even for a 10,000 value sequence
-  (s/constrained [(s/pred (complement nil?))] seq "Non-empty sequence of non-nil values."))
-
-(def TableSample
-  "Schema for a sample of values of certain Fields for a TABLE. This should basically just be a sequence of rows where
-   each row is a sequence of values in the same order as the Fields passed in (basically the format you get from JDBC
-   when `:as-arrays?` is `false`).
-
-   e.g. if Fields passed in were `ID` and `Name` the Table sample should look something like:
-
-     [[1 \"Rasta Toucan\"]
-      [2 \"Lucky Pigeon\"]
-      [3 \"Kanye Nest\"]]"
-  [[s/Any]])
-
 
 (def Percent
   "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."

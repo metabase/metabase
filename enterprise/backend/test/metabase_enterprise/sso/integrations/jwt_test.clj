@@ -1,20 +1,22 @@
 (ns metabase-enterprise.sso.integrations.jwt-test
-  (:require [buddy.sign.jwt :as jwt]
-            [buddy.sign.util :as buddy-util]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [crypto.random :as crypto-random]
-            [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
-            [metabase-enterprise.sso.integrations.saml-test :as saml-test]
-            [metabase.models.permissions-group :refer [PermissionsGroup]]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [buddy.sign.jwt :as jwt]
+   [buddy.sign.util :as buddy-util]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [crypto.random :as crypto-random]
+   [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
+   [metabase-enterprise.sso.integrations.saml-test :as saml-test]
+   [metabase.models.permissions-group :refer [PermissionsGroup]]
+   [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -119,7 +121,7 @@
                  (get-in response [:headers "Location"]))))
         (testing "login attributes"
           (is (= {"extra" "keypairs", "are" "also present"}
-                 (db/select-one-field :login_attributes User :email "rasta@metabase.com"))))))))
+                 (t2/select-one-fn :login_attributes User :email "rasta@metabase.com"))))))))
 
 (deftest no-open-redirect-test
   (testing "Check a JWT with bad (open redirect)"
@@ -183,7 +185,7 @@
             (testing "attributes"
               (is (= {"more" "stuff"
                       "for"  "the new user"}
-                     (db/select-one-field :login_attributes User :email "newuser@metabase.com"))))))))))
+                     (t2/select-one-fn :login_attributes User :email "newuser@metabase.com"))))))))))
 
 (deftest update-account-test
   (testing "A new account with 'Unknown' name will be created for a new JWT user without a first or last name."
@@ -267,4 +269,4 @@
               (is (saml-test/successful-login? response))
               (is (= #{"All Users"
                        ":metabase-enterprise.sso.integrations.jwt-test/my-group"}
-                     (group-memberships (u/the-id (db/select-one-id User :email "newuser@metabase.com"))))))))))))
+                     (group-memberships (u/the-id (t2/select-one-pk User :email "newuser@metabase.com"))))))))))))

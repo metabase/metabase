@@ -67,8 +67,8 @@ export default class AuditParameters extends React.Component {
               value={inputValues[key] || ""}
               placeholder={placeholder}
               disabled={isEmpty || disabled}
-              onChange={value => {
-                this.changeValue(key, value);
+              onChange={e => {
+                this.changeValue(key, e.target.value);
               }}
               icon={icon}
             />

@@ -1,12 +1,13 @@
 (ns metabase-enterprise.advanced-config.file.users
   (:require
    [clojure.spec.alpha :as s]
-   [clojure.tools.logging :as log]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.models.user :refer [User]]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs]]
-   [toucan.db :as db]))
+   [metabase.util.log :as log]
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/first_name
   string?)
@@ -40,7 +41,7 @@
 (defn- init-from-config-file!
   [user]
   ;; TODO -- if this is the FIRST user, we should probably make them a superuser, right?
-  (if-let [existing-user-id (db/select-one-id User :email (:email user))]
+  (if-let [existing-user-id (t2/select-one-pk User :email (:email user))]
     (do
       (log/info (u/colorize :blue (trs "Updating User with email {0}" (pr-str (:email user)))))
       (db/update! User existing-user-id user))

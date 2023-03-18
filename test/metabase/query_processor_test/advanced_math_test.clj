@@ -1,7 +1,10 @@
 (ns metabase.query-processor-test.advanced-math-test
-  (:require [clojure.test :refer :all]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (defn- test-math-expression
   [expr]
@@ -17,43 +20,49 @@
        ;; Round to prevent minute differences across DBs due to differences in how float point math is handled
        (u/round-to-decimals 2)))
 
-(deftest test-round
+(deftest ^:parallel test-round
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= 1.0 (test-math-expression [:round 0.7])))))
+    (if (or (not= driver/*driver* :mongo)
+            ;; mongo supports $round since version 4.2
+            (driver.u/semantic-version-gte
+             (-> (mt/db) :dbms_version :semantic-version)
+             [4 2]))
+      (is (= 1.0 (test-math-expression [:round 0.7])))
+      (is (= 0 0)))))
 
-(deftest test-floor
+(deftest ^:parallel test-floor
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= 0.0 (test-math-expression [:floor 0.7])))))
 
-(deftest test-ceil
+(deftest ^:parallel test-ceil
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= 1.0 (test-math-expression [:ceil 0.3])))))
 
-(deftest test-abs
+(deftest ^:parallel test-abs
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= 2.0 (test-math-expression [:abs -2])))))
 
 
-(deftest test-power
+(deftest ^:parallel test-power
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 4.0 (test-math-expression [:power 2.0 2])))
     (is (= 2.0 (test-math-expression [:power 4.0 0.5])))
     (is (= 0.25 (test-math-expression [:power 2.0 -2])))))
 
-(deftest test-sqrt
+(deftest ^:parallel test-sqrt
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 2.0 (test-math-expression [:sqrt 4.0])))))
 
-(deftest test-exp
+(deftest ^:parallel test-exp
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 7.39 (test-math-expression [:exp 2.0])))))
 
-(deftest test-log
+(deftest ^:parallel test-log
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 1.0 (test-math-expression [:log 10.0])))))
 
 
-(deftest test-filter
+(deftest ^:parallel test-filter
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 59 (->> {:aggregation [[:count]]
                     :filter      [:between [:- [:round [:power [:field (mt/id :venues :price) nil] 2]] 1] 1 5]}
@@ -62,29 +71,46 @@
                    ffirst
                    int)))))
 
+(defn- aggregation=
+  [expected agg]
+  (testing "As a top-level aggregation"
+    (let [query (mt/mbql-query venues
+                  {:aggregation [agg]})]
+      (mt/with-native-query-testing-context query
+        (is (= expected
+               (ffirst
+                (mt/formatted-rows [1.0]
+                  (mt/process-query query))))))))
+  (when (driver/database-supports? driver/*driver* :expression-aggregations (mt/db))
+    (testing "Inside an expression aggregation"
+      (let [query (mt/mbql-query venues
+                    {:aggregation [[:+ agg 1]]})]
+        (mt/with-native-query-testing-context query
+          (is (= (+ expected 1.0)
+                 (ffirst
+                  (mt/formatted-rows [1.0]
+                    (mt/process-query query))))))))))
 
-(defn- test-aggregation
-  [agg]
-  (->> {:aggregation [agg]}
-       (mt/run-mbql-query venues)
-       mt/rows
-       ffirst
-       double
-       (u/round-to-decimals 2)))
+;;; there is a test for standard deviation itself
+;;; in [[metabase.query-processor-test.aggregation-test/standard-deviation-test]]
 
-(deftest test-variance
+(deftest ^:parallel test-variance
   (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
-    (is (= 0.59 (test-aggregation [:var [:field (mt/id :venues :price) nil]])))))
+    (aggregation= 0.6
+                  [:var [:field (mt/id :venues :price) nil]])))
 
-(deftest test-median
+(deftest ^:parallel test-median
   (mt/test-drivers (mt/normal-drivers-with-feature :percentile-aggregations)
-    (is (= 2.0 (test-aggregation [:median [:field (mt/id :venues :price) nil]])))))
+    (aggregation= 2.0
+                  [:median [:field (mt/id :venues :price) nil]])))
 
-(deftest test-percentile
+(deftest ^:parallel test-percentile
   (mt/test-drivers (mt/normal-drivers-with-feature :percentile-aggregations)
-    (is (= 3.0 (test-aggregation [:percentile [:field (mt/id :venues :price) nil] 0.9])))))
+    (aggregation= 3.0
+                  [:percentile [:field (mt/id :venues :price) nil] 0.9])))
 
-(deftest test-nesting
+(deftest ^:parallel test-nesting
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 2.0 (test-math-expression [:sqrt [:power 2.0 2]])))
-    (is (= 59.0 (test-aggregation [:count-where [:between [:- [:round [:power [:field (mt/id :venues :price) nil] 2]] 1] 1 5]])))))
+    (aggregation= 59.0
+                  [:count-where [:between [:- [:round [:power [:field (mt/id :venues :price) nil] 2]] 1] 1 5]])))

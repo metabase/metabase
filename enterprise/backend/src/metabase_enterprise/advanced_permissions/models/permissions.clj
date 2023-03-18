@@ -1,8 +1,9 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions
-  (:require [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Shared Util Functions                                                 |
@@ -198,3 +199,12 @@
 
     :no
     (revoke-permissions! :details :yes group-id db-id)))
+
+(s/defn update-db-execute-permissions!
+  "Update the DB details permissions for a database."
+  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-perms :- perms/ExecutePermissions]
+  (when-not (premium-features/enable-advanced-permissions?)
+    (throw (perms/ee-permissions-exception :execute)))
+  (revoke-permissions! :execute :all group-id db-id)
+  (when (= new-perms :all)
+    (grant-permissions! :execute :all group-id db-id)))

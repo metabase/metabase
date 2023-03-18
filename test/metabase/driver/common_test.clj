@@ -1,12 +1,13 @@
 (ns metabase.driver.common-test
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.setting :as setting]
-            [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features]))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.setting :as setting]
+   [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]))
 
 (deftest base-type-inference-test
   (is (= :type/Text

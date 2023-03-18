@@ -3,6 +3,7 @@ import slugg from "slugg";
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
 
+import { CardId } from "metabase-types/api";
 import { Card as BaseCard } from "metabase-types/types/Card";
 import Question, { QuestionCreatorOpts } from "metabase-lib/Question";
 
@@ -18,21 +19,15 @@ type Card = Partial<BaseCard> & {
 
 export const newQuestionFlow = () => "/question/new";
 
-type QuestionUrlBuilderParams = {
+export type QuestionUrlBuilderParams = {
   hash?: Card | string;
   query?: Record<string, unknown> | string;
   objectId?: number | string;
-  isModelDetail?: boolean;
 };
 
 export function question(
   card: Card | null,
-  {
-    hash = "",
-    query = "",
-    objectId,
-    isModelDetail = false,
-  }: QuestionUrlBuilderParams = {},
+  { hash = "", query = "", objectId }: QuestionUrlBuilderParams = {},
 ) {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
@@ -117,10 +112,6 @@ export function newQuestion({
   }
 }
 
-export function dataset(...args: Parameters<typeof question>) {
-  return question(...args);
-}
-
 export function publicQuestion(
   uuid: string,
   type: string | null = null,
@@ -160,4 +151,8 @@ export function tableRowsQuery(
   // The QB will parse the querystring and use DB and table IDs to create an ad-hoc question
   // We should refactor the initializeQB to avoid passing query string to hash as it's pretty confusing
   return question(null, { hash: query });
+}
+
+export function xrayModel(id: CardId) {
+  return `/auto/dashboard/model/${id}`;
 }

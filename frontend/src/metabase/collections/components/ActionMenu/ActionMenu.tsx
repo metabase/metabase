@@ -1,19 +1,21 @@
 import React, { useCallback } from "react";
-
-import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import { connect } from "react-redux";
+import EventSandbox from "metabase/components/EventSandbox";
+import { getSetting } from "metabase/selectors/settings";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
-  isFullyParametrized,
+  canArchiveItem,
+  canMoveItem,
+  canPinItem,
+  canPreviewItem,
   isItemPinned,
-  isItemQuestion,
   isPreviewEnabled,
-  isPreviewShown,
 } from "metabase/collections/utils";
-import EventSandbox from "metabase/components/EventSandbox";
-
+import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import { State } from "metabase-types/store";
 import { EntityItemMenu } from "./ActionMenu.styled";
 
-export interface ActionMenuProps {
+interface OwnProps {
   className?: string;
   item: CollectionItem;
   collection: Collection;
@@ -23,6 +25,12 @@ export interface ActionMenuProps {
   createBookmark?: (id: string, collection: string) => void;
   deleteBookmark?: (id: string, collection: string) => void;
 }
+
+interface StateProps {
+  isXrayEnabled: boolean;
+}
+
+type ActionMenuProps = OwnProps & StateProps;
 
 function getIsBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
   const normalizedItemModel = normalizeItemModel(item);
@@ -39,19 +47,28 @@ function normalizeItemModel(item: CollectionItem) {
   return item.model === "dataset" ? "card" : item.model;
 }
 
+function mapStateToProps(state: State): StateProps {
+  return {
+    isXrayEnabled: getSetting(state, "enable-xrays"),
+  };
+}
+
 function ActionMenu({
   className,
   item,
   bookmarks,
   collection,
+  isXrayEnabled,
   onCopy,
   onMove,
   createBookmark,
   deleteBookmark,
 }: ActionMenuProps) {
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
-  const isPreviewOptionShown =
-    isItemPinned(item) && isItemQuestion(item) && collection.can_write;
+  const canPin = canPinItem(item, collection);
+  const canPreview = canPreviewItem(item, collection);
+  const canMove = canMoveItem(item, collection);
+  const canArchive = canArchiveItem(item, collection);
 
   const handlePin = useCallback(() => {
     item.setPinned?.(!isItemPinned(item));
@@ -86,18 +103,17 @@ function ActionMenu({
         className={className}
         item={item}
         isBookmarked={isBookmarked}
-        isPreviewShown={isPreviewShown(item)}
-        isPreviewAvailable={isFullyParametrized(item)}
-        onPin={collection.can_write ? handlePin : null}
-        onMove={collection.can_write && item.setCollection ? handleMove : null}
+        isXrayEnabled={isXrayEnabled}
+        onPin={canPin ? handlePin : null}
+        onMove={canMove ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}
-        onArchive={collection.can_write ? handleArchive : null}
+        onArchive={canArchive ? handleArchive : null}
         onToggleBookmark={handleToggleBookmark}
-        onTogglePreview={isPreviewOptionShown ? handleTogglePreview : null}
+        onTogglePreview={canPreview ? handleTogglePreview : null}
         analyticsContext={ANALYTICS_CONTEXT}
       />
     </EventSandbox>
   );
 }
 
-export default ActionMenu;
+export default connect(mapStateToProps)(ActionMenu);

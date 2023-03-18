@@ -1,28 +1,32 @@
 (ns metabase.api.automagic-dashboards
-  (:require [buddy.core.codecs :as codecs]
-            [cheshire.core :as json]
-            [compojure.core :refer [GET]]
-            [metabase.api.common :as api]
-            [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]
-            [metabase.automagic-dashboards.core :refer [automagic-analysis candidate-tables]]
-            [metabase.automagic-dashboards.rules :as rules]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.query :as query]
-            [metabase.models.query.permissions :as query-perms]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
-            [metabase.transforms.dashboard :as transform.dashboard]
-            [metabase.transforms.materialize :as tf.materialize]
-            [metabase.util.i18n :refer [deferred-tru]]
-            [metabase.util.schema :as su]
-            [ring.util.codec :as codec]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [cheshire.core :as json]
+   [compojure.core :refer [GET]]
+   [metabase.api.common :as api]
+   [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]
+   [metabase.automagic-dashboards.core
+    :refer [automagic-analysis candidate-tables]]
+   [metabase.automagic-dashboards.rules :as rules]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.query :as query]
+   [metabase.models.query.permissions :as query-perms]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.table :refer [Table]]
+   [metabase.transforms.dashboard :as transform.dashboard]
+   [metabase.transforms.materialize :as tf.materialize]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.schema :as su]
+   [ring.util.codec :as codec]
+   [schema.core :as s]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private Show
   (su/with-api-error-message (s/maybe (s/enum "all"))
@@ -54,10 +58,11 @@
       (s/pred decode-base64-json)
     (deferred-tru "value couldn''t be parsed as base64 encoded JSON")))
 
-(api/defendpoint GET "/database/:id/candidates"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards orderd by interestingness."
   [id]
-  (-> (db/select-one Database :id id)
+  (-> (t2/select-one Database :id id)
       api/read-check
       candidate-tables))
 
@@ -90,15 +95,21 @@
   (if-let [[_ card-id-str] (when (string? table-id-str)
                              (re-matches #"^card__(\d+$)" table-id-str))]
     (->entity :question card-id-str)
-    (api/read-check (db/select-one Table :id (ensure-int table-id-str)))))
+    (api/read-check (t2/select-one Table :id (ensure-int table-id-str)))))
 
 (defmethod ->entity :segment
   [_entity-type segment-id-str]
-  (api/read-check (db/select-one Segment :id (ensure-int segment-id-str))))
+  (api/read-check (t2/select-one Segment :id (ensure-int segment-id-str))))
+
+(defmethod ->entity :model
+  [_entity-type card-id-str]
+  (api/read-check (t2/select-one Card
+                    :id (ensure-int card-id-str)
+                    :dataset true)))
 
 (defmethod ->entity :question
   [_entity-type card-id-str]
-  (api/read-check (db/select-one Card :id (ensure-int card-id-str))))
+  (api/read-check (t2/select-one Card :id (ensure-int card-id-str))))
 
 (defmethod ->entity :adhoc
   [_entity-type encoded-query]
@@ -106,15 +117,15 @@
 
 (defmethod ->entity :metric
   [_entity-type metric-id-str]
-  (api/read-check (db/select-one Metric :id (ensure-int metric-id-str))))
+  (api/read-check (t2/select-one Metric :id (ensure-int metric-id-str))))
 
 (defmethod ->entity :field
   [_entity-type field-id-str]
-  (api/read-check (db/select-one Field :id (ensure-int field-id-str))))
+  (api/read-check (t2/select-one Field :id (ensure-int field-id-str))))
 
 (defmethod ->entity :transform
   [_entity-type transform-name]
-  (api/read-check (db/select-one Collection :id (tf.materialize/get-collection transform-name)))
+  (api/read-check (t2/select-one Collection :id (tf.materialize/get-collection transform-name)))
   transform-name)
 
 (def ^:private Entity
@@ -127,7 +138,8 @@
       (s/enum "segment" "adhoc" "table")
     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"")))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:entity/:entity-id-or-query"
   "Return an automagic dashboard for entity `entity` with id `id`."
   [entity entity-id-or-query show]
   {show   Show
@@ -137,7 +149,8 @@
     (-> (->entity entity entity-id-or-query)
         (automagic-analysis {:show (keyword show)}))))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
   "Return an automagic dashboard for entity `entity` with id `id` using rule `rule`."
   [entity entity-id-or-query prefix rule show]
   {entity Entity
@@ -148,7 +161,8 @@
       (automagic-analysis {:show (keyword show)
                            :rule ["table" prefix rule]})))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query"
   "Return an automagic dashboard analyzing cell in  automagic dashboard for entity `entity`
    defined by
    query `cell-querry`."
@@ -160,7 +174,8 @@
       (automagic-analysis {:show       (keyword show)
                            :cell-query (decode-base64-json cell-query)})))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-querry` using rule `rule`."
   [entity entity-id-or-query cell-query prefix rule show]
@@ -174,7 +189,8 @@
                            :rule       ["table" prefix rule]
                            :cell-query (decode-base64-json cell-query)})))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`"
   [entity entity-id-or-query show comparison-entity comparison-entity-id-or-query]
@@ -188,7 +204,8 @@
                                             :comparison?  true})]
     (comparison-dashboard dashboard left right {})))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:entity/:entity-id-or-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `id` using rule `rule`;
    compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
   [entity entity-id-or-query prefix rule show comparison-entity comparison-entity-id-or-query]
@@ -205,7 +222,8 @@
                                             :comparison?  true})]
     (comparison-dashboard dashboard left right {})))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id-or-query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
    with id `id` defined by query `cell-querry`; compared with entity `comparison-entity` with id
    `comparison-entity-id-or-query.`."
@@ -221,7 +239,8 @@
                                             :comparison?  true})]
     (comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
    with id `id` defined by query `cell-querry` using rule `rule`; compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`."

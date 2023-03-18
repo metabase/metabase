@@ -1,6 +1,7 @@
 (ns metabase.query-processor.store-test
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor.store :as qp.store]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor.store :as qp.store]))
 
 (deftest cached-test
   (testing "make sure `cached` only evaluates its body once during the duration of a QP run"

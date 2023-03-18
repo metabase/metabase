@@ -1,20 +1,21 @@
 (ns metabase.test.data.h2
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
-  (:require [clojure.string :as str]
-            [metabase.db :as mdb]
-            [metabase.db.spec :as mdb.spec]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.models.database :refer [Database]]
-            [metabase.test.data.impl :as data.impl]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
-            [metabase.test.data.sql-jdbc.execute :as execute]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test.data.sql-jdbc.spec :as spec]
-            [metabase.test.data.sql.ddl :as ddl]
-            [toucan.db :as db]))
+  (:require
+   [metabase.db :as mdb]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.models.database :refer [Database]]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.execute :as execute]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.test.data.sql-jdbc.spec :as spec]
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (sql-jdbc.tx/add-test-extensions! :h2)
 
@@ -39,7 +40,7 @@
     ((get-method data.impl/get-or-create-database! :default) driver dbdef)))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
-                                   :type/Boolean        "BOOL"
+                                   :type/Boolean        "BOOLEAN"
                                    :type/Date           "DATE"
                                    :type/DateTime       "DATETIME"
                                    :type/DateTimeWithTZ "TIMESTAMP WITH TIME ZONE"
@@ -66,10 +67,6 @@
 (defmethod sql.tx/create-db-sql :h2
   [& _]
   (str
-   ;; We don't need to actually do anything to create a database here. Just disable the undo
-   ;; log (i.e., transactions) for this DB session because the bulk operations to load data don't need to be atomic
-   "SET UNDO_LOG = 0;\n"
-
    ;; Create a non-admin account 'GUEST' which will be used from here on out
    "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';\n"
 
@@ -85,11 +82,9 @@
    ;; Grant the GUEST account r/w permissions for this table
    (format "GRANT ALL ON %s TO GUEST;" (sql.u/quote-name driver :table (ddl.i/format-name driver table-name)))))
 
-(defmethod tx/has-questionable-timezone-support? :h2 [_] true)
-
 (defmethod ddl.i/format-name :h2
   [_ s]
-  (str/upper-case s))
+  (u/upper-case-en s))
 
 (defmethod ddl/drop-db-ddl-statements :h2
   [_driver _dbdef & _options]

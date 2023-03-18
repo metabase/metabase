@@ -1,6 +1,7 @@
-import React from "react";
+import React, { HTMLAttributes } from "react";
 import { t } from "ttag";
 
+import { IconProps } from "metabase/components/Icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 
 import type {
@@ -67,6 +68,11 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE = {
   controlled: null,
 };
 
+export const PLUGIN_DATA_PERMISSIONS = {
+  getPermissionsPayloadExtraData: (_state: State) => ({}),
+  hasChanges: (_state: State) => false,
+};
+
 // user form fields, e.x. login attributes
 export const PLUGIN_ADMIN_USER_FORM_FIELDS = [];
 
@@ -88,7 +94,7 @@ export const PLUGIN_SELECTORS = {
   getLoadingMessage: (state: State) => t`Doing science...`,
 };
 
-export const PLUGIN_FORM_WIDGETS = {};
+export const PLUGIN_FORM_WIDGETS: Record<string, React.ComponentType<any>> = {};
 
 // snippet sidebar
 export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
@@ -106,21 +112,37 @@ const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   icon: "folder",
 };
 
+type AuthorityLevelMenuItem = {
+  title: string;
+  icon: string;
+  action: () => void;
+};
+
 export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   isRegularCollection: (_: Collection | Bookmark) => true,
-  getAuthorityLevelFormFields: () => [],
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
-  ) => [],
+  ): AuthorityLevelMenuItem[] => [],
 };
 
+type CollectionAuthorityLevelIcon = React.ComponentType<
+  Omit<IconProps, "name" | "tooltip"> & { collection: Collection }
+>;
+
+type FormCollectionAuthorityLevelPicker = React.ComponentType<
+  HTMLAttributes<HTMLDivElement> & { name: string; title?: string }
+>;
+
 export const PLUGIN_COLLECTION_COMPONENTS = {
-  CollectionAuthorityLevelIcon: PluginPlaceholder,
+  CollectionAuthorityLevelIcon:
+    PluginPlaceholder as CollectionAuthorityLevelIcon,
+  FormCollectionAuthorityLevelPicker:
+    PluginPlaceholder as FormCollectionAuthorityLevelPicker,
 };
 
 export const PLUGIN_MODERATION = {
@@ -146,11 +168,16 @@ export const PLUGIN_CACHING = {
   getQuestionsImplicitCacheTTL: (question?: any) => null,
   QuestionCacheSection: PluginPlaceholder,
   DashboardCacheSection: PluginPlaceholder,
+  DatabaseCacheTimeField: PluginPlaceholder,
   isEnabled: () => false,
 };
 
-export const PLUGIN_REDUCERS: { applicationPermissionsPlugin: any } = {
+export const PLUGIN_REDUCERS: {
+  applicationPermissionsPlugin: any;
+  sandboxingPlugin: any;
+} = {
   applicationPermissionsPlugin: () => null,
+  sandboxingPlugin: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {

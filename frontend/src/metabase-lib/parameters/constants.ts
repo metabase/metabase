@@ -32,7 +32,7 @@ export const PARAMETER_OPERATOR_TYPES = {
     {
       type: "string/=",
       operator: "=",
-      name: t`Dropdown`,
+      name: t`Is`,
       description: t`Select one or more values from a list or search box.`,
     },
     {
@@ -160,7 +160,7 @@ export const SINGLE_OR_MULTI_SELECTABLE_TYPES: Record<
   string | string[]
 > = {
   string: ["=", "!="],
-  category: ["=", "!="],
+  category: "any",
   id: "any",
   location: ["=", "!="],
 };

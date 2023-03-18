@@ -1,4 +1,4 @@
-import mock from "xhr-mock";
+import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
 
@@ -8,17 +8,12 @@ describe("database entity", () => {
   let store;
   beforeEach(() => {
     store = getStore();
-    mock.setup();
   });
 
-  afterEach(() => mock.teardown());
-
   it("should save database metadata in redux", async () => {
-    mock.get("/api/database/123/metadata", {
-      body: JSON.stringify({
-        id: 123,
-        tables: [{ schema: "public", id: 234, db_id: 123, fields: [] }],
-      }),
+    fetchMock.get("path:/api/database/123/metadata", {
+      id: 123,
+      tables: [{ schema: "public", id: 234, db_id: 123, fields: [] }],
     });
 
     await store.dispatch(

@@ -6,6 +6,7 @@ import Tether from "tether";
 
 import cx from "classnames";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
+import { isCypressActive } from "metabase/env";
 
 import "./Popover.css";
 
@@ -63,7 +64,7 @@ export default class Popover extends Component {
       PropTypes.func,
       PropTypes.array,
     ]),
-    target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
+    target: PropTypes.any,
     targetEvent: PropTypes.object,
     role: PropTypes.string,
     ignoreTrigger: PropTypes.bool,
@@ -87,6 +88,10 @@ export default class Popover extends Component {
   };
 
   _getPopoverElement(isOpen) {
+    // 3s is an overkill for Cypress, but let's start with it and dial it down
+    // if we see that the flakes don't appear anymore
+    const resizeTimer = isCypressActive ? 3000 : 100;
+
     if (!this._popoverElement && isOpen) {
       this._popoverElement = document.createElement("span");
       this._popoverElement.className = `PopoverContainer ${this.props.containerClassName}`;
@@ -96,17 +101,98 @@ export default class Popover extends Component {
         if (this.state.width !== width || this.state.height !== height) {
           this.setState({ width, height });
         }
-      }, 100);
+      }, resizeTimer);
     }
     return this._popoverElement;
   }
 
   componentDidMount() {
-    this._renderPopover(this.props.isOpen);
+    this.updateComponentPosition(this.props.isOpen);
+  }
+
+  updateComponentPosition(isOpen) {
+    if (!isOpen) {
+      return;
+    }
+
+    const tetherOptions = {
+      element: this._popoverElement,
+      target: this._getTargetElement(),
+    };
+
+    if (!this._best || !this.props.pinInitialAttachment) {
+      let best = {
+        attachmentX: "center",
+        attachmentY: "top",
+        targetAttachmentX: "center",
+        targetAttachmentY: "bottom",
+        offsetX: 0,
+        offsetY: 0,
+      };
+
+      // horizontal
+      best = this._getBestAttachmentOptions(
+        tetherOptions,
+        best,
+        this.props.horizontalAttachments,
+        ["left", "right"],
+        (best, attachmentX) => ({
+          ...best,
+          attachmentX: attachmentX,
+          targetAttachmentX: this.props.alignHorizontalEdge
+            ? attachmentX
+            : "center",
+          offsetX: {
+            center: 0,
+            left: -this.props.targetOffsetX,
+            right: this.props.targetOffsetX,
+          }[attachmentX],
+        }),
+      );
+
+      // vertical
+      best = this._getBestAttachmentOptions(
+        tetherOptions,
+        best,
+        this.props.verticalAttachments,
+        ["top", "bottom"],
+        (best, attachmentY) => ({
+          ...best,
+          attachmentY: attachmentY,
+          targetAttachmentY: (
+            this.props.alignVerticalEdge
+              ? attachmentY === "bottom"
+              : attachmentY === "top"
+          )
+            ? "bottom"
+            : "top",
+          offsetY: {
+            top: this.props.targetOffsetY,
+            bottom: -this.props.targetOffsetY,
+          }[attachmentY],
+        }),
+      );
+
+      this._best = best;
+    }
+
+    if (this.props.sizeToFit) {
+      if (this._best.targetAttachmentY === "top") {
+        this.constrainPopoverToBetweenViewportAndTarget(tetherOptions, "top");
+      } else if (this._best.targetAttachmentY === "bottom") {
+        this.constrainPopoverToBetweenViewportAndTarget(
+          tetherOptions,
+          "bottom",
+        );
+      }
+    }
+
+    // finally set the best options
+    this._setTetherOptions(tetherOptions, this._best);
   }
 
   componentDidUpdate() {
-    this._renderPopover(this.props.isOpen);
+    this.updateComponentPosition(this.props.isOpen);
   }
 
   componentWillUnmount() {
@@ -115,7 +201,6 @@ export default class Popover extends Component {
       delete this._tether;
     }
     if (this._popoverElement) {
-      this._renderPopover(false);
       ReactDOM.unmountComponentAtNode(this._popoverElement);
       if (this._popoverElement.parentNode) {
         this._popoverElement.parentNode.removeChild(this._popoverElement);
@@ -171,7 +256,9 @@ export default class Popover extends Component {
       return (
         <OnClickOutsideWrapper
           handleDismissal={this.handleDismissal}
-          ignoreElement={this.props.ignoreTrigger && this._getTargetElement()}
+          ignoreElement={
+            this.props.ignoreTrigger ? this._getTargetElement() : undefined
+          }
         >
           {content}
         </OnClickOutsideWrapper>
@@ -283,7 +370,7 @@ export default class Popover extends Component {
       }
     }
     if (target == null) {
-      target = ReactDOM.findDOMNode(this).parentNode;
+      target = this._popoverElement;
     }
     return target;
   }
@@ -302,96 +389,13 @@ export default class Popover extends Component {
       }
     }
 
-    // popover is open, lets do this!
     if (isOpen) {
-      ReactDOM.unstable_renderSubtreeIntoContainer(
-        this,
+      return ReactDOM.createPortal(
         <span>{isOpen ? this._popoverComponent() : null}</span>,
         popoverElement,
-        () => {
-          const tetherOptions = {
-            element: popoverElement,
-            target: this._getTargetElement(),
-          };
-
-          if (!this._best || !this.props.pinInitialAttachment) {
-            let best = {
-              attachmentX: "center",
-              attachmentY: "top",
-              targetAttachmentX: "center",
-              targetAttachmentY: "bottom",
-              offsetX: 0,
-              offsetY: 0,
-            };
-
-            // horizontal
-            best = this._getBestAttachmentOptions(
-              tetherOptions,
-              best,
-              this.props.horizontalAttachments,
-              ["left", "right"],
-              (best, attachmentX) => ({
-                ...best,
-                attachmentX: attachmentX,
-                targetAttachmentX: this.props.alignHorizontalEdge
-                  ? attachmentX
-                  : "center",
-                offsetX: {
-                  center: 0,
-                  left: -this.props.targetOffsetX,
-                  right: this.props.targetOffsetX,
-                }[attachmentX],
-              }),
-            );
-
-            // vertical
-            best = this._getBestAttachmentOptions(
-              tetherOptions,
-              best,
-              this.props.verticalAttachments,
-              ["top", "bottom"],
-              (best, attachmentY) => ({
-                ...best,
-                attachmentY: attachmentY,
-                targetAttachmentY: (
-                  this.props.alignVerticalEdge
-                    ? attachmentY === "bottom"
-                    : attachmentY === "top"
-                )
-                  ? "bottom"
-                  : "top",
-                offsetY: {
-                  top: this.props.targetOffsetY,
-                  bottom: -this.props.targetOffsetY,
-                }[attachmentY],
-              }),
-            );
-
-            this._best = best;
-          }
-
-          if (this.props.sizeToFit) {
-            if (this._best.targetAttachmentY === "top") {
-              this.constrainPopoverToBetweenViewportAndTarget(
-                tetherOptions,
-                "top",
-              );
-            } else if (this._best.targetAttachmentY === "bottom") {
-              this.constrainPopoverToBetweenViewportAndTarget(
-                tetherOptions,
-                "bottom",
-              );
-            }
-          }
-
-          // finally set the best options
-          this._setTetherOptions(tetherOptions, this._best);
-        },
       );
     } else {
-      if (this._popoverElement) {
-        ReactDOM.unmountComponentAtNode(this._popoverElement);
-      }
+      return <span className="hide" />;
     }
   }
 
@@ -412,6 +416,6 @@ export default class Popover extends Component {
   }
 
   render() {
-    return <span className="hide" />;
+    return this._renderPopover(this.props.isOpen);
   }
 }

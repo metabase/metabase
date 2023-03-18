@@ -1,14 +1,15 @@
 (ns metabase-enterprise.advanced-config.file.databases
   (:require
    [clojure.spec.alpha :as s]
-   [clojure.tools.logging :as log]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.driver.util :as driver.u]
    [metabase.models.database :refer [Database]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [toucan.db :as db]))
+   [metabase.util.log :as log]
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defsetting config-from-file-sync-databases
   "Whether to sync newly created Databases during config-from-file initialization. By default, true, but you can disable
@@ -39,7 +40,7 @@
   [database]
   ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
   (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)
-  (if-let [existing-database-id (db/select-one-id Database :engine (:engine database), :name (:name database))]
+  (if-let [existing-database-id (t2/select-one-pk Database :engine (:engine database), :name (:name database))]
     (do
       (log/info (u/colorize :blue (trs "Updating Database {0} {1}" (:engine database) (pr-str (:name database)))))
       (db/update! Database existing-database-id database))

@@ -1,19 +1,21 @@
 (ns metabase.analytics.stats-test
-  (:require [clojure.test :refer :all]
-            [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
-            [metabase.email :as email]
-            [metabase.integrations.slack :as slack]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.pulse-channel :refer [PulseChannel]]
-            [metabase.models.query-execution :refer [QueryExecution]]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
+   [metabase.email :as email]
+   [metabase.integrations.slack :as slack]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.models.pulse-channel :refer [PulseChannel]]
+   [metabase.models.query-execution :refer [QueryExecution]]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -66,6 +68,9 @@
     "10000+"     10001
     "10000+"     100000))
 
+(def DBMSVersionStats
+  {s/Str su/IntGreaterThanOrEqualToZero})
+
 (deftest anonymous-usage-stats-test
   (with-redefs [email/email-configured? (constantly false)
                 slack/slack-configured? (constantly false)]
@@ -82,7 +87,9 @@
                        :slack_configured    false
                        :sso_configured      false
                        :has_sample_data     false}
-                      stats))))))
+                      stats))
+        (is (schema= DBMSVersionStats
+                     (-> stats :stats :database :dbms_versions)))))))
 
 (deftest conversion-test
   (is (= #{true}

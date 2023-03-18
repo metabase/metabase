@@ -12,8 +12,7 @@ import {
   openAddQuestionSidebar,
   removeParameter,
   SET_DASHBOARD_ATTRIBUTES,
-  fetchDashboardParameterValuesWithCache,
-  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
+  saveDashboardAndCards,
 } from "./index";
 
 DashboardApi.parameterSearch = jest.fn();
@@ -154,157 +153,39 @@ describe("dashboard actions", () => {
     });
   });
 
-  describe("fetchDashboardParameterValuesWithCache", () => {
-    const dashboardId = 1;
-    const parameter = { id: "a" };
-    const parameterWithFilteringParameters = {
-      id: "a",
-      filteringParameters: ["b", "c"],
-    };
-    const parameters = [
-      { id: "a", value: "aaa" },
-      { id: "b", value: "bbb" },
-      { id: "c", value: null },
-    ];
-
-    let parameterValuesSearchCache;
-    const getState = () => ({
-      dashboard: {
-        parameterValuesSearchCache,
-      },
-    });
-
-    beforeEach(() => {
-      DashboardApi.parameterSearch.mockReset();
-      DashboardApi.parameterSearch.mockResolvedValue({
-        has_more_values: false,
-        values: [1, 2, 3],
-      });
-      DashboardApi.parameterValues.mockReset();
-      DashboardApi.parameterValues.mockResolvedValue({
-        has_more_values: true,
-        values: [4, 5, 6],
-      });
-      parameterValuesSearchCache = {};
-    });
-
-    it("should fetch parameter values using the given query string and always set has_more_values to true", async () => {
-      const action = await fetchDashboardParameterValuesWithCache({
-        dashboardId,
-        parameter,
-        parameters,
-        query: "foo",
-      })(dispatch, getState);
-
-      expect(DashboardApi.parameterSearch).toHaveBeenCalledWith({
-        dashId: 1,
-        paramId: "a",
-        query: "foo",
-      });
-      expect(action).toEqual({
-        payload: {
-          cacheKey:
-            "dashboardId: 1, parameterId: a, query: foo, filteringParameterValues: []",
-          has_more_values: true,
-          results: [[1], [2], [3]],
-        },
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
-      });
-    });
-
-    it("should fetch parameter values without a query string", async () => {
-      const action = await fetchDashboardParameterValuesWithCache({
-        dashboardId,
-        parameter,
-        parameters,
-      })(dispatch, getState);
-
-      expect(DashboardApi.parameterValues).toHaveBeenCalledWith({
-        dashId: 1,
-        paramId: "a",
-        query: undefined,
-      });
-      expect(action).toEqual({
-        payload: {
-          cacheKey:
-            "dashboardId: 1, parameterId: a, query: null, filteringParameterValues: []",
-          results: [[4], [5], [6]],
-          has_more_values: true,
-        },
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
-      });
-    });
-
-    it("should fetch parameter values using a query string and filtering parameters", async () => {
-      const action = await fetchDashboardParameterValuesWithCache({
-        dashboardId,
-        parameter: parameterWithFilteringParameters,
-        parameters,
-        query: "bar",
-      })(dispatch, getState);
-
-      expect(DashboardApi.parameterSearch).toHaveBeenCalledWith({
-        dashId: 1,
-        paramId: "a",
-        query: "bar",
-        b: "bbb",
-      });
-      expect(action).toEqual({
-        payload: {
-          cacheKey:
-            'dashboardId: 1, parameterId: a, query: bar, filteringParameterValues: [["b","bbb"]]',
-          results: [[1], [2], [3]],
-          has_more_values: true,
-        },
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
-      });
-    });
-
-    it("should fetch parameter values without a query string but with filtering parameters", async () => {
-      const action = await fetchDashboardParameterValuesWithCache({
-        dashboardId,
-        parameter: parameterWithFilteringParameters,
-        parameters,
-      })(dispatch, getState);
-
-      expect(DashboardApi.parameterValues).toHaveBeenCalledWith({
-        dashId: 1,
-        paramId: "a",
-        query: undefined,
-        b: "bbb",
-      });
-      expect(action).toEqual({
-        payload: {
-          cacheKey:
-            'dashboardId: 1, parameterId: a, query: null, filteringParameterValues: [["b","bbb"]]',
-          results: [[4], [5], [6]],
-          has_more_values: true,
-        },
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
-      });
-    });
-
-    it("should not query when values exist in the cache", async () => {
-      const cacheKey =
-        'dashboardId: 1, parameterId: a, query: bar, filteringParameterValues: [["b","bbb"]]';
-      parameterValuesSearchCache = {
-        [cacheKey]: [[1], [2], [3]],
+  describe("saveDashboardAndCards", () => {
+    it("should not save anything if the dashboard has not changed", async () => {
+      const dashboard = {
+        id: 1,
+        name: "Foo",
+        parameters: [],
+        ordered_cards: [
+          { id: 1, name: "Foo", card_id: 1 },
+          { id: 2, name: "Bar", card_id: 2 },
+        ],
       };
 
-      const action = await fetchDashboardParameterValuesWithCache({
-        dashboardId,
-        parameter: parameterWithFilteringParameters,
-        parameters,
-        query: "bar",
-      })(dispatch, getState);
-
-      expect(DashboardApi.parameterSearch).not.toHaveBeenCalled();
-      expect(DashboardApi.parameterValues).not.toHaveBeenCalled();
-
-      expect(action).toEqual({
-        payload: undefined,
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
+      const getState = () => ({
+        dashboard: {
+          isEditing: dashboard,
+          dashboardId: 1,
+          dashboards: {
+            1: {
+              ...dashboard,
+              ordered_cards: [1, 2],
+            },
+          },
+          dashcards: {
+            1: dashboard.ordered_cards[0],
+            2: dashboard.ordered_cards[1],
+          },
+        },
       });
+
+      await saveDashboardAndCards()(dispatch, getState);
+
+      // if this is called only once, it means that the dashboard was not saved
+      expect(dispatch).toHaveBeenCalledTimes(1);
     });
   });
 });

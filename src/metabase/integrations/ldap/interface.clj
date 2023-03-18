@@ -1,11 +1,13 @@
 (ns metabase.integrations.ldap.interface
   "There are separate EE and OSS versions of the LDAP integration; this namespace defines a common protocol both
   implementations conform to."
-  (:require [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import com.unboundid.ldap.sdk.DN))
+  (:require
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
+  (:import
+   (com.unboundid.ldap.sdk DN)))
 
 ;; Load the EE namespace up front so that the extra Settings it defines are available immediately.
 ;; Otherwise, this would only happen the first time one of the functions defined using `defenterprise` is called.

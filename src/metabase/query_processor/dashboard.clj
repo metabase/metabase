@@ -1,21 +1,24 @@
 (ns metabase.query-processor.dashboard
   "Code for running a query in the context of a specific DashboardCard."
-  (:require [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.driver.common.parameters.operators :as params.ops]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.query-processor.card :as qp.card]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.dashboard :as dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+   [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn- check-card-and-dashcard-are-in-dashboard
   "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in the DashboardCard with
@@ -73,10 +76,13 @@
        request-param
        ;; if value comes in as a lone value for an operator filter type (as will be the case for embedding) wrap it in a
        ;; vector so the parameter handling code doesn't explode.
-       (when (and (params.ops/operator? (:type matching-param))
-                  (seq (:value request-param))
-                  (not (sequential? (:value request-param))))
-         {:value [(:value request-param)]})
+       (let [value (:value request-param)]
+         (when (and (params.ops/operator? (:type matching-param))
+                    (if (string? value)
+                      (not (str/blank? value))
+                      (some? value))
+                    (not (sequential? value)))
+           {:value [value]}))
        {:id     param-id
         :target (:target matching-mapping)}))))
 
@@ -119,7 +125,7 @@
         ;; ignore default values in request params as well. (#20516)
         request-params            (for [param request-params]
                                     (dissoc param :default))
-        dashboard                 (api/check-404 (db/select-one Dashboard :id dashboard-id))
+        dashboard                 (api/check-404 (t2/select-one Dashboard :id dashboard-id))
         dashboard-param-id->param (into {}
                                         ;; remove the `:default` values from Dashboard params. We don't ACTUALLY want to
                                         ;; use these values ourselves -- the expectation is that the frontend will pass
@@ -160,7 +166,6 @@
   ;; make sure we can read this Dashboard. Card will get read-checked later on inside
   ;; [[qp.card/run-query-for-card-async]]
   (api/read-check Dashboard dashboard-id)
-  (api/check-is-readonly {:is_write (db/select-one-field :is_write 'Card :id card-id)})
   (check-card-and-dashcard-are-in-dashboard dashboard-id card-id dashcard-id)
   (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
         options         (merge

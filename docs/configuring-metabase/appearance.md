@@ -13,7 +13,9 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Custom appearance" %}
 
-Appearance setttings give you the option to white label Metabase to match your company’s branding.
+Appearance settings give you the option to white label Metabase to match your company’s branding.
+
+If you're looking for date, time, number, or currency formatting, see [Formatting defaults](../data-modeling/formatting.md).
 
 ## Changing Metabase's appearance
 
@@ -46,6 +48,14 @@ You can customize the colors that Metabase uses throughout the app:
 ![Chart colors](./images/chart-colors.png)
 
 You can choose up to 24 hex values. If you choose fewer than 24 colors, Metabase will auto-generate colors to fill in the rest of the values.
+
+Custom colors are unavailable for:
+
+- [Number charts](../questions/sharing/visualizing-results.md#numbers)
+- [Trend charts](../questions/sharing/visualizing-results.md#trends)
+- [Funnel charts](../questions/sharing/visualizing-results.md#funnel)
+- Conditional formatting ([tables](../questions/sharing/visualizing-results.md#tables) and [pivot tables](../questions/sharing/visualizing-results.md#pivot-table))
+- [Maps](../questions/sharing/visualizing-results.md#maps)
 
 ## Logo
 

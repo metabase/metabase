@@ -1,13 +1,17 @@
 (ns metabase.query-processor.streaming.test-util
   "Utility functions for testing QP streaming (download) functionality."
-  (:require [cheshire.core :as json]
-            [clojure.data.csv :as csv]
-            [clojure.test :refer :all]
-            [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.test :as mt])
-  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.data.csv :as csv]
+   [clojure.test :refer :all]
+   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.test :as mt])
+  (:import
+   (java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader)))
+
+(set! *warn-on-reflection* true)
 
 (defmulti ^:private parse-result*
   {:arglists '([export-format ^InputStream input-stream column-names])}

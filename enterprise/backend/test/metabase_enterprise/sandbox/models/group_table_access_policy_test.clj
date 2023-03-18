@@ -1,12 +1,14 @@
 (ns metabase-enterprise.sandbox.models.group-table-access-policy-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase.models :refer [Card]]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase.models :refer [Card]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (deftest normalize-attribute-remappings-test
   (testing "make sure attribute-remappings come back from the DB normalized the way we'd expect"
@@ -19,7 +21,7 @@
       (is (= {"venue_id" {:type   :category
                           :target [:variable [:field (mt/id :venues :id) nil]]
                           :value  5}}
-             (db/select-one-field :attribute_remappings GroupTableAccessPolicy :id (u/the-id gtap)))))
+             (t2/select-one-fn :attribute_remappings GroupTableAccessPolicy :id (u/the-id gtap)))))
 
     (testing (str "apparently sometimes they are saved with just the target, but not type or value? Make sure these "
                   "get normalized correctly.")
@@ -27,7 +29,7 @@
                                                   :group_id             (u/the-id (perms-group/all-users))
                                                   :attribute_remappings {"user" ["variable" ["field" (mt/id :venues :id) nil]]}}]
         (is (= {"user" [:variable [:field (mt/id :venues :id) nil]]}
-               (db/select-one-field :attribute_remappings GroupTableAccessPolicy :id (u/the-id gtap))))))))
+               (t2/select-one-fn :attribute_remappings GroupTableAccessPolicy :id (u/the-id gtap))))))))
 
 (deftest disallow-changing-table-id-test
   (testing "You can't change the table_id of a GTAP after it has been created."

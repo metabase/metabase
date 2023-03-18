@@ -1,14 +1,16 @@
-(ns metabase.sync.sync-metadata.fields.sync-instances-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.sync.sync-metadata.fields :as sync-fields]
-            [metabase.test.mock.toucanery :as toucanery]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+(ns ^:mb/once metabase.sync.sync-metadata.fields.sync-instances-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.test.mock.toucanery :as toucanery]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (def ^:private toucannery-transactions-expected-fields-hierarchy
   {"ts"     nil
@@ -32,7 +34,7 @@
                   Table    [table {:name "transactions", :db_id (u/the-id db)}]]
     ;; do the initial sync
     (sync-fields/sync-fields-for-table! table)
-    (let [transactions-table-id (u/the-id (db/select-one-id Table :db_id (u/the-id db), :name "transactions"))]
+    (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))]
       (is (= toucannery-transactions-expected-fields-hierarchy
              (actual-fields-hierarchy transactions-table-id))))))
 
@@ -43,7 +45,7 @@
                     Table    [table {:name "transactions", :db_id (u/the-id db)}]]
       ;; do the initial sync
       (sync-fields/sync-fields-for-table! table)
-      (let [transactions-table-id (u/the-id (db/select-one-id Table :db_id (u/the-id db), :name "transactions"))]
+      (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))]
         (db/delete! Field :table_id transactions-table-id, :name "age")
         ;; ok, resync the Table. `toucan.details.age` should be recreated, but only one. We should *not* have a
         ;; `toucan.age` Field as well, which was happening before the bugfix in this PR
@@ -62,10 +64,10 @@
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; delete our entry for the `transactions.toucan.details.age` field
-      (let [transactions-table-id (u/the-id (db/select-one-id Table :db_id (u/the-id db), :name "transactions"))
-            toucan-field-id       (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "toucan"))
-            details-field-id      (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
-            age-field-id          (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
+      (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))
+            toucan-field-id       (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "toucan"))
+            details-field-id      (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+            age-field-id          (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
         (db/delete! Field :id age-field-id)
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
@@ -78,10 +80,10 @@
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; delete our entry for the `transactions.toucan.details.age` field
-      (let [transactions-table-id (u/the-id (db/select-one-id Table :db_id (u/the-id db), :name "transactions"))
-            toucan-field-id       (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "toucan"))
-            details-field-id      (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
-            age-field-id          (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
+      (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))
+            toucan-field-id       (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "toucan"))
+            details-field-id      (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+            age-field-id          (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
         (db/update! Field age-field-id :active false)
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
@@ -93,10 +95,10 @@
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; delete our entry for the `transactions.toucan.details.age` field
-      (let [transactions-table-id (u/the-id (db/select-one-id Table :db_id (u/the-id db), :name "transactions"))
-            toucan-field-id       (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "toucan"))
-            details-field-id      (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
-            age-field-id          (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
+      (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))
+            toucan-field-id       (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "toucan"))
+            details-field-id      (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+            age-field-id          (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
         (db/update! Field details-field-id :active false)
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
@@ -108,9 +110,9 @@
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; Add an entry for a `transactions.toucan.details.gender` field
-      (let [transactions-table-id (u/the-id (db/select-one-id Table :db_id (u/the-id db), :name "transactions"))
-            toucan-field-id       (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "toucan"))
-            details-field-id      (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+      (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))
+            toucan-field-id       (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "toucan"))
+            details-field-id      (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
             gender-field-id       (u/the-id (db/insert! Field
                                               :name          "gender"
                                               :database_type "VARCHAR"
@@ -122,16 +124,16 @@
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should become inactive
-        (is (false? (db/select-one-field :active Field :id gender-field-id))))))
+        (is (false? (t2/select-one-fn :active Field :id gender-field-id))))))
 
   (testing "When a nested field is marked inactive so are its children"
     (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; Add an entry for a `transactions.toucan.details.gender` field
-      (let [transactions-table-id (u/the-id (db/select-one-id Table :db_id (u/the-id db), :name "transactions"))
-            toucan-field-id       (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "toucan"))
-            details-field-id      (u/the-id (db/select-one-id Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+      (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))
+            toucan-field-id       (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "toucan"))
+            details-field-id      (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
             food-likes-field-id   (u/the-id (db/insert! Field
                                               :name          "food-likes"
                                               :database_type "OBJECT"
@@ -150,4 +152,4 @@
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should become inactive
-        (is (false? (db/select-one-field :active Field :id blueberries-field-id)))))))
+        (is (false? (t2/select-one-fn :active Field :id blueberries-field-id)))))))

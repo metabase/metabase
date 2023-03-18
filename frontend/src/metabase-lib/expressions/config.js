@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 export const DISPLAY_QUOTES = {
   identifierQuoteDefault: "",
   literalQuoteDefault: "",
@@ -83,6 +85,12 @@ export const MBQL_CLAUSES = {
     requiresFeature: "standard-deviation-aggregations",
   },
   avg: { displayName: `Average`, type: "aggregation", args: ["number"] },
+  median: {
+    displayName: `Median`,
+    type: "aggregation",
+    args: ["number"],
+    requiresFeature: "percentile-aggregations",
+  },
   min: { displayName: `Min`, type: "aggregation", args: ["expression"] },
   max: { displayName: `Max`, type: "aggregation", args: ["expression"] },
   share: { displayName: `Share`, type: "aggregation", args: ["boolean"] },
@@ -102,12 +110,6 @@ export const MBQL_CLAUSES = {
     args: ["number"],
     requiresFeature: "standard-deviation-aggregations",
   },
-  median: {
-    displayName: `Median`,
-    type: "aggregation",
-    args: ["number"],
-    requiresFeature: "percentile-aggregations",
-  },
   percentile: {
     displayName: `Percentile`,
     type: "aggregation",
@@ -121,6 +123,11 @@ export const MBQL_CLAUSES = {
     displayName: `substring`,
     type: "string",
     args: ["string", "number", "number"],
+    validator: function (_arg, start, _length) {
+      if (start <= 0) {
+        return t`Expected positive integer but found ${start}`;
+      }
+    },
   },
   "regex-match-first": {
     displayName: `regexextract`,
@@ -324,69 +331,74 @@ export const MBQL_CLAUSES = {
   "get-year": {
     displayName: `year`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-quarter": {
     displayName: `quarter`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-month": {
     displayName: `month`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-week": {
     displayName: `week`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
     hasOptions: true, // optional mode parameter
   },
   "get-day": {
     displayName: `day`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-day-of-week": {
     displayName: `weekday`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-hour": {
     displayName: `hour`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-minute": {
     displayName: `minute`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-second": {
     displayName: `second`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "datetime-diff": {
     displayName: `datetimeDiff`,
     type: "number",
-    args: ["expression", "expression", "string"],
+    args: ["datetime", "datetime", "string"],
     requiresFeature: "datetime-diff",
   },
   "datetime-add": {
     displayName: `datetimeAdd`,
-    type: "expression",
-    args: ["expression", "number", "string"],
+    type: "datetime",
+    args: ["datetime", "number", "string"],
   },
   "datetime-subtract": {
     displayName: `datetimeSubtract`,
-    type: "expression",
-    args: ["expression", "number", "string"],
+    type: "datetime",
+    args: ["datetime", "number", "string"],
+  },
+  now: {
+    displayName: `now`,
+    type: "datetime",
+    args: [],
   },
   "convert-timezone": {
     displayName: `convertTimezone`,
-    type: "expression",
-    args: ["expression", "string"],
+    type: "datetime",
+    args: ["datetime", "string"],
     hasOptions: true,
     requiresFeature: "convert-timezone",
   },
@@ -432,11 +444,11 @@ export const AGGREGATION_FUNCTIONS = new Set([
   "distinct",
   "stddev",
   "avg",
+  "median",
   "min",
   "max",
   "share",
   "var",
-  "median",
   "percentile",
 ]);
 
@@ -474,6 +486,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "get-second",
   "datetime-add",
   "datetime-subtract",
+  "now",
   "convert-timezone",
   // boolean
   "contains",
@@ -541,4 +554,5 @@ export const STANDARD_AGGREGATIONS = new Set([
   "avg",
   "min",
   "max",
+  "median",
 ]);

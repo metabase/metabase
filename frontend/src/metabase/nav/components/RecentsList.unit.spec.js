@@ -1,5 +1,5 @@
 import React from "react";
-import xhrMock from "xhr-mock";
+import fetchMock from "fetch-mock";
 import { renderWithProviders, screen } from "__support__/ui";
 import RecentsList from "./RecentsList";
 
@@ -42,9 +42,7 @@ const recentsData = [
 ];
 
 function mockRecentsEndpoint(recents) {
-  xhrMock.get("/api/activity/recent_views", {
-    body: JSON.stringify(recents),
-  });
+  fetchMock.get("path:/api/activity/recent_views", recents);
 }
 
 async function setup(recents = recentsData) {
@@ -56,14 +54,6 @@ async function setup(recents = recentsData) {
 }
 
 describe("RecentsList", () => {
-  beforeEach(() => {
-    xhrMock.setup();
-  });
-
-  afterEach(() => {
-    xhrMock.teardown();
-  });
-
   it("shows list of recents", async () => {
     await setup();
     await screen.findByText("Question I visited");

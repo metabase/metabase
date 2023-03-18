@@ -13,7 +13,8 @@ import Form, {
   FormSection,
 } from "metabase/containers/FormikForm";
 import MetabaseSettings from "metabase/lib/settings";
-import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+
 import { updateSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
 import {
@@ -55,7 +56,6 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
   return (
     <Form
       className="mx2"
-      style={{ maxWidth: 520 }}
       initialValues={{ ...settingValues, ...attributeValues }}
       disablePristineSubmit
       overwriteOnInitialValuesChange
@@ -152,7 +152,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
         </FormSection>
       </SAMLFormSection>
 
-      <SAMLFormSection>
+      <SAMLFormSection wide>
         <h3 className="mb0">{t`Synchronize group membership with your SSO`}</h3>
         <p className="mb4 mt1 text-medium">
           {t`To enable this, you'll need to create mappings to tell Metabase which group(s) your users should
@@ -160,14 +160,12 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
         </p>
         <FormField
           {...fields["saml-group-sync"]}
-          title={t`Synchronize group memberships`}
           type={({ field: { value, onChange } }) => (
             <GroupMappingsWidget
               // map to legacy setting props
               setting={{ key: "saml-group-sync", value }}
               onChange={onChange}
               settingValues={settingValues}
-              onChangeSetting={(key, value) => onSubmit({ [key]: value })}
               mappingSetting="saml-group-mappings"
               groupHeading={t`Group Name`}
               groupPlaceholder={t`Group Name`}

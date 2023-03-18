@@ -65,7 +65,6 @@ const SELECT_STYLE = {
   width: 65,
   fontSize: 14,
   fontWeight: 700,
-  padding: 8,
 };
 
 const isSmallerUnit = (unit: string, unitToCompare: string) => {
@@ -197,7 +196,7 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
         <GridText>{intervals < 0 ? t`Past` : t`Next`}</GridText>
       ) : null}
       <NumericInput
-        className="input text-right"
+        className="text-right"
         primaryColor={primaryColor}
         style={SELECT_STYLE}
         data-ui-tag="relative-date-input"
@@ -237,7 +236,7 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
         <>
           <GridText>{t`Starting from`}</GridText>
           <NumericInput
-            className="input text-right"
+            className="text-right"
             primaryColor={primaryColor}
             style={SELECT_STYLE}
             data-ui-tag="relative-date-input"

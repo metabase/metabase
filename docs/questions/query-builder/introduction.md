@@ -219,6 +219,12 @@ Feel free to play around with any saved question, as you won't have any effect o
 
 If you find yourself using the same saved question as a starting point for multiple questions, you may want to turn it into a [Model][model] to let others know it's a good starting place.
 
+## Question version history
+
+For questions, [dashboards](../../dashboards/start.md), and [models](../../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
+
+See [History](../../exploration-and-organization/history.md).
+
 ## Further reading
 
 - [Visualize results](../sharing/visualizing-results.md).

@@ -1,22 +1,29 @@
 (ns metabase.api.timeline
   "/api/timeline endpoints."
-  (:require [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase.api.common :as api]
-            [metabase.models.collection :as collection]
-            [metabase.models.timeline :as timeline :refer [Timeline]]
-            [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [compojure.core :refer [DELETE GET POST PUT]]
+   [metabase.api.common :as api]
+   [metabase.models.collection :as collection]
+   [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.models.timeline-event
+    :as timeline-event
+    :refer [TimelineEvent]]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (def Include
   "Events Query Parameters Schema"
   (s/enum "events"))
 
-(api/defendpoint POST "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
   "Create a new [[Timeline]]."
   [:as {{:keys [name default description icon collection_id archived], :as body} :body}]
   {name          su/NonBlankString
@@ -33,7 +40,8 @@
               {:icon timeline/DefaultIcon}))]
     (db/insert! Timeline tl)))
 
-(api/defendpoint GET "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/"
   "Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines."
   [include archived]
   {include  (s/maybe Include)
@@ -50,7 +58,8 @@
       (= include "events")
       (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
 
-(api/defendpoint GET "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id"
   "Fetch the [[Timeline]] with `id`. Include `include=events` to unarchived events included on the timeline. Add
   `archived=true` to return all events on the timeline, both archived and unarchived."
   [id include archived start end]
@@ -59,7 +68,7 @@
    start    (s/maybe su/TemporalString)
    end      (s/maybe su/TemporalString)}
   (let [archived? (Boolean/parseBoolean archived)
-        timeline  (api/read-check (db/select-one Timeline :id id))]
+        timeline  (api/read-check (t2/select-one Timeline :id id))]
     (cond-> (hydrate timeline :creator [:collection :can_write])
       ;; `collection_id` `nil` means we need to assoc 'root' collection
       ;; because hydrate `:collection` needs a proper `:id` to work.
@@ -71,7 +80,8 @@
                                                :events/start (when start (u.date/parse start))
                                                :events/end   (when end (u.date/parse end))}))))
 
-(api/defendpoint PUT "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema PUT "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline."
   [id :as {{:keys [name default description icon collection_id archived] :as timeline-updates} :body}]
@@ -82,7 +92,7 @@
    collection_id (s/maybe su/IntGreaterThanZero)
    archived      (s/maybe s/Bool)}
   (let [existing (api/write-check Timeline id)
-        current-archived (:archived (db/select-one Timeline :id id))]
+        current-archived (:archived (t2/select-one Timeline :id id))]
     (collection/check-allowed-to-change-collection existing timeline-updates)
     (db/update! Timeline id
       (u/select-keys-when timeline-updates
@@ -90,9 +100,10 @@
         :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
       (db/update-where! TimelineEvent {:timeline_id id} :archived archived))
-    (hydrate (db/select-one Timeline :id id) :creator [:collection :can_write])))
+    (hydrate (t2/select-one Timeline :id id) :creator [:collection :can_write])))
 
-(api/defendpoint DELETE "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema DELETE "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
   [id]
   (api/write-check Timeline id)

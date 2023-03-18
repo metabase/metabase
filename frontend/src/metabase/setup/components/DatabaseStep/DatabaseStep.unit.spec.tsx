@@ -1,16 +1,10 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { DatabaseDetails, DatabaseInfo } from "metabase-types/store";
+import { createMockDatabaseData } from "metabase-types/api/mocks";
 import DatabaseStep, { DatabaseStepProps } from "./DatabaseStep";
 
 const ComponentMock = () => <div />;
-
-jest.mock("metabase/entities/databases", () => ({
-  forms: { setup: jest.fn() },
-  Form: ComponentMock,
-}));
-
-jest.mock("metabase/containers/DriverWarning", () => ComponentMock);
+jest.mock("metabase/databases/containers/DatabaseForm", () => ComponentMock);
 
 describe("DatabaseStep", () => {
   it("should render in active state", () => {
@@ -21,19 +15,19 @@ describe("DatabaseStep", () => {
 
     render(<DatabaseStep {...props} />);
 
-    expect(screen.getByText("Add your data"));
+    expect(screen.getByText("Add your data")).toBeInTheDocument();
   });
 
   it("should render in completed state", () => {
     const props = getProps({
-      database: getDatabaseInfo({ name: "Test" }),
+      database: createMockDatabaseData({ name: "Test" }),
       isStepActive: false,
       isStepCompleted: true,
     });
 
     render(<DatabaseStep {...props} />);
 
-    expect(screen.getByText("Connecting to Test"));
+    expect(screen.getByText("Connecting to Test")).toBeInTheDocument();
   });
 
   it("should render a user invite form", () => {
@@ -44,7 +38,9 @@ describe("DatabaseStep", () => {
 
     render(<DatabaseStep {...props} />);
 
-    expect(screen.getByText("Need help connecting to your data?"));
+    expect(
+      screen.getByText("Need help connecting to your data?"),
+    ).toBeInTheDocument();
   });
 });
 
@@ -58,19 +54,5 @@ const getProps = (opts?: Partial<DatabaseStepProps>): DatabaseStepProps => ({
   onDatabaseSubmit: jest.fn(),
   onInviteSubmit: jest.fn(),
   onStepCancel: jest.fn(),
-  ...opts,
-});
-
-const getDatabaseInfo = (opts?: Partial<DatabaseInfo>): DatabaseInfo => ({
-  name: "Database",
-  engine: "postgres",
-  details: getDatabaseDetails(),
-  ...opts,
-});
-
-const getDatabaseDetails = (
-  opts?: Partial<DatabaseDetails>,
-): DatabaseDetails => ({
-  ssl: false,
   ...opts,
 });

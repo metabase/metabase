@@ -1,18 +1,20 @@
-(ns metabase.sync.sync-metadata.fields-test
+(ns ^:mb/once metabase.sync.sync-metadata.fields-test
   "Tests for the logic that syncs Field models with the Metadata fetched from a DB. (There are more tests for this
   behavior in the namespace `metabase.sync-database.sync-dynamic-test`, which is sort of a misnomer.)"
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.models :refer [Field Table]]
-            [metabase.query-processor :as qp]
-            [metabase.sync :as sync]
-            [metabase.sync.util-test :as sync.util-test]
-            [metabase.test :as mt]
-            [metabase.test.data.one-off-dbs :as one-off-dbs]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.models :refer [Field Table]]
+   [metabase.query-processor :as qp]
+   [metabase.sync :as sync]
+   [metabase.sync.util-test :as sync.util-test]
+   [metabase.test :as mt]
+   [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (defn- with-test-db-before-and-after-altering
   "Testing function that performs the following steps:
@@ -92,7 +94,7 @@
            (with-test-db-before-and-after-altering
             "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
             (fn [database]
-              (let [table (hydrate (db/select-one Table :db_id (u/the-id database)) :fields)]
+              (let [table (hydrate (t2/select-one Table :db_id (u/the-id database)) :fields)]
                 (set (map :name (:fields table))))))))))
 
 (deftest dont-splice-inactive-columns-into-queries-test
@@ -114,7 +116,7 @@
              (fn [database]
                (-> (qp/process-query {:database (u/the-id database)
                                       :type     :query
-                                      :query    {:source-table (db/select-one-id Table
+                                      :query    {:source-table (t2/select-one-pk Table
                                                                  :db_id (u/the-id database), :name "birds")}})
                    :data
                    :native_form
@@ -128,7 +130,7 @@
 (deftest pk-sync-test
   (testing "Test PK Syncing"
     (mt/with-temp-copy-of-db
-      (letfn [(get-semantic-type [] (db/select-one-field :semantic_type Field, :id (mt/id :venues :id)))]
+      (letfn [(get-semantic-type [] (t2/select-one-fn :semantic_type Field, :id (mt/id :venues :id)))]
         (testing "Semantic type should be :id to begin with"
           (is (= :type/PK
                  (get-semantic-type))))
@@ -137,7 +139,7 @@
           (is (= nil
                  (get-semantic-type))))
         (testing "Calling sync-table! should set the semantic type again"
-          (sync/sync-table! (db/select-one Table :id (mt/id :venues)))
+          (sync/sync-table! (t2/select-one Table :id (mt/id :venues)))
           (is (= :type/PK
                  (get-semantic-type))))
         (testing "sync-table! should *not* change the semantic type of fields that are marked with a different type"
@@ -146,7 +148,7 @@
                  (get-semantic-type))))
         (testing "Make sure that sync-table runs set-table-pks-if-needed!"
           (db/update! Field (mt/id :venues :id), :semantic_type nil)
-          (sync/sync-table! (db/select-one Table :id (mt/id :venues)))
+          (sync/sync-table! (t2/select-one Table :id (mt/id :venues)))
           (is (= :type/PK
                  (get-semantic-type))))))))
 
@@ -154,13 +156,13 @@
   (testing "Check that Foreign Key relationships were created on sync as we expect"
     (testing "checkins.venue_id"
       (is (= (mt/id :venues :id)
-             (db/select-one-field :fk_target_field_id Field, :id (mt/id :checkins :venue_id)))))
+             (t2/select-one-fn :fk_target_field_id Field, :id (mt/id :checkins :venue_id)))))
     (testing "checkins.user_id"
       (is (= (mt/id :users :id)
-             (db/select-one-field :fk_target_field_id Field, :id (mt/id :checkins :user_id)))))
+             (t2/select-one-fn :fk_target_field_id Field, :id (mt/id :checkins :user_id)))))
     (testing "venues.category_id"
       (is (= (mt/id :categories :id)
-             (db/select-one-field :fk_target_field_id Field, :id (mt/id :venues :category_id)))))))
+             (t2/select-one-fn :fk_target_field_id Field, :id (mt/id :venues :category_id)))))))
 
 (deftest sync-table-fks-test
   (testing "Check that sync-table! causes FKs to be set like we'd expect"
@@ -168,7 +170,7 @@
       (letfn [(state []
                 (let [{:keys                  [step-info]
                        {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
-                      {:keys [semantic_type fk_target_field_id]} (db/select-one [Field :semantic_type :fk_target_field_id]
+                      {:keys [semantic_type fk_target_field_id]} (t2/select-one [Field :semantic_type :fk_target_field_id]
                                                                    :id (mt/id :checkins :user_id))]
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details

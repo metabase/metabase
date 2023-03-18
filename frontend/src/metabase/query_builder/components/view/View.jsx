@@ -153,11 +153,11 @@ class View extends React.Component {
       isShowingQuestionInfoSidebar,
       runQuestionQuery,
       updateQuestion,
-      visibleTimelineIds,
+      visibleTimelineEventIds,
       selectedTimelineEventIds,
       xDomain,
-      showTimelines,
-      hideTimelines,
+      showTimelineEvents,
+      hideTimelineEvents,
       selectTimelineEvents,
       deselectTimelineEvents,
       onOpenModal,
@@ -185,11 +185,11 @@ class View extends React.Component {
         <TimelineSidebar
           question={question}
           timelines={timelines}
-          visibleTimelineIds={visibleTimelineIds}
+          visibleTimelineEventIds={visibleTimelineEventIds}
           selectedTimelineEventIds={selectedTimelineEventIds}
           xDomain={xDomain}
-          onShowTimelines={showTimelines}
-          onHideTimelines={hideTimelines}
+          onShowTimelineEvents={showTimelineEvents}
+          onHideTimelineEvents={hideTimelineEvents}
           onSelectTimelineEvents={selectTimelineEvents}
           onDeselectTimelineEvents={deselectTimelineEvents}
           onOpenModal={onOpenModal}
@@ -215,8 +215,9 @@ class View extends React.Component {
       toggleTemplateTagsEditor,
       toggleDataReference,
       toggleSnippetSidebar,
-      showTimelines,
-      hideTimelines,
+      showTimelineEvent,
+      showTimelineEvents,
+      hideTimelineEvents,
       selectTimelineEvents,
       deselectTimelineEvents,
       onCloseTimelines,
@@ -242,8 +243,9 @@ class View extends React.Component {
       return (
         <TimelineSidebar
           {...this.props}
-          onShowTimelines={showTimelines}
-          onHideTimelines={hideTimelines}
+          onShowTimelineEvent={showTimelineEvent}
+          onShowTimelineEvents={showTimelineEvents}
+          onHideTimelineEvents={hideTimelineEvents}
           onSelectTimelineEvents={selectTimelineEvents}
           onDeselectTimelineEvents={deselectTimelineEvents}
           onClose={onCloseTimelines}
@@ -312,7 +314,7 @@ class View extends React.Component {
         <NativeQueryEditor
           {...this.props}
           viewHeight={height}
-          isOpen={!card.dataset_query.native.query || isDirty}
+          isOpen={query.isEmpty() || isDirty}
           datasetQuery={card && card.dataset_query}
         />
       </NativeQueryEditorContainer>
@@ -343,7 +345,10 @@ class View extends React.Component {
     const isSidebarOpen = leftSidebar || rightSidebar;
 
     return (
-      <QueryBuilderMain isSidebarOpen={isSidebarOpen}>
+      <QueryBuilderMain
+        isSidebarOpen={isSidebarOpen}
+        data-testid="query-builder-main"
+      >
         {isNative ? (
           this.renderNativeQueryEditor()
         ) : (
@@ -424,7 +429,6 @@ class View extends React.Component {
     const {
       question,
       query,
-      card,
       databases,
       isShowingNewbModal,
       isShowingTimelineSidebar,
@@ -437,8 +441,8 @@ class View extends React.Component {
       updateQuestion,
     } = this.props;
 
-    // if we don't have a card at all or no databases then we are initializing, so keep it simple
-    if (!card || !databases) {
+    // if we don't have a question at all or no databases then we are initializing, so keep it simple
+    if (!question || !databases) {
       return <LoadingAndErrorWrapper className="full-height" loading />;
     }
 
@@ -457,7 +461,7 @@ class View extends React.Component {
       );
     }
 
-    if (card.dataset && queryBuilderMode === "dataset") {
+    if (question.isDataset() && queryBuilderMode === "dataset") {
       return (
         <>
           <DatasetEditor {...this.props} />

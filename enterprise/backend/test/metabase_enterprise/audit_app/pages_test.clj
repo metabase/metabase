@@ -1,22 +1,23 @@
 (ns metabase-enterprise.audit-app.pages-test
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.tools.namespace.find :as ns.find]
-            [clojure.tools.reader :as tools.reader]
-            [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase.models :refer [Card Dashboard DashboardCard Database Table User]]
-            [metabase.models.permissions :as perms]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [ring.util.codec :as codec]
-            [schema.core :as s]))
+  (:require
+   [clojure.java.classpath :as classpath]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.tools.namespace.find :as ns.find]
+   [clojure.tools.reader :as tools.reader]
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase.models :refer [Card Dashboard DashboardCard Database Table User]]
+   [metabase.models.permissions :as perms]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [ring.util.codec :as codec]
+   [schema.core :as s]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -204,3 +205,19 @@
                       (filter #((set (map u/the-id [a b c])) (first %)))
                       (map second)
                       set))))))))
+
+(deftest user-login-method-test
+  (testing "User login method takes into account both the google_auth and sso_source columns"
+    (mt/with-test-user :crowberto
+      (premium-features-test/with-premium-features #{:audit-app}
+        (mt/with-temp* [User [a {:email "a@metabase.com" :sso_source nil    :google_auth false}]
+                        User [b {:email "b@metabase.com" :sso_source nil    :google_auth true}]
+                        User [c {:email "c@metabase.com" :sso_source "SAML" :google_auth false}]]
+          (is (= ["Email" "Google Sign-In" "SAML"]
+                 (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
+                                                    {:type :internal
+                                                     :fn   "metabase-enterprise.audit-app.pages.users/table"})
+                              [:data :rows])
+                      (sort-by first)
+                      (filter #((set (map u/the-id [a b c])) (first %)))
+                      (map #(nth % 6))))))))))

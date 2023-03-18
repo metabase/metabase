@@ -1,14 +1,15 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
-
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { ORDERS } from "__support__/sample_database_fixture";
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
-import { ORDERS } from "__support__/sample_database_fixture.js";
 
 function renderChartSettingOrderedColumns(props) {
   render(
     <ChartSettingOrderedColumns
       onChange={() => {}}
       columns={[{ name: "Foo" }, { name: "Bar" }]}
+      getColumnName={columnSetting => columnSetting.name}
       {...props}
     />,
   );
@@ -22,8 +23,10 @@ describe("ChartSettingOrderedColumns", () => {
         { name: "Bar", enabled: false },
       ],
     });
-    screen.getByRole("img", { name: /add/i });
-    screen.getByRole("img", { name: /eye_outline/i });
+    expect(screen.getByRole("img", { name: /add/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: /eye_outline/i }),
+    ).toBeInTheDocument();
   });
 
   it("should add a column", () => {
@@ -37,7 +40,7 @@ describe("ChartSettingOrderedColumns", () => {
     });
     const ADD = screen.getByRole("img", { name: /add/i });
 
-    fireEvent.click(ADD);
+    userEvent.click(ADD);
     expect(onChange.mock.calls).toEqual([
       [
         [
@@ -59,7 +62,7 @@ describe("ChartSettingOrderedColumns", () => {
     });
     const CLOSE = screen.getByRole("img", { name: /eye_outline/i });
 
-    fireEvent.click(CLOSE);
+    userEvent.click(CLOSE);
     expect(onChange.mock.calls).toEqual([
       [
         [
@@ -68,20 +71,6 @@ describe("ChartSettingOrderedColumns", () => {
         ],
       ],
     ]);
-  });
-
-  // TODO: Test this in Cypress
-  xit("should reorder columns", () => {
-    // const onChange = jest.fn();
-    // const setting = renderChartSettingOrderedColumns({
-    //   value: [{ name: "Foo", enabled: true }, { name: "Bar", enabled: true }],
-    //   onChange,
-    // });
-    // // just call handleSortEnd directly for now as it's difficult to simulate drag and drop
-    // setting.instance().handleSortEnd({ oldIndex: 1, newIndex: 0 });
-    // expect(onChange.mock.calls).toEqual([
-    //   [[{ name: "Bar", enabled: true }, { name: "Foo", enabled: true }]],
-    // ]);
   });
 
   describe("for structured queries", () => {
@@ -98,7 +87,7 @@ describe("ChartSettingOrderedColumns", () => {
       const FIRST = ADD_ICONS[0];
 
       expect(ADD_ICONS).toHaveLength(28);
-      fireEvent.click(FIRST);
+      userEvent.click(FIRST);
       expect(onChange.mock.calls).toEqual([
         [[{ fieldRef: ["field", 1, null], enabled: true }]],
       ]);

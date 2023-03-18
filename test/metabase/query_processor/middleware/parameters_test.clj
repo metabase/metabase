@@ -1,21 +1,31 @@
 (ns metabase.query-processor.middleware.parameters-test
   "Testings to make sure the parameter substitution middleware works as expected. Even though the below tests are
   SQL-specific, they still confirm that the middleware itself is working correctly."
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.query-processor.middleware.parameters :as parameters]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import clojure.lang.ExceptionInfo))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.query-processor.middleware.parameters :as parameters]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
-(deftest move-top-level-params-to-inner-query-test
-  (is (= {:type   :native
-          :native {:query "WOW", :parameters ["My Param"]}
+(use-fixtures :each (fn [thunk]
+                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
+                      ;; tests.
+                      (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* 2]
+                        (thunk))))
+
+(deftest ^:parallel move-top-level-params-to-inner-query-test
+  (is (= {:type            :native
+          :native          {:query "WOW", :parameters ["My Param"]}
           :user-parameters ["My Param"]}
          (#'parameters/move-top-level-params-to-inner-query
           {:type :native, :native {:query "WOW"}, :parameters ["My Param"]}))))
@@ -24,7 +34,7 @@
   (driver/with-driver :h2
     (parameters/substitute-parameters (mbql.normalize/normalize query))))
 
-(deftest expand-mbql-top-level-params-test
+(deftest ^:parallel expand-mbql-top-level-params-test
   (testing "can we expand MBQL params if they are specified at the top level?"
     (is (= (mt/mbql-query venues
              {:aggregation [[:count]]
@@ -34,7 +44,7 @@
              {:aggregation [[:count]]
               :parameters  [{:name "price", :type :category, :target $price, :value 1}]}))))))
 
-(deftest expand-native-top-level-params-test
+(deftest ^:parallel expand-native-top-level-params-test
   (testing "can we expand native params if they are specified at the top level?"
     (is (= (mt/query nil
              {:type   :native
@@ -47,7 +57,7 @@
                             :template-tags {"price" {:name "price", :display-name "Price", :type :number}}}
                :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value "1"}]}))))))
 
-(deftest expand-mbql-source-query-params-test
+(deftest ^:parallel expand-mbql-source-query-params-test
   (testing "can we expand MBQL params in a source query?"
     (is (= (mt/mbql-query venues
              {:source-query {:source-table $$venues
@@ -59,7 +69,7 @@
                               :parameters   [{:name "price", :type :category, :target $price, :value 1}]}
                :aggregation  [[:count]]}))))))
 
-(deftest expand-native-source-query-params-test
+(deftest ^:parallel expand-native-source-query-params-test
   (testing "can we expand native params if in a source query?"
     (is (= (mt/mbql-query nil
              {:source-query {:native "SELECT * FROM categories WHERE name = ?;"
@@ -70,7 +80,7 @@
                               :template-tags {"cat" {:name "cat", :display-name "Category", :type :text}}
                               :parameters    [{:type "category", :target [:variable [:template-tag "cat"]], :value "BBQ"}]}}))))))
 
-(deftest expand-mbql-join-params-test
+(deftest ^:parallel expand-mbql-join-params-test
   (testing "can we expand MBQL params in a JOIN?"
     (is (= (mt/mbql-query venues
              {:aggregation [[:count]]
@@ -86,7 +96,7 @@
                               :condition    [:= $category_id &c.categories.id]
                               :parameters   [{:type "category", :target $categories.name, :value "BBQ"}]}]}))))))
 
-(deftest expand-native-join-params-test
+(deftest ^:parallel expand-native-join-params-test
   (testing "can we expand native params in a JOIN?"
     (is (= (mt/mbql-query venues
              {:aggregation [[:count]]
@@ -103,7 +113,7 @@
                               :alias        "c"
                               :condition    [:= $category_id &c.*categories.id]}]}))))))
 
-(deftest expand-multiple-mbql-params-test
+(deftest ^:parallel expand-multiple-mbql-params-test
   (testing "can we expand multiple sets of MBQL params?"
     (is (=
          (mt/mbql-query venues
@@ -124,7 +134,7 @@
                              :condition    [:= $category_id &c.categories.id]
                              :parameters   [{:type "category", :target $categories.name, :value "BBQ"}]}]}))))))
 
-(deftest expand-multiple-mbql-params-in-joins-test
+(deftest ^:parallel expand-multiple-mbql-params-in-joins-test
   ;; (This is dumb. Hopefully no one is creating queries like this.  The `:parameters` should go in the source query
   ;; instead of in the join.)
   (testing "can we expand multiple sets of MBQL params with params in a join and the join's source query?"

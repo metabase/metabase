@@ -80,6 +80,7 @@ You'll need to include the full connection string here, including the db host, p
 ```
 jdbc:postgresql://db.example.com:port/mydb?user=dbuser&password=dbpassword&ssl=true&sslmode=verify-full&sslrootcert=/path/to/certificate.pem
 ```
+
 Both can be provided to support mutual authentication scenarios.
 
 ## Truststores and keystores

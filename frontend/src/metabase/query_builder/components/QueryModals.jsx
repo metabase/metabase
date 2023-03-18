@@ -17,10 +17,9 @@ import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import AddToDashSelectDashModal from "metabase/containers/AddToDashSelectDashModal";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
-import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal";
+import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 
-import QuestionHistoryModal from "metabase/query_builder/containers/QuestionHistoryModal";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
@@ -29,7 +28,9 @@ import BulkFilterModal from "metabase/query_builder/components/filters/modals/Bu
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
-import QuestionMoveToast from "./QuestionMoveToast";
+import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQueryModal";
+import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
+import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 
 const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
@@ -67,23 +68,24 @@ class QueryModals extends React.Component {
       initialCollectionId,
       onCloseModal,
       onOpenModal,
+      updateQuestion,
       setQueryBuilderMode,
     } = this.props;
 
     return modal === MODAL_TYPES.SAVE ? (
       <Modal form onClose={onCloseModal}>
         <SaveQuestionModal
-          card={this.props.card}
-          originalCard={this.props.originalCard}
+          question={this.props.question}
+          originalQuestion={this.props.originalQuestion}
           tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
-          onSave={async card => {
+          onSave={async question => {
             // if saving modified question, don't show "add to dashboard" modal
-            await this.props.onSave(card);
+            await this.props.onSave(question);
             onCloseModal();
           }}
-          onCreate={async card => {
-            await this.props.onCreate(card);
+          onCreate={async question => {
+            await this.props.onCreate(question);
             if (question.isDataset()) {
               onCloseModal();
               setQueryBuilderMode("view");
@@ -106,16 +108,16 @@ class QueryModals extends React.Component {
     ) : modal === MODAL_TYPES.ADD_TO_DASHBOARD_SAVE ? (
       <Modal onClose={onCloseModal}>
         <SaveQuestionModal
-          card={this.props.card}
-          originalCard={this.props.originalCard}
+          question={this.props.question}
+          originalQuestion={this.props.originalQuestion}
           tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
-          onSave={async card => {
-            await this.props.onSave(card);
+          onSave={async question => {
+            await this.props.onSave(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
-          onCreate={async card => {
-            await this.props.onCreate(card);
+          onCreate={async question => {
+            await this.props.onCreate(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
           onClose={onCloseModal}
@@ -140,15 +142,15 @@ class QueryModals extends React.Component {
     ) : modal === MODAL_TYPES.SAVE_QUESTION_BEFORE_ALERT ? (
       <Modal onClose={onCloseModal}>
         <SaveQuestionModal
-          card={this.props.card}
-          originalCard={this.props.originalCard}
+          question={this.props.question}
+          originalQuestion={this.props.originalQuestion}
           tableMetadata={this.props.tableMetadata}
-          onSave={async card => {
-            await this.props.onSave(card, false);
+          onSave={async question => {
+            await this.props.onSave(question, false);
             this.showAlertsAfterQuestionSaved();
           }}
-          onCreate={async card => {
-            await this.props.onCreate(card, false);
+          onCreate={async question => {
+            await this.props.onCreate(question, false);
             this.showAlertsAfterQuestionSaved();
           }}
           onClose={onCloseModal}
@@ -159,15 +161,15 @@ class QueryModals extends React.Component {
     ) : modal === MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED ? (
       <Modal onClose={onCloseModal}>
         <SaveQuestionModal
-          card={this.props.card}
-          originalCard={this.props.originalCard}
+          question={this.props.question}
+          originalQuestion={this.props.originalQuestion}
           tableMetadata={this.props.tableMetadata}
-          onSave={async card => {
-            await this.props.onSave(card, false);
+          onSave={async question => {
+            await this.props.onSave(question, false);
             onOpenModal(MODAL_TYPES.EMBED);
           }}
-          onCreate={async card => {
-            await this.props.onCreate(card, false);
+          onCreate={async question => {
+            await this.props.onCreate(question, false);
             onOpenModal(MODAL_TYPES.EMBED);
           }}
           onClose={onCloseModal}
@@ -181,17 +183,6 @@ class QueryModals extends React.Component {
           question={question}
           onQueryChange={this.onQueryChange}
           onClose={onCloseModal}
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.HISTORY ? (
-      <Modal onClose={onCloseModal}>
-        <QuestionHistoryModal
-          questionId={this.props.card.id}
-          onClose={onCloseModal}
-          onReverted={() => {
-            this.props.reloadCard();
-            onCloseModal();
-          }}
         />
       </Modal>
     ) : modal === MODAL_TYPES.MOVE ? (
@@ -239,11 +230,12 @@ class QueryModals extends React.Component {
               : initialCollectionId,
           }}
           copy={async formValues => {
-            const object = await this.props.onCreate({
-              ...question.card(),
-              ...formValues,
-              description: formValues.description || null,
-            });
+            const object = await this.props.onCreate(
+              question
+                .setDisplayName(formValues.name)
+                .setCollectionId(formValues.collection_id)
+                .setDescription(formValues.description || null),
+            );
             return { payload: { object } };
           }}
           onClose={onCloseModal}
@@ -275,6 +267,17 @@ class QueryModals extends React.Component {
         <MoveEventModal
           eventId={modalContext}
           collectionId={question.collectionId()}
+          onClose={onCloseModal}
+        />
+      </Modal>
+    ) : modal === MODAL_TYPES.PREVIEW_QUERY ? (
+      <Modal fit onClose={onCloseModal}>
+        <PreviewQueryModal onClose={onCloseModal} />
+      </Modal>
+    ) : modal === MODAL_TYPES.CONVERT_QUERY ? (
+      <Modal fit onClose={onCloseModal}>
+        <ConvertQueryModal
+          onUpdateQuestion={updateQuestion}
           onClose={onCloseModal}
         />
       </Modal>

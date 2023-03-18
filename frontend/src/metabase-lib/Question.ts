@@ -2,9 +2,12 @@
 // @ts-nocheck
 import _ from "underscore";
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
+import inflection from "inflection";
+import { t } from "ttag";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
+import { format as formatExpression } from "metabase-lib/expressions/format";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/queries/StructuredQuery";
@@ -22,19 +25,22 @@ import { AggregationDimension, FieldDimension } from "metabase-lib/Dimension";
 import { isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/utils";
 
+import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
+import * as FILTER from "metabase-lib/queries/utils/filter";
+import * as DESCRIPTION from "metabase-lib/queries/utils/description";
+import * as FIELD_REF from "metabase-lib/queries/utils/field-ref";
+import * as QUERY from "metabase-lib/queries/utils/query";
+
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
-  DashboardApi,
   CardApi,
+  DashboardApi,
   maybeUsePivotEndpoint,
   MetabaseApi,
 } from "metabase/services";
-import {
-  Parameter as ParameterObject,
-  ParameterValues,
-} from "metabase-types/types/Parameter";
+import { ParameterValues } from "metabase-types/types/Parameter";
 import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
 import { Column, Dataset, Value } from "metabase-types/types/Dataset";
@@ -46,13 +52,20 @@ import {
 } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId } from "metabase-types/api";
+import {
+  CollectionId,
+  Parameter as ParameterObject,
+  ParameterId,
+} from "metabase-types/api";
 
 import {
-  normalizeParameterValue,
   getParameterValuesBySlug,
+  normalizeParameters,
 } from "metabase-lib/parameters/utils/parameter-values";
-import { remapParameterValuesToTemplateTags } from "metabase-lib/parameters/utils/template-tags";
+import {
+  getTemplateTagParametersFromCard,
+  remapParameterValuesToTemplateTags,
+} from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
@@ -144,6 +157,10 @@ class QuestionInner {
   }
 
   card() {
+    return this._doNotCallSerializableCard();
+  }
+
+  _doNotCallSerializableCard() {
     return this._card;
   }
 
@@ -194,7 +211,7 @@ class QuestionInner {
       }
     }
 
-    throw new Error("Unknown query type: " + datasetQuery.type);
+    console.warn("Unknown query type: " + datasetQuery?.type);
   }
 
   isNative(): boolean {
@@ -203,6 +220,14 @@ class QuestionInner {
 
   isStructured(): boolean {
     return this.query() instanceof StructuredQuery;
+  }
+
+  setEnableEmbedding(enabled: boolean): Question {
+    return this.setCard(assoc(this._card, "enable_embedding", enabled));
+  }
+
+  setEmbeddingParams(params: Record<string, any> | null): Question {
+    return this.setCard(assoc(this._card, "embedding_params", params));
   }
 
   /**
@@ -267,30 +292,22 @@ class QuestionInner {
     return this._card && this._card.dataset;
   }
 
-  isPersisted() {
-    return this._card && this._card.persisted;
+  setDataset(dataset) {
+    return this.setCard(assoc(this.card(), "dataset", dataset));
   }
 
-  isAction() {
-    return this._card && this._card.is_write;
+  isPersisted() {
+    return this._card && this._card.persisted;
   }
 
   setPersisted(isPersisted) {
     return this.setCard(assoc(this.card(), "persisted", isPersisted));
   }
 
-  setDataset(dataset) {
-    return this.setCard(assoc(this.card(), "dataset", dataset));
-  }
-
   setPinned(pinned: boolean) {
     return this.setCard(
       assoc(this.card(), "collection_position", pinned ? 1 : null),
     );
-  }
-
-  setIsAction(isAction) {
-    return this.setCard(assoc(this.card(), "is_write", isAction));
   }
 
   // locking the display prevents auto-selection
@@ -455,6 +472,13 @@ class QuestionInner {
   }
 
   /**
+   * How many filters or other widgets are this question's values used for?
+   */
+  getParameterUsageCount(): number {
+    return this.card().parameter_usage_count || 0;
+  }
+
+  /**
    * Question is valid (as far as we know) and can be executed
    */
   canRun(): boolean {
@@ -463,6 +487,22 @@ class QuestionInner {
 
   canWrite(): boolean {
     return this._card && this._card.can_write;
+  }
+
+  canWriteActions(): boolean {
+    const database = this.database();
+
+    return (
+      this.canWrite() &&
+      database != null &&
+      database.canWrite() &&
+      database.hasActionsEnabled()
+    );
+  }
+
+  supportsImplicitActions(): boolean {
+    const query = this.query();
+    return query instanceof StructuredQuery && !query.hasAnyClauses();
   }
 
   canAutoRun(): boolean {
@@ -527,7 +567,10 @@ class QuestionInner {
     return filter(this, operator, column, value) || this;
   }
 
-  pivot(breakouts = [], dimensions = []): Question {
+  pivot(
+    breakouts: (Breakout | Dimension | Field)[] = [],
+    dimensions = [],
+  ): Question {
     return pivot(this, breakouts, dimensions) || this;
   }
 
@@ -580,6 +623,25 @@ class QuestionInner {
     return distribution(this, column) || this;
   }
 
+  usesMetric(metricId): boolean {
+    return (
+      this.isStructured() &&
+      _.any(
+        QUERY.getAggregations(this.query().query()),
+        aggregation => AGGREGATION.getMetric(aggregation) === metricId,
+      )
+    );
+  }
+
+  usesSegment(segmentId): boolean {
+    return (
+      this.isStructured() &&
+      QUERY.getFilters(this.query().query()).some(
+        filter => FILTER.isSegment(filter) && filter[1] === segmentId,
+      )
+    );
+  }
+
   composeThisQuery(): Question | null | undefined {
     if (this.id()) {
       const card = {
@@ -588,7 +650,7 @@ class QuestionInner {
           type: "query",
           database: this.databaseId(),
           query: {
-            "source-table": getQuestionVirtualTableId(this.card()),
+            "source-table": getQuestionVirtualTableId(this.id()),
           },
         },
       };
@@ -605,7 +667,7 @@ class QuestionInner {
       type: "query",
       database: this.databaseId(),
       query: {
-        "source-table": getQuestionVirtualTableId(this.card()),
+        "source-table": getQuestionVirtualTableId(this.id()),
       },
     });
   }
@@ -652,7 +714,10 @@ class QuestionInner {
     return resultedQuery.question();
   }
 
-  _syncStructuredQueryColumnsAndSettings(previousQuestion, previousQuery) {
+  private _syncStructuredQueryColumnsAndSettings(
+    previousQuestion,
+    previousQuery,
+  ) {
     const query = this.query();
 
     if (
@@ -675,19 +740,31 @@ class QuestionInner {
     );
 
     const graphMetrics = this.setting("graph.metrics");
+
     if (
       graphMetrics &&
-      addedColumnNames.length > 0 &&
-      removedColumnNames.length === 0
+      (addedColumnNames.length > 0 || removedColumnNames.length > 0)
     ) {
       const addedMetricColumnNames = addedColumnNames.filter(
         name =>
           query.columnDimensionWithName(name) instanceof AggregationDimension,
       );
 
-      if (addedMetricColumnNames.length > 0) {
+      const removedMetricColumnNames = removedColumnNames.filter(
+        name =>
+          previousQuery.columnDimensionWithName(name) instanceof
+          AggregationDimension,
+      );
+
+      if (
+        addedMetricColumnNames.length > 0 ||
+        removedMetricColumnNames.length > 0
+      ) {
         return this.updateSettings({
-          "graph.metrics": [...graphMetrics, ...addedMetricColumnNames],
+          "graph.metrics": [
+            ..._.difference(graphMetrics, removedMetricColumnNames),
+            ...addedMetricColumnNames,
+          ],
         });
       }
     }
@@ -707,7 +784,7 @@ class QuestionInner {
             const dimension = query.columnDimensionWithName(name);
             return {
               name: name,
-              field_ref: getBaseDimensionReference(dimension.mbql()),
+              fieldRef: getBaseDimensionReference(dimension.mbql()),
               enabled: true,
             };
           }),
@@ -840,6 +917,10 @@ class QuestionInner {
     return this._card && this._card.id;
   }
 
+  setId(id: number | undefined): Question {
+    return this.setCard(assoc(this.card(), "id", id));
+  }
+
   markDirty(): Question {
     return this.setCard(
       dissoc(assoc(this.card(), "original_card_id", this.id()), "id"),
@@ -884,6 +965,10 @@ class QuestionInner {
     return this._card && this._card.public_uuid;
   }
 
+  setPublicUUID(public_uuid: string | null): Question {
+    return this.setCard({ ...this._card, public_uuid });
+  }
+
   database(): Database | null | undefined {
     const query = this.query();
     return query && typeof query.database === "function"
@@ -904,6 +989,10 @@ class QuestionInner {
   tableId(): TableId | null | undefined {
     const table = this.table();
     return table ? table.id : null;
+  }
+
+  isArchived(): boolean {
+    return this._card && this._card.archived;
   }
 
   getUrl({
@@ -1013,7 +1102,7 @@ class QuestionInner {
     if (this.isDataset() && this.isSaved()) {
       dependencies.push({
         type: "table",
-        id: getQuestionVirtualTableId(this.card()),
+        id: getQuestionVirtualTableId(this.id()),
       });
     }
 
@@ -1074,19 +1163,7 @@ class QuestionInner {
   } = {}): Promise<[Dataset]> {
     // TODO Atte Keinänen 7/5/17: Should we clean this query with Query.cleanQuery(query) before executing it?
     const canUseCardApiEndpoint = !isDirty && this.isSaved();
-    const parameters = this.parameters()
-      // include only parameters that have a value applied
-      .filter(param => _.has(param, "value"))
-      // only the superset of parameters object that API expects
-      .map(param => _.pick(param, "type", "target", "value", "id"))
-      .map(({ type, value, target, id }) => {
-        return {
-          type,
-          value: normalizeParameterValue(type, value),
-          target,
-          id,
-        };
-      });
+    const parameters = normalizeParameters(this.parameters());
 
     if (canUseCardApiEndpoint) {
       const dashboardId = this._card.dashboardId;
@@ -1131,6 +1208,14 @@ class QuestionInner {
       );
       return Promise.all(datasetQueries.map(getDatasetQueryResult));
     }
+  }
+
+  setParameter(id: ParameterId, parameter: ParameterObject) {
+    const newParameters = this.parameters().map(oldParameter =>
+      oldParameter.id === id ? parameter : oldParameter,
+    );
+
+    return this.setParameters(newParameters);
   }
 
   setParameters(parameters) {
@@ -1178,7 +1263,7 @@ class QuestionInner {
       return (
         q &&
         new Question(q.card(), this.metadata())
-          .setParameters([])
+          .setParameters(getTemplateTagParametersFromCard(q.card()))
           .setDashboardProps({
             dashboardId: undefined,
             dashcardId: undefined,
@@ -1229,7 +1314,7 @@ class QuestionInner {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  convertParametersToMbql() {
+  private _convertParametersToMbql() {
     if (!this.isStructured()) {
       return this;
     }
@@ -1254,6 +1339,218 @@ class QuestionInner {
     return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
+  generateQueryDescription(tableMetadata, options = {}) {
+    if (!tableMetadata || (this.isNative() && !this.displayName())) {
+      return "";
+    }
+
+    options = {
+      sections: [
+        "table",
+        "aggregation",
+        "breakout",
+        "filter",
+        "order-by",
+        "limit",
+      ],
+      ...options,
+    };
+
+    const sectionFns = {
+      table: this._getTableDescription.bind(this),
+      aggregation: this._getAggregationDescription.bind(this),
+      breakout: this._getBreakoutDescription.bind(this),
+      filter: this._getFilterDescription.bind(this),
+      "order-by": this._getOrderByDescription.bind(this),
+      limit: this._getLimitDescription.bind(this),
+    };
+
+    // these array gymnastics are needed to support JSX formatting
+    const query = this.datasetQuery().query;
+    const sections = options.sections
+      .map(section =>
+        _.flatten(sectionFns[section](tableMetadata, query, options)).filter(
+          s => !!s,
+        ),
+      )
+      .filter(s => s && s.length > 0);
+
+    const description = _.flatten(DESCRIPTION.joinList(sections, ", "));
+    return description.join("");
+  }
+
+  private _getFieldName(tableMetadata, field, options) {
+    try {
+      const target = FIELD_REF.getFieldTarget(field, tableMetadata);
+      const components = [];
+      if (target.path) {
+        for (const fieldDef of target.path) {
+          components.push(DESCRIPTION.formatField(fieldDef, options), " → ");
+        }
+      }
+      components.push(DESCRIPTION.formatField(target.field, options));
+      if (target.unit) {
+        components.push(` (${target.unit})`);
+      }
+      return components;
+    } catch (e) {
+      console.warn(
+        "Couldn't format field name for field",
+        field,
+        "in table",
+        tableMetadata,
+      );
+    }
+    // TODO: This is untranslated.
+    return "[Unknown Field]";
+  }
+
+  private _getTableDescription(tableMetadata) {
+    return [inflection.pluralize(tableMetadata.display_name)];
+  }
+
+  private _getAggregationDescription(tableMetadata, query, options) {
+    return DESCRIPTION.conjunctList(
+      QUERY.getAggregations(query).map(aggregation => {
+        if (AGGREGATION.hasOptions(aggregation)) {
+          if (AGGREGATION.isNamed(aggregation)) {
+            return [AGGREGATION.getName(aggregation)];
+          }
+          aggregation = AGGREGATION.getContent(aggregation);
+        }
+        if (AGGREGATION.isMetric(aggregation)) {
+          const metric = _.findWhere(tableMetadata.metrics, {
+            id: AGGREGATION.getMetric(aggregation),
+          });
+          // TODO: This is untranslated.
+          return metric ? metric.name : "[Unknown Metric]";
+        }
+        switch (aggregation[0]) {
+          case "rows":
+            return [t`Raw data`];
+          case "count":
+            return [t`Count`];
+          case "cum-count":
+            return [t`Cumulative count`];
+          case "avg":
+            return [
+              t`Average of `,
+              this._getFieldName(tableMetadata, aggregation[1], options),
+            ];
+          case "median":
+            return [
+              t`Median of `,
+              this._getFieldName(tableMetadata, aggregation[1], options),
+            ];
+          case "distinct":
+            return [
+              t`Distinct values of `,
+              this._getFieldName(tableMetadata, aggregation[1], options),
+            ];
+          case "stddev":
+            return [
+              t`Standard deviation of `,
+              this._getFieldName(tableMetadata, aggregation[1], options),
+            ];
+          case "sum":
+            return [
+              t`Sum of `,
+              this._getFieldName(tableMetadata, aggregation[1], options),
+            ];
+          case "cum-sum":
+            return [
+              t`Cumulative sum of `,
+              this._getFieldName(tableMetadata, aggregation[1], options),
+            ];
+          case "max":
+            return [
+              t`Maximum of `,
+              this._getFieldName(tableMetadata, aggregation[1], options),
+            ];
+          case "min":
+            return [
+              t`Minimum of `,
+              this._getFieldName(tableMetadata, aggregation[1], options),
+            ];
+          default:
+            return [formatExpression(aggregation, { tableMetadata })];
+        }
+      }),
+      // TODO: This is untranslated. See if there's an i18n-friendly way to do a comma-separated list.
+      "and",
+    );
+  }
+
+  private _getBreakoutDescription(tableMetadata, { breakout }, options) {
+    if (breakout && breakout.length > 0) {
+      return [
+        t`Grouped by `,
+        DESCRIPTION.joinList(
+          breakout.map(b => this._getFieldName(tableMetadata, b, options)),
+          // TODO: This is untranslated. See if there's an i18n-friendly way to do a comma-separated list.
+          " and ",
+        ),
+      ];
+    }
+  }
+
+  private _getFilterDescription(tableMetadata, query, options) {
+    // getFilters returns list of filters without the implied "and"
+    // TODO: This is untranslated. See if there's an i18n-friendly way to do a comma-separated list.
+    const filters = ["and"].concat(QUERY.getFilters(query));
+    if (filters && filters.length > 1) {
+      return [
+        t`Filtered by `,
+        this._getFilterClauseDescription(tableMetadata, filters, options),
+      ];
+    }
+  }
+
+  private _getFilterClauseDescription(tableMetadata, filter, options) {
+    if (filter[0] === "and" || filter[0] === "or") {
+      const clauses = filter
+        .slice(1)
+        .map(f => this._getFilterClauseDescription(tableMetadata, f, options));
+      return DESCRIPTION.conjunctList(clauses, filter[0].toLowerCase());
+    } else if (filter[0] === "segment") {
+      const segment = _.findWhere(tableMetadata.segments, { id: filter[1] });
+      return segment ? segment.name : "[Unknown Segment]";
+    } else if (filter[0] === "between" && filter[1][0] === "+") {
+      return this._getFieldName(tableMetadata, filter[1][1], options);
+    } else {
+      return this._getFieldName(tableMetadata, filter[1], options);
+    }
+  }
+
+  private _getOrderByDescription(tableMetadata, query, options) {
+    const orderBy = query["order-by"];
+    if (orderBy && orderBy.length > 0) {
+      return [
+        t`Sorted by `,
+        DESCRIPTION.joinList(
+          orderBy.map(([direction, field]) => {
+            const name = FIELD_REF.isAggregateField(field)
+              ? this._getAggregationDescription(tableMetadata, query, options)
+              : this._getFieldName(tableMetadata, field, options);
+
+            return (
+              // TODO: This is untranslated.
+              name + " " + (direction === "asc" ? "ascending" : "descending")
+            );
+          }),
+          // TODO: This is untranslated. See if there's an i18n-friendly way to do lists.
+          " and ",
+        ),
+      ];
+    }
+  }
+
+  private _getLimitDescription(tableMetadata, { limit }) {
+    if (limit != null) {
+      return [limit, " ", inflection.inflect("row", limit)];
+    }
+  }
+
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
     const includeDisplayIsLocked = true;
 
@@ -1263,7 +1560,7 @@ class QuestionInner {
       if (!this.query().readOnly()) {
         return questionWithParameters
           .setParameterValues(parameterValues)
-          .convertParametersToMbql()
+          ._convertParametersToMbql()
           .getUrl({
             clean,
             originalQuestion: this,

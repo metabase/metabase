@@ -1,26 +1,30 @@
-(ns metabase.api.setup-test
+(ns ^:mb/once metabase.api.setup-test
   "Tests for /api/setup endpoints."
-  (:require [clojure.core.async :as a]
-            [clojure.spec.alpha :as s]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.analytics.snowplow-test :as snowplow-test]
-            [metabase.api.setup :as api.setup]
-            [metabase.email :as email]
-            [metabase.events :as events]
-            [metabase.http-client :as client]
-            [metabase.integrations.slack :as slack]
-            [metabase.models :refer [Activity Database Table User]]
-            [metabase.models.setting :as setting]
-            [metabase.models.setting.cache-test :as setting.cache-test]
-            [metabase.public-settings :as public-settings]
-            [metabase.setup :as setup]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as schema]
-            [toucan.db :as db]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.spec.alpha :as s]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.api.setup :as api.setup]
+   [metabase.email :as email]
+   [metabase.events :as events]
+   [metabase.http-client :as client]
+   [metabase.integrations.slack :as slack]
+   [metabase.models :refer [Activity Database Table User]]
+   [metabase.models.setting :as setting]
+   [metabase.models.setting.cache-test :as setting.cache-test]
+   [metabase.public-settings :as public-settings]
+   [metabase.setup :as setup]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as schema]
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;; make sure the default test users are created before running these tests, otherwise we're going to run into issues
 ;; if it attempts to delete this user and it is the only admin test user
@@ -87,13 +91,13 @@
                    (public-settings/admin-email))))
 
           (testing "Should record :user-joined Activity (#12933)"
-            (let [user-id (u/the-id (db/select-one-id User :email email))]
+            (let [user-id (u/the-id (t2/select-one-pk User :email email))]
               (is (schema= {:topic         (schema/eq :user-joined)
                             :model_id      (schema/eq user-id)
                             :user_id       (schema/eq user-id)
                             :model         (schema/eq "user")
                             schema/Keyword schema/Any}
-                           (wait-for-result #(db/select-one Activity :topic "user-joined", :user_id user-id)))))))))))
+                           (wait-for-result #(t2/select-one Activity :topic "user-joined", :user_id user-id)))))))))))
 
 (deftest invite-user-test
   (testing "POST /api/setup"
@@ -108,7 +112,7 @@
             (with-setup {:invite {:email email, :first_name first-name, :last_name last-name}
                          :user {:first_name invitor-first-name}
                          :site_name "Metabase"}
-              (let [invited-user (db/select-one User :email email)]
+              (let [invited-user (t2/select-one User :email email)]
                 (is (= (:first_name invited-user) first-name))
                 (is (= (:last_name invited-user) last-name))
                 (is (:is_superuser invited-user))
@@ -178,7 +182,7 @@
                      (db/exists? Database :name db-name))))
             (testing (format "should be able to set %s to %s (default: %s) during creation" k (pr-str v) default)
               (is (= (if (some? v) v default)
-                     (db/select-one-field k Database :name db-name))))))))
+                     (t2/select-one-fn k Database :name db-name))))))))
 
     (testing "Setup should trigger sync right away for the newly created Database (#12826)"
       (let [db-name (mt/random-name)]
@@ -195,7 +199,7 @@
                            (mt/wait-for-result chan 100))))
 
             (testing "Database should be synced"
-              (let [db (db/select-one Database :name db-name)]
+              (let [db (t2/select-one Database :name db-name)]
                 (assert (some? db))
                 (is (= 4
                        (wait-for-result (fn []

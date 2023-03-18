@@ -1,7 +1,13 @@
 (ns metabase.sync.analyze.fingerprint.insights-test
-  (:require [clojure.test :refer :all]
-            [metabase.sync.analyze.fingerprint.insights :as insights :refer [change insights]]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.sync.analyze.fingerprint.insights
+    :as
+    insights])
+  (:import
+   (java.math MathContext RoundingMode)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private cols [{:base_type :type/DateTime} {:base_type :type/Number}])
 
@@ -21,7 +27,7 @@
                                     :expected nil}]]
     (testing (format "rows = %s" rows)
       (is (= expected
-             (-> (transduce identity (insights cols) rows)
+             (-> (transduce identity (insights/insights cols) rows)
                  first
                  :last-value))))))
 
@@ -90,6 +96,29 @@
                    ["2018-12-02",179,3311]
                    ["2018-12-03",144,2525]])
 
+(defn- round-to-precision
+  "Round (presumably floating-point) `number` to a precision of `sig-figures`. Returns a `Double`.
+
+  This rounds by significant figures, not decimal places. See [[round-to-decimals]] for that.
+
+    (round-to-precision 4 1234567.89) -> 123500.0"
+  ^Double [^Integer sig-figures ^Number number]
+  {:pre [(integer? sig-figures) (number? number)]}
+  (-> number
+      bigdec
+      (.round (MathContext. sig-figures RoundingMode/HALF_EVEN))
+      double))
+
+(deftest ^:parallel round-to-precision-test
+  (are [exp figs n] (= exp
+                       (round-to-precision figs n))
+       1.0     1 1.234
+       1.2     2 1.234
+       1.3     2 1.278
+       1.3     2 1.251
+       12300.0 3 12345.67
+       0.00321 3 0.003209817))
+
 (deftest timeseries-insight-test
   (is (= [{:last-value     144,
            :previous-value 179,
@@ -108,12 +137,12 @@
            :col            nil,
            :unit           :day}]
          (-> (transduce identity
-                        (insights [{:base_type :type/DateTime}
-                                   {:base_type :type/Number}
-                                   {:base_type :type/Number}])
+                        (insights/insights [{:base_type :type/DateTime}
+                                            {:base_type :type/Number}
+                                            {:base_type :type/Number}])
                         ts)
-             ; This value varies between machines (M1 Macs? JVMs?) so round it to avoid test failures.
-             (update-in [0 :best-fit 1] #(u/round-to-precision 6 %)))))
+                                        ; This value varies between machines (M1 Macs? JVMs?) so round it to avoid test failures.
+             (update-in [0 :best-fit 1] #(round-to-precision 6 %)))))
   (testing "We should robustly survive weird values such as NaN, Infinity, and nil"
     (is (= [{:last-value     20.0
              :previous-value 10.0
@@ -124,7 +153,7 @@
              :unit           :day
              :col            nil}]
            (transduce identity
-                      (insights [{:base_type :type/DateTime} {:base_type :type/Number}])
+                      (insights/insights [{:base_type :type/DateTime} {:base_type :type/Number}])
                       [["2018-11-01" 10.0]
                        ["2018-11-02" 20.0]
                        ["2018-11-03" nil]
@@ -132,13 +161,13 @@
                        ["2018-11-08" Double/POSITIVE_INFINITY]])))))
 
 (deftest change-test
-  (is (= 0.0 (change 1 1)))
-  (is (= -0.5 (change 1 2)))
-  (is (= 1.0 (change 2 1)))
-  (is (= nil (change 1 0)))
-  (is (= -1.0 (change 0 1)))
-  (is (= 2.0 (change 1 -1)))
-  (is (= -2.0 (change -1 1)))
-  (is (= 1.0 (change -1 -2)))
-  (is (= nil (change -1 0)))
-  (is (= 1.0 (change 0 -1))))
+  (is (= 0.0 (insights/change 1 1)))
+  (is (= -0.5 (insights/change 1 2)))
+  (is (= 1.0 (insights/change 2 1)))
+  (is (= nil (insights/change 1 0)))
+  (is (= -1.0 (insights/change 0 1)))
+  (is (= 2.0 (insights/change 1 -1)))
+  (is (= -2.0 (insights/change -1 1)))
+  (is (= 1.0 (insights/change -1 -2)))
+  (is (= nil (insights/change -1 0)))
+  (is (= 1.0 (insights/change 0 -1))))

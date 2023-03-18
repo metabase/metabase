@@ -1,8 +1,12 @@
 (ns metabase.db.liquibase.h2
   "Custom implementation of the Liquibase H2 adapter that uppercases all identifiers. See #20611 for more details."
-  (:require [metabase.util :as u])
-  (:import liquibase.database.core.H2Database
-           liquibase.database.jvm.JdbcConnection))
+  (:require
+   [metabase.util :as u])
+  (:import
+   (liquibase.database.core H2Database)
+   (liquibase.database.jvm JdbcConnection)))
+
+(set! *warn-on-reflection* true)
 
 (defn- upcase ^String [s]
   (some-> s u/upper-case-en))

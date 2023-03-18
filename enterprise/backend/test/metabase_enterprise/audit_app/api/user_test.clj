@@ -1,9 +1,11 @@
 (ns metabase-enterprise.audit-app.api.user-test
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (deftest delete-subscriptions-test
   (testing "DELETE /api/ee/audit-app/user/:id/subscriptions"
@@ -44,8 +46,8 @@
                                                                        :pulse_channel_id dash-sub-chan-id}]]
           (letfn [(describe-objects []
                     {:num-subscriptions                (db/count PulseChannelRecipient :user_id user-id)
-                     :alert-archived?                  (db/select-one-field :archived Pulse :id alert-id)
-                     :dashboard-subscription-archived? (db/select-one-field :archived Pulse :id dash-sub-id)})
+                     :alert-archived?                  (t2/select-one-fn :archived Pulse :id alert-id)
+                     :dashboard-subscription-archived? (t2/select-one-fn :archived Pulse :id dash-sub-id)})
                   (api-delete-subscriptions! [request-user-name-or-id expected-status-code]
                     (mt/user-http-request request-user-name-or-id
                                           :delete expected-status-code

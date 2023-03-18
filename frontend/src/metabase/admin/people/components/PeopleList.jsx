@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
+import { usePrevious } from "react-use";
 import Icon from "metabase/components/Icon";
 import PaginationControls from "metabase/components/PaginationControls";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -11,7 +12,6 @@ import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import User from "metabase/entities/users";
 import Group from "metabase/entities/groups";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
-import { usePrevious } from "metabase/hooks/use-previous";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 
 import { USER_STATUS } from "../constants";

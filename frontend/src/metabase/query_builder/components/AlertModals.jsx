@@ -6,7 +6,7 @@ import _ from "underscore";
 
 // components
 import Button from "metabase/core/components/Button";
-import SchedulePicker from "metabase/components/SchedulePicker";
+import SchedulePicker from "metabase/containers/SchedulePicker";
 import ModalContent from "metabase/components/ModalContent";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -101,7 +101,7 @@ class CreateAlertModalContentInner extends Component {
     const { alert } = this.state;
 
     await createAlert(alert);
-    await updateUrl(question.card(), { dirty: false });
+    await updateUrl(question, { dirty: false });
 
     onAlertCreated();
     MetabaseAnalytics.trackStructEvent(
@@ -296,7 +296,7 @@ class UpdateAlertModalContentInner extends Component {
 
     await apiUpdateQuestion();
     await updateAlert(modifiedAlert);
-    await updateUrl(question.card(), { dirty: false });
+    await updateUrl(question, { dirty: false });
     onAlertUpdated();
 
     MetabaseAnalytics.trackStructEvent(

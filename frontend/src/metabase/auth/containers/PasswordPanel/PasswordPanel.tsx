@@ -1,13 +1,14 @@
 import { connect } from "react-redux";
+import { getSetting } from "metabase/selectors/settings";
 import { getExternalAuthProviders } from "metabase/auth/selectors";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 import { login } from "../../actions";
 import PasswordPanel from "../../components/PasswordPanel";
 
 const mapStateToProps = (state: State) => ({
   providers: getExternalAuthProviders(state),
-  isLdapEnabled: state.settings.values["ldap-enabled"],
-  hasSessionCookies: state.settings.values["session-cookies"] ?? false,
+  isLdapEnabled: getSetting(state, "ldap-enabled"),
+  hasSessionCookies: getSetting(state, "session-cookies") ?? false,
 });
 
 const mapDispatchToProps = {

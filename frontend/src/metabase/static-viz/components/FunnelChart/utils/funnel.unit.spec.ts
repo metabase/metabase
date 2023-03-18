@@ -1,4 +1,10 @@
-import { calculateFunnelPolygonPoints, calculateFunnelSteps } from "./funnel";
+import { merge } from "icepick";
+import { FunnelDatum, FunnelSettings } from "../types";
+import {
+  calculateFunnelPolygonPoints,
+  calculateFunnelSteps,
+  reorderData,
+} from "./funnel";
 
 describe("calculateFunnelSteps", () => {
   it("calculates funnel steps from data", () => {
@@ -66,6 +72,74 @@ describe("calculateFunnelPolygonPoints", () => {
       [100, 100], // right top
       [100, 150], // right bottom
       [0, 200], // left bottom
+    ]);
+  });
+});
+
+describe("reorderData", () => {
+  const data: FunnelDatum[] = [
+    ["funnel step 1", 100],
+    ["funnel step 2", 50],
+    ["funnel step 3", 0],
+  ];
+
+  const settings: FunnelSettings = {
+    colors: {
+      border: "#ffffff",
+      brand: "#ffffff",
+      textMedium: "#ffffff",
+    },
+    step: {
+      name: "Step",
+      format: {},
+    },
+    measure: {
+      format: {},
+    },
+    visualization_settings: {},
+  };
+
+  it("should not reorder data when `funnel.rows` isn't set", () => {
+    const reorderedData = reorderData(data, settings);
+    expect(reorderedData).toEqual(data);
+  });
+
+  it("reorders data given `funnel.rows` is set", () => {
+    const reorderedData = reorderData(
+      data,
+      merge(settings, {
+        visualization_settings: {
+          "funnel.rows": [
+            { enabled: true, key: "funnel step 1", name: "funnel step 1" },
+            { enabled: true, key: "funnel step 3", name: "funnel step 3" },
+            { enabled: true, key: "funnel step 2", name: "funnel step 2" },
+          ],
+        },
+      }),
+    );
+    expect(reorderedData).toEqual([
+      ["funnel step 1", 100],
+      ["funnel step 3", 0],
+      ["funnel step 2", 50],
+    ]);
+  });
+
+  it("reorders data for only enabled row in `funnel.rows`", () => {
+    const reorderedData = reorderData(
+      data,
+      merge(settings, {
+        visualization_settings: {
+          "funnel.rows": [
+            { enabled: true, key: "funnel step 1", name: "funnel step 1" },
+            { enabled: true, key: "funnel step 3", name: "funnel step 3" },
+            { enabled: false, key: "funnel step 2", name: "funnel step 2" },
+          ],
+        },
+      }),
+    );
+    expect(reorderedData).toEqual([
+      ["funnel step 1", 100],
+      ["funnel step 3", 0],
     ]);
   });
 });

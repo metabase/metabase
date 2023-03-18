@@ -1,8 +1,9 @@
 (ns metabase.server.routes.index-test
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [metabase.server.routes.index :as index]
-            [metabase.util.i18n :as i18n]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [metabase.server.routes.index :as index]
+   [metabase.util.i18n :as i18n]))
 
 (deftest ^:parallel localization-json-file-name-test
   (is (= "frontend_client/app/locales/es.json"

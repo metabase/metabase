@@ -1,6 +1,6 @@
 import { createSelector } from "reselect";
 
-import type { Settings, SettingKey } from "metabase-types/api";
+import type { Settings, SettingKey, TokenFeatures } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 export const getSettings = createSelector(
@@ -13,36 +13,30 @@ export const getSetting = <T extends SettingKey>(
   key: T,
 ): Settings[T] => getSettings(state)[key];
 
-const createSettingSelector = (key: SettingKey) => (state: State) =>
-  getSetting(state, key);
+interface UpgradeUrlOpts {
+  utm_media: string;
+}
 
-// Common
+export const getUpgradeUrl = createSelector(
+  (state: State) => getUtmSource(getSetting(state, "token-features")),
+  (state: State) => getSetting(state, "active-users-count"),
+  (state: State, opts: UpgradeUrlOpts) => opts.utm_media,
+  (source, count, media) => {
+    const url = new URL("https://www.metabase.com/upgrade");
+    url.searchParams.append("utm_media", media);
+    url.searchParams.append("utm_source", source);
+    if (count != null) {
+      url.searchParams.append("utm_users", String(count));
+    }
 
-export const getXraysEnabled = createSettingSelector("enable-xrays");
-
-export const getShowHomepageData = createSettingSelector("show-homepage-data");
-
-export const getShowHomepageXrays = createSelector(
-  getXraysEnabled,
-  getShowHomepageData,
-  (enabled, show) => enabled && show,
+    return url.toString();
+  },
 );
 
-export const getNestedQueriesEnabled = createSettingSelector(
-  "enable-nested-queries",
-);
-
-// Admin settings
-export const getSiteUrl = createSettingSelector("site-url");
-
-export const getEmbeddingSecretKey = createSettingSelector(
-  "embedding-secret-key",
-);
-
-// Public settings
-export const getIsPublicSharingEnabled = createSettingSelector(
-  "enable-public-sharing",
-);
-
-export const getIsApplicationEmbeddingEnabled =
-  createSettingSelector("enable-embedding");
+const getUtmSource = (features: TokenFeatures) => {
+  if (features.sso) {
+    return features.hosting ? "pro-cloud" : "pro-self-hosted";
+  } else {
+    return features.hosting ? "starter" : "oss";
+  }
+};

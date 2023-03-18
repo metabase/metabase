@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
+import { useUnmount } from "react-use";
 
 import { t } from "ttag";
 
@@ -15,10 +16,9 @@ import Toaster from "metabase/components/Toaster";
 
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
-import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
-import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
+import { getIsNavbarOpen, closeNavbar, setErrorPage } from "metabase/redux/app";
 
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import {
@@ -33,7 +33,6 @@ import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
 
-import DataAppContext from "metabase/writeback/containers/DataAppContext";
 import * as dashboardActions from "../actions";
 import {
   getIsEditing,
@@ -59,13 +58,11 @@ import {
   getIsAdditionalInfoVisible,
 } from "../selectors";
 
-function getDashboardId({ dashboardId, location, params }) {
+function getDashboardId({ dashboardId, params }) {
   if (dashboardId) {
     return dashboardId;
   }
-  return Urls.isDataAppPagePath(location.pathname)
-    ? parseInt(params.pageId)
-    : Urls.extractEntityId(params.slug);
+  return Urls.extractEntityId(params.slug);
 }
 
 const mapStateToProps = (state, props) => {
@@ -103,6 +100,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   ...dashboardActions,
+  closeNavbar,
   archiveDashboard: id => Dashboards.actions.setArchived({ id }, true),
   fetchDatabaseMetadata,
   setErrorPage,
@@ -133,7 +131,7 @@ const DashboardApp = props => {
 
   const [requestPermission, showNotification] = useWebNotification();
 
-  useOnUnmount(props.reset);
+  useUnmount(props.reset);
 
   useEffect(() => {
     if (isLoadingComplete) {
@@ -161,28 +159,22 @@ const DashboardApp = props => {
   }, []);
 
   return (
-    <DataAppContext>
-      <div className="shrink-below-content-size full-height">
-        <Dashboard
-          editingOnLoad={editingOnLoad}
-          addCardOnLoad={addCardOnLoad}
-          {...props}
-        />
-        {/* For rendering modal urls */}
-        {props.children}
-        <Toaster
-          message={
-            dashboard?.is_app_page
-              ? t`Would you like to be notified when this page is done loading?`
-              : t`Would you like to be notified when this dashboard is done loading?`
-          }
-          isShown={isShowingToaster}
-          onDismiss={onDismissToast}
-          onConfirm={onConfirmToast}
-          fixed
-        />
-      </div>
-    </DataAppContext>
+    <div className="shrink-below-content-size full-height">
+      <Dashboard
+        editingOnLoad={editingOnLoad}
+        addCardOnLoad={addCardOnLoad}
+        {...props}
+      />
+      {/* For rendering modal urls */}
+      {props.children}
+      <Toaster
+        message={t`Would you like to be notified when this dashboard is done loading?`}
+        isShown={isShowingToaster}
+        onDismiss={onDismissToast}
+        onConfirm={onConfirmToast}
+        fixed
+      />
+    </div>
   );
 };
 

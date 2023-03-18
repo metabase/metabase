@@ -1,13 +1,15 @@
 (ns metabase-enterprise.audit-app.api.user
   "`/api/ee/audit-app/user` endpoints. These only work if you have a premium token with the `:audit-app` feature."
-  (:require [compojure.core :refer [DELETE]]
-            [metabase.api.common :as api]
-            [metabase.api.user :as api.user]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :refer [DELETE]]
+   [metabase.api.common :as api]
+   [metabase.api.user :as api.user]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [toucan.db :as db]))
 
-(api/defendpoint DELETE "/:id/subscriptions"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema DELETE "/:id/subscriptions"
   "Delete all Alert and DashboardSubscription subscriptions for a User (i.e., so they will no longer receive them).
   Archive all Alerts and DashboardSubscriptions created by the User. Only allowed for admins or for the current user."
   [id]

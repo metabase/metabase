@@ -1,18 +1,37 @@
 import {
   Engine,
+  EngineField,
+  EngineSource,
   FontFile,
   SettingDefinition,
   Settings,
   TokenFeatures,
   Version,
+  VersionInfo,
+  VersionInfoRecord,
 } from "metabase-types/api";
 
 export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "driver-name": "PostgreSQL",
-  "superseded-by": undefined,
-  source: {
-    type: "official",
-  },
+  "details-fields": [],
+  source: createMockEngineSource(),
+  "superseded-by": null,
+  ...opts,
+});
+
+export const createMockEngineField = (
+  opts?: Partial<EngineField>,
+): EngineField => ({
+  name: "field",
+  "display-name": "Field",
+  ...opts,
+});
+
+export const createMockEngineSource = (
+  opts?: Partial<EngineSource>,
+): EngineSource => ({
+  type: "official",
+  contact: null,
   ...opts,
 });
 
@@ -22,15 +41,15 @@ export const createMockEngines = (
   postgres: createMockEngine(),
   communityEngine: createMockEngine({
     "driver-name": "CommunityEngine",
-    source: {
+    source: createMockEngineSource({
       type: "community",
-    },
+    }),
   }),
   partnerEngine: createMockEngine({
     "driver-name": "PartnerEngine",
-    source: {
+    source: createMockEngineSource({
       type: "partner",
-    },
+    }),
   }),
   ...opts,
 });
@@ -44,6 +63,24 @@ export const createMockFontFile = (opts?: Partial<FontFile>): FontFile => ({
 
 export const createMockVersion = (opts?: Partial<Version>): Version => ({
   tag: "v1",
+  ...opts,
+});
+
+export const createMockVersionInfoRecord = (
+  opts?: Partial<VersionInfoRecord>,
+): VersionInfoRecord => ({
+  version: "v1",
+  released: "2021-01-01",
+  patch: true,
+  highlights: ["Bug fix"],
+  ...opts,
+});
+
+export const createMockVersionInfo = (
+  opts?: Partial<VersionInfo>,
+): VersionInfo => ({
+  latest: createMockVersionInfoRecord(),
+  older: [createMockVersionInfoRecord()],
   ...opts,
 });
 
@@ -86,22 +123,33 @@ export const createMockSettingDefinition = (
   key: "key",
   env_name: "",
   is_env_setting: false,
+  value: null,
   ...opts,
 });
 
 export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
+  "admin-email": "admin@metabase.test",
+  "anon-tracking-enabled": false,
   "application-font": "Lato",
   "application-font-files": [],
+  "application-name": "Metabase",
   "available-fonts": [],
   "available-locales": null,
+  "cloud-gateway-ips": null,
   "custom-formatting": {},
   "deprecation-notice-version": undefined,
   "email-configured?": false,
   "enable-embedding": false,
+  "enable-enhancements?": false,
   "enable-nested-queries": true,
+  "enable-query-caching": undefined,
+  "enable-password-login": true,
   "enable-public-sharing": false,
   "enable-xrays": false,
-  "experimental-enable-actions": false,
+  engines: createMockEngines(),
+  "has-user-setup": true,
+  "hide-embed-branding?": true,
+  "ga-enabled": false,
   "google-auth-auto-create-accounts-domain": null,
   "google-auth-client-id": null,
   "google-auth-configured": false,
@@ -112,10 +160,18 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "ldap-configured?": false,
   "ldap-enabled": false,
   "loading-message": "doing-science",
+  "other-sso-enabled?": null,
+  "password-complexity": { total: 6, digit: 1 },
   "persisted-models-enabled": false,
+  "premium-embedding-token": null,
+  "report-timezone-short": "UTC",
   "saml-configured": false,
   "saml-enabled": false,
+  "snowplow-url": "",
+  "search-typeahead-enabled": true,
+  "setup-token": null,
   "session-cookies": null,
+  "snowplow-enabled": false,
   "show-database-syncing-modal": false,
   "show-homepage-data": false,
   "show-homepage-pin-message": false,
@@ -124,13 +180,17 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "show-metabot": true,
   "site-locale": "en",
   "site-url": "http://localhost:3000",
+  "site-uuid": "1234",
   "slack-app-token": null,
   "slack-files-channel": null,
   "slack-token": null,
   "slack-token-valid?": false,
+  "subscription-allowed-domains": null,
   "token-features": createMockTokenFeatures(),
   "token-status": null,
-  engines: createMockEngines(),
+  "user-locale": null,
   version: createMockVersion(),
+  "version-info": createMockVersionInfo(),
+  "version-info-last-checked": null,
   ...opts,
 });

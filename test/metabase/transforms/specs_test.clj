@@ -1,7 +1,8 @@
 (ns metabase.transforms.specs-test
-  (:require [clojure.test :refer :all]
-            [metabase.transforms.specs :as tf.specs]
-            [metabase.util.schema :as su]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.transforms.specs :as tf.specs]
+   [metabase.util.schema :as su]))
 
 (deftest extract-dimensions-test
   (are [arg expected] (= expected

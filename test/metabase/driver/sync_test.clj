@@ -1,7 +1,9 @@
 (ns metabase.driver.sync-test
-  (:require [clojure.test :as t]
-            [metabase.driver.sync :as driver.s])
-  (:import clojure.lang.ExceptionInfo))
+  (:require
+   [clojure.test :as t]
+   [metabase.driver.sync :as driver.s])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (t/deftest schema-filter-test
   (doseq [[test-kind expect-match? schema-name inclusion-filters exclusion-filters]

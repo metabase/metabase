@@ -412,8 +412,9 @@ export class FieldHeader extends React.Component {
       await updateFieldDimension(
         { id: field.id },
         {
-          type: field.dimensions.type,
-          human_readable_field_id: field.dimensions.human_readable_field_id,
+          type: field.dimensions?.[0]?.type,
+          human_readable_field_id:
+            field.dimensions?.[0]?.human_readable_field_id,
           name: e.target.value,
         },
       );
@@ -433,17 +434,18 @@ export class FieldHeader extends React.Component {
       <div>
         <FieldNameInput
           name="display_name"
-          className="h2 AdminInput"
+          className="h2 "
           value={this.props.field.display_name}
           onBlurChange={this.onNameChange}
           placeholder={this.props.field.name}
         />
         <InputBlurChange
           name="description"
-          className="text AdminInput bordered input text-measure block full"
+          className="text-measure"
           value={this.props.field.description}
           onBlurChange={this.onDescriptionChange}
           placeholder={t`No description for this field yet`}
+          fullWidth
         />
       </div>
     );

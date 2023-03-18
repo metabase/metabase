@@ -1,7 +1,7 @@
 import _ from "underscore";
 import { t } from "ttag";
-
 import { createAction } from "metabase/lib/redux";
+import { measureText } from "metabase/lib/measure-text";
 
 import Questions from "metabase/entities/questions";
 
@@ -96,12 +96,51 @@ export const addTextDashCardToDashboard = function ({ dashId }) {
   });
 };
 
-const esitmateCardSize = (displayType, action) => {
+export const addLinkDashCardToDashboard = function ({ dashId }) {
+  const DEFAULT_HEIGHT = 1;
+  const DEFAULT_WIDTH = 3;
+
+  const virtualLinkCard = {
+    ...createCard(),
+    display: "link",
+    archived: false,
+  };
+
+  const dashcardOverrides = {
+    card: virtualLinkCard,
+    size_x: DEFAULT_WIDTH,
+    size_y: DEFAULT_HEIGHT,
+    visualization_settings: {
+      virtual_card: virtualLinkCard,
+    },
+  };
+  return addDashCardToDashboard({
+    dashId: dashId,
+    dashcardOverrides: dashcardOverrides,
+  });
+};
+
+const estimateCardSize = (displayType, action, buttonLabel) => {
   const BASE_HEIGHT = 3;
   const HEIGHT_PER_FIELD = 1.5;
 
+  const PIXELS_PER_BLOCK = 49;
+  const MAX_BUTTON_BLOCK_WIDTH = 18;
+
   if (displayType === "button") {
-    return { size_x: 2, size_y: 1 };
+    const textWidth = measureText(buttonLabel, {
+      family: "Lato",
+      size: 14,
+      weight: 700,
+    });
+
+    return {
+      size_x: Math.min(
+        Math.ceil((textWidth + PIXELS_PER_BLOCK) / PIXELS_PER_BLOCK),
+        MAX_BUTTON_BLOCK_WIDTH,
+      ),
+      size_y: 1,
+    };
   }
 
   return {
@@ -117,49 +156,26 @@ export const addActionToDashboard =
   dispatch => {
     const virtualActionsCard = {
       ...createCard(),
+      id: action.model_id,
       display: "action",
       archived: false,
     };
 
+    const buttonLabel = action.name ?? action.id ?? t`Click Me`;
+
     const dashcardOverrides = {
-      action,
+      action: action.id ? action : null,
+      action_id: action.id,
       card_id: action.model_id,
       card: virtualActionsCard,
-      ...esitmateCardSize(displayType, action),
+      ...estimateCardSize(displayType, action, buttonLabel),
       visualization_settings: {
         actionDisplayType: displayType ?? "button",
         virtual_card: virtualActionsCard,
-        "button.label": action.name ?? action.id,
-        action_slug: action.slug,
+        "button.label": buttonLabel,
       },
     };
-    dispatch(
-      addDashCardToDashboard({
-        dashId: dashId,
-        dashcardOverrides: dashcardOverrides,
-      }),
-    );
-  };
 
-export const addLinkToDashboard =
-  async ({ dashId, clickBehavior }) =>
-  dispatch => {
-    const virtualActionsCard = {
-      ...createCard(),
-      display: "action",
-      archived: false,
-    };
-    const dashcardOverrides = {
-      card: virtualActionsCard,
-      size_x: 2,
-      size_y: 1,
-      visualization_settings: {
-        virtual_card: virtualActionsCard,
-        "button.label": t`Link`,
-        click_behavior: clickBehavior,
-        actionDisplayType: "button",
-      },
-    };
     dispatch(
       addDashCardToDashboard({
         dashId: dashId,

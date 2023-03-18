@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 import Questions from "metabase/entities/questions";
 
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
 import {

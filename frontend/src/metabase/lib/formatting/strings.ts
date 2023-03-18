@@ -1,11 +1,5 @@
 import inflection from "inflection";
 
-import { formatUrl } from "./url";
-import { formatEmail } from "./email";
-import { formatImage } from "./image";
-
-import type { OptionsType } from "./types";
-
 export function singularize(str: string, singular?: string) {
   return inflection.singularize(str, singular);
 }
@@ -38,20 +32,6 @@ export function titleize(str: string) {
 
 export function humanize(str: string, lowFirstLetter?: boolean) {
   return inflection.humanize(str, lowFirstLetter);
-}
-
-// fallback for formatting a string without a column semantic_type
-export function formatStringFallback(value: any, options: OptionsType = {}) {
-  if (options.view_as !== null) {
-    value = formatUrl(value, options);
-    if (typeof value === "string") {
-      value = formatEmail(value, options);
-    }
-    if (typeof value === "string") {
-      value = formatImage(value, options);
-    }
-  }
-  return value;
 }
 
 export function conjunct(list: string[], conjunction: string) {

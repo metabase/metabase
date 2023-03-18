@@ -4,6 +4,11 @@ title: History
 
 # History
 
+For questions, dashboards, and models, Metabase keeps a version history for the previous fifteen versions of that item. You can view changes, and revert to previous versions. 
+
+You can also archive, unarchive, and permanently delete outdated items.
+
+
 ## Viewing tracked changes
 
 1. Go to your question, dashboard, or model.
@@ -15,8 +20,8 @@ Metabase will keep track of a version each time you [save](../questions/sharing/
 ## Reverting to previous versions
 
 1. Go to your question, dashboard, or model.
-2. Click the info icon.
-3. A sidebar will appear with up to 15 previous versions.
+2. Click the info icon (an **i** in a circle).
+3. A sidebar will appear with up to fifteen previous versions.
 4. Click on the **back arrow** beside a version to revert your item to that point in time.
 
 ## Archiving items

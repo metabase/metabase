@@ -1,18 +1,20 @@
 (ns metabase-enterprise.advanced-permissions.common-test
-  (:require [cheshire.core :as json]
-            [clojure.core.memoize :as memoize]
-            [clojure.test :refer :all]
-            [metabase.api.database :as api.database]
-            [metabase.models :refer [Database Field FieldValues Permissions Table]]
-            [metabase.models.database :as database]
-            [metabase.models.field :as field]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.sync.concurrent :as sync.concurrent]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.core.memoize :as memoize]
+   [clojure.test :refer :all]
+   [metabase.api.database :as api.database]
+   [metabase.models :refer [Dashboard DashboardCard Database Field FieldValues Permissions Table]]
+   [metabase.models.database :as database]
+   [metabase.models.field :as field]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.sync.concurrent :as sync.concurrent]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn- do-with-all-user-data-perms
   [graph f]
@@ -30,7 +32,7 @@
            (@#'perms/update-group-permissions! all-users-group-id current-graph)))))))
 
 (defmacro ^:private with-all-users-data-perms
-  "Runs `f` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
+  "Runs `body` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
   permissions feature flag, and clears the (5 second TTL) cache used for Field permissions, for convenience."
   [graph & body]
   `(do-with-all-user-data-perms ~graph (fn [] ~@body)))
@@ -169,7 +171,7 @@
 
 (deftest update-field-test
   (mt/with-temp Field [{field-id :id, table-id :table_id} {:name "Field Test"}]
-    (let [{table-id :id, schema :schema, db-id :db_id} (db/select-one Table :id table-id)]
+    (let [{table-id :id, schema :schema, db-id :db_id} (t2/select-one Table :id table-id)]
       (testing "PUT /api/field/:id"
         (let [endpoint (format "field/%d" field-id)]
           (testing "a non-admin cannot update field metadata if the advanced-permissions feature flag is not present"
@@ -214,11 +216,11 @@
 
         (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
           (db/delete! FieldValues :field_id (mt/id :venues :price))
-          (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+          (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
           (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
                                                :data-model {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
             (mt/user-http-request :rasta :post 200 (format "field/%d/rescan_values" (mt/id :venues :price))))
-          (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))))
+          (is (= [1 2 3 4] (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))))
 
       (testing "POST /api/field/:id/discard_values"
         (testing "A non-admin can discard field values if they have data model perms for the table"
@@ -229,11 +231,11 @@
             (mt/user-http-request :rasta :post 200 (format "field/%d/discard_values" field-id))))
 
         (testing "A non-admin with no data access can discard field values if they have data model perms"
-          (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+          (is (= [1 2 3 4] (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
           (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
                                                :data-model {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
             (mt/user-http-request :rasta :post 200 (format "field/%d/discard_values" (mt/id :venues :price))))
-          (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price)))))))))
+          (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price)))))))))
 
 (deftest update-table-test
   (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
@@ -280,12 +282,12 @@
 
       (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
         (db/delete! FieldValues :field_id (mt/id :venues :price))
-        (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+        (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
         (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
           (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
                                                :data-model {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
             (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" (mt/id :venues)))))
-        (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))))
+        (is (= [1 2 3 4] (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))))
 
     (testing "POST /api/table/:id/discard_values"
       (testing "A non-admin can discard field values if they have data model perms for the table"
@@ -395,7 +397,7 @@
         (with-all-users-data-perms {db-id {:data    {:schemas :block :native :none}
                                            :details :yes}}
           (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id)))
-        (is (= nil (db/select-one-field :values FieldValues, :field_id field-id)))
+        (is (= nil (t2/select-one-fn :values FieldValues, :field_id field-id)))
         (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" db-id)))
 
       ;; Use test database for rescan_values tests so we can verify that scan actually succeeds
@@ -405,11 +407,11 @@
 
       (testing "A non-admin with no data access can trigger a re-scan of field values if they have DB details perms"
         (db/delete! FieldValues :field_id (mt/id :venues :price))
-        (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+        (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
         (with-all-users-data-perms {(mt/id) {:data   {:schemas :block :native :none}
                                              :details :yes}}
           (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id))))
-        (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))))))
+        (is (= [1 2 3 4] (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))))))
 
 (deftest fetch-db-test
   (mt/with-temp Database [{db-id :id}]
@@ -432,3 +434,28 @@
                                          :details :yes}}
         (is (partial= {:details {}}
              (mt/user-http-request :rasta :get 200 (format "database/%d?exclude_uneditable_details=true" db-id))))))))
+
+(deftest actions-test
+  (mt/with-temp-copy-of-db
+    (mt/with-actions-test-data
+      (mt/with-actions [{:keys [action-id model-id]} {}]
+        (testing "Executing dashcard with action"
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :action_id action-id
+                                                            :card_id model-id}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
+                                       dashboard-id
+                                       dashcard-id)]
+              (testing "Fails with access to the DB blocked"
+                (with-all-users-data-perms {(u/the-id (mt/db)) {:data    {:native :none :schemas :block}
+                                                                :details :yes}}
+                  (mt/with-actions-enabled
+                    (is (partial= {:message "You don't have permissions to do that."}
+                                  (mt/user-http-request :rasta :post 403 execute-path
+                                                        {:parameters {"id" 1}}))))))
+              (testing "Works with access to the DB not blocked"
+                (mt/with-actions-enabled
+                  (is (= {:rows-affected 1}
+                         (mt/user-http-request :rasta :post 200 execute-path
+                                               {:parameters {"id" 1}}))))))))))))

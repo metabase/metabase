@@ -103,7 +103,7 @@ describe("EventCard", () => {
   });
 });
 
-export const getProps = (opts?: Partial<EventCardProps>): EventCardProps => ({
+const getProps = (opts?: Partial<EventCardProps>): EventCardProps => ({
   event: createMockTimelineEvent(),
   timeline: createMockTimeline(),
   onArchive: jest.fn(),

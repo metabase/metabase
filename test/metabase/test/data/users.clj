@@ -1,21 +1,25 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
-  (:require [clojure.test :as t]
-            [medley.core :as m]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.http-client :as client]
-            [metabase.models.permissions-group :refer [PermissionsGroup]]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.user :refer [User]]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test.initialize :as initialize]
-            [metabase.util :as u]
-            [metabase.util.password :as u.password]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
-  (:import clojure.lang.ExceptionInfo
-           metabase.models.user.UserInstance))
+  (:require
+   [clojure.test :as t]
+   [medley.core :as m]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.http-client :as client]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions-group :refer [PermissionsGroup]]
+   [metabase.models.permissions-group-membership
+    :refer [PermissionsGroupMembership]]
+   [metabase.models.user :refer [User]]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test.initialize :as initialize]
+   [metabase.util :as u]
+   [metabase.util.password :as u.password]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 ;;; ------------------------------------------------ User Definitions ------------------------------------------------
 
@@ -65,9 +69,9 @@
              active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (initialize/initialize-if-needed! :db)
-  (or (db/select-one User :email email)
+  (or (t2/select-one User :email email)
       (locking create-user-lock
-        (or (db/select-one User :email email)
+        (or (t2/select-one User :email email)
             (db/insert! User
               :email        email
               :first_name   first
@@ -77,7 +81,7 @@
               :is_qbnewb    true
               :is_active    active)))))
 
-(s/defn fetch-user :- UserInstance
+(s/defn fetch-user :- (mi/InstanceOf User)
   "Fetch the User object associated with `username`. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
@@ -178,19 +182,19 @@
       (fetch-user user)
       (apply client-fn user args))
     (let [user-id             (u/the-id user)
-          user-email          (db/select-one-field :email User :id user-id)
+          user-email          (t2/select-one-fn :email User :id user-id)
           [old-password-info] (db/simple-select User {:select [:password :password_salt]
                                                       :where  [:= :id user-id]})]
       (when-not user-email
         (throw (ex-info "User does not exist" {:user user})))
       (try
-        (db/execute! {:update User
+        (db/execute! {:update :core_user
                       :set    {:password      (u.password/hash-bcrypt user-email)
                                :password_salt ""}
                       :where  [:= :id user-id]})
         (apply client/client {:username user-email, :password user-email} args)
         (finally
-          (db/execute! {:update User
+          (db/execute! {:update :core_user
                         :set    old-password-info
                         :where  [:= :id user-id]}))))))
 

@@ -1,19 +1,23 @@
 (ns metabase-enterprise.sso.integrations.jwt
   "Implementation of the JWT backend for sso"
-  (:require [buddy.sign.jwt :as jwt]
-            [clojure.string :as str]
-            [java-time :as t]
-            [metabase-enterprise.sso.api.interface :as sso.i]
-            [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-            [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
-            [metabase.api.common :as api]
-            [metabase.api.session :as api.session]
-            [metabase.integrations.common :as integrations.common]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.server.request.util :as request.u]
-            [metabase.util.i18n :refer [tru]]
-            [ring.util.response :as response])
-  (:import java.net.URLEncoder))
+  (:require
+   [buddy.sign.jwt :as jwt]
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase-enterprise.sso.api.interface :as sso.i]
+   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
+   [metabase.api.common :as api]
+   [metabase.api.session :as api.session]
+   [metabase.integrations.common :as integrations.common]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.server.request.util :as request.u]
+   [metabase.util.i18n :refer [tru]]
+   [ring.util.response :as response])
+  (:import
+   (java.net URLEncoder)))
+
+(set! *warn-on-reflection* true)
 
 (defn fetch-or-create-user!
   "Returns a session map for the given `email`. Will create the user if needed."

@@ -22,7 +22,7 @@ const NewItemButton = ({ collectionId }: NewItemButtonProps) => {
         </NewButton>
       }
       collectionId={collectionId}
-      analyticsContext={"NavBar"}
+      analyticsContext="NavBar"
     />
   );
 };

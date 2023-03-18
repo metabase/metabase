@@ -7,7 +7,7 @@ import { t } from "ttag";
 import CheckBox from "metabase/core/components/CheckBox";
 import Icon from "metabase/components/Icon";
 import Swapper from "metabase/core/components/Swapper";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import { color as c } from "metabase/lib/colors";
 import { ItemIcon, ItemIconContainer } from "./ArchivedItem.styled";
@@ -24,7 +24,10 @@ const ArchivedItem = ({
   onToggleSelected,
   showSelect,
 }) => (
-  <div className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover">
+  <div
+    className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover"
+    data-testid={`archive-item-${name}`}
+  >
     <Swapper
       defaultElement={
         <ItemIconContainer>

@@ -3,12 +3,9 @@ import slugg from "slugg";
 import { stringifyHashOptions } from "metabase/lib/browser";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { CollectionId, Dashboard } from "metabase-types/api";
+import { Dashboard } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
-
-export const newDashboard = (collectionId: CollectionId) =>
-  `collection/${collectionId}/new_dashboard`;
 
 type DashboardUrlBuilderOpts = {
   addCardWithId?: number;

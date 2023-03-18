@@ -1,5 +1,6 @@
 (ns metabase.test.initialize.events
-  (:require [metabase.events :as events]))
+  (:require
+   [metabase.events :as events]))
 
 (defn init!
   "Initialize async event handlers."

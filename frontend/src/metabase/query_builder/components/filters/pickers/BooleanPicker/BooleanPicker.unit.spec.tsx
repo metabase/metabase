@@ -65,8 +65,8 @@ describe("BooleanPicker", () => {
     it("should hide empty options when empty options are not selected", () => {
       setup(filters.True);
 
-      expect(screen.queryByLabelText("Empty")).toBeNull();
-      expect(screen.queryByLabelText("Not empty")).toBeNull();
+      expect(screen.queryByLabelText("Empty")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Not empty")).not.toBeInTheDocument();
 
       screen.getByText("More options").click();
 
@@ -113,8 +113,8 @@ describe("BooleanPicker", () => {
           onFilterChange={mockOnFilterChange}
         />,
       );
-      expect(screen.getByLabelText("True").checked).toBe(true);
-      expect(screen.getByLabelText("False").checked).toBe(false);
+      expect(screen.getByLabelText("True")).toBeChecked();
+      expect(screen.getByLabelText("False")).not.toBeChecked();
     });
     it("should render a false checkbox", () => {
       render(
@@ -123,8 +123,8 @@ describe("BooleanPicker", () => {
           onFilterChange={mockOnFilterChange}
         />,
       );
-      expect(screen.getByLabelText("True").checked).toBe(false);
-      expect(screen.getByLabelText("False").checked).toBe(true);
+      expect(screen.getByLabelText("True")).not.toBeChecked();
+      expect(screen.getByLabelText("False")).toBeChecked();
     });
 
     it("should render indeterminate checkboxes", () => {

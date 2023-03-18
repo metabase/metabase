@@ -1,16 +1,24 @@
 (ns metabase.db.jdbc-protocols
-  "Implementations of `clojure.java.jdbc` protocols for the Metabase application database. These handle type mappings
-  for setting parameters and for reading results from the DB — mainly by automatically converting CLOBs to Strings and
-  using new `java.time` classes."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.util.date-2 :as u.date])
-  (:import java.io.BufferedReader
-           [java.sql PreparedStatement ResultSet ResultSetMetaData Types]
-           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset]))
+  "Implementations of [[clojure.java.jdbc]] and [[next.jdbc]] protocols for the Metabase application database. These
+  handle type mappings for setting parameters and for reading results from the DB — mainly by automatically converting
+  CLOBs to Strings and using new `java.time` classes."
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
+   [next.jdbc.prepare]
+   [toucan2.jdbc.read :as t2.jdbc.read])
+  (:import
+   (java.io BufferedReader)
+   (java.sql PreparedStatement ResultSet ResultSetMetaData Types)
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (defn- set-object
   [^PreparedStatement stmt ^Integer index object ^Integer target-sql-type]
@@ -59,7 +67,13 @@
   ;; Similarly, none of them handle ZonedDateTime out of the box either, so convert it to an OffsetDateTime first
   ZonedDateTime
   (set-parameter [t stmt i]
-    (jdbc/set-parameter (t/offset-date-time t) stmt i)))
+    (jdbc/set-parameter (t/offset-date-time t) stmt i))
+
+  ;; JDBC drivers don't know about Clojure ratios. So just set them as a double instead. That should be ok enough for
+  ;; now.
+  clojure.lang.Ratio
+  (set-parameter [ratio stmt i]
+    (jdbc/set-parameter (double ratio) stmt i)))
 
 (defn clob->str
   "Convert an H2 clob to a String."
@@ -87,14 +101,7 @@
 
   org.h2.jdbc.JdbcBlob
   (result-set-read-column [^org.h2.jdbc.JdbcBlob blob _ _]
-    (.getBytes blob 0 (.length blob)))
-
-  org.h2.api.TimestampWithTimeZone
-  (result-set-read-column [t _ _]
-    (let [date        (t/local-date (.getYear t) (.getMonth t) (.getDay t))
-          time        (LocalTime/ofNanoOfDay (.getNanosSinceMidnight t))
-          zone-offset (ZoneOffset/ofTotalSeconds (* (.getTimeZoneOffsetMins t) 60))]
-      (t/offset-date-time date time zone-offset))))
+    (.getBytes blob 0 (.length blob))))
 
 (defmulti ^:private read-column
   {:arglists '([rs rsmeta i])}
@@ -111,7 +118,7 @@
     :postgres
     ;; for some reason postgres `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems
     ;; like a bug with the JDBC driver?
-    (let [^Class klass (if (= (str/lower-case (.getColumnTypeName rsmeta i)) "timestamptz")
+    (let [^Class klass (if (= (u/lower-case-en (.getColumnTypeName rsmeta i)) "timestamptz")
                          OffsetDateTime
                          LocalDateTime)]
       (.getObject rs i klass))
@@ -167,3 +174,27 @@
      (-> (read-column rs rsmeta i)
          (jdbc/result-set-read-column rsmeta i)))
    indexes))
+
+;;;; [[next.jdbc]] and Toucan 2 mappings
+
+(extend-protocol next.jdbc.prepare/SettableParameter
+   ;; DB's don't seem to handle Instant correctly so convert it to an OffsetDateTime with zone offset = 0
+  Instant
+  (set-parameter [t stmt i]
+    (jdbc/set-parameter (t/offset-date-time t (t/zone-offset 0)) stmt i))
+
+  ZonedDateTime
+  (set-parameter [t stmt i]
+    (next.jdbc.prepare/set-parameter (t/offset-date-time t) stmt i))
+
+  clojure.lang.Ratio
+  (set-parameter [ratio stmt i]
+    (next.jdbc.prepare/set-parameter (double ratio) stmt i)))
+
+(methodical/defmethod t2.jdbc.read/read-column-thunk [:default :default java.sql.Types/OTHER]
+  "Read Postgres `citext` columns out as Strings."
+  [^java.sql.Connection conn model ^java.sql.ResultSet rset ^java.sql.ResultSetMetaData rsmeta ^Long i]
+  (if (= (.getColumnTypeName rsmeta i) "citext")
+    (fn get-citext-as-string []
+      (.getString rset i))
+    (next-method conn model rset rsmeta i)))

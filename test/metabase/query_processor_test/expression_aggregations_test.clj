@@ -1,11 +1,11 @@
 (ns metabase.query-processor-test.expression-aggregations-test
   "Tests for expression aggregations and for named aggregations."
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest sum-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
@@ -46,15 +46,10 @@
 (deftest avg-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "avg, -"
-      (is (= (if (= driver/*driver* :h2)
-               [[1  55]
-                [2  97]
-                [3 142]
-                [4 246]]
-               [[1  55]
-                [2  96]
-                [3 141]
-                [4 246]])
+      (is (= [[1  55]
+              [2  96]
+              [3 141]
+              [4 246]]
              (mt/formatted-rows [int int]
                (mt/run-mbql-query venues
                  {:aggregation [[:avg [:* $id $price]]]
@@ -96,15 +91,10 @@
                     :breakout    [$price]})))))
 
       (testing "w/ avg: count + avg"
-        (is (= (if (= driver/*driver* :h2)
-                 [[1  77]
-                  [2 107]
-                  [3  60]
-                  [4  68]]
-                 [[1  77]
-                  [2 107]
-                  [3  60]
-                  [4  67]])
+        (is (= [[1  77]
+                [2 107]
+                [3  60]
+                [4  67]]
                (mt/formatted-rows [int int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:+ [:count $id] [:avg $id]]]
@@ -122,6 +112,23 @@
                  {:aggregation [[:+
                                  [:count $id]
                                  [:* [:count $id] [:sum $price]]]]
+                  :breakout    [$price]})))))))
+
+(deftest nested-post-multi-aggregation-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+    (testing "nested post-aggregation math: count + (count * sum)"
+      (is (= [[1   990 22 22 2.0]
+              [2 10502 59 59 2.0]
+              [3   689 13 13 2.0]
+              [4   186  6  6 0.0]]
+             (mt/formatted-rows [int int int int float]
+               (mt/run-mbql-query venues
+                 {:aggregation [[:+
+                                 [:count $id]
+                                 [:* [:count $id] [:sum [:+ $price 1]]]]
+                                [:count $id]
+                                [:count]
+                                [:* 2 [:share [:< $price 4]]]]
                   :breakout    [$price]})))))))
 
 (deftest math-inside-aggregations-test
@@ -289,29 +296,29 @@
                    :order-by    [[:asc [:aggregation 0]]]}))))))))
 
 #_(deftest multiple-cumulative-sums-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
-    (testing "The results of divide or multiply two CumulativeSum should be correct (#15118)"
-      (mt/dataset sample-dataset
-        (is (= [["2016-01-01T00:00:00Z" 3236  2458.0  5694.0   1]
-                ["2017-01-01T00:00:00Z" 17587 14995.0 32582.0  2]
-                ["2018-01-01T00:00:00Z" 40381 35366.5 75747.5  3]
-                ["2019-01-01T00:00:00Z" 65835 58002.7 123837.7 4]
-                ["2020-01-01T00:00:00Z" 69540 64923.0 134463.0 5]]
-               (mt/formatted-rows [identity int 2.0 2.0 int]
-                 (mt/run-mbql-query orders
-                   {:aggregation
-                    [[:aggregation-options [:cum-sum $quantity] {:display-name "C1"}]
-                     [:aggregation-options
-                      [:cum-sum $product_id->products.rating]
-                      {:display-name "C2"}]
-                     [:aggregation-options
-                      [:+
-                       [:cum-sum $quantity]
-                       [:cum-sum $product_id->products.rating]]
-                      {:display-name "C3"}]
-                     [:aggregation-options
-                      [:*
-                       [:cum-sum $quantity]
-                       [:cum-sum $product_id->products.rating]]
-                      {:display-name "C4"}]]
-                    :breakout [!year.created_at]}))))))))
+   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+     (testing "The results of divide or multiply two CumulativeSum should be correct (#15118)"
+       (mt/dataset sample-dataset
+         (is (= [["2016-01-01T00:00:00Z" 3236  2458.0  5694.0   1]
+                 ["2017-01-01T00:00:00Z" 17587 14995.0 32582.0  2]
+                 ["2018-01-01T00:00:00Z" 40381 35366.5 75747.5  3]
+                 ["2019-01-01T00:00:00Z" 65835 58002.7 123837.7 4]
+                 ["2020-01-01T00:00:00Z" 69540 64923.0 134463.0 5]]
+                (mt/formatted-rows [identity int 2.0 2.0 int]
+                  (mt/run-mbql-query orders
+                    {:aggregation
+                     [[:aggregation-options [:cum-sum $quantity] {:display-name "C1"}]
+                      [:aggregation-options
+                       [:cum-sum $product_id->products.rating]
+                       {:display-name "C2"}]
+                      [:aggregation-options
+                       [:+
+                        [:cum-sum $quantity]
+                        [:cum-sum $product_id->products.rating]]
+                       {:display-name "C3"}]
+                      [:aggregation-options
+                       [:*
+                        [:cum-sum $quantity]
+                        [:cum-sum $product_id->products.rating]]
+                       {:display-name "C4"}]]
+                     :breakout [!year.created_at]}))))))))

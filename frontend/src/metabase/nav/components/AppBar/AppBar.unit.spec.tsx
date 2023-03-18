@@ -31,10 +31,11 @@ describe("AppBar", () => {
 
     it("should render the desktop app bar", () => {
       const props = getProps({
-        isNavBarVisible: true,
+        isNavBarEnabled: true,
         isCollectionPathVisible: true,
         isSearchVisible: true,
         isNewButtonVisible: true,
+        isLogoVisible: true,
       });
 
       render(<AppBar {...props} />);
@@ -76,10 +77,11 @@ describe("AppBar", () => {
 
     it("should render the mobile app bar", () => {
       const props = getProps({
-        isNavBarVisible: true,
+        isNavBarEnabled: true,
         isCollectionPathVisible: true,
         isSearchVisible: true,
         isNewButtonVisible: true,
+        isLogoVisible: true,
       });
 
       render(<AppBar {...props} />);

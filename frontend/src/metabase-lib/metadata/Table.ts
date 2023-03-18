@@ -4,7 +4,7 @@
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import Question from "../Question"; // eslint-disable-line import/order
 import { singularize } from "metabase/lib/formatting";
-import type { TableId } from "metabase-types/types/Table";
+import type { Table as ITable, TableId } from "metabase-types/api";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { getAggregationOperators } from "metabase-lib/operators/utils";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/utils";
@@ -34,6 +34,10 @@ class TableInner extends Base {
   fields: Field[];
   metadata?: Metadata;
   db?: Database | undefined | null;
+
+  getPlainObject(): ITable {
+    return this._plainObject;
+  }
 
   isVirtualCard() {
     return isVirtualCardId(this.id);
@@ -164,26 +168,6 @@ class TableInner extends Base {
     const newTable = new Table(this);
     newTable._plainObject = plainObject;
     return newTable;
-  }
-
-  /**
-   * @private
-   * @param {string} description
-   * @param {Database} db
-   * @param {Schema?} schema
-   * @param {SchemaName} [schema_name]
-   * @param {Field[]} fields
-   * @param {EntityType} entity_type
-   */
-
-  /* istanbul ignore next */
-  _constructor(description, db, schema, schema_name, fields, entity_type) {
-    this.description = description;
-    this.db = db;
-    this.schema = schema;
-    this.schema_name = schema_name;
-    this.fields = fields;
-    this.entity_type = entity_type;
   }
 }
 

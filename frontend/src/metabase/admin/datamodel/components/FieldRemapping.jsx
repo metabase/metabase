@@ -6,7 +6,6 @@ import _ from "underscore";
 
 import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import InputBlurChange from "metabase/components/InputBlurChange";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -22,6 +21,7 @@ import {
   FieldMappingRoot,
   FieldSelectButton,
   ForeignKeyList,
+  FieldValueMappingInput,
 } from "./FieldRemapping.styled";
 
 const MAP_OPTIONS = {
@@ -50,10 +50,10 @@ export default class FieldRemapping extends React.Component {
     if (_.isEmpty(field.dimensions)) {
       return MAP_OPTIONS.original;
     }
-    if (field.dimensions.type === "external") {
+    if (field.dimensions[0]?.type === "external") {
       return MAP_OPTIONS.foreign;
     }
-    if (field.dimensions.type === "internal") {
+    if (field.dimensions[0]?.type === "internal") {
       return MAP_OPTIONS.custom;
     }
 
@@ -241,9 +241,10 @@ export default class FieldRemapping extends React.Component {
     const mappingType = this.getMappingTypeForField(field);
     const isFKMapping = mappingType === MAP_OPTIONS.foreign;
     const hasFKMappingValue =
-      isFKMapping && field.dimensions.human_readable_field_id !== null;
+      isFKMapping && field.dimensions?.[0]?.human_readable_field_id !== null;
     const fkMappingField =
-      hasFKMappingValue && fields[field.dimensions.human_readable_field_id];
+      hasFKMappingValue &&
+      fields[field.dimensions?.[0]?.human_readable_field_id];
 
     return (
       <div>
@@ -442,8 +443,8 @@ export class FieldValueMapping extends React.Component {
     return (
       <div className="flex align-center">
         <h3>{original}</h3>
-        <InputBlurChange
-          className="AdminInput input ml-auto"
+        <FieldValueMappingInput
+          className="ml-auto"
           value={mapped}
           onChange={this.onInputChange}
           placeholder={t`Enter value`}

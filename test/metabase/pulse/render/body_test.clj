@@ -1,11 +1,13 @@
 (ns metabase.pulse.render.body-test
-  (:require [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [hiccup.core :refer [html]]
-            [metabase.pulse.render.body :as body]
-            [metabase.pulse.render.common :as common]
-            [metabase.pulse.render.test-util :as render.tu]
-            [schema.core :as s]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [hiccup.core :refer [html]]
+   [metabase.pulse.render.body :as body]
+   [metabase.pulse.render.common :as common]
+   [metabase.pulse.render.test-util :as render.tu]
+   [schema.core :as s]))
 
 (use-fixtures :each
   (fn warn-possible-rebuild
@@ -45,11 +47,12 @@
 (defn- col-counts [results]
   (set (map (comp count :row) results)))
 
-(defn- number [x]
-  (common/map->NumericWrapper {:num-str x}))
+(defn- number [num-str num-value]
+  (common/map->NumericWrapper {:num-str   (str num-str)
+                               :num-value num-value}))
 
 (def ^:private default-header-result
-  [{:row       [(number "ID") (number "Latitude") "Last Login" "Name"]
+  [{:row       [(number "ID" "ID") (number "Latitude" "Latitude") "Last Login" "Name"]
     :bar-width nil}
    #{4}])
 
@@ -150,23 +153,23 @@
 
 ;; When there are too many columns, #'body/prep-for-html-rendering show narrow it
 (deftest narrow-the-columns
-  (is (= [{:row [(number "ID") (number "Latitude")]
+  (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude")]
            :bar-width 99}
           #{2}]
          (prep-for-html-rendering' (subvec test-columns 0 2) test-data second 0 40.0))))
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
-  (is (= [{:bar-width nil, :row [(number "1") (number "34.1") "Apr 1, 2014" "Stout Burgers & Beers"]}
-          {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width nil, :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014" "The Apple Pan"]}
+          {:bar-width nil, :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
-  (is (= [{:bar-width (float 85.249),  :row [(number "1") (number "34.1") "Apr 1, 2014" "Stout Burgers & Beers"]}
-          {:bar-width (float 85.1015), :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
-          {:bar-width (float 85.1185), :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
+  (is (= [{:bar-width (float 85.249),  :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width (float 85.1015), :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014" "The Apple Pan"]}
+          {:bar-width (float 85.1185), :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data}
                                                {:bar-column second, :min-value 0, :max-value 40})))))
 
@@ -200,16 +203,16 @@
 
 ;; With a remapped column, the header should contain the name of the remapped column (not the original)1
 (deftest remapped-col
-  (is (= [{:row [(number "ID") (number "Latitude") "Rating Desc" "Last Login" "Name"]
+  (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude") "Rating Desc" "Last Login" "Name"]
            :bar-width nil}
           #{5}]
          (prep-for-html-rendering' test-columns-with-remapping test-data-with-remapping nil nil nil))))
 
 ;; Result rows should include only the remapped column value, not the original
 (deftest include-only-remapped-column-name
-  (is (= [[(number "1") (number "34.1") "Bad" "Apr 1, 2014" "Stout Burgers & Beers"]
-          [(number "2") (number "34.04") "Ok" "Dec 5, 2014" "The Apple Pan"]
-          [(number "3") (number "34.05") "Good" "Aug 1, 2014" "The Gorbals"]]
+  (is (= [[(number "1" 1) (number "34.1" 34.0996) "Bad" "April 1, 2014" "Stout Burgers & Beers"]
+          [(number "2" 2) (number "34.04" 34.0406) "Ok" "December 5, 2014" "The Apple Pan"]
+          [(number "3" 3) (number "34.05" 34.0474) "Good" "August 1, 2014" "The Gorbals"]]
          (map :row (rest (#'body/prep-for-html-rendering  pacific-tz
                                                           {}
                                                           {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
@@ -231,9 +234,9 @@
                                 :coercion_strategy :Coercion/ISO8601->DateTime}))
 
 (deftest cols-with-semantic-types
-  (is (= [{:bar-width nil, :row [(number "1") (number "34.1") "Apr 1, 2014" "Stout Burgers & Beers"]}
-          {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width nil, :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014" "The Apple Pan"]}
+          {:bar-width nil, :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                                                {}
                                                {:cols test-columns-with-date-semantic-type :rows test-data})))))
@@ -274,7 +277,7 @@
                                          :semantic_type nil}]
                                  :rows [["foo"]]}))))
   (testing "renders date"
-    (is (= "Apr 1, 2014"
+    (is (= "April 1, 2014"
            (render-scalar-value {:cols [{:name         "date",
                                          :display_name "DATE",
                                          :base_type    :type/DateTime
@@ -410,25 +413,30 @@
 (deftest render-bar-graph-test
   (testing "Render a bar graph with non-nil values for the x and y axis"
     (is (has-inline-image?
-         (render-bar-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+         (render-bar-graph {:cols         default-columns
+                            :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
+                            :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
-         (render-bar-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
+         (render-bar-graph {:cols         default-columns
+                            :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]
+                            :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
-         (render-bar-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
+         (render-bar-graph {:cols         default-columns
+                            :rows         [[10.0 1] [5.0 10] [2.50 20] [nil 30]]
+                            :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check to make sure we allow nil values for both x and y on different rows"
     (is (has-inline-image?
-         (render-bar-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]}))))
+         (render-bar-graph {:cols         default-columns
+                            :rows         [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]
+                            :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check multiseries in one card but without explicit combo"
     (is (has-inline-image?
-          (render-multiseries-bar-graph
-            {:cols default-multi-columns
-             :rows [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]})))))
+         (render-multiseries-bar-graph
+          {:cols         default-multi-columns
+           :rows         [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]
+           :viz-settings {:graph.metrics ["NumPurchased"]}})))))
 
 (defn- render-area-graph [results]
   (body/render :area :inline pacific-tz render.tu/test-card nil results))
@@ -442,82 +450,35 @@
 (deftest render-area-graph-test
   (testing "Render an area graph with non-nil values for the x and y axis"
     (is (has-inline-image?
-          (render-area-graph {:cols default-columns
-                              :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+         (render-area-graph {:cols         default-columns
+                             :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
+                             :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Render a stacked area graph"
     (is (has-inline-image?
-          (render-stack-area-graph {:cols default-columns
-                                    :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+         (render-stack-area-graph {:cols         default-multi-columns
+                                   :rows         [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]
+                                   :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
-          (render-area-graph {:cols default-columns
-                              :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
+         (render-area-graph {:cols         default-columns
+                             :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]
+                             :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
-          (render-area-graph {:cols default-columns
-                              :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
+         (render-area-graph {:cols         default-columns
+                             :rows         [[10.0 1] [5.0 10] [2.50 20] [nil 30]]
+                             :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check to make sure we allow nil values for both x and y on different rows"
     (is (has-inline-image?
-          (render-area-graph {:cols default-columns
-                              :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]}))))
+         (render-area-graph {:cols         default-columns
+                             :rows         [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]
+                             :viz-settings {:graph.metrics ["NumPurchased"]}}))))
   (testing "Check multiseries in one card but without explicit combo"
     (is (has-inline-image?
-          (render-multiseries-area-graph
-            {:cols default-multi-columns
-             :rows [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]})))))
-
-(deftest series-with-color-test
-  (testing "Check if single x-axis combo series can convert colors"
-    (is (= [{:name "NumPurchased", :color "#a7cf7b", :type :bar, :data [[10.0 1] [5.0 10] [1.25 20]], :yAxisPosition "left"}]
-           (#'body/single-x-axis-combo-series
-            :bar
-            [[[10.0] [1]] [[5.0] [10]] [[1.25] [20]]]
-            [{:name "Price", :display_name "Price", :base_type :type/BigInteger, :semantic_type nil}]
-            [{:name "NumPurchased", :display_name "NumPurchased", :base_type :type/BigInteger, :semantic_type nil}]
-            {:viz-settings {:series_settings {:NumPurchased {:color "#a7cf7b"}}}}))))
-  (testing "Check if double x-axis combo series can convert colors"
-    (is (= [{:name "Bob", :color "#c5a9cf", :type "line", :data [[10.0 123]], :yAxisPosition "left"}
-            {:name "Dobbs", :color "#a7cf7b", :type "bar", :data [[5.0 12]], :yAxisPosition "right"}
-            {:name "Robbs", :color "#34517d", :type "bar", :data [[2.5 1337]], :yAxisPosition "right"}
-            {:name "Mobbs", :color "#e0be40", :type "bar", :data [[1.25 -22]], :yAxisPosition "right"}]
-           (#'body/double-x-axis-combo-series
-            nil
-            [[[10.0 "Bob"] [123]] [[5.0 "Dobbs"] [12]] [[2.5 "Robbs"] [1337]] [[1.25 "Mobbs"] [-22]]]
-            [{:base_type :type/BigInteger, :display_name "Price", :name "Price", :semantic_type nil}
-             {:base_type :type/BigInteger, :display_name "NumPurchased", :name "NumPurchased", :semantic_type nil}]
-            [{:base_type :type/BigInteger, :display_name "NumKazoos", :name "NumKazoos", :semantic_type nil}]
-            {:viz-settings {:series_settings {:Bob {:color "#c5a9cf"}
-                                              :Dobbs {:color "#a7cf7b"}
-                                              :Robbs {:color "#34517d"}
-                                              :Mobbs {:color "#e0be40"}}}})))))
-
-(deftest series-with-custom-names-test
-  (testing "Check if single x-axis combo series uses custom series names (#21503)"
-    (is (= #{"Bought" "Sold"}
-           (set (map :name
-                     (#'body/single-x-axis-combo-series
-                       :bar
-                       [[[10.0] [1 -1]] [[5.0] [10 -10]] [[1.25] [20 -20]]]
-                       [{:name "Price", :display_name "Price", :base_type :type/Number}]
-                       [{:name "NumPurchased", :display_name "NumPurchased", :base_type :type/Number}
-                        {:name "NumSold", :display_name "NumSold", :base_type :type/Number}]
-                       {:viz-settings
-                        {:series_settings {:NumPurchased {:color "#a7cf7b" :title "Bought"}
-                                           :NumSold      {:color "#a7cf7b" :title "Sold"}}}}))))))
-  (testing "Check if double x-axis combo series uses custom series names (#21503)"
-    (is (= #{"Bobby" "Dobby" "Robby" "Mobby"}
-           (set (map :name
-                     (#'body/double-x-axis-combo-series
-                       nil
-                       [[[10.0 "Bob"] [123]] [[5.0 "Dobbs"] [12]] [[2.5 "Robbs"] [1337]] [[1.25 "Mobbs"] [-22]]]
-                       [{:base_type :type/BigInteger, :display_name "Price", :name "Price", :semantic_type nil}
-                        {:base_type :type/BigInteger, :display_name "NumPurchased", :name "NumPurchased", :semantic_type nil}]
-                       [{:base_type :type/BigInteger, :display_name "NumKazoos", :name "NumKazoos", :semantic_type nil}]
-                       {:viz-settings
-                        {:series_settings {:Bob   {:color "#c5a9cf" :title "Bobby"}
-                                           :Dobbs {:color "#a7cf7b" :title "Dobby"}
-                                           :Robbs {:color "#34517d" :title "Robby"}
-                                           :Mobbs {:color "#e0be40" :title "Mobby"}}}})))))))
+         (render-multiseries-area-graph
+          {:cols         default-multi-columns
+           :rows         [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]
+           :viz-settings {:graph.metrics ["NumPurchased"]}})))))
 
 (defn- render-waterfall [results]
   (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
@@ -526,23 +487,28 @@
   (testing "Render a waterfall graph with non-nil values for the x and y axis"
     (is (has-inline-image?
          (render-waterfall {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+                            :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
+                            :viz-settings {}}))))
   (testing "Render a waterfall graph with bigdec, bigint values for the x and y axis"
     (is (has-inline-image?
-          (render-waterfall {:cols default-columns
-                             :rows [[10.0M 1M] [5.0 10N] [2.50 20N] [1.25M 30]]}))))
+         (render-waterfall {:cols         default-columns
+                            :rows         [[10.0M 1M] [5.0 10N] [2.50 20N] [1.25M 30]]
+                            :viz-settings {}}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
-         (render-waterfall {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
+         (render-waterfall {:cols         default-columns
+                            :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]
+                            :viz-settings {}}))))
   (testing "Check to make sure we allow nil values for the x-axis"
     (is (has-inline-image?
-         (render-waterfall {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
+         (render-waterfall {:cols         default-columns
+                            :rows         [[10.0 1] [5.0 10] [2.50 20] [nil 30]]
+                            :viz-settings {}}))))
   (testing "Check to make sure we allow nil values for both x and y on different rows"
     (is (has-inline-image?
-         (render-waterfall {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
+         (render-waterfall {:cols         default-columns
+                            :rows         [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]
+                            :viz-settings {}})))))
 
 (defn- render-combo [results]
   (body/render :combo :inline pacific-tz render.tu/test-combo-card nil results))
@@ -553,16 +519,18 @@
 (deftest render-combo-test
   (testing "Render a combo graph with non-nil values for the x and y axis"
     (is (has-inline-image?
-          (render-combo {:cols default-multi-columns
-                         :rows [[10.0 1 123 111] [5.0 10 12 111] [2.50 20 1337 12312] [1.25 30 -22 123124]]}))))
+         (render-combo {:cols         default-multi-columns
+                        :rows         [[10.0 1 123 111] [5.0 10 12 111] [2.50 20 1337 12312] [1.25 30 -22 123124]]
+                        :viz-settings {:graph.metrics ["NumPurchased" "NumKazoos" "ExtraneousColumn"]}}))))
   (testing "Render a combo graph with multiple x axes"
     (is (has-inline-image?
-          (render-combo-multi-x {:cols default-multi-columns
-                                 :rows [[10.0 "Bob" 123 123124] [5.0 "Dobbs" 12 23423] [2.50 "Robbs" 1337 234234] [1.25 "Mobbs" -22 1234123]]}))))
+         (render-combo-multi-x {:cols         default-multi-columns
+                                :rows         [[10.0 "Bob" 123 123124] [5.0 "Dobbs" 12 23423] [2.50 "Robbs" 1337 234234] [1.25 "Mobbs" -22 1234123]]}))))
   (testing "Check to make sure we allow nil values for any axis"
     (is (has-inline-image?
-          (render-combo {:cols default-multi-columns
-                         :rows [[nil 1 1 23453] [10.0 1 nil nil] [5.0 10 22 1337] [2.50 nil 22 1231] [1.25 nil nil 1231232]]})))))
+         (render-combo {:cols         default-multi-columns
+                        :rows         [[nil 1 1 23453] [10.0 1 nil nil] [5.0 10 22 1337] [2.50 nil 22 1231] [1.25 nil nil 1231232]]
+                        :viz-settings {:graph.metrics ["NumPurchased" "NumKazoos" "ExtraneousColumn"]}})))))
 
 (defn- render-funnel [results]
   (body/render :funnel :inline pacific-tz render.tu/test-card nil results))
@@ -571,18 +539,21 @@
   (testing "Test that we can render a funnel with all valid values"
     (is (has-inline-image?
          (render-funnel
-          {:cols default-columns
-           :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+          {:cols         default-columns
+           :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
+           :viz-settings {}}))))
   (testing "Test that we can render a funnel with extraneous columns and also weird strings stuck in places"
     (is (has-inline-image?
-          (render-funnel
-            {:cols default-multi-columns
-             :rows [[10.0 1 2 2] [5.0 10 "11.1" 1] ["2.50" 20 1337 0] [1.25 30 -2 "-2"]]}))))
+         (render-funnel
+          {:cols         default-multi-columns
+           :rows         [[10.0 1 2 2] [5.0 10 "11.1" 1] ["2.50" 20 1337 0] [1.25 30 -2 "-2"]]
+           :viz-settings {}}))))
   (testing "Test that we can have some nil values stuck everywhere"
     (is (has-inline-image?
          (render-funnel
-          {:cols default-columns
-           :rows [[nil 1] [11.0 nil] [nil nil] [2.50 20] [1.25 30]]})))))
+          {:cols         default-columns
+           :rows         [[nil 1] [11.0 nil] [nil nil] [2.50 20] [1.25 30]]
+           :viz-settings {}})))))
 
 (deftest render-categorical-donut-test
   (let [columns [{:name          "category",
@@ -658,25 +629,61 @@
     nil  "1,234,543.21%"
     ""   "1,234,543.21%"))
 
+(defn- get-axis-classes
+  [viz-tree]
+  (let [nodes (render.tu/nodes-with-tag viz-tree :g)
+        xf    (comp
+               (mapcat #(filter map? %))
+               (map :class)
+               (mapcat #(str/split % #" "))
+               (filter #{"visx-axis-left" "visx-axis-right"}))]
+   (into #{} xf nodes)))
+
 (deftest reasonable-split-axes-test
+  (let [rows [["Category" "Series A" "Series B"]
+              ["A"        1          1.3]
+              ["B"        2          1.9]
+              ["C"        3          4]]]
+    (testing "Single X-axis, multiple series with close values does not split y-axis."
+      (is (= #{"visx-axis-left"}
+             (-> rows
+                 (render.tu/make-viz-data :bar :single {})
+                 :viz-tree
+                 get-axis-classes))))
+    (testing "Single X-axis, multiple series with far values does split y-axis."
+      (is (= #{"visx-axis-left" "visx-axis-right"}
+             (-> (conj rows ["D" 3 70])
+                 (render.tu/make-viz-data :bar :single {})
+                 :viz-tree
+                 get-axis-classes))))
+    (testing "Multiple series split does not fail when a series has the same value for all of its rows #27427"
+      (let [rows [["Category" "Series A" "Series B"]
+                  ["A"        1          1.3]
+                  ["B"        1          1.9]
+                  ["C"        1          4]]]
+        (is (= #{"visx-axis-left"}
+               (-> rows
+                   (render.tu/make-viz-data :bar :single {})
+                   :viz-tree
+                   get-axis-classes)))))))
+
+(deftest multi-x-axis-series-reasonable-split-axes-test
   (let [rows        [["Category" "Series A" "Series B"]
-                     ["A"        1          1.3]
-                     ["B"        2          1.9]
-                     ["C"        3          4  ]]
-        axes-split? (fn [rows]
-                      (let [text (-> rows first last)]
-                        ;; there is always 1 node with the series name in the legend
-                        ;; so we see if the series name shows up a second time, which will
-                        ;; be the axis label, indicating that there is indeed a split
-                        (< 1 (-> rows
-                                 (render.tu/make-viz-data :bar {})
-                                 :viz-tree
-                                 (render.tu/nodes-with-text text)
-                                 count))))]
-    (testing "Multiple series with close values does not split y-axis."
-      (is (not (axes-split? rows))))
-    (testing "Multiple series with far values does split y-axis."
-      (is (axes-split? (conj rows ["D" 3 70]))))))
+                     ["A"        1.0          1.3]
+                     ["B"        2.0          1.9]
+                     ["C"        3.0          3.2]]]
+    (testing "Mulit-x-axis series with close values does not split y-axis."
+      (is (= #{"visx-axis-left"}
+             (-> rows
+                 (render.tu/make-viz-data :bar :multi {})
+                 :viz-tree
+                 get-axis-classes))))
+    (testing "Mulit-x-axis series with far values does split y-axis."
+      (is (= #{"visx-axis-left" "visx-axis-right"}
+             (-> (conj rows ["D" 3 70])
+                 (render.tu/make-viz-data :bar :multi {})
+                 :viz-tree
+                 get-axis-classes))))))
 
 (deftest ^:parallel x-and-y-axis-label-info-test
   (let [x-col {:display_name "X col"}
@@ -688,3 +695,34 @@
       (is (= {:bottom "X custom", :left "Y custom"}
              (#'body/x-and-y-axis-label-info x-col y-col {:graph.x_axis.title_text "X custom"
                                                           :graph.y_axis.title_text "Y custom"}))))))
+
+(deftest lab-charts-respect-y-axis-range
+  (let [rows     [["Category" "Series A" "Series B"]
+                  ["A"        1          1.3]
+                  ["B"        2          1.9]
+                  ["C"        -3          6]]
+        renderfn (fn [viz]
+                   (-> rows
+                       (render.tu/make-card-and-data :bar)
+                       (render.tu/merge-viz-settings viz)
+                       render.tu/render-as-hiccup))]
+    (testing "Graph min and max values are respected in the render. #27927"
+      (let [to-find           ["14" "2" "-2" "-14"]
+            no-viz-render     (renderfn {})
+            viz-a-render      (renderfn {:graph.y_axis.max 14
+                                         :graph.y_axis.min -14})
+            nodes-without-viz (mapv #(last (last (render.tu/nodes-with-text no-viz-render %))) to-find)
+            nodes-with-viz    (mapv #(last (last (render.tu/nodes-with-text viz-a-render %))) to-find)]
+        ;; we only see 14/-14 in the render where min and max are explicitly set.
+        ;; this is because the data's min and max values are only -3 and 6, and the viz will minimize the axis range
+        ;; without cutting off the chart's actual values
+        (is (= {:without-viz ["2" "-2"]
+                :with-viz    ["14" "2" "-2" "-14"]}
+               {:without-viz (remove nil? nodes-without-viz)
+                :with-viz    nodes-with-viz}))))
+    (testing "Graph min and max values do not cut off the chart."
+      (let [viz-b-render   (renderfn {:graph.y_axis.max 1
+                                      :graph.y_axis.min -1})
+            to-find        ["14" "2" "-2" "-14"]
+            nodes-with-viz (mapv #(last (last (render.tu/nodes-with-text viz-b-render %))) to-find)]
+        (is (= ["2" "-2"] (remove nil? nodes-with-viz)))))))

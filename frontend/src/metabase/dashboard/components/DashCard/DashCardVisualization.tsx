@@ -8,15 +8,21 @@ import { IconProps } from "metabase/components/Icon";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
+import { getVisualizationRaw } from "metabase/visualizations";
 
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+import { SAVING_CHART_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  getVirtualCardType,
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
 
 import type {
   Dashboard,
   DashboardOrderedCard,
   DashCardId,
+  VirtualCardDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 import type {
@@ -36,6 +42,7 @@ import {
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,
 } from "./DashCard.styled";
+import { CardDownloadWidget } from "./DashCardVisualization.styled";
 
 interface DashCardVisualizationProps {
   dashboard: Dashboard;
@@ -55,8 +62,8 @@ interface DashCardVisualizationProps {
 
   expectedDuration: number;
   isSlow: CardSlownessStatus;
-
   isAction: boolean;
+
   isPreviewing: boolean;
   isEmbed: boolean;
   isClickBehaviorSidebarOpen: boolean;
@@ -67,6 +74,7 @@ interface DashCardVisualizationProps {
   isFullscreen?: boolean;
   isMobile?: boolean;
   isNightMode?: boolean;
+  isPublic?: boolean;
 
   error?: { message?: string; icon?: IconProps["name"] };
   headerIcon?: IconProps;
@@ -100,11 +108,12 @@ function DashCardVisualization({
   totalNumGridCols,
   expectedDuration,
   error,
+  isAction,
   headerIcon,
   isSlow,
-  isAction,
   isPreviewing,
   isEmbed,
+  isPublic,
   isEditingDashboardLayout,
   isClickBehaviorSidebarOpen,
   isEditingDashCardClickBehavior,
@@ -120,13 +129,24 @@ function DashCardVisualization({
 }: DashCardVisualizationProps) {
   const renderVisualizationOverlay = useCallback(() => {
     if (isClickBehaviorSidebarOpen) {
-      if (isVirtualDashCard(dashcard)) {
-        const isTextCard =
-          dashcard?.visualization_settings?.virtual_card?.display === "text";
+      const { disableClickBehavior } =
+        getVisualizationRaw(series).visualization;
+      if (isVirtualDashCard(dashcard) || disableClickBehavior) {
+        const virtualDashcardType = getVirtualCardType(
+          dashcard,
+        ) as VirtualCardDisplay;
+        const placeholderText =
+          {
+            link: t`Link`,
+            action: t`Action Button`,
+            text: t`Text Card`,
+          }[virtualDashcardType] ??
+          t`This card does not support click mappings`;
+
         return (
           <VirtualDashCardOverlayRoot>
             <VirtualDashCardOverlayText>
-              {isTextCard ? t`Text card` : t`Action button`}
+              {placeholderText}
             </VirtualDashCardOverlayText>
           </VirtualDashCardOverlayRoot>
         );
@@ -141,7 +161,7 @@ function DashCardVisualization({
       );
     }
 
-    if (isEditingParameter && !isAction) {
+    if (isEditingParameter) {
       return (
         <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
       );
@@ -151,32 +171,53 @@ function DashCardVisualization({
   }, [
     dashcard,
     gridItemWidth,
-    isAction,
     isMobile,
     isEditingParameter,
     isClickBehaviorSidebarOpen,
     isEditingDashCardClickBehavior,
     showClickBehaviorSidebar,
+    series,
   ]);
 
   const renderActionButtons = useCallback(() => {
-    if (isEmbed) {
-      return (
-        <QueryDownloadWidget
-          className="m1 text-brand-hover text-light"
-          classNameClose="hover-child"
-          card={dashcard.card}
-          params={parameterValuesBySlug}
-          dashcardId={dashcard.id}
-          token={dashcard.dashboard_id}
-          icon="download"
-          // Can be removed once QueryDownloadWidget is converted to Typescript
-          visualizationSettings={undefined}
-        />
-      );
+    const mainSeries = series[0];
+
+    const shouldShowDownloadWidget =
+      isEmbed ||
+      (!isPublic &&
+        !isEditing &&
+        QueryDownloadWidget.shouldRender({
+          result: mainSeries,
+          isResultDirty: false,
+        }));
+
+    if (!shouldShowDownloadWidget) {
+      return null;
     }
-    return null;
-  }, [dashcard, parameterValuesBySlug, isEmbed]);
+
+    return (
+      <CardDownloadWidget
+        className={SAVING_CHART_IMAGE_HIDDEN_CLASS}
+        classNameClose="hover-child hover-child--smooth"
+        card={dashcard.card}
+        result={mainSeries}
+        params={parameterValuesBySlug}
+        dashcardId={dashcard.id}
+        dashboardId={dashboard.id}
+        token={isEmbed ? dashcard.dashboard_id : undefined}
+        icon="ellipsis"
+        iconSize={17}
+      />
+    );
+  }, [
+    series,
+    isEmbed,
+    isPublic,
+    isEditing,
+    dashcard,
+    parameterValuesBySlug,
+    dashboard,
+  ]);
 
   return (
     <WrappedVisualization
@@ -204,7 +245,7 @@ function DashCardVisualization({
       errorIcon={error?.icon}
       showTitle
       isDashboard
-      isDataApp={false}
+      isAction={isAction}
       isSlow={isSlow}
       isFullscreen={isFullscreen}
       isNightMode={isNightMode}

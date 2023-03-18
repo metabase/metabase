@@ -1,9 +1,9 @@
 import React from "react";
-
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
 import { UserAuthWrapper } from "redux-auth-wrapper";
 import { t } from "ttag";
+
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 
@@ -32,7 +32,6 @@ import TableBrowser from "metabase/browse/containers/TableBrowser";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 
-import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import MoveCollectionModal from "metabase/collections/containers/MoveCollectionModal";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
@@ -41,9 +40,7 @@ import UserCollectionList from "metabase/containers/UserCollectionList";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 
-import NewModelOptions from "metabase/new_model/containers/NewModelOptions";
-
-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+import NewModelOptions from "metabase/models/containers/NewModelOptions";
 
 import { Unauthorized } from "metabase/containers/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
@@ -53,6 +50,7 @@ import MetricListContainer from "metabase/reference/metrics/MetricListContainer"
 import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer";
 import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer";
 import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer";
+
 // Reference Segments
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
@@ -60,6 +58,7 @@ import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuesti
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
 import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
+
 // Reference Databases
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
@@ -87,6 +86,9 @@ import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
 import { getAdminPaths } from "metabase/admin/app/selectors";
+
+import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal";
+import ModelDetailPage from "metabase/models/containers/ModelDetailPage";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
@@ -216,8 +218,6 @@ export const getRoutes = store => (
         <Route path="collection/:slug" component={CollectionLanding}>
           <ModalRoute path="move" modal={MoveCollectionModal} />
           <ModalRoute path="archive" modal={ArchiveCollectionModal} />
-          <ModalRoute path="new_collection" modal={CollectionCreate} />
-          <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
           <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
           {getCollectionTimelineRoutes()}
         </Route>
@@ -242,6 +242,25 @@ export const getRoutes = store => (
           <Route path=":slug/:objectId" component={QueryBuilder} />
         </Route>
 
+        <Route path="/model/:slug/detail">
+          <IndexRedirect to="usage" />
+          <Route path="usage" component={ModelDetailPage} />
+          <Route path="schema" component={ModelDetailPage} />
+          <Route path="actions" component={ModelDetailPage}>
+            <ModalRoute
+              path="new"
+              modal={ActionCreatorModal}
+              modalProps={{ wide: true, enableTransition: false }}
+            />
+            <ModalRoute
+              path=":actionId"
+              modal={ActionCreatorModal}
+              modalProps={{ wide: true, enableTransition: false }}
+            />
+          </Route>
+          <Redirect from="*" to="usage" />
+        </Route>
+
         <Route path="/model">
           <IndexRoute component={QueryBuilder} />
           <Route path="new" title={t`New Model`} component={NewModelOptions} />
@@ -264,10 +283,6 @@ export const getRoutes = store => (
         {/* INDIVIDUAL DASHBOARDS */}
 
         <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
-
-        <Route path="/collections">
-          <Route path="create" component={CollectionCreate} />
-        </Route>
 
         {/* REFERENCE */}
         <Route path="/reference" title={t`Data Reference`}>

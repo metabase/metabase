@@ -11,7 +11,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
 - [Aggregations](#aggregations)
   - [Average](#average)
   - [Count](#count)
-  - [CountIf](#countif)
+  - [CountIf](./expressions/countif.md)
   - [CumulativeCount](#cumulativecount)
   - [CumulativeSum](#cumulativesum)
   - [Distinct](#distinct)
@@ -22,7 +22,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [Share](#share)
   - [StandardDeviation](#standarddeviation)
   - [Sum](#sum)
-  - [SumIf](#sumif)
+  - [SumIf](./expressions/sumif.md)
   - [Variance](#variance)
 - [Functions](#functions)
   - [abs](#abs)
@@ -32,7 +32,9 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [coalesce](./expressions/coalesce.md)
   - [concat](./expressions/concat.md)
   - [contains](#contains)
+  - [convertTimezone](./expressions/converttimezone.md)
   - [datetimeAdd](./expressions/datetimeadd.md)
+  - [datetimeDiff](./expressions/datetimediff.md)
   - [datetimeSubtract](./expressions/datetimesubtract.md)
   - [day](#day)
   - [endswith](#endswith)
@@ -48,6 +50,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [lower](#lower)
   - [minute](#minute)
   - [month](#month)
+  - [now](./expressions/now.md)
   - [power](#power)
   - [quarter](#quarter)
   - [regexextract](./expressions/regexextract.md)
@@ -84,7 +87,7 @@ Syntax: `Count`
 
 Example: `Count` If a table or result returns 10 rows, `Count` will return `10`.
 
-### CountIf
+### [CountIf](./expressions/countif.md)
 
 Only counts rows where the condition is true.
 
@@ -184,7 +187,7 @@ Syntax: `Sum(column)`
 
 Example: `Sum([Subtotal])` would add up all the values in the `Subtotal` column.
 
-### SumIf
+### [SumIf](./expressions/sumif.md)
 
 Sums up the specified column only for rows where the condition is true.
 
@@ -268,17 +271,31 @@ Example: `contains([Status], "Class")`. If `Status` were "Classified", the expre
 
 Related: [regexextract](#regexextract).
 
+### [convertTimezone](./expressions/converttimezone.md)
+
+Shifts a date or timestamp value into a specified time zone.
+
+Syntax: `convertTimezone(column, target, source)`.
+
+Example: `convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")` would return the value `2022-12-28T09:00:00`, displayed as `December 28, 2022, 9:00 AM`.
+
 ### [datetimeAdd](./expressions/datetimeadd.md)
 
 Adds some unit of time to a date or timestamp value.
 
 Syntax: `datetimeAdd(column, amount, unit)`.
 
-- column: the column with your date or timestamp values.
-- amount: The number of units to be added.
-- units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
+Example: `datetimeAdd("2021-03-25", 1, "month")` would return the value `2021-04-25`, displayed as `April 25, 2021`.
 
-Example: `datetimeAdd("March 25, 2021, 12:52:37", 1, "month")` would return `April 25, 2021, 12:52:37`.
+Related: [between](#between), [datetimeSubtract](#datetimesubtract).
+
+### [datetimeDiff](./expressions/datetimediff.md)
+
+Returns the difference between two datetimes in some unit of time. For example, `datetimeDiff(d1, d2, "day") ` will return the number of days between `d1` and `d2`.
+
+Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
+
+Example: `datetimeDiff("2022-02-01", "2022-03-01", "month")` would return `1`.
 
 ### [datetimeSubtract](./expressions/datetimesubtract.md)
 
@@ -286,19 +303,17 @@ Subtracts some unit of time from a date or timestamp value.
 
 Syntax: `datetimeSubtract(column, amount, unit)`.
 
-- column: the column with your date or timestamp values.
-- amount: The number of units to be subtracted.
-- units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
+Example: `datetimeSubtract("2021-03-25", 1, "month")` would return the value `2021-02-25`, displayed as `February 25, 2021`.
 
-Example: `datetimeSubtract("March 25, 2021, 12:52:37", 1, "month")` would return `February 25, 2021, 12:52:37`.
+Related: [between](#between), [datetimeAdd](#datetimeadd).
 
 ### day
 
 Takes a datetime and returns the day of the month as an integer.
 
-Syntax: `day([datetime column)`.
+Syntax: `day([datetime column])`.
 
-Example: `day("March 25, 2021, 12:52:37")` would return the day as an integer, `25`.
+Example: `day("2021-03-25T12:52:37")` would return the day as an integer, `25`.
 
 ### endswith
 
@@ -336,7 +351,7 @@ Takes a datetime and returns the hour as an integer (0-23).
 
 Syntax: `hour([datetime column])`.
 
-Example: `hour("March 25, 2021, 12:52:37")` would return `12`.
+Example: `hour("2021-03-25T12:52:37")` would return `12`.
 
 ### interval
 
@@ -404,17 +419,23 @@ Related: [upper](#upper).
 
 Takes a datetime and returns the minute as an integer (0-59).
 
-Syntax: `minute(datetime column)`.
+Syntax: `minute([datetime column])`.
 
-Example: `minute("March 25, 2021, 12:52:37")` would return `52`.
+Example: `minute("2021-03-25T12:52:37")` would return `52`.
 
 ### month
 
 Takes a datetime and returns the month number (1-12) as an integer.
 
-Syntax: `month(datetime)`.
+Syntax: `month([datetime column])`.
 
-Example: `month("March 25, 2021, 12:52:37")` would return the month as an integer, `3`.
+Example: `month("2021-03-25T12:52:37")` would return the month as an integer, `3`.
+
+### [now](./expressions/now.md)
+
+Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
+
+Syntax: `now`.
 
 ### power
 
@@ -432,9 +453,9 @@ Related: [exp](#exp).
 
 Takes a datetime and returns the number of the quarter in a year (1-4) as an integer.
 
-Syntax: `quarter([datetime column)`.
+Syntax: `quarter([datetime column])`.
 
-Example: `quarter("March 25, 2021, 12:52:37")` would return `1` for the first quarter.
+Example: `quarter("2021-03-25T12:52:37")` would return `1` for the first quarter.
 
 ### [regexextract](./expressions/regexextract.md)
 
@@ -450,7 +471,7 @@ Related: [contains](#contains), [substring](#substring).
 
 ### replace
 
-Replaces a part of the input text with new text.
+Replaces all occurrences of a search text in the input text with the replacement text.
 
 Syntax: `replace(text, find, replace)`.
 
@@ -480,7 +501,7 @@ Takes a datetime and returns the number of seconds in the minute (0-59) as an in
 
 Syntax: `second([datetime column)`.
 
-Example: `second("March 25, 2021, 12:52:37")` would return the integer `37`.
+Example: `second("2021-03-25T12:52:37")` would return the integer `37`.
 
 ### sqrt
 
@@ -510,7 +531,7 @@ Returns a portion of the supplied text, specified by a starting position and a l
 
 Syntax: `substring(text, position, length)`
 
-Example: `substring([Title], 0, 10)` returns the first 11 letters of a string (the string index starts at position 0).
+Example: `substring([Title], 1, 10)` returns the first 10 letters of a string (the string index starts at position 1).
 
 Related: [regexextract](#regexextract), [replace](#replace).
 
@@ -536,7 +557,7 @@ Takes a datetime and returns the week as an integer.
 
 Syntax: `week(column, mode)`.
 
-Example: `week("March 25, 2021, 12:52:37")` would return the week as an integer, `12`.
+Example: `week("2021-03-25T12:52:37")` would return the week as an integer, `12`.
 
 - column: the name of the column of the date or datetime value.
 - mode: Optional.
@@ -550,7 +571,7 @@ Takes a datetime and returns the year as an integer.
 
 Syntax: `year([datetime column])`.
 
-Example: `year("March 25, 2021, 12:52:37")` would return the year 2021 as an integer, `2,021`.
+Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer, `2,021`.
 
 ## Database limitations
 

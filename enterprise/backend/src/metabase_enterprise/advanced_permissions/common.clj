@@ -1,10 +1,11 @@
 (ns metabase-enterprise.advanced-permissions.common
-  (:require [metabase.api.common :as api]
-            [metabase.models :refer [PermissionsGroupMembership]]
-            [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [metabase.api.common :as api]
+   [metabase.models :refer [PermissionsGroupMembership]]
+   [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flag indiciate whether or not current user has access to an advanced permissions.
@@ -28,7 +29,7 @@
 (defn current-user-is-manager-of-group?
   "Return true if current-user is a manager of `group-or-id`."
   [group-or-id]
-  (db/select-one-field :is_group_manager PermissionsGroupMembership
+  (t2/select-one-fn :is_group_manager PermissionsGroupMembership
                        :user_id api/*current-user-id* :group_id (u/the-id group-or-id)))
 
 (defn filter-tables-by-data-model-perms

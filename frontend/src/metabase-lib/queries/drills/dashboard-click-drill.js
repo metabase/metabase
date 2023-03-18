@@ -35,22 +35,6 @@ export function getDashboardDrillType(clicked) {
       } else {
         return "dashboard-url";
       }
-    } else if (linkType === "page") {
-      const { location, routerParams } = extraData;
-
-      const isInDataApp =
-        Urls.isDataAppPagePath(location.pathname) ||
-        Urls.isDataAppPath(location.pathname);
-      if (!isInDataApp) {
-        return null;
-      }
-
-      const dataAppId = Urls.extractEntityId(routerParams.slug);
-      if (!dataAppId) {
-        return null;
-      }
-
-      return "page-url";
     } else if (linkType === "question" && extraData && extraData.questions) {
       return "question-url";
     }
@@ -94,26 +78,6 @@ export function getDashboardDrillUrl(clicked) {
   });
 
   const path = Urls.dashboard({ id: targetId });
-  return `${path}?${querystring.stringify(queryParams)}`;
-}
-
-export function getDashboardDrillPageUrl(clicked) {
-  const clickBehavior = getClickBehavior(clicked);
-  const { data, extraData, parameterMapping, targetId } = getClickBehaviorData(
-    clicked,
-    clickBehavior,
-  );
-
-  const { routerParams } = extraData;
-  const dataAppId = Urls.extractEntityId(routerParams.slug);
-  const path = Urls.dataAppPage({ id: dataAppId }, { id: targetId });
-
-  const queryParams = getParameterValuesBySlug(parameterMapping, {
-    data,
-    extraData,
-    clickBehavior,
-  });
-
   return `${path}?${querystring.stringify(queryParams)}`;
 }
 

@@ -1,16 +1,20 @@
 (ns metabase.query-processor-test.alternative-date-test
   "Tests for columns that mimic dates: integral types as UNIX timestamps and string columns as ISO8601DateTimeString and
   related types."
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.test :as mt]
-            [metabase.util :as u])
-  (:import java.time.OffsetDateTime))
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.test :as mt]
+   [metabase.util :as u])
+  (:import
+   (java.time OffsetDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (deftest semantic-type->unix-timestamp-unit-test
   (testing "every descendant of `:Coercion/UNIXTime->Temporal` has a unit associated with it"
@@ -178,7 +182,9 @@
 (deftest iso-8601-text-fields
   (testing "text fields with semantic_type :type/ISO8601DateTimeString"
     (testing "return as dates"
-      (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :oracle :sparksql)
+      (mt/test-drivers (-> (sql-jdbc.tu/sql-jdbc-drivers)
+                           (conj :bigquery-cloud-sdk)
+                           (disj :sqlite :oracle :sparksql))
         (is (= [[1 "foo" #t "2004-10-19T10:23:54" #t "2004-10-19" #t "10:23:54"]
                 [2 "bar" #t "2008-10-19T10:23:54" #t "2008-10-19" #t "10:23:54"]
                 [3 "baz" #t "2012-10-19T10:23:54" #t "2012-10-19" #t "10:23:54"]]
@@ -213,17 +219,6 @@
           (is (= [[1 "foo" "2004-10-19 10:23:54" "2004-10-19" "10:23:54"]
                   [2 "bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
                   [3 "baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]
-                 ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
-                 (mt/rows (mt/dataset string-times
-                            (qp/process-query
-                              (assoc (mt/mbql-query times)
-                                     :middleware {:format-rows? false}))))))))
-
-      (testing "bigquery adds UTC"
-        (mt/test-drivers #{:bigquery-cloud-sdk}
-          (is (= [[1 "foo" #t "2004-10-19T10:23:54Z[UTC]" #t "2004-10-19T00:00Z[UTC]" #t "10:23:54"]
-                  [2 "bar" #t "2008-10-19T10:23:54Z[UTC]" #t "2008-10-19T00:00Z[UTC]" #t "10:23:54"]
-                  [3 "baz" #t "2012-10-19T10:23:54Z[UTC]" #t "2012-10-19T00:00Z[UTC]" #t "10:23:54"]]
                  ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
                  (mt/rows (mt/dataset string-times
                             (qp/process-query
@@ -307,11 +302,11 @@
 (deftest yyyymmddhhmmss-binary-dates
   (mt/test-drivers #{:postgres :h2 :mysql}
     (is (= (case driver/*driver*
-             :postgres
+             (:h2 :postgres)
              [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
               [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
               [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]
-             (:h2 :mysql :sqlserver)
+             (:mysql :sqlserver)
              [[1 "foo" #t "2019-04-21T16:43"]
               [2 "bar" #t "2020-04-21T16:43"]
               [3 "baz" #t "2021-04-21T16:43"]]
@@ -324,21 +319,21 @@
                                          :middleware {:format-rows? false})))))))))
 
 (deftest yyyymmddhhmmss-dates
-  (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql :bigquery-cloud-sdk :snowflake :redshift :sqlserver :presto}
+  (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql :bigquery-cloud-sdk :snowflake :redshift :sqlserver}
     (is (= (case driver/*driver*
              :mongo
              [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
               [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
               [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]]
-             (:h2 :mysql :sqlserver)
+             (:mysql :sqlserver :bigquery-cloud-sdk)
              [[1 "foo" #t "2019-04-21T16:43"]
               [2 "bar" #t "2020-04-21T16:43"]
               [3 "baz" #t "2021-04-21T16:43"]]
-             (:bigquery-cloud-sdk :redshift :presto)
+             (:redshift)
              [[1 "foo" #t "2019-04-21T16:43Z[UTC]"]
               [2 "bar" #t "2020-04-21T16:43Z[UTC]"]
               [3 "baz" #t "2021-04-21T16:43Z[UTC]"]]
-             :postgres
+             (:h2 :postgres)
              [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
               [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
               [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]

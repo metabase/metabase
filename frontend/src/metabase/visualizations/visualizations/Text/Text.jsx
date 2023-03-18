@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeExternalLinks from "rehype-external-links";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -20,6 +21,9 @@ const getSettingsStyle = settings => ({
 });
 
 const REMARK_PLUGINS = [remarkGfm];
+const REHYPE_PLUGINS = [
+  [rehypeExternalLinks, { rel: ["noreferrer"], target: "_blank" }],
+];
 
 export default class Text extends Component {
   constructor(props) {
@@ -33,6 +37,7 @@ export default class Text extends Component {
   static uiName = "Text";
   static identifier = "text";
   static iconName = "text";
+  static canSavePng = false;
 
   static disableSettingsConfig = false;
   static noHeader = true;
@@ -151,6 +156,7 @@ export default class Text extends Component {
           {isPreviewing ? (
             <ReactMarkdown
               remarkPlugins={REMARK_PLUGINS}
+              rehypePlugins={REHYPE_PLUGINS}
               className={cx(
                 "full flex-full flex flex-column text-card-markdown",
                 styles["text-card-markdown"],
@@ -190,6 +196,7 @@ export default class Text extends Component {
       >
         <ReactMarkdown
           remarkPlugins={REMARK_PLUGINS}
+          rehypePlugins={REHYPE_PLUGINS}
           className={cx(
             "full flex-full flex flex-column text-card-markdown",
             styles["text-card-markdown"],

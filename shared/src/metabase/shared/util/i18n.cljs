@@ -1,7 +1,9 @@
 (ns metabase.shared.util.i18n
-  (:require ["ttag" :as ttag]
-            [clojure.string :as str])
-  (:require-macros metabase.shared.util.i18n))
+  (:require
+   ["ttag" :as ttag]
+   [clojure.string :as str])
+  (:require-macros
+   [metabase.shared.util.i18n]))
 
 (comment metabase.shared.util.i18n/keep-me
          ttag/keep-me)

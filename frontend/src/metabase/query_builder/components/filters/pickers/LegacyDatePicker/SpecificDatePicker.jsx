@@ -12,7 +12,7 @@ import Icon from "metabase/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
 import HoursMinutesInput from "../DatePicker/HoursMinutesInput";
 
-import { CalendarIcon, TimeLabel } from "./SpecificDatePicker.styled";
+import { TimeLabel } from "./SpecificDatePicker.styled";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
@@ -91,17 +91,14 @@ export default class SpecificDatePicker extends Component {
                 this.onChange(null);
               }
             }}
+            rightIcon={calendar ? "calendar" : undefined}
+            onRightIconClick={() =>
+              this.setState({ showCalendar: !this.state.showCalendar })
+            }
+            rightIconTooltip={
+              showCalendar ? t`Hide calendar` : t`Show calendar`
+            }
           />
-
-          {calendar && (
-            <CalendarIcon
-              name="calendar"
-              onClick={() =>
-                this.setState({ showCalendar: !this.state.showCalendar })
-              }
-              tooltip={showCalendar ? t`Hide calendar` : t`Show calendar`}
-            />
-          )}
         </div>
 
         {calendar && (

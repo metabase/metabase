@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
+import { usePrevious, useMount } from "react-use";
 import Bookmark from "metabase/entities/bookmarks";
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
@@ -22,9 +23,7 @@ import { isPersonalCollectionChild } from "metabase/collections/utils";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
 
-import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePagination } from "metabase/hooks/use-pagination";
-import { usePrevious } from "metabase/hooks/use-previous";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { isSmallScreen } from "metabase/lib/dom";
 import {
@@ -36,7 +35,14 @@ import {
 
 const PAGE_SIZE = 25;
 
-const ALL_MODELS = ["dashboard", "dataset", "card", "snippet", "pulse"];
+const ALL_MODELS = [
+  "dashboard",
+  "dataset",
+  "card",
+  "snippet",
+  "pulse",
+  "collection",
+];
 
 const itemKeyFn = item => `${item.id}:${item.model}`;
 
@@ -74,12 +80,13 @@ function CollectionContent({
     sort_column: "name",
     sort_direction: "asc",
   });
-  const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
+  const { handleNextPage, handlePreviousPage, setPage, page, resetPage } =
+    usePagination();
   const { selected, toggleItem, toggleAll, getIsSelected, clear } =
     useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
 
-  useOnMount(() => {
+  useMount(() => {
     if (!isSmallScreen()) {
       openNavbar();
     }
@@ -88,8 +95,9 @@ function CollectionContent({
   useEffect(() => {
     if (previousCollection && previousCollection.id !== collection.id) {
       clear();
+      resetPage();
     }
-  }, [previousCollection, collection, clear]);
+  }, [previousCollection, collection, clear, resetPage]);
 
   useEffect(() => {
     const shouldBeBookmarked = bookmarks.some(
@@ -256,11 +264,14 @@ function CollectionContent({
                           handleUnpinnedItemsSortingChange
                         }
                         selectedItems={selected}
+                        hasUnselected={hasUnselected}
                         getIsSelected={getIsSelected}
                         onToggleSelected={toggleItem}
                         onDrop={clear}
                         onMove={handleMove}
                         onCopy={handleCopy}
+                        onSelectAll={handleSelectAll}
+                        onSelectNone={clear}
                       />
                       <div className="flex justify-end my3">
                         {hasPagination && (
@@ -277,14 +288,12 @@ function CollectionContent({
                       </div>
                       <BulkActions
                         selected={selected}
-                        onSelectAll={handleSelectAll}
-                        onSelectNone={clear}
+                        collection={collection}
                         onArchive={handleBulkArchive}
                         onMoveStart={handleBulkMoveStart}
                         onMove={handleBulkMove}
                         onCloseModal={handleCloseModal}
                         onCopy={clear}
-                        hasUnselected={hasUnselected}
                         selectedItems={selectedItems}
                         selectedAction={selectedAction}
                         isNavbarOpen={isNavbarOpen}
@@ -309,7 +318,11 @@ function CollectionContent({
 export default _.compose(
   Bookmark.loadList(),
   Collection.loadList({
-    query: () => ({ tree: true }),
+    query: {
+      tree: true,
+      "exclude-other-user-collections": true,
+      "exclude-archived": true,
+    },
     loadingAndErrorWrapper: false,
   }),
   Collection.load({

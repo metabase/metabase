@@ -1,22 +1,31 @@
 (ns metabase.models.collection-test
   (:refer-clojure :exclude [ancestors descendants])
-  (:require [clojure.math.combinatorics :as math.combo]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [metabase.api.common :refer [*current-user-permissions-set*]]
-            [metabase.models :refer [Card Collection Dashboard NativeQuerySnippet Permissions PermissionsGroup Pulse User]]
-            [metabase.models.collection :as collection]
-            [metabase.models.permissions :as perms]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
-  (:import java.time.LocalDateTime))
+  (:require
+   [clojure.math.combinatorics :as math.combo]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [metabase.api.common :refer [*current-user-permissions-set*]]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            NativeQuerySnippet
+            Permissions
+            PermissionsGroup
+            Pulse
+            User]]
+   [metabase.models.collection :as collection]
+   [metabase.models.permissions :as perms]
+   [metabase.models.serialization :as serdes]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -103,16 +112,14 @@
                     Card       [card       {:collection_id (u/the-id collection)}]]
       (db/update! Collection (u/the-id collection)
         :archived true)
-      (is (= true
-             (db/select-one-field :archived Card :id (u/the-id card))))))
+      (is (true? (t2/select-one-fn :archived Card :id (u/the-id card))))))
 
   (testing "check that unarchiving a Collection unarchives its Cards as well"
     (mt/with-temp* [Collection [collection {:archived true}]
                     Card       [card       {:collection_id (u/the-id collection), :archived true}]]
       (db/update! Collection (u/the-id collection)
         :archived false)
-      (is (= false
-             (db/select-one-field :archived Card :id (u/the-id card)))))))
+      (is (false? (t2/select-one-fn :archived Card :id (u/the-id card)))))))
 
 (deftest validate-name-test
   (testing "check that collections' names cannot be blank"
@@ -359,7 +366,7 @@
          (db/delete! Collection :name name#)))))
 
 (defn- nonexistent-collection-id []
-  (inc (or (:max (db/select-one [Collection [:%max.id :max]]))
+  (inc (or (:max (t2/select-one [Collection [:%max.id :max]]))
            0)))
 
 (deftest crud-validate-path-test
@@ -385,8 +392,7 @@
   (testing "We should be able to UPDATE a Collection and give it a new, *valid* location"
     (mt/with-temp* [Collection [collection-1]
                     Collection [collection-2]]
-      (is (= true
-             (db/update! Collection (u/the-id collection-1) :location (collection/location-path collection-2)))))))
+      (is (true? (db/update! Collection (u/the-id collection-1) :location (collection/location-path collection-2)))))))
 
 (deftest crud-validate-ancestors-test
   (testing "Make sure we can't INSERT a Collection with an non-existent ancestors"
@@ -410,7 +416,8 @@
     ;;           |
     ;;           +-> F -> G
     (with-collection-hierarchy [{:keys [a b c d e f g]}]
-      (db/delete! Collection :id (u/the-id a))
+      (is (= true
+             (db/delete! Collection :id (u/the-id a))))
       (is (= 0
              (db/count Collection :id [:in (map u/the-id [a b c d e f g])])))))
 
@@ -948,7 +955,7 @@
     ;;           +-> F -> G            +-> G
     (with-collection-hierarchy [{:keys [a f], :as collections}]
       (collection/move-collection! f (collection/children-location collection/root-collection))
-      (collection/move-collection! a (collection/children-location (db/select-one Collection :id (u/the-id f))))
+      (collection/move-collection! a (collection/children-location (t2/select-one Collection :id (u/the-id f))))
       (is (= {"F" {"A" {"B" {}
                         "C" {"D" {"E" {}}}}
                    "G" {}}}
@@ -1029,7 +1036,7 @@
         (mt/with-temp model [object {:collection_id (u/the-id e)}]
           (db/update! Collection (u/the-id e) :archived true)
           (is (= true
-                 (db/select-one-field :archived model :id (u/the-id object)))))))
+                 (t2/select-one-fn :archived model :id (u/the-id object)))))))
 
     (testing (format "Test that archiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; archiving C should cause object to be archived
@@ -1038,7 +1045,7 @@
         (mt/with-temp model [object {:collection_id (u/the-id e)}]
           (db/update! Collection (u/the-id c) :archived true)
           (is (= true
-                 (db/select-one-field :archived model :id (u/the-id object)))))))))
+                 (t2/select-one-fn :archived model :id (u/the-id object)))))))))
 
 (deftest nested-collection-unarchiving-objects-test
   (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
@@ -1050,7 +1057,7 @@
         (mt/with-temp model [object {:collection_id (u/the-id e), :archived true}]
           (db/update! Collection (u/the-id e) :archived false)
           (is (= false
-                 (db/select-one-field :archived model :id (u/the-id object)))))))
+                 (t2/select-one-fn :archived model :id (u/the-id object)))))))
 
     (testing (format "Test that unarchiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; unarchiving C should cause object to be unarchived
@@ -1060,7 +1067,7 @@
         (mt/with-temp model [object {:collection_id (u/the-id e), :archived true}]
           (db/update! Collection (u/the-id c) :archived false)
           (is (= false
-                 (db/select-one-field :archived model :id (u/the-id object)))))))))
+                 (t2/select-one-fn :archived model :id (u/the-id object)))))))))
 
 (deftest archive-while-moving-test
   (testing "Test that we cannot archive a Collection at the same time we are moving it"
@@ -1080,7 +1087,7 @@
     (with-collection-hierarchy [{:keys [c], :as _collections}]
       (db/update! Collection (u/the-id c), :archived false, :location "/")
       (is (= "/"
-             (db/select-one-field :location Collection :id (u/the-id c)))))))
+             (t2/select-one-fn :location Collection :id (u/the-id c)))))))
 
 (deftest archive-noop-shouldnt-affect-descendants-test
   (testing "Check that attempting to unarchive a Card that's not archived doesn't affect archived descendants"
@@ -1088,7 +1095,7 @@
       (db/update! Collection (u/the-id e), :archived true)
       (db/update! Collection (u/the-id c), :archived false)
       (is (= true
-             (db/select-one-field :archived Collection :id (u/the-id e)))))))
+             (t2/select-one-fn :archived Collection :id (u/the-id e)))))))
 
 ;; TODO - can you unarchive a Card that is inside an archived Collection??
 
@@ -1259,7 +1266,7 @@
 (defmacro ^:private with-collection-hierarchy-in [parent-location [collection-symb & more] & body]
   (if-not collection-symb
     `(do ~@body)
-    `(mt/with-temp Collection [~collection-symb {:name     ~(str/upper-case (name collection-symb))
+    `(mt/with-temp Collection [~collection-symb {:name     ~(u/upper-case-en (name collection-symb))
                                                  :location ~parent-location}]
        (with-collection-hierarchy-in (collection/children-location ~collection-symb) ~more ~@body))))
 
@@ -1625,7 +1632,7 @@
 
 (deftest identity-hash-test
   (testing "Collection hashes are composed of the name, namespace, and parent collection's hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+    (let [now #t "2022-09-01T12:34:56"]
       (mt/with-temp* [Collection [c1  {:name       "top level"
                                        :created_at now
                                        :namespace  "yolocorp"
@@ -1638,15 +1645,15 @@
                                        :created_at now
                                        :namespace  "yolocorp"
                                        :location   (format "/%s/%s/" (:id c1) (:id c2))}]]
-        (let [c1-hash (serdes.hash/identity-hash c1)
-              c2-hash (serdes.hash/identity-hash c2)]
+        (let [c1-hash (serdes/identity-hash c1)
+              c2-hash (serdes/identity-hash c2)]
           (is (= "f2620cc6"
-                 (serdes.hash/raw-hash ["top level" :yolocorp "ROOT" now])
+                 (serdes/raw-hash ["top level" :yolocorp "ROOT" now])
                  c1-hash)
               "Top-level collections should use a parent hash of 'ROOT'")
           (is (= "a27aef0f"
-                 (serdes.hash/raw-hash ["nested" :yolocorp c1-hash now])
+                 (serdes/raw-hash ["nested" :yolocorp c1-hash now])
                  c2-hash))
           (is (= "e816af2d"
-                 (serdes.hash/raw-hash ["grandchild" :yolocorp c2-hash now])
-                 (serdes.hash/identity-hash c3))))))))
+                 (serdes/raw-hash ["grandchild" :yolocorp c2-hash now])
+                 (serdes/identity-hash c3))))))))

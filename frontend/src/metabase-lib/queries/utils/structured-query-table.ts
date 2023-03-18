@@ -50,6 +50,7 @@ function getFieldsForSourceQueryTable(
     const virtualField = createVirtualField({
       ...column,
       id,
+      source: "fields",
       query: originalQuery,
       metadata,
     });

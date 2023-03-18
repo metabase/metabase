@@ -44,7 +44,8 @@ const expression = [
   ["1 + [Subtotal]", ["+", 1, subtotal], "adding literal and field"],
   ["[User ID]", userId, "field name with spaces"],
   ["[foo]", ["expression", "foo"], "named expression"],
-  ["[User → Name]", userName, "foreign key"],
+  ["[User → Name]", userName, "foriegn key"],
+  ["now", ["now"], "function with zero arguments"],
   ["trim([User → Name])", ["trim", userName], "function with one argument"],
   [
     'coalesce([User → Name], ",")',

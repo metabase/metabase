@@ -1,5 +1,6 @@
 (ns metabase.mbql.schema.macros
-  (:require [metabase.mbql.schema.helpers :as metabase.mbql.schema.helpers]))
+  (:require
+   [metabase.mbql.schema.helpers :as metabase.mbql.schema.helpers]))
 
 (defn- stringify-names [arg-names-and-schemas]
   (reduce concat (for [[arg-name schema] (partition 2 arg-names-and-schemas)]

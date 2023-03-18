@@ -40,7 +40,6 @@ export default class FilterPopoverPicker extends React.Component<Props> {
       onCommit,
       minWidth,
       maxWidth,
-      primaryColor,
       checkedColor,
     } = this.props;
 

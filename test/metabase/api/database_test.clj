@@ -1,31 +1,35 @@
 (ns metabase.api.database-test
   "Tests for /api/database endpoints."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.database :as api.database]
-            [metabase.api.table :as api.table]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Card Collection Database Field
-                                     FieldValues Table]]
-            [metabase.models.database :as database :refer [protected-password]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.sync.analyze :as analyze]
-            [metabase.sync.field-values :as field-values]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [metabase.util.cron :as u.cron]
-            [metabase.util.schema :as su]
-            [ring.util.codec :as codec]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :as hydrate]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.database :as api.database]
+   [metabase.api.table :as api.table]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models
+    :refer [Card Collection Database Field FieldValues Metric Segment Table]]
+   [metabase.models.database :as database :refer [protected-password]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.sync.analyze :as analyze]
+   [metabase.sync.field-values :as field-values]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [metabase.util.cron :as u.cron]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.schema :as su]
+   [ring.util.codec :as codec]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :as hydrate]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
@@ -52,7 +56,7 @@
   ([{driver :engine, :as db}]
    (merge
     (mt/object-defaults Database)
-    (select-keys db [:created_at :id :details :updated_at :timezone :name])
+    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version])
     {:engine (u/qualified-name (:engine db))
      :features (map u/qualified-name (driver.u/features driver db))
      :initial_sync_status "complete"})))
@@ -114,7 +118,7 @@
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (-> (db-details)
-                   (dissoc :details :schedules :settings))
+                   (dissoc :details :schedules))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules)))))
 
@@ -152,6 +156,54 @@
       (is (= {:errors {:include "value may be nil, or if non-nil, value must be one of: `tables`, `tables.fields`."}}
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
 
+(deftest get-database-usage-info-test
+  (mt/with-temp*
+    [Database [{db-id :id}]
+     Table    [{table-id-1 :id} {:db_id db-id}]
+     Table    [{table-id-2 :id} {:db_id db-id}]
+     ;; question
+     Card     [_                {:database_id db-id
+                                 :table_id    table-id-1
+                                 :dataset     false}]
+     ;; dataset
+     Card     [_                {:database_id db-id
+                                 :table_id    table-id-1
+                                 :dataset     true}]
+     Card     [_                {:database_id db-id
+                                 :table_id    table-id-2
+                                 :dataset     true
+                                 :archived    true}]
+
+     Metric   [_                {:table_id table-id-1}]
+     Metric   [_                {:table_id table-id-1}]
+     Metric   [_                {:table_id table-id-2}]
+     Segment  [_                {:table_id table-id-2}]]
+
+    (testing "should require admin"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 (format "database/%d/usage_info" db-id)))))
+
+    (testing "return the correct usage info"
+      (is (= {:question 1
+              :dataset  2
+              :metric   3
+              :segment  1}
+             (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))
+
+    (testing "404 if db does not exist"
+      (let [non-existing-db-id (inc (t2/select-one-pk Database {:order-by [[:id :desc]]}))]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404
+                                     (format "database/%d/usage_info" non-existing-db-id)))))))
+  (mt/with-temp*
+    [Database [{db-id :id}]]
+    (testing "should work with DB that has no tables"
+      (is (= {:question 0
+              :dataset  0
+              :metric   0
+              :segment  0}
+             (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))))
+
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
     (try
@@ -167,7 +219,7 @@
                       s/Keyword s/Any}
                      response))
         (when (integer? db-id)
-          (db/select-one Database :id db-id)))
+          (t2/select-one Database :id db-id)))
       (finally (db/delete! Database :name db-name)))))
 
 (deftest create-db-test
@@ -258,7 +310,7 @@
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
-              (let [curr-db (db/select-one [Database :name :engine :cache_ttl :details :is_full_sync], :id db-id)]
+              (let [curr-db (t2/select-one [Database :name :engine :cache_ttl :details :is_full_sync], :id db-id)]
                 (is (=
                      {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
                       :engine       :h2
@@ -277,7 +329,7 @@
           (let [updates {:auto_run_queries false}]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
           (is (= false
-                 (db/select-one-field :auto_run_queries Database, :id db-id))))))
+                 (t2/select-one-fn :auto_run_queries Database, :id db-id))))))
     (testing "should be able to unset cache_ttl"
       (mt/with-temp Database [{db-id :id}]
         (let [updates1 {:cache_ttl    1337}
@@ -285,29 +337,29 @@
               updates1! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates1))
               updates2! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates2))]
           (updates1!)
-          (let [curr-db (db/select-one [Database :cache_ttl], :id db-id)]
+          (let [curr-db (t2/select-one [Database :cache_ttl], :id db-id)]
             (is (= 1337 (:cache_ttl curr-db))))
           (updates2!)
-          (let [curr-db (db/select-one [Database :cache_ttl], :id db-id)]
+          (let [curr-db (t2/select-one [Database :cache_ttl], :id db-id)]
             (is (= nil (:cache_ttl curr-db)))))))))
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (mt/object-defaults Database) :details :settings)
-                  (select-keys (mt/db) [:created_at :id :updated_at :timezone :initial_sync_status])
+    (is (= (merge (dissoc (mt/object-defaults Database) :details)
+                  (select-keys (mt/db) [:created_at :id :updated_at :timezone :initial_sync_status :dbms_version])
                   {:engine        "h2"
                    :name          "test-data"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
-                                    (db/select-one [Table :created_at :updated_at] :id (mt/id :categories))
+                                    (t2/select-one [Table :created_at :updated_at] :id (mt/id :categories))
                                     {:schema              "PUBLIC"
                                      :name                "CATEGORIES"
                                      :display_name        "Categories"
                                      :entity_type         "entity/GenericTable"
                                      :initial_sync_status "complete"
                                      :fields              [(merge
-                                                            (field-details (db/select-one Field :id (mt/id :categories :id)))
+                                                            (field-details (t2/select-one Field :id (mt/id :categories :id)))
                                                             {:table_id          (mt/id :categories)
                                                              :semantic_type     "type/PK"
                                                              :name              "ID"
@@ -318,26 +370,45 @@
                                                              :visibility_type   "normal"
                                                              :has_field_values  "none"
                                                              :database_position 0
-                                                             :database_required false})
+                                                             :database_required false
+                                                             :database_is_auto_increment true})
                                                            (merge
-                                                            (field-details (db/select-one Field :id (mt/id :categories :name)))
+                                                            (field-details (t2/select-one Field :id (mt/id :categories :name)))
                                                             {:table_id          (mt/id :categories)
                                                              :semantic_type     "type/Name"
                                                              :name              "NAME"
                                                              :display_name      "Name"
-                                                             :database_type     "VARCHAR"
+                                                             :database_type     "CHARACTER VARYING"
                                                              :base_type         "type/Text"
                                                              :effective_type    "type/Text"
                                                              :visibility_type   "normal"
                                                              :has_field_values  "list"
                                                              :database_position 1
-                                                             :database_required true})]
+                                                             :database_required true
+                                                             :database_is_auto_increment false})]
                                      :segments     []
                                      :metrics      []
                                      :id           (mt/id :categories)
                                      :db_id        (mt/id)})]})
            (let [resp (mt/derecordize (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
+
+(deftest fetch-database-fields-test
+  (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
+    (testing "GET /api/database/:id/fields"
+      (is (partial= {"VENUES.ID"        {:name "ID" :display_name "ID"
+                                         :table_name "VENUES"}
+                     "CHECKINS.USER_ID" {:name "USER_ID" :display_name "User ID"
+                                         :table_name "CHECKINS"}}
+                    (f (mt/user-http-request :rasta :get 200 (format "database/%d/fields" (mt/id))))))
+      (testing "shows display names"
+        (mt/with-temp* [Table [{t-id :id} {:name "FOO_TABLE" :display_name "irrelevant"
+                                           :db_id (mt/id)}]
+                        Field [_ {:name "F_NAME" :display_name "user editable"
+                                  :table_id t-id}]]
+          (is (partial= {"FOO_TABLE.F_NAME" {:name "F_NAME" :display_name "user editable"
+                                             :table_name "FOO_TABLE"}}
+                        (f (mt/user-http-request :rasta :get 200 (format "database/%d/fields" (mt/id)))))))))))
 
 (deftest fetch-database-metadata-include-hidden-test
   ;; NOTE: test for the exclude_uneditable parameter lives in metabase-enterprise.advanced-permissions.common-test
@@ -410,9 +481,9 @@
 
 (deftest card-autocomplete-suggestions-test
   (testing "GET /api/database/:id/card_autocomplete_suggestions"
-    (mt/with-temp* [Collection [collection {:name "Kanye West Analytics"}]
-                    Card       [card-1 (card-with-native-query "Kanye West Quote Views Per Month")]
-                    Card       [card-2 (card-with-native-query "Kanye West Quote Views Per Day" :collection_id (:id collection))]]
+    (mt/with-temp* [Collection [collection {:name "Maz Analytics"}]
+                    Card       [card-1 (card-with-native-query "Maz Quote Views Per Month")]
+                    Card       [card-2 (card-with-native-query "Maz Quote Views Per Day" :collection_id (:id collection))]]
       (let [card->result {card-1 (assoc (select-keys card-1 [:id :name :dataset]) :collection_name nil)
                           card-2 (assoc (select-keys card-2 [:id :name :dataset]) :collection_name (:name collection))}]
         (testing "exclude cards without perms"
@@ -420,25 +491,25 @@
             (is (= [(card->result card-2)]
                    (mt/user-http-request :rasta :get 200
                                          (format "database/%d/card_autocomplete_suggestions" (mt/id))
-                                         :query "kanye"))))
+                                         :query "maz"))))
           (testing "cards should match the query"
-            (doseq [[query expected-cards] {"QUOTE-views"               [card-2 card-1]
-                                            "per-day"                   [card-2]
-                                            (str (:id card-1))          [card-1]
-                                            (str (:id card-2) "-kanye") [card-2]
-                                            (str (:id card-2) "-west")  []}]
+            (doseq [[query expected-cards] {"QUOTE-views"              [card-2 card-1]
+                                            "per-day"                  [card-2]
+                                            (str (:id card-1))         [card-1]
+                                            (str (:id card-2) "-maz")  [card-2]
+                                            (str (:id card-2) "-kyle") []}]
               (is (= (map card->result expected-cards)
                      (mt/user-http-request :rasta :get 200
                                            (format "database/%d/card_autocomplete_suggestions" (mt/id))
                                            :query query)))))))
       (testing "should reject requests for databases for which the user has no perms"
         (mt/with-temp* [Database [{database-id :id}]
-                        Card     [_ (card-with-native-query "Kanye West Quote Views Per Month" :database_id database-id)]]
+                        Card     [_ (card-with-native-query "Maz Quote Views Per Month" :database_id database-id)]]
           (perms/revoke-data-perms! (perms-group/all-users) database-id)
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403
                                        (format "database/%d/card_autocomplete_suggestions" database-id)
-                                       :query "kanye"))))))))
+                                       :query "maz"))))))))
 
 (driver/register! ::no-nested-query-support
                   :parent :sql-jdbc
@@ -450,8 +521,8 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> (into #{:features :native_permissions} (keys (db/select-one Database :id (mt/id))))
-                                (disj :details :settings))]
+        (let [expected-keys (-> (into #{:features :native_permissions} (keys (t2/select-one Database :id (mt/id))))
+                                (disj :details))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
@@ -541,7 +612,7 @@
                       (:data (mt/user-http-request :crowberto :get 200 (str "database" params)))))]
         (testing "Check that we get back 'virtual' tables for Saved Questions"
           (testing "The saved questions virtual DB should be the last DB in the list"
-            (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
+            (mt/with-temp Card [card (card-with-native-query "Maz Quote Views Per Month")]
               ;; run the Card which will populate its result_metadata column
               (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
               ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
@@ -551,7 +622,7 @@
                 (check-tables-included response (virtual-table-for-card card)))))
 
           (testing "Make sure saved questions are NOT included if the setting is disabled"
-            (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
+            (mt/with-temp Card [card (card-with-native-query "Maz Quote Views Per Month")]
               (mt/with-temporary-setting-values [enable-nested-queries false]
                 ;; run the Card which will populate its result_metadata column
                 (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
@@ -695,7 +766,7 @@
                                                          :metadata_sync      schedule-map-for-hourly}}))]
              (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
                      :metadata_sync_schedule      "0 0 * * * ? *"}
-                    (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db))))))
+                    (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db))))))
            (finally (db/delete! Database :name db-name))))))
 
 (deftest update-schedules-for-existing-db
@@ -706,26 +777,29 @@
     (testing "Can we UPDATE the schedules for an existing database?"
       (testing "We cannot if we don't mark `:let-user-control-scheduling`"
         (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
-          (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
-                                (assoc db :schedules attempted))
+          (is (=? (select-keys (mt/db) [:cache_field_values_schedule :metadata_sync_schedule])
+                  (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
+                                        (assoc db :schedules attempted))))
           (is (not= expected
-                    (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
+                    (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
       (testing "We can if we mark `:let-user-control-scheduling`"
         (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
-          (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
-                                (-> db
-                                    (assoc :schedules attempted)
-                                    (assoc-in [:details :let-user-control-scheduling] true)))
+          (is (=? expected
+                  (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
+                                        (-> (into {} db)
+                                            (assoc :schedules attempted)
+                                            (assoc-in [:details :let-user-control-scheduling] true)))))
           (is (= expected
-                 (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
+                 (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
       (testing "if we update back to metabase managed schedules it randomizes for us"
         (let [original-custom-schedules expected]
           (mt/with-temp Database [db (merge {:engine "h2" :details (assoc (:details (mt/db))
                                                                           :let-user-control-scheduling true)}
                                             original-custom-schedules)]
-            (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
-                                  (assoc-in db [:details :let-user-control-scheduling] false))
-            (let [schedules (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))]
+            (is (=? {:id (u/the-id db)}
+                    (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
+                                          (assoc-in db [:details :let-user-control-scheduling] false))))
+            (let [schedules (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))]
               (is (not= original-custom-schedules schedules))
               (is (= "hourly" (-> schedules :metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))
               (is (= "daily" (-> schedules :cache_field_values_schedule u.cron/cron-string->schedule-map :schedule_type))))))))))
@@ -808,7 +882,8 @@
                     Field       [field-2  {:table_id (u/the-id table-2)}]
                     FieldValues [values-1 {:field_id (u/the-id field-1), :values [1 2 3 4]}]
                     FieldValues [values-2 {:field_id (u/the-id field-2), :values [1 2 3 4]}]]
-      (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))
+      (is (= {:status "ok"}
+             (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
       (testing "values-1 still exists?"
         (is (= false
                (db/exists? FieldValues :id (u/the-id values-1)))))
@@ -1048,8 +1123,7 @@
     (testing "should work for the saved questions 'virtual' database"
       (mt/with-temp* [Collection [coll   {:name "My Collection"}]
                       Card       [card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))]
-                      Card       [card-2 (card-with-native-query "Card 2")]
-                      Card       [_card-3 (assoc (card-with-native-query "Card 3") :is_write true :result_metadata {})]]
+                      Card       [card-2 (card-with-native-query "Card 2")]]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
@@ -1098,7 +1172,8 @@
                                                  :dataset false)]]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
-          (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
+          (is (=? {:status "completed"}
+                  (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))))
         (testing "Should be able to get datasets in a specific collection"
           (is (= [{:id               (format "card__%d" (:id card-1))
                    :db_id            (mt/id)
@@ -1300,32 +1375,75 @@
                      (:details d)
                      (select-keys d [:password-source :password-value]))))))))
 
+;; these descriptions use deferred-tru because the `defsetting` macro complains if they're not, but since these are in
+;; tests they won't get scraped for i18n purposes so it's ok.
+(defsetting test-db-local-setting-public
+  (deferred-tru "Test Database-local Setting with internal visibility.")
+  :database-local :only
+  :visibility :public
+  :type :integer)
+
+(defsetting test-db-local-setting-authenticated
+  (deferred-tru "Test Database-local Setting with internal visibility.")
+  :database-local :only
+  :visibility :authenticated
+  :type :integer)
+
+(defsetting test-db-local-setting-admin
+  (deferred-tru "Test Database-local Setting with internal visibility.")
+  :database-local :only
+  :visibility :admin
+  :type :integer)
+
+(defsetting test-db-local-setting-internal
+  "Test Database-local Setting with internal visibility."
+  :database-local :only
+  :visibility :internal
+  :type :integer)
+
 (deftest database-local-settings-come-back-with-database-test
   (testing "Database-local Settings should come back with"
-    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:max-results-bare-rows 1337}}
-      ;; only returned for admin users at this point in time. See #22683 -- issue to return them for non-admins as well.
-      (doseq [{:keys [endpoint response]} [{:endpoint "GET /api/database/:id"
-                                            :response (fn []
-                                                        (mt/user-http-request :crowberto :get 200 (format "database/%d" (mt/id))))}
-                                           {:endpoint "GET /api/database"
-                                            :response (fn []
-                                                        (some
-                                                         (fn [database]
-                                                           (when (= (:id database) (mt/id))
-                                                             database))
-                                                         (:data (mt/user-http-request :crowberto :get 200 "database"))))}]]
-        (testing endpoint
-          (let [{:keys [settings], :as response} (response)]
-            (testing (format "\nresponse = %s" (u/pprint-to-str response))
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:test-db-local-setting-public        1
+                                                          :test-db-local-setting-authenticated 1
+                                                          :test-db-local-setting-admin         1
+                                                          :test-db-local-setting-internal      1}}
+      (doseq [[user user-type] {:crowberto :admin, :rasta :non-admin}]
+        (doseq [{:keys [endpoint response]} [{:endpoint "GET /api/database/:id"
+                                              :response (fn []
+                                                          (mt/user-http-request user :get 200 (format "database/%d" (mt/id))))}
+                                             {:endpoint "GET /api/database"
+                                              :response (fn []
+                                                          (some
+                                                           (fn [database]
+                                                             (when (= (:id database) (mt/id))
+                                                               database))
+                                                           (:data (mt/user-http-request user :get 200 "database"))))}]]
+          (testing endpoint
+            (let [{:keys [settings], :as response} (response)]
               (is (map? response))
-              (is (partial= {:max-results-bare-rows 1337}
-                            settings)))))))))
+              (is (map? settings))
+              (doseq [{:keys [setting visible?]} [{:setting  :test-db-local-setting-public
+                                                   :visible? (if (= user-type :non-admin) true true)}
+                                                  {:setting  :test-db-local-setting-authenticated
+                                                   :visible? (if (= user-type :non-admin) true true)}
+                                                  {:setting  :test-db-local-setting-admin
+                                                   :visible? (if (= user-type :non-admin) false true)}
+                                                  {:setting  :test-db-local-setting-internal
+                                                   :visible? (if (= user-type :non-admin) false false)}]
+                      :let                       [{:keys [visibility]} (setting/resolve-setting setting)]]
+                (testing (format "\nIf Setting visibility is %s, %s user should %s be able to see its value"
+                                 visibility user-type (if visible? "SHOULD" "SHOULD NOT"))
+                  (testing (format "\nresponse = %s" (u/pprint-to-str response))
+                    (if visible?
+                      (is (partial= {setting 1}
+                                    settings))
+                      (is (not (contains? settings setting))))))))))))))
 
 (deftest admins-set-database-local-settings-test
   (testing "Admins should be allowed to update Database-local Settings (#19409)"
     (mt/with-temp-vals-in-db Database (mt/id) {:settings nil}
       (letfn [(settings []
-                (db/select-one-field :settings Database :id (mt/id)))
+                (t2/select-one-fn :settings Database :id (mt/id)))
               (set-settings! [m]
                 (mt/user-http-request :crowberto :put 200 (format "database/%d" (mt/id))
                                       {:settings m}))]

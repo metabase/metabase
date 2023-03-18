@@ -13,7 +13,7 @@ export const createMockColumn = (data: Partial<DatasetColumn>) => {
   };
 };
 
-type MockDatasetOpts = Partial<Omit<Dataset, "data">> & {
+export type MockDatasetOpts = Partial<Omit<Dataset, "data">> & {
   data?: Partial<DatasetData>;
 };
 

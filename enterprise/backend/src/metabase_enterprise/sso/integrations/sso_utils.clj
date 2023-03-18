@@ -1,18 +1,23 @@
 (ns metabase-enterprise.sso.integrations.sso-utils
   "Functions shared by the various SSO implementations"
-  (:require [clojure.tools.logging :as log]
-            [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-            [metabase.api.common :as api]
-            [metabase.email.messages :as messages]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import [java.net MalformedURLException URL URLDecoder]
-           java.util.UUID))
+  (:require
+   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase.api.common :as api]
+   [metabase.email.messages :as messages]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan2.core :as t2])
+  (:import
+   (java.net MalformedURLException URL URLDecoder)
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private UserAttributes
   {:first_name       (s/maybe su/NonBlankString)
@@ -38,7 +43,7 @@
   "Update `:first_name`, `:last_name`, and `:login_attributes` for the user at `email`.
   This call is a no-op if the mentioned key values are equal."
   [{:keys [email] :as user-from-sso}]
-  (when-let [{:keys [id] :as user} (db/select-one User :%lower.email (u/lower-case-en email))]
+  (when-let [{:keys [id] :as user} (t2/select-one User :%lower.email (u/lower-case-en email))]
     (let [user-keys (keys user-from-sso)
           ;; remove keys with `nil` values
           user-data (into {} (filter second user-from-sso))]
@@ -46,7 +51,7 @@
         user
         (do
           (db/update! User id user-data)
-          (db/select-one User :id id))))))
+          (t2/select-one User :id id))))))
 
 (defn check-sso-redirect
   "Check if open redirect is being exploited in SSO, blurts out a 400 if so"
@@ -59,5 +64,5 @@
                       (.getHost (new URL decoded-url))
                       (catch MalformedURLException _ ""))
         our-host    (some-> (public-settings/site-url) (URL.) (.getHost))]
-  (api/check (or no-host (= host our-host))
-    [400 (tru "SSO is trying to do an open redirect to an untrusted site")])))
+   (api/check (or no-host (= host our-host))
+     [400 (tru "SSO is trying to do an open redirect to an untrusted site")])))

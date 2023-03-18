@@ -1,9 +1,10 @@
 (ns metabase.test.persistence
-  (:require [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.models.persisted-info :as persisted-info]
-            [metabase.task.persist-refresh :as task.persist-refresh]
-            [metabase.test.data :as data]
-            [metabase.test.util :as tu]))
+  (:require
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.models.persisted-info :as persisted-info]
+   [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.test.data :as data]
+   [metabase.test.util :as tu]))
 
 (defn with-persistence-enabled*
   [f]

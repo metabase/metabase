@@ -194,7 +194,7 @@ describe("metabase/visualization/lib/table", () => {
         }),
       ).toBe(true);
     });
-    it("should return true for numeric columns with semantic type latitude or longitude ", () => {
+    it("should return true for numeric columns with semantic type latitude or longitude", () => {
       expect(
         isColumnRightAligned({
           base_type: TYPE.Integer,

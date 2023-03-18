@@ -1,31 +1,32 @@
 (ns metabase.sync.util
   "Utility functions and macros to abstract away some common patterns and operations across the sync processes, such
   as logging start/end messages."
-  (:require [buddy.core.hash :as buddy-hash]
-            [clojure.math.numeric-tower :as math]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.events :as events]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.task-history :refer [TaskHistory]]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.sync.interface :as i]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [ring.util.codec :as codec]
-            [schema.core :as s]
-            [taoensso.nippy :as nippy]
-            [toucan.db :as db])
-  (:import java.time.temporal.Temporal))
+  (:require
+   [clojure.math.numeric-tower :as math]
+   [clojure.string :as str]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.events :as events]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.task-history :refer [TaskHistory]]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.sync.interface :as i]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.time.temporal Temporal)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          SYNC OPERATION "MIDDLEWARE"                                           |
@@ -313,16 +314,6 @@
 ;;; this is used for result metadata stuff.
 (defmethod name-for-logging :default [{field-name :name}]
   (trs "Field ''{0}''" field-name))
-
-(defn calculate-hash
-  "Calculate a cryptographic hash on `clj-data` and return that hash as a string"
-  [clj-data]
-  (->> clj-data
-       ;; Serialize the sorted list to bytes that can be hashed
-       nippy/fast-freeze
-       buddy-hash/md5
-       ;; Convert the hash bytes to a string for storage/comparison with the hash in the database
-       codec/base64-encode))
 
 (s/defn calculate-duration-str :- s/Str
   "Given two datetimes, caculate the time between them, return the result as a string"

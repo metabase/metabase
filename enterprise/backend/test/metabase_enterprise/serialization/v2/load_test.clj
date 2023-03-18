@@ -1,16 +1,24 @@
-(ns metabase-enterprise.serialization.v2.load-test
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase-enterprise.serialization.v2.extract :as serdes.extract]
-            [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
-            [metabase-enterprise.serialization.v2.load :as serdes.load]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues Metric Pulse
-                                     PulseChannel PulseChannelRecipient Segment Table Timeline TimelineEvent User]]
-            [metabase.models.serialization.base :as serdes.base]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.time.OffsetDateTime))
+(ns ^:mb/once metabase-enterprise.serialization.v2.load-test
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.extract :as serdes.extract]
+   [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
+   [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase.models
+    :refer [Action Card Collection Dashboard DashboardCard Database Field
+            FieldValues Metric NativeQuerySnippet Segment Table Timeline
+            TimelineEvent User]]
+   [metabase.models.action :as action]
+   [metabase.models.serialization :as serdes]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan2.core :as t2])
+  (:import
+   (java.time OffsetDateTime)))
 
 (defn- no-labels [path]
   (mapv #(dissoc % :label) path))
@@ -26,7 +34,7 @@
 
 (defn- ingestion-in-memory [extractions]
   (let [mapped (into {} (for [entity (into [] extractions)]
-                          [(no-labels (serdes.base/serdes-path entity))
+                          [(no-labels (serdes/path entity))
                            entity]))]
     (reify
       serdes.ingest/Ingestable
@@ -93,9 +101,9 @@
             (ts/create! Collection :name "Unrelated Collection")
             (ts/create! Collection :name "Parent Collection" :location "/" :entity_id (:entity_id @parent))
             (serdes.load/load-metabase (ingestion-in-memory @serialized))
-            (let [parent-dest     (db/select-one Collection :entity_id (:entity_id @parent))
-                  child-dest      (db/select-one Collection :entity_id (:entity_id @child))
-                  grandchild-dest (db/select-one Collection :entity_id (:entity_id @grandchild))]
+            (let [parent-dest     (t2/select-one Collection :entity_id (:entity_id @parent))
+                  child-dest      (t2/select-one Collection :entity_id (:entity_id @child))
+                  grandchild-dest (t2/select-one Collection :entity_id (:entity_id @grandchild))]
               (is (some? parent-dest))
               (is (some? child-dest))
               (is (some? grandchild-dest))
@@ -152,8 +160,8 @@
         (testing "deserialization works properly, keeping the same-named tables apart"
           (ts/with-dest-db
             (serdes.load/load-metabase (ingestion-in-memory @serialized))
-            (reset! db1d (db/select-one Database :name (:name @db1s)))
-            (reset! db2d (db/select-one Database :name (:name @db2s)))
+            (reset! db1d (t2/select-one Database :name (:name @db1s)))
+            (reset! db2d (t2/select-one Database :name (:name @db2s)))
 
             (is (= 3 (db/count Database)))
             (is (= #{"db1" "db2" "test-data"}
@@ -162,76 +170,6 @@
                    (db/select-field :db_id Table :name "posts")))
             (is (db/exists? Table :name "posts" :db_id (:id @db1d)))
             (is (db/exists? Table :name "posts" :db_id (:id @db2d)))))))))
-
-(deftest pulse-channel-recipient-merging-test
-  (testing "pulse channel recipients are listed as emails on a channel, then merged with the existing ones"
-    (let [serialized (atom nil)
-          u1s        (atom nil)
-          u2s        (atom nil)
-          u3s        (atom nil)
-          pulse-s    (atom nil)
-          pc1s       (atom nil)
-          pc2s       (atom nil)
-          pcr1s      (atom nil)
-          pcr2s      (atom nil)
-
-          u1d        (atom nil)
-          u2d        (atom nil)
-          u3d        (atom nil)
-          pulse-d    (atom nil)
-          pc1d       (atom nil)]
-      (ts/with-source-and-dest-dbs
-        (testing "serializing the pulse, channel and recipients"
-          (ts/with-source-db
-            (reset! u1s (ts/create! User :first_name "Alex"  :last_name "Lifeson" :email "alifeson@rush.yyz"))
-            (reset! u2s (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz"))
-            (reset! u3s (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
-            (reset! pulse-s (ts/create! Pulse :name "Heartbeat" :creator_id (:id @u1s)))
-            (reset! pc1s    (ts/create! PulseChannel
-                                        :pulse_id      (:id @pulse-s)
-                                        :channel_type  :email
-                                        :schedule_type :daily
-                                        :schedule_hour 16))
-            (reset! pc2s    (ts/create! PulseChannel
-                                        :pulse_id      (:id @pulse-s)
-                                        :channel_type  :slack
-                                        :schedule_type :hourly))
-            ;; Only Lifeson and Lee are recipients in the source.
-            (reset! pcr1s  (ts/create! PulseChannelRecipient :pulse_channel_id (:id @pc1s) :user_id (:id @u1s)))
-            (reset! pcr2s  (ts/create! PulseChannelRecipient :pulse_channel_id (:id @pc1s) :user_id (:id @u2s)))
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
-
-        (testing "recipients are serialized as :recipients [email] on the PulseChannel"
-          (is (= #{["alifeson@rush.yyz" "glee@rush.yyz"]
-                   []}
-                 (set (map :recipients (by-model @serialized "PulseChannel"))))))
-
-        (testing "deserialization merges the existing recipients with the new ones"
-          (ts/with-dest-db
-            ;; Users in a different order, so different IDs.
-            (reset! u2d (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz"))
-            (reset! u1d (ts/create! User :first_name "Alex"  :last_name "Lifeson" :email "alifeson@rush.yyz"))
-            (reset! u3d (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
-            (reset! pulse-d (ts/create! Pulse :name "Heartbeat" :creator_id (:id @u1d) :entity_id (:entity_id @pulse-s)))
-            (reset! pc1d    (ts/create! PulseChannel
-                                        :entity_id     (:entity_id @pc1s)
-                                        :pulse_id      (:id @pulse-d)
-                                        :channel_type  :email
-                                        :schedule_type :daily
-                                        :schedule_hour 16))
-            ;; Only Lee and Peart are recipients in the source.
-            (ts/create! PulseChannelRecipient :pulse_channel_id (:id @pc1d) :user_id (:id @u2d))
-            (ts/create! PulseChannelRecipient :pulse_channel_id (:id @pc1d) :user_id (:id @u3d))
-
-            (is (= 2 (db/count PulseChannelRecipient)))
-            (is (= #{(:id @u2d) (:id @u3d)}
-                   (db/select-field :user_id PulseChannelRecipient)))
-
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
-
-            (is (= 3 (db/count PulseChannelRecipient)))
-            (is (= #{(:id @u1d) (:id @u2d) (:id @u3d)}
-                   (db/select-field :user_id PulseChannelRecipient)))))))))
 
 (deftest card-dataset-query-test
   ;; Card.dataset_query is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be
@@ -254,7 +192,6 @@
           db2d       (atom nil)
           table2d    (atom nil)
           field2d    (atom nil)]
-
 
       (ts/with-source-and-dest-dbs
         (testing "serializing the original database, table, field and card"
@@ -301,10 +238,10 @@
             (serdes.load/load-metabase (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
-            (reset! db1d    (db/select-one Database :name "my-db"))
-            (reset! table1d (db/select-one Table :name "customers"))
-            (reset! field1d (db/select-one Field :table_id (:id @table1d) :name "age"))
-            (reset! card1d  (db/select-one Card  :name "Example Card"))
+            (reset! db1d    (t2/select-one Database :name "my-db"))
+            (reset! table1d (t2/select-one Table :name "customers"))
+            (reset! field1d (t2/select-one Field :table_id (:id @table1d) :name "age"))
+            (reset! card1d  (t2/select-one Card  :name "Example Card"))
 
             (testing "the main Database, Table, and Field have different IDs now"
               (is (not= (:id @db1s) (:id @db1d)))
@@ -380,10 +317,10 @@
             (serdes.load/load-metabase (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
-            (reset! db1d    (db/select-one Database :name "my-db"))
-            (reset! table1d (db/select-one Table :name "customers"))
-            (reset! field1d (db/select-one Field :table_id (:id @table1d) :name "age"))
-            (reset! seg1d   (db/select-one Segment :name "Minors"))
+            (reset! db1d    (t2/select-one Database :name "my-db"))
+            (reset! table1d (t2/select-one Table :name "customers"))
+            (reset! field1d (t2/select-one Field :table_id (:id @table1d) :name "age"))
+            (reset! seg1d   (t2/select-one Segment :name "Minors"))
 
             (testing "the main Database, Table, and Field have different IDs now"
               (is (not= (:id @db1s) (:id @db1d)))
@@ -455,10 +392,10 @@
             (serdes.load/load-metabase (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
-            (reset! db1d     (db/select-one Database :name "my-db"))
-            (reset! table1d  (db/select-one Table :name "orders"))
-            (reset! field1d  (db/select-one Field :table_id (:id @table1d) :name "subtotal"))
-            (reset! metric1d (db/select-one Metric :name "Revenue"))
+            (reset! db1d     (t2/select-one Database :name "my-db"))
+            (reset! table1d  (t2/select-one Table :name "orders"))
+            (reset! field1d  (t2/select-one Field :table_id (:id @table1d) :name "subtotal"))
+            (reset! metric1d (t2/select-one Metric :name "Revenue"))
 
             (testing "the main Database, Table, and Field have different IDs now"
               (is (not= (:id @db1s) (:id @db1d)))
@@ -609,13 +546,13 @@
             (serdes.load/load-metabase (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
-            (reset! db1d       (db/select-one Database :name "my-db"))
-            (reset! table1d    (db/select-one Table :name "orders"))
-            (reset! field1d    (db/select-one Field :table_id (:id @table1d) :name "subtotal"))
-            (reset! field2d    (db/select-one Field :table_id (:id @table1d) :name "invoice"))
-            (reset! dash1d     (db/select-one Dashboard :name "My Dashboard"))
-            (reset! card1d     (db/select-one Card :name "The Card"))
-            (reset! dashcard1d (db/select-one DashboardCard :card_id (:id @card1d) :dashboard_id (:id @dash1d)))
+            (reset! db1d       (t2/select-one Database :name "my-db"))
+            (reset! table1d    (t2/select-one Table :name "orders"))
+            (reset! field1d    (t2/select-one Field :table_id (:id @table1d) :name "subtotal"))
+            (reset! field2d    (t2/select-one Field :table_id (:id @table1d) :name "invoice"))
+            (reset! dash1d     (t2/select-one Dashboard :name "My Dashboard"))
+            (reset! card1d     (t2/select-one Card :name "The Card"))
+            (reset! dashcard1d (t2/select-one DashboardCard :card_id (:id @card1d) :dashboard_id (:id @dash1d)))
 
             (testing "the main Database, Table, and Field have different IDs now"
               (is (not= (:id @db1s) (:id @db1d)))
@@ -726,7 +663,7 @@
             (serdes.load/load-metabase (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
-            (reset! timeline2d (db/select-one Timeline :entity_id (:entity_id @timeline2s)))
+            (reset! timeline2d (t2/select-one Timeline :entity_id (:entity_id @timeline2s)))
             (reset! eventsT1   (db/select TimelineEvent :timeline_id (:id @timeline1d)))
             (reset! eventsT2   (db/select TimelineEvent :timeline_id (:id @timeline2d)))
 
@@ -790,8 +727,8 @@
             (serdes.load/load-metabase (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
-            (reset! metric1d (db/select-one Metric :name "Large Users"))
-            (reset! metric2d (db/select-one Metric :name "Support Headaches"))
+            (reset! metric1d (t2/select-one Metric :name "Large Users"))
+            (reset! metric2d (t2/select-one Metric :name "Support Headaches"))
 
             (testing "the Metrics and Users have different IDs now"
               (is (not= (:id @metric1s) (:id @metric1d)))
@@ -801,7 +738,7 @@
             (testing "both existing User and the new one are set up properly"
               (is (= (:id @user1d) (:creator_id @metric1d)))
               (let [user2d-id (:creator_id @metric2d)
-                    user2d    (db/select-one User :id user2d-id)]
+                    user2d    (t2/select-one User :id user2d-id)]
                 (is (any? user2d))
                 (is (= (:email @user2s) (:email user2d)))))))))))
 
@@ -833,7 +770,7 @@
           field3d    (atom nil)]
 
       (testing "serializing the original database, table, field and fieldvalues"
-        (ts/with-empty-h2-app-db
+        (mt/with-empty-h2-app-db
           (reset! db1s     (ts/create! Database :name "my-db"))
           (reset! table1s  (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
           (reset! field1s  (ts/create! Field :name "STATE" :table_id (:id @table1s)))
@@ -842,7 +779,7 @@
           (reset! fv2s     (ts/create! FieldValues :field_id (:id @field2s)
                                        :values ["CONSTRUCTION" "DAYLIGHTING" "DELIVERY" "HAULING"]))
 
-          (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+          (reset! serialized (into [] (serdes.extract/extract-metabase {:include-field-values true})))
 
           (testing "the expected fields are serialized"
             (is (= 1
@@ -865,12 +802,12 @@
                         {:model "Field"       :id "CATEGORY"}
                         {:model "FieldValues" :id "0"}]}
                      (->> fvs
-                          (map serdes.base/serdes-path)
+                          (map serdes/path)
                           (filter #(-> % first :id (= "my-db")))
                           set)))))))
 
       (testing "deserializing finds existing FieldValues properly"
-        (ts/with-empty-h2-app-db
+        (mt/with-empty-h2-app-db
           ;; A different database and tables, so the IDs don't match.
           (reset! db2d    (ts/create! Database :name "other-db"))
           (reset! table2d (ts/create! Table    :name "ORDERS" :db_id (:id @db2d)))
@@ -890,8 +827,8 @@
           (serdes.load/load-metabase (ingestion-in-memory @serialized))
 
           ;; Fetch the relevant bits
-          (reset! fv1d (db/select-one FieldValues :field_id (:id @field1d)))
-          (reset! fv2d (db/select-one FieldValues :field_id (:id @field2d)))
+          (reset! fv1d (t2/select-one FieldValues :field_id (:id @field1d)))
+          (reset! fv2d (t2/select-one FieldValues :field_id (:id @field2d)))
 
           (testing "the main Database, Table, and Field have different IDs now"
             (is (not= (:id @db1s)    (:id @db1d)))
@@ -917,7 +854,7 @@
         table1s    (atom nil)]
 
     (testing "loading a bare card"
-      (ts/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db
         (reset! db1s    (ts/create! Database :name "my-db"))
         (reset! table1s (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
         (ts/create! Field :name "STATE" :table_id (:id @table1s))
@@ -954,3 +891,79 @@
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"Failed to read file"
                                   (serdes.load/load-metabase ingestion)))))))))
+
+(deftest card-with-snippet-test
+  (let [db1s       (atom nil)
+        table1s    (atom nil)
+        snippet1s  (atom nil)
+        card1s     (atom nil)
+        extracted  (atom nil)]
+    (testing "snippets referenced by native cards must be deserialized"
+      (mt/with-empty-h2-app-db
+        (reset! db1s      (ts/create! Database :name "my-db"))
+        (reset! table1s   (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
+        (reset! snippet1s (ts/create! NativeQuerySnippet :name "some snippet"))
+        (reset! card1s    (ts/create! Card
+                                      :name "the query"
+                                      :dataset_query {:database (:id @db1s)
+                                                      :native {:template-tags {"snippet: things"
+                                                                               {:id "e2d15f07-37b3-01fc-3944-2ff860a5eb46",
+                                                                                :name "snippet: filtered data",
+                                                                                :display-name "Snippet: Filtered Data",
+                                                                                :type :snippet,
+                                                                                :snippet-name "filtered data",
+                                                                                :snippet-id (:id @snippet1s)}}}}))
+        (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
+
+        (testing "on extraction"
+          (reset! extracted (serdes/extract-one "Card" {} @card1s))
+          (is (= (:entity_id @snippet1s)
+                 (-> @extracted :dataset_query :native :template-tags (get "snippet: things") :snippet-id))))
+
+        (testing "when loading"
+          (let [new-eid   (u/generate-nano-id)
+                ingestion (ingestion-in-memory [(assoc @extracted :entity_id new-eid)])]
+            (is (some? (serdes.load/load-metabase ingestion)))
+            (is (= (:id @snippet1s)
+                   (-> (t2/select-one Card :entity_id new-eid)
+                       :dataset_query
+                       :native
+                       :template-tags
+                       (get "snippet: things")
+                       :snippet-id)))))))))
+
+(deftest load-action-test
+  (let [serialized (atom nil)
+        eid (u/generate-nano-id)]
+    (ts/with-source-and-dest-dbs
+      (testing "extraction succeeds"
+        (ts/with-source-db
+          (let [db       (ts/create! Database :name "my-db")
+                card     (ts/create! Card
+                                     :name "the query"
+                                     :query_type :native
+                                     :dataset true
+                                     :database_id (:id db)
+                                     :dataset_query {:database (:id db)
+                                                     :native {:type   :native
+                                                              :native {:query "wow"}}})
+                _action-id (action/insert! {:entity_id     eid
+                                            :name          "the action"
+                                            :model_id      (:id card)
+                                            :type          :query
+                                            :dataset_query "wow"
+                                            :database_id   (:id db)})]
+            (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+            (let [action-serialized (first (filter (fn [{[{:keys [model id]}] :serdes/meta}]
+                                                     (and (= model "Action") (= id eid)))
+                                                   @serialized))]
+              (is (some? action-serialized))
+              (testing ":type should be a string"
+                (is (string? (:type action-serialized))))))))
+      (testing "loading succeeds"
+        (ts/with-dest-db
+          (serdes.load/load-metabase (ingestion-in-memory @serialized))
+          (let [action (t2/select-one Action :entity_id eid)]
+            (is (some? action))
+            (testing ":type should be a keyword again"
+              (is (keyword? (:type action))))))))))

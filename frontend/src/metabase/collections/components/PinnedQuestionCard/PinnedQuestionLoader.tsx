@@ -2,9 +2,9 @@ import React, { useRef } from "react";
 import Questions from "metabase/entities/questions";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import {
-  ERROR_MESSAGE_GENERIC,
-  ERROR_MESSAGE_PERMISSION,
-} from "metabase/visualizations/components/Visualization";
+  getGenericErrorMessage,
+  getPermissionErrorMessage,
+} from "metabase/visualizations/lib/errors";
 import Metadata from "metabase-lib/metadata/Metadata";
 import Question from "metabase-lib/Question";
 
@@ -97,9 +97,9 @@ const getError = (error?: any, result?: any) => {
   if (!errorResponse) {
     return undefined;
   } else if (errorResponse.status === 403) {
-    return ERROR_MESSAGE_PERMISSION;
+    return getPermissionErrorMessage();
   } else {
-    return ERROR_MESSAGE_GENERIC;
+    return getGenericErrorMessage();
   }
 };
 

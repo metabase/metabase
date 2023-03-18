@@ -1,16 +1,20 @@
 (ns metabase.server.middleware.auth-test
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.models.session :refer [Session]]
-            [metabase.server.middleware.auth :as mw.auth]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.fixtures :as fixtures]
-            [ring.mock.request :as ring.mock]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.models.session :refer [Session]]
+   [metabase.server.middleware.auth :as mw.auth]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
+   [ring.mock.request :as ring.mock]
+   [toucan.db :as db])
+  (:import
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
@@ -136,11 +140,9 @@
               (request-with-api-key "foobar"))))))
 
   (testing "no apikey is set, expect 403"
-    (mt/with-temporary-setting-values [api-key nil]
-      (is (= mw.util/response-forbidden
-             (api-key-enforced-handler
-              (ring.mock/request :get "/anyurl")))))
-    (mt/with-temporary-setting-values [api-key ""]
-      (is (= mw.util/response-forbidden
-             (api-key-enforced-handler
-              (ring.mock/request :get "/anyurl")))))))
+    (doseq [api-key-value [nil ""]]
+      (testing (str "when key is " ({nil "nil" "" "empty"} api-key-value))
+       (mt/with-temporary-setting-values [api-key api-key-value]
+         (is (= mw.auth/key-not-set-response
+                (api-key-enforced-handler
+                 (ring.mock/request :get "/anyurl")))))))))

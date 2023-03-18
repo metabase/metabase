@@ -1,10 +1,4 @@
-import React, {
-  ChangeEvent,
-  forwardRef,
-  ReactNode,
-  Ref,
-  useCallback,
-} from "react";
+import React, { forwardRef, ReactNode, Ref, useCallback } from "react";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import NumericInput, {
@@ -21,6 +15,7 @@ export interface FormNumericInputProps
   title?: string;
   description?: ReactNode;
   nullable?: boolean;
+  optional?: boolean;
 }
 
 const FormNumericInput = forwardRef(function FormNumericInput(
@@ -31,6 +26,7 @@ const FormNumericInput = forwardRef(function FormNumericInput(
     title,
     description,
     nullable,
+    optional,
     ...props
   }: FormNumericInputProps,
   ref: Ref<HTMLDivElement>,
@@ -54,6 +50,7 @@ const FormNumericInput = forwardRef(function FormNumericInput(
       description={description}
       htmlFor={id}
       error={touched ? error : undefined}
+      optional={optional}
     >
       <NumericInput
         {...props}

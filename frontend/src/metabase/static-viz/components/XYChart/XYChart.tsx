@@ -62,7 +62,14 @@ export const XYChart = ({
     series = calculateStackedItems(series);
   }
 
-  const yDomains = calculateYDomains(series, settings.goal?.value);
+  const minValueSetting = settings.visualization_settings["graph.y_axis.min"];
+  const maxValueSetting = settings.visualization_settings["graph.y_axis.max"];
+  const yDomains = calculateYDomains(
+    series,
+    minValueSetting,
+    maxValueSetting,
+    settings.goal?.value,
+  );
   const yTickWidths = getYTickWidths(
     settings.y.format,
     style.axes.ticks.fontSize,
@@ -79,6 +86,8 @@ export const XYChart = ({
   const yLabelOffsetRight = LABEL_PADDING;
   const xTickVerticalMargins = style.axes.labels.fontSize * 2;
 
+  const showValues = settings.visualization_settings["graph.show_values"];
+
   const margin = calculateMargin(
     yTickWidths.left,
     yTickWidths.right,
@@ -86,7 +95,7 @@ export const XYChart = ({
     xTicksDimensions.width,
     settings.labels,
     style.axes.ticks.fontSize,
-    !!settings.goal || !!settings.show_values,
+    !!settings.goal || showValues,
   );
 
   const { xMin, xMax, yMin, innerHeight, innerWidth } = calculateBounds(
@@ -303,7 +312,7 @@ export const XYChart = ({
               />
             )}
 
-            {settings.show_values && (
+            {showValues && (
               <Values
                 series={series}
                 formatter={(value: number, compact: boolean): string =>
@@ -353,7 +362,10 @@ function getValuesLeftOffset(
   const maxSeriesLength = Math.max(
     ...multipleSeries.map(series => series.data.length),
   );
-  if (settings.show_values && maxSeriesLength > MAX_SERIES_LENGTH) {
+  if (
+    settings.visualization_settings["graph.show_values"] &&
+    maxSeriesLength > MAX_SERIES_LENGTH
+  ) {
     return valueCharSize * (APPROXIMATE_MAX_VALUE_CHAR_LENGTH / 2);
   }
 

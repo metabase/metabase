@@ -1,13 +1,16 @@
 (ns metabase.query-processor.middleware.parameters.mbql
   "Code for handling parameter substitution in MBQL queries."
-  (:require [metabase.driver.common.parameters.dates :as params.dates]
-            [metabase.driver.common.parameters.operators :as params.ops]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.params :as params]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.params :as params]
+   [schema.core :as s]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (s/defn ^:private to-numeric :- s/Num
   "Returns either a double or a long. Possible to use the edn reader but we would then have to worry about biginters
@@ -28,7 +31,7 @@
     ;; If it *is* a number then recursively call this function and parse the param value as a number as appropriate.
     (and (#{:id :category} param-type)
          (let [base-type (mbql.u/match-one field-clause
-                           [:field (id :guard integer?) _]  (db/select-one-field :base_type Field :id id)
+                           [:field (id :guard integer?) _]  (t2/select-one-fn :base_type Field :id id)
                            [:field (_ :guard string?) opts] (:base-type opts))]
            (isa? base-type :type/Number)))
     (recur :number param-value field-clause)

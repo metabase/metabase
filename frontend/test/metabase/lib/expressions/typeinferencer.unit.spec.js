@@ -88,7 +88,7 @@ describe("metabase-lib/expressions/typeinferencer", () => {
   it("should infer the result of string functions", () => {
     expect(type("Ltrim([Name])")).toEqual("string");
     expect(type("Concat(Upper([LastN]), [FirstN])")).toEqual("string");
-    expect(type("SUBSTRING([Product], 0, 3)")).toEqual("string");
+    expect(type("SUBSTRING([Product], 1, 3)")).toEqual("string");
     expect(type("Length([Category])")).toEqual("number");
     expect(type("Length([Category]) > 0")).toEqual("boolean");
   });
@@ -116,12 +116,19 @@ describe("metabase-lib/expressions/typeinferencer", () => {
   });
 
   it("should infer the result of datetimeAdd, datetimeSubtract", () => {
-    expect(type('datetimeAdd([CreatedAt], 2, "month")')).toEqual(
-      "type/Datetime",
-    );
+    expect(type('datetimeAdd([CreatedAt], 2, "month")')).toEqual("datetime");
+    expect(type('datetimeAdd("2022-01-01", 2, "month")')).toEqual("datetime");
     expect(type('datetimeSubtract([CreatedAt], 2, "month")')).toEqual(
-      "type/Datetime",
+      "datetime",
     );
+    expect(type('datetimeSubtract("2022-01-01", 2, "month")')).toEqual(
+      "datetime",
+    );
+    expect(
+      type(
+        'datetimeSubtract(datetimeAdd("2022-01-01", 2, "month"), 4, "minute")',
+      ),
+    ).toEqual("datetime");
   });
 
   it("should infer the result of datetimeExtract functions", () => {

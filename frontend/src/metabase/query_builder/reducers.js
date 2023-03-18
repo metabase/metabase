@@ -3,6 +3,8 @@ import { assoc, dissoc, merge } from "icepick";
 import _ from "underscore";
 import Utils from "metabase/lib/utils";
 
+import TimelineEvents from "metabase/entities/timeline-events";
+
 import {
   RESET_QB,
   INITIALIZE_QB,
@@ -21,7 +23,6 @@ import {
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
   SET_CARD_AND_RUN,
-  SET_TEMPLATE_TAG,
   SET_PARAMETER_VALUE,
   UPDATE_QUESTION,
   RUN_QUERY,
@@ -55,8 +56,8 @@ import {
   onCloseQuestionInfo,
   onOpenTimelines,
   onCloseTimelines,
-  SHOW_TIMELINES,
-  HIDE_TIMELINES,
+  HIDE_TIMELINE_EVENTS,
+  SHOW_TIMELINE_EVENTS,
   SELECT_TIMELINE_EVENTS,
   DESELECT_TIMELINE_EVENTS,
   SET_DOCUMENT_TITLE,
@@ -250,11 +251,15 @@ export const uiControls = handleActions(
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
-    [onOpenChartSettings]: (state, { payload: initial }) => ({
+    [onOpenChartSettings]: (
+      state,
+      { payload: { initialChartSettings, showSidebarTitle = false } = {} },
+    ) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       isShowingChartSettingsSidebar: true,
-      initialChartSetting: initial,
+      initialChartSetting: initialChartSettings,
+      showSidebarTitle: showSidebarTitle,
     }),
     [onCloseChartSettings]: state => ({
       ...state,
@@ -352,8 +357,6 @@ export const card = handleActions(
     [API_UPDATE_QUESTION]: { next: (state, { payload }) => payload },
 
     [CANCEL_DATASET_CHANGES]: { next: (state, { payload }) => payload.card },
-
-    [SET_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
 
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
@@ -540,18 +543,21 @@ export const currentState = handleActions(
   null,
 );
 
-export const visibleTimelineIds = handleActions(
+export const visibleTimelineEventIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
-    [SHOW_TIMELINES]: {
-      next: (state, { payload: timelines }) => [
-        ...state,
-        ...timelines.map(t => t.id),
-      ],
+    [SHOW_TIMELINE_EVENTS]: {
+      next: (state, { payload: events }) =>
+        _.uniq([...state, ...events.map(event => event.id)]),
     },
-    [HIDE_TIMELINES]: {
-      next: (state, { payload: timelines }) =>
-        _.without(state, ...timelines.map(t => t.id)),
+    [HIDE_TIMELINE_EVENTS]: {
+      next: (state, { payload: events }) => {
+        const eventIdsToHide = events.map(event => event.id);
+        return state.filter(eventId => !eventIdsToHide.includes(eventId));
+      },
+    },
+    [TimelineEvents.actionTypes.CREATE]: {
+      next: (state, { payload }) => [...state, payload.timelineEvent.id],
     },
     [RESET_QB]: { next: () => [] },
   },
@@ -566,10 +572,6 @@ export const selectedTimelineEventIds = handleActions(
     },
     [DESELECT_TIMELINE_EVENTS]: {
       next: () => [],
-    },
-    [HIDE_TIMELINES]: {
-      next: (state, { payload: timelines }) =>
-        _.without(state, ...timelines.flatMap(t => t.events.map(e => e.id))),
     },
     [onCloseTimelines]: { next: () => [] },
     [RESET_QB]: { next: () => [] },

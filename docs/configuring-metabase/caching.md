@@ -17,6 +17,12 @@ To start caching your queries, head to the Settings section of the Admin Panel, 
 
 End-users will see a timestamp on cached questions in the top right of the question detail page showing the time when that question was last updated (i.e., the time when the current result was cached). Clicking on the `Refresh` button on a question page will manually rerun the query and override the cached result with the new result.
 
+## Caching location
+
+If you're self-hosting Metabase, cached queries will be saved to your [application database](../installation-and-operation/configuring-application-database.md).
+
+If you're using Metabase Cloud, cached queries will be saved to Metabase's servers in the United States.
+
 ## Caching settings
 
 In Metabase, rather than setting cache settings manually on a per-query basis, we give you two parameters to set to automatically cache the results of long queries: the minimum average query duration, and the cache TTL multiplier.

@@ -1,11 +1,17 @@
 (ns metabase.test.data.redshift
-  (:require [clojure.java.jdbc :as jdbc]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
+
+(defmethod tx/supports-time-type? :redshift [_driver] false)
 
 ;; we don't need to add test extensions here because redshift derives from Postgres and thus already has test
 ;; extensions
@@ -74,9 +80,9 @@
 (defn execute! [format-string & args]
   (let [sql  (apply format format-string args)
         spec (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)]
-    (println (u/format-color 'blue "[redshift] %s" sql))
+    (log/info (u/format-color 'blue "[redshift] %s" sql))
     (jdbc/execute! spec sql))
-  (println (u/format-color 'blue "[ok]")))
+  (log/info (u/format-color 'blue "[ok]")))
 
 (defmethod tx/before-run :redshift
   [_]

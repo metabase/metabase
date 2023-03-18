@@ -1,17 +1,19 @@
 (ns metabase.api.timeline-test
   "Tests for /api/timeline endpoints."
-  (:require [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.http-client :as client]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.timeline :refer [Timeline]]
-            [metabase.models.timeline-event :refer [TimelineEvent]]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.http-client :as client]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.timeline :refer [Timeline]]
+   [metabase.models.timeline-event :refer [TimelineEvent]]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (deftest auth-tests
   (testing "Authentication"
@@ -158,10 +160,10 @@
                                    :collection_id id})
             (testing "check the collection to see if the timeline is there"
               (is (= "Rasta's TL"
-                     (-> (db/select-one Timeline :collection_id id) :name))))
+                     (-> (t2/select-one Timeline :collection_id id) :name))))
             (testing "Check that the icon is 'star' by default"
               (is (= "star"
-                     (-> (db/select-one-field :icon Timeline :collection_id id)))))))))))
+                     (-> (t2/select-one-fn :icon Timeline :collection_id id)))))))))))
 
 (deftest update-timeline-test
   (testing "PUT /api/timeline/:id"
