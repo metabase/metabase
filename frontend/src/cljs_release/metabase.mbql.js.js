@@ -1,2 +1,0 @@
-var window=global;var $CLJS=require("./cljs_env.js");require("./cljs.core.js");require("./metabase.mbql.normalize.js");require("./metabase.util.js");
-'use strict';module.exports={normalize:function(a){return $CLJS.Fh.o((0,$CLJS.IJ)($CLJS.qJ(a)),$CLJS.G([$CLJS.ik,$CLJS.BK]))}};

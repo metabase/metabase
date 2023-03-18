@@ -1,2 +1,0 @@
-var window=global;var $CLJS=require("./cljs_env.js");require("./cljs.core.js");
-'use strict';$CLJS.Ek=function(a,b){this.pf=a;this.th=b;this.A=393216;this.M=0};$CLJS.Ek.prototype.aa=function(a,b){return new $CLJS.Ek(this.pf,b)};$CLJS.Ek.prototype.Z=function(){return this.th};$CLJS.Ek.prototype.Bf=$CLJS.gc;$CLJS.Ek.prototype.rf=$CLJS.qa(10);$CLJS.Fk=$CLJS.vh.g(new $CLJS.Ek($CLJS.ie,$CLJS.ie));
