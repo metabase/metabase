@@ -15,8 +15,8 @@ import Table from "metabase-lib/metadata/Table";
 import { ObjectId } from "./types";
 
 export interface GetObjectNameArgs {
-  table: Table | null;
-  question: Question;
+  table?: Table | null;
+  question?: Question;
   cols: Column[];
   zoomedRow: unknown[] | undefined;
 }
