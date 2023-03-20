@@ -391,7 +391,7 @@
   (let [dimensions (->> (t2/select Dimension)
                         (group-by :field_id))]
     (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
-              (t2/reducible-select Field))))
+              (db/select-reducible Field))))
 
 (defmethod serdes/dependencies "Field" [field]
   ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.

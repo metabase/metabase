@@ -135,7 +135,6 @@
    honeysql.core/raw             {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
    java-time/with-clock          {:message "Use mt/with-clock"}
    toucan.db/select              {:message "Use t2/select instead of toucan.db/select"}
-   toucan.db/select-reducible    {:message "Use t2/reducible-select instead of toucan.db/select-reducible"}
    toucan.db/select-one          {:message "Use t2/select-one instead of toucan.db/select-one"}
    toucan.db/select-one-id       {:message "Use t2/select-one-pk instead of toucan.db/select-one-id"}
    toucan.db/select-one-field    {:message "Use t2/select-one-fn instead of toucan.db/select-one-field"}

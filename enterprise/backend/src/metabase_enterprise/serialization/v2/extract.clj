@@ -185,4 +185,4 @@ Eg. if Dashboard B includes a Card A that is derived from a
                         (m/map-vals #(set (map second %))))]
       (eduction cat (for [[model ids] by-model]
                       (eduction (map #(serdes/extract-one model opts %))
-                                (t2/reducible-select (symbol model) :id [:in ids])))))))
+                                (db/select-reducible (symbol model) :id [:in ids])))))))

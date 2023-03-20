@@ -15,8 +15,7 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan2.core :as t2]))
+   [toucan.db :as db]))
 
 (declare humanization-strategy)
 
@@ -49,7 +48,7 @@
                              (name model) internal-name display-name new-strategy-display-name))
               (db/update! model id
                 :display_name new-strategy-display-name))))
-        (t2/reducible-select [model :id :name :display_name])))
+        (db/select-reducible [model :id :name :display_name])))
 
 (s/defn ^:private re-humanize-table-and-field-names!
   "Update the non-custom display names of all Tables & Fields in the database using new values obtained from
