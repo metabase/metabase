@@ -85,7 +85,7 @@
             ;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
             ;; This is a corner case since the system should always be using the right driver
             weird-formatted-query (mdb.query/format-sql query :postgres)]
-        (testing "The generated query and formatted query should be identical"
+        (testing "Formatting a non-sql query returns nothing"
           (is (nil? formatted-query)))
         (testing "The wrong formatter will change the format..."
           (is (not= query weird-formatted-query)))
