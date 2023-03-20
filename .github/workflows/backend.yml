@@ -61,8 +61,11 @@ jobs:
       with:
         clj-kondo: 2023.02.17
     - name: Run clj-kondo
+      # This output format integrates with github actions annotations
+      # https://github.com/clj-kondo/clj-kondo/blob/master/doc/ci-integration.md#linter-output-integration
       run: >-
         clj-kondo
+        --config '{:output {:pattern "::{{level}} file={{filename}},line={{row}},col={{col}}::{{message}}"}}'
         --parallel
         --lint
         src
