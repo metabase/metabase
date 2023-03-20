@@ -13,17 +13,6 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-(mu/defn expression :- ::lib.schema/query
-  "Adds an expression to query."
-  ([query expression-name an-expression-clause]
-   (expression query -1 expression-name an-expression-clause))
-  ([query stage-number expression-name an-expression-clause]
-   (let [stage-number (or stage-number -1)]
-     (lib.util/update-query-stage
-       query stage-number
-       update :expressions
-       assoc expression-name (lib.common/->op-arg query stage-number an-expression-clause)))))
-
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
   "Find the expression with `expression-name` in a given stage of a `query`, or throw an Exception if it doesn't
   exist."
@@ -154,6 +143,17 @@
 (defmethod lib.metadata.calculation/column-name-method :coalesce
   [query stage-number [_coalesce _opts expr _null-expr]]
   (lib.metadata.calculation/column-name query stage-number expr))
+
+(mu/defn expression :- ::lib.schema/query
+  "Adds an expression to query."
+  ([query expression-name an-expression-clause]
+   (expression query -1 expression-name an-expression-clause))
+  ([query stage-number expression-name an-expression-clause]
+   (let [stage-number (or stage-number -1)]
+     (lib.util/update-query-stage
+       query stage-number
+       update :expressions
+       assoc expression-name (lib.common/->op-arg query stage-number an-expression-clause)))))
 
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])
