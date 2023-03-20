@@ -518,7 +518,7 @@
                   :dimension_options (default-dimension-options)
                   :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
                                                 with-field-literal-id)
-                                          (let [id->fingerprint   (db/select-id->field :fingerprint Field :table_id (mt/id :venues))
+                                          (let [id->fingerprint   (t2/select-pk->fn :fingerprint Field :table_id (mt/id :venues))
                                                 name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
                                             [{:name           "NAME"
                                               :display_name   "NAME"

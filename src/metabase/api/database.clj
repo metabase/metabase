@@ -134,7 +134,7 @@
                    (some-> (driver.u/database->driver db-id) (driver/supports? :nested-queries))
                    (catch Throwable e
                      (log/error e (tru "Error determining whether Database supports nested queries")))))
-               (db/select-ids Database))))
+               (t2/select-pks-set Database))))
 
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables). Since Cards can be either
@@ -410,7 +410,7 @@
   {id ms/PositiveInt}
   (api/check-superuser)
   (api/check-404 (db/exists? Database :id id))
-  (let [table-ids (db/select-ids Table :db_id id)]
+  (let [table-ids (t2/select-pks-set Table :db_id id)]
     (first (mdb.query/query
              {:select [:*]
               :from   (for [model database-usage-models
@@ -635,7 +635,7 @@
   [id]
   (api/read-check Database id)
   (let [fields (filter mi/can-read? (-> (db/select [Field :id :name :display_name :table_id :base_type :semantic_type]
-                                          :table_id        [:in (db/select-field :id Table, :db_id id)]
+                                          :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
                                           :visibility_type [:not-in ["sensitive" "retired"]])
                                         (hydrate :table)))]
     (for [{:keys [id name display_name table base_type semantic_type]} fields]
@@ -1055,11 +1055,11 @@
   "Returns a list of all the schemas found for the database `id`"
   [id]
   (api/read-check Database id)
-  (->> (db/select-field :schema Table
-         :db_id id :active true
-         ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
-         :visibility_type nil
-         {:order-by [[:%lower.schema :asc]]})
+  (->> (t2/select-fn-set :schema Table
+                         :db_id id :active true
+                         ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
+                         :visibility_type nil
+                         {:order-by [[:%lower.schema :asc]]})
        (filter (partial can-read-schema? id))
        ;; for `nil` schemas return the empty string
        (map #(if (nil? %) "" %))
@@ -1124,7 +1124,7 @@
           :card
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                      [:= :collection_id nil]
-                                     [:in :collection_id (api/check-404 (not-empty (db/select-ids Collection :name schema)))])])
+                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
 (api/defendpoint GET ["/:virtual-db/datasets/:schema"
@@ -1136,7 +1136,7 @@
           :dataset
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                      [:= :collection_id nil]
-                                     [:in :collection_id (api/check-404 (not-empty (db/select-ids Collection :name schema)))])])
+                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
 (api/defendpoint GET "/db-ids-with-deprecated-drivers"
@@ -1149,6 +1149,6 @@
       (let [info (driver.u/available-drivers-info)
             d    (driver.u/database->driver database)]
         (some? (:superseded-by (d info)))))
-    (db/select-ids Database))))
+    (t2/select-pks-set Database))))
 
 (api/define-routes)

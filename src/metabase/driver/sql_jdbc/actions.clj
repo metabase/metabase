@@ -21,7 +21,8 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection PreparedStatement)))
 
@@ -387,7 +388,7 @@
 (defn- table-id->pk-field-name->id
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
   [table-id]
-  (db/select-field->id :name Field
+  (t2/select-fn->pk :name Field
     {:where [:and
              [:= :table_id table-id]
              (mdb.u/isa :semantic_type :type/PK)]}))

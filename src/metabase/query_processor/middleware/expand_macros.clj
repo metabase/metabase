@@ -17,7 +17,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    SEGMENTS                                                    |
@@ -25,7 +26,7 @@
 
 (defn- segment-clauses->id->definition [segment-clauses]
   (when-let [segment-ids (seq (filter integer? (map second segment-clauses)))]
-    (db/select-id->field :definition Segment, :id [:in (set segment-ids)])))
+    (t2/select-pk->fn :definition Segment, :id [:in (set segment-ids)])))
 
 (defn- replace-segment-clauses [outer-query segment-id->definition]
   (mbql.u/replace-in outer-query [:query]

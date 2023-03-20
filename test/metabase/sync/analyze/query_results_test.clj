@@ -13,7 +13,7 @@
    [metabase.test.sync :as test.sync]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- column->name-keyword [field-or-column-metadata]
   (-> field-or-column-metadata
@@ -64,7 +64,7 @@
 (defn- app-db-venue-fingerprints
   "Get a map of keyword field name (as lowercased keyword) => fingerprint from the app DB."
   []
-  (update-keys (db/select-field->field :name :fingerprint Field :table_id (mt/id :venues))
+  (update-keys (t2/select-fn->fn :name :fingerprint Field :table_id (mt/id :venues))
                (comp keyword u/lower-case-en)))
 
 (deftest mbql-result-metadata-test
