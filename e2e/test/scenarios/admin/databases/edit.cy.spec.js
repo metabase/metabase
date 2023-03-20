@@ -47,14 +47,52 @@ describe("scenarios > admin > databases > edit", () => {
       "false",
     );
 
+    cy.log("change the metadata_sync period");
     cy.findByLabelText("Choose when syncs and scans happen").click();
-    cy.button("Save changes").click();
-    cy.wait("@databaseUpdate").then(({ response }) =>
-      expect(response.body.details["let-user-control-scheduling"]).to.equal(
-        true,
-      ),
+    cy.findByText("Hourly").click();
+    popover().within(() => {
+      cy.findByText("Daily").click({ force: true });
+    });
+
+    // "lets you change the cache_field_values period"
+    cy.findByLabelText("Never, I'll do this manually if I need to").should(
+      "have.attr",
+      "aria-selected",
+      "true",
     );
+
+    cy.findByLabelText("Regularly, on a schedule")
+      .click()
+      .within(() => {
+        cy.findByText("Daily").click();
+      });
+    popover().findByText("Weekly").click();
+
+    cy.button("Save changes").click();
+    cy.wait("@databaseUpdate").then(({ response: { body } }) => {
+      expect(body.details["let-user-control-scheduling"]).to.equal(true);
+      expect(body.schedules.metadata_sync.schedule_type).to.equal("daily");
+      expect(body.schedules.cache_field_values.schedule_type).to.equal(
+        "weekly",
+      );
+    });
     cy.button("Success");
+
+    // "lets you change the cache_field_values to 'Only when adding a new filter widget'"
+    cy.findByLabelText("Only when adding a new filter widget").click();
+    cy.button("Save changes", { timeout: 10000 }).click();
+    cy.wait("@databaseUpdate").then(({ response: { body } }) => {
+      expect(body.is_full_sync).to.equal(false);
+      expect(body.is_on_demand).to.equal(true);
+    });
+
+    // and back to never
+    cy.findByLabelText("Never, I'll do this manually if I need to").click();
+    cy.button("Save changes", { timeout: 10000 }).click();
+    cy.wait("@databaseUpdate").then(({ response: { body } }) => {
+      expect(body.is_full_sync).to.equal(false);
+      expect(body.is_on_demand).to.equal(false);
+    });
   });
 
   describeEE("caching", () => {
@@ -83,101 +121,6 @@ describe("scenarios > admin > databases > edit", () => {
       cy.button("Save changes", { timeout: 10000 }).click();
       cy.wait("@databaseUpdate").then(({ request }) => {
         expect(request.body.cache_ttl).to.equal(null);
-      });
-    });
-  });
-
-  describe("Scheduling settings", () => {
-    beforeEach(() => {
-      // Turn on scheduling without relying on the previous test(s)
-      cy.request("PUT", `/api/database/${SAMPLE_DB_ID}`, {
-        details: {
-          "let-user-control-scheduling": true,
-        },
-        engine: "h2",
-      });
-    });
-
-    it("shows the initial scheduling settings correctly", () => {
-      cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-
-      cy.findByText("Show advanced options").click();
-      cy.findByText("Regularly, on a schedule").should("exist");
-      cy.findByText("Hourly").should("exist");
-      cy.findByLabelText("Regularly, on a schedule").should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-    });
-
-    it("lets you change the metadata_sync period", () => {
-      cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-
-      cy.findByText("Show advanced options").click();
-
-      cy.findByText("Hourly").click();
-      popover().within(() => {
-        cy.findByText("Daily").click({ force: true });
-      });
-
-      cy.findByLabelText("Regularly, on a schedule").should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-
-      cy.findByText("Save changes").click();
-      cy.wait("@databaseUpdate").then(({ response }) =>
-        expect(response.body.schedules.metadata_sync.schedule_type).to.equal(
-          "daily",
-        ),
-      );
-    });
-
-    it("lets you change the cache_field_values perid", () => {
-      cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-      cy.findByText("Show advanced options").click();
-
-      cy.findByText("Regularly, on a schedule")
-        .parent()
-        .parent()
-        .within(() => {
-          cy.findByText("Daily").click();
-        });
-      popover().within(() => {
-        cy.findByText("Weekly").click({ force: true });
-      });
-
-      cy.findByText("Save changes").click();
-      cy.wait("@databaseUpdate").then(({ response }) => {
-        expect(
-          response.body.schedules.cache_field_values.schedule_type,
-        ).to.equal("weekly");
-      });
-    });
-
-    it("lets you change the cache_field_values to 'Only when adding a new filter widget'", () => {
-      cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-      cy.findByText("Show advanced options").click();
-
-      cy.findByText("Only when adding a new filter widget").click();
-      cy.findByText("Save changes").click();
-      cy.wait("@databaseUpdate").then(({ response }) => {
-        expect(response.body.is_full_sync).to.equal(false);
-        expect(response.body.is_on_demand).to.equal(true);
-      });
-    });
-
-    it("lets you change the cache_field_values to Never", () => {
-      cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-      cy.findByText("Show advanced options").click();
-
-      cy.findByText("Never, I'll do this manually if I need to").click();
-      cy.findByText("Save changes").click();
-      cy.wait("@databaseUpdate").then(({ response }) => {
-        expect(response.body.is_full_sync).to.equal(false);
-        expect(response.body.is_on_demand).to.equal(false);
       });
     });
   });
