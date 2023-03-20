@@ -10,7 +10,6 @@
    [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest basic-internal-remapping-test

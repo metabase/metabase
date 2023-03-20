@@ -6,7 +6,6 @@
     :as v2.seed-entity-ids]
    [metabase.models :refer [Collection]]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))

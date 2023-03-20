@@ -30,7 +30,6 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

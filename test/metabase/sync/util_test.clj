@@ -14,7 +14,6 @@
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
-   [toucan.db :as db]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
 

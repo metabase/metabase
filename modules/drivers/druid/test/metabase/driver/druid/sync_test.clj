@@ -8,7 +8,6 @@
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest sync-test
