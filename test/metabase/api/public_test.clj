@@ -56,6 +56,13 @@
 (defn- do-with-temp-public-card [m f]
   (let [m (merge (when-not (:dataset_query m)
                    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
+                 (when-not (:parameters m)
+                   {:parameters [{:name                 "Static Category",
+                                  :slug                 "static_category"
+                                  :id                   "_STATIC_CATEGORY_",
+                                  :type                 "category",
+                                  :values_source_type   "static-list"
+                                  :values_source_config {:values ["African" "American" "Asian"]}}]})
                  (shared-obj)
                  m)]
     (mt/with-temp Card [card m]
@@ -128,7 +135,7 @@
 
       (with-temp-public-card [{uuid :public_uuid, card-id :id}]
         (testing "Happy path -- should be able to fetch the Card"
-          (is (= #{:dataset_query :description :display :id :name :visualization_settings :param_fields}
+          (is (= #{:dataset_query :description :display :id :name :visualization_settings :parameters :param_fields}
                  (set (keys (client/client :get 200 (str "public/card/" uuid)))))))
 
         (testing "Check that we cannot fetch a public Card if public sharing is disabled"
