@@ -108,7 +108,7 @@ class TableInner extends Base {
 
   // AGGREGATIONS
   aggregationOperators() {
-    return getAggregationOperators(this);
+    return getAggregationOperators(this, this.fields);
   }
 
   aggregationOperatorsLookup() {

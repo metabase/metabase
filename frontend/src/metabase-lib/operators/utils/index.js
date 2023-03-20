@@ -102,7 +102,7 @@ function populateFields(aggregationOperator, fields) {
   };
 }
 
-export function getAggregationOperators(table, fields = table.fields) {
+export function getAggregationOperators(table, fields) {
   return getSupportedAggregationOperators(table)
     .map(operator => populateFields(operator, fields))
     .filter(
