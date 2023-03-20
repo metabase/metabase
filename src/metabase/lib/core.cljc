@@ -89,6 +89,7 @@
    join-clause
    joins]
   [lib.limit
+   current-limit
    limit]
   [lib.order-by
    order-by
