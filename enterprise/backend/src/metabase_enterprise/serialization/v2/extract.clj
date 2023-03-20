@@ -12,6 +12,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
+   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
