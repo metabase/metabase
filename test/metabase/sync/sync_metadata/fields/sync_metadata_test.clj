@@ -10,7 +10,8 @@
   (tt/with-temp Table [table]
     (let [update-operations (atom [])]
       (with-redefs [t2/update! (fn [model id updates]
-                                 (swap! update-operations conj [(name model) id updates]))]
+                                 (swap! update-operations conj [(name model) id updates])
+                                 (count updates))]
         (#'sync-metadata/update-field-metadata-if-needed!
          table
          new-metadata-from-sync
