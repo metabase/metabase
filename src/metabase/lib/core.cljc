@@ -55,35 +55,36 @@
   [lib.field
    with-join-alias]
   [lib.filter
-  filter
-  and
-  or
-  not
-  = !=
-  < <=
-  > >=
-  between
-  inside
-  is-null not-null
-  is-empty not-empty
-  starts-with ends-with
-  contains does-not-contain
-  time-interval
-  segment
-  ->and
-  ->or
-  ->not
-  ->= ->!=
-  ->< -><=
-  ->> ->>=
-  ->between
-  ->inside
-  ->is-null ->not-null
-  ->is-empty ->not-empty
-  ->starts-with ->ends-with
-  ->contains ->does-not-contain
-  ->time-interval
-  ->segment]
+   filter
+   replace-filter
+   and
+   or
+   not
+   = !=
+   < <=
+   > >=
+   between
+   inside
+   is-null not-null
+   is-empty not-empty
+   starts-with ends-with
+   contains does-not-contain
+   time-interval
+   segment
+   ->and
+   ->or
+   ->not
+   ->= ->!=
+   ->< -><=
+   ->> ->>=
+   ->between
+   ->inside
+   ->is-null ->not-null
+   ->is-empty ->not-empty
+   ->starts-with ->ends-with
+   ->contains ->does-not-contain
+   ->time-interval
+   ->segment]
   [lib.join
    join
    join-clause

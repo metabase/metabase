@@ -261,3 +261,15 @@
    (let [stage-number (clojure.core/or stage-number -1)
          new-filter   (->filter-clause query stage-number boolean-expression)]
      (lib.util/update-query-stage query stage-number assoc :filter new-filter))))
+
+(mu/defn replace-filter :- :metabase.lib.schema/query
+  "Replaces the expression with `uuid` with `boolean-expression` the filter of `query`."
+  ([query uuid boolean-expression]
+   (metabase.lib.filter/replace-filter query -1 uuid boolean-expression))
+
+  ([query stage-number uuid boolean-expression]
+   (let [stage-number (clojure.core/or stage-number -1)
+         new-filter   (->filter-clause query stage-number boolean-expression)]
+     (lib.util/update-query-stage query stage-number
+                                  update :filter
+                                  lib.util/replace-clause uuid new-filter))))
