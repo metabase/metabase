@@ -113,7 +113,7 @@
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
-  (= (db/select-ids Field
+  (= (t2/select-pks-set Field
        :table_id (u/the-id table)
        :active   true)
      (set field-ordering)))
@@ -146,22 +146,21 @@
   :field_values
   "Return the FieldValues for all Fields belonging to a single `table`."
   [{:keys [id]}]
-  (let [field-ids (db/select-ids Field
+  (let [field-ids (t2/select-pks-set Field
                     :table_id        id
                     :visibility_type "normal"
                     {:order-by field-order-rule})]
     (when (seq field-ids)
-      (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids]))))
+      (t2/select-fn->fn :field_id :values FieldValues, :field_id [:in field-ids]))))
 
 (mi/define-simple-hydration-method ^{:arglists '([table])} pk-field-id
   :pk_field
   "Return the ID of the primary key `Field` for `table`."
   [{:keys [id]}]
-  (db/select-one-id Field
+  (t2/select-one-pk Field
     :table_id        id
     :semantic_type   (mdb.u/isa :type/PK)
     :visibility_type [:not-in ["sensitive" "retired"]]))
-
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]
   (let [table-ids         (set (map :id tables))
@@ -205,7 +204,7 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (db/select-one Database :id (:db_id table)))
+  (t2/select-one Database :id (:db_id table)))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
@@ -234,8 +233,8 @@
         schema-name (when (= 3 (count path))
                       (-> path second :id))
         table-name  (-> path last :id)
-        db-id       (db/select-one-id Database :name db-name)]
-    (db/select-one Table :name table-name :db_id db-id :schema schema-name)))
+        db-id       (t2/select-one-pk Database :name db-name)]
+    (t2/select-one Table :name table-name :db_id db-id :schema schema-name)))
 
 (defmethod serdes/extract-one "Table"
   [_model-name _opts {:keys [db_id] :as table}]

@@ -81,7 +81,7 @@
               (delete-group user 204 true)
 
               (testing "admins could view all groups"
-                (is (= (db/select-field :name PermissionsGroup)
+                (is (= (t2/select-fn-set :name PermissionsGroup)
                        (set (map :name (get-groups :crowberto 200)))))))))))))
 
 (deftest memebership-apis-test
@@ -213,7 +213,7 @@
                                                 :is_group_manager true})))))
 
               (testing "Admin can could view all groups"
-                (is (= (db/select-field :id PermissionsGroup)
+                (is (= (t2/select-fn-set :id PermissionsGroup)
                        (membership->groups-ids (get-membership :crowberto 200))))))))))))
 
 (deftest get-users-api-test

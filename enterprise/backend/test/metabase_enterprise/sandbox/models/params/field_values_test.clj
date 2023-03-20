@@ -19,7 +19,8 @@
     :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,7 +36,7 @@
                                  :values                (range 10)
                                  :human_readable_values (map #(str "id_" %) (range 10))})
         (let [categories-id (mt/id :categories :id)
-              f             (db/select-one Field :id (mt/id :categories :id))
+              f             (t2/select-one Field :id (mt/id :categories :id))
               card-id       (-> f :table_id (#'ee-params.field-values/table-id->gtap) :card :id)
               fv            (params.field-values/get-or-create-advanced-field-values! fv-type f)]
           (is (= [(range 4 6)]
@@ -48,7 +49,7 @@
           (testing "call second time shouldn't create a new FieldValues"
             (params.field-values/get-or-create-advanced-field-values!
              fv-type
-             (db/select-one Field :id (mt/id :categories :id)))
+             (t2/select-one Field :id (mt/id :categories :id)))
             (is (= 1 (db/count FieldValues :field_id categories-id :type fv-type))))
 
           (testing "after changing the question, should create new FieldValues"
@@ -59,7 +60,7 @@
               (db/update! Card card-id :dataset_query new-query))
             (params.field-values/get-or-create-advanced-field-values!
              fv-type
-             (db/select-one Field :id (mt/id :categories :id)))
+             (t2/select-one Field :id (mt/id :categories :id)))
             (is (= [(range 4 6)
                     (range 2 4)]
                    (->> (db/select [FieldValues :values]
@@ -75,7 +76,7 @@
           (is (= ["Asian"]
                  (:values (params.field-values/get-or-create-advanced-field-values!
                            fv-type
-                           (db/select-one Field :id (mt/id :categories :name)))))))))))
+                           (t2/select-one Field :id (mt/id :categories :name)))))))))))
 
 (deftest advanced-field-values-hash-test
   (premium-features-test/with-premium-features #{:sandboxes}

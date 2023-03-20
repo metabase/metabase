@@ -73,7 +73,7 @@
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
     (let [group-ids           (qp.store/cached *current-user-id*
-                                (db/select-field :group_id PermissionsGroupMembership :user_id *current-user-id*))
+                                (t2/select-fn-set :group_id PermissionsGroupMembership :user_id *current-user-id*))
           sandboxes           (when (seq group-ids)
                                (db/select GroupTableAccessPolicy :group_id [:in group-ids]
                                  :table_id [:in table-ids]))
@@ -260,7 +260,7 @@
   (if card-id
     (qp.store/cached card-id
       (query-perms/perms-set (t2/select-one-fn :dataset_query Card :id card-id), :throw-exceptions? true))
-    #{(perms/table-query-path (db/select-one Table :id table-id))}))
+    #{(perms/table-query-path (t2/select-one Table :id table-id))}))
 
 (defn- gtaps->perms-set [gtaps]
   (set (mapcat gtap->perms-set gtaps)))

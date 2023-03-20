@@ -20,7 +20,8 @@
    [metabase.util :as u]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -137,7 +138,7 @@
                          :database-position 1
                          :database-is-auto-increment false
                          :database-required true}}}
-             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (db/select-one Table :id (mt/id :categories))))))))
+             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one Table :id (mt/id :categories))))))))
 
 (deftest describe-table-fks-test
   (mt/test-driver :snowflake
@@ -145,7 +146,7 @@
       (is (= #{{:fk-column-name   "category_id"
                 :dest-table       {:name "categories", :schema "PUBLIC"}
                 :dest-column-name "id"}}
-             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (db/select-one Table :id (mt/id :venues))))))))
+             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (t2/select-one Table :id (mt/id :venues))))))))
 
 (defn- format-env-key ^String [env-key]
   (let [[_ header body footer]

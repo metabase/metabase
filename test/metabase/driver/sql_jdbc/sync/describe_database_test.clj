@@ -16,7 +16,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.sql ResultSet)))
 
@@ -37,7 +38,7 @@
       :h2
       :postgres))
   (testing "simple-select-probe-query shouldn't actually return any rows"
-    (let [{:keys [name schema]} (db/select-one Table :id (mt/id :venues))]
+    (let [{:keys [name schema]} (t2/select-one Table :id (mt/id :venues))]
       (is (= []
              (mt/rows
                (qp/process-query

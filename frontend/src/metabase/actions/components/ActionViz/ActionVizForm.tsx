@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 
+import { getFormTitle } from "metabase/actions/utils";
+
 import type {
   WritebackQueryAction,
   WritebackParameter,
@@ -9,7 +11,6 @@ import type {
   VisualizationSettings,
   Dashboard,
 } from "metabase-types/api";
-import { getFormTitle } from "metabase/actions/utils";
 
 import ActionParametersInputForm, {
   ActionParametersInputModal,
