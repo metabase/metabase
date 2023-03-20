@@ -165,9 +165,10 @@
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [{q :query :as compiled} (qp/compile-and-splice-parameters query)
           driver          (driver.u/database->driver database)
-          formatted-query (if pretty?
-                            (or (u/ignore-exceptions (mdb.query/format-sql q driver)) q)
-                            q)]
+          ;; Format the query unless we explicitly do not want to
+          formatted-query (if (false? pretty?)
+                            q
+                            (or (u/ignore-exceptions (mdb.query/format-sql q driver)) q))]
       (assoc compiled :query formatted-query))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

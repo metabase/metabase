@@ -279,8 +279,8 @@
                            "LIMIT 1048575")
               :params nil}
              (mt/user-http-request :rasta :post 200 "dataset/native"
-                                   (mt/mbql-query venues
-                                     {:fields [$id $name]}))))
+                                   (assoc (mt/mbql-query venues {:fields [$id $name]})
+                                     :pretty? false))))
 
       (testing "\nMake sure parameters are spliced correctly"
         (is (= {:query  (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
@@ -289,9 +289,10 @@
                              "LIMIT 1048575")
                 :params nil}
                (mt/user-http-request :rasta :post 200 "dataset/native"
-                                     (mt/mbql-query checkins
-                                       {:fields [$id]
-                                        :filter [:= $date "2015-11-13"]})))))
+                                     (assoc (mt/mbql-query checkins
+                                                           {:fields [$id]
+                                                            :filter [:= $date "2015-11-13"]})
+                                       :pretty? false)))))
 
       (testing "\nshould require that the user have ad-hoc native perms for the DB"
         (mt/with-temp-copy-of-db
