@@ -15,7 +15,6 @@
    [metabase.transforms.core :as tf]
    [metabase.transforms.specs :as tf.specs]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]

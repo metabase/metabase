@@ -36,7 +36,6 @@
    [metabase.util.urls :as urls]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.io File IOException OutputStream)
