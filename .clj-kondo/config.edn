@@ -695,9 +695,10 @@
   ;; to the new stricter rules from day 1
   metabase-lib
   {:linters
-   {:docstring-leading-trailing-whitespace {:level :warning}
-    :reduce-without-init                   {:level :warning}
-    :used-underscored-binding              {:level :warning}
-    :single-key-in                         {:level :warning}
-    :keyword-binding                       {:level :warning}
-    :shadowed-var                          {:level :warning}}}}}
+   {:docstring-leading-trailing-whitespace                 {:level :warning}
+    :reduce-without-init                                   {:level :warning}
+    :used-underscored-binding                              {:level :warning}
+    :single-key-in                                         {:level :warning}
+    :keyword-binding                                       {:level :warning}
+    :shadowed-var                                          {:level :warning}
+    :metabase/deftest-not-marked-parallel-or-synchronized  {:level :warning}}}}}
