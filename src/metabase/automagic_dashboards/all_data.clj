@@ -205,8 +205,6 @@
      [n def])
    distinct
    (map (partial apply hash-map))
-   (drop 4)
-   (take 1)
    ;; Temporary hack to understand a single card's behavior
    ;(filter (comp #{"OrdersByState"} ffirst))
    ))

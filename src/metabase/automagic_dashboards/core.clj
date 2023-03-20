@@ -747,10 +747,6 @@
                    ;; :entity/GenericTable. The "table" rule category has specificity for
                    ;; example, GenericTable, TransactionTable, GoogleAnalyticsTable,
                    ;; EventTable, and UserTable.
-                   ;;
-                   ;; Are GoogleAnalyticsTable, TransactionTable, EventTable ever used?
-                   ;;
-                   ;;
                    (let [[entity-type field-type] applies_to]
                      (and (isa? table-type entity-type)
                           (or (nil? field-type)
@@ -870,10 +866,13 @@
   Note that card, as destructured here, is a template baked into a rule and is not a db entity Card."
   [context {:keys [cards]}]
   (some->> cards
+           ;; Convert seq of maps to seq of [k v] since each map has one entry
            (map first)
            (map-indexed (fn [position [identifier card]]
                           (some->> (assoc card :position position)
                                    (card-candidates context)
+                                   ;; Remove any candidates with no metrics as they will have nothing to show
+                                   (filter (comp seq :metrics))
                                    not-empty
                                    (hash-map (name identifier)))))
            (apply merge-with (partial max-key (comp :score first)) {})
