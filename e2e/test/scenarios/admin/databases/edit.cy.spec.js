@@ -15,11 +15,15 @@ describe("scenarios > admin > databases > edit", () => {
     cy.intercept("PUT", "/api/database/*").as("databaseUpdate");
   });
 
-  describe("Database type", () => {
-    it("should be disabled for the Sample Dataset (metabase#16382)", () => {
-      cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-      cy.findByText("H2").parentsUntil("a").should("be.disabled");
-    });
+  it("sample database", () => {
+    cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
+
+    cy.log(
+      "should not be possible to change database type for the Sample Database (metabase#16382)",
+    );
+    cy.findByLabelText("Database type")
+      .should("have.text", "H2")
+      .and("be.disabled");
   });
 
   describe("Connection settings", () => {
