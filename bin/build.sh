@@ -14,4 +14,4 @@ clear_outdated_cpcaches
 
 set -x
 
-clojure -X:drivers:build:build/all $@
+clojure -X:drivers:build:build/all "$@"

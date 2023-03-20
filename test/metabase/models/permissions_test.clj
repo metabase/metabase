@@ -12,7 +12,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -814,9 +813,9 @@
 (deftest grant-revoke-root-collection-permissions-test
   (mt/with-temp PermissionsGroup [{group-id :id}]
     (letfn [(perms []
-              (db/select-field :object Permissions {:where [:and
-                                                            [:like :object "/collection/%"]
-                                                            [:= :group_id group-id]]}))]
+              (t2/select-fn-set :object Permissions {:where [:and
+                                                             [:like :object "/collection/%"]
+                                                             [:= :group_id group-id]]}))]
       (is (= nil
              (perms)))
       (testing "Should be able to grant Root Collection perms"
@@ -847,7 +846,7 @@
 (deftest grant-revoke-application-permissions-test
   (mt/with-temp PermissionsGroup [{group-id :id}]
     (letfn [(perms []
-              (db/select-field :object Permissions
+              (t2/select-fn-set :object Permissions
                                {:where [:and [:= :group_id group-id]
                                              [:like :object "/application/%"]]}))]
       (is (= nil (perms)))

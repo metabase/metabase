@@ -1754,7 +1754,7 @@
     (let [cards               (db/select [Card :collection_id] :id [:in (map u/the-id cards-or-card-ids)])
           collection-ids      (set (filter identity (map :collection_id cards)))
           collection-id->name (when (seq collection-ids)
-                                (db/select-id->field :name Collection :id [:in collection-ids]))]
+                                (t2/select-pk->fn :name Collection :id [:in collection-ids]))]
       (for [card cards]
         (get collection-id->name (:collection_id card))))))
 

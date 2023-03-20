@@ -75,9 +75,9 @@
   "Hydrate a card :is_persisted for the frontend."
   [cards]
   (when (seq cards)
-    (let [existing-ids (db/select-field :card_id PersistedInfo
-                                        :card_id [:in (map :id cards)]
-                                        :state [:not-in ["off" "deletable"]])]
+    (let [existing-ids (t2/select-fn-set :card_id PersistedInfo
+                                         :card_id [:in (map :id cards)]
+                                         :state [:not-in ["off" "deletable"]])]
       (map (fn [{id :id :as card}]
              (assoc card :persisted (contains? existing-ids id)))
            cards))))
