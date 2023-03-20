@@ -31,10 +31,10 @@
         #_#_boolean-field (lib/->= 1 (lib/field "VENUES" "CATEGORY_ID"))]
     (doseq [[expr typ] (partition-all
                          2
-                         [(lib/+ 1.0 2 int-field) :type/Number
-                          (lib/- 1.0 2 int-field) :type/Number
-                          (lib/* 1.0 2 int-field) :type/Number
-                          (lib// 1.0 2 int-field) :type/Float
+                         [(lib/+ 1.1 2 int-field) :type/Number
+                          (lib/- 1.1 2 int-field) :type/Number
+                          (lib/* 1.1 2 int-field) :type/Number
+                          (lib// 1.1 2 int-field) :type/Float
                           #_#_(lib/case boolean-field int-field boolean-field int-field) :type/Integer
                           (lib/coalesce string-field "abc") :type/Text
                           (lib/abs int-field) :type/Integer
