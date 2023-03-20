@@ -135,7 +135,8 @@
    ::database  "1-0-0"
    ::instance  "1-1-0"
    ::timeline  "1-0-0"
-   ::task      "1-0-0"})
+   ::task      "1-0-0"
+   ::action    "1-0-0"})
 
 (defn- app-db-type
   "Returns the type of the Metabase application database as a string (e.g. PostgreSQL, MySQL)"
@@ -193,7 +194,11 @@
    ::database-connection-successful ::database
    ::database-connection-failed     ::database
    ::new-event-created              ::timeline
-   ::new-task-history               ::task})
+   ::new-task-history               ::task
+   ::action-created                 ::action
+   ::action-updated                 ::action
+   ::action-deleted                 ::action
+   ::action-executed                ::action})
 
 (defn track-event!
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector

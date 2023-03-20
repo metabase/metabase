@@ -72,7 +72,7 @@ const ParameterSettings = ({
       </SettingSection>
       {canUseCustomSource(parameter) && (
         <SettingSection>
-          <SettingLabel>{t`How should users filter on this column?`}</SettingLabel>
+          <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>
           <ValuesSourceSettings
             parameter={parameter}
             onChangeQueryType={onChangeQueryType}
@@ -92,7 +92,7 @@ const ParameterSettings = ({
       </SettingSection>
       {isSingleOrMultiSelectable(parameter) && (
         <SettingSection>
-          <SettingLabel>{t`Users can pick`}</SettingLabel>
+          <SettingLabel>{t`People can pick`}</SettingLabel>
           <Radio
             value={getIsMultiSelect(parameter)}
             options={MULTI_SELECT_OPTIONS}

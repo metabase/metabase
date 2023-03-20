@@ -69,7 +69,9 @@
   (:end (u.date/range t unit)))
 
 (defn- change-temporal-unit-to-default [field]
-  (mbql.u/update-field-options field assoc :temporal-unit :default))
+  (mbql.u/replace field
+    [:field _ (_ :guard (comp optimizable-units :temporal-unit))]
+    (mbql.u/update-field-options &match assoc :temporal-unit :default)))
 
 (defmulti ^:private temporal-value-lower-bound
   "Get a clause representing the *lower* bound that should be used when converting a `temporal-value-clause` (e.g.

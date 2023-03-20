@@ -18,8 +18,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test :as qp.test]
-   [metabase.query-processor-test.order-by-test :as qp-test.order-by-test]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor-test.order-by-test :as qp-test.order-by-test] [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -28,7 +27,7 @@
    [metabase.test.data.oracle :as oracle.tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
-   [metabase.test.util :as tu]
+   [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -214,7 +213,7 @@
                                                                                                  {:col1 "B", :col2 2}]))))))
 
 (defn- do-with-temp-user [username f]
-  (let [username (or username (tu/random-name))]
+  (let [username (or username (tu.random/random-name))]
     (try
       (oracle.tx/create-user! username)
       (f username)
@@ -224,7 +223,7 @@
 (defmacro ^:private with-temp-user
   "Run `body` with a temporary user bound, binding their name to `username-binding`. Use this to create the equivalent
   of temporary one-off databases. A particular username can be passed in as the binding or else one is generated with
-  `tu/random-name`."
+  `tu.random/random-name`."
   [[username-binding & [username]] & body]
   `(do-with-temp-user ~username (fn [~username-binding] ~@body)))
 
@@ -307,7 +306,7 @@
           execute! (fn [format-string & args]
                      (jdbc/execute! spec (apply format format-string args)))
           pk-type  (sql.tx/pk-sql-type :oracle)
-          schema   (str (tu/random-name) "/")]
+          schema   (str (tu.random/random-name) "/")]
       (with-temp-user [username schema]
         (execute! "CREATE TABLE \"%s\".\"mess/ages/\" (\"id\" %s, \"column1\" varchar(200))" username pk-type)
         (testing "Sync can handle slashes in the schema and tablenames"
