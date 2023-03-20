@@ -503,7 +503,7 @@
   "Return the permissions path required to fetch the Metadata for a Table."
   ([table-or-id]
    (if (integer? table-or-id)
-     (recur (db/select-one ['Table :db_id :schema :id] :id table-or-id))
+     (recur (t2/select-one ['Table :db_id :schema :id] :id table-or-id))
      (table-read-path (:db_id table-or-id) (:schema table-or-id) table-or-id)))
 
   ([database-or-id schema-name table-or-id]
@@ -515,7 +515,7 @@
   you wish against a given Table, with no GTAP-specified mandatory query alterations."
   ([table-or-id]
    (if (integer? table-or-id)
-     (recur (db/select-one ['Table :db_id :schema :id] :id table-or-id))
+     (recur (t2/select-one ['Table :db_id :schema :id] :id table-or-id))
      (table-query-path (:db_id table-or-id) (:schema table-or-id) table-or-id)))
 
   ([database-or-id schema-name table-or-id]
@@ -528,7 +528,7 @@
   obstensibly limiting access to the results."
   ([table-or-id]
    (if (integer? table-or-id)
-     (recur (db/select-one ['Table :db_id :schema :id] :id table-or-id))
+     (recur (t2/select-one ['Table :db_id :schema :id] :id table-or-id))
      (table-segmented-query-path (:db_id table-or-id) (:schema table-or-id) table-or-id)))
 
   ([database-or-id schema-name table-or-id]
@@ -1108,7 +1108,7 @@
     ;; ok, once we've confirmed this isn't the Root Collection, see if it's in the DB with a personal_owner_id
     (let [collection (if (map? collection-or-id)
                        collection-or-id
-                       (or (db/select-one 'Collection :id (u/the-id collection-or-id))
+                       (or (t2/select-one 'Collection :id (u/the-id collection-or-id))
                            (throw (ex-info (tru "Collection does not exist.") {:collection-id (u/the-id collection-or-id)}))))]
       (when (is-personal-collection-or-descendant-of-one? collection)
         (throw (Exception. (tru "You cannot edit permissions for a Personal Collection or its descendants.")))))))

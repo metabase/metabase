@@ -209,7 +209,7 @@
                    (mt/rows (qp/process-query
                               {:database (u/the-id database)
                                :type     :query
-                               :query    {:source-table (db/select-one-id Table :name "presents-and-gifts")}}))))))))))
+                               :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -830,7 +830,7 @@
                  (driver/describe-table :postgres db {:name "birds"}))))
 
         (testing "check that when syncing the DB the enum types get recorded appropriately"
-          (let [table-id (db/select-one-id Table :db_id (u/the-id db), :name "birds")]
+          (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")]
             (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
                      {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
                      {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
@@ -838,8 +838,8 @@
                              (db/select [Field :name :database_type :base_type] :table_id table-id)))))))
 
         (testing "End-to-end check: make sure everything works as expected when we run an actual query"
-          (let [table-id           (db/select-one-id Table :db_id (u/the-id db), :name "birds")
-                bird-type-field-id (db/select-one-id Field :table_id table-id, :name "type")]
+          (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")
+                bird-type-field-id (t2/select-one-pk Field :table_id table-id, :name "type")]
             (is (= {:rows        [["Rasta" "good bird" "toucan"]]
                     :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
                                                " \"public\".\"birds\".\"status\" AS \"status\","
@@ -940,8 +940,7 @@
                                                      :percent-state  0.0
                                                      :average-length 12.0}}}}
                  (t2/select-fn->fn :name :fingerprint Field
-                   :table_id (db/select-one-id Table :db_id (u/the-id database))))))))))
-
+                   :table_id (t2/select-one-pk Table :db_id (u/the-id database))))))))))
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 

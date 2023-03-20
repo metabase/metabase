@@ -25,7 +25,8 @@
    [metabase.models.user :refer [User]]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -135,7 +136,7 @@
 
 (defn- convert-column-settings-key [k]
   (if-let [field-id (::mb.viz/field-id k)]
-    (-> (db/select-one Field :id field-id)
+    (-> (t2/select-one Field :id field-id)
         fully-qualified-name
         mb.viz/field-str->column-ref)
     k))
@@ -165,9 +166,9 @@
 
 (defn- convert-click-behavior [{:keys [::mb.viz/link-type ::mb.viz/link-target-id] :as click}]
   (-> (if-let [new-target-id (case link-type
-                               ::mb.viz/card      (-> (db/select-one Card :id link-target-id)
+                               ::mb.viz/card      (-> (t2/select-one Card :id link-target-id)
                                                       fully-qualified-name)
-                               ::mb.viz/dashboard (-> (db/select-one Dashboard :id link-target-id)
+                               ::mb.viz/dashboard (-> (t2/select-one Dashboard :id link-target-id)
                                                       fully-qualified-name)
                                nil)]
         (assoc click ::mb.viz/link-target-id new-target-id)

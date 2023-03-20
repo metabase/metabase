@@ -407,7 +407,7 @@
         (is (= (merge (mt/object-defaults User)
                       (select-keys user [:id :last_name :created_at :updated_at])
                       {:name \"Cam\"})
-               (mt/decrecordize (db/select-one User :id (:id user)))))))"
+               (mt/decrecordize (t2/select-one User :id (:id user)))))))"
   (comp
    (memoize
     (fn [toucan-model]

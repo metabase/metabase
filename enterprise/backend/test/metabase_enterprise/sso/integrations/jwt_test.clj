@@ -269,4 +269,4 @@
               (is (saml-test/successful-login? response))
               (is (= #{"All Users"
                        ":metabase-enterprise.sso.integrations.jwt-test/my-group"}
-                     (group-memberships (u/the-id (db/select-one-id User :email "newuser@metabase.com"))))))))))))
+                     (group-memberships (u/the-id (t2/select-one-pk User :email "newuser@metabase.com"))))))))))))

@@ -356,7 +356,7 @@
 
 (defmethod serdes/generate-path "PulseChannel"
   [_ {:keys [pulse_id] :as channel}]
-  [(serdes/infer-self-path "Pulse" (db/select-one 'Pulse :id pulse_id))
+  [(serdes/infer-self-path "Pulse" (t2/select-one 'Pulse :id pulse_id))
    (serdes/infer-self-path "PulseChannel" channel)])
 
 (defmethod serdes/extract-one "PulseChannel"
@@ -376,7 +376,7 @@
 
 (defn- import-recipients [channel-id emails]
   (let [incoming-users (set (for [email emails
-                                  :let [id (db/select-one-id 'User :email email)]]
+                                  :let [id (t2/select-one-pk 'User :email email)]]
                               (or id
                                   (:id (user/serdes-synthesize-user! {:email email})))))
         current-users  (set (t2/select-fn-set :user_id PulseChannelRecipient :pulse_channel_id channel-id))

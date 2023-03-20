@@ -121,9 +121,9 @@
          :table_id           (:id table)
          :fk_target_field_id [:not= nil]
          :active             true)
-       (map (comp (partial db/select-one Table :id)
+       (map (comp (partial t2/select-one Table :id)
                   :table_id
-                  (partial db/select-one Field :id)))
+                  (partial t2/select-one Field :id)))
        distinct
        filter-visible
        (take max-matches)))
@@ -136,7 +136,7 @@
     (->> (t2/select-fn-set :table_id Field
            :fk_target_field_id [:in fields]
            :active             true)
-         (map (partial db/select-one Table :id))
+         (map (partial t2/select-one Table :id))
          filter-visible
          (take max-matches))
     []))
@@ -148,7 +148,7 @@
     (->> (t2/select-fn-set :card_id DashboardCard
                            :dashboard_id [:in dashboards]
                            :card_id      [:not= (:id card)])
-         (map (partial db/select-one Card :id))
+         (map (partial t2/select-one Card :id))
          filter-visible
          (take max-matches))
     []))
@@ -208,7 +208,7 @@
   (->> cards
        (m/distinct-by :collection_id)
        interesting-mix
-       (keep (comp (partial db/select-one Collection :id) :collection_id))
+       (keep (comp (partial t2/select-one Collection :id) :collection_id))
        filter-visible))
 
 (defmulti related
@@ -218,7 +218,7 @@
 
 (defmethod related Card
   [card]
-  (let [table             (db/select-one Table :id (:table_id card))
+  (let [table             (t2/select-one Table :id (:table_id card))
         similar-questions (similar-questions card)]
     {:table             table
      :metrics           (->> table
@@ -241,7 +241,7 @@
 
 (defmethod related Metric
   [metric]
-  (let [table (db/select-one Table :id (:table_id metric))]
+  (let [table (t2/select-one Table :id (:table_id metric))]
     {:table    table
      :metrics  (->> table
                     metrics-for-table
@@ -254,7 +254,7 @@
 
 (defmethod related Segment
   [segment]
-  (let [table (db/select-one Table :id (:table_id segment))]
+  (let [table (t2/select-one Table :id (:table_id segment))]
     {:table       table
      :metrics     (->> table
                        metrics-for-table
@@ -286,7 +286,7 @@
 
 (defmethod related Field
   [field]
-  (let [table (db/select-one Table :id (:table_id field))]
+  (let [table (t2/select-one Table :id (:table_id field))]
     {:table    table
      :segments (->> table
                     segments-for-table
@@ -307,7 +307,7 @@
 
 (defmethod related Dashboard
   [dashboard]
-  (let [cards (map (partial db/select-one Card :id) (t2/select-fn-set :card_id DashboardCard
+  (let [cards (map (partial t2/select-one Card :id) (t2/select-fn-set :card_id DashboardCard
                                                                       :dashboard_id (:id dashboard)))]
     {:cards (->> cards
                  (mapcat (comp similar-questions))

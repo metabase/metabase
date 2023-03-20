@@ -28,6 +28,6 @@
    (let [stage-number (or stage-number -1)]
      (lib.util/update-query-stage
        query stage-number
-       update :aggregations
+       update :aggregation
        (fn [aggregations]
          (conj (vec aggregations) (lib.common/->op-arg query stage-number an-aggregate-clause)))))))

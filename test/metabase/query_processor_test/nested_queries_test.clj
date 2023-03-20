@@ -21,7 +21,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest basic-test
@@ -952,7 +951,7 @@
                            (ean-metadata (qp/process-query query))))))))))))))
 
 (defn- field-id->name [field-id]
-  (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id field-id)
+  (let [{field-name :name, table-id :table_id} (t2/select-one [Field :name :table_id] :id field-id)
         table-name                             (t2/select-one-fn :name Table :id table-id)]
     (format "%s.%s" table-name field-name)))
 

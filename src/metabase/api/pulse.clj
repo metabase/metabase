@@ -30,7 +30,8 @@
    [metabase.util.urls :as urls]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -313,9 +314,9 @@
 (api/defendpoint-schema DELETE "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
   [id]
-  (api/let-404 [pulse-id (db/select-one-id Pulse :id id)
-                pc-id    (db/select-one-id PulseChannel :pulse_id pulse-id :channel_type "email")
-                pcr-id   (db/select-one-id PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
+  (api/let-404 [pulse-id (t2/select-one-pk Pulse :id id)
+                pc-id    (t2/select-one-pk PulseChannel :pulse_id pulse-id :channel_type "email")
+                pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
     (db/delete! PulseChannelRecipient :id pcr-id))
   api/generic-204-no-content)
 

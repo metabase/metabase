@@ -162,7 +162,7 @@
          old-fieldvalues-schedule :cache_field_values_schedule
          existing-settings        :settings
          existing-engine          :engine
-         existing-name            :name} (db/select-one [Database
+         existing-name            :name} (t2/select-one [Database
                                                          :metadata_sync_schedule
                                                          :cache_field_values_schedule
                                                          :engine
@@ -320,7 +320,7 @@
 
 (defmethod serdes/load-find-local "Database"
   [[{:keys [id]}]]
-  (db/select-one Database :name id))
+  (t2/select-one Database :name id))
 
 (defmethod serdes/load-xform "Database"
   [database]

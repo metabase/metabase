@@ -35,7 +35,7 @@
   (testing "the actual `PermissionsGroupMembership` object should not have been replaced"
     (with-user-in-groups [group {:name (str ::group)}
                           user  [group]]
-      (let [membership-id          #(db/select-one-id PermissionsGroupMembership
+      (let [membership-id          #(t2/select-one-pk PermissionsGroupMembership
                                                       :group_id (u/the-id group)
                                                       :user_id  (u/the-id user))
             original-membership-id (membership-id)]

@@ -137,7 +137,7 @@
     (locking oracle-test-dbs-created-by-this-instance
       (when-not (contains? @oracle-test-dbs-created-by-this-instance database-name)
         (mdb/setup-db!)                 ; if not already setup
-        (when-let [existing-db (db/select-one Database :engine "oracle", :name database-name)]
+        (when-let [existing-db (t2/select-one Database :engine "oracle", :name database-name)]
           (let [existing-db-id (u/the-id existing-db)
                 all-schemas    (t2/select-fn-set :schema Table :db_id existing-db-id)]
             (when-not (= all-schemas #{session-schema})

@@ -326,7 +326,7 @@
                                              :col                    3}]]
       ;; NOTE: we need to remove `:created_at` and `:updated_at` because they are not
       ;; transformed by `from-parsed-json`
-      (let [dashcard     (dissoc (db/select-one DashboardCard :id (u/the-id dashcard))
+      (let [dashcard     (dissoc (t2/select-one DashboardCard :id (u/the-id dashcard))
                                  :created_at :updated_at)
             serialized   (json/generate-string dashcard)
             deserialized (json/parse-string serialized true)

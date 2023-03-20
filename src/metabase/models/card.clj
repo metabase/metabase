@@ -286,7 +286,7 @@
     (doseq [[[po-type po-id] param-cards]
             (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
       (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
-            {:keys [parameters]}   (db/select-one [model :parameters] :id po-id)
+            {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
             affected-param-ids-set (cond
                                      ;; update all parameters that use this card as source
                                      (:archived changes)
@@ -344,7 +344,7 @@
           old-card-info (when (or (contains? changes :dataset)
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
-                          (db/select-one [Card :dataset_query :dataset] :id id))]
+                          (t2/select-one [Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
       (when archived?
         (db/delete! 'DashboardCard :card_id id))
@@ -510,7 +510,7 @@
        vec))
 
 (defmethod serdes/descendants "Card" [_model-name id]
-  (let [card               (db/select-one Card :id id)
+  (let [card               (t2/select-one Card :id id)
         source-table       (some->  card :dataset_query :query :source-table)
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))

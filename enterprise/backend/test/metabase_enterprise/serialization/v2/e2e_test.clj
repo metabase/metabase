@@ -321,7 +321,7 @@
               (testing "for Actions"
                 (doseq [{:keys [entity_id] :as coll} (get @entities "Action")]
                   (is (= (clean-entity coll)
-                         (->> (db/select-one 'Action :entity_id entity_id)
+                         (->> (t2/select-one 'Action :entity_id entity_id)
                               (@#'action/hydrate-subtype)
                               (serdes/extract-one "Action" {})
                               clean-entity)))))
@@ -329,14 +329,14 @@
               (testing "for Collections"
                 (doseq [{:keys [entity_id] :as coll} (get @entities "Collection")]
                   (is (= (clean-entity coll)
-                         (->> (db/select-one 'Collection :entity_id entity_id)
+                         (->> (t2/select-one 'Collection :entity_id entity_id)
                               (serdes/extract-one "Collection" {})
                               clean-entity)))))
 
               (testing "for Databases"
                 (doseq [{:keys [name] :as coll} (get @entities "Database")]
                   (is (= (clean-entity coll)
-                         (->> (db/select-one 'Database :name name)
+                         (->> (t2/select-one 'Database :name name)
                               (serdes/extract-one "Database" {})
                               clean-entity)))))
 
@@ -344,7 +344,7 @@
                 (doseq [{:keys [db_id name] :as coll} (get @entities "Table")]
                   (is (= (clean-entity coll)
                          (->> (t2/select-one-fn :id 'Database :name db_id)
-                              (db/select-one 'Table :name name :db_id)
+                              (t2/select-one 'Table :name name :db_id)
                               (serdes/extract-one "Table" {})
                               clean-entity)))))
 
@@ -354,63 +354,63 @@
                   (is (= (clean-entity coll)
                          (->> (t2/select-one-fn :id 'Database :name db)
                               (t2/select-one-fn :id 'Table :schema schema :name table :db_id)
-                              (db/select-one 'Field :name name :table_id)
+                              (t2/select-one 'Field :name name :table_id)
                               (serdes/extract-one "Field" {})
                               clean-entity)))))
 
               (testing "for cards"
                 (doseq [{:keys [entity_id] :as card} (get @entities "Card")]
                   (is (= (clean-entity card)
-                         (->> (db/select-one 'Card :entity_id entity_id)
+                         (->> (t2/select-one 'Card :entity_id entity_id)
                               (serdes/extract-one "Card" {})
                               clean-entity)))))
 
               (testing "for dashboards"
                 (doseq [{:keys [entity_id] :as dash} (get @entities "Dashboard")]
                   (is (= (clean-entity dash)
-                         (->> (db/select-one 'Dashboard :entity_id entity_id)
+                         (->> (t2/select-one 'Dashboard :entity_id entity_id)
                               (serdes/extract-one "Dashboard" {})
                               clean-entity)))))
 
               (testing "for dashboard cards"
                 (doseq [{:keys [entity_id] :as dashcard} (get @entities "DashboardCard")]
                   (is (= (clean-entity dashcard)
-                         (->> (db/select-one 'DashboardCard :entity_id entity_id)
+                         (->> (t2/select-one 'DashboardCard :entity_id entity_id)
                               (serdes/extract-one "DashboardCard" {})
                               clean-entity)))))
 
               (testing "for dimensions"
                 (doseq [{:keys [entity_id] :as dim} (get @entities "Dimension")]
                   (is (= (clean-entity dim)
-                         (->> (db/select-one 'Dimension :entity_id entity_id)
+                         (->> (t2/select-one 'Dimension :entity_id entity_id)
                               (serdes/extract-one "Dimension" {})
                               clean-entity)))))
 
               (testing "for metrics"
                 (doseq [{:keys [entity_id] :as metric} (get @entities "Metric")]
                   (is (= (clean-entity metric)
-                         (->> (db/select-one 'Metric :entity_id entity_id)
+                         (->> (t2/select-one 'Metric :entity_id entity_id)
                               (serdes/extract-one "Metric" {})
                               clean-entity)))))
 
               (testing "for segments"
                 (doseq [{:keys [entity_id] :as segment} (get @entities "Segment")]
                   (is (= (clean-entity segment)
-                         (->> (db/select-one 'Segment :entity_id entity_id)
+                         (->> (t2/select-one 'Segment :entity_id entity_id)
                               (serdes/extract-one "Segment" {})
                               clean-entity)))))
 
               (testing "for native query snippets"
                 (doseq [{:keys [entity_id] :as snippet} (get @entities "NativeQuerySnippet")]
                   (is (= (clean-entity snippet)
-                         (->> (db/select-one 'NativeQuerySnippet :entity_id entity_id)
+                         (->> (t2/select-one 'NativeQuerySnippet :entity_id entity_id)
                               (serdes/extract-one "NativeQuerySnippet" {})
                               clean-entity)))))
 
               (testing "for timelines and events"
                 (doseq [{:keys [entity_id] :as timeline} (get @entities "Timeline")]
                   (is (= (clean-entity timeline)
-                         (->> (db/select-one 'Timeline :entity_id entity_id)
+                         (->> (t2/select-one 'Timeline :entity_id entity_id)
                               (serdes/extract-one "Timeline" {})
                               clean-entity)))))
 
@@ -491,10 +491,10 @@
                   (is (serdes.load/load-metabase (ingest/ingest-yaml dump-dir))
                       "successful"))
 
-                (let [dash1d (db/select-one Dashboard :name (:name dash1s))
-                      card1d (db/select-one Card :name (:name card1s))
-                      card2d (db/select-one Card :name (:name card2s))
-                      field1d (db/select-one Field :name (:name field1s))]
+                (let [dash1d (t2/select-one Dashboard :name (:name dash1s))
+                      card1d (t2/select-one Card :name (:name card1s))
+                      card2d (t2/select-one Card :name (:name card2s))
+                      field1d (t2/select-one Field :name (:name field1s))]
                   (testing "parameter on dashboard is loaded correctly"
                     (is (= {:card_id     (:id card1d),
                             :value_field [:field (:id field1d) nil]}
@@ -502,7 +502,7 @@
                                :parameters
                                first
                                :values_source_config)))
-                    (is (some? (db/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+                    (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
 
                   (testing "parameter on card is loaded correctly"
                     (is (= {:card_id     (:id card1d),
@@ -511,7 +511,7 @@
                                :parameters
                                first
                                :values_source_config)))
-                    (is (some? (db/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d))))))))))))))
+                    (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d))))))))))))))
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

@@ -521,7 +521,7 @@
                                      (format "action/%s/execute" action-id)
                                      {:parameters {:id 1 :name "European"}})))))
     (mt/with-actions [{:keys [action-id]} unshared-action-opts]
-      (let [nonexistent-id (inc (db/select-one-id Action {:order-by [[:id :desc]]}))]
+      (let [nonexistent-id (inc (t2/select-one-pk Action {:order-by [[:id :desc]]}))]
         (testing "Check that we get a 404 if the action doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :crowberto

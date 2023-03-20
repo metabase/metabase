@@ -3,11 +3,17 @@ import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import { executeRowAction } from "metabase/dashboard/actions";
-
 import Tooltip from "metabase/core/components/Tooltip";
-
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
+
+import Databases from "metabase/entities/databases";
+
+import {
+  generateFieldSettingsFromParameters,
+  setNumericValues,
+} from "metabase/actions/utils";
+import { executeRowAction } from "metabase/dashboard/actions";
+import { getEditingDashcardId } from "metabase/dashboard/selectors";
 
 import type {
   ActionDashboardCard,
@@ -15,18 +21,9 @@ import type {
   WritebackQueryAction,
   Dashboard,
 } from "metabase-types/api";
-
 import type { VisualizationProps } from "metabase-types/types/Visualization";
-import type { Dispatch, State } from "metabase-types/store";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
-
-import {
-  generateFieldSettingsFromParameters,
-  setNumericValues,
-} from "metabase/actions/utils";
-
-import { getEditingDashcardId } from "metabase/dashboard/selectors";
-import Databases from "metabase/entities/databases";
+import type { Dispatch, State } from "metabase-types/store";
 
 import type Database from "metabase-lib/metadata/Database";
 
@@ -35,6 +32,7 @@ import {
   getNotProvidedActionParameters,
   shouldShowConfirmation,
 } from "./utils";
+
 import ActionVizForm from "./ActionVizForm";
 import ActionButtonView from "./ActionButtonView";
 import { FullContainer } from "./ActionButton.styled";

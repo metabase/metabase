@@ -1,28 +1,101 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CreateQueryActionParams } from "metabase/entities/actions";
-import QueryActionEditor from "metabase/actions/containers/ActionCreator/QueryActionEditor";
 
-import type { DatabaseId, WritebackQueryAction } from "metabase-types/api";
+import type {
+  ActionFormSettings,
+  DatabaseId,
+  NativeDatasetQuery,
+  VisualizationSettings,
+  WritebackParameter,
+  WritebackQueryAction,
+} from "metabase-types/api";
+import type { Card as LegacyCard } from "metabase-types/types/Card";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 
+import Question from "metabase-lib/Question";
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
-import { getDefaultFormSettings } from "../../../utils";
-import {
-  newQuestion,
-  convertActionToQuestion,
-  convertQuestionToAction,
-} from "../utils";
+import { getDefaultFormSettings } from "../../../../utils";
 
-import { ActionContext } from "./ActionContext";
-import type { ActionContextProviderProps, EditorBodyProps } from "./types";
+import { ActionContext } from "../ActionContext";
+import type { ActionContextProviderProps, EditorBodyProps } from "../types";
+
+import {
+  setParameterTypesFromFieldSettings,
+  setTemplateTagTypesFromFieldSettings,
+} from "./utils";
+import QueryActionEditor from "./QueryActionEditor";
 
 export interface QueryActionContextProviderProps
   extends ActionContextProviderProps<WritebackQueryAction> {
   metadata: Metadata;
   databaseId?: DatabaseId;
+}
+
+// ActionCreator uses the NativeQueryEditor, which expects a Question object
+// This utilities help us to work with the WritebackQueryAction as with a Question
+
+function newQuestion(metadata: Metadata, databaseId?: DatabaseId) {
+  return new Question(
+    {
+      dataset_query: {
+        type: "native",
+        database: databaseId ?? null,
+        native: {
+          query: "",
+        },
+      },
+    },
+    metadata,
+  );
+}
+
+function convertActionToQuestionCard(
+  action: WritebackQueryAction,
+): LegacyCard<NativeDatasetQuery> {
+  return {
+    id: action.id,
+    name: action.name,
+    description: action.description,
+    dataset_query: action.dataset_query as NativeDatasetQuery,
+    display: "action",
+    visualization_settings:
+      action.visualization_settings as VisualizationSettings,
+  };
+}
+
+function convertActionToQuestion(
+  action: WritebackQueryAction,
+  metadata: Metadata,
+) {
+  const question = new Question(convertActionToQuestionCard(action), metadata);
+  return question.setParameters(action.parameters);
+}
+
+function convertQuestionToAction(
+  question: Question,
+  formSettings: ActionFormSettings,
+) {
+  const cleanQuestion = setTemplateTagTypesFromFieldSettings(
+    question,
+    formSettings,
+  );
+  const parameters = setParameterTypesFromFieldSettings(
+    formSettings,
+    cleanQuestion.parameters(),
+  );
+
+  return {
+    id: question.id(),
+    name: question.displayName() as string,
+    description: question.description(),
+    dataset_query: question.datasetQuery() as NativeDatasetQuery,
+    database_id: question.databaseId() as DatabaseId,
+    parameters: parameters as WritebackParameter[],
+    visualization_settings: formSettings,
+  };
 }
 
 function resolveQuestion(

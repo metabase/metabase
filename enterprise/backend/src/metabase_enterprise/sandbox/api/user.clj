@@ -25,7 +25,7 @@
   [id :as {{:keys [login_attributes]} :body}]
   {id ms/PositiveInt
    login_attributes [:maybe UserAttributes]}
-  (api/check-404 (db/select-one User :id id))
+  (api/check-404 (t2/select-one User :id id))
   (db/update! User id :login_attributes login_attributes))
 
 (api/defendpoint GET "/attributes"

@@ -21,7 +21,6 @@
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -47,7 +46,7 @@
      ([model id]
       (if (string? id)
         id
-        (fully-qualified-name* (db/select-one model :id id)))))))
+        (fully-qualified-name* (t2/select-one model :id id)))))))
 
 (defmethod fully-qualified-name* Database
   [db]
@@ -88,7 +87,7 @@
   (let [parents (some->> (str/split (:location collection) #"/")
                          rest
                          not-empty
-                         (map #(local-collection-name (db/select-one Collection :id (Integer/parseInt %))))
+                         (map #(local-collection-name (t2/select-one Collection :id (Integer/parseInt %))))
                          (apply str))]
     (str root-collection-path parents (local-collection-name collection))))
 
@@ -157,7 +156,7 @@
   [context _ _ db-name]
   (assoc context :database (if (= db-name "__virtual")
                              mbql.s/saved-questions-virtual-database-id
-                             (db/select-one-id Database :name db-name))))
+                             (t2/select-one-pk Database :name db-name))))
 
 (defmethod path->context* "schemas"
   [context _ _ schema]
@@ -165,14 +164,14 @@
 
 (defmethod path->context* "tables"
   [context _ _ table-name]
-  (assoc context :table (db/select-one-id Table
+  (assoc context :table (t2/select-one-pk Table
                           :db_id  (:database context)
                           :schema (:schema context)
                           :name   table-name)))
 
 (defmethod path->context* "fields"
   [context _ _ field-name]
-  (assoc context :field (db/select-one-id Field
+  (assoc context :field (t2/select-one-pk Field
                           :table_id (:table context)
                           :name     field-name)))
 
@@ -182,13 +181,13 @@
 
 (defmethod path->context* "metrics"
   [context _ _ metric-name]
-  (assoc context :metric (db/select-one-id Metric
+  (assoc context :metric (t2/select-one-pk Metric
                            :table_id (:table context)
                            :name     metric-name)))
 
 (defmethod path->context* "segments"
   [context _ _ segment-name]
-  (assoc context :segment (db/select-one-id Segment
+  (assoc context :segment (t2/select-one-pk Segment
                             :table_id (:table context)
                             :name     segment-name)))
 
@@ -196,7 +195,7 @@
   [context _ model-attrs collection-name]
   (if (= collection-name "root")
     (assoc context :collection nil)
-    (assoc context :collection (db/select-one-id Collection
+    (assoc context :collection (t2/select-one-pk Collection
                                  :name      collection-name
                                  :namespace (:namespace model-attrs)
                                  :location  (or (letfn [(collection-location [id]
@@ -209,30 +208,30 @@
 
 (defmethod path->context* "dashboards"
   [context _ _ dashboard-name]
-  (assoc context :dashboard (db/select-one-id Dashboard
+  (assoc context :dashboard (t2/select-one-pk Dashboard
                               :collection_id (:collection context)
                               :name          dashboard-name)))
 
 (defmethod path->context* "pulses"
   [context _ _ pulse-name]
-  (assoc context :dashboard (db/select-one-id Pulse
+  (assoc context :dashboard (t2/select-one-pk Pulse
                               :collection_id (:collection context)
                               :name          pulse-name)))
 
 (defmethod path->context* "cards"
   [context _ _ dashboard-name]
-  (assoc context :card (db/select-one-id Card
+  (assoc context :card (t2/select-one-pk Card
                          :collection_id (:collection context)
                          :name          dashboard-name)))
 
 (defmethod path->context* "users"
   [context _ _ email]
-  (assoc context :user (db/select-one-id User
+  (assoc context :user (t2/select-one-pk User
                          :email email)))
 
 (defmethod path->context* "snippets"
   [context _ _ snippet-name]
-  (assoc context :snippet (db/select-one-id NativeQuerySnippet
+  (assoc context :snippet (t2/select-one-pk NativeQuerySnippet
                                             :collection_id (:collection context)
                                             :name          snippet-name)))
 

@@ -344,7 +344,7 @@
   (let [include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
         exclude-uneditable-details?  (Boolean/parseBoolean exclude_uneditable_details)
         filter-by-data-access?       (not (or include-editable-data-model? exclude-uneditable-details?))
-        database                     (api/check-404 (db/select-one Database :id id))]
+        database                     (api/check-404 (t2/select-one Database :id id))]
     (cond-> database
       filter-by-data-access?       api/read-check
       exclude-uneditable-details?  api/write-check
@@ -434,7 +434,7 @@
 
 (defn- db-metadata [id include-hidden? include-editable-data-model?]
   (let [db (-> (if include-editable-data-model?
-                 (api/check-404 (db/select-one Database :id id))
+                 (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
                (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
         db (if include-editable-data-model?
@@ -657,7 +657,7 @@
   (let [[db-perm-check field-perm-check] (if (Boolean/parseBoolean include_editable_data_model)
                                            [check-db-data-model-perms mi/can-write?]
                                            [api/read-check mi/can-read?])]
-    (db-perm-check (db/select-one Database :id id))
+    (db-perm-check (t2/select-one Database :id id))
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
                                           (hydrate :table))))))
@@ -799,7 +799,7 @@
   []
   (api/check-superuser)
   (sample-data/add-sample-database!)
-  (db/select-one Database :is_sample true))
+  (t2/select-one Database :is_sample true))
 
 
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
@@ -825,7 +825,7 @@
   (api/check (public-settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
-  (api/let-404 [database (db/select-one Database :id id)]
+  (api/let-404 [database (t2/select-one Database :id id)]
     (api/write-check database)
     (if (-> database :options :persist-models-enabled)
       ;; todo: some other response if already persisted?
@@ -849,7 +849,7 @@
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [id]
   {:id su/IntGreaterThanZero}
-  (api/let-404 [database (db/select-one Database :id id)]
+  (api/let-404 [database (t2/select-one Database :id id)]
     (api/write-check database)
     (if (-> database :options :persist-models-enabled)
       (do (db/update! Database id :options
@@ -877,7 +877,7 @@
    cache_ttl          (s/maybe su/IntGreaterThanZero)
    settings           (s/maybe su/Map)}
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
-  (let [existing-database (api/write-check (db/select-one Database :id id))
+  (let [existing-database (api/write-check (t2/select-one Database :id id))
         details           (driver.u/db-details-client->server engine details)
         details           (upsert-sensitive-fields existing-database details)
         conn-error        (when (some? details)
@@ -931,7 +931,7 @@
         ;; unlike the other fields, folks might want to nil out cache_ttl
         (db/update! Database id {:cache_ttl cache_ttl})
 
-        (let [db (db/select-one Database :id id)]
+        (let [db (t2/select-one Database :id id)]
           (events/publish-event! :database-update db)
           ;; return the DB with the expanded schedules back in place
           (add-expanded-schedules db))))))
@@ -944,7 +944,7 @@
   "Delete a `Database`."
   [id]
   (api/check-superuser)
-  (api/let-404 [db (db/select-one Database :id id)]
+  (api/let-404 [db (t2/select-one Database :id id)]
     (db/delete! Database :id id)
     (events/publish-event! :database-delete db))
   api/generic-204-no-content)
@@ -973,7 +973,7 @@
   "Trigger a manual update of the schema metadata for this `Database`."
   [id]
   ;; just wrap this in a future so it happens async
-  (let [db (api/write-check (db/select-one Database :id id))]
+  (let [db (api/write-check (t2/select-one Database :id id))]
     (future
       (sync-metadata/sync-db-metadata! db)
       (analyze/analyze-db! db)))
@@ -985,7 +985,7 @@
   tables to be `complete` (see #20863)"
   [id]
   ;; manual full sync needs to be async, but this is a simple update of `Database`
-  (let [db     (api/write-check (db/select-one Database :id id))
+  (let [db     (api/write-check (t2/select-one Database :id id))
         tables (map api/write-check (:tables (first (add-tables [db]))))]
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
@@ -1005,7 +1005,7 @@
   "Trigger a manual scan of the field values for this `Database`."
   [id]
   ;; just wrap this is a future so it happens async
-  (let [db (api/write-check (db/select-one Database :id id))]
+  (let [db (api/write-check (t2/select-one Database :id id))]
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -1034,7 +1034,7 @@
 (api/defendpoint-schema POST "/:id/discard_values"
   "Discards all saved field values for this `Database`."
   [id]
-  (delete-all-field-values-for-database! (api/write-check (db/select-one Database :id id)))
+  (delete-all-field-values-for-database! (api/write-check (t2/select-one Database :id id)))
   {:status :ok})
 
 

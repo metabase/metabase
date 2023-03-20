@@ -157,11 +157,10 @@
   :pk_field
   "Return the ID of the primary key `Field` for `table`."
   [{:keys [id]}]
-  (db/select-one-id Field
+  (t2/select-one-pk Field
     :table_id        id
     :semantic_type   (mdb.u/isa :type/PK)
     :visibility_type [:not-in ["sensitive" "retired"]]))
-
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]
   (let [table-ids         (set (map :id tables))
@@ -205,7 +204,7 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (db/select-one Database :id (:db_id table)))
+  (t2/select-one Database :id (:db_id table)))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
@@ -234,8 +233,8 @@
         schema-name (when (= 3 (count path))
                       (-> path second :id))
         table-name  (-> path last :id)
-        db-id       (db/select-one-id Database :name db-name)]
-    (db/select-one Table :name table-name :db_id db-id :schema schema-name)))
+        db-id       (t2/select-one-pk Database :name db-name)]
+    (t2/select-one Table :name table-name :db_id db-id :schema schema-name)))
 
 (defmethod serdes/extract-one "Table"
   [_model-name _opts {:keys [db_id] :as table}]
