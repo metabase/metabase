@@ -334,8 +334,7 @@
            ;; send an email to everyone including the site admin if that's set
            (when (sso-settings/send-new-sso-user-admin-email?)
              (classloader/require 'metabase.email.messages)
-             ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true)
-             )))
+             ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
 
 (schema/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
