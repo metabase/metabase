@@ -251,7 +251,10 @@
   (dashboard->param-field-values dashboard))
 
 (defmethod param-fields :metabase.models.dashboard/Dashboard [dashboard]
-  (-> dashboard dashcards->param-field-ids param-field-ids->fields))
+  (-> (hydrate dashboard [:ordered_cards :card])
+      :ordered_cards
+      dashcards->param-field-ids
+      param-field-ids->fields))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 CARD-SPECIFIC                                                  |
@@ -273,6 +276,8 @@
   (set (mbql.u/match (seq (card->template-tag-field-clauses card))
          [:field (id :guard integer?) _]
          id)))
+(defmethod param-values :metabase.models.card/Card [card]
+  (-> card card->template-tag-field-ids field-ids->param-field-values))
 
 (defmethod param-fields :metabase.models.card/Card [card]
   (-> card card->template-tag-field-ids param-field-ids->fields))

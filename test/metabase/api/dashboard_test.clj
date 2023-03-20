@@ -452,7 +452,7 @@
   (testing "Don't return `param_values` for Fields for which the current User has no data perms."
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-      (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (Table (mt/id :venues))))
+      (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (mt/id :venues)))
       (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                       Card          [{card-id :id}      {:name "Dashboard Test Card"}]
                       DashboardCard [{_ :id}            {:dashboard_id       dashboard-id
