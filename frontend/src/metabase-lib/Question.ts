@@ -1355,13 +1355,13 @@ class QuestionInner {
     }
 
     if (!this.__mlv2Query) {
-      // MEGA HACK! sometimes this.datasetQuery() comes back with objects that aren't plain JS objects, e.g. a capital-J
-      // Join in the joins list. Serialize to JSON and back to make sure it's legitimately just plain Objects
-      const datasetQuery = this.datasetQuery();
-      const rawQuery = datasetQuery && JSON.parse(JSON.stringify(datasetQuery));
-      console.log("Caching MLv2 query based on", rawQuery);
+      console.log("Caching MLv2 query based on", this.datasetQuery());
       this.__mlv2QueryMetadata = metadata;
-      this.__mlv2Query = MLv2.query(this.databaseId(), metadata, rawQuery);
+      this.__mlv2Query = MLv2.query(
+        this.databaseId(),
+        metadata,
+        this.datasetQuery(),
+      );
     }
 
     console.log("Using cached MLv2 query");
