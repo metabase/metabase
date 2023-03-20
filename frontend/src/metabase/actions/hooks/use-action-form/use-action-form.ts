@@ -42,7 +42,7 @@ function useActionForm({ action, initialValues = {} }: Opts) {
     [action.parameters, fieldSettings],
   );
 
-  const cleanInitialValues = useMemo(() => {
+  const cleanedInitialValues = useMemo(() => {
     const values = validationSchema.cast(initialValues);
     return _.mapObject(values, (value, fieldId) => {
       const formField = fieldSettings[fieldId];
@@ -52,7 +52,7 @@ function useActionForm({ action, initialValues = {} }: Opts) {
 
   const getCleanValues = useCallback(
     (values: ParametersForActionExecution = {}) => {
-      const allValues = { ...cleanInitialValues, ...values };
+      const allValues = { ...cleanedInitialValues, ...values };
       const formatted = formatSubmitValues(allValues, fieldSettings);
 
       const isImplicitUpdate =
@@ -65,13 +65,13 @@ function useActionForm({ action, initialValues = {} }: Opts) {
         ? getChangedValues(formatted, initialValues)
         : formatted;
     },
-    [action, initialValues, cleanInitialValues, fieldSettings],
+    [action, initialValues, cleanedInitialValues, fieldSettings],
   );
 
   return {
     form,
     validationSchema,
-    initialValues: cleanInitialValues,
+    initialValues: cleanedInitialValues,
     getCleanValues,
   };
 }
