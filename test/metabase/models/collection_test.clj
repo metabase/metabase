@@ -187,7 +187,7 @@
   (when (seq path)
     (let [ids      (collection/location-path->ids path)
           id->name (when (seq ids)
-                     (db/select-field->field :id :name Collection :id [:in ids]))]
+                     (t2/select-fn->fn :id :name Collection :id [:in ids]))]
       ;; now loop through each ID and replace the ID part like (ex. /10/) with a name (ex. /A/)
       (loop [path path, [id & more] ids]
         (if-not id
@@ -1110,12 +1110,12 @@
   ;; we can reuse the `perms-path-ids->names` helper function from above, just need to stick `collection` in a map
   ;; to simulate the output of the `with-collection-hierarchy` macro
   (perms-path-ids->names
-   (zipmap (map :name collections)
-           collections)
-   (db/select-field :object Permissions
-                    {:where [:and
-                             [:like :object "/collection/%"]
-                             [:= :group_id (u/the-id perms-group)]]})))
+    (zipmap (map :name collections)
+            collections)
+    (t2/select-fn-set :object Permissions
+                      {:where [:and
+                               [:like :object "/collection/%"]
+                               [:= :group_id (u/the-id perms-group)]]})))
 
 (deftest copy-root-collection-perms-test
   (testing (str "Make sure that when creating a new Collection at the Root Level, we copy the group permissions for "

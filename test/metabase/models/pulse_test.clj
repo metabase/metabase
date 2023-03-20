@@ -125,8 +125,8 @@
                               2 card-2
                               3 card-3))]
                 (pulse/update-notification-cards! pulse (map pulse/card->ref cards)))
-              (when-let [card-ids (seq (db/select-field :card_id PulseCard, :pulse_id (u/the-id pulse)))]
-                (db/select-field :name Card, :id [:in card-ids])))]
+              (when-let [card-ids (seq (t2/select-fn-set :card_id PulseCard, :pulse_id (u/the-id pulse)))]
+                (t2/select-fn-set :name Card, :id [:in card-ids])))]
       (doseq [[cards expected] {[]    nil
                                 [1]   #{"card1"}
                                 [2]   #{"card2"}

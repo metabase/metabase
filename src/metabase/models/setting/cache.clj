@@ -138,7 +138,7 @@
   "Populate cache with the latest hotness from the db"
   []
   (log/debug (trs "Refreshing Settings cache..."))
-  (reset! (cache*) (db/select-field->field :key :value 'Setting)))
+  (reset! (cache*) (t2/select-fn->fn :key :value 'Setting)))
 
 (defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))
 

@@ -126,7 +126,7 @@
      ["Empty Vending Machine" 0]]]])
 
 (defn- db->fields [db]
-  (let [table-ids (db/select-ids Table :db_id (u/the-id db))]
+  (let [table-ids (t2/select-pks-set Table :db_id (u/the-id db))]
     (set (map (partial into {}) (db/select [Field :name :base_type :semantic_type] :table_id [:in table-ids])))))
 
 (deftest tiny-int-1-test

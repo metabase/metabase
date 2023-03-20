@@ -108,7 +108,7 @@ class TableInner extends Base {
 
   // AGGREGATIONS
   aggregationOperators() {
-    return getAggregationOperators(this);
+    return getAggregationOperators(this, this.fields);
   }
 
   aggregationOperatorsLookup() {
@@ -116,12 +116,7 @@ class TableInner extends Base {
   }
 
   aggregationOperator(short) {
-    return this.aggregation_operators_lookup[short];
-  }
-
-  // @deprecated: use aggregationOperatorsLookup
-  get aggregation_operators_lookup() {
-    return this.aggregationOperatorsLookup();
+    return this.aggregationOperatorsLookup()[short];
   }
 
   // FIELDS

@@ -1152,7 +1152,7 @@
         (let [copy-id (u/the-id (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" dashboard-id)))]
           (try
             (is (= 2
-                   (count (db/select-ids DashboardCard, :dashboard_id copy-id))))
+                   (count (t2/select-pks-set DashboardCard, :dashboard_id copy-id))))
             (is (=? [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category}]
                    (t2/select-one-fn :parameters Dashboard :id copy-id)))
             (is (=? [{:parameter_id "random-id"
@@ -1256,7 +1256,7 @@
                  (map (partial into {})
                       (db/select [DashboardCard :size_x :size_y :col :row], :dashboard_id dashboard-id))))
           (is (= #{0}
-                 (db/select-field :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
+                 (t2/select-fn-set :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
 
 (defn do-with-add-card-parameter-mapping-permissions-fixtures [f]
   (mt/with-temp-copy-of-db
@@ -1383,12 +1383,12 @@
                     DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
       (with-dashboards-in-writeable-collection [dashboard-id]
         (is (= 1
-               (count (db/select-ids DashboardCard, :dashboard_id dashboard-id))))
+               (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
         (is (= nil
                (mt/user-http-request :rasta :delete 204
                                      (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)))
         (is (= 0
-               (count (db/select-ids DashboardCard, :dashboard_id dashboard-id))))))))
+               (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

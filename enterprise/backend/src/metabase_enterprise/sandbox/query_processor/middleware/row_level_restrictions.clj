@@ -73,7 +73,7 @@
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
     (let [group-ids           (qp.store/cached *current-user-id*
-                                (db/select-field :group_id PermissionsGroupMembership :user_id *current-user-id*))
+                                (t2/select-fn-set :group_id PermissionsGroupMembership :user_id *current-user-id*))
           sandboxes           (when (seq group-ids)
                                (db/select GroupTableAccessPolicy :group_id [:in group-ids]
                                  :table_id [:in table-ids]))

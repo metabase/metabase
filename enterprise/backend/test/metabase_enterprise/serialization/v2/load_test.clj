@@ -165,9 +165,9 @@
 
             (is (= 3 (db/count Database)))
             (is (= #{"db1" "db2" "test-data"}
-                   (db/select-field :name Database)))
+                   (t2/select-fn-set :name Database)))
             (is (= #{(:id @db1d) (:id @db2d)}
-                   (db/select-field :db_id Table :name "posts")))
+                   (t2/select-fn-set :db_id Table :name "posts")))
             (is (db/exists? Table :name "posts" :db_id (:id @db1d)))
             (is (db/exists? Table :name "posts" :db_id (:id @db2d)))))))))
 
@@ -837,7 +837,7 @@
             (is (not= (:id @field2s) (:id @field2d))))
 
           (testing "there are 2 FieldValues defined under fields of table1d"
-            (let [fields (db/select-ids Field :table_id (:id @table1d))]
+            (let [fields (t2/select-pks-set Field :table_id (:id @table1d))]
               (is (= 2 (db/count FieldValues :field_id [:in fields])))))
 
           (testing "existing FieldValues are properly found and updated"
