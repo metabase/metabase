@@ -17,6 +17,8 @@ describe("scenarios > admin > databases > edit", () => {
 
   it("sample database", () => {
     cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
+    // should not display a setup help card
+    cy.findByText("Need help connecting?").should("not.exist");
 
     cy.log(
       "should not be possible to change database type for the Sample Database (metabase#16382)",
@@ -179,15 +181,6 @@ describe("scenarios > admin > databases > edit", () => {
 
       cy.wait("@delete");
       cy.url().should("match", /\/admin\/databases\/$/);
-    });
-
-    it("should not display a setup help card", () => {
-      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`).as("loadDatabase");
-
-      cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-      cy.wait("@loadDatabase");
-
-      cy.findByText("Need help connecting?").should("not.exist");
     });
   });
 });
