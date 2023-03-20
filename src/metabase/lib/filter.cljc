@@ -7,6 +7,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema]
+   [metabase.lib.schema.expression :as schema.expression]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -261,3 +262,37 @@
    (let [stage-number (clojure.core/or stage-number -1)
          new-filter   (->filter-clause query stage-number boolean-expression)]
      (lib.util/update-query-stage query stage-number assoc :filter new-filter))))
+
+(mu/defn current-filter :- [:maybe ::schema.expression/boolean]
+  "Returns the current filter in stage with `stage-number` of `query`.
+  If `stage-number` is omitted, the last stage is used.
+  See also [[metabase.lib.util/query-stage]]."
+  ([query :- :metabase.lib.schema/query] (current-filter query -1))
+  ([query :- :metabase.lib.schema/query
+    stage-number :- :int]
+   (:filter (lib.util/query-stage query stage-number))))
+
+(defn- conjoin [current-filter new-filter]
+  (-> (cond
+        (nil? current-filter) new-filter
+
+        (clojure.core/and (vector? current-filter)
+                          (clojure.core/= (first current-filter) :and))
+        (conj current-filter new-filter)
+
+        :else [:and current-filter new-filter])
+      lib.options/ensure-uuid))
+
+(mu/defn add-filter :- :metabase.lib.schema/query
+  "Adds `boolean-expression` as a filter on `query` if there is no filter
+  yet, builds a conjunction with the current filter otherwise."
+  ([query :- :metabase.lib.schema/query
+    boolean-expression]
+   (metabase.lib.filter/add-filter query -1 boolean-expression))
+
+  ([query :- :metabase.lib.schema/query
+    stage-number :- :int
+    boolean-expression]
+   (let [stage-number (clojure.core/or stage-number -1)
+         new-filter   (->filter-clause query stage-number boolean-expression)]
+     (lib.util/update-query-stage query stage-number update :filter conjoin new-filter))))
