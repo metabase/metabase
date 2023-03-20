@@ -286,7 +286,7 @@
 
 (defmethod serdes/extract-query "Action" [_model _opts]
   (eduction (map hydrate-subtype)
-            (db/select-reducible 'Action)))
+            (t2/reducible-select 'Action)))
 
 (defmethod serdes/hash-fields Action [_action]
   [:name (serdes/hydrated-hash :model) :created_at])

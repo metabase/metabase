@@ -337,7 +337,7 @@
 (defn summarize-executions
   "Summarize `executions`, by incrementing approriate counts in a summary map."
   ([]
-   (summarize-executions (db/select-reducible [QueryExecution :executor_id :running_time :error])))
+   (summarize-executions (t2/reducible-select [QueryExecution :executor_id :running_time :error])))
   ([executions]
    (reduce summarize-executions {:executions 0, :by_status {}, :num_per_user {}, :num_by_latency {}} executions))
   ([summary execution]

@@ -178,15 +178,15 @@
   [model {:keys [collection-set]}]
   (if collection-set
     ;; If collection-set is defined, select everything in those collections, or with nil :collection_id.
-    (let [in-colls  (db/select-reducible model :collection_id [:in collection-set])]
+    (let [in-colls  (t2/reducible-select model :collection_id [:in collection-set])]
       (if (contains? collection-set nil)
-        (eduction cat [in-colls (db/select-reducible model :collection_id nil)])
+        (eduction cat [in-colls (t2/reducible-select model :collection_id nil)])
         in-colls))
     ;; If collection-set is nil, just select everything.
-    (db/select-reducible model)))
+    (t2/reducible-select model)))
 
 (defmethod extract-query :default [model-name _]
-  (db/select-reducible (symbol model-name)))
+  (t2/reducible-select (symbol model-name)))
 
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:
@@ -366,7 +366,7 @@
   ;; TODO This should be able to use a cache of identity-hash values from the start of the deserialization process.
   ;; Note that it needs to include either updates (or worst-case, invalidation) at [[load-one!]] time.
   [model id-hash]
-  (->> (db/select-reducible model)
+  (->> (t2/reducible-select model)
        (into [] (comp (filter #(= id-hash (identity-hash %)))
                       (take 1)))
        first))
