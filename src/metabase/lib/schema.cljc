@@ -40,6 +40,11 @@
 (mr/def ::fields
   [:sequential {:min 1} [:ref ::ref/ref]])
 
+(mr/def ::source-table
+  [:or
+   [:ref ::id/table]
+   #"^card__\d+$"])
+
 (mr/def ::stage.mbql
   [:and
    [:map
@@ -52,7 +57,7 @@
     [:fields       {:optional true} ::fields]
     [:filter       {:optional true} [:ref ::expression/boolean]]
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
-    [:source-table {:optional true} ::id/table]]
+    [:source-table {:optional true} [:ref ::source-table]]]
    ;; `:source-query` is not allowed in `:pipeline` (pMBQL) queries!
    [:fn #(not (contains? % :source-query))]])
 
@@ -61,7 +66,7 @@
   [:and
    ::stage.mbql
    [:map
-    [:source-table [:or ::id/table #"^card__\d+$"]]]])
+    [:source-table [:ref ::source-table]]]])
 
 ;;; Schema for an MBQL stage that DOES NOT include `:source-table` -- an MBQL stage that is not the initial stage.
 (mr/def ::stage.mbql.without-source
