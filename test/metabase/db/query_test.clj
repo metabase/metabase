@@ -1,5 +1,7 @@
 (ns metabase.db.query-test
   (:require
+   [cheshire.core :as json]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.query :as mdb.query]
@@ -73,3 +75,21 @@
                            :breakout     [[:field (mt/id :products :category) {:join-alias "Products"}]]})
                :database (mt/id)}]
         (verify-same-query q)))))
+
+(deftest nonsql-dialects-just-return-original-query-test
+  (testing "Passing a mongodb query through format-sql should have no effect"
+    (with-open [r (io/reader (io/resource "metabase/db/mongodbquery.json"))]
+      (let [query                 (slurp r)
+            formatted-query       (mdb.query/format-sql query :mongo)
+            ;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
+            ;; This is a corner case since the system should always be using the right driver
+            weird-formatted-query (mdb.query/format-sql query :postgres)]
+        (testing "The generated query and formatted query should be identical"
+          (is (= query formatted-query)))
+        (testing "The wrong formatter will change the format..."
+          (is (not= query weird-formatted-query)))
+        (testing "...but the resulting data is still the same"
+          ;; Bottom line - Use the right driver, but if you use the wrong
+          ;; one it should be harmless but annoying
+          (is (= (json/parse-string query)
+                 (json/parse-string weird-formatted-query))))))))
