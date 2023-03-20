@@ -39,7 +39,7 @@
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
 (defn- group-id->permissions-set []
-  (into {} (for [[group-id perms] (group-by :group_id (db/select Permissions))]
+  (into {} (for [[group-id perms] (group-by :group_id (t2/select Permissions))]
              {group-id (set (map :object perms))})))
 
 (s/defn ^:private perms-type-for-collection :- CollectionPermissions

@@ -111,7 +111,7 @@
   on GTAPs (the Card cannot add fields or change types vs. the original Table)."
   [{new-result-metadata :result_metadata, card-id :id}]
   (when new-result-metadata
-    (when-let [gtaps-using-this-card (not-empty (db/select [GroupTableAccessPolicy :id :table_id] :card_id card-id))]
+    (when-let [gtaps-using-this-card (not-empty (t2/select [GroupTableAccessPolicy :id :table_id] :card_id card-id))]
       (let [original-result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
         (when-not (= original-result-metadata new-result-metadata)
           (doseq [{table-id :table_id} gtaps-using-this-card]

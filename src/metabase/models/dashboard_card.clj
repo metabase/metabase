@@ -97,10 +97,11 @@
   :series
   "Return the `Cards` associated as additional series on this DashboardCard."
   [{:keys [id]}]
-  (db/select [Card :id :name :description :display :dataset_query :visualization_settings :collection_id]
-    (mdb.u/join [Card :id] [DashboardCardSeries :card_id])
-    (db/qualify DashboardCardSeries :dashboardcard_id) id
-    {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]}))
+  (t2/select [Card :id :name :description :display :dataset_query :visualization_settings :collection_id]
+             (merge
+               (mdb.u/join [Card :id] [DashboardCardSeries :card_id])
+               {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]
+                :where    [:= (db/qualify DashboardCardSeries :dashboardcard_id) id]})))
 
 
 ;;; ---------------------------------------------------- CRUD FNS ----------------------------------------------------
@@ -168,7 +169,7 @@
   (into {}
         (filter (fn [[k v]]
                   (not= v (get old k)))
-        new)))
+         new)))
 
 (s/defn update-dashboard-card!
   "Updates an existing DashboardCard including all DashboardCardSeries.

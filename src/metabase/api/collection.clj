@@ -76,7 +76,7 @@
    namespace (s/maybe su/NonBlankString)}
   (let [archived? (Boolean/parseBoolean archived)
         exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)]
-    (as-> (db/select Collection
+    (as-> (t2/select Collection
             {:where    [:and
                         [:= :archived archived?]
                         [:= :namespace namespace]
@@ -139,7 +139,7 @@
                                                           :from            [:report_card]
                                                           :where           [:= :archived false]}))
         colls (cond->>
-                (db/select Collection
+                (t2/select Collection
                   {:where [:and
                            (when exclude-archived?
                              [:= :archived false])
@@ -166,7 +166,7 @@
                                                                                :from            [:report_card]
                                                                                :where           [:= :archived false]}))
            colls                           (cond->>
-                                             (db/select Collection
+                                             (t2/select Collection
                                                {:where [:and
                                                         (when exclude-archived?
                                                           [:= :archived false])

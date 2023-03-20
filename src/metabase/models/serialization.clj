@@ -137,7 +137,7 @@
 
   Returns a reducible stream of modeled Toucan maps.
 
-  Defaults to using `(toucan.db/select model)` for the entire table.
+  Defaults to using `(toucan.t2/select model)` for the entire table.
 
   You may want to override this to eg. skip archived entities, or otherwise filter what gets serialized."
   {:arglists '([model-name opts])}
@@ -417,7 +417,7 @@
   "Creates the basic context for storage. This is a map with a single entry: `:collections` is a map from collection ID
   to the path of collections."
   []
-  (let [colls      (db/select ['Collection :id :entity_id :location :slug])
+  (let [colls      (t2/select ['Collection :id :entity_id :location :slug])
         coll-names (into {} (for [{:keys [id entity_id slug]} colls]
                               [(str id) (storage-leaf-file-name entity_id slug)]))
         coll->path (into {} (for [{:keys [entity_id id location]} colls

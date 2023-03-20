@@ -98,7 +98,7 @@
   "Get the revisions for `model` with `id` in reverse chronological order."
   [model id]
   {:pre [(models/model? model) (integer? id)]}
-  (db/select Revision, :model (name model), :model_id id, {:order-by [[:id :desc]]}))
+  (t2/select Revision, :model (name model), :model_id id, {:order-by [[:id :desc]]}))
 
 (defn revisions+details
   "Fetch `revisions` for `model` with `id` and add details."
@@ -114,7 +114,7 @@
   "Delete old revisions of `model` with `id` when there are more than `max-revisions` in the DB."
   [model id]
   {:pre [(models/model? model) (integer? id)]}
-  (when-let [old-revisions (seq (drop max-revisions (map :id (db/select [Revision :id]
+  (when-let [old-revisions (seq (drop max-revisions (map :id (t2/select [Revision :id]
                                                                :model    (name model)
                                                                :model_id id
                                                                {:order-by [[:timestamp :desc]]}))))]

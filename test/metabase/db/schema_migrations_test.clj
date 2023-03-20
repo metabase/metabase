@@ -215,7 +215,7 @@
                 (into #{}
                       (map #(select-keys % [:base_type :effective_type :coercion_strategy
                                             :semantic_type :name]))
-                      (db/select Field :table_id table-id)))))))))
+                      (t2/select Field :table_id table-id)))))))))
 
 (defn app-db-column-types
   "Returns a map of all column names to their respective type names, for the given `table-name`, by using the JDBC

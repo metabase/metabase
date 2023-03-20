@@ -64,7 +64,7 @@
 ;;; ----------------------------------------------- GET /api/database ------------------------------------------------
 
 (defn- add-tables [dbs]
-  (let [db-id->tables (group-by :db_id (filter mi/can-read? (db/select Table
+  (let [db-id->tables (group-by :db_id (filter mi/can-read? (t2/select Table
                                                               :active          true
                                                               :db_id           [:in (map :id dbs)]
                                                               :visibility_type nil
@@ -229,7 +229,7 @@
              include-saved-questions-tables?
              include-editable-data-model?
              exclude-uneditable-details?]}]
-  (let [dbs (db/select Database {:order-by [:%lower.name :%lower.engine]})
+  (let [dbs (t2/select Database {:order-by [:%lower.name :%lower.engine]})
         filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
@@ -481,7 +481,7 @@
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
 (defn- autocomplete-tables [db-id search-string limit]
-  (db/select [Table :id :db_id :schema :name]
+  (t2/select [Table :id :db_id :schema :name]
     {:where    [:and [:= :db_id db-id]
                      [:= :active true]
                      [:like :%lower.name (u/lower-case-en search-string)]
@@ -503,7 +503,7 @@
                         second
                         (str/replace #"-" " ")
                         u/lower-case-en)]
-    (db/select [Card :id :dataset :database_id :name :collection_id [:collection.name :collection_name]]
+    (t2/select [Card :id :dataset :database_id :name :collection_id [:collection.name :collection_name]]
                {:where    [:and
                            [:= :report_card.database_id database-id]
                            [:= :report_card.archived false]
@@ -529,7 +529,7 @@
                 :limit    50})))
 
 (defn- autocomplete-fields [db-id search-string limit]
-  (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
+  (t2/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
              :metabase_field.active          true
              :%lower.metabase_field/name     [:like (u/lower-case-en search-string)]
              :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
@@ -634,7 +634,7 @@
   "Get a list of all `Fields` in `Database`."
   [id]
   (api/read-check Database id)
-  (let [fields (filter mi/can-read? (-> (db/select [Field :id :name :display_name :table_id :base_type :semantic_type]
+  (let [fields (filter mi/can-read? (-> (t2/select [Field :id :name :display_name :table_id :base_type :semantic_type]
                                           :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
                                           :visibility_type [:not-in ["sensitive" "retired"]])
                                         (hydrate :table)))]
@@ -1094,7 +1094,7 @@
 (defn- schema-tables-list [db-id schema]
   (api/read-check Database db-id)
   (api/check-403 (can-read-schema? db-id schema))
-  (filter mi/can-read? (db/select Table
+  (filter mi/can-read? (t2/select Table
                          :db_id           db-id
                          :schema          schema
                          :active          true

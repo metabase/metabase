@@ -260,7 +260,7 @@
         (mt/with-db temp-db
           (testing " for sync"
             (sync/sync-database! temp-db {:scan :schema})
-            (let [[tbl & more-tbl] (db/select Table :db_id db-id)]
+            (let [[tbl & more-tbl] (t2/select Table :db_id db-id)]
               (is (some? tbl))
               (is (nil? more-tbl))
               (is (= "taxi_trips" (:name tbl)))
@@ -333,11 +333,11 @@
     (mt/test-driver :bigquery-cloud-sdk
       (mt/dataset avian-singles
         (try
-          (let [synced-tables (db/select Table :db_id (mt/id))]
+          (let [synced-tables (t2/select Table :db_id (mt/id))]
             (is (= 2 (count synced-tables)))
             (db/insert-many! Table (map #(dissoc % :id :schema) synced-tables))
             (sync/sync-database! (mt/db) {:scan :schema})
-            (let [synced-tables (db/select Table :db_id (mt/id))]
+            (let [synced-tables (t2/select Table :db_id (mt/id))]
               (is (partial= {true [{:name "messages"} {:name "users"}]
                              false [{:name "messages"} {:name "users"}]}
                             (-> (group-by :active synced-tables)

@@ -88,13 +88,13 @@
 (api/defendpoint-schema GET "/"
   "Get recent activity."
   []
-  (filter mi/can-read? (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
+  (filter mi/can-read? (-> (t2/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
                            (hydrate :user :table :database)
                            add-model-exists-info)))
 
 (defn- models-query
   [model ids]
-  (db/select
+  (t2/select
       (case model
         "card"      [Card
                      :id :name :collection_id :description :display
@@ -146,7 +146,7 @@
   from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
   query results for dashboard and table views."
   [views-limit card-runs-limit all-users?]
-  (let [dashboard-and-table-views (db/select [ViewLog
+  (let [dashboard-and-table-views (t2/select [ViewLog
                                               [[:min :view_log.user_id] :user_id]
                                               :model
                                               :model_id
@@ -164,7 +164,7 @@
                                                            [:= :model "dashboard"]
                                                            [:= :bm.user_id *current-user-id*]
                                                            [:= :model_id :bm.dashboard_id]]]})
-        card-runs                 (->> (db/select [QueryExecution
+        card-runs                 (->> (t2/select [QueryExecution
                                                    [:%min.executor_id :user_id]
                                                    [(db/qualify QueryExecution :card_id) :model_id]
                                                    [:%count.* :cnt]

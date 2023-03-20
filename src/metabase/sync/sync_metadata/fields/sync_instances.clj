@@ -19,7 +19,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
@@ -30,7 +31,7 @@
   exist."
   [table :- i/TableInstance, new-field-metadatas :- [i/TableMetadataField], parent-id :- common/ParentID]
   (when (seq new-field-metadatas)
-    (db/select     Field
+    (t2/select     Field
       :table_id    (u/the-id table)
       :%lower.name [:in (map common/canonical-name new-field-metadatas)]
       :parent_id   parent-id
@@ -88,7 +89,7 @@
           new-field-ids (insert-new-fields! table (remove reactivated? new-field-metadatas) parent-id)]
       ;; now return the newly created or reactivated Fields
       (when-let [new-and-updated-fields (seq (map u/the-id (concat fields-to-reactivate new-field-ids)))]
-        (db/select Field :id [:in new-and-updated-fields])))))
+        (t2/select Field :id [:in new-and-updated-fields])))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

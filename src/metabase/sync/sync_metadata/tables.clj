@@ -170,7 +170,7 @@
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
   (set (map (partial into {})
-            (db/select [Table :name :schema :description]
+            (t2/select [Table :name :schema :description]
               :db_id  (u/the-id database)
               :active true))))
 

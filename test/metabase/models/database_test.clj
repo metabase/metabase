@@ -46,7 +46,7 @@
   (testing "After deleting a Database, no permissions for the DB should still exist"
     (mt/with-temp Database [{db-id :id}]
       (db/delete! Database :id db-id)
-      (is (= [] (db/select Permissions :object [:like (str "%" (perms/data-perms-path db-id) "%")]))))))
+      (is (= [] (t2/select Permissions :object [:like (str "%" (perms/data-perms-path db-id) "%")]))))))
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"

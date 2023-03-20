@@ -885,7 +885,7 @@
   [collections & additional-conditions]
   (apply
    merge-with combine
-   (for [collection (-> (apply db/select Collection, :id [:in (map u/the-id collections)], additional-conditions)
+   (for [collection (-> (apply t2/select Collection, :id [:in (map u/the-id collections)], additional-conditions)
                         format-collections)]
      (assoc-in {} (concat (filter seq (str/split (:location collection) #"/"))
                           [(:name collection)])

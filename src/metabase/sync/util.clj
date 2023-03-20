@@ -22,7 +22,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.time.temporal Temporal)))
 
@@ -289,7 +290,7 @@
 (defn db->sync-tables
   "Return all the Tables that should go through the sync processes for `database-or-id`."
   [database-or-id]
-  (db/select Table, :db_id (u/the-id database-or-id), :active true, :visibility_type nil))
+  (t2/select Table, :db_id (u/the-id database-or-id), :active true, :visibility_type nil))
 
 (defmulti name-for-logging
   "Return an appropriate string for logging an object in sync logging messages. Should be something like

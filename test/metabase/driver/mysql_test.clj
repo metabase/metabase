@@ -127,7 +127,7 @@
 
 (defn- db->fields [db]
   (let [table-ids (t2/select-pks-set Table :db_id (u/the-id db))]
-    (set (map (partial into {}) (db/select [Field :name :base_type :semantic_type] :table_id [:in table-ids])))))
+    (set (map (partial into {}) (t2/select [Field :name :base_type :semantic_type] :table_id [:in table-ids])))))
 
 (deftest tiny-int-1-test
   (mt/test-driver :mysql
@@ -163,7 +163,7 @@
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}}
                (db->fields (mt/db)))))
       (let [table  (t2/select-one Table :db_id (u/id (mt/db)))
-            fields (db/select Field :table_id (u/id table) :name "year_column")]
+            fields (t2/select Field :table_id (u/id table) :name "year_column")]
         (testing "Can select from this table"
           (is (= [[#t "2001-01-01"] [#t "2002-01-01"] [#t "1999-01-01"]]
                  (metadata-queries/table-rows-sample table fields (constantly conj)))))
@@ -353,7 +353,7 @@
                                  :base_type :type/Integer}
                                 {:name      "t"
                                  :base_type :type/Text}]}]
-                     (->> (hydrate (db/select Table :db_id (:id database) {:order-by [:name]}) :fields)
+                     (->> (hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
                           (map table-fingerprint)))))))))))
 
 (deftest group-on-time-column-test

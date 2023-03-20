@@ -63,7 +63,7 @@
 (api/defendpoint-schema GET "/"
   "Fetch *all* `Segments`."
   []
-  (as-> (db/select Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
+  (as-> (t2/select Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
     (hydrate segments :creator)
     (add-query-descriptions segments)))

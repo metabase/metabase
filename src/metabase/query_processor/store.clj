@@ -21,7 +21,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------- Setting up the Store ----------------------------------------------
@@ -186,7 +185,7 @@
   [table-ids :- IDs]
   ;; remove any IDs for Tables that have already been fetched
   (when-let [ids-to-fetch (seq (remove (set (keys (:tables @*store*))) table-ids))]
-    (let [fetched-tables (db/select (into [Table] table-columns-to-fetch)
+    (let [fetched-tables (t2/select (into [Table] table-columns-to-fetch)
                            :id    [:in (set ids-to-fetch)]
                            :db_id (db-id))
           fetched-ids    (set (map :id fetched-tables))]

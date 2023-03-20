@@ -113,7 +113,7 @@
 (defn- ordered-groups
   "Return a sequence of ordered `PermissionsGroups`."
   [limit offset query]
-  (db/select PermissionsGroup
+  (t2/select PermissionsGroup
              (cond-> {:order-by [:%lower.name]}
                (some? limit)  (sql.helpers/limit  limit)
                (some? offset) (sql.helpers/offset offset)
@@ -199,7 +199,7 @@
                  :is_group_manager boolean}]}"
   []
   (validation/check-group-manager)
-  (group-by :user_id (db/select [PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
+  (group-by :user_id (t2/select [PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
                                 (cond-> {}
                                   (and (not api/*is-superuser?*)
                                        api/*is-group-manager?*)
