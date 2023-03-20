@@ -5,6 +5,7 @@
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
+   [metabase.db.connection :as mdb.connection]
    [metabase.models.activity :refer [Activity]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -189,52 +190,73 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-(defn views-and-runs-for-user
-  "Query of view_log and query_execution for the recent_views endpoint."
+(defn- bookmarks
   [user-id]
-  (let [vl-a  {:select    [[[:max :view_log.id] :id] [[:max :timestamp] :timestamp]
-                           :model :model_id :user_id
-                           [:report_card.dataset :dataset]]
-               :from      [:view_log]
-               :left-join [:report_card
-                           [:and
-                            [:= :view_log.model [:inline "card"]]
-                            [:= :view_log.model_id :report_card.id]]]
-               :where     [:= :user_id [:inline user-id]]
-               :group-by  [:model :model_id :user_id :report_card.dataset]}
-        vl-b  {:select   [:*]
-               :from     [[vl-a :views-a]]
-               :where    [:or
-                          [:= :dataset true]
-                          [:not= :model [:inline "card"]]]
-               :order-by [[:model :asc] [:id :desc]]}
-        qe-a  {:select   [[[:max :id] :id] [[:max :started_at] :timestamp]
-                          :context [:card_id :model_id] [:executor_id :user_id]]
-               :from     [:query_execution]
-               :where    [:and
-                          [:= :executor_id [:inline user-id]]
-                          [:= :context [:inline "question"]]]
-               :group-by [:context :card_id :executor_id]}
-        qe-b  {:select   [:*]
-               :from     [[qe-a :views-a]]
-               :order-by [[:id :desc]]}
-        norm  (fn [qe]
-                (-> qe
-                    (assoc :model "card")
-                    (dissoc :context :executor_id :card_id)))
-        cards (->> (t2/query qe-b) (map norm))
-        other (t2/query vl-b)
-        views (->> (concat cards other)
-                   (group-by :model)
-                   (#(update-keys % keyword)))]
-      (->> (apply concat ((juxt :dashboard :card :table) views))
-           (sort-by :timestamp)
-           reverse)))
+  (let [as-null (when (= (mdb.connection/db-type) :postgres) (h2x/->integer nil))]
+    {:select    [[:type :model] [:item_id :model_id]]
+     :from [[{:union-all [{:select [:card_id
+                                    [as-null :dashboard_id]
+                                    [as-null :collection_id]
+                                    [:card_id :item_id]
+                                    [[:inline "card"] :type]
+                                    :created_at]
+                           :from   [:card_bookmark]
+                           :where  [:= :user_id [:inline user-id]]}
+                          {:select [[as-null :card_id]
+                                    :dashboard_id
+                                    [as-null :collection_id]
+                                    [:dashboard_id :item_id]
+                                    [[:inline "dashboard"] :type]
+                                    :created_at]
+                           :from   [:dashboard_bookmark]
+                           :where  [:= :user_id [:inline user-id]]}]}
+             :bookmarks]]}))
+
+(defn recent-views-for-user
+  [user-id]
+  (let [bookmarks (bookmarks user-id)
+        qe {:select [[[:inline "qe"] :source]
+                     [:executor_id :user_id]
+                     :context
+                     [:started_at :timestamp]
+                     [[:inline "card"] :model]
+                     [:card_id :model_id]
+                     [false :dataset]]
+            :from :query_execution}
+        vl {:select [[[:inline "vl"] :source]
+                     :user_id
+                     [[:inline "question"] :context]
+                     :timestamp
+                     :model
+                     :model_id
+                     [:report_card.dataset :dataset]]
+            :from [:view_log]
+            :left-join [:report_card
+                        [:and
+                         [:= :view_log.model [:inline "card"]]
+                         [:= :view_log.model_id :report_card.id]]]}
+        views {:union-all [qe vl]}]
+    (t2/query
+     {:select [[[:max :timestamp] :timestamp]
+               :model
+               :model_id]
+      :from [[views :views]]
+      :where [[:and
+               [:= :user_id [:inline user-id]]
+               [:>= :timestamp [:- [:date [:now]] [:inline 30]]]
+               [:not= :context [:inline "pulse"]]
+               [:not= :context [:inline "ad-hoc"]]
+               [:not= [:composite :context :model] [:composite [:inline "dashboard"] [:inline "card"]]]
+               [:not= [:composite :source :model :dataset] [:composite [:inline "vl"] [:inline "card"] [:inline false]]]
+               [:not-in [:composite :model :model_id] bookmarks]]]
+      :group-by [:model :model_id]
+      :order-by [[:timestamp :desc]]
+      :limit [:inline 5]})))
 
 (api/defendpoint GET "/recent_views"
   "Get the list of 5 things the current user has been viewing most recently."
   []
-  (let [views (views-and-runs-for-user *current-user-id*)
+  (let [views (recent-views-for-user *current-user-id*)
         model->id->items (models-for-views views)]
     (->> (for [{:keys [model model_id] :as view-log} views
                :let [model-object (-> (get-in model->id->items [model model_id])
