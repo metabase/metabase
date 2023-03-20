@@ -342,6 +342,7 @@ export function ObjectDetailWrapper({
       />
       {hasPagination && (
         <PaginationFooter
+          data-testid="pagination-footer"
           start={currentObjectIndex}
           end={currentObjectIndex}
           total={data.rows.length}
