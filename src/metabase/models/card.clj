@@ -127,7 +127,7 @@
 
     ;; this is an update, and dataset_query hasn't changed => no-op
     (and existing-card-id
-         (= query (db/select-one-field :dataset_query Card :id existing-card-id)))
+         (= query (t2/select-one-fn :dataset_query Card :id existing-card-id)))
     (do
       (log/debugf "Not inferring result metadata for Card %s: query has not changed" existing-card-id)
       card)
@@ -169,7 +169,7 @@
                   {:status-code 400}))
 
         :else
-        (recur (or (db/select-one-field :dataset_query Card :id source-card-id)
+        (recur (or (t2/select-one-fn :dataset_query Card :id source-card-id)
                    (throw (ex-info (tru "Card {0} does not exist." source-card-id)
                                    {:status-code 404})))
                (conj ids-already-seen source-card-id))))))
@@ -221,7 +221,7 @@
                                                                      :where     [:in :field.id (set field-ids)]})]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
-                                    (format "%d %s" db-id (pr-str (db/select-one-field :name 'Database :id db-id))))]
+                                    (format "%d %s" db-id (pr-str (t2/select-one-fn :name 'Database :id db-id))))]
                             (tru "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
@@ -286,7 +286,7 @@
     (doseq [[[po-type po-id] param-cards]
             (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
       (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
-            {:keys [parameters]}   (db/select-one [model :parameters] :id po-id)
+            {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
             affected-param-ids-set (cond
                                      ;; update all parameters that use this card as source
                                      (:archived changes)
@@ -329,7 +329,7 @@
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
   [model-id]
-  (when-let [action-ids (t2/select-pks-set 'Action {:select [:action.id]
+  (when-let [action-ids (t2/select-pks-set  'Action {:select [:action.id]
                                                     :from   [:action]
                                                     :join   [:implicit_action
                                                              [:= :action.id :implicit_action.action_id]]
@@ -344,7 +344,7 @@
           old-card-info (when (or (contains? changes :dataset)
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
-                          (db/select-one [Card :dataset_query :dataset] :id id))]
+                          (t2/select-one [Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
       (when archived?
         (db/delete! 'DashboardCard :card_id id))
@@ -510,7 +510,7 @@
        vec))
 
 (defmethod serdes/descendants "Card" [_model-name id]
-  (let [card               (db/select-one Card :id id)
+  (let [card               (t2/select-one Card :id id)
         source-table       (some->  card :dataset_query :query :source-table)
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))

@@ -6,7 +6,8 @@
    [metabase.models :refer [User]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.util.password :as u.password]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,12 +29,12 @@
         (is (partial= {:first_name "Cam"
                        :last_name  "Era"
                        :email      "cam+config-file-test@metabase.com"}
-                      (db/select-one User :email "cam+config-file-test@metabase.com")))
+                      (t2/select-one User :email "cam+config-file-test@metabase.com")))
         (is (= 1
                (db/count User :email "cam+config-file-test@metabase.com"))))
       (testing "upsert if User already exists"
-        (let [hashed-password          (fn [] (db/select-one-field :password User :email "cam+config-file-test@metabase.com"))
-              salt                     (fn [] (db/select-one-field :password_salt User :email "cam+config-file-test@metabase.com"))
+        (let [hashed-password          (fn [] (t2/select-one-fn :password User :email "cam+config-file-test@metabase.com"))
+              salt                     (fn [] (t2/select-one-fn :password_salt User :email "cam+config-file-test@metabase.com"))
               original-hashed-password (hashed-password)]
           (binding [advanced-config.file/*config* {:version 1
                                                    :config  {:users [{:first_name "Cam"
@@ -47,7 +48,7 @@
             (is (partial= {:first_name "Cam"
                            :last_name  "Saul"
                            :email      "cam+config-file-test@metabase.com"}
-                          (db/select-one User :email "cam+config-file-test@metabase.com")))
+                          (t2/select-one User :email "cam+config-file-test@metabase.com")))
             (testing "Password should be hashed, but it should be a NEW HASH"
               (let [new-hashed-password (hashed-password)]
                 (is (not= original-hashed-password
@@ -77,7 +78,7 @@
                            :last_name    "Era"
                            :email        "cam+config-file-admin-test@metabase.com"
                            :is_superuser true}
-                          (db/select-one User :email "cam+config-file-admin-test@metabase.com")))
+                          (t2/select-one User :email "cam+config-file-admin-test@metabase.com")))
             (is (= 1
                    (db/count User :email "cam+config-file-admin-test@metabase.com"))))))
       (testing "Create the another User, DO NOT force them to be an admin"
@@ -93,7 +94,7 @@
                          :last_name    "Saul"
                          :email        "cam+config-file-admin-test-2@metabase.com"
                          :is_superuser false}
-                        (db/select-one User :email "cam+config-file-admin-test-2@metabase.com")))
+                        (t2/select-one User :email "cam+config-file-admin-test-2@metabase.com")))
           (is (= 1
                  (db/count User :email "cam+config-file-admin-test-2@metabase.com")))))
       (finally (db/delete! User :email [:in #{"cam+config-file-admin-test@metabase.com"
@@ -111,7 +112,7 @@
         (testing "Create a User if it does not already exist"
           (is (= :ok
                  (advanced-config.file/initialize!)))
-          (let [user (db/select-one [User :first_name :last_name :email :password_salt :password]
+          (let [user (t2/select-one [User :first_name :last_name :email :password_salt :password]
                        :email "cam+config-file-password-test@metabase.com")]
             (is (partial= {:first_name "Cam"
                            :last_name  "Era"

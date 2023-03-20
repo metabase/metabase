@@ -13,8 +13,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------------- Tooling -----------------------------------------------------
 
@@ -37,12 +37,12 @@
 (defn- table
   "Get the Table in a `db` with `table-name`."
   [db table-name]
-  (db/select-one Table :name table-name, :db_id (u/the-id db)))
+  (t2/select-one Table :name table-name, :db_id (u/the-id db)))
 
 (defn- field
   "Get the Field in a `db` with `table-name` and `field-name.`"
   [db table-name field-name]
-  (db/select-one Field :name field-name, :table_id (u/the-id (table db table-name))))
+  (t2/select-one Field :name field-name, :table_id (u/the-id (table db table-name))))
 
 
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
@@ -68,7 +68,7 @@
             (with-redefs [u.files/create-dir-if-not-exists! original-var]
               (memoize/memo-clear! @#'plugins/plugins-dir*)
               (sample-data/update-sample-database-if-needed! db)
-              (let [db-path (get-in (db/select-one Database :id (:id db)) [:details :db])]
+              (let [db-path (get-in (t2/select-one Database :id (:id db)) [:details :db])]
                 (is (re-matches extracted-db-path-regex db-path)))))))))
 
   (memoize/memo-clear! @#'plugins/plugins-dir*))

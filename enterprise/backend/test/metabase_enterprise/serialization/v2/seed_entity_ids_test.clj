@@ -24,7 +24,7 @@
                                    :color      "#FF0000"}]
         (t2/update! Collection (:id c) {:entity_id nil})
         (letfn [(entity-id []
-                  (some-> (db/select-one-field :entity_id Collection :id (:id c)) str/trim))]
+                  (some-> (t2/select-one-fn :entity_id Collection :id (:id c)) str/trim))]
           (is (= nil
                  (entity-id)))
           (testing "Should return truthy on success"
@@ -39,7 +39,7 @@
                                         :color      "#FF0000"}]
             (t2/update! Collection (:id c2) {:entity_id nil})
             (letfn [(entity-id []
-                      (some-> (db/select-one-field :entity_id Collection :id (:id c2)) str/trim))]
+                      (some-> (t2/select-one-fn :entity_id Collection :id (:id c2)) str/trim))]
               (is (= nil
                      (entity-id)))
               (testing "Should return falsey on error"

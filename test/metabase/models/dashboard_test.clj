@@ -155,7 +155,7 @@
                     {:name        "Revert Test"
                      :description "something"})
         (testing "capture updated Dashboard state"
-          (let [dashboard (db/select-one Dashboard :id dashboard-id)]
+          (let [dashboard (t2/select-one Dashboard :id dashboard-id)]
             (is (= empty-dashboard
                    (revision/serialize-instance Dashboard (:id dashboard) dashboard))))))
       (testing "now do the reversion; state should return to original"
@@ -170,12 +170,12 @@
                                :id      false
                                :card_id true
                                :series  true}]}
-               (update (revision/serialize-instance Dashboard dashboard-id (db/select-one Dashboard :id dashboard-id))
+               (update (revision/serialize-instance Dashboard dashboard-id (t2/select-one Dashboard :id dashboard-id))
                        :cards check-ids))))
       (testing "revert back to the empty state"
         (revision/revert-to-revision! Dashboard dashboard-id (test.users/user->id :crowberto) empty-dashboard)
         (is (= empty-dashboard
-               (revision/serialize-instance Dashboard dashboard-id (db/select-one Dashboard :id dashboard-id))))))))
+               (revision/serialize-instance Dashboard dashboard-id (t2/select-one Dashboard :id dashboard-id))))))))
 
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
@@ -201,9 +201,9 @@
     (testing "Pulse name and collection-id updates"
       (t2/update! Dashboard dashboard-id {:name "Lucky's Close Shaves" :collection_id collection-id-2})
       (is (= "Lucky's Close Shaves"
-             (db/select-one-field :name Pulse :id pulse-id)))
+             (t2/select-one-fn :name Pulse :id pulse-id)))
       (is (= collection-id-2
-             (db/select-one-field :collection_id Pulse :id pulse-id))))
+             (t2/select-one-fn :collection_id Pulse :id pulse-id))))
     (testing "PulseCard syncing"
       (tt/with-temp Card [{new-card-id :id}]
         (dashboard/add-dashcard! dashboard-id new-card-id {:row    0
@@ -211,7 +211,7 @@
                                                            :size_x 4
                                                            :size_y 4})
         (t2/update! Dashboard dashboard-id {:name "Lucky's Close Shaves"})
-        (is (not (nil? (db/select-one PulseCard :card_id new-card-id))))))))
+        (is (not (nil? (t2/select-one PulseCard :card_id new-card-id))))))))
 
 (deftest parameter-card-test
   (let [default-params {:name       "Category Name"
@@ -228,13 +228,13 @@
                  :parameterized_object_type :dashboard
                  :parameterized_object_id   dashboard-id
                  :parameter_id              "_CATEGORY_NAME_"}
-                (db/select-one 'ParameterCard :card_id card-id)))))
+                (t2/select-one 'ParameterCard :card_id card-id)))))
 
     (testing "Adding a card_id creates a new ParameterCard"
       (tt/with-temp* [Card      [{card-id :id}]
                       Dashboard [{dashboard-id :id}
                                  {:parameters [default-params]}]]
-        (is (nil? (db/select-one 'ParameterCard :card_id card-id)))
+        (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))
         (t2/update! Dashboard dashboard-id {:parameters [(merge default-params
                                                                 {:values_source_type    "card"
                                                                  :values_source_config {:card_id card-id}})]})
@@ -242,7 +242,7 @@
                  :parameterized_object_type :dashboard
                  :parameterized_object_id   dashboard-id
                  :parameter_id              "_CATEGORY_NAME_"}
-                (db/select-one 'ParameterCard :card_id card-id)))))
+                (t2/select-one 'ParameterCard :card_id card-id)))))
 
     (testing "Removing a card_id deletes old ParameterCards"
       (tt/with-temp* [Card      [{card-id :id}]
@@ -252,7 +252,7 @@
                                                        :values_source_config {:card_id card-id}})]}]]
         ;; same setup as earlier test, we know the ParameterCard exists right now
         (db/delete! Dashboard :id dashboard-id)
-        (is (nil? (db/select-one 'ParameterCard :card_id card-id)))))))
+        (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Collections Permissions Tests                                          |
@@ -303,7 +303,7 @@
       (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
         (binding [api/*current-user-id*              (test.users/user->id :rasta)
                   api/*current-user-permissions-set* (-> :rasta test.users/user->id user/permissions-set atom)]
-          (let [dashboard       (magic/automagic-analysis (db/select-one Table :id (mt/id :venues)) {})
+          (let [dashboard       (magic/automagic-analysis (t2/select-one Table :id (mt/id :venues)) {})
                 saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (db/count DashboardCard :dashboard_id (u/the-id saved-dashboard))
                    (-> dashboard :ordered_cards count)))))))))
@@ -364,7 +364,7 @@
                    :values_query_type "list",
                    :values_source_type "card",
                    :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
-                 (db/select-one-field :parameters Dashboard :id dashboard-id))))))))
+                 (t2/select-one-fn :parameters Dashboard :id dashboard-id))))))))
 
 (deftest should-add-default-values-source-test
   (testing "shoudld add default if not exists"
@@ -376,7 +376,7 @@
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
                 :type                 :category}]
-              (db/select-one-field :parameters Dashboard :id dashboard-id)))))
+              (t2/select-one-fn :parameters Dashboard :id dashboard-id)))))
 
   (testing "shoudld not override if existsed "
     (mt/with-temp* [Card      [{card-id :id}]
@@ -395,7 +395,7 @@
                 :values_query_type    "list",
                 :values_source_type   "card",
                 :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
-              (db/select-one-field :parameters Dashboard :id dashboard-id))))))
+              (t2/select-one-fn :parameters Dashboard :id dashboard-id))))))
 
 (deftest identity-hash-test
   (testing "Dashboard hashes are composed of the name and parent collection's hash"

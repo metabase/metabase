@@ -22,7 +22,8 @@
             [metabase.util.log :as log]
             [monger.collection :as mcoll]
             [taoensso.nippy :as nippy]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan2.core :as t2])
   (:import org.bson.types.ObjectId))
 
 ;; ## Constants + Helper Fns/Macros
@@ -158,7 +159,7 @@
                        :base-type         :type/Integer
                        :pk?               true
                        :database-position 0}}}
-           (driver/describe-table :mongo (mt/db) (db/select-one Table :id (mt/id :venues)))))))
+           (driver/describe-table :mongo (mt/db) (t2/select-one Table :id (mt/id :venues)))))))
 
 (deftest nested-columns-test
   (mt/test-driver :mongo
@@ -233,8 +234,8 @@
 (deftest table-rows-sample-test
   (mt/test-driver :mongo
     (testing "Should return the latest `nested-field-sample-limit` rows"
-      (let [table (db/select-one Table :id (mt/id :venues))
-            fields (map #(db/select-one Field :id (mt/id :venues %)) [:name :category_id])
+      (let [table (t2/select-one Table :id (mt/id :venues))
+            fields (map #(t2/select-one Field :id (mt/id :venues %)) [:name :category_id])
             rff (constantly conj)]
         (with-redefs [metadata-queries/nested-field-sample-limit 5]
           (is (= [["Mohawk Bend" 46]
@@ -380,7 +381,7 @@
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (empty?
-           (mbql.u/match-one (->> (magic/automagic-analysis (db/select-one Field :id (mt/id :venues :price)) {})
+           (mbql.u/match-one (->> (magic/automagic-analysis (t2/select-one Field :id (mt/id :venues :price)) {})
                                   :ordered_cards
                                   (mapcat (comp :breakout :query :dataset_query :card)))
              [:field _ (_ :guard :binning)]))))))
@@ -427,7 +428,7 @@
                             :collection  "venues"}})))))))
 
 (defn- create-database-from-row-maps! [database-name collection-name row-maps]
-  (or (db/select-one Database :engine "mongo", :name database-name)
+  (or (t2/select-one Database :engine "mongo", :name database-name)
       (let [dbdef {:database-name database-name}]
         ;; destroy Mongo database if it already exists.
         (tx/destroy-db! :mongo dbdef)

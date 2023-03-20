@@ -12,6 +12,7 @@
    [metabase.util.i18n :refer [tru]]
    [schema.core :as s]
    [toucan.db :as db]
+   [toucan2.core :as t2]
    [weavejester.dependency :as dep])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -35,7 +36,7 @@
 
 (defn- card-subquery-graph
   [graph card-id]
-  (let [card-query (db/select-one-field :dataset_query Card :id card-id)]
+  (let [card-query (t2/select-one-fn :dataset_query Card :id card-id)]
     (reduce
      (fn [g sub-card-id]
        (card-subquery-graph (dep/depend g card-id sub-card-id)

@@ -75,9 +75,9 @@
   "Hydrate a card :is_persisted for the frontend."
   [cards]
   (when (seq cards)
-    (let [existing-ids (db/select-field :card_id PersistedInfo
-                                        :card_id [:in (map :id cards)]
-                                        :state [:not-in ["off" "deletable"]])]
+    (let [existing-ids (t2/select-fn-set :card_id PersistedInfo
+                                         :card_id [:in (map :id cards)]
+                                         :state [:not-in ["off" "deletable"]])]
       (map (fn [{id :id :as card}]
              (assoc card :persisted (contains? existing-ids id)))
            cards))))
@@ -128,7 +128,7 @@
   "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."
   [user-id card]
   (let [card-id (u/the-id card)
-        existing-persisted-info (db/select-one PersistedInfo :card_id card-id)
+        existing-persisted-info (t2/select-one PersistedInfo :card_id card-id)
         persisted-info (cond
                          (not existing-persisted-info)
                          (db/insert! PersistedInfo (create-row user-id card))
@@ -137,7 +137,7 @@
                          (do
                            (t2/update! PersistedInfo (u/the-id existing-persisted-info)
                                        {:active false, :state "creating", :state_change_at :%now})
-                           (db/select-one PersistedInfo :card_id card-id)))]
+                           (t2/select-one PersistedInfo :card_id card-id)))]
     persisted-info))
 
 (defn ready-database!

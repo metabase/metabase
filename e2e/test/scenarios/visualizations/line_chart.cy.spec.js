@@ -10,7 +10,8 @@ import {
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 const Y_AXIS_RIGHT_SELECTOR = ".axis.yr";
 
@@ -199,6 +200,99 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     cy.get(`.sub._0`).find("circle").should("have.length", 2);
+  });
+
+  describe("y-axis splitting (metabase#12939)", () => {
+    it("should not split the y-axis when columns are of the same semantic_type and have close values", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["avg", ["field", ORDERS.TOTAL, null]],
+              ["min", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.get("g.axis.yr").should("not.exist");
+    });
+
+    it("should split the y-axis when columns are of different semantic_type", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": PEOPLE_ID,
+            aggregation: [
+              ["avg", ["field", PEOPLE.LATITUDE, null]],
+              ["avg", ["field", PEOPLE.LONGITUDE, null]],
+            ],
+            breakout: [
+              ["field", PEOPLE.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.get("g.axis.yr").should("be.visible");
+    });
+
+    it("should split the y-six when columns are of the same semantic_type but have far values", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              ["min", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.get("g.axis.yr").should("be.visible");
+    });
+
+    it("should not split the y-axis when the setting is disabled", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              ["min", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+        visualization_settings: {
+          "graph.y_axis.auto_split": false,
+        },
+      });
+
+      cy.get("g.axis.yr").should("not.exist");
+    });
   });
 
   describe("tooltip of combined dashboard cards (multi-series) should show the correct column title (metabase#16249", () => {

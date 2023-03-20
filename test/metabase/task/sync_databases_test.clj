@@ -273,7 +273,7 @@
       (mt/with-temp* [Database [db {:metadata_sync_schedule      sync-default
                                     :cache_field_values_schedule fv-default}]]
         (#'task.sync-databases/randomize-db-schedules-if-needed)
-        (let [after (db/select-one Database :id (u/the-id db))]
+        (let [after (t2/select-one Database :id (u/the-id db))]
           (is (not= sync-default (:metadata_sync_schedule after))
               "Sync schedule not randomized")
           (is (not= fv-default (:cache_field_values_schedule after))
@@ -284,7 +284,7 @@
         (mt/with-temp* [Database [db {:metadata_sync_schedule      custom-sync
                                       :cache_field_values_schedule custom-fv}]]
           (#'task.sync-databases/randomize-db-schedules-if-needed)
-          (let [after (db/select-one Database :id (u/the-id db))]
+          (let [after (t2/select-one Database :id (u/the-id db))]
             (is (= custom-sync (:metadata_sync_schedule after))
                 "Sync schedule was erroneously randomized")
             (is (= custom-fv (:cache_field_values_schedule after))
@@ -295,9 +295,9 @@
                                     :cache_field_values_schedule fv-default}]]
         (t2/update! Database (u/the-id db) {:details (assoc (:details db)
                                                             :let-user-control-scheduling true)})
-        (let [before (db/select-one Database :id (u/the-id db))]
+        (let [before (t2/select-one Database :id (u/the-id db))]
           (#'task.sync-databases/randomize-db-schedules-if-needed)
-          (let [after (db/select-one Database :id (u/the-id db))]
+          (let [after (t2/select-one Database :id (u/the-id db))]
             (is (= sync-default (:metadata_sync_schedule after))
                 "Sync schedule erroneously randomized")
             (is (= fv-default (:cache_field_values_schedule after))

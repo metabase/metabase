@@ -63,7 +63,7 @@
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
-  (let [ran-migrations (db/select-ids DataMigrations)]
+  (let [ran-migrations (t2/select-pks-set DataMigrations)]
     (doseq [migration @data-migrations]
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))
@@ -191,7 +191,7 @@
   For some reasons during data-migration [[metabase.models.setting/get]] return the default value defined in
   [[metabase.models.setting/defsetting]] instead of value from Setting table."
   [k]
-  (db/select-one-field :value Setting :key (name k)))
+  (t2/select-one-fn :value Setting :key (name k)))
 
 (defn- remove-admin-group-from-mappings-by-setting-key!
   [mapping-setting-key]

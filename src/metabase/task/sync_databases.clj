@@ -70,7 +70,7 @@
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
     (log/info (trs "Starting sync task for Database {0}." database-id))
-    (when-let [database (or (db/select-one Database :id database-id)
+    (when-let [database (or (t2/select-one Database :id database-id)
                             (do
                               (unschedule-tasks-for-db! (mi/instance Database {:id database-id}))
                               (log/warn (trs "Cannot sync Database {0}: Database does not exist." database-id))))]
@@ -91,7 +91,7 @@
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
     (log/info (trs "Update Field values task triggered for Database {0}." database-id))
-    (when-let [database (or (db/select-one Database :id database-id)
+    (when-let [database (or (t2/select-one Database :id database-id)
                             (do
                               (unschedule-tasks-for-db! (mi/instance Database {:id database-id}))
                               (log/warn "Cannot update Field values for Database {0}: Database does not exist." database-id)))]

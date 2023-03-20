@@ -57,6 +57,13 @@
 (defn- do-with-temp-public-card [m f]
   (let [m (merge (when-not (:dataset_query m)
                    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
+                 (when-not (:parameters m)
+                   {:parameters [{:name                 "Static Category",
+                                  :slug                 "static_category"
+                                  :id                   "_STATIC_CATEGORY_",
+                                  :type                 "category",
+                                  :values_source_type   "static-list"
+                                  :values_source_config {:values ["African" "American" "Asian"]}}]})
                  (shared-obj)
                  m)]
     (mt/with-temp Card [card m]
@@ -129,7 +136,7 @@
 
       (with-temp-public-card [{uuid :public_uuid, card-id :id}]
         (testing "Happy path -- should be able to fetch the Card"
-          (is (= #{:dataset_query :description :display :id :name :visualization_settings :param_fields}
+          (is (= #{:dataset_query :description :display :id :name :visualization_settings :parameters :param_fields}
                  (set (keys (client/client :get 200 (str "public/card/" uuid)))))))
 
         (testing "Check that we cannot fetch a public Card if public sharing is disabled"
@@ -472,7 +479,7 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (with-temp-public-dashboard-and-card [dash card dashcard]
           (with-temp-public-card [card-2]
-            (mt/with-temp DashboardCardSeries [_ {:dashboardcard_id (db/select-one-id DashboardCard
+            (mt/with-temp DashboardCardSeries [_ {:dashboardcard_id (t2/select-one-pk DashboardCard
                                                                       :card_id      (u/the-id card)
                                                                       :dashboard_id (u/the-id dash))
                                                   :card_id          (u/the-id card-2)}]
@@ -609,7 +616,7 @@
 
 (deftest double-check-that-the-field-has-fieldvalues
   (is (= [1 2 3 4]
-         (db/select-one-field :values FieldValues :field_id (mt/id :venues :price)))))
+         (t2/select-one-fn :values FieldValues :field_id (mt/id :venues :price)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        New FieldValues search endpoints                                        |
@@ -1402,7 +1409,7 @@
                   :post 200
                   (format "public/action/%s/execute" public_uuid)
                   {:parameters {:id 1 :name "European"}})
-                (is (= {:data   {"action_id" (db/select-one-id 'Action :public_uuid public_uuid)
+                (is (= {:data   {"action_id" (t2/select-one-pk 'Action :public_uuid public_uuid)
                                  "event"     "action_executed"
                                  "source"    "public_form"
                                  "type"      "query"}

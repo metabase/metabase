@@ -112,14 +112,14 @@
                     Card       [card       {:collection_id (u/the-id collection)}]]
       (t2/update! Collection (u/the-id collection)
         {:archived true})
-      (is (true? (db/select-one-field :archived Card :id (u/the-id card))))))
+      (is (true? (t2/select-one-fn :archived Card :id (u/the-id card))))))
 
   (testing "check that unarchiving a Collection unarchives its Cards as well"
     (mt/with-temp* [Collection [collection {:archived true}]
                     Card       [card       {:collection_id (u/the-id collection), :archived true}]]
       (t2/update! Collection (u/the-id collection)
         {:archived false})
-      (is (false? (db/select-one-field :archived Card :id (u/the-id card)))))))
+      (is (false? (t2/select-one-fn :archived Card :id (u/the-id card)))))))
 
 (deftest validate-name-test
   (testing "check that collections' names cannot be blank"
@@ -187,7 +187,7 @@
   (when (seq path)
     (let [ids      (collection/location-path->ids path)
           id->name (when (seq ids)
-                     (db/select-field->field :id :name Collection :id [:in ids]))]
+                     (t2/select-fn->fn :id :name Collection :id [:in ids]))]
       ;; now loop through each ID and replace the ID part like (ex. /10/) with a name (ex. /A/)
       (loop [path path, [id & more] ids]
         (if-not id
@@ -366,7 +366,7 @@
          (db/delete! Collection :name name#)))))
 
 (defn- nonexistent-collection-id []
-  (inc (or (:max (db/select-one [Collection [:%max.id :max]]))
+  (inc (or (:max (t2/select-one [Collection [:%max.id :max]]))
            0)))
 
 (deftest crud-validate-path-test
@@ -955,7 +955,7 @@
     ;;           +-> F -> G            +-> G
     (with-collection-hierarchy [{:keys [a f], :as collections}]
       (collection/move-collection! f (collection/children-location collection/root-collection))
-      (collection/move-collection! a (collection/children-location (db/select-one Collection :id (u/the-id f))))
+      (collection/move-collection! a (collection/children-location (t2/select-one Collection :id (u/the-id f))))
       (is (= {"F" {"A" {"B" {}
                         "C" {"D" {"E" {}}}}
                    "G" {}}}
@@ -1036,7 +1036,7 @@
         (mt/with-temp model [object {:collection_id (u/the-id e)}]
           (t2/update! Collection (u/the-id e) {:archived true})
           (is (= true
-                 (db/select-one-field :archived model :id (u/the-id object)))))))
+                 (t2/select-one-fn :archived model :id (u/the-id object)))))))
 
     (testing (format "Test that archiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; archiving C should cause object to be archived
@@ -1045,7 +1045,7 @@
         (mt/with-temp model [object {:collection_id (u/the-id e)}]
           (t2/update! Collection (u/the-id c) {:archived true})
           (is (= true
-                 (db/select-one-field :archived model :id (u/the-id object)))))))))
+                 (t2/select-one-fn :archived model :id (u/the-id object)))))))))
 
 (deftest nested-collection-unarchiving-objects-test
   (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
@@ -1057,7 +1057,7 @@
         (mt/with-temp model [object {:collection_id (u/the-id e), :archived true}]
           (t2/update! Collection (u/the-id e) {:archived false})
           (is (= false
-                 (db/select-one-field :archived model :id (u/the-id object)))))))
+                 (t2/select-one-fn :archived model :id (u/the-id object)))))))
 
     (testing (format "Test that unarchiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; unarchiving C should cause object to be unarchived
@@ -1067,7 +1067,7 @@
         (mt/with-temp model [object {:collection_id (u/the-id e), :archived true}]
           (t2/update! Collection (u/the-id c) {:archived false})
           (is (= false
-                 (db/select-one-field :archived model :id (u/the-id object)))))))))
+                 (t2/select-one-fn :archived model :id (u/the-id object)))))))))
 
 (deftest archive-while-moving-test
   (testing "Test that we cannot archive a Collection at the same time we are moving it"
@@ -1087,7 +1087,7 @@
     (with-collection-hierarchy [{:keys [c], :as _collections}]
       (t2/update! Collection (u/the-id c) {:archived false, :location "/"})
       (is (= "/"
-             (db/select-one-field :location Collection :id (u/the-id c)))))))
+             (t2/select-one-fn :location Collection :id (u/the-id c)))))))
 
 (deftest archive-noop-shouldnt-affect-descendants-test
   (testing "Check that attempting to unarchive a Card that's not archived doesn't affect archived descendants"
@@ -1095,7 +1095,7 @@
       (t2/update! Collection (u/the-id e) {:archived true})
       (t2/update! Collection (u/the-id c) {:archived false})
       (is (= true
-             (db/select-one-field :archived Collection :id (u/the-id e)))))))
+             (t2/select-one-fn :archived Collection :id (u/the-id e)))))))
 
 ;; TODO - can you unarchive a Card that is inside an archived Collection??
 
@@ -1110,12 +1110,12 @@
   ;; we can reuse the `perms-path-ids->names` helper function from above, just need to stick `collection` in a map
   ;; to simulate the output of the `with-collection-hierarchy` macro
   (perms-path-ids->names
-   (zipmap (map :name collections)
-           collections)
-   (db/select-field :object Permissions
-                    {:where [:and
-                             [:like :object "/collection/%"]
-                             [:= :group_id (u/the-id perms-group)]]})))
+    (zipmap (map :name collections)
+            collections)
+    (t2/select-fn-set :object Permissions
+                      {:where [:and
+                               [:like :object "/collection/%"]
+                               [:= :group_id (u/the-id perms-group)]]})))
 
 (deftest copy-root-collection-perms-test
   (testing (str "Make sure that when creating a new Collection at the Root Level, we copy the group permissions for "

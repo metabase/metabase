@@ -61,7 +61,7 @@
                      (if (coll? v)
                        (json/encode v)
                        v)))
-       (m/mapply db/select-one model)))
+       (m/mapply t2/select-one model)))
 
 (defn- has-post-insert?
   [model]

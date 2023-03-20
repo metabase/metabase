@@ -1,39 +1,21 @@
-import { t } from "ttag";
 import _ from "underscore";
 import { moveElement } from "metabase/core/utils/arrays";
-import {
-  FieldSettingsMap,
-  InputSettingType,
-  WritebackAction,
-} from "metabase-types/api";
+import type { FieldSettingsMap, InputSettingType } from "metabase-types/api";
 
-export const getSubmitButtonColor = (action: WritebackAction): string => {
-  if (action.type === "implicit" && action.kind === "row/delete") {
-    return "danger";
-  }
-  return action.visualization_settings?.submitButtonColor ?? "primary";
+const inputTypeMap: Record<InputSettingType, string> = {
+  string: "text",
+  text: "textarea",
+  date: "date",
+  datetime: "datetime-local",
+  time: "time",
+  number: "number",
+  boolean: "boolean",
+  select: "text",
+  radio: "text",
 };
 
-export const getSubmitButtonLabel = (action: WritebackAction): string => {
-  if (action.visualization_settings?.submitButtonLabel) {
-    return action.visualization_settings.submitButtonLabel;
-  }
-
-  if (action.type === "implicit") {
-    if (action.kind === "row/delete") {
-      return t`Delete`;
-    }
-
-    if (action.kind === "row/update") {
-      return t`Update`;
-    }
-
-    if (action.kind === "row/create") {
-      return t`Save`;
-    }
-  }
-
-  return t`Run`;
+export const getDefaultValueInputType = (inputType: InputSettingType) => {
+  return inputTypeMap[inputType];
 };
 
 export const reorderFields = (
@@ -58,20 +40,4 @@ export const reorderFields = (
   );
 
   return _.indexBy(fieldsWithUpdatedOrderProperty, "id");
-};
-
-const inputTypeMap: Record<InputSettingType, string> = {
-  string: "text",
-  text: "textarea",
-  date: "date",
-  datetime: "datetime-local",
-  time: "time",
-  number: "number",
-  boolean: "boolean",
-  select: "text",
-  radio: "text",
-};
-
-export const getDefaultValueInputType = (inputType: InputSettingType) => {
-  return inputTypeMap[inputType];
 };

@@ -97,7 +97,7 @@
   "Run various classifiers on `field` and its `fingerprint`, and save any detected changes."
   ([field :- i/FieldInstance]
    (classify! field (or (:fingerprint field)
-                        (db/select-one-field :fingerprint Field :id (u/the-id field)))))
+                        (t2/select-one-fn :fingerprint Field :id (u/the-id field)))))
 
   ([field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))

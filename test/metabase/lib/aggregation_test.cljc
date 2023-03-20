@@ -32,15 +32,15 @@
         (testing "without query/stage-number, return a function for later resolution"
           (is-fn? op tag [venues-category-id-metadata] [venue-field-check]))))))
 
-(deftest ^:parallel join-test
+(deftest ^:parallel aggregate-test
   (is (=? {:lib/type :mbql/query,
            :database (meta/id) ,
            :type :pipeline,
            :stages [{:lib/type :mbql.stage/mbql,
                      :source-table (meta/id :venues) ,
                      :lib/options {:lib/uuid string?},
-                     :aggregations [[:sum {:lib/uuid string?}
-                                     [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]]}]}
+                     :aggregation [[:sum {:lib/uuid string?}
+                                    [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]]}]}
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
               (lib/aggregate (lib/sum (lib/field "VENUES" "CATEGORY_ID")))
               (dissoc :lib/metadata)))))

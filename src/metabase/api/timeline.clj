@@ -68,7 +68,7 @@
    start    (s/maybe su/TemporalString)
    end      (s/maybe su/TemporalString)}
   (let [archived? (Boolean/parseBoolean archived)
-        timeline  (api/read-check (db/select-one Timeline :id id))]
+        timeline  (api/read-check (t2/select-one Timeline :id id))]
     (cond-> (hydrate timeline :creator [:collection :can_write])
       ;; `collection_id` `nil` means we need to assoc 'root' collection
       ;; because hydrate `:collection` needs a proper `:id` to work.
@@ -92,7 +92,7 @@
    collection_id (s/maybe su/IntGreaterThanZero)
    archived      (s/maybe s/Bool)}
   (let [existing (api/write-check Timeline id)
-        current-archived (:archived (db/select-one Timeline :id id))]
+        current-archived (:archived (t2/select-one Timeline :id id))]
     (collection/check-allowed-to-change-collection existing timeline-updates)
     (t2/update! Timeline id
       (u/select-keys-when timeline-updates
@@ -100,7 +100,7 @@
         :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
       (db/update-where! TimelineEvent {:timeline_id id} :archived archived))
-    (hydrate (db/select-one Timeline :id id) :creator [:collection :can_write])))
+    (hydrate (t2/select-one Timeline :id id) :creator [:collection :can_write])))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"

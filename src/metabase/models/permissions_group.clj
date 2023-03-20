@@ -18,7 +18,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel PermissionsGroup :permissions_group)
 
@@ -28,7 +29,7 @@
 (defn- magic-group [group-name]
   (mdb.connection/memoize-for-application-db
    (fn []
-     (u/prog1 (db/select-one PermissionsGroup :name group-name)
+     (u/prog1 (t2/select-one PermissionsGroup :name group-name)
        ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
        ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
        ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.

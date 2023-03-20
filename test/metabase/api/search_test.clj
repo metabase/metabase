@@ -70,7 +70,7 @@
   []
   (merge
    {:table_id true, :database_id true}
-   (db/select-one [Table [:name :table_name] [:schema :table_schema] [:description :table_description]]
+   (t2/select-one [Table [:name :table_name] [:schema :table_schema] [:description :table_description]]
      :id (mt/id :checkins))))
 
 (defn- sorted-results [results]

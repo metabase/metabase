@@ -97,7 +97,7 @@
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
   [database {schema :schema, table-name :name, :as table}]
-  (if-let [existing-id (db/select-one-id Table
+  (if-let [existing-id (t2/select-one-pk Table
                          :db_id (u/the-id database)
                          :schema schema
                          :name table-name

@@ -134,5 +134,5 @@
   (database->credential*
    scopes
    (if (integer? database-or-id)
-     (db/select-one [Database :id :details], :id database-or-id)
+     (t2/select-one [Database :id :details], :id database-or-id)
      database-or-id)))

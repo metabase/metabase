@@ -64,7 +64,7 @@
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
   (validation/check-has-application-permission :monitoring)
-  (let [db-ids (db/select-field :database_id PersistedInfo)
+  (let [db-ids (t2/select-fn-set :database_id PersistedInfo)
         writable-db-ids (when (seq db-ids)
                           (->> (db/select Database :id [:in db-ids])
                                (filter mi/can-write?)
@@ -84,7 +84,7 @@
   [persisted-info-id]
   {persisted-info-id (s/maybe su/IntGreaterThanZero)}
   (api/let-404 [persisted-info (first (fetch-persisted-info {:persisted-info-id persisted-info-id} nil nil))]
-    (api/write-check (db/select-one Database :id (:database_id persisted-info)))
+    (api/write-check (t2/select-one Database :id (:database_id persisted-info)))
     persisted-info))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -93,7 +93,7 @@
   [card-id]
   {card-id (s/maybe su/IntGreaterThanZero)}
   (api/let-404 [persisted-info (first (fetch-persisted-info {:card-id card-id} nil nil))]
-    (api/write-check (db/select-one Database :id (:database_id persisted-info)))
+    (api/write-check (t2/select-one Database :id (:database_id persisted-info)))
     persisted-info))
 
 (def ^:private CronSchedule

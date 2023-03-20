@@ -43,7 +43,7 @@
   "Update `:first_name`, `:last_name`, and `:login_attributes` for the user at `email`.
   This call is a no-op if the mentioned key values are equal."
   [{:keys [email] :as user-from-sso}]
-  (when-let [{:keys [id] :as user} (db/select-one User :%lower.email (u/lower-case-en email))]
+  (when-let [{:keys [id] :as user} (t2/select-one User :%lower.email (u/lower-case-en email))]
     (let [user-keys (keys user-from-sso)
           ;; remove keys with `nil` values
           user-data (into {} (filter second user-from-sso))]
@@ -51,7 +51,7 @@
         user
         (do
           (t2/update! User id user-data)
-          (db/select-one User :id id))))))
+          (t2/select-one User :id id))))))
 
 (defn check-sso-redirect
   "Check if open redirect is being exploited in SSO, blurts out a 400 if so"

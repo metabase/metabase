@@ -59,6 +59,7 @@ import {
   isMultiCardSeries,
   hasClickBehavior,
   replaceNullValuesForOrdinal,
+  shouldSplitYAxis,
 } from "./renderer_utils";
 
 import lineAndBarOnRender from "./LineAreaBarPostRender";
@@ -290,15 +291,12 @@ function getYAxisSplit(
     }
   }
 
-  // don't auto-split if the metric columns are all identical, i.e. it's a breakout multiseries
-  const hasDifferentYAxisColumns =
-    _.uniq(series.map(s => JSON.stringify(s.data.cols[1]))).length > 1;
   if (
-    !isScalarSeries &&
-    chartType !== "scatter" &&
-    !isStacked(settings, datas) &&
-    hasDifferentYAxisColumns &&
-    settings["graph.y_axis.auto_split"] !== false
+    shouldSplitYAxis(
+      { settings, chartType, isScalarSeries, series },
+      datas,
+      yExtents,
+    )
   ) {
     // NOTE: this version computes the split after assigning fixed left/right
     // which causes other series to move around when changing the setting

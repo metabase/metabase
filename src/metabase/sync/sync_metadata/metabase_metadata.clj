@@ -48,7 +48,7 @@
    (when-not (= k :field_type)
      ;; fetch the corresponding Table, then set the Table or Field property
      (if table-name
-       (when-let [table-id (db/select-one-id Table
+       (when-let [table-id (t2/select-one-pk Table
                              ;; TODO: this needs to support schemas
                              :db_id  (u/the-id database)
                              :name   table-name

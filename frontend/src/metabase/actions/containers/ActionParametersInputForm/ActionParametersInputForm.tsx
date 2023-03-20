@@ -1,12 +1,17 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { t } from "ttag";
-import { ActionForm } from "metabase/actions/components/ActionForm";
 
+import EmptyState from "metabase/components/EmptyState";
+
+import { ActionsApi, PublicApi } from "metabase/services";
+
+import ActionForm from "metabase/actions/components/ActionForm";
 import {
+  generateFieldSettingsFromParameters,
   getSubmitButtonColor,
   getSubmitButtonLabel,
-} from "metabase/actions/containers/ActionCreator/FormCreator";
-import EmptyState from "metabase/components/EmptyState";
+} from "metabase/actions/utils";
+import { getDashboardType } from "metabase/dashboard/utils";
 
 import type {
   WritebackParameter,
@@ -17,19 +22,11 @@ import type {
   ActionFormSettings,
   WritebackAction,
 } from "metabase-types/api";
-
-import { ActionsApi, PublicApi } from "metabase/services";
-import {
-  shouldPrefetchValues,
-  generateFieldSettingsFromParameters,
-} from "metabase/actions/utils";
-import { getDashboardType } from "metabase/dashboard/utils";
-
 import type Field from "metabase-lib/metadata/Field";
 
 import { getChangedValues, getInitialValues } from "./utils";
 
-export interface ActionParamatersInputFormProps {
+export interface ActionParametersInputFormProps {
   action: WritebackAction;
   missingParameters?: WritebackParameter[];
   dashcardParamValues?: ParametersForActionExecution;
@@ -41,6 +38,9 @@ export interface ActionParamatersInputFormProps {
   onSubmitSuccess?: () => void;
 }
 
+const shouldPrefetchValues = (action: WritebackAction) =>
+  action.type === "implicit" && action.kind === "row/update";
+
 function ActionParametersInputForm({
   action,
   missingParameters = action.parameters,
@@ -50,7 +50,7 @@ function ActionParametersInputForm({
   onCancel,
   onSubmit,
   onSubmitSuccess,
-}: ActionParamatersInputFormProps) {
+}: ActionParametersInputFormProps) {
   const [prefetchValues, setPrefetchValues] =
     useState<ParametersForActionExecution>({});
 

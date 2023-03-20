@@ -485,7 +485,7 @@
             (is (= 1 (db/count FieldValues :field_id field-id :type :linked-filter)))))
 
         (testing "should do in-memory search with the cached FieldValues when search without constraints"
-          (mt/with-temp-vals-in-db FieldValues (db/select-one-id FieldValues :field_id field-id :type "full") {:values ["Good" "Bad"]}
+          (mt/with-temp-vals-in-db FieldValues (t2/select-one-pk FieldValues :field_id field-id :type "full") {:values ["Good" "Bad"]}
             (is (= {:values          ["Good"]
                     :has_more_values false}
                    (chain-filter-search categories.name nil "ood")))))
@@ -563,7 +563,7 @@
   [field-or-field-id thunk]
   (mt/with-model-cleanup [FieldValues]
     (let [field-id         (u/the-id field-or-field-id)
-          has_field_values (db/select-one-field :has_field_values Field :id field-id)
+          has_field_values (t2/select-one-fn :has_field_values Field :id field-id)
           fvs              (db/select FieldValues :field_id field-id)]
       ;; switch to "list" to prevent [[field-values/create-or-update-full-field-values!]]
       ;; from changing this to `nil` if the field is `auto-list` and exceeds threshholds

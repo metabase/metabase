@@ -13,15 +13,16 @@
    [metabase.test :as mt :refer [with-user-in-groups]]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- group-memberships
   "Return set of names of PermissionsGroups `user` currently belongs to."
   [user]
-  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user)))]
-    (db/select-field :name PermissionsGroup :id [:in group-ids])))
+  (when-let [group-ids (seq (t2/select-fn-set :group_id PermissionsGroupMembership :user_id (u/the-id user)))]
+    (t2/select-fn-set :name PermissionsGroup :id [:in group-ids])))
 
 (deftest sync-groups-test
   (testing "does syncing group memberships leave existing memberships in place if nothing has changed?"
@@ -34,7 +35,7 @@
   (testing "the actual `PermissionsGroupMembership` object should not have been replaced"
     (with-user-in-groups [group {:name (str ::group)}
                           user  [group]]
-      (let [membership-id          #(db/select-one-id PermissionsGroupMembership
+      (let [membership-id          #(t2/select-one-pk PermissionsGroupMembership
                                                       :group_id (u/the-id group)
                                                       :user_id  (u/the-id user))
             original-membership-id (membership-id)]

@@ -37,7 +37,7 @@
 (deftest basic-external-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (mt/with-column-remappings [venues.category_id categories.name]
-      (let [dimension-id (db/select-one-id Dimension :field_id (mt/id :venues :category_id))]
+      (let [dimension-id (t2/select-one-pk Dimension :field_id (mt/id :venues :category_id))]
         (is (= {:rows [["American" 2 8]
                        ["Artisan"  3 2]
                        ["Asian"    4 2]]
@@ -149,7 +149,7 @@
                                 :fk_field_id   %category_id
                                 :display_name  "Category ID [external remap]"
                                 :options       {::qp.add-dimension-projections/new-field-dimension-id
-                                                (db/select-one-id Dimension :field_id (mt/id :venues :category_id))}
+                                                (t2/select-one-pk Dimension :field_id (mt/id :venues :category_id))}
                                 :name          (mt/format-name "name_2")
                                 :remapped_from (mt/format-name "category_id")
                                 :field_ref     $category_id->categories.name))]}

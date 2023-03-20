@@ -41,7 +41,7 @@
 (defn- init-from-config-file!
   [user]
   ;; TODO -- if this is the FIRST user, we should probably make them a superuser, right?
-  (if-let [existing-user-id (db/select-one-id User :email (:email user))]
+  (if-let [existing-user-id (t2/select-one-pk User :email (:email user))]
     (do
       (log/info (u/colorize :blue (trs "Updating User with email {0}" (pr-str (:email user)))))
       (t2/update! User existing-user-id user))

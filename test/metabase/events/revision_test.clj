@@ -61,7 +61,7 @@
               :is_reversion false
               :is_creation  true}
              (mt/derecordize
-              (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model       "Card"
                 :model_id    card-id)))))))
 
@@ -77,7 +77,7 @@
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
-              (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model       "Card"
                 :model_id    card-id)))))))
 
@@ -93,7 +93,7 @@
               :is_reversion false
               :is_creation  true}
              (mt/derecordize
-              (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model "Dashboard"
                 :model_id dashboard-id)))))))
 
@@ -109,7 +109,7 @@
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
-              (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model    "Dashboard"
                 :model_id dashboard-id)))))))
 
@@ -129,7 +129,7 @@
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
-              (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model    "Dashboard"
                 :model_id dashboard-id)))))))
 
@@ -150,7 +150,7 @@
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
-              (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model    "Dashboard"
                 :model_id dashboard-id)))))))
 
@@ -177,7 +177,7 @@
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
-              (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model    "Dashboard"
                 :model_id dashboard-id)))))))
 
@@ -188,7 +188,7 @@
                     Metric   [metric       {:table_id id, :definition {:a "b"}}]]
       (revision/process-revision-event! {:topic :metric-create
                                          :item  metric})
-      (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
+      (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                        :model "Metric"
                        :model_id (:id metric))]
         (is (= {:model        "Metric"
@@ -218,7 +218,7 @@
                                          :item  (assoc metric
                                                        :actor_id         (mt/user->id :crowberto)
                                                        :revision_message "updated")})
-      (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
+      (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                        :model "Metric"
                        :model_id (:id metric))]
         (is (= {:model        "Metric"
@@ -246,7 +246,7 @@
                     Metric   [metric       {:table_id id, :definition {:a "b"}, :archived true}]]
       (revision/process-revision-event! {:topic :metric-delete
                                          :item  metric})
-      (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
+      (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                        :model "Metric"
                        :model_id (:id metric))]
         (is (= {:model        "Metric"
@@ -276,7 +276,7 @@
                                             :definition {:a "b"}}]]
       (revision/process-revision-event! {:topic :segment-create
                                          :item  segment})
-      (let [revision (-> (db/select-one Revision :model "Segment", :model_id (:id segment))
+      (let [revision (-> (t2/select-one Revision :model "Segment", :model_id (:id segment))
                          (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
         (is (= {:model        "Segment"
                 :user_id      (mt/user->id :rasta)
@@ -320,7 +320,7 @@
               :is_creation  false
               :message      "updated"}
              (mt/derecordize
-              (update (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
+              (update (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                         :model "Segment"
                         :model_id (:id segment))
                       :object dissoc :id :table_id)))))))
@@ -349,7 +349,7 @@
               :is_creation  false
               :message      nil}
              (mt/derecordize
-              (update (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
+              (update (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                         :model "Segment"
                         :model_id (:id segment))
                       :object dissoc :id :table_id)))))))

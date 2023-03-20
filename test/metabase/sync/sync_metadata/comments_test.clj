@@ -10,10 +10,11 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn- db->fields [db]
-  (let [table-ids (db/select-ids Table :db_id (u/the-id db))]
+  (let [table-ids (t2/select-pks-set Table :db_id (u/the-id db))]
     (set (map (partial into {}) (db/select ['Field :name :description] :table_id [:in table-ids])))))
 
 (tx/defdataset basic-field-comments
@@ -45,7 +46,7 @@
         ;; change the description in metabase while the source table comment remains the same
         (db/update-where! Field {:id (mt/id "update_desc" "updated_desc")}, :description "updated description")
         ;; now sync the DB again, this should NOT overwrite the manually updated description
-        (sync/sync-table! (db/select-one Table :id (mt/id "update_desc")))
+        (sync/sync-table! (t2/select-one Table :id (mt/id "update_desc")))
         (is (= #{{:name (mt/format-name "id"), :description nil}
                  {:name (mt/format-name "updated_desc"), :description "updated description"}}
                (db->fields (mt/db))))))))
@@ -73,7 +74,7 @@
                                   (fn [[fielddef]]
                                     [(assoc fielddef :field-comment "added comment")]))]))]
           (tx/create-db! driver/*driver* modified-dbdef))
-        (sync/sync-table! (db/select-one Table :id (mt/id "comment_after_sync")))
+        (sync/sync-table! (t2/select-one Table :id (mt/id "comment_after_sync")))
         (is (= #{{:name (mt/format-name "id"), :description nil}
                  {:name (mt/format-name "comment_after_sync"), :description "added comment"}}
                (db->fields (mt/db))))))))

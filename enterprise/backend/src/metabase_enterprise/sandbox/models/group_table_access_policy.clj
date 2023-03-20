@@ -94,7 +94,7 @@
    ;; not all GTAPs have Cards
    (when card-id
      ;; not all Cards have saved result metadata
-     (when-let [result-metadata (db/select-one-field :result_metadata Card :id card-id)]
+     (when-let [result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
        (check-columns-match-table table-id result-metadata))))
 
   ([table-id :- su/IntGreaterThanZero result-metadata-columns]
@@ -112,7 +112,7 @@
   [{new-result-metadata :result_metadata, card-id :id}]
   (when new-result-metadata
     (when-let [gtaps-using-this-card (not-empty (db/select [GroupTableAccessPolicy :id :table_id] :card_id card-id))]
-      (let [original-result-metadata (db/select-one-field :result_metadata Card :id card-id)]
+      (let [original-result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
         (when-not (= original-result-metadata new-result-metadata)
           (doseq [{table-id :table_id} gtaps-using-this-card]
             (try
@@ -142,9 +142,9 @@
           (t2/update! GroupTableAccessPolicy
                       id
                       (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-        (db/select-one GroupTableAccessPolicy :id id))
+        (t2/select-one GroupTableAccessPolicy :id id))
       (let [expected-permission-path (perms/table-segmented-query-path (:table_id sandbox))]
-        (when-let [permission-path-id (db/select-one-field :id Permissions :object expected-permission-path)]
+        (when-let [permission-path-id (t2/select-one-fn :id Permissions :object expected-permission-path)]
           (db/insert! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id)))))))
 
 (defn- pre-insert [gtap]

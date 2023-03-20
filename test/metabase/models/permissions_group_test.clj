@@ -90,13 +90,13 @@
     (mt/with-temp User [{user-id :id}]
       (db/insert! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
       (is (= true
-             (db/select-one-field :is_superuser User, :id user-id))))
+             (t2/select-one-fn :is_superuser User, :id user-id))))
 
     (testing "removing user from Admin should set is_superuser -> false"
       (mt/with-temp User [{user-id :id} {:is_superuser true}]
         (db/delete! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
         (is (= false
-               (db/select-one-field :is_superuser User, :id user-id)))))
+               (t2/select-one-fn :is_superuser User, :id user-id)))))
 
     (testing "setting is_superuser -> true should add user to Admin"
       (mt/with-temp User [{user-id :id}]

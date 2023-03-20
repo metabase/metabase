@@ -20,7 +20,8 @@
    [metabase.test.sync :as test.sync :refer [sync-survives-crash?]]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (deftest skip-analysis-of-fields-with-current-fingerprint-version-test
   (testing "Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current"
@@ -31,9 +32,9 @@
         :semantic_type       nil
         :fingerprint_version Short/MAX_VALUE)
       ;; the type of the value that comes back may differ a bit between different application DBs
-      (let [analysis-date (db/select-one-field :last_analyzed Field :table_id (data/id :venues))]
+      (let [analysis-date (t2/select-one-fn :last_analyzed Field :table_id (data/id :venues))]
         ;; ok, NOW run the analysis process
-        (analyze/analyze-table! (db/select-one Table :id (data/id :venues)))
+        (analyze/analyze-table! (t2/select-one Table :id (data/id :venues)))
         ;; check and make sure all the Fields don't have semantic types and their last_analyzed date didn't change
         ;; PK is ok because it gets marked as part of metadata sync
         (is (= (zipmap ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
@@ -81,7 +82,7 @@
                                 :last_analyzed       #t "2017-08-09T00:00Z"}]]
         (#'analyze/update-fields-last-analyzed! table)
         (is (= #{"Current fingerprint, not analyzed"}
-               (db/select-field :name Field :table_id (u/the-id table), :last_analyzed [:> #t "2018-01-01"])))))))
+               (t2/select-fn-set :name Field :table_id (u/the-id table), :last_analyzed [:> #t "2018-01-01"])))))))
 
 (deftest survive-fingerprinting-errors
   (testing "Make sure we survive fingerprinting failing"
@@ -155,7 +156,7 @@
   (db/exists? Field :id (u/the-id field), :last_analyzed [:not= nil]))
 
 (defn- latest-sync-time [table]
-  (db/select-one-field :last_analyzed Field
+  (t2/select-one-fn :last_analyzed Field
     :last_analyzed [:not= nil]
     :table_id      (u/the-id table)
     {:order-by [[:last_analyzed :desc]]}))
@@ -186,7 +187,7 @@
 (defn- analyze-table! [table]
   ;; we're calling `analyze-db!` instead of `analyze-table!` because the latter doesn't care if you try to sync a
   ;; hidden table and will allow that. TODO - Does that behavior make sense?
-  (analyze/analyze-db! (db/select-one Database :id (:db_id table))))
+  (analyze/analyze-db! (t2/select-one Database :id (:db_id table))))
 
 (deftest dont-analyze-hidden-tables-test
   (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"
@@ -267,7 +268,7 @@
                        "started_at" true
                        "ended_at"   true
                        "duration"   true
-                       "db_engine"  (name (db/select-one-field :engine Database :id (mt/id)))
+                       "db_engine"  (name (t2/select-one-fn :engine Database :id (mt/id)))
                        "db_id"      true
                        "task_name"  "classify-tables"}
                 :user-id nil}

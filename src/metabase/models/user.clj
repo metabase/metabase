@@ -173,7 +173,7 @@
   "Fetch set of IDs of PermissionsGroup a User belongs to."
   [user-or-id]
   (when user-or-id
-    (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id))))
+    (t2/select-fn-set :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id))))
 
 (def UserGroupMembership
   "Group Membership info of a User.
