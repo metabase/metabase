@@ -31,22 +31,22 @@ export const formatInitialValue = (
 };
 
 export const formatSubmitValues = (
-  values: ParametersForActionExecution,
+  rawValues: ParametersForActionExecution,
   fieldSettings: FieldSettingsMap,
 ) => {
-  const clean: ParametersForActionExecution = {};
+  const values: ParametersForActionExecution = {};
 
-  Object.entries(values).forEach(([fieldId, fieldValue]) => {
-    clean[fieldId] = fieldValue;
+  Object.entries(rawValues).forEach(([fieldId, fieldValue]) => {
+    values[fieldId] = fieldValue;
 
     const formField = fieldSettings[fieldId];
     const isNumericField = formField?.fieldType === "number";
     if (isNumericField && !isEmpty(fieldValue)) {
-      clean[fieldId] = Number(fieldValue) ?? null;
+      values[fieldId] = Number(fieldValue) ?? null;
     }
   });
 
-  return clean;
+  return values;
 };
 
 export const getChangedValues = (
