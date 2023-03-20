@@ -594,8 +594,9 @@
        (every? (partial get dimensions))))
 
 (defn- resolve-overloading
-  "Find the overloaded definition with the highest `score` for which all referenced dimensions have at least one
-  matching field."
+  "Find the overloaded metric definition with the highest `score` for which all
+  referenced dimensions have at least one matching field. Note that this does not
+  remove non-matching metrics."
   [{:keys [dimensions]} definitions]
   (apply merge-with (fn [a b]
                       (case (map (partial has-matches? dimensions) [a b])
@@ -682,54 +683,41 @@
         matched-dimensions (map (some-fn #(get-in context-dimensions [% :matches])
                                          (comp #(filter-tables % (:tables context)) rules/->entity))
                                 used-dimensions)]
-    (let [res (->> matched-dimensions
-                   (apply math.combo/cartesian-product)
-                   (map (partial zipmap used-dimensions))
-                   (filter (fn [bindings]
-                             (->> dimensions
-                                  (map (fn [[_ identifier opts]]
-                                         (merge (bindings identifier) opts)))
-                                  (every? (every-pred valid-breakout-dimension?
-                                                      (complement (comp cell-dimension? id-or-name)))))))
-                   (map (fn [bindings]
-                          (let [metrics (for [metric metrics :when metric]
-                                          {:name   ((some-fn :name (comp metric-name :metric)) metric)
-                                           :metric (:metric metric)
-                                           :op     (-> metric :metric metric-op)})
-                                card    (visualization/expand-visualization
-                                         card
-                                         (map (comp bindings second) dimensions)
-                                         metrics)
-                                query   (if query
-                                          (build-query context bindings query)
-                                          (build-query context bindings
-                                                       filters
-                                                       metrics
-                                                       dimensions
-                                                       limit
-                                                       (build-order-by card)))]
-                            (-> card
-                                (instantiate-metadata context (->> metrics
-                                                                   (map :name)
-                                                                   (zipmap (:metrics card))
-                                                                   (merge bindings)))
-                                (assoc :dataset_query query
-                                       :metrics metrics
-                                       :dimensions (map (comp :name bindings second) dimensions)
-                                       :score score))))))]
-      (when (and
-             (= "Sales per state" (str (:title card)))
-             ((set used-dimensions) "State"))
-        (tap> {:card               card
-               :metrics            metrics
-               :filters            filters
-               :score              score
-               :dimensions         dimensions
-               :used-dimensions    used-dimensions
-               :cell-dimension?    cell-dimension?
-               :matched-dimensions (map (comp :id first) matched-dimensions)
-               :res                res}))
-      res)))
+    (->> matched-dimensions
+         (apply math.combo/cartesian-product)
+         (map (partial zipmap used-dimensions))
+         (filter (fn [bindings]
+                   (->> dimensions
+                        (map (fn [[_ identifier opts]]
+                               (merge (bindings identifier) opts)))
+                        (every? (every-pred valid-breakout-dimension?
+                                            (complement (comp cell-dimension? id-or-name)))))))
+         (map (fn [bindings]
+                (let [metrics (for [metric metrics :when metric]
+                                {:name   ((some-fn :name (comp metric-name :metric)) metric)
+                                 :metric (:metric metric)
+                                 :op     (-> metric :metric metric-op)})
+                      card    (visualization/expand-visualization
+                               card
+                               (map (comp bindings second) dimensions)
+                               metrics)
+                      query   (if query
+                                (build-query context bindings query)
+                                (build-query context bindings
+                                             filters
+                                             metrics
+                                             dimensions
+                                             limit
+                                             (build-order-by card)))]
+                  (-> card
+                      (instantiate-metadata context (->> metrics
+                                                         (map :name)
+                                                         (zipmap (:metrics card))
+                                                         (merge bindings)))
+                      (assoc :dataset_query query
+                             :metrics metrics
+                             :dimensions (map (comp :name bindings second) dimensions)
+                             :score score))))))))
 
 (defn- matching-rules
   "Return matching rules ordered by specificity.

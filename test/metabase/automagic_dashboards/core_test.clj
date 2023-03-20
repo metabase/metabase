@@ -210,6 +210,57 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-automagic-analysis (t2/select-one Card :id card-id) 8)))))))
 
+(deftest resolve-overloading-test
+  (testing "No match if there are not enough dimensions for the desired metric"
+    (is (nil? (#'magic/resolve-overloading
+               {:dimensions {"Income" {:matches []}}}
+               [{"AvgDiscount" {:metric ["/"
+                                         ["sum" ["dimension" "Discount"]]
+                                         ["sum" ["dimension" "Income"]]],
+                                :score  100,
+                                :name   "Average discount %"}}]))))
+  (testing "Match if every required dimension is present"
+    (is (= {"AvgDiscount" {:metric ["/"
+                                    ["sum" ["dimension" "Discount"]]
+                                    ["sum" ["dimension" "Income"]]],
+                           :score  100,
+                           :name   "Average discount %"}}
+           (#'magic/resolve-overloading
+            {:dimensions {"Discount"       {:matches []}
+                          "Income"         {:matches []}
+                          "Whatever Extra" {:matches []}}}
+            [{"AvgDiscount" {:metric ["/"
+                                      ["sum" ["dimension" "Discount"]]
+                                      ["sum" ["dimension" "Income"]]],
+                             :score  100,
+                             :name   "Average discount %"}}]))))
+  (testing "If there are multiple matches, take the one with the highest score"
+    (is (= {"AvgIncome" {:metric ["avg" ["dimension" "Income"]]
+                         :score  100
+                         :name   "Top score metric"}}
+           (#'magic/resolve-overloading
+            {:dimensions {"Income" {:matches []}}}
+            [{"AvgIncome" {:metric ["avg" ["dimension" "Income"]]
+                           :score  100
+                           :name   "Top score metric"}}
+             {"AvgIncome" {:metric ["sum" ["dimension" "Income"]]
+                           :score  90
+                           :name   "Not as good metric"}}]))))
+  (testing "Dimensionless quantities always return the highest by score since every bound dimension matches."
+    (is (= {"NoDims" {:dimensions [{"Whatever" {}}] :metrics ["hi"] :score 1}}
+           (#'magic/resolve-overloading
+            nil
+            [{"NoDims" {:dimensions [{"Whatever" {}}] :metrics ["lo"] :score 0}}
+             {"NoDims" {:dimensions [{"Whatever" {}}] :metrics ["hi"] :score 1}}])))
+    (is (= {"CountByState" {:dimensions [{"State" {}}]
+                            :metrics    ["TotalOrders"]
+                            :score      90}}
+           (#'magic/resolve-overloading
+            {:dimensions {"State" {:note "The fact that this key is state isn't relevant to resolve-overloading"}}}
+            [{"CountByState" {:dimensions [{"State" {}}]
+                              :metrics    ["TotalOrders"]
+                              :score      90}}])))))
+
 (defn field! [table column]
   (or (t2/select-one Field :id (mt/id table column))
       (throw (ex-info (format "Did not find %s.%s" (name table) (name column))
