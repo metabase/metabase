@@ -224,21 +224,21 @@
     (is (identical? x (lib.util/replace-clause x
                                                (str (random-uuid))
                                                (random-uuid)))))
-  (let [uuid (random-uuid)
+  (let [target-uuid (random-uuid)
         replacement (random-uuid)]
     (testing "full replacement"
       (is (identical? replacement
-                      (lib.util/replace-clause [:= {:lib/uuid uuid}]
-                                               uuid
+                      (lib.util/replace-clause [:= {:lib/uuid target-uuid}]
+                                               target-uuid
                                                replacement))))
     (let [clause [:= {:lib/uuid (str (random-uuid))}
                   3
                   [:field {:lib/uuid (str (random-uuid))}]
-                  [:+ 2 [:expression {:lib/uuid uuid} "a"] 7]]]
+                  [:+ 2 [:expression {:lib/uuid target-uuid} "a"] 7]]]
       (testing "nested replacement"
         (is (= (assoc-in clause [4 2] replacement)
-               (lib.util/replace-clause clause uuid replacement))))
+               (lib.util/replace-clause clause target-uuid replacement))))
       (testing "only one occurrence is replaced"
-        (let [clause (assoc clause 5 [:< [:field {:lib/uuid uuid} 2]])]
+        (let [clause (assoc clause 5 [:< [:field {:lib/uuid target-uuid} 2]])]
           (is (= (assoc-in clause [4 2] replacement)
-                 (lib.util/replace-clause clause uuid replacement))))))))
+                 (lib.util/replace-clause clause target-uuid replacement))))))))

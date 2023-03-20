@@ -184,10 +184,7 @@
 
 (deftest ^:parallel replace-filter-test
   (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
-        q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
-        venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
         venues-name-metadata        (lib.metadata/field q1 nil "VENUES" "NAME")
-        categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")
         between-uuid (str (random-uuid))]
     (let [simple-filtered-query
         {:lib/type :mbql/query,
