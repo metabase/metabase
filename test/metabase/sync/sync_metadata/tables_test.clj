@@ -7,7 +7,8 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (tx/defdataset db-with-some-cruft
   [["acquired_toucans"
@@ -38,4 +39,4 @@
                     Table    [_       {:name "Table 2", :db_id (u/the-id db)}]]
       (#'sync-tables/retire-tables! db #{{:name "Table 1", :schema (:schema table-1)}})
       (is (= {"Table 1" false, "Table 2" true}
-             (db/select-field->field :name :active Table, :db_id (u/the-id db)))))))
+             (t2/select-fn->fn :name :active Table, :db_id (u/the-id db)))))))

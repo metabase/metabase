@@ -1,13 +1,13 @@
 (ns metabase.models.dashboard-card-series
   (:require
    [metabase.models.serialization :as serdes]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel DashboardCardSeries :dashboardcard_series)
 
 (defn- dashboard-card [{:keys [dashboardcard_id]}]
-  (db/select-one 'DashboardCard :id dashboardcard_id))
+  (t2/select-one 'DashboardCard :id dashboardcard_id))
 
 (defmethod serdes/hash-fields DashboardCardSeries
   [_dashboard-card-series]

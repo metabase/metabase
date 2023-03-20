@@ -294,11 +294,11 @@
 
 (defn- find-user [user-id]
   (when user-id
-    (db/select-one current-user-fields, :id user-id)))
+    (t2/select-one current-user-fields, :id user-id)))
 
 (defn- user-local-settings [user-id]
   (when user-id
-    (or (:settings (db/select-one [User :settings] :id user-id))
+    (or (:settings (t2/select-one [User :settings] :id user-id))
         {})))
 
 (defn do-with-current-user
@@ -339,7 +339,7 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
+    (t2/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
       :id current-user-id)))
 
 (defmacro with-current-user

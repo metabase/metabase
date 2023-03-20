@@ -22,6 +22,7 @@ import { computeNumericDataInverval, dimensionIsNumeric } from "./numeric";
 
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
 import { invalidDateWarning, nullDimensionWarning } from "./warnings";
+import { getLineAreaBarComparisonSettings } from "./settings";
 
 export function initChart(chart, element) {
   // set the bounds
@@ -350,6 +351,46 @@ export function xValueForWaterfallTotal({ settings, series }) {
   }
 
   return TOTAL_ORDINAL_VALUE;
+}
+
+export function shouldSplitYAxis(
+  { settings, chartType, isScalarSeries, series },
+  datas,
+  yExtents,
+) {
+  if (
+    isScalarSeries ||
+    chartType === "scatter" ||
+    settings["graph.y_axis.auto_split"] === false ||
+    isStacked(settings, datas)
+  ) {
+    return false;
+  }
+
+  const hasDifferentYAxisColTypes =
+    _.uniq(series.map(s => s.data.cols[1].semantic_type)).length > 1;
+  if (hasDifferentYAxisColTypes) {
+    return true;
+  }
+
+  const columnSettings = series.map(s =>
+    getLineAreaBarComparisonSettings(settings.column(s.data.cols[1])),
+  );
+  const hasDifferentColumnSettings = columnSettings.some(s1 =>
+    columnSettings.some(s2 => !_.isEqual(s1, s2)),
+  );
+  if (hasDifferentColumnSettings) {
+    return true;
+  }
+
+  const minRange = Math.min(...yExtents.map(extent => extent[1] - extent[0]));
+  const maxExtent = Math.max(...yExtents.map(extent => extent[1]));
+  const minExtent = Math.min(...yExtents.map(extent => extent[0]));
+  const chartRange = maxExtent - minExtent;
+
+  // Note (EmmadUsmani): When the series with the smallest range is less than 5%
+  // of the chart's total range, we split the y-axis so it doesn't look too small.
+  return minRange / chartRange <= 0.05;
 }
 
 /************************************************************ PROPERTIES ************************************************************/

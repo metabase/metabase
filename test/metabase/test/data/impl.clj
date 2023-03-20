@@ -125,7 +125,7 @@
                 (catch Throwable e
                   (log/error e "Error adding extra metadata"))))))
         ;; make sure we're returing an up-to-date copy of the DB
-        (db/select-one Database :id (u/the-id db))
+        (t2/select-one Database :id (u/the-id db))
         (catch Throwable e
           (let [e (ex-info (format "Failed to create test database: %s" (ex-message e))
                            {:driver             driver
@@ -199,15 +199,15 @@
     (or (table-id-for-name table-name)
         (table-id-for-name (let [db-name (t2/select-one-fn :name Database :id db-id)]
                              (tx/db-qualified-table-name db-name table-name)))
-        (let [{driver :engine, db-name :name} (db/select-one [Database :engine :name] :id db-id)]
+        (let [{driver :engine, db-name :name} (t2/select-one [Database :engine :name] :id db-id)]
           (throw
            (Exception. (format "No Table %s found for %s Database %d %s.\nFound: %s"
                                (pr-str table-name) driver db-id (pr-str db-name)
-                               (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true)))))))))
+                               (u/pprint-to-str (t2/select-pk->fn :name Table, :db_id db-id, :active true)))))))))
 
 (defn- qualified-field-name [{parent-id :parent_id, field-name :name}]
   (if parent-id
-    (str (qualified-field-name (db/select-one Field :id parent-id))
+    (str (qualified-field-name (t2/select-one Field :id parent-id))
          \.
          field-name)
     field-name))
@@ -218,7 +218,7 @@
 
 (defn- the-field-id* [table-id field-name & {:keys [parent-id]}]
   (or (t2/select-one-pk Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
-      (let [{db-id :db_id, table-name :name} (db/select-one [Table :name :db_id] :id table-id)
+      (let [{db-id :db_id, table-name :name} (t2/select-one [Table :name :db_id] :id table-id)
             db-name                          (t2/select-one-fn :name Database :id db-id)
             field-name                       (qualified-field-name {:parent_id parent-id, :name field-name})
             all-field-names                  (all-field-names table-id)]
@@ -256,8 +256,8 @@
     (for [field (db/select Field :table_id old-table-id {:order-by [[:id :asc]]})]
       (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
   ;; now copy the FieldValues as well.
-  (let [old-field-id->name (db/select-id->field :name Field :table_id old-table-id)
-        new-field-name->id (db/select-field->id :name Field :table_id new-table-id)
+  (let [old-field-id->name (t2/select-pk->fn :name Field :table_id old-table-id)
+        new-field-name->id (t2/select-fn->pk :name Field :table_id new-table-id)
         old-field-values   (db/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
     (db/insert-many! FieldValues
       (for [{old-field-id :field_id, :as field-values} old-field-values

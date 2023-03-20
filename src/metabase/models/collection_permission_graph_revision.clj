@@ -2,8 +2,8 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel CollectionPermissionGraphRevision :collection_permission_graph_revision)
 
@@ -18,5 +18,5 @@
   "Return the ID of the newest `CollectionPermissionGraphRevision`, or zero if none have been made yet.
    (This is used by the collection graph update logic that checks for changes since the original graph was fetched)."
   []
-  (or (:id (db/select-one [CollectionPermissionGraphRevision [:%max.id :id]]))
+  (or (:id (t2/select-one [CollectionPermissionGraphRevision [:%max.id :id]]))
       0))

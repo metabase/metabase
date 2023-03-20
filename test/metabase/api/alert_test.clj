@@ -79,11 +79,11 @@
     (assert (db/exists? PulseCard :card_id (u/the-id card), :pulse_id (u/the-id alert)))
     ;; Make this Alert actually be an alert
     (db/update! Pulse (u/the-id alert) :alert_condition "rows")
-    (let [alert (db/select-one Pulse :id (u/the-id alert))]
+    (let [alert (t2/select-one Pulse :id (u/the-id alert))]
       (assert (pulse/is-alert? alert))
       ;; Since Alerts do not actually go in Collections, but rather their Cards do, put the Card in the Collection
       (db/update! Card (u/the-id card) :collection_id (u/the-id collection))
-      (let [card (db/select-one Card :id (u/the-id card))]
+      (let [card (t2/select-one Card :id (u/the-id card))]
         (f db collection alert card)))))
 
 (defmacro ^:private with-alert-in-collection

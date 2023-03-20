@@ -195,7 +195,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    UTIL FNS                                                    |
@@ -502,7 +503,7 @@
   "Return the permissions path required to fetch the Metadata for a Table."
   ([table-or-id]
    (if (integer? table-or-id)
-     (recur (db/select-one ['Table :db_id :schema :id] :id table-or-id))
+     (recur (t2/select-one ['Table :db_id :schema :id] :id table-or-id))
      (table-read-path (:db_id table-or-id) (:schema table-or-id) table-or-id)))
 
   ([database-or-id schema-name table-or-id]
@@ -514,7 +515,7 @@
   you wish against a given Table, with no GTAP-specified mandatory query alterations."
   ([table-or-id]
    (if (integer? table-or-id)
-     (recur (db/select-one ['Table :db_id :schema :id] :id table-or-id))
+     (recur (t2/select-one ['Table :db_id :schema :id] :id table-or-id))
      (table-query-path (:db_id table-or-id) (:schema table-or-id) table-or-id)))
 
   ([database-or-id schema-name table-or-id]
@@ -527,7 +528,7 @@
   obstensibly limiting access to the results."
   ([table-or-id]
    (if (integer? table-or-id)
-     (recur (db/select-one ['Table :db_id :schema :id] :id table-or-id))
+     (recur (t2/select-one ['Table :db_id :schema :id] :id table-or-id))
      (table-segmented-query-path (:db_id table-or-id) (:schema table-or-id) table-or-id)))
 
   ([database-or-id schema-name table-or-id]
@@ -873,7 +874,7 @@
                            v2 permissions
   "
   []
-  (let [db-ids             (delay (db/select-ids 'Database))
+  (let [db-ids             (delay (t2/select-pks-set 'Database))
         group-id->v1-paths (->> (permissions-by-group-ids [:or
                                                            [:= :object (h2x/literal "/")]
                                                            [:like :object (h2x/literal "%/db/%")]])
@@ -900,7 +901,7 @@
                  |-----------------------------------|
                            v2 permissions"
   []
-  (let [db-ids             (delay (db/select-ids 'Database))
+  (let [db-ids             (delay (t2/select-pks-set 'Database))
         group-id->v2-paths (->> (permissions-by-group-ids [:or
                                                            [:= :object (h2x/literal "/")]
                                                            [:like :object (h2x/literal "%/db/%")]])
@@ -963,7 +964,7 @@
                               [:like path (h2x/concat :object (h2x/literal "%"))]
                               [:like :object (str path "%")]]
                              other-conditions)}]
-    (when-let [revoked (db/select-field :object Permissions where)]
+    (when-let [revoked (t2/select-fn-set :object Permissions where)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
       (db/delete! Permissions where))))
 
@@ -1107,7 +1108,7 @@
     ;; ok, once we've confirmed this isn't the Root Collection, see if it's in the DB with a personal_owner_id
     (let [collection (if (map? collection-or-id)
                        collection-or-id
-                       (or (db/select-one 'Collection :id (u/the-id collection-or-id))
+                       (or (t2/select-one 'Collection :id (u/the-id collection-or-id))
                            (throw (ex-info (tru "Collection does not exist.") {:collection-id (u/the-id collection-or-id)}))))]
       (when (is-personal-collection-or-descendant-of-one? collection)
         (throw (Exception. (tru "You cannot edit permissions for a Personal Collection or its descendants.")))))))
@@ -1149,7 +1150,7 @@
 
 (defn- download-permissions-set
   [group-id]
-  (db/select-field :object
+  (t2/select-fn-set :object
                    [Permissions :object]
                    {:where [:and
                             [:= :group_id group-id]
@@ -1185,7 +1186,7 @@
   they are upgraded to EE."
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero]
   (let [permissions-set (download-permissions-set group-id)
-        table-ids-and-schemas (db/select-id->field :schema 'Table :db_id db-id :active [:= true])
+        table-ids-and-schemas (t2/select-pk->fn :schema 'Table :db_id db-id :active [:= true])
         native-perm-level (reduce (fn [lowest-seen-perm-level [table-id table-schema]]
                                     (let [table-perm-level (download-permissions-level permissions-set
                                                                                        db-id

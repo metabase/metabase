@@ -319,7 +319,7 @@
                         :user_id su/IntGreaterThanZero
                         :is_group_manager s/Bool}]}
                      result))
-        (is (= (db/select-field :id 'User) (set (keys result))))))))
+        (is (= (t2/select-fn-set :id 'User) (set (keys result))))))))
 
 (deftest add-group-membership-test
   (testing "POST /api/permissions/membership"

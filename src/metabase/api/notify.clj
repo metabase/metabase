@@ -14,7 +14,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,11 +33,11 @@
   (let [schema?       (when scan (#{"schema" :schema} scan))
         table-sync-fn (if schema? sync-metadata/sync-table-metadata! sync/sync-table!)
         db-sync-fn    (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)]
-    (api/let-404 [database (db/select-one Database :id id)]
+    (api/let-404 [database (t2/select-one Database :id id)]
       (cond-> (cond
-                table_id   (api/let-404 [table (db/select-one Table :db_id id, :id (int table_id))]
+                table_id   (api/let-404 [table (t2/select-one Table :db_id id, :id (int table_id))]
                              (future (table-sync-fn table)))
-                table_name (api/let-404 [table (db/select-one Table :db_id id, :name table_name)]
+                table_name (api/let-404 [table (t2/select-one Table :db_id id, :name table_name)]
                              (future (table-sync-fn table)))
                 :else      (future (db-sync-fn database)))
         synchronous? deref)))
@@ -54,8 +54,8 @@
   [id :as {{:keys [schema_name table_name]} :body}]
   {schema_name su/NonBlankString
    table_name  su/NonBlankString}
-  (api/let-404 [database (db/select-one Database :id id)]
-    (if-not (db/select-one Table :db_id id :name table_name :schema schema_name)
+  (api/let-404 [database (t2/select-one Database :id id)]
+    (if-not (t2/select-one Table :db_id id :name table_name :schema schema_name)
       (let [driver (driver.u/database->driver database)
             {db-tables :tables} (driver/describe-database driver database)]
         (if-let [table (some (fn [table-in-db]

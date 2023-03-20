@@ -19,7 +19,7 @@
                                                 :location (str "/" c2-id "/")}]]
 
       (let [coll-ids [c1-id c2-id c3-id c4-id]
-            all-eids #(db/select-field :entity_id Collection :id [:in coll-ids])]
+            all-eids #(t2/select-fn-set :entity_id Collection :id [:in coll-ids])]
         (testing "all collections have entity_ids"
           (is (every? some? (all-eids))))
 
@@ -39,7 +39,7 @@
       (testing "deleting the entity_id for one of them"
         (db/update! Collection c2-id {:entity_id nil})
         (is (= #{c1-eid nil}
-               (db/select-field :entity_id Collection))))
+               (t2/select-fn-set :entity_id Collection))))
 
       (testing "backfill"
         (serdes.backfill/backfill-ids-for Collection)
@@ -55,14 +55,14 @@
       (testing "deleting the entity_id for one of them"
         (db/update! Collection c2-id {:entity_id nil})
         (is (= #{c1-eid nil}
-               (db/select-field :entity_id Collection))))
+               (t2/select-fn-set :entity_id Collection))))
 
       (testing "backfilling twice"
         (serdes.backfill/backfill-ids-for Collection)
         (let [first-eid (t2/select-one-fn :entity_id Collection :id c2-id)]
           (db/update! Collection c2-id {:entity_id nil})
           (is (= #{c1-eid nil}
-                 (db/select-field :entity_id Collection)))
+                 (t2/select-fn-set :entity_id Collection)))
           (serdes.backfill/backfill-ids-for Collection)
           (testing "produces the same entity_id both times"
             (is (= first-eid (t2/select-one-fn :entity_id Collection :id c2-id)))))))))
