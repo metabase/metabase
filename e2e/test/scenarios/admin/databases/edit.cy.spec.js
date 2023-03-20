@@ -24,91 +24,65 @@ describe("scenarios > admin > databases > edit", () => {
     cy.findByLabelText("Database type")
       .should("have.text", "H2")
       .and("be.disabled");
+
+    cy.log("should correctly display connection settings");
+    cy.findByLabelText("Display name").should("have.value", "Sample Database");
+    cy.findByLabelText("Connection String")
+      .should("have.attr", "value")
+      .and("contain", "sample-database.db");
+
+    cy.log("should be possible to modify the connection settings");
+    cy.findByText("Show advanced options").click();
+    // `auto_run_queries` toggle should be ON by default
+    cy.findByLabelText("Rerun queries for simple explorations")
+      .should("have.attr", "aria-checked", "true")
+      .click();
+    // Reported failing in v0.36.4
+    cy.log(
+      "should respect the settings for automatic query running (metabase#13187)",
+    );
+    cy.findByLabelText("Rerun queries for simple explorations").should(
+      "have.attr",
+      "aria-checked",
+      "false",
+    );
+
+    cy.findByLabelText("Choose when syncs and scans happen").click();
+    cy.button("Save changes").click();
+    cy.wait("@databaseUpdate").then(({ response }) =>
+      expect(response.body.details["let-user-control-scheduling"]).to.equal(
+        true,
+      ),
+    );
+    cy.button("Success");
   });
 
-  describe("Connection settings", () => {
-    it("shows the connection settings for sample database correctly", () => {
-      cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-      cy.findByLabelText("Display name").should(
-        "have.value",
-        "Sample Database",
-      );
-      cy.findByLabelText("Connection String").should($input =>
-        expect($input[0].value).to.match(/sample-database\.db/),
-      );
+  describeEE("caching", () => {
+    beforeEach(() => {
+      mockSessionProperty("enable-query-caching", true);
     });
 
-    it("lets you modify the connection settings", () => {
+    it("allows to manage cache ttl", () => {
       cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
 
       cy.findByText("Show advanced options").click();
-      cy.findByLabelText("Choose when syncs and scans happen").click();
+      cy.findByText("Use instance default (TTL)").click();
+      popover().findByText("Custom").click();
+      cy.findByDisplayValue("24").clear().type("32").blur();
 
-      cy.findByText("Save changes").click();
-      cy.wait("@databaseUpdate").then(({ response }) =>
-        expect(response.body.details["let-user-control-scheduling"]).to.equal(
-          true,
-        ),
-      );
-
-      cy.findByText("Success");
-    });
-
-    it("`auto_run_queries` toggle should be ON by default for `SAMPLE_DATABASE`", () => {
-      cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-
-      cy.findByText("Show advanced options").click();
-      cy.findByLabelText("Rerun queries for simple explorations").should(
-        "have.attr",
-        "aria-checked",
-        "true",
-      );
-    });
-
-    it("should respect the settings for automatic query running (metabase#13187)", () => {
-      cy.log("Turn off `auto run queries`");
-      cy.request("PUT", `/api/database/${SAMPLE_DB_ID}`, {
-        auto_run_queries: false,
+      cy.button("Save changes").click();
+      cy.wait("@databaseUpdate").then(({ request, response }) => {
+        expect(request.body.cache_ttl).to.equal(32);
+        expect(response.body.cache_ttl).to.equal(32);
       });
 
-      cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
+      cy.findByTextEnsureVisible("Custom").click();
+      popover().findByText("Use instance default (TTL)").click();
 
-      cy.log("Reported failing on v0.36.4");
-      cy.findByText("Show advanced options").click();
-      cy.findByLabelText("Rerun queries for simple explorations").should(
-        "have.attr",
-        "aria-checked",
-        "false",
-      );
-    });
-
-    describeEE("caching", () => {
-      beforeEach(() => {
-        mockSessionProperty("enable-query-caching", true);
-      });
-
-      it("allows to manage cache ttl", () => {
-        cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-
-        cy.findByText("Show advanced options").click();
-        cy.findByText("Use instance default (TTL)").click();
-        popover().findByText("Custom").click();
-        cy.findByDisplayValue("24").clear().type("32").blur();
-
-        cy.button("Save changes").click();
-        cy.wait("@databaseUpdate").then(({ request, response }) => {
-          expect(request.body.cache_ttl).to.equal(32);
-          expect(response.body.cache_ttl).to.equal(32);
-        });
-
-        cy.findByTextEnsureVisible("Custom").click();
-        popover().findByText("Use instance default (TTL)").click();
-
-        // We need to wait until "Success" button state is gone first
-        cy.button("Save changes", { timeout: 10000 }).click();
-        cy.wait("@databaseUpdate").then(({ request }) => {
-          expect(request.body.cache_ttl).to.equal(null);
-        });
+      // We need to wait until "Success" button state is gone first
+      cy.button("Save changes", { timeout: 10000 }).click();
+      cy.wait("@databaseUpdate").then(({ request }) => {
+        expect(request.body.cache_ttl).to.equal(null);
       });
     });
   });
