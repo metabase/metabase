@@ -36,7 +36,6 @@
    [metabase.util.urls :as urls]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.io File IOException OutputStream)
@@ -138,7 +137,7 @@
   []
   (concat (when-let [admin-email (public-settings/admin-email)]
             [admin-email])
-          (db/select-field :email 'User, :is_superuser true, :is_active true, {:order-by [[:id :asc]]})))
+          (t2/select-fn-set :email 'User, :is_superuser true, :is_active true, {:order-by [[:id :asc]]})))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
@@ -236,9 +235,9 @@
       (concat
         (all-admin-recipients)
         (when (seq user-ids)
-          (db/select-field :email User {:where [:and
-                                                [:= :is_active true]
-                                                [:in :id user-ids]]}))))))
+          (t2/select-fn-set :email User {:where [:and
+                                                 [:= :is_active true]
+                                                 [:in :id user-ids]]}))))))
 
 (defn send-persistent-model-error-email!
   "Format and send an email informing the user about errors in the persistent model refresh task."

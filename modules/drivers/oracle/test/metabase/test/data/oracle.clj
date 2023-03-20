@@ -139,7 +139,7 @@
         (mdb/setup-db!)                 ; if not already setup
         (when-let [existing-db (t2/select-one Database :engine "oracle", :name database-name)]
           (let [existing-db-id (u/the-id existing-db)
-                all-schemas    (db/select-field :schema Table :db_id existing-db-id)]
+                all-schemas    (t2/select-fn-set :schema Table :db_id existing-db-id)]
             (when-not (= all-schemas #{session-schema})
               (log/warn (u/format-color 'yellow
                                         (str "[oracle] At least one table's schema for the existing '%s' Database"

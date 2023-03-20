@@ -729,8 +729,8 @@
   (initialize/initialize-if-needed! :db)
   (let [read-path                   (perms/collection-read-path collection-or-id)
         readwrite-path              (perms/collection-readwrite-path collection-or-id)
-        groups-with-read-perms      (db/select-field :group_id Permissions :object read-path)
-        groups-with-readwrite-perms (db/select-field :group_id Permissions :object readwrite-path)]
+        groups-with-read-perms      (t2/select-fn-set :group_id Permissions :object read-path)
+        groups-with-readwrite-perms (t2/select-fn-set :group_id Permissions :object readwrite-path)]
     (hawk.parallel/assert-test-is-not-parallel "with-discarded-collections-perms-changes")
     (try
       (f)
@@ -762,7 +762,7 @@
     (finally
       (when (and (:metabase.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
-        (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/the-id (perms-group/admin))])]
+        (doseq [group-id (t2/select-pks-set PermissionsGroup :id [:not= (u/the-id (perms-group/admin))])]
           (when-not (db/exists? Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 

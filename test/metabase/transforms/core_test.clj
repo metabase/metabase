@@ -15,7 +15,6 @@
    [metabase.transforms.core :as tf]
    [metabase.transforms.specs :as tf.specs]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
@@ -61,7 +60,7 @@
 
 (deftest tableset-test
   (testing "Can we get a tableset for a given schema?"
-    (is (= (db/select-ids Table :db_id (mt/id))
+    (is (= (t2/select-pks-set Table :db_id (mt/id))
            (set (map u/the-id (#'tf/tableset (mt/id) "PUBLIC")))))))
 
 (deftest find-tables-with-domain-entity-test

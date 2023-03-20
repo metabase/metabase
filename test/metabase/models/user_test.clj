@@ -237,7 +237,7 @@
 
 (defn group-names [groups-or-ids]
   (when (seq groups-or-ids)
-    (db/select-field :name PermissionsGroup :id [:in (map u/the-id groups-or-ids)])))
+    (t2/select-fn-set :name PermissionsGroup :id [:in (map u/the-id groups-or-ids)])))
 
 (defn- do-with-group [group-properties group-members f]
   (mt/with-temp PermissionsGroup [group group-properties]

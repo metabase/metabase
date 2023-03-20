@@ -82,7 +82,7 @@
                                 :last_analyzed       #t "2017-08-09T00:00Z"}]]
         (#'analyze/update-fields-last-analyzed! table)
         (is (= #{"Current fingerprint, not analyzed"}
-               (db/select-field :name Field :table_id (u/the-id table), :last_analyzed [:> #t "2018-01-01"])))))))
+               (t2/select-fn-set :name Field :table_id (u/the-id table), :last_analyzed [:> #t "2018-01-01"])))))))
 
 (deftest survive-fingerprinting-errors
   (testing "Make sure we survive fingerprinting failing"

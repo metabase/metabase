@@ -874,7 +874,7 @@
                            v2 permissions
   "
   []
-  (let [db-ids             (delay (db/select-ids 'Database))
+  (let [db-ids             (delay (t2/select-pks-set 'Database))
         group-id->v1-paths (->> (permissions-by-group-ids [:or
                                                            [:= :object (h2x/literal "/")]
                                                            [:like :object (h2x/literal "%/db/%")]])
@@ -901,7 +901,7 @@
                  |-----------------------------------|
                            v2 permissions"
   []
-  (let [db-ids             (delay (db/select-ids 'Database))
+  (let [db-ids             (delay (t2/select-pks-set 'Database))
         group-id->v2-paths (->> (permissions-by-group-ids [:or
                                                            [:= :object (h2x/literal "/")]
                                                            [:like :object (h2x/literal "%/db/%")]])
@@ -964,7 +964,7 @@
                               [:like path (h2x/concat :object (h2x/literal "%"))]
                               [:like :object (str path "%")]]
                              other-conditions)}]
-    (when-let [revoked (db/select-field :object Permissions where)]
+    (when-let [revoked (t2/select-fn-set :object Permissions where)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
       (db/delete! Permissions where))))
 
@@ -1150,7 +1150,7 @@
 
 (defn- download-permissions-set
   [group-id]
-  (db/select-field :object
+  (t2/select-fn-set :object
                    [Permissions :object]
                    {:where [:and
                             [:= :group_id group-id]
@@ -1186,7 +1186,7 @@
   they are upgraded to EE."
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero]
   (let [permissions-set (download-permissions-set group-id)
-        table-ids-and-schemas (db/select-id->field :schema 'Table :db_id db-id :active [:= true])
+        table-ids-and-schemas (t2/select-pk->fn :schema 'Table :db_id db-id :active [:= true])
         native-perm-level (reduce (fn [lowest-seen-perm-level [table-id table-schema]]
                                     (let [table-perm-level (download-permissions-level permissions-set
                                                                                        db-id

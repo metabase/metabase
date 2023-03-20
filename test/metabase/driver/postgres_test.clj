@@ -939,9 +939,8 @@
                                                      :percent-email  0.0
                                                      :percent-state  0.0
                                                      :average-length 12.0}}}}
-                 (db/select-field->field :name :fingerprint Field
+                 (t2/select-fn->fn :name :fingerprint Field
                    :table_id (t2/select-one-pk Table :db_id (u/the-id database))))))))))
-
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
@@ -1010,7 +1009,7 @@
         (mt/with-temp Database [database {:engine :postgres, :details test-user-details}]
           (sync/sync-database! database)
           (is (= #{"table_with_perms"}
-                 (db/select-field :name Table :db_id (:id database)))))))))
+                 (t2/select-fn-set :name Table :db_id (:id database)))))))))
 
 (deftest json-operator-?-works
   (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"

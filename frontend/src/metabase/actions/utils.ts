@@ -432,5 +432,5 @@ export const getSubmitButtonLabel = (action: WritebackAction): string => {
     }
   }
 
-  return t`Run`;
+  return action.name;
 };

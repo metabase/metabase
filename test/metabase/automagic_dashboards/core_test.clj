@@ -109,7 +109,7 @@
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup
         (doseq [field (db/select Field
-                                 :table_id [:in (db/select-field :id Table :db_id (mt/id))]
+                                 :table_id [:in (t2/select-fn-set :id Table :db_id (mt/id))]
                                  :visibility_type "normal"
                                  {:order-by [[:id :asc]]})]
           (is (pos? (count (:ordered_cards (magic/automagic-analysis field {})))))))))

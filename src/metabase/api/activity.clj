@@ -14,7 +14,8 @@
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (defn- dashcard-activity? [activity]
   (#{:dashboard-add-cards :dashboard-remove-cards}
@@ -43,7 +44,7 @@
   [referenced-objects]
   (merge
    (when-let [card-ids (get referenced-objects "card")]
-     (let [id->dataset?                       (db/select-id->field :dataset Card
+     (let [id->dataset?                       (t2/select-pk->fn :dataset Card
                                                                    :id [:in card-ids])
            {dataset-ids true card-ids' false} (group-by (comp boolean id->dataset?)
                                                         ;; only existing ids go back
@@ -54,10 +55,10 @@
    (into {} (for [[model ids] (dissoc referenced-objects "card")
                   :when       (seq ids)]
               [model (case model
-                       "dashboard" (db/select-ids 'Dashboard, :id [:in ids])
-                       "metric"    (db/select-ids 'Metric,    :id [:in ids], :archived false)
-                       "pulse"     (db/select-ids 'Pulse,     :id [:in ids])
-                       "segment"   (db/select-ids 'Segment,   :id [:in ids], :archived false)
+                       "dashboard" (t2/select-pks-set 'Dashboard, :id [:in ids])
+                       "metric"    (t2/select-pks-set 'Metric,    :id [:in ids], :archived false)
+                       "pulse"     (t2/select-pks-set 'Pulse,     :id [:in ids])
+                       "segment"   (t2/select-pks-set 'Segment,   :id [:in ids], :archived false)
                        nil)])))) ; don't care about other models
 
 (defn- add-model-exists-info
