@@ -26,6 +26,13 @@ export function countMatchingParentheses(tokens) {
   return tokens.reduce(count, 0);
 }
 
+/**
+ * @private
+ * @param {string} source
+ * @param {string} startRule
+ * @param {string} query
+ * @param {string | null} name
+ */
 export function diagnose(source, startRule, query, name = null) {
   if (!source || source.length === 0) {
     return null;

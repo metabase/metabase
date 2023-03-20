@@ -24,6 +24,7 @@ describe("issue 17963", { tags: "@external" }, () => {
       { string: "dis", field: "Discount" },
       { string: "> qu", field: "Quantity" },
     ]);
+    cy.get(".ace_text-input").blur();
 
     cy.button("Done").click();
 

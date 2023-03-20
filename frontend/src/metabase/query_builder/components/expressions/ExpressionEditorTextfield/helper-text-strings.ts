@@ -25,6 +25,9 @@ const getDescriptionForNow = (database: Database, reportTimezone: string) => {
   }
 };
 
+const getNowAtTimezone = (timezone: string, reportTimezone: string) =>
+  timezone ? moment().tz(reportTimezone).format("LT") : moment().format("LT");
+
 const helperTextStrings: HelpTextConfig[] = [
   {
     name: "count",
@@ -527,6 +530,24 @@ const helperTextStrings: HelpTextConfig[] = [
     ],
   },
   {
+    name: "does-not-contain",
+    structure: "doesNotContain",
+    description: () =>
+      t`Checks to see if string1 does not contain string2 within it.`,
+    args: [
+      {
+        name: t`string1`,
+        description: t`The column or text to check.`,
+        example: formatIdentifier(t`Status`),
+      },
+      {
+        name: t`string2`,
+        description: t`The string of text to look for.`,
+        example: formatStringLiteral(t`Pass`),
+      },
+    ],
+  },
+  {
     name: "starts-with",
     structure: "startsWith",
     description: () =>
@@ -656,6 +677,18 @@ const helperTextStrings: HelpTextConfig[] = [
     docsPage: "isnull",
   },
   {
+    name: "not-null",
+    structure: "notnull",
+    description: () => t`Checks if a column is not null`,
+    args: [
+      {
+        name: t`column`,
+        description: t`The column to check.`,
+        example: formatIdentifier(t`Discount`),
+      },
+    ],
+  },
+  {
     name: "is-empty",
     structure: "isempty",
     description: () => t`Checks if a column is empty`,
@@ -667,6 +700,18 @@ const helperTextStrings: HelpTextConfig[] = [
       },
     ],
     docsPage: "isempty",
+  },
+  {
+    name: "not-empty",
+    structure: "notempty",
+    description: () => t`Checks if a column is not empty`,
+    args: [
+      {
+        name: t`column`,
+        description: t`The column to check.`,
+        example: formatIdentifier(t`Name`),
+      },
+    ],
   },
   {
     name: "coalesce",
@@ -948,6 +993,3 @@ const getHelpExample = ({ structure, args }: HelpTextConfig): string => {
 
   return `${structure}${exampleParameters ? `(${exampleParameters})` : ""}`;
 };
-
-const getNowAtTimezone = (timezone: string, reportTimezone: string) =>
-  timezone ? moment().tz(reportTimezone).format("LT") : moment().format("LT");

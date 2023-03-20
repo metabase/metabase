@@ -28,13 +28,13 @@ ace.config.set("basePath", "/assets/ui/");
 
 const ErrorMessage = ({ error }) => {
   return (
-    <div>
+    <>
       {error && (
         <div className="text-error mt1 mb1" style={{ whiteSpace: "pre-wrap" }}>
           {error.message}
         </div>
       )}
-    </div>
+    </>
   );
 };
 
@@ -320,14 +320,18 @@ class ExpressionEditorTextfield extends React.Component {
     }
   };
 
-  handleExpressionChange(source) {
+  handleExpressionChange = source => {
+    if (source !== this.state.source) {
+      this.setState({ hasChanges: true });
+    }
+
     this.setState({ source, errorMessage: null });
     if (this.props.onBlankChange) {
       this.props.onBlankChange(source.length === 0);
     }
-  }
+  };
 
-  handleCursorChange(selection) {
+  handleCursorChange = selection => {
     const cursor = selection.getCursor();
 
     const { query, reportTimezone, startRule } = this.props;
@@ -342,7 +346,7 @@ class ExpressionEditorTextfield extends React.Component {
 
     this.setState({ helpText });
     this.updateSuggestions(suggestions);
-  }
+  };
 
   errorAsMarkers(errorMessage = null) {
     if (errorMessage) {
@@ -403,7 +407,8 @@ class ExpressionEditorTextfield extends React.Component {
   ];
 
   render() {
-    const { source, suggestions, errorMessage, isFocused } = this.state;
+    const { source, suggestions, errorMessage, isFocused, hasChanges } =
+      this.state;
 
     return (
       <React.Fragment>
@@ -436,8 +441,8 @@ class ExpressionEditorTextfield extends React.Component {
               showFoldWidgets: false,
               showPrintMargin: false,
             }}
-            onChange={source => this.handleExpressionChange(source)}
-            onCursorChange={selection => this.handleCursorChange(selection)}
+            onChange={this.handleExpressionChange}
+            onCursorChange={this.handleCursorChange}
             width="100%"
           />
           <ExpressionEditorSuggestions
@@ -447,7 +452,7 @@ class ExpressionEditorTextfield extends React.Component {
             highlightedIndex={this.state.highlightedSuggestionIndex}
           />
         </EditorContainer>
-        <ErrorMessage error={errorMessage} />
+        {hasChanges && <ErrorMessage error={errorMessage} />}
         <HelpText
           target={this.props.helpTextTarget}
           helpText={this.state.helpText}
