@@ -9,6 +9,8 @@
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])
 (lib.common/defop * [x y & more])
+;; Kondo gets confused
+#_{:clj-kondo/ignore [:unresolved-namespace]}
 (lib.common/defop / [x y & more])
 (lib.common/defop case [x y & more])
 (lib.common/defop coalesce [x y & more])
@@ -19,7 +21,7 @@
 (lib.common/defop ceil [x])
 (lib.common/defop floor [x])
 (lib.common/defop round [x])
-(lib.common/defop power [n exp])
+(lib.common/defop power [n expo])
 (lib.common/defop interval [n unit])
 (lib.common/defop relative-datetime [t unit])
 (lib.common/defop time [t unit])
@@ -38,7 +40,7 @@
 (lib.common/defop datetime-subtract [t i unit])
 (lib.common/defop concat [s1 s2 & more])
 (lib.common/defop substring [s start end])
-(lib.common/defop replace [s find replace])
+(lib.common/defop replace [s search replacement])
 (lib.common/defop regexextract [s regex])
 (lib.common/defop length [s])
 (lib.common/defop trim [s])
