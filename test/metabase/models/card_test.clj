@@ -612,4 +612,6 @@
       (is (= {:version 2
               :pie.show_legend true
               :pie.percent_visibility "inside"}
-             (:visualization_settings (db/simple-select-one Card {:where [:= :id card-id]})))))))
+             (-> (t2/select-one (t2/table-name Card) {:where [:= :id card-id]})
+                 :visualization_settings
+                 (json/parse-string keyword)))))))
