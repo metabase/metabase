@@ -572,7 +572,9 @@
   {cards (su/non-empty [UpdatedDashboardCard])}
   (let [dashboard (api/check-not-archived (api/write-check Dashboard id))]
     (check-updated-parameter-mapping-permissions id cards)
-    (dashboard/update-dashcards! dashboard cards)
+    ;; transform the card data to the format of the DashboardCard model
+    ;; so update-dashcards! can compare them with existing cards
+    (dashboard/update-dashcards! dashboard (map dashboard-card/from-parsed-json cards))
     (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
     {:status :ok}))
 
