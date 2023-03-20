@@ -94,7 +94,8 @@
         (set (map u/the-id unsandboxed-fields))))
      ;; for sandboxed fields, fetch the sandboxed values individually.
      (into {} (for [{field-id :id, :as field} sandboxed-fields]
-                [field-id (fetch-sandboxed-field-values field)])))))
+                [field-id (select-keys (params.field-values/get-or-create-advanced-field-values! :sandbox field)
+                                       [:values :human_readable_values :field_id])])))))
 
 (defenterprise get-or-create-field-values-for-current-user!*
   "Fetch cached FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These

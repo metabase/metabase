@@ -2,6 +2,7 @@
   "Tests for special behavior of `/api/metabase/dashboard` endpoints in the Metabase Enterprise Edition."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.models :refer [Card Dashboard DashboardCard FieldValues]]
@@ -16,11 +17,11 @@
 
 (deftest params-values-test
   (testing "Return sandboxed `param_values` for Fields to which the current User only has sandboxed access."
-    (mt/with-gtaps {:gtaps      {:venues
-                                 {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
-                                  :query      (mt.tu/restricted-column-query (mt/id))}}
-                    :attributes {:cat 50}}
-      (perms/grant-permissions! &group (perms/table-read-path (Table (mt/id :categories))))
+    (met/with-gtaps {:gtaps      {:venues
+                                  {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
+                                   :query      (mt.tu/restricted-column-query (mt/id))}}
+                     :attributes {:cat 50}}
+      (perms/grant-permissions! &group (perms/table-read-path (mt/id :categories)))
       (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                       Card          [{card-id :id}      {:name "Dashboard Test Card"}]
                       DashboardCard [{_ :id}            {:dashboard_id       dashboard-id
@@ -42,6 +43,7 @@
         (is (= {(mt/id :venues :name) {:values   ["Garaje"
                                                   "Gordo Taqueria"
                                                   "La Tortilla"]
+                                       :human_readable_values []
                                        :field_id (mt/id :venues :name)}
 
                 (mt/id :categories :name) {:values                ["African"
