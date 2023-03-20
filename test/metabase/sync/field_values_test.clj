@@ -62,17 +62,10 @@
 
 (deftest sync-should-properly-handle-last-used-at
   (testing "Test that syncing will skip updating inactive FieldValues"
-   <<<<<<< HEAD
     (t2/update! FieldValues
-                (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full)
+                (t2/select-one-pk FieldValues :field_id (mt/id :venues :price) :type :full)
                 {:last_used_at (t/minus (t/offset-date-time) (t/days 20))
                  :values [1 2 3]})
-   =======
-    (db/update! FieldValues
-                (t2/select-one-pk FieldValues :field_id (mt/id :venues :price) :type :full)
-                :last_used_at (t/minus (t/offset-date-time) (t/days 20))
-                :values [1 2 3])
-   >>>>>>> master
     (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
            (sync-database!' "update-field-values" (data/db))))
     (is (= [1 2 3] (venues-price-field-values)))
@@ -82,15 +75,9 @@
       (is (t/after? (t2/select-one-fn :last_used_at FieldValues :field_id (mt/id :venues :price) :type :full)
                     (t/minus (t/offset-date-time) (t/hours 2))))
       (testing "Field is syncing after usage"
-       <<<<<<< HEAD
         (t2/update! FieldValues
-                    (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full)
-                    {:values [1 2 3]})
-       =======
-        (db/update! FieldValues
                     (t2/select-one-pk FieldValues :field_id (mt/id :venues :price) :type :full)
-                    :values [1 2 3])
-       >>>>>>> master
+                    {:values [1 2 3]})
         (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
                (sync-database!' "update-field-values" (data/db))))
         (is (partial= {:values [[1] [2] [3] [4]]}
