@@ -56,47 +56,45 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v3
+    - name: Install clojure tools
+      uses: DeLaGuardo/setup-clojure@10.2
+      with:
+        clj-kondo: 2023.02.17
     - name: Run clj-kondo
       run: >-
-        docker run
-        --volume $PWD:/work
-        --rm
-        cljkondo/clj-kondo:2023.02.17
         clj-kondo
-        --config /work/.clj-kondo/config.edn
-        --config-dir /work/.clj-kondo
         --parallel
         --lint
-        /work/src
-        /work/test
-        /work/enterprise/backend/src
-        /work/enterprise/backend/test
-        /work/shared/src
-        /work/shared/test
-        /work/modules/drivers/sparksql/src
-        /work/modules/drivers/sparksql/test
-        /work/modules/drivers/vertica/src
-        /work/modules/drivers/vertica/test
-        /work/modules/drivers/mongo/src
-        /work/modules/drivers/mongo/test
-        /work/modules/drivers/oracle/src
-        /work/modules/drivers/oracle/test
-        /work/modules/drivers/sqlite/src
-        /work/modules/drivers/sqlite/test
-        /work/modules/drivers/bigquery-cloud-sdk/src
-        /work/modules/drivers/bigquery-cloud-sdk/test
-        /work/modules/drivers/redshift/src
-        /work/modules/drivers/redshift/test
-        /work/modules/drivers/snowflake/src
-        /work/modules/drivers/snowflake/test
-        /work/modules/drivers/googleanalytics/src
-        /work/modules/drivers/googleanalytics/test
-        /work/modules/drivers/druid/src
-        /work/modules/drivers/druid/test
-        /work/modules/drivers/sqlserver/src
-        /work/modules/drivers/sqlserver/test
-        /work/modules/drivers/presto-jdbc/src
-        /work/modules/drivers/presto-jdbc/test
+        src
+        test
+        enterprise/backend/src
+        enterprise/backend/test
+        shared/src
+        shared/test
+        modules/drivers/sparksql/src
+        modules/drivers/sparksql/test
+        modules/drivers/vertica/src
+        modules/drivers/vertica/test
+        modules/drivers/mongo/src
+        modules/drivers/mongo/test
+        modules/drivers/oracle/src
+        modules/drivers/oracle/test
+        modules/drivers/sqlite/src
+        modules/drivers/sqlite/test
+        modules/drivers/bigquery-cloud-sdk/src
+        modules/drivers/bigquery-cloud-sdk/test
+        modules/drivers/redshift/src
+        modules/drivers/redshift/test
+        modules/drivers/snowflake/src
+        modules/drivers/snowflake/test
+        modules/drivers/googleanalytics/src
+        modules/drivers/googleanalytics/test
+        modules/drivers/druid/src
+        modules/drivers/druid/test
+        modules/drivers/sqlserver/src
+        modules/drivers/sqlserver/test
+        modules/drivers/presto-jdbc/src
+        modules/drivers/presto-jdbc/test
 
   be-linter-eastwood:
     needs: files-changed
