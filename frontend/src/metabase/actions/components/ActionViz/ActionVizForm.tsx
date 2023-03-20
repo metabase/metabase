@@ -92,7 +92,7 @@ function ActionVizForm({
             mappedParameters={mappedParameters}
             dashcardParamValues={dashcardParamValues}
             title={title}
-            showConfirmMessage={!!showConfirmMessage}
+            showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
             onSubmit={onModalSubmit}
             onClose={() => setShowModal(false)}
