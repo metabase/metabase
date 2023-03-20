@@ -16,7 +16,9 @@ describe("scenarios > admin > databases > edit", () => {
   });
 
   it("sample database", () => {
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`).as("loadDatabase");
     cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
+    cy.wait("@loadDatabase");
     // should not display a setup help card
     cy.findByText("Need help connecting?").should("not.exist");
 
