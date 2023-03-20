@@ -272,15 +272,15 @@
     stage-number :- :int]
    (:filter (lib.util/query-stage query stage-number))))
 
-(defn- conjoin [current-filter new-filter]
+(defn- conjoin [existing-filter new-filter]
   (-> (cond
-        (nil? current-filter) new-filter
+        (nil? existing-filter) new-filter
 
-        (clojure.core/and (vector? current-filter)
-                          (clojure.core/= (first current-filter) :and))
-        (conj current-filter new-filter)
+        (clojure.core/and (vector? existing-filter)
+                          (clojure.core/= (first existing-filter) :and))
+        (conj existing-filter new-filter)
 
-        :else [:and current-filter new-filter])
+        :else [:and existing-filter new-filter])
       lib.options/ensure-uuid))
 
 (mu/defn add-filter :- :metabase.lib.schema/query
