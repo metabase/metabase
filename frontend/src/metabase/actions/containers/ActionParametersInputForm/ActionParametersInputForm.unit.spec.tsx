@@ -7,14 +7,19 @@ import { waitFor } from "@testing-library/react";
 import { render, screen } from "__support__/ui";
 
 import {
+  createMockActionDashboardCard,
   createMockActionParameter,
   createMockQueryAction,
   createMockImplicitQueryAction,
   createMockDashboard,
 } from "metabase-types/api/mocks";
 
-import ActionParametersInputForm from "./ActionParametersInputForm";
-import ActionParametersInputModal from "./ActionParametersInputModal";
+import ActionParametersInputForm, {
+  ActionParametersInputFormProps,
+} from "./ActionParametersInputForm";
+import ActionParametersInputModal, {
+  ActionParametersInputModalProps,
+} from "./ActionParametersInputModal";
 
 const parameter1 = createMockActionParameter({
   id: "parameter_1",
@@ -30,18 +35,18 @@ const mockAction = createMockQueryAction({
   parameters: [parameter1, parameter2],
 });
 
-const defaultProps = {
+const defaultProps: ActionParametersInputFormProps = {
   action: mockAction,
   mappedParameters: [],
   dashboard: createMockDashboard({ id: 123 }),
-  dashcard: createMockDashboard({ id: 456 }),
+  dashcard: createMockActionDashboardCard({ id: 456, action: mockAction }),
   dashcardParamValues: {},
   onCancel: _.noop,
   onSubmitSuccess: _.noop,
-  onSubmit: jest.fn(() => ({ success: true })),
+  onSubmit: jest.fn().mockResolvedValue({ success: true }),
 };
 
-function setup(options?: any) {
+function setup(options?: Partial<ActionParametersInputModalProps>) {
   render(<ActionParametersInputForm {...defaultProps} {...options} />);
 }
 
@@ -79,7 +84,7 @@ describe("Actions > ActionParametersInputForm", () => {
   });
 
   it("passes form values to submit handler", async () => {
-    const submitSpy = jest.fn(() => ({ success: true }));
+    const submitSpy = jest.fn().mockResolvedValue({ success: true });
     await setup({
       onSubmit: submitSpy,
     });
@@ -173,7 +178,6 @@ describe("Actions > ActionParametersInputForm", () => {
         type: "implicit",
         kind: "row/delete",
       }),
-      missingParameters: [],
       showConfirmMessage: true,
     });
 
