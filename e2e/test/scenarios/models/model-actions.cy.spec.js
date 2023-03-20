@@ -207,7 +207,7 @@ describe(
 
       modal().within(() => {
         cy.findByLabelText(TEST_PARAMETER.name).type("1");
-        cy.button("Run").click();
+        cy.button(SAMPLE_QUERY_ACTION.name).click();
       });
 
       cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
@@ -245,12 +245,12 @@ describe(
       cy.get("@queryActionPublicUrl").then(url => {
         cy.visit(url);
         cy.findByLabelText(TEST_PARAMETER.name).type("1");
-        cy.findByRole("button", { name: "Submit" }).click();
+        cy.button(SAMPLE_QUERY_ACTION.name).click();
         cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
           "be.visible",
         );
         cy.findByRole("form").should("not.exist");
-        cy.findByRole("button", { name: "Submit" }).should("not.exist");
+        cy.button(SAMPLE_QUERY_ACTION.name).should("not.exist");
       });
 
       cy.get("@implicitActionPublicUrl").then(url => {
@@ -260,12 +260,12 @@ describe(
         cy.findByLabelText("Id").type("1");
         cy.findByLabelText(/quantity/i).type("2");
 
-        cy.findByRole("button", { name: "Submit" }).click();
+        cy.button(IMPLICIT_ACTION_NAME).click();
         cy.findByText(`${IMPLICIT_ACTION_NAME} ran successfully`).should(
           "be.visible",
         );
         cy.findByRole("form").should("not.exist");
-        cy.findByRole("button", { name: "Submit" }).should("not.exist");
+        cy.button(IMPLICIT_ACTION_NAME).should("not.exist");
       });
 
       cy.signInAsAdmin();
@@ -280,14 +280,14 @@ describe(
       cy.get("@queryActionPublicUrl").then(url => {
         cy.visit(url);
         cy.findByRole("form").should("not.exist");
-        cy.findByRole("button", { name: "Submit" }).should("not.exist");
+        cy.button(SAMPLE_QUERY_ACTION.name).should("not.exist");
         cy.findByText("An error occurred.").should("be.visible");
       });
 
       cy.get("@implicitActionPublicUrl").then(url => {
         cy.visit(url);
         cy.findByRole("form").should("not.exist");
-        cy.findByRole("button", { name: "Submit" }).should("not.exist");
+        cy.button(IMPLICIT_ACTION_NAME).should("not.exist");
         cy.findByText("An error occurred.").should("be.visible");
       });
     });
