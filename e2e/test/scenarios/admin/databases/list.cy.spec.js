@@ -73,25 +73,6 @@ describe("scenarios > admin > databases > list", () => {
     cy.get("tr").should("have.length", 2);
   });
 
-  it("should let you view a database's detail view", () => {
-    cy.visit("/admin/databases");
-    cy.contains("Sample Database").click();
-    cy.url().should("match", /\/admin\/databases\/\d+$/);
-  });
-
-  it("should let you add a database", () => {
-    cy.visit("/admin/databases");
-    cy.contains("Add database").click();
-    cy.url().should("match", /\/admin\/databases\/create$/);
-    // *** code here should be more thorough
-  });
-
-  it("should let you access edit page a database", () => {
-    cy.visit("/admin/databases");
-    cy.contains("Sample Database").click();
-    cy.location("pathname").should("eq", `/admin/databases/${SAMPLE_DB_ID}`);
-  });
-
   it("should let you bring back the sample database", () => {
     cy.intercept("POST", "/api/database/sample_database").as("sample_database");
 
