@@ -45,7 +45,7 @@ function ActionParametersInputForm({
   const [prefetchedValues, setPrefetchedValues] =
     useState<ParametersForActionExecution>({});
 
-  const hasPrefetchedValues = !!Object.keys(prefetchedValues).length;
+  const hasPrefetchedValues = Object.keys(prefetchedValues).length > 0;
   const shouldPrefetch = useMemo(
     () => shouldPrefetchValues(action) && dashboard && dashcard,
     [action, dashboard, dashcard],
