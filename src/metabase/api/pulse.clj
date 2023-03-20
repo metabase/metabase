@@ -40,7 +40,7 @@
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
                                           'metabase-enterprise.advanced-permissions.common))
 
-(defn- filter-pulses-recipients
+(defn- maybe-filter-pulses-recipients
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
   themselves. Recipients that are plain email addresses are preserved."
   [pulses]
@@ -56,37 +56,15 @@
       pulses)
     pulses))
 
-(defn- filter-pulse-recipients
+(defn- maybe-filter-pulse-recipients
   [pulse]
-  (first (filter-pulses-recipients [pulse])))
-
-(defn- current-user-is-creator-or-recipient?
-  "Takes a pulse, and returns whether the user bound in the current API request is a recipient of the pulse."
-  [pulse]
-  (boolean
-   (or
-    (= (:creator_id pulse) api/*current-user-id*)
-    (some
-     (fn [channel]
-       (some
-        (fn [recipient]
-          (= (:id recipient) api/*current-user-id*))
-        (:recipients channel)))
-     (:channels pulse)))))
-
-(defn- can-read?
-  "Custom read permissions function for subscriptions. Can be read if a user has collection permissions for the
-  subscription, or if the user is the subscription creator or recipient."
-  [pulse]
-  (or
-   (mi/can-read? pulse)
-   (current-user-is-creator-or-recipient? pulse)))
+  (first (maybe-filter-pulses-recipients [pulse])))
 
 (defn- maybe-strip-sensitive-metadata
   "If the current user does not have collection read permissions for the pulse, but can still read the pulse due to
-  being the creator or a recipient, we return it with certain metadata removed."
+  being the creator or a recipient, we return it with some metadata removed."
   [pulse]
-  (if (mi/can-read? pulse)
+  (if (mi/current-user-has-full-permissions? :read pulse)
     pulse
     (-> (dissoc pulse :cards)
         (update :channels
@@ -114,8 +92,8 @@
         pulses               (->> (pulse/retrieve-pulses {:archived?    archived?
                                                           :dashboard-id dashboard_id
                                                           :user-id      (when creator-or-recipient api/*current-user-id*)})
-                                  (filter (if creator-or-recipient can-read? mi/can-write?))
-                                  filter-pulses-recipients)
+                                  (filter (if creator-or-recipient mi/can-read? mi/can-write?))
+                                  maybe-filter-pulses-recipients)
         pulses               (if creator-or-recipient
                                (map maybe-strip-sensitive-metadata pulses)
                                pulses)]
@@ -171,10 +149,12 @@
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
   we still return it but with some sensitive metadata removed."
   [id]
-  (-> (pulse/retrieve-pulse id)
-      filter-pulse-recipients
-      maybe-strip-sensitive-metadata
-      (hydrate :can_write)))
+  (api/let-404 [pulse (pulse/retrieve-pulse id)]
+   (api/check-403 (mi/can-read? pulse))
+   (-> pulse
+       maybe-filter-pulse-recipients
+       maybe-strip-sensitive-metadata
+       (hydrate :can_write))))
 
 (defn- maybe-add-recipients-for-sandboxed-users
   "Sandboxed users can't read the full recipient list for a pulse, so we need to merge in existing recipients

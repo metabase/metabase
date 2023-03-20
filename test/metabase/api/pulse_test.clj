@@ -860,6 +860,23 @@
                (-> (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse)))
                    (update :collection_id boolean))))))
 
+    (testing "cannot normally fetch a pulse without collection permissions"
+      (mt/with-temp Pulse [pulse {:creator_id (mt/user->id :crowberto)}]
+        (with-pulses-in-nonreadable-collection [pulse]
+          (mt/user-http-request :rasta :get 403 (str "pulse/" (u/the-id pulse))))))
+
+    (testing "can fetch a pulse without collection permissions if you are the creator or a recipient"
+      (mt/with-temp Pulse [pulse {:creator_id (mt/user->id :rasta)}]
+        (with-pulses-in-nonreadable-collection [pulse]
+          (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse)))))
+
+      (mt/with-temp* [Pulse                 [pulse {:creator_id (mt/user->id :crowberto)}]
+                      PulseChannel          [pc {:pulse_id (u/the-id pulse)}]
+                      PulseChannelRecipient [_ {:pulse_channel_id (u/the-id pc)
+                                                :user_id          (mt/user->id :rasta)}]]
+        (with-pulses-in-nonreadable-collection [pulse]
+          (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse))))))
+
     (testing "should 404 for an Alert"
       (mt/with-temp Pulse [{pulse-id :id} {:alert_condition "rows"}]
         (is (= "Not found."
