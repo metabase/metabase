@@ -156,21 +156,19 @@
                     (assoc query :constraints (qp.constraints/default-query-constraints))])
              0)})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/native"
+(api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
   [:as {{:keys [database pretty?] :as query} :body}]
-  {database s/Int
-   pretty?  (s/maybe s/Bool)}
+  {database ms/PositiveInt
+   pretty?  [:maybe :boolean]}
   (binding [persisted-info/*allow-persisted-substitution* false]
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [{q :query :as compiled} (qp/compile-and-splice-parameters query)
-          driver (driver.u/database->driver database)
-          q'     (if pretty?
-                   (try (mdb.query/format-sql q driver)
-                        (catch Exception _e q))
-                   q)]
-      (assoc compiled :query q'))))
+          driver          (driver.u/database->driver database)
+          formatted-query (if pretty?
+                            (or (u/ignore-exceptions (mdb.query/format-sql q driver)) q)
+                            q)]
+      (assoc compiled :query formatted-query))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/pivot"
