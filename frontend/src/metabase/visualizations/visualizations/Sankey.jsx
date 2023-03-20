@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { t } from "ttag";
 import d3 from "d3";
 import cx from "classnames";
@@ -15,8 +16,13 @@ import {
   getDefaultDimensionsAndMetrics,
 } from "metabase/visualizations/lib/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+
+const propTypes = {
+  className: PropTypes.string,
+  width: PropTypes.number,
+  height: PropTypes.number,
+};
 
 const PADDING_BOTTOM = 10;
 
@@ -313,3 +319,5 @@ const SankeyLink = ({ link, color }) => (
     </title>
   </path>
 );
+
+Sankey.propTypes = propTypes;
