@@ -31,14 +31,17 @@ describe("issue 29347", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    addFieldRemapping(ORDERS.QUANTITY);
+    createDashboard();
+    cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/dashboard/**/query").as("cardQuery");
   });
 
   it("should be able to filter based on remapped values (metabase#29347)", () => {
-    addFieldRemapping(ORDERS.QUANTITY);
-    createDashboard();
-    cy.get("@dashboardId").then(visitDashboard);
-    cy.wait("@cardQuery");
+    cy.get("@dashboardId").then(id => {
+      visitDashboard(id);
+      cy.wait("@cardQuery");
+    });
 
     filterWidget().within(() => {
       cy.findByText("Text").click();
@@ -51,10 +54,20 @@ describe("issue 29347", () => {
     getDashboardCard().within(() => {
       cy.findAllByText("N100").should("have.length", 2);
     });
+  });
 
-    cy.reload();
+  it("should accept remapped values from the url (metabase#29347)", () => {
+    cy.get("@dashboardId").then(id => {
+      cy.visit(`/dashboard/${id}?${filterDetails.slug}=100`);
+      cy.wait("@dashboard");
+      cy.wait("@cardQuery");
+    });
+
     filterWidget().within(() => {
       cy.findByText("N100").should("be.visible");
+    });
+    getDashboardCard().within(() => {
+      cy.findAllByText("N100").should("have.length", 2);
     });
   });
 });
