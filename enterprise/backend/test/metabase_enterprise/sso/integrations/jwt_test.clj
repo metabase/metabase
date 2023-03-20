@@ -245,8 +245,8 @@
                (#'mt.jwt/group-names->ids ["group_2" "group_3"])))))))
 
 (defn- group-memberships [user-or-id]
-  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
-    (db/select-field :name PermissionsGroup :id [:in group-ids])))
+  (when-let [group-ids (seq (t2/select-fn-set :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
+    (t2/select-fn-set :name PermissionsGroup :id [:in group-ids])))
 
 (deftest login-sync-group-memberships-test
   (testing "login should sync group memberships if enabled"
@@ -269,4 +269,4 @@
               (is (saml-test/successful-login? response))
               (is (= #{"All Users"
                        ":metabase-enterprise.sso.integrations.jwt-test/my-group"}
-                     (group-memberships (u/the-id (db/select-one-id User :email "newuser@metabase.com"))))))))))))
+                     (group-memberships (u/the-id (t2/select-one-pk User :email "newuser@metabase.com"))))))))))))

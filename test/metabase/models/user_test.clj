@@ -205,7 +205,7 @@
                                         :first_name "Test"
                                         :last_name  "SomeLdapStuff"
                                         :password   "should be removed"})
-      (let [{:keys [password password_salt]} (db/select-one [User :password :password_salt] :email "ldaptest@metabase.com")]
+      (let [{:keys [password password_salt]} (t2/select-one [User :password :password_salt] :email "ldaptest@metabase.com")]
         (is (= false
                (u.password/verify-password "should be removed" password_salt password))))
       (finally
@@ -237,7 +237,7 @@
 
 (defn group-names [groups-or-ids]
   (when (seq groups-or-ids)
-    (db/select-field :name PermissionsGroup :id [:in (map u/the-id groups-or-ids)])))
+    (t2/select-fn-set :name PermissionsGroup :id [:in (map u/the-id groups-or-ids)])))
 
 (defn- do-with-group [group-properties group-members f]
   (mt/with-temp PermissionsGroup [group group-properties]
@@ -298,7 +298,7 @@
                                            (assoc user :group_ids '(user/add-group-ids <users>))))]
         (testing "for a single User"
           (is (= '(user/add-group-ids <users>)
-                 (-> (hydrate (db/select-one User :id (mt/user->id :lucky)) :group_ids)
+                 (-> (hydrate (t2/select-one User :id (mt/user->id :lucky)) :group_ids)
                      :group_ids))))
 
         (testing "for multiple Users"

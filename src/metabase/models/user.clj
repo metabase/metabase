@@ -22,7 +22,8 @@
    [metabase.util.schema :as su]
    [schema.core :as schema]
    [toucan.db :as db]
-   [toucan.models :as models])
+   [toucan.models :as models]
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
@@ -172,7 +173,7 @@
   "Fetch set of IDs of PermissionsGroup a User belongs to."
   [user-or-id]
   (when user-or-id
-    (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id))))
+    (t2/select-fn-set :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id))))
 
 (def UserGroupMembership
   "Group Membership info of a User.

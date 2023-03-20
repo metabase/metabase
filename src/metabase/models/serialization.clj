@@ -305,7 +305,7 @@
         id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
     (db/update! model id ingested)
-    (db/select-one model pk id)))
+    (t2/select-one model pk id)))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
@@ -377,7 +377,7 @@
   Returns a Toucan entity or nil."
   [model id-str]
   (if (entity-id? id-str)
-    (db/select-one model :entity_id id-str)
+    (t2/select-one model :entity_id id-str)
     (find-by-identity-hash model id-str)))
 
 (def ^:private max-label-length 100)
@@ -445,7 +445,7 @@
   (when id
     (let [model-name (name model)
           model      (db/resolve-model (symbol model-name))
-          entity     (db/select-one model (models/primary-key model) id)
+          entity     (t2/select-one model (models/primary-key model) id)
           path       (mapv :id (generate-path model-name entity))]
       (if (= (count path) 1)
         (first path)
@@ -493,7 +493,7 @@
   Unusual parameter order lets this be called as, for example,
   `(update x :creator_id import-fk-keyed 'Database :name)`."
   [portable model field]
-  (db/select-one-id model field portable))
+  (t2/select-one-pk model field portable))
 
 ;; -------------------------------------------------- Users ----------------------------------------------------------
 (defn export-user
@@ -522,7 +522,7 @@
   [[import-table-fk]] is the inverse."
   [table-id]
   (when table-id
-    (let [{:keys [db_id name schema]} (db/select-one 'Table :id table-id)
+    (let [{:keys [db_id name schema]} (t2/select-one 'Table :id table-id)
           db-name                     (t2/select-one-fn :name 'Database :id db_id)]
       [db-name schema name])))
 
@@ -565,7 +565,7 @@
   [[import-field-fk]] is the inverse."
   [field-id]
   (when field-id
-    (let [{:keys [name table_id]}     (db/select-one 'Field :id field-id)
+    (let [{:keys [name table_id]}     (t2/select-one 'Field :id field-id)
           [db-name schema field-name] (export-table-fk table_id)]
       [db-name schema field-name name])))
 
@@ -574,7 +574,7 @@
   [[db-name schema table-name field-name :as field-id]]
   (when field-id
     (let [table_id (import-table-fk [db-name schema table-name])]
-      (db/select-one-id 'Field :table_id table_id :name field-name))))
+      (t2/select-one-pk 'Field :table_id table_id :name field-name))))
 
 (defn field->path
   "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
@@ -707,7 +707,7 @@
                   (-> &match
                       (assoc :database (if (= fully-qualified-name "database/__virtual")
                                          mbql.s/saved-questions-virtual-database-id
-                                         (db/select-one-id 'Database :name fully-qualified-name)))
+                                         (t2/select-one-pk 'Database :name fully-qualified-name)))
                       mbql-fully-qualified-names->ids*) ; Process other keys
 
                   {:card-id (entity-id :guard portable-id?)}

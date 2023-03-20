@@ -192,7 +192,7 @@
   [field-or-field-id]
   (if-not (map? field-or-field-id)
     (let [field-id (u/the-id field-or-field-id)]
-      (recur (or (db/select-one ['Field :base_type :visibility_type :has_field_values] :id field-id)
+      (recur (or (t2/select-one ['Field :base_type :visibility_type :has_field_values] :id field-id)
                  (throw (ex-info (tru "Field {0} does not exist." field-id)
                                  {:field-id field-id, :status-code 404})))))
     (let [{base-type        :base_type
@@ -327,7 +327,7 @@
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
   [field & [human-readable-values]]
-  (let [field-values                     (db/select-one FieldValues :field_id (u/the-id field) :type :full)
+  (let [field-values                     (t2/select-one FieldValues :field_id (u/the-id field) :type :full)
         {:keys [values has_more_values]} (distinct-values field)
         field-name                       (or (:name field) (:id field))]
     (cond
@@ -393,19 +393,19 @@
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (let [existing (db/select-one FieldValues :field_id field-id :type :full)]
+    (let [existing (t2/select-one FieldValues :field_id field-id :type :full)]
       (if (or (not existing) (inactive? existing))
         (case (create-or-update-full-field-values! field human-readable-values)
           ::fv-deleted
           nil
 
           ::fv-created
-          (db/select-one FieldValues :field_id field-id :type :full)
+          (t2/select-one FieldValues :field_id field-id :type :full)
 
           (do
             (when existing
               (db/update! FieldValues (:id existing) :last_used_at :%now))
-            (db/select-one FieldValues :field_id field-id :type :full)))
+            (t2/select-one FieldValues :field_id field-id :type :full)))
         (do
           (db/update! FieldValues (:id existing) :last_used_at :%now)
           existing)))))
@@ -421,9 +421,9 @@
   [table-ids]
   (let [table-ids            (set table-ids)
         table-id->db-id      (when (seq table-ids)
-                               (db/select-id->field :db_id 'Table :id [:in table-ids]))
+                               (t2/select-pk->fn :db_id 'Table :id [:in table-ids]))
         db-id->is-on-demand? (when (seq table-id->db-id)
-                               (db/select-id->field :is_on_demand 'Database
+                               (t2/select-pk->fn :is_on_demand 'Database
                                  :id [:in (set (vals table-id->db-id))]))]
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
@@ -449,7 +449,7 @@
 ;;; |                                              Serialization                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 (defmethod serdes/generate-path "FieldValues" [_ {:keys [field_id]}]
-  (let [field (db/select-one 'Field :id field_id)]
+  (let [field (t2/select-one 'Field :id field_id)]
     (conj (serdes/generate-path "Field" field)
           {:model "FieldValues" :id "0"})))
 
@@ -474,7 +474,7 @@
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field (serdes/load-find-local (pop path))]
-    (db/select-one FieldValues :field_id (:id field))))
+    (t2/select-one FieldValues :field_id (:id field))))
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.

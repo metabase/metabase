@@ -32,12 +32,15 @@ interface FormWidgetProps {
   formField: ActionFormFieldProps;
 }
 
-export const FormFieldWidget = forwardRef(function FormFieldWidget(
+const ActionFormFieldWidget = forwardRef(function FormFieldWidget(
   { formField }: FormWidgetProps,
   ref: React.Ref<any>,
 ) {
   const Widget =
     (formField.type ? WIDGETS[formField.type] : FormInputWidget) ??
     FormInputWidget;
+
   return <Widget {...formField} nullable ref={ref} />;
 });
+
+export default ActionFormFieldWidget;

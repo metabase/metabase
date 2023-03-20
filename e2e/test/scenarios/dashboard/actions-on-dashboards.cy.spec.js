@@ -58,6 +58,8 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("adds a custom query action to a dashboard and runs it", () => {
+          const ACTION_NAME = "Update Score";
+
           queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
             dialect,
@@ -90,14 +92,13 @@ const MODEL_NAME = "Test Action Model";
             cy.findByText("Save").click();
           });
 
-
           cy.findByPlaceholderText("My new fantastic action").type(
-            "Update Score",
+            ACTION_NAME
           );
           cy.findByText("Create").click();
 
           createDashboardWithActionButton({
-            actionName: "Update Score",
+            actionName: ACTION_NAME,
             idFilter: true,
           });
 
@@ -108,7 +109,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.findByRole("dialog").within(() => {
             cy.findByLabelText("New score").type("55");
-            cy.button("Run").click();
+            cy.button(ACTION_NAME).click();
           });
 
           cy.wait("@executeAPI");

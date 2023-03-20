@@ -8,7 +8,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [ring.util.codec :as codec]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (com.google.api.client.googleapis.auth.oauth2 GoogleAuthorizationCodeFlow GoogleAuthorizationCodeFlow$Builder
                                                  GoogleCredential GoogleCredential$Builder GoogleTokenResponse)
@@ -133,5 +134,5 @@
   (database->credential*
    scopes
    (if (integer? database-or-id)
-     (db/select-one [Database :id :details], :id database-or-id)
+     (t2/select-one [Database :id :details], :id database-or-id)
      database-or-id)))

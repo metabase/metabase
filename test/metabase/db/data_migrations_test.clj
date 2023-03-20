@@ -11,7 +11,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -328,7 +327,7 @@
                                     :linkType         "url",
                                     :linkTemplate     "http://example.com//{{id}}",
                                     :linkTextTemplate "here is my id: {{id}}"}}}}
-              get-settings!     #(:visualization_settings (db/select-one DashboardCard :id dashcard-id))]
+              get-settings!     #(:visualization_settings (t2/select-one DashboardCard :id dashcard-id))]
           (#'migrations/migrate-click-through)
           (is (= expected-settings (get-settings!)))
           (testing "And it is idempotent"

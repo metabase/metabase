@@ -6,6 +6,13 @@ interface FieldOptionType {
   name: string;
 }
 
+interface InputOptionType {
+  value: InputSettingType;
+  name: string;
+}
+
+type InputOptionsMap = Record<FieldType, InputOptionType[]>;
+
 export const getFieldTypes = (): FieldOptionType[] => [
   {
     value: "string",
@@ -20,13 +27,6 @@ export const getFieldTypes = (): FieldOptionType[] => [
     name: t`Date`,
   },
 ];
-
-interface InputOptionType {
-  value: InputSettingType;
-  name: string;
-}
-
-type InputOptionsMap = Record<FieldType, InputOptionType[]>;
 
 const getTextInputs = (): InputOptionType[] => [
   {
@@ -68,13 +68,5 @@ export const getInputTypes = (): InputOptionsMap => ({
       value: "datetime",
       name: t`Date + time`,
     },
-    // {
-    //   value: "monthyear",
-    //   name: t`month + year`,
-    // },
-    // {
-    //   value: "quarteryear",
-    //   name: t`quarter + year`,
-    // },
   ],
 });

@@ -66,7 +66,7 @@
 (defn- first-user-creation
   "Returns the earliest user creation timestamp in the database"
   []
-  (:min (db/select-one [User [:%min.date_joined :min]])))
+  (:min (t2/select-one [User [:%min.date_joined :min]])))
 
 ;; We need to declare `track-event!` up front so that we can use it in the custom getter of `instance-creation`.
 ;; We can't move `instance-creation` below `track-event!` because it has to be defined before `context`, which is called

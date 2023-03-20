@@ -39,7 +39,8 @@
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
 
@@ -56,7 +57,7 @@
     (or
      ;; Handle integer Field IDs.
      (when (integer? id-or-name)
-       (db/select-one Field :id id-or-name))
+       (t2/select-one Field :id id-or-name))
      ;; handle field string names. Only if we have result metadata. (Not sure why)
      (when (string? id-or-name)
        (when-not result-metadata
@@ -104,14 +105,14 @@
   (cond
     (mbql.u/ga-metric-or-segment? metric) (-> args first str (subs 3) str/capitalize)
     (adhoc-metric? metric)                (-> op qp.util/normalize-token op->name)
-    (saved-metric? metric)                (->> args first (db/select-one Metric :id) :name)
+    (saved-metric? metric)                (->> args first (t2/select-one Metric :id) :name)
     :else                                 (second args)))
 
 (defn metric-op
   "Return the name op of the metric"
   [[op & args :as metric]]
   (if (saved-metric? metric)
-    (get-in (db/select-one Metric :id (first args)) [:definition :aggregation 0 0])
+    (get-in (t2/select-one Metric :id (first args)) [:definition :aggregation 0 0])
     op))
 
 (defn- join-enumeration
@@ -176,7 +177,7 @@
 
 (defmethod ->root Segment
   [segment]
-  (let [table (->> segment :table_id (db/select-one Table :id))]
+  (let [table (->> segment :table_id (t2/select-one Table :id))]
     {:entity          segment
      :full-name       (tru "{0} in the {1} segment" (:display_name table) (:name segment))
      :short-name      (:display_name table)
@@ -189,7 +190,7 @@
 
 (defmethod ->root Metric
   [metric]
-  (let [table (->> metric :table_id (db/select-one Table :id))]
+  (let [table (->> metric :table_id (t2/select-one Table :id))]
     {:entity       metric
      :full-name    (if (:id metric)
                      (tru "{0} metric" (:name metric))
@@ -226,7 +227,7 @@
 (defn- source-question
   [card-or-question]
   (when-let [source-card-id (qp.util/query->source-card-id (:dataset_query card-or-question))]
-    (db/select-one Card :id source-card-id)))
+    (t2/select-one Card :id source-card-id)))
 
 (defn- table-like?
   [card-or-question]
@@ -253,7 +254,7 @@
                              source-question
                              (assoc :entity_type :entity/GenericTable))
     (native-query? card) (-> card (assoc :entity_type :entity/GenericTable))
-    :else (->> card table-id (db/select-one Table :id))))
+    :else                (->> card table-id (t2/select-one Table :id))))
 
 (defmethod ->root Card
   [card]
@@ -337,7 +338,7 @@
   (cond
     full-name full-name
     link      (format "%s → %s"
-                      (-> (db/select-one Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
+                      (-> (t2/select-one Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
                       display_name)
     :else     display_name))
 
@@ -733,7 +734,7 @@
     (-> target field/table (assoc :link id))))
 
 (def ^:private ^{:arglists '([source])} source->engine
-  (comp :engine (partial db/select-one Database :id) (some-fn :db_id :database_id)))
+  (comp :engine (partial t2/select-one Database :id) (some-fn :db_id :database_id)))
 
 (defmulti
   ^{:private  true
@@ -1112,7 +1113,7 @@
                  first
                  qp.util/normalize-token
                  (= :metric))
-           (->> aggregation-clause second (db/select-one Metric :id))
+           (->> aggregation-clause second (t2/select-one Metric :id))
            (let [table-id (table-id question)]
              (mi/instance Metric {:definition {:aggregation  [aggregation-clause]
                                                :source-table table-id}

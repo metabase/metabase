@@ -62,4 +62,4 @@
   "The moderated item for a given request or review"
   [{:keys [moderated_item_id moderated_item_type]}]
   (when (and moderated_item_type moderated_item_id)
-    (db/select-one (moderated-item-type->model moderated_item_type) :id moderated_item_id)))
+    (t2/select-one (moderated-item-type->model moderated_item_type) :id moderated_item_id)))

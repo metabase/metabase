@@ -111,7 +111,7 @@
    ^{::memoize/args-fn (fn [[field-id]]
                          [(mdb.connection/unique-identifier) field-id])}
    (fn [field-id]
-     (types/temporal-field? (db/select-one [Field :base_type :semantic_type] :id field-id)))
+     (types/temporal-field? (t2/select-one [Field :base_type :semantic_type] :id field-id)))
    :ttl/threshold (u/minutes->ms 10)))
 
 (defn- filter-clause
@@ -469,7 +469,7 @@
 
 (s/defn ^:private human-readable-remapping-map :- (s/maybe HumanReadableRemappingMap)
   [field-id :- su/IntGreaterThanZero]
-  (when-let [{orig :values, remapped :human_readable_values} (db/select-one [FieldValues :values :human_readable_values]
+  (when-let [{orig :values, remapped :human_readable_values} (t2/select-one [FieldValues :values :human_readable_values]
                                                                {:where [:and
                                                                         [:= :type "full"]
                                                                         [:= :field_id field-id]
@@ -553,8 +553,8 @@
 (defn- cached-field-values [field-id constraints {:keys [limit]}]
   ;; TODO: why don't we remap the human readable values here?
   (let [{:keys [values has_more_values]} (if (empty? constraints)
-                                           (params.field-values/get-or-create-field-values-for-current-user! (db/select-one Field :id field-id))
-                                           (params.field-values/get-or-create-linked-filter-field-values! (db/select-one Field :id field-id) constraints))]
+                                           (params.field-values/get-or-create-field-values-for-current-user! (t2/select-one Field :id field-id))
+                                           (params.field-values/get-or-create-linked-filter-field-values! (t2/select-one Field :id field-id) constraints))]
     {:values          (cond->> (map first values)
                         limit (take limit))
      :has_more_values (or (when limit
