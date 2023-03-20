@@ -44,7 +44,7 @@ describe("issue 29347", () => {
     });
 
     filterWidget().within(() => {
-      cy.findByText("Text").click();
+      cy.findByText(filterDetails.name).click();
     });
     popover().within(() => {
       cy.findByText("N100").click();
