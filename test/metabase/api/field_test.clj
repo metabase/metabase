@@ -732,7 +732,6 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (mt/dataset json
       (let [field (t2/select-one Field :id (mt/id :json :json_bit))
-            db    (t2/select-one Database :id (mt/id))
             enable-json-unfolding! (fn [v]
                                      (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
                                                            (assoc field :json_unfolding v)))
