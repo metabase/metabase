@@ -1,3 +1,4 @@
+import { assocIn } from "icepick";
 import {
   setActionsEnabledForDB,
   modal,
@@ -74,16 +75,11 @@ const SAMPLE_QUERY_ACTION = {
   },
 };
 
-const SAMPLE_WRITABLE_QUERY_ACTION = {
-  ...SAMPLE_QUERY_ACTION,
-  dataset_query: {
-    ...SAMPLE_QUERY_ACTION.dataset_query,
-    native: {
-      ...SAMPLE_QUERY_ACTION.dataset_query.native,
-      query: `UPDATE ${WRITABLE_TEST_TABLE} SET score = 22 WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
-    }
-  }
-};
+const SAMPLE_WRITABLE_QUERY_ACTION = assocIn(
+  SAMPLE_QUERY_ACTION,
+  ["dataset_query", "native", "query"],
+  `UPDATE ${WRITABLE_TEST_TABLE} SET score = 22 WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
+);
 
 describe(
   "scenarios > models > actions",
@@ -313,7 +309,7 @@ describe(
       createModelFromTableName({ tableName: WRITABLE_TEST_TABLE, idAlias: "writableModelId" });
     });
 
-    it("should allow to execute actions from the model page", () => {
+    it("should allow action execution from the model detail page", () => {
       queryWritableDB(
         `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
         dialect,
@@ -335,7 +331,7 @@ describe(
 
       modal().within(() => {
         cy.findByLabelText(TEST_PARAMETER.name).type("1");
-        cy.button("Run").click();
+        cy.button(SAMPLE_QUERY_ACTION.name).click();
       });
 
       cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
@@ -352,7 +348,7 @@ describe(
       });
     });
 
-    it("should allow to make actions public and execute them", () => {
+    it("should allow public sharing of actions and execution of public actions", () => {
       const IMPLICIT_ACTION_NAME = "Update";
 
       cy.get("@writableModelId").then(modelId => {
@@ -382,12 +378,12 @@ describe(
       cy.get("@queryActionPublicUrl").then(url => {
         cy.visit(url);
         cy.findByLabelText(TEST_PARAMETER.name).type("1");
-        cy.findByRole("button", { name: "Submit" }).click();
+        cy.button(SAMPLE_QUERY_ACTION.name).click();
         cy.findByText(`${SAMPLE_WRITABLE_QUERY_ACTION.name} ran successfully`).should(
           "be.visible",
         );
         cy.findByRole("form").should("not.exist");
-        cy.findByRole("button", { name: "Submit" }).should("not.exist");
+        cy.button(SAMPLE_QUERY_ACTION.name).should("not.exist");
 
         queryWritableDB(
           `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
@@ -408,12 +404,12 @@ describe(
         cy.findByLabelText(/team name/i).type("Bouncy Bears");
 
 
-        cy.findByRole("button", { name: "Submit" }).click();
+        cy.button(IMPLICIT_ACTION_NAME).click();
         cy.findByText(`${IMPLICIT_ACTION_NAME} ran successfully`).should(
           "be.visible",
         );
         cy.findByRole("form").should("not.exist");
-        cy.findByRole("button", { name: "Submit" }).should("not.exist");
+        cy.button(IMPLICIT_ACTION_NAME).should("not.exist");
 
         queryWritableDB(
           `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 2`,
@@ -422,6 +418,7 @@ describe(
           const row = result.rows[0];
 
           expect(row.score).to.equal(16);
+          expect(row.team_name).to.equal("Bouncy Bears");
           // should not mutate form fields that we don't touch
           expect(row.status).to.not.be.a('null');
         });
@@ -441,14 +438,14 @@ describe(
       cy.get("@queryActionPublicUrl").then(url => {
         cy.visit(url);
         cy.findByRole("form").should("not.exist");
-        cy.findByRole("button", { name: "Submit" }).should("not.exist");
+        cy.button(SAMPLE_QUERY_ACTION.name).should("not.exist");
         cy.findByText("Not found").should("be.visible");
       });
 
       cy.get("@implicitActionPublicUrl").then(url => {
         cy.visit(url);
         cy.findByRole("form").should("not.exist");
-        cy.findByRole("button", { name: "Submit" }).should("not.exist");
+        cy.button(SAMPLE_QUERY_ACTION.name).should("not.exist");
         cy.findByText("Not found").should("be.visible");
       });
     });
