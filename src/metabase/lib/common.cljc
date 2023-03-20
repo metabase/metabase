@@ -36,7 +36,7 @@
      {:pre [(symbol? op-name)
             (every? vector? argvecs) (every? #(every? symbol? %) argvecs)
             (every? #(not-any? #{'query 'stage-number} %) argvecs)]}
-     (let [fn-rename #(get {"/" "div"} (name %) (name %))]
+     (let [fn-rename #(name (get {'/ 'div} % %))]
        `(do
           (mu/defn ~(symbol (str (fn-rename op-name) "-clause")) :- ~(keyword "mbql.clause" (name op-name))
             ~(format "Create a standalone clause of type `%s`." (name op-name))

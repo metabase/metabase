@@ -57,5 +57,4 @@
 
 (mbql-clause/define-tuple-mbql-clause :time :- :type/TimeWithTZ
   #_:timestr [:schema [:ref ::expression/string]]
-  ;; TODO is this right?
-  #_:unit [:ref ::temporal-bucketing/unit.date-time.interval])
+  #_:unit [:ref ::temporal-bucketing/unit.time.interval])
