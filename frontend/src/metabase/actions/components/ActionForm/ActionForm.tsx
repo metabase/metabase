@@ -74,9 +74,7 @@ function ActionForm({
     (
       values: ParametersForActionExecution,
       actions: FormikHelpers<ParametersForActionExecution>,
-    ) => {
-      onSubmit(getCleanValues(values), actions);
-    },
+    ) => onSubmit(getCleanValues(values), actions),
     [getCleanValues, onSubmit],
   );
 

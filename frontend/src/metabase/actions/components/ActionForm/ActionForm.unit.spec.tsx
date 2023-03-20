@@ -46,15 +46,19 @@ type SetupOpts = {
   initialValues?: ParametersForActionExecution;
   parameters: WritebackParameter[];
   formSettings: ActionFormSettings;
+  onSubmit?: () => Promise<void>;
 };
 
-const setup = ({ initialValues, parameters, formSettings }: SetupOpts) => {
+const setup = ({
+  initialValues,
+  parameters,
+  formSettings,
+  onSubmit = jest.fn(),
+}: SetupOpts) => {
   const action = createMockQueryAction({
     parameters,
     visualization_settings: formSettings,
   });
-
-  const onSubmit = jest.fn();
 
   render(
     <ActionForm
@@ -259,6 +263,42 @@ describe("Actions > ActionForm", () => {
           expect.any(Object),
         );
       });
+    });
+
+    it("shows an error if submit fails", async () => {
+      const message = "Something went wrong when submitting the form.";
+      const error = { success: false, error: message, message };
+      const { action } = await setup({
+        onSubmit: jest.fn().mockRejectedValue(error),
+        parameters: [
+          makeParameter({ id: "abc-123" }),
+          makeParameter({ id: "def-456" }),
+        ],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({
+              inputType: "string",
+              id: "abc-123",
+              title: "text input",
+            }),
+            "def-456": makeFieldSettings({
+              inputType: "number",
+              id: "def-456",
+              title: "number input",
+            }),
+          },
+        },
+      });
+
+      userEvent.type(screen.getByLabelText(/text input/i), "Murloc");
+      userEvent.type(screen.getByLabelText(/number input/i), "12345");
+      userEvent.click(screen.getByRole("button", { name: action.name }));
+
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: action.name }),
+      ).toHaveTextContent("Failed");
     });
   });
 
