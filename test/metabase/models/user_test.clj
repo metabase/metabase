@@ -185,11 +185,18 @@
                  (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
                      (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com" "cam2@metabase.com"]))))))
 
-      (testing "...unless they are inactive"
+      (testing "...unless they are inactive..."
         (mt/with-temp User [user {:is_superuser true, :is_active false}]
           (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
                  (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                     (select-keys ["crowberto@metabase.com" (:email user)]))))))))
+                     (select-keys ["crowberto@metabase.com" (:email user)])))))
+
+        (testing "...or if setting is disabled"
+          (mt/with-temporary-setting-values [send-new-sso-user-admin-email? false]
+            (mt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+              (is (= {}
+                     (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                         (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"]))))))))))
 
   (testing "if sso enabled and password login is disabled, email should send a link to sso login"
     (mt/with-temporary-setting-values [enable-password-login false]

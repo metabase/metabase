@@ -2,6 +2,7 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
+   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
@@ -330,9 +331,11 @@
   admins will receive an email right away."
   [new-user :- NewUser]
   (u/prog1 (insert-new-user! (assoc new-user :google_auth true))
-    ;; send an email to everyone including the site admin if that's set
-    (classloader/require 'metabase.email.messages)
-    ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true)))
+           ;; send an email to everyone including the site admin if that's set
+           (when (sso-settings/send-new-sso-user-admin-email?)
+             (classloader/require 'metabase.email.messages)
+             ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true)
+             )))
 
 (schema/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
