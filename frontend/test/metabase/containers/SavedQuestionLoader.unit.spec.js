@@ -1,16 +1,22 @@
 import React from "react";
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 
 import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
 import { renderWithProviders } from "__support__/ui";
-import { setupCardEndpoints } from "__support__/server-mocks";
-import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
-import { loadMetadataForCard } from "metabase/questions/actions";
+import {
+  setupCardEndpoints,
+  setupSchemaEndpoints,
+  setupUnauthorizedSchemaEndpoints,
+  setupUnauthorizedCardEndpoints,
+} from "__support__/server-mocks";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
 
-jest.mock("metabase/questions/actions", () => ({
-  loadMetadataForCard: jest.fn(() => Promise.resolve(1)),
-}));
+const databaseMock = createMockDatabase({ id: 1 });
 
 const childrenRenderFn = ({ loading, question, error }) => {
   if (error) {
@@ -24,7 +30,7 @@ const childrenRenderFn = ({ loading, question, error }) => {
   return <div>{question.displayName()}</div>;
 };
 
-const setupQuestion = ({ id, name }) => {
+const setupQuestion = ({ id, name, hasAccess }) => {
   const card = createMockCard({
     id,
     name,
@@ -32,13 +38,27 @@ const setupQuestion = ({ id, name }) => {
   });
   const q = new Question(card, null);
 
-  setupCardEndpoints(q.card());
+  if (hasAccess) {
+    setupCardEndpoints(q.card());
+  } else {
+    setupUnauthorizedCardEndpoints(q.card());
+  }
 
   return card;
 };
 
-const setup = ({ questionId }) => {
-  const card = setupQuestion({ id: questionId, name: "Question 1" });
+const setup = ({ questionId, hasAccess }) => {
+  if (hasAccess) {
+    setupSchemaEndpoints(databaseMock);
+  } else {
+    setupUnauthorizedSchemaEndpoints(databaseMock);
+  }
+
+  const card = setupQuestion({
+    id: questionId,
+    name: "Question 1",
+    hasAccess,
+  });
 
   const { rerender } = renderWithProviders(
     <SavedQuestionLoader questionId={questionId}>
@@ -55,35 +75,28 @@ describe("SavedQuestionLoader", () => {
   });
 
   it("should load a question given a questionId", async () => {
-    const { card } = setup({ questionId: 1 });
+    setup({ questionId: 1, hasAccess: true });
 
     expect(screen.getByText("loading")).toBeInTheDocument();
-
-    await waitFor(async () => {
-      expect(loadMetadataForCard).toHaveBeenCalledWith(card);
-    });
-
     expect(await screen.findByText("Question 1")).toBeInTheDocument();
   });
 
   it("should handle errors", async () => {
-    loadMetadataForCard.mockImplementation(() => Promise.reject("error"));
-    const { card } = setup({ questionId: 1 });
+    setup({ questionId: 1, hasAccess: false });
 
     expect(screen.getByText("loading")).toBeInTheDocument();
-
-    await waitFor(async () => {
-      expect(loadMetadataForCard).toHaveBeenCalledWith(card);
-    });
-
     expect(await screen.findByText("error")).toBeInTheDocument();
   });
 
   it("should load a new question if the question ID changes", async () => {
     const nextQuestionId = 2;
-    const nextCard = setupQuestion({ id: nextQuestionId, name: "Question 2" });
+    setupQuestion({
+      id: nextQuestionId,
+      name: "Question 2",
+      hasAccess: true,
+    });
 
-    const { rerender } = setup({ questionId: 1 });
+    const { rerender } = setup({ questionId: 1, hasAccess: true });
 
     expect(await screen.findByText("Question 1")).toBeInTheDocument();
 
@@ -94,10 +107,6 @@ describe("SavedQuestionLoader", () => {
     );
 
     expect(screen.getByText("loading")).toBeInTheDocument();
-
-    await waitFor(async () => {
-      expect(loadMetadataForCard).toHaveBeenCalledWith(nextCard);
-    });
 
     expect(await screen.findByText("Question 2")).toBeInTheDocument();
   });

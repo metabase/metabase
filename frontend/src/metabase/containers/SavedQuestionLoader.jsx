@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { connect } from "react-redux";
 import _ from "underscore";
 import { useAsync } from "react-use";
+import { useSelector, useDispatch } from "react-redux";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -39,8 +39,9 @@ import Question from "metabase-lib/Question";
  * The raw un-connected component is also exported so we can unit test it
  * without the redux store.
  */
-
-const SavedQuestionLoader = ({ children, card, error, loading, metadata }) => {
+const SavedQuestionLoader = ({ children, card, error, loading }) => {
+  const metadata = useSelector(getMetadata);
+  const dispatch = useDispatch();
   const [question, setQuestion] = useState(null);
 
   const cardMetadataState = useAsync(async () => {
@@ -48,7 +49,7 @@ const SavedQuestionLoader = ({ children, card, error, loading, metadata }) => {
       return;
     }
 
-    await loadMetadataForCard(card);
+    await dispatch(loadMetadataForCard(card));
   }, [card?.id]);
 
   useEffect(() => {
@@ -78,20 +79,7 @@ const SavedQuestionLoader = ({ children, card, error, loading, metadata }) => {
   );
 };
 
-function mapStateToProps(state, props) {
-  return {
-    metadata: getMetadata(state),
-  };
-}
-
-const mapDispatchToProps = dispatch => {
-  return {
-    loadMetadataForCard: card => dispatch(loadMetadataForCard(card)),
-  };
-};
-
 export default _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
   Questions.load({
     id: (_state, props) => props.questionId,
     loadingAndErrorWrapper: false,
