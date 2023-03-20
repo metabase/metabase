@@ -15,7 +15,6 @@ import {
   preserveExistingColumnsOrder,
   getDefaultDimensionsAndMetrics,
 } from "metabase/visualizations/lib/utils";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 
 const propTypes = {
@@ -48,14 +47,6 @@ export default class Sankey extends Component {
   }
 
   static settings = {
-    ...columnSettings({
-      getColumns: ([
-        {
-          data: { cols },
-        },
-      ]) => cols,
-      hidden: true,
-    }),
     "sankey.start": {
       section: t`Data`,
       title: t`Starting Point`,
