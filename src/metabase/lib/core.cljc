@@ -11,6 +11,7 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
    [metabase.lib.limit :as lib.limit]
+   [metabase.lib.metric :as lib.metric]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.stage :as lib.stage]
@@ -26,6 +27,7 @@
          lib.filter/keep-me
          lib.join/keep-me
          lib.limit/keep-me
+         lib.metric/keep-me
          lib.order-by/keep-me
          lib.query/keep-me
          lib.stage/keep-me

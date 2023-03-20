@@ -10,7 +10,7 @@ import { FilterClause, MetricClause } from "./description.styled.tsx";
 
 // NOTE: This doesn't support every MBQL clause, e.x. joins. It should also be moved to StructuredQuery.
 
-export function formatField(fieldDef, options = {}) {
+function formatField(fieldDef, options = {}) {
   const name = stripId(fieldDef && (fieldDef.display_name || fieldDef.name));
   return name;
 }
