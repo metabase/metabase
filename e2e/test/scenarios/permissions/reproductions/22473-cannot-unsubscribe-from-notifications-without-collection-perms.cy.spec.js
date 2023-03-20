@@ -1,8 +1,8 @@
 import { restore, setupSMTP, sidebar } from "e2e/support/helpers";
+import { modal } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 import { USERS } from "e2e/support/cypress_data";
 const { nocollection } = USERS;
-//const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
 
 describe("issue 22473", () => {
   beforeEach(() => {
@@ -27,10 +27,12 @@ describe("issue 22473", () => {
     cy.visit("/account/notifications");
 
     cy.findByText("Orders in a dashboard").should("exist");
-
     cy.findByTestId("notifications-list").within(() => {
       cy.findByLabelText("close icon").click();
     });
-
+    modal().within(() => {
+      cy.button("Unsubscribe").click()
+    });
+    cy.findByText("Orders in a dashboard").should("not.exist");
   })
 })
