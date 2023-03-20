@@ -11,7 +11,7 @@
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]
    [metabase.util.yaml :as yaml]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,7 +41,7 @@
                 "A few top-level files are expected"))
 
           (testing "the Collections properly exported"
-            (is (= (-> (into {} (db/select-one Collection :id (:id parent)))
+            (is (= (-> (into {} (t2/select-one Collection :id (:id parent)))
                        (dissoc :id :location)
                        (assoc :parent_id nil)
                        (update :created_at t/offset-date-time))
@@ -49,7 +49,7 @@
                        (dissoc :serdes/meta)
                        (update :created_at t/offset-date-time))))
 
-            (is (= (-> (into {} (db/select-one Collection :id (:id child)))
+            (is (= (-> (into {} (t2/select-one Collection :id (:id child)))
                        (dissoc :id :location)
                        (assoc :parent_id (:entity_id parent))
                        (update :created_at t/offset-date-time))
@@ -142,7 +142,7 @@
                 "Slashes in directory names get escaped"))
 
           (testing "the Field was properly exported"
-            (is (= (-> (into {} (serdes/extract-one "Field" {} (db/select-one 'Field :id (:id website))))
+            (is (= (-> (into {} (serdes/extract-one "Field" {} (t2/select-one 'Field :id (:id website))))
                        (update :created_at      u.date/format))
                    (-> (yaml/from-file (io/file dump-dir
                                                 "databases" "My Company Data"

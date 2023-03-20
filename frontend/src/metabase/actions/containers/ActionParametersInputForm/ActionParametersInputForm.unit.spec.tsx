@@ -26,10 +26,12 @@ const parameter2 = createMockActionParameter({
   type: "type/Text",
 });
 
+const mockAction = createMockQueryAction({
+  parameters: [parameter1, parameter2],
+});
+
 const defaultProps = {
-  action: createMockQueryAction({
-    parameters: [parameter1, parameter2],
-  }),
+  action: mockAction,
   mappedParameters: [],
   dashboard: createMockDashboard({ id: 123 }),
   dashcard: createMockDashboard({ id: 456 }),
@@ -92,7 +94,7 @@ describe("Actions > ActionParametersInputForm", () => {
       expect(screen.getByLabelText("Parameter 2")).toHaveValue("dos"),
     );
 
-    userEvent.click(screen.getByText("Run"));
+    userEvent.click(screen.getByText(mockAction.name));
 
     await waitFor(() => {
       expect(submitSpy).toHaveBeenCalledWith({

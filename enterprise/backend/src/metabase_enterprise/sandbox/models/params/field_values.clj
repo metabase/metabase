@@ -11,7 +11,8 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (comment api/keep-me)
 
@@ -26,7 +27,7 @@
 (defn- table-id->gtap
   "Find the GTAP for current user that apply to table `table-id`."
   [table-id]
-  (let [group-ids (db/select-field :group_id PermissionsGroupMembership :user_id api/*current-user-id*)
+  (let [group-ids (t2/select-fn-set :group_id PermissionsGroupMembership :user_id api/*current-user-id*)
         gtaps     (db/select GroupTableAccessPolicy
                              :group_id [:in group-ids]
                              :table_id table-id)]
@@ -54,13 +55,13 @@
 
   And users with login-attributes {\"State\" \"CA\"}
 
-  ;; (field-id->gtap-attributes-for-current-user (db/select-one Field :id 3))
+  ;; (field-id->gtap-attributes-for-current-user (t2/select-one Field :id 3))
   ;; -> [1, {\"State\" \"CA\"}]"
   [{:keys [table_id] :as _field}]
   (when-let [gtap (table-id->gtap table_id)]
     (let [login-attributes     (:login_attributes @api/*current-user*)
           attribute_remappings (:attribute_remappings gtap)
-          field-ids            (db/select-field :id Field :table_id table_id)]
+          field-ids            (t2/select-fn-set :id Field :table_id table_id)]
       [(:card_id gtap)
        (-> gtap :card :updated_at)
        (if (= :native (get-in gtap [:card :query_type]))
@@ -88,7 +89,7 @@
   "Returns a hash-key for linked-filter FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
   :feature :sandboxes
   [field-id constraints]
-  (let [field (db/select-one Field :id field-id)]
+  (let [field (t2/select-one Field :id field-id)]
     (if (field-is-sandboxed? field)
       (str (hash (concat [field-id
                           constraints]
@@ -99,7 +100,7 @@
   "Returns a hash-key for linked-filter FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
   :feature :sandboxes
   [field-id]
-  (let [field (db/select-one Field :id field-id)]
+  (let [field (t2/select-one Field :id field-id)]
     (when (field-is-sandboxed? field)
       (str (hash (concat [field-id]
                          (field->gtap-attributes-for-current-user field)))))))

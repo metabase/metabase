@@ -9,8 +9,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -56,7 +56,7 @@
 
 (defn- info-for-field
   ([field-id]
-   (into {} (db/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type))
+   (into {} (t2/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type))
                            :id field-id)))
 
   ([table-key field-key]

@@ -73,7 +73,7 @@
         (sync-metadata/sync-db-metadata! db)
         ;; field should be added back
         (is (= #{"weight" "age"}
-               (db/select-field :name Field :table_id transactions-table-id, :parent_id details-field-id, :active true))))))
+               (t2/select-fn-set :name Field :table_id transactions-table-id, :parent_id details-field-id, :active true))))))
 
   (testing "Syncing can reactivate a field"
     (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
@@ -88,7 +88,7 @@
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should be reactivated
-        (is (db/select-field :active Field :id age-field-id)))))
+        (is (t2/select-fn-set :active Field :id age-field-id)))))
 
   (testing "Nested fields get reactivated if the parent field gets reactivated"
     (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
@@ -103,7 +103,7 @@
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should be reactivated
-        (is (db/select-field :active Field :id age-field-id)))))
+        (is (t2/select-fn-set :active Field :id age-field-id)))))
 
   (testing "Nested fields can be marked inactive"
     (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]

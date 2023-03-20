@@ -42,7 +42,7 @@
     api/*is-superuser?*)))
 
 (defn- fetch-user [& query-criteria]
-  (apply db/select-one (vec (cons User user/admin-or-self-visible-columns)) query-criteria))
+  (apply t2/select-one (vec (cons User user/admin-or-self-visible-columns)) query-criteria))
 
 (defn- maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids]
   (when (and new-groups-or-ids
@@ -211,7 +211,7 @@
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
   [{:keys [id] :as user}]
   (let [ts (or
-            (:timestamp (db/select-one [LoginHistory :timestamp] :user_id id
+            (:timestamp (t2/select-one [LoginHistory :timestamp] :user_id id
                                        {:order-by [[:timestamp :asc]]}))
             (t/offset-date-time))]
     (assoc user :first_login ts)))
@@ -369,7 +369,7 @@
   "Reactivate user at `:id`"
   [id]
   (api/check-superuser)
-  (let [user (db/select-one [User :id :is_active :google_auth :ldap_auth] :id id)]
+  (let [user (t2/select-one [User :id :is_active :google_auth :ldap_auth] :id id)]
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
@@ -387,7 +387,7 @@
   [id :as {{:keys [password old_password]} :body}]
   {password su/ValidPassword}
   (check-self-or-superuser id)
-  (api/let-404 [user (db/select-one [User :password_salt :password], :id id, :is_active true)]
+  (api/let-404 [user (t2/select-one [User :password_salt :password], :id id, :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
@@ -435,7 +435,7 @@
   "Resend the user invite email for a given user."
   [id]
   (api/check-superuser)
-  (when-let [user (db/select-one User :id id, :is_active true)]
+  (when-let [user (t2/select-one User :id id, :is_active true)]
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]

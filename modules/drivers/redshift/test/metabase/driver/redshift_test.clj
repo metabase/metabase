@@ -227,7 +227,7 @@
           ;; sync the schema again to pick up the new view (and table, though we aren't checking that)
           (sync/sync-database! database)
           (is (contains?
-               (db/select-field :name Table :db_id (u/the-id database)) ; the new view should have been synced
+               (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced
                view-nm))
           (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
             ;; and its columns' :base_type should have been identified correctly
@@ -261,7 +261,7 @@
             qual-view-nm)
            (sync/sync-database! database)
            (is (contains?
-                (db/select-field :name Table :db_id (u/the-id database)) ; the new view should have been synced without errors
+                (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced without errors
                 view-nm))
            (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
              ;; and its columns' :base_type should have been identified correctly

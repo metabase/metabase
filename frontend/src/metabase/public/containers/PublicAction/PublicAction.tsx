@@ -4,7 +4,7 @@ import title from "metabase/hoc/Title";
 import { PublicApi } from "metabase/services";
 
 import ActionForm from "metabase/actions/components/ActionForm";
-import { getFormTitle, getSuccessMessage } from "metabase/actions/utils";
+import { getSuccessMessage } from "metabase/actions/utils";
 
 import type {
   ParametersForActionExecution,
@@ -46,7 +46,7 @@ function PublicAction({ action, publicId, onError }: Props) {
 
   return (
     <FormContainer>
-      <FormTitle>{getFormTitle(action)}</FormTitle>
+      <FormTitle>{action.name}</FormTitle>
       <ActionForm action={action} onSubmit={handleSubmit} />
     </FormContainer>
   );

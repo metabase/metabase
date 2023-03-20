@@ -6,7 +6,8 @@
    [metabase.models :refer [PermissionsGroupMembership]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn user-group-memberships
   "Return a list of group memberships a User belongs to.
@@ -40,8 +41,8 @@
       ;; prevent groups manager from update membership of groups that they're not manager of
       (when-not (and api/*is-group-manager?*
                      (set/subset? (set (concat to-remove-group-ids to-add-group-ids))
-                                  (db/select-field :group_id PermissionsGroupMembership
-                                                   :user_id api/*current-user-id* :is_group_manager true)))
+                                  (t2/select-fn-set :group_id PermissionsGroupMembership
+                                                    :user_id api/*current-user-id* :is_group_manager true)))
         (throw (ex-info (tru "Not allowed to edit group memberships")
                         {:status-code 403}))))
     (db/transaction

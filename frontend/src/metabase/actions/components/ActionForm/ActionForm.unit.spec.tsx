@@ -64,7 +64,7 @@ const setup = ({ initialValues, parameters, formSettings }: SetupOpts) => {
     />,
   );
 
-  return { onSubmit };
+  return { action, onSubmit };
 };
 
 describe("Actions > ActionForm", () => {
@@ -224,7 +224,7 @@ describe("Actions > ActionForm", () => {
     });
 
     it("can submit form field values", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -248,7 +248,7 @@ describe("Actions > ActionForm", () => {
 
       userEvent.type(screen.getByLabelText(/text input/i), "Murloc");
       userEvent.type(screen.getByLabelText(/number input/i), "12345");
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(
@@ -264,7 +264,7 @@ describe("Actions > ActionForm", () => {
 
   describe("Form Validation", () => {
     it("allows form submission when required fields are provided", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -290,14 +290,14 @@ describe("Actions > ActionForm", () => {
 
       userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
       userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
       expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
     });
 
     it("disables form submission when required fields are not provided", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -324,17 +324,19 @@ describe("Actions > ActionForm", () => {
       userEvent.click(await screen.findByLabelText(/foo input/i)); // leave empty
       userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
       await waitFor(() =>
-        expect(screen.getByRole("button", { name: "Run" })).toBeDisabled(),
+        expect(
+          screen.getByRole("button", { name: action.name }),
+        ).toBeDisabled(),
       );
 
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
       expect(await screen.findByText(/required/i)).toBeInTheDocument();
       expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it("allows form submission when all required fields are set", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -358,21 +360,21 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      expect(screen.getByRole("button", { name: "Run" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: action.name })).toBeDisabled();
 
       userEvent.type(screen.getByLabelText(/foo input/i), "baz");
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Run" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: action.name })).toBeEnabled();
       });
 
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalled();
       });
     });
 
     it("allows form submission when all fields are optional", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -396,9 +398,9 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      expect(screen.getByRole("button", { name: "Run" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: action.name })).toBeEnabled();
 
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     });
@@ -421,7 +423,7 @@ describe("Actions > ActionForm", () => {
     });
 
     it("allows submission of a null non-required boolean field", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -447,14 +449,14 @@ describe("Actions > ActionForm", () => {
 
       userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
       userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
       expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
     });
 
     it("sets a default value for an empty field", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -480,14 +482,14 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
       expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
     });
 
     it("sets types on form submissions correctly", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -521,7 +523,7 @@ describe("Actions > ActionForm", () => {
       userEvent.type(await screen.findByLabelText(/foo input/i), "1");
       userEvent.type(await screen.findByLabelText(/bar input/i), "1");
       userEvent.type(await screen.findByLabelText(/baz input/i), "1");
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(
@@ -541,7 +543,7 @@ describe("Actions > ActionForm", () => {
     const inputTypes = ["string", "number", "text", "date", "datetime", "time"];
     inputTypes.forEach(inputType => {
       it(`casts empty optional ${inputType} field to null`, async () => {
-        const { onSubmit } = setup({
+        const { action, onSubmit } = setup({
           initialValues: { "abc-123": 1 },
           parameters: [makeParameter({ id: "abc-123" })],
           formSettings: {
@@ -561,7 +563,7 @@ describe("Actions > ActionForm", () => {
         fireEvent.change(screen.getByLabelText(/input/i), {
           target: { value: "" },
         });
-        userEvent.click(screen.getByRole("button", { name: "Run" }));
+        userEvent.click(screen.getByRole("button", { name: action.name }));
 
         await waitFor(() => {
           expect(onSubmit).toHaveBeenCalledWith(
@@ -577,7 +579,7 @@ describe("Actions > ActionForm", () => {
     // bug repro: https://github.com/metabase/metabase/issues/27377
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("casts empty optional category fields to null", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         initialValues: { "abc-123": "aaa" },
         parameters: [makeParameter({ id: "abc-123" })],
         formSettings: {
@@ -594,7 +596,7 @@ describe("Actions > ActionForm", () => {
       });
 
       userEvent.clear(screen.getByLabelText(/input/i));
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(

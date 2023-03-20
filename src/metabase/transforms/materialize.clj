@@ -13,7 +13,7 @@
 (defn- root-container-location
   []
   (collection/children-location
-   (db/select-one [Collection :location :id]
+   (t2/select-one [Collection :location :id]
      :id (get-or-create-root-container-collection!))))
 
 (defn get-collection
