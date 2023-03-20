@@ -99,7 +99,7 @@
   (let [action (api/write-check Action action-id)]
     (snowplow/track-event! ::snowplow/action-deleted api/*current-user-id* {:type      (:type action)
                                                                             :action_id action-id}))
-  (db/delete! Action :id action-id)
+  (t2/delete! Action :id action-id)
   api/generic-204-no-content)
 
 (api/defendpoint POST "/"

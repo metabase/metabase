@@ -568,7 +568,7 @@
       ;; switch to "list" to prevent [[field-values/create-or-update-full-field-values!]]
       ;; from changing this to `nil` if the field is `auto-list` and exceeds threshholds
       (db/update! Field field-id :has_field_values "list")
-      (db/delete! FieldValues :field_id field-id)
+      (t2/delete! FieldValues :field_id field-id)
       (try
         (thunk)
         (finally

@@ -47,7 +47,7 @@
                         {:status-code 403}))))
     (db/transaction
      (when (seq to-remove-group-ids)
-       (db/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove-group-ids]))
+       (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove-group-ids]))
      (when (seq to-add-group-ids)
        ;; do multiple single inserts because insert-many! does not call post-insert! hook
        (doseq [group-id to-add-group-ids]

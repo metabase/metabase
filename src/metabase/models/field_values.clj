@@ -109,13 +109,13 @@
 (defn clear-advanced-field-values-for-field!
   "Remove all advanced FieldValues for a `field-or-id`."
   [field-or-id]
-  (db/delete! FieldValues :field_id (u/the-id field-or-id)
+  (t2/delete! FieldValues :field_id (u/the-id field-or-id)
                           :type     [:in advanced-field-values-types]))
 
 (defn clear-field-values-for-field!
   "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
   [field-or-id]
-  (db/delete! FieldValues :field_id (u/the-id field-or-id)))
+  (t2/delete! FieldValues :field_id (u/the-id field-or-id)))
 
 (defn- pre-insert [{:keys [field_id] :as field-values}]
   (u/prog1 (merge {:type :full}

@@ -1422,7 +1422,7 @@
                                               :descrption "My SQL Snippets"
                                               :namespace  "snippets"})))
           (finally
-            (db/delete! Collection :name collection-name)))))
+            (t2/delete! Collection :name collection-name)))))
     (testing "collection types"
       (mt/with-model-cleanup [Collection]
         (testing "Admins should be able to create with a type"

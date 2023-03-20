@@ -192,7 +192,7 @@
                                                                            :collection_id (u/the-id collection)})
                        dashboard-response)))
             (finally
-              (db/delete! Dashboard :name test-dashboard-name))))))))
+              (t2/delete! Dashboard :name test-dashboard-name))))))))
 
 (deftest create-dashboard-with-collection-position-test
   (testing "POST /api/dashboard"
@@ -209,7 +209,7 @@
                       (some-> (t2/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
                               (update :collection_id (partial = (u/the-id collection))))))
               (finally
-                (db/delete! Dashboard :name dashboard-name)))))
+                (t2/delete! Dashboard :name dashboard-name)))))
 
         (testing "..but not if we don't have permissions for the Collection"
           (mt/with-temp Collection [collection]
@@ -718,7 +718,7 @@
                       "d" 4}
                      (api.card-test/get-name->collection-position :rasta collection)))
               (finally
-                (db/delete! Dashboard :collection_id (u/the-id collection))))))))))
+                (t2/delete! Dashboard :collection_id (u/the-id collection))))))))))
 
 (deftest insert-dashboard-no-position-test
   (testing "POST /api/dashboard"
@@ -742,7 +742,7 @@
                       "d" 3}
                      (api.card-test/get-name->collection-position :rasta collection)))
               (finally
-                (db/delete! Dashboard :collection_id (u/the-id collection))))))))))
+                (t2/delete! Dashboard :collection_id (u/the-id collection))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -780,7 +780,7 @@
             (is (not=  (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")
             (finally
-              (db/delete! Dashboard :id (u/the-id response)))))))
+              (t2/delete! Dashboard :id (u/the-id response)))))))
 
     (testing "Ensure name / description / user set when copying"
       (mt/with-temp Dashboard [dashboard  {:name        "Test Dashboard"
@@ -800,7 +800,7 @@
             (is (not= (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")
             (finally
-              (db/delete! Dashboard :id (u/the-id response))))))))
+              (t2/delete! Dashboard :id (u/the-id response))))))))
   (testing "Deep copy: POST /api/dashboard/:id/copy"
     (mt/dataset sample-dataset
       (mt/with-temp* [Collection [source-coll {:name "Source collection"}]
@@ -1160,7 +1160,7 @@
                       :target       [:dimension [:field (mt/id :venues :name) nil]]}]
                    (t2/select-one-fn :parameter_mappings DashboardCard :id dashcard-id)))
            (finally
-             (db/delete! Dashboard :id copy-id))))))))
+             (t2/delete! Dashboard :id copy-id))))))))
 
 (deftest copy-dashboard-into-correct-collection-test
   (testing "POST /api/dashboard/:id/copy"
@@ -1177,7 +1177,7 @@
                                           (u/the-id response))
                      (u/the-id new-collection)))
               (finally
-                (db/delete! Dashboard :id (u/the-id response))))))))))
+                (t2/delete! Dashboard :id (u/the-id response))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

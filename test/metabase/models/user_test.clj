@@ -136,7 +136,7 @@
           (sent-emails new-user-email new-user-first-name new-user-last-name)
           ;; Clean up after ourselves
           (finally
-            (db/delete! User :email new-user-email)))))))
+            (t2/delete! User :email new-user-email)))))))
 
 (def ^:private default-invitor
   {:email "crowberto@metabase.com", :is_active true, :first_name "Crowberto"})
@@ -209,7 +209,7 @@
         (is (= false
                (u.password/verify-password "should be removed" password_salt password))))
       (finally
-        (db/delete! User :email "ldaptest@metabase.com")))))
+        (t2/delete! User :email "ldaptest@metabase.com")))))
 
 (deftest new-admin-user-test
   (testing (str "when you create a new user with `is_superuser` set to `true`, it should create a "
@@ -228,7 +228,7 @@
       (is (= {"local_birds" ["Steller's Jay" "Mountain Chickadee"]}
              (t2/select-one-fn :login_attributes User :email "ldaptest@metabase.com")))
       (finally
-        (db/delete! User :email "ldaptest@metabase.com")))))
+        (t2/delete! User :email "ldaptest@metabase.com")))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

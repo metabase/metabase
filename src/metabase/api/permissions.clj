@@ -184,7 +184,7 @@
   "Delete a specific `PermissionsGroup`."
   [group-id]
   (validation/check-manager-of-group group-id)
-  (db/delete! PermissionsGroup :id group-id)
+  (t2/delete! PermissionsGroup :id group-id)
   api/generic-204-no-content)
 
 
@@ -258,7 +258,7 @@
   (validation/check-manager-of-group group-id)
   (api/check-404 (db/exists? PermissionsGroup :id group-id))
   (api/check-400 (not= group-id (u/the-id (perms-group/admin))))
-  (db/delete! PermissionsGroupMembership :group_id group-id)
+  (t2/delete! PermissionsGroupMembership :group_id group-id)
   api/generic-204-no-content)
 
 (api/defendpoint DELETE "/membership/:id"
@@ -268,7 +268,7 @@
   (let [membership (t2/select-one PermissionsGroupMembership :id id)]
     (api/check-404 membership)
     (validation/check-manager-of-group (:group_id membership))
-    (db/delete! PermissionsGroupMembership :id id)
+    (t2/delete! PermissionsGroupMembership :id id)
     api/generic-204-no-content))
 
 

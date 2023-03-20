@@ -494,7 +494,7 @@ saved later when it is ready."
 (defn- delete-alert-and-notify!
   "Removes all of the alerts and notifies all of the email recipients of the alerts change via `NOTIFY-FN!`"
   [notify-fn! alerts]
-  (db/delete! Pulse :id [:in (map :id alerts)])
+  (t2/delete! Pulse :id [:in (map :id alerts)])
   (doseq [{:keys [channels] :as alert} alerts
           :let [email-channel (m/find-first #(= :email (:channel_type %)) channels)]]
     (doseq [recipient (:recipients email-channel)]
@@ -669,7 +669,7 @@ saved later when it is ready."
   [id]
   (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
   (let [card (api/write-check Card id)]
-    (db/delete! Card :id id)
+    (t2/delete! Card :id id)
     (events/publish-event! :card-delete (assoc card :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 

@@ -342,7 +342,7 @@
                              false [{:name "messages"} {:name "users"}]}
                             (-> (group-by :active synced-tables)
                                 (update-vals #(sort-by :name %)))))))
-          (finally (db/delete! Table :db_id (mt/id) :active false)))))))
+          (finally (t2/delete! Table :db_id (mt/id) :active false)))))))
 
 (deftest retry-certain-exceptions-test
   (mt/test-driver :bigquery-cloud-sdk

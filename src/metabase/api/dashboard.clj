@@ -434,7 +434,7 @@
   (log/warn (str "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its "
                  "`archived` value via PUT /api/dashboard/:id."))
   (let [dashboard (api/write-check Dashboard id)]
-    (db/delete! Dashboard :id id)
+    (t2/delete! Dashboard :id id)
     (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 

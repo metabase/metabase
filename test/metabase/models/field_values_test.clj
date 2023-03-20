@@ -129,7 +129,7 @@
 (deftest get-or-create-full-field-values!-test
   (mt/dataset test-data
     (testing "create a full Fieldvalues if it does not exist"
-      (db/delete! FieldValues :field_id (mt/id :categories :name) :type :full)
+      (t2/delete! FieldValues :field_id (mt/id :categories :name) :type :full)
       (is (= :full (-> (t2/select-one Field :id (mt/id :categories :name))
                        field-values/get-or-create-full-field-values!
                        :type))

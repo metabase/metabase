@@ -365,7 +365,7 @@
   [original-value setting-k]
   (if original-value
     (db/update! Setting setting-k :value original-value)
-    (db/delete! Setting :key setting-k))
+    (t2/delete! Setting :key setting-k))
   (setting.cache/restore-cache!))
 
 (defn do-with-temporary-setting-value
@@ -735,7 +735,7 @@
     (try
       (f)
       (finally
-        (db/delete! Permissions :object [:in #{read-path readwrite-path}])
+        (t2/delete! Permissions :object [:in #{read-path readwrite-path}])
         (doseq [group-id groups-with-read-perms]
           (perms/grant-collection-read-permissions! group-id collection-or-id))
         (doseq [group-id groups-with-readwrite-perms]
@@ -752,7 +752,7 @@
     (do-with-discarded-collections-perms-changes
      collection
      (fn []
-       (db/delete! Permissions
+       (t2/delete! Permissions
          :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
          :group_id [:not= (u/the-id (perms-group/admin))])
        (f)))

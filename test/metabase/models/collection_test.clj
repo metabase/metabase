@@ -363,7 +363,7 @@
        (let [~collection-binding (db/insert! Collection :name name#, :color "#ABCDEF", :location ~location)]
          ~@body)
        (finally
-         (db/delete! Collection :name name#)))))
+         (t2/delete! Collection :name name#)))))
 
 (defn- nonexistent-collection-id []
   (inc (or (:max (t2/select-one [Collection [:%max.id :max]]))
@@ -417,7 +417,7 @@
     ;;           +-> F -> G
     (with-collection-hierarchy [{:keys [a b c d e f g]}]
       (is (= true
-             (db/delete! Collection :id (u/the-id a))))
+             (t2/delete! Collection :id (u/the-id a))))
       (is (= 0
              (db/count Collection :id [:in (map u/the-id [a b c d e f g])])))))
 
@@ -430,7 +430,7 @@
     ;;           |
     ;;           +-> F -> G
     (with-collection-hierarchy [{:keys [a b c d e f g]}]
-      (db/delete! Collection :id (u/the-id c))
+      (t2/delete! Collection :id (u/the-id c))
       (is (= 2
              (db/count Collection :id [:in (map u/the-id [a b c d e f g])]))))))
 
@@ -1491,7 +1491,7 @@
                     Card       [{card-id :id}      {:collection_id coll-id}]
                     Dashboard  [{dashboard-id :id} {:collection_id coll-id}]
                     Pulse      [{pulse-id :id}     {:collection_id coll-id}]]
-      (db/delete! Collection :id coll-id)
+      (t2/delete! Collection :id coll-id)
       (is (db/exists? Card :id card-id)
           "Card")
       (is (db/exists? Dashboard :id dashboard-id)
@@ -1500,7 +1500,7 @@
           "Pulse"))
     (mt/with-temp* [Collection         [{coll-id :id}    {:namespace "snippets"}]
                     NativeQuerySnippet [{snippet-id :id} {:collection_id coll-id}]]
-      (db/delete! Collection :id coll-id)
+      (t2/delete! Collection :id coll-id)
       (is (db/exists? NativeQuerySnippet :id snippet-id)
           "Snippet"))))
 

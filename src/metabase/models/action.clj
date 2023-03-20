@@ -129,7 +129,7 @@
           existing-model (type->model (:type existing-action))]
       (if (and (:type action) (not= (:type action) (:type existing-action)))
         (let [new-model (type->model (:type action))]
-          (db/delete! existing-model :action_id id)
+          (t2/delete! existing-model :action_id id)
           (db/insert! new-model (assoc type-row :action_id id)))
         (db/update! existing-model id type-row)))))
 

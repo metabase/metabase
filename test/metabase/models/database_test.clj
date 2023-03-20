@@ -45,7 +45,7 @@
 
   (testing "After deleting a Database, no permissions for the DB should still exist"
     (mt/with-temp Database [{db-id :id}]
-      (db/delete! Database :id db-id)
+      (t2/delete! Database :id db-id)
       (is (= [] (db/select Permissions :object [:like (str "%" (perms/data-perms-path db-id) "%")]))))))
 
 (deftest tasks-test
@@ -64,7 +64,7 @@
                      (trigger-for-db db-id)))
 
         (testing "When deleting a Database, sync tasks should get removed"
-          (db/delete! Database :id db-id)
+          (t2/delete! Database :id db-id)
           (is (= nil
                  (trigger-for-db db-id))))))))
 
