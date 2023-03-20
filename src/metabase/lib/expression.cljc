@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.lib.common :as lib.common]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.temporal-bucketing
