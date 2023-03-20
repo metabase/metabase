@@ -272,7 +272,9 @@
     "ansi-regex": "5.0.1",
     "set-value": "4.0.1",
     "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
-    "unset-value": "2.0.1"
+    "unset-value": "2.0.1",
+    "nth-check": "2.0.1",
+    "json5": "2.2.2"
   },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",
