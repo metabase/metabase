@@ -16,6 +16,7 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan.hydrate :refer [hydrate]]
+   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
