@@ -30,7 +30,7 @@ export function countMatchingParentheses(tokens) {
  * @private
  * @param {string} source
  * @param {string} startRule
- * @param {string} query
+ * @param {object} query
  * @param {string | null} name
  */
 export function diagnose(source, startRule, query, name = null) {

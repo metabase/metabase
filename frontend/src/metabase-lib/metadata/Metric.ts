@@ -11,6 +11,8 @@ import Base from "./Base";
  */
 
 export default class Metric extends Base {
+  name: string;
+
   displayName() {
     return this.name;
   }
