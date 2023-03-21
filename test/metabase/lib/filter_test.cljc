@@ -131,6 +131,9 @@
                    :source-table (meta/id :categories)
                    :lib/options {:lib/uuid string?}
                    :filter original-filter}]}]
+    (testing "no filter"
+      (is (nil? (lib/current-filter q1)))
+      (is (= [] (lib/current-filters q2))))
     (testing "setting a simple filter"
       (let [result-query
             (lib/filter q1 (lib/between {:lib/metadata meta/metadata} -1 venues-category-id-metadata 42 100))]
@@ -138,7 +141,9 @@
                 (dissoc result-query :lib/metadata)))
         (testing "and getting the current filter"
           (is (=? original-filter
-                  (lib/current-filter result-query))))))
+                  (lib/current-filter result-query)))
+          (is (=? [original-filter]
+                  (lib/current-filters result-query))))))
 
     (testing "setting a simple filter thunk"
       (is (=? simple-filtered-query
@@ -210,6 +215,11 @@
            {:lib/uuid string?}
            [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
            "prefix"]
+          third-filter
+          [:contains
+           {:lib/uuid string?}
+           [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+           "part"]
           first-add
           (lib/add-filter simple-query
                           (lib/->between
@@ -247,8 +257,14 @@
                       [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
                       "part"]])]
       (testing "adding an initial filter"
-        (is (=? filtered-query first-add)))
+        (is (=? filtered-query first-add))
+        (is (=? [first-filter]
+                (lib/current-filters first-add))))
       (testing "conjoining to filter"
-        (is (=? and-query second-add)))
+        (is (=? and-query second-add))
+        (is (=? [first-filter second-filter]
+                (lib/current-filters second-add))))
       (testing "conjoining to conjunction filter"
-        (is (=? extended-and-query third-add))))))
+        (is (=? extended-and-query third-add))
+        (is (=? [first-filter second-filter third-filter]
+                (lib/current-filters third-add)))))))
