@@ -12,11 +12,9 @@ Whenever you’ve arrived at an answer that you want to save for later, click th
 
 ![Save button](../images/save-button.png)
 
-A modal will appear, prompting you to give your question a name and description, and to pick which [collection][collections] to save it in. Note that your administrator might have set things up so that you're only allowed to [save questions in certain collection][collection-permissions], but you can always save things in your Personal Collection. After saving your question, you'll be asked if you want to add it to a new or existing dashboard.
+A modal will appear, prompting you to give your question a name and description, and to pick which [collection](../../exploration-and-organization/collections.md) to save it in. Note that your administrator might have set things up so that you're only allowed to [save questions in certain collection](../../permissions/collections.md), but you can always save things in your Personal Collection. After saving your question, you'll be asked if you want to add it to a new or existing dashboard.
 
 Now, whenever you want to refer to your question again you can find it by searching for it in the search bar at the top of Metabase, or by navigating to the collection where you saved it.
-
-You can also convert a question to a [model][model].
 
 ## Downloading your question's results
 
@@ -41,17 +39,36 @@ You can't download the image of a dashboard, but you can set up a [dashboard sub
 
 ## Editing your question
 
-Once you save your question, a down arrow will appear to the right of the question's title. Clicking on the down arrow will bring up the **Question detail sidebar**, which gives you some options:
+Click into the question's title to edit the name of your question.
 
-![Question detail sidebar](../images/question-details-sidebar.png)
+Open the **...** menu to:
 
-- **Edit details** (Pencil icon). Change the title of the question, and add some description for context. Adding a description will also make the question easier to find using the search bar. You can also select more options to [cache the results of the question](#caching-results).
-- **Add to dashbboard** (Dashboard icon with plus symbol). See [dashboards][dashboards].
-- **Move** (Document icon with right arrow). Relocate the question to a different [collection][collections].
-- **Turn this into a model**. See [Models][model].
-- **Duplicate** (Square with little square). Create a copy of the question. Keep in mind that whenever you start editing a saved question, Metabase will create a copy of the question. You can either save your edits as a new question, or overwrite the original saved question.
-- **Archive** (Folder with down arrow). See [Archiving items][archiving-items].
-- **Bookmark** Save the question as a favorite, which will show up in the bookmarks section of your navigation sidebar. See [Bookmarks](../../exploration-and-organization/exploration.md#bookmarks).
+- [Verify](../../exploration-and-organization/exploration.md#verified-items) this question \*
+- Add to [dashboard](../../dashboards/start.md)
+- Move to another [collection](../../exploration-and-organization/collections.md)
+- Turn into a [model](../../data-modeling/models.md)
+- Duplicate
+- [Archive](../../exploration-and-organization/history.md)
+
+Click the **info** icon to:
+
+- Add a description
+- Edit the [cache duration](../../configuring-metabase/caching.md#caching-per-question)\*
+- View [revision history](../../exploration-and-organization/history.md)
+
+\* Available on [paid plans](https://www.metabase.com/pricing/).
+
+## Bookmark a question
+
+Click the **bookmark** icon to pin a question to your Metabase sidebar. See [Bookmarks](../../exploration-and-organization/exploration.md#bookmarks).
+
+## Re-using a question
+
+To use a saved question as the basis for another question, you can:
+
+- Open the **...** menu > **Turn into a [model](../../data-modeling/models.md)**.
+- [Create a new question](/docs/latest/questions/query-builder/introduction.md#creating-a-new-question-with-the-query-builder) and search for your saved question under **Pick your starting data**.
+- [Refer to the question in a SQL query](/docs/latest/questions/native-editor/referencing-saved-questions-in-queries.md).
 
 ## Caching question results
 
@@ -69,12 +86,4 @@ To share a question, click on the arrow pointing up and to the right in the bott
 
 ## Setting up alerts
 
-You can set up questions to run periodically and notify you if the results are interesting. Check out [Alerts][alerts].
-
-[alerts]: ./alerts.md
-[archiving-items]: ../../exploration-and-organization/history.md#archiving-items
-[caching]: ../../configuring-metabase/caching.md
-[collections]: ../../exploration-and-organization/collections.md
-[collection-permissions]: ../../permissions/collections.md
-[dashboards]: ../../dashboards/start.md
-[model]: ../../data-modeling/models.md
+You can set up questions to run periodically and notify you if the results are interesting. Check out [Alerts](./alerts.md).

@@ -11,7 +11,7 @@ If your results don't change frequently, you may want to cache your results, tha
 
 For example, if your data only updates once a day, there's no point in querying the database more than once a day, as they data won't have changed. Returning cached results can be significantly faster, as the database won't have to redo the work to answer your query.
 
-Metabase gives you the ability to automatically cache query results. On paid plans, you can also control caching for specific:
+Metabase gives you the ability to automatically cache query results. On [paid plans](https://www.metabase.com/pricing/), you can also control caching for specific:
 
 - [Databases](#caching-per-database)
 - [Questions](#caching-per-question)
@@ -100,7 +100,7 @@ This setting tells Metabase how long to keep the cached results for a specific q
 
 You can use this setting to update questions on the same cadence as your data. For example, if your data gets updated daily, you can set the **Cache configuration** to 24 hours.
 
-> This setting will only apply to questions that meet the [minimum query duration](#minimum-query-duration). You can check a question's average query duration from Metabase's [auditing tools](../usage-and-performance-tools/audit.md).
+> This setting will only apply to questions that meet the [minimum query duration](#minimum-query-duration). You can look up a question's average query duration from Metabase's [auditing tools](../usage-and-performance-tools/audit.md).
 
 If a question meets the minimum query duration, this setting will override:
 
@@ -118,7 +118,7 @@ This setting that tells Metabase how long to keep the cached results for each of
 5. Enter a cache duration in hours.
 6. Click **Save changes**.
 
-> The **Cache configuration** will only apply to questions that meet the [minimum query duration](#minimum-query-duration). You can check a question's average query duration from Metabase's [auditing tools](../usage-and-performance-tools/audit.md).
+> The **Cache configuration** will only apply to questions that meet the [minimum query duration](#minimum-query-duration). You can look up a question's average query duration from Metabase's [auditing tools](../usage-and-performance-tools/audit.md).
 
 For questions that meet the minimum query duration, your dashbaord cache configuration will override:
 
