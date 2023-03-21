@@ -27,7 +27,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -684,7 +684,7 @@
 (deftest embedding-not-enabled-message
   (is (= "Embedding is not enabled for this object."
          (with-embedding-enabled-and-temp-card-referencing :venues :name [card]
-           (db/update! Card (u/the-id card) :enable_embedding false)
+           (t2/update! Card (u/the-id card) {:enable_embedding false})
            (client/client :get 400 (field-values-url card (mt/id :venues :name)))))))
 
 (deftest card-param-values
@@ -697,11 +697,11 @@
     (mt/with-temporary-setting-values [enable-embedding true]
       (with-new-secret-key
         (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
-          (db/update! Card (:id field-filter-card)
+          (t2/update! Card (:id field-filter-card)
                       {:enable_embedding true
                        :embedding_params (zipmap (map :slug (:parameters field-filter-card))
                                                  (repeat "enabled"))})
-          (db/update! Card (:id card)
+          (t2/update! Card (:id card)
                       {:enable_embedding true
                        :embedding_params (zipmap (map :slug (:parameters card))
                                                  (repeat "enabled"))})
@@ -787,7 +787,7 @@
 (deftest endpoint-should-fail-if-embedding-is-disabled-for-the-dashboard
   (is (= "Embedding is not enabled for this object."
          (with-embedding-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
-           (db/update! Dashboard (u/the-id dashboard) :enable_embedding false)
+           (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding false})
            (client/client :get 400 (field-values-url dashboard (mt/id :venues :name)))))))
 
 
@@ -820,7 +820,7 @@
                                         :value "33 T")))))
 
               (testing "Endpoint should fail if embedding is disabled for the object"
-                (db/update! model (u/the-id object) :enable_embedding false)
+                (t2/update! model (u/the-id object) {:enable_embedding false})
                 (is (= "Embedding is not enabled for this object."
                        (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
                                       :value "33 T")))))]
@@ -863,7 +863,7 @@
                                       :value "10")))))
 
             (testing " ...or if embedding is disabled for the Card/Dashboard"
-              (db/update! model (u/the-id object) :enable_embedding false)
+              (t2/update! model (u/the-id object) {:enable_embedding false})
               (is (= "Embedding is not enabled for this object."
                      (client/client :get 400 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :name))
                                     :value "10")))))]
@@ -893,7 +893,7 @@
 (defn- do-with-chain-filter-fixtures [f]
   (with-embedding-enabled-and-new-secret-key
     (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard], :as m}]
-      (db/update! Dashboard (u/the-id dashboard) :enable_embedding true)
+      (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding true})
       (letfn [(token [params]
                 (dash-token dashboard (when params {:params params})))
               (values-url [& [params param-key]]
@@ -913,7 +913,7 @@
 (deftest chain-filter-embedding-disabled-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "without embedding enabled for dashboard"
-      (db/update! Dashboard (u/the-id dashboard) :enable_embedding false)
+      (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding false})
       (testing "GET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= "Embedding is not enabled for this object."
                (client/client :get 400 (values-url)))))
@@ -934,8 +934,8 @@
 (deftest params-with-static-list-test
   (testing "embedding with parameter that has source is a static list"
     (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
-      (db/update! Dashboard (:id dashboard)
-        :embedding_params {"static_category" "enabled", "static_category_label" "enabled"})
+      (t2/update! Dashboard (:id dashboard)
+        {:embedding_params {"static_category" "enabled", "static_category_label" "enabled"}})
       (testing "Should work if the param we're fetching values for is enabled"
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
           (is (= {:values          ["African" "American" "Asian"]
@@ -948,8 +948,8 @@
 
 (deftest chain-filter-enabled-params-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
-    (db/update! Dashboard (:id dashboard)
-      :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
+    (t2/update! Dashboard (:id dashboard)
+      {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
     (testing "Should work if the param we're fetching values for is enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= {:values          [2 3 4 5 6]
@@ -992,8 +992,8 @@
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
       (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
-        (db/update! Dashboard (:id dashboard)
-          :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
+        (t2/update! Dashboard (:id dashboard)
+          {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
         (testing "Should work if the param we're fetching values for is enabled"
           (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
             (is (= {:values          [2 3 4 5 6]
@@ -1007,16 +1007,16 @@
 (deftest chain-filter-locked-params-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is locked"
-      (db/update! Dashboard (:id dashboard)
-        :embedding_params {"category_id" "locked", "category_name" "locked"})
+      (t2/update! Dashboard (:id dashboard)
+        {:embedding_params {"category_id" "locked", "category_name" "locked"}})
       (doseq [url [(values-url) (search-url)]]
         (testing (str "\n" url)
           (is (re= #"Cannot search for values: \"category_(?:(?:name)|(?:id))\" is not an enabled parameter."
                    (client/client :get 400 url))))))
 
     (testing "Search param enabled\n"
-      (db/update! Dashboard (:id dashboard)
-        :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "locked"})
+      (t2/update! Dashboard (:id dashboard)
+        {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "locked"}})
 
       (testing "Requests should fail if the token is missing a locked parameter"
         (doseq [url [(values-url) (search-url)]]
@@ -1044,16 +1044,16 @@
 (deftest chain-filter-disabled-params-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is disabled"
-      (db/update! Dashboard (:id dashboard)
-        :embedding_params {"category_id" "disabled", "category_name" "disabled"})
+      (t2/update! Dashboard (:id dashboard)
+        {:embedding_params {"category_id" "disabled", "category_name" "disabled"}})
       (doseq [url [(values-url) (search-url)]]
         (testing (str "\n" url)
           (is (re= #"Cannot search for values: \"category_(?:(?:name)|(?:id))\" is not an enabled parameter\."
                    (client/client :get 400 url))))))
 
     (testing "Search param enabled\n"
-      (db/update! Dashboard (:id dashboard)
-        :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "disabled"})
+      (t2/update! Dashboard (:id dashboard)
+        {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "disabled"}})
 
       (testing "Requests should fail if the token has a disabled parameter"
         (doseq [url-fn [values-url search-url]

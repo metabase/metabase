@@ -313,7 +313,7 @@
                                     parameter))
                                 parameters)]
         (when-not (= parameters new-parameters)
-          (db/update! model po-id {:parameters new-parameters}))))))
+          (t2/update! model po-id {:parameters new-parameters}))))))
 
 (defn model-supports-implicit-actions?
   "A model with implicit action supported iff they are a raw table,

@@ -139,7 +139,7 @@
       ;; This allows existing values to be "cleared" by being set to nil
       (do
         (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
-          (db/update! GroupTableAccessPolicy
+          (t2/update! GroupTableAccessPolicy
                       id
                       (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
         (t2/select-one GroupTableAccessPolicy :id id))

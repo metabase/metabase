@@ -232,7 +232,7 @@
                                                                                :id (mt/user->id :rasta))]
                       (boolean (and reset_token reset_triggered))))]
             ;; make sure user is starting with no values
-            (db/update! User (mt/user->id :rasta), :reset_token nil, :reset_triggered nil)
+            (t2/update! User (mt/user->id :rasta) {:reset_token nil, :reset_triggered nil})
             (assert (not (reset-fields-set?)))
             ;; issue reset request (token & timestamp should be saved)
             (is (= nil
@@ -283,7 +283,7 @@
                         :new "whateverUP12!!"}]
           (mt/with-temp User [{:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
             (let [token (u/prog1 (str id "_" (UUID/randomUUID))
-                          (db/update! User id, :reset_token <>))
+                          (t2/update! User id {:reset_token <>}))
                   creds {:old {:password (:old password)
                                :username email}
                          :new {:password (:new password)
@@ -327,7 +327,7 @@
 
     (testing "Test that an expired token doesn't work"
       (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
-        (db/update! User (mt/user->id :rasta), :reset_token token, :reset_triggered 0)
+        (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
         (is (= {:errors {:password "Invalid reset token"}}
                (mt/client :post 400 "session/reset_password" {:token    token
                                                               :password "whateverUP12!!"})))))))
@@ -336,7 +336,7 @@
   (testing "GET /session/password_reset_token_valid"
     (testing "Check that a valid, unexpired token returns true"
       (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
-        (db/update! User (mt/user->id :rasta), :reset_token token, :reset_triggered (dec (System/currentTimeMillis)))
+        (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered (dec (System/currentTimeMillis))})
         (is (= {:valid true}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))
 
@@ -346,7 +346,7 @@
 
     (testing "Check that an expired but valid token returns false"
       (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
-        (db/update! User (mt/user->id :rasta), :reset_token token, :reset_triggered 0)
+        (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
         (is (= {:valid false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
 
@@ -479,7 +479,7 @@
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"
     (mt/with-temp User [user]
-      (db/update! User (u/the-id user) :password nil, :password_salt nil)
+      (t2/update! User (u/the-id user) {:password nil, :password_salt nil})
       (let [device-info {:device_id          "Cam's Computer"
                          :device_description "The computer where Cam wrote this test"
                          :ip_address         "192.168.1.1"}]

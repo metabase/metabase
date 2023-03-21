@@ -103,13 +103,13 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
-             (db/update! Database (:id database) :settings {:database-enable-actions true})))))
+             (t2/update! Database (:id database) {:settings {:database-enable-actions true}})))))
     (testing "Updating the engine when database-enable-actions is true should fail if the engine doesn't support actions"
       (mt/with-temp Database [database {:engine :h2 :settings {:database-enable-actions true}}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
-             (db/update! Database (:id database) :engine :sqlite)))))))
+             (t2/update! Database (:id database) {:engine :sqlite})))))))
 
 (deftest sensitive-data-redacted-test
   (let [encode-decode (fn [obj] (decode (encode obj)))
@@ -266,7 +266,7 @@
                                        :version 1
                                        :value   "new-password"})
                 (testing " updating the value works as expected"
-                  (db/update! Database id :details (assoc details :password-path  "/path/to/my/password-file"))
+                  (t2/update! Database id {:details (assoc details :password-path  "/path/to/my/password-file")})
                   (check-db-fn (t2/select-one Database :id id) {:kind    :password
                                                                 :source  :file-path
                                                                 :version 2
@@ -287,9 +287,9 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"The engine on a sample database cannot be changed."
-           (db/update! Database id :engine :sqlite))))
+           (t2/update! Database id {:engine :sqlite}))))
     (testing " updating other attributes of a sample database is allowed"
-      (db/update! Database id :name "My New Name")
+      (t2/update! Database id {:name "My New Name"})
       (is (= "My New Name" (t2/select-one-fn :name Database :id id))))))
 
 (driver/register! ::test, :abstract? true)

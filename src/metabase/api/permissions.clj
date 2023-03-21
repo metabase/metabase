@@ -174,8 +174,8 @@
   {name su/NonBlankString}
   (validation/check-manager-of-group group-id)
   (api/check-404 (db/exists? PermissionsGroup :id group-id))
-  (db/update! PermissionsGroup group-id
-              :name name)
+  (t2/update! PermissionsGroup group-id
+              {:name name})
   ;; return the updated group
   (t2/select-one PermissionsGroup :id group-id))
 
@@ -247,8 +247,8 @@
     (api/check
      (db/exists? User :id (:user_id old) :is_superuser false)
      [400 (tru "Admin cant be a group manager.")])
-    (db/update! PermissionsGroupMembership (:id old)
-                :is_group_manager is_group_manager)
+    (t2/update! PermissionsGroupMembership (:id old)
+                {:is_group_manager is_group_manager})
     (t2/select-one PermissionsGroupMembership :id (:id old))))
 
 (api/defendpoint PUT "/membership/:group-id/clear"

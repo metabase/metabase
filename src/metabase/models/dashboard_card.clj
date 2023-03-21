@@ -186,7 +186,7 @@
          updates (shallow-updates (select-keys dashboard-card update-ks)
                                   (select-keys old-dashboard-card update-ks))]
      (when (seq updates)
-       (db/update! DashboardCard id updates))
+       (t2/update! DashboardCard id updates))
      (when (not= (:series dashboard-card [])
                  (:series old-dashboard-card []))
        (update-dashboard-card-series! dashboard-card (:series dashboard-card)))
