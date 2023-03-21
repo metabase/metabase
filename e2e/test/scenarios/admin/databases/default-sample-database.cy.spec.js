@@ -2,14 +2,14 @@ import { restore, popover, modal } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
-describe("scenarios > admin > databases > edit", () => {
+describe("scenarios > admin > databases > sample database", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
     cy.intercept("PUT", "/api/database/*").as("databaseUpdate");
   });
 
-  it("sample database", () => {
+  it("database settings", () => {
     cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`).as("loadDatabase");
     cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
     cy.wait("@loadDatabase");
