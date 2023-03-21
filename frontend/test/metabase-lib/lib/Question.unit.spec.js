@@ -1605,6 +1605,47 @@ describe("Question", () => {
       );
     });
   });
+
+  describe("Question._getOrderByDescription", () => {
+    it("should work with fields", () => {
+      const query = {
+        "source-table": PRODUCTS.id,
+        "order-by": [["asc", ["field", PRODUCTS.CATEGORY.id, null]]],
+      };
+
+      expect(base_question._getOrderByDescription(PRODUCTS, query)).toEqual([
+        "Sorted by ",
+        ["Category ascending"],
+      ]);
+    });
+
+    it("should work with aggregations", () => {
+      const query = {
+        "source-table": PRODUCTS.id,
+        aggregation: [["count"]],
+        breakout: [["field", PRODUCTS.CATEGORY.id, null]],
+        "order-by": [["asc", ["aggregation", 0, null]]],
+      };
+      expect(base_question._getOrderByDescription(PRODUCTS, query)).toEqual([
+        "Sorted by ",
+        ["Count ascending"],
+      ]);
+    });
+
+    it("should work with expressions", () => {
+      const query = {
+        "source-table": PRODUCTS.id,
+        expressions: {
+          Foo: ["concat", "Foo ", ["field", 4, null]],
+        },
+        "order-by": [["asc", ["expression", "Foo", null]]],
+      };
+      expect(base_question._getOrderByDescription(PRODUCTS, query)).toEqual([
+        "Sorted by ",
+        ["Foo ascending"],
+      ]);
+    });
+  });
 });
 
 function parseUrl(url) {
