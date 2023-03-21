@@ -421,13 +421,6 @@ export default class Dimension {
     return this.temporalUnit() && /-of-/.test(this.temporalUnit());
   }
 
-  /**
-   * Whether temporal bucketing is being applied, *and* the bucketing is an truncation operation such as "day of month";
-   */
-  isTemporalTruncation(): boolean {
-    return this.temporalUnit() && !this.isTemporalExtraction();
-  }
-
   // binning-strategy stuff
   binningOptions() {
     return this.getOption("binning");
