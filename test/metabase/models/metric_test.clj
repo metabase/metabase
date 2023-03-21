@@ -7,7 +7,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))
 
@@ -30,17 +30,17 @@
         (is (thrown-with-msg?
              Exception
              #"You cannot update the creator_id of a Metric"
-             (db/update! Metric id {:creator_id (mt/user->id :crowberto)}))))
+             (t2/update! Metric id {:creator_id (mt/user->id :crowberto)}))))
 
       (testing "you shouldn't be able to set it to `nil` either"
         (is (thrown-with-msg?
              Exception
              #"You cannot update the creator_id of a Metric"
-             (db/update! Metric id {:creator_id nil}))))
+             (t2/update! Metric id {:creator_id nil}))))
 
       (testing "However calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
-        (is (= true
-               (db/update! Metric id {:creator_id (mt/user->id :rasta)})))))))
+        (is (= 1
+               (t2/update! Metric id {:creator_id (mt/user->id :rasta)})))))))
 
 
 ;; ## Metric Revisions

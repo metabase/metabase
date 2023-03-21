@@ -436,7 +436,7 @@
   (let [channel-ids (or channel-ids (mapv :id channels))]
     (when (should-send-notification? pulse results)
       (when (:alert_first_only pulse)
-        (db/delete! Pulse :id pulse-id))
+        (t2/delete! Pulse :id pulse-id))
       ;; `channel-ids` is the set of channels to send to now, so only send to those. Note the whole set of channels
       (for [channel channels
             :when   (contains? (set channel-ids) (:id channel))]

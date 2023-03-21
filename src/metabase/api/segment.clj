@@ -84,7 +84,7 @@
                      new-body)
         archive?   (:archived changes)]
     (when changes
-      (db/update! Segment id changes))
+      (t2/update! Segment id changes))
     (u/prog1 (hydrated-segment id)
       (events/publish-event! (if archive? :segment-delete :segment-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
