@@ -46,8 +46,8 @@
 
 (declare premium-embedding-token)
 
-;; let's prevent the DB from getting slammed with calls to `active-user-count`, we only really need one in flight at a
-;; time.
+;; let's prevent the DB from getting slammed with calls to get the active user count, we only really need one in flight
+;; at a time.
 (let [f        (fn []
                  {:post [(integer? %)]}
                  (log/info (u/colorize :yellow "GETTING ACTIVE USER COUNT!"))
