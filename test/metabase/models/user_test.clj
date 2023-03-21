@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.sso.integrations.saml-test :as saml-test]
    [metabase.http-client :as client]
    [metabase.integrations.google]
    [metabase.models
@@ -24,6 +23,7 @@
    [metabase.models.permissions-test :as perms-test]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.integrations.ldap :as ldap.test]
@@ -193,7 +193,7 @@
                      (select-keys ["crowberto@metabase.com" (:email user)])))))
 
         (testing "...or if setting is disabled"
-          (saml-test/with-valid-premium-features-token
+          (premium-features-test/with-premium-features #{:sso}
             (mt/with-temporary-setting-values [send-new-sso-user-admin-email? false]
               (mt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
                 (is (= {}
