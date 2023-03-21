@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -261,3 +262,81 @@
       (is (=? extended-and-query third-add))
       (is (=? [first-filter second-filter third-filter]
               (lib/current-filters third-add))))))
+
+(deftest ^:parallel replace-filter-test
+  (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+        venues-name-metadata        (lib.metadata/field q1 nil "VENUES" "NAME")
+        venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
+        simple-filtered-query
+        (-> q1
+            (lib/filter (lib/->between venues-category-id-metadata 42 100)))
+        between-uuid (-> (lib/current-filter simple-filtered-query)
+                         lib.options/options
+                         :lib/uuid)
+        result-query
+        (assoc-in simple-filtered-query
+                  [:stages 0 :filter]
+                  [:starts-with
+                   {:lib/uuid string?}
+                   [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+                   "part"])]
+    (testing "sanity"
+      (is (string? between-uuid)))
+    (testing "replacing a simple filter"
+      (is (=? result-query
+              (lib/replace-filter simple-filtered-query
+                                  between-uuid
+                                  (lib/starts-with
+                                   {:lib/metadata meta/metadata}
+                                   0
+                                   venues-name-metadata
+                                   "part")))))
+    (testing "setting a simple filter thunk"
+      (is (=? result-query
+              (lib/replace-filter simple-filtered-query
+                                  between-uuid
+                                  (lib/->starts-with venues-name-metadata "part")))))
+    (testing "setting a simple filter expression"
+      (is (=? result-query
+              (lib/replace-filter simple-filtered-query
+                                  between-uuid
+                                  [:starts-with venues-name-metadata "part"]))))
+
+    (let [contains-uuid (str (random-uuid))
+          nested-filtered-query
+          {:lib/type :mbql/query,
+           :database (meta/id),
+           :type :pipeline,
+           :stages
+           [{:lib/type :mbql.stage/mbql,
+             :source-table (meta/id :categories)
+             :lib/options {:lib/uuid (str (random-uuid))}
+             :filter
+             [:or
+              {:lib/uuid (str (random-uuid))}
+              [:between
+               {:lib/uuid (str (random-uuid))}
+               [:field {:base-type :type/Integer, :lib/uuid (str (random-uuid))} (meta/id :venues :category-id)]
+               42
+               100]
+              [:and
+               {:lib/uuid (str (random-uuid))}
+               [:contains
+                {:lib/uuid contains-uuid}
+                [:field {:base-type :type/Text, :lib/uuid (str (random-uuid))} (meta/id :venues :name)]
+                "part"]
+               [:=
+                {:lib/uuid (str (random-uuid))}
+                [:field {:base-type :type/Integer, :lib/uuid (str (random-uuid))} (meta/id :venues :category-id)]
+                242
+                [:field {:base-type :type/BigInteger, :lib/uuid (str (random-uuid))} "ID"]]]]}]}]
+      (testing "setting a nested filter expression"
+        (is (=? (assoc-in nested-filtered-query
+                          [:stages 0 :filter 3 2]
+                          [:starts-with
+                           {:lib/uuid string?}
+                           [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+                           "part"])
+                (lib/replace-filter nested-filtered-query
+                                    contains-uuid
+                                    [:starts-with venues-name-metadata "part"])))))))

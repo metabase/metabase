@@ -106,6 +106,7 @@
    add-filter
    current-filter
    current-filters
+   replace-filter
    and
    or
    not
