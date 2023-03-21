@@ -78,8 +78,9 @@
 
 (defn- field-ids->param-field-values-ignoring-current-user
   [param-field-ids]
-  (m/index-by :field_id (t2/select ['FieldValues :values :human_readable_values :field_id]
-                          :field_id [:in param-field-ids])))
+  (t2/select-fn->fn :field_id identity ['FieldValues :values :human_readable_values :field_id]
+                    :type :full
+                    :field_id [:in param-field-ids]))
 
 (defn- field-ids->param-field-values
   "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference. This map is

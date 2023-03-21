@@ -150,27 +150,28 @@
                    (client/client :get 404 (str "public/card/" uuid))))))))))
 
 (deftest make-sure-param-values-get-returned-as-expected
-  (mt/with-temp Card [card {:dataset_query
-                            {:database (mt/id)
-                             :type     :native
-                             :native   {:query         (str "SELECT COUNT(*) "
-                                                            "FROM venues "
-                                                            "LEFT JOIN categories ON venues.category_id = categories.id "
-                                                            "WHERE {{category}}")
-                                        :collection    "CATEGORIES"
-                                        :template-tags {:category {:name         "category"
-                                                                   :display-name "Category"
-                                                                   :type         "dimension"
-                                                                   :dimension    ["field" (mt/id :categories :name) nil]
-                                                                   :widget-type  "category"
-                                                                   :required     true}}}}}]
-    (is (= {(mt/id :categories :name) {:values                (t2/select-one-fn (comp count :values)
-                                                                                'FieldValues :field_id (mt/id :categories :name))
-                                       :human_readable_values []
-                                       :field_id              (mt/id :categories :name)}}
-           (-> (:param_values (#'api.public/public-card :id (u/the-id card)))
-               (update-in [(mt/id :categories :name) :values] count)
-               (update (mt/id :categories :name) #(into {} %)))))))
+  (let [category-name-id (mt/id :categories :name)]
+    (mt/with-temp Card [card {:dataset_query
+                              {:database (mt/id)
+                               :type     :native
+                               :native   {:query         (str "SELECT COUNT(*) "
+                                                              "FROM venues "
+                                                              "LEFT JOIN categories ON venues.category_id = categories.id "
+                                                              "WHERE {{category}}")
+                                          :collection    "CATEGORIES"
+                                          :template-tags {:category {:name         "category"
+                                                                     :display-name "Category"
+                                                                     :type         "dimension"
+                                                                     :dimension    ["field" category-name-id nil]
+                                                                     :widget-type  "category"
+                                                                     :required     true}}}}}]
+     (is (= {(mt/id :categories :name) {:values                (t2/select-one-fn (comp count :values)
+                                                                                 'FieldValues :field_id category-name-id)
+                                        :human_readable_values []
+                                        :field_id              category-name-id}}
+            (-> (:param_values (#'api.public/public-card :id (u/the-id card)))
+                (update-in [category-name-id :values] count)
+                (update category-name-id #(into {} %))))))))
 
 ;;; ------------------------- GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions) --------------------------
 
