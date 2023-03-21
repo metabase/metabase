@@ -1593,7 +1593,7 @@ class QuestionInner {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
 
-    _getMLv2Query(metadata = this._metadata) {
+  _getMLv2Query(metadata = this._metadata) {
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
       if (!this.__mlv2MetadataProvider) {
@@ -1624,8 +1624,7 @@ class QuestionInner {
 
     console.log("Using cached MLv2 query");
     return this.__mlv2Query;
-    }
-
+  }
 }
 
 export default class Question extends memoizeClass<QuestionInner>("query")(
