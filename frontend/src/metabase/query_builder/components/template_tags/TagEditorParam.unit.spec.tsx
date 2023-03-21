@@ -65,146 +65,158 @@ const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
 };
 
 describe("TagEditorParam", () => {
-  it("should be able to update the name of the tag", async () => {
-    const tag = createMockTemplateTag();
-    const { setTemplateTag } = setup({ tag });
+  describe("tag name", () => {
+    it("should be able to update the name of the tag", async () => {
+      const tag = createMockTemplateTag();
+      const { setTemplateTag } = setup({ tag });
 
-    const input = screen.getByRole("textbox", { name: "Filter widget label" });
-    userEvent.clear(input);
-    userEvent.type(input, "New");
-    userEvent.tab();
+      const input = screen.getByRole("textbox", {
+        name: "Filter widget label",
+      });
+      userEvent.clear(input);
+      userEvent.type(input, "New");
+      userEvent.tab();
 
-    expect(setTemplateTag).toHaveBeenCalledWith({
-      ...tag,
-      "display-name": "New",
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        "display-name": "New",
+      });
     });
   });
 
-  it("should be able to change the type of the tag", () => {
-    const tag = createMockTemplateTag({
-      type: "dimension",
-      dimension: ["field", PEOPLE.NAME, null],
-      "widget-type": "string/starts-with",
-    });
-    const { setTemplateTag } = setup({ tag });
+  describe("tag type", () => {
+    it("should be able to change the type of the tag", () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PEOPLE.NAME, null],
+        "widget-type": "string/starts-with",
+      });
+      const { setTemplateTag } = setup({ tag });
 
-    userEvent.click(screen.getByText("Field Filter"));
-    userEvent.click(screen.getByText("Number"));
+      userEvent.click(screen.getByText("Field Filter"));
+      userEvent.click(screen.getByText("Number"));
 
-    expect(setTemplateTag).toHaveBeenCalledWith({
-      ...tag,
-      type: "number",
-      default: undefined,
-      dimension: undefined,
-      "widget-type": undefined,
-    });
-  });
-
-  it("should default to string/contains for a new field filter", async () => {
-    const tag = createMockTemplateTag({
-      type: "dimension",
-      dimension: undefined,
-      "widget-type": undefined,
-    });
-    const { setTemplateTag } = setup({ tag });
-
-    userEvent.click(await screen.findByText("People"));
-    userEvent.click(await screen.findByText("Name"));
-
-    expect(setTemplateTag).toHaveBeenCalledWith({
-      ...tag,
-      dimension: ["field", PEOPLE.NAME, null],
-      "widget-type": "string/contains",
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        type: "number",
+        default: undefined,
+        dimension: undefined,
+        "widget-type": undefined,
+      });
     });
   });
 
-  it("should default to the first parameter option for a new non-string field filter", async () => {
-    const tag = createMockTemplateTag({
-      type: "dimension",
-      dimension: undefined,
-      "widget-type": undefined,
+  describe("tag dimension", () => {
+    it("should default to string/contains for a new field filter", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: undefined,
+        "widget-type": undefined,
+      });
+      const { setTemplateTag } = setup({ tag });
+
+      userEvent.click(await screen.findByText("People"));
+      userEvent.click(await screen.findByText("Name"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        dimension: ["field", PEOPLE.NAME, null],
+        "widget-type": "string/contains",
+      });
     });
-    const { setTemplateTag } = setup({ tag });
 
-    userEvent.click(await screen.findByText("Orders"));
-    userEvent.click(await screen.findByText("Quantity"));
+    it("should default to the first parameter option for a new non-string field filter", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: undefined,
+        "widget-type": undefined,
+      });
+      const { setTemplateTag } = setup({ tag });
 
-    expect(setTemplateTag).toHaveBeenCalledWith({
-      ...tag,
-      dimension: ["field", ORDERS.QUANTITY, null],
-      "widget-type": "number/=",
+      userEvent.click(await screen.findByText("Orders"));
+      userEvent.click(await screen.findByText("Quantity"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        dimension: ["field", ORDERS.QUANTITY, null],
+        "widget-type": "number/=",
+      });
     });
-  });
 
-  it("should be able to change the widget type", () => {
-    const tag = createMockTemplateTag({
-      type: "dimension",
-      dimension: ["field", PEOPLE.NAME, null],
-      "widget-type": "string/starts-with",
-    });
-    const { setTemplateTag } = setup({ tag });
+    it("should allow to change the field for a field filter", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PEOPLE.NAME, null],
+        "widget-type": "string/=",
+      });
+      const { setTemplateTag } = setup({ tag });
 
-    userEvent.click(screen.getByText("String starts with"));
-    userEvent.click(screen.getByText("String contains"));
+      userEvent.click(await screen.findByText("Name"));
+      userEvent.click(await screen.findByText("Address"));
 
-    expect(setTemplateTag).toHaveBeenCalledWith({
-      ...tag,
-      "widget-type": "string/contains",
-    });
-  });
-
-  it("should replace old location widget-type values with string/=", () => {
-    const tag = createMockTemplateTag({
-      type: "dimension",
-      dimension: ["field", PEOPLE.NAME, null],
-      "widget-type": "location/country",
-    });
-    setup({ tag });
-
-    expect(screen.getByText("String")).toBeInTheDocument();
-  });
-
-  it("should allow to change the field for a field filter", async () => {
-    const tag = createMockTemplateTag({
-      type: "dimension",
-      dimension: ["field", PEOPLE.NAME, null],
-      "widget-type": "string/=",
-    });
-    const { setTemplateTag } = setup({ tag });
-
-    userEvent.click(await screen.findByText("Name"));
-    userEvent.click(await screen.findByText("Address"));
-
-    expect(setTemplateTag).toHaveBeenCalledWith({
-      ...tag,
-      dimension: ["field", PEOPLE.ADDRESS, null],
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        dimension: ["field", PEOPLE.ADDRESS, null],
+      });
     });
   });
 
-  it("should be able to make the tag required", () => {
-    const tag = createMockTemplateTag();
-    const { setTemplateTag } = setup({ tag });
+  describe("tag widget type", () => {
+    it("should be able to change the widget type", () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PEOPLE.NAME, null],
+        "widget-type": "string/starts-with",
+      });
+      const { setTemplateTag } = setup({ tag });
 
-    const toggle = screen.getByRole("switch", { name: "Required?" });
-    userEvent.click(toggle);
+      userEvent.click(screen.getByText("String starts with"));
+      userEvent.click(screen.getByText("String contains"));
 
-    expect(setTemplateTag).toHaveBeenCalledWith({
-      ...tag,
-      required: true,
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        "widget-type": "string/contains",
+      });
+    });
+
+    it("should replace old location widget-type values with string/=", () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PEOPLE.NAME, null],
+        "widget-type": "location/country",
+      });
+      setup({ tag });
+
+      expect(screen.getByText("String")).toBeInTheDocument();
     });
   });
 
-  it("should clear the default value when becoming not required", () => {
-    const tag = createMockTemplateTag({ required: true, default: "abc" });
-    const { setTemplateTag } = setup({ tag });
+  describe("tag required", () => {
+    it("should be able to make the tag required", () => {
+      const tag = createMockTemplateTag();
+      const { setTemplateTag } = setup({ tag });
 
-    const toggle = screen.getByRole("switch", { name: "Required?" });
-    userEvent.click(toggle);
+      const toggle = screen.getByRole("switch", { name: "Required?" });
+      userEvent.click(toggle);
 
-    expect(setTemplateTag).toHaveBeenCalledWith({
-      ...tag,
-      required: false,
-      default: undefined,
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        required: true,
+      });
+    });
+
+    it("should clear the default value when becoming not required", () => {
+      const tag = createMockTemplateTag({ required: true, default: "abc" });
+      const { setTemplateTag } = setup({ tag });
+
+      const toggle = screen.getByRole("switch", { name: "Required?" });
+      userEvent.click(toggle);
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        required: false,
+        default: undefined,
+      });
     });
   });
 });
