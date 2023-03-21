@@ -103,6 +103,9 @@
    with-join-alias]
   [lib.filter
    filter
+   add-filter
+   current-filter
+   current-filters
    and
    or
    not
