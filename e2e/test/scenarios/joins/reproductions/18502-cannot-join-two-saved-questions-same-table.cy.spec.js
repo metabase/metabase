@@ -31,7 +31,6 @@ describe("issue 18502", () => {
 
     cy.findByText("18502#1").click();
     cy.icon("join_left_outer").click();
-    cy.wait("@schema");
 
     popover().within(() => {
       cy.findByTextEnsureVisible("Sample Database").click();
