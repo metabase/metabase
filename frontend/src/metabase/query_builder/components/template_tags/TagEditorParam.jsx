@@ -19,15 +19,18 @@ import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/componen
 import MetabaseSettings from "metabase/lib/settings";
 
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
-import { getParameterOptionsForField } from "metabase-lib/parameters/utils/template-tag-options";
+import {
+  getDefaultParameterWidgetType,
+  getParameterOptionsForField,
+} from "metabase-lib/parameters/utils/template-tag-options";
 
 import {
-  ErrorSpan,
-  TagName,
-  TagContainer,
   ContainerLabel,
-  InputContainer,
   DefaultParameterValueWidget,
+  ErrorSpan,
+  InputContainer,
+  TagContainer,
+  TagName,
 } from "./TagEditorParam.styled";
 
 const propTypes = {
@@ -120,20 +123,10 @@ export class TagEditorParam extends Component {
       if (!field) {
         return;
       }
-      const options = getParameterOptionsForField(field);
-      let widgetType;
-      if (
-        tag["widget-type"] &&
-        _.findWhere(options, { type: tag["widget-type"] })
-      ) {
-        widgetType = tag["widget-type"];
-      } else if (options.length > 0) {
-        widgetType = options[0].type;
-      }
       setTemplateTag({
         ...tag,
         dimension,
-        "widget-type": widgetType,
+        "widget-type": getDefaultParameterWidgetType(tag, field),
       });
     }
   }

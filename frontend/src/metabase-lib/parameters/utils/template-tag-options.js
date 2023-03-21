@@ -35,3 +35,16 @@ export function getParameterOptionsForField(field) {
       };
     });
 }
+
+export function getDefaultParameterWidgetType(tag, field) {
+  const options = getParameterOptionsForField(field);
+
+  if (
+    tag["widget-type"] &&
+    options.some(({ type }) => type === tag["widget-type"])
+  ) {
+    return tag["widget-type"];
+  } else if (options.length > 0) {
+    return options[0].type;
+  }
+}
