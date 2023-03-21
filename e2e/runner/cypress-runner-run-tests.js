@@ -22,7 +22,7 @@ const runCypress = async (baseUrl, exitFunction) => {
   });
 
   const defaultConfig = {
-    browser: "electron",
+    browser: "chrome",
     configFile: "e2e/support/cypress.config.js",
     config: {
       baseUrl,
