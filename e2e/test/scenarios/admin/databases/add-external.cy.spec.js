@@ -5,20 +5,18 @@ import {
   QA_POSTGRES_PORT,
 } from "e2e/support/cypress_data";
 
-describe(
-  "admin > database > add > external databases",
-  { tags: "@external" },
-  () => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
+describe("admin > database > add", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
 
-      cy.intercept("POST", "/api/database").as("createDatabase");
+    cy.intercept("POST", "/api/database").as("createDatabase");
 
-      cy.visit("/admin/databases/create");
-      cy.findByLabelText("Database type").click();
-    });
+    cy.visit("/admin/databases/create");
+    cy.findByLabelText("Database type").click();
+  });
 
+  describe("external databases", { tags: "@external" }, () => {
     it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
       cy.contains("PostgreSQL").click({ force: true });
 
@@ -170,7 +168,9 @@ describe(
       cy.findByLabelText("Port").should("not.exist");
       cy.findByLabelText("Paste your connection string").type(
         connectionString,
-        { delay: 0 },
+        {
+          delay: 0,
+        },
       );
 
       cy.findByText("Save").should("not.be.disabled").click();
@@ -223,36 +223,40 @@ describe(
         cy.findByText("Done!");
       });
     });
-  },
-);
-
-describe("Google service account JSON upload", () => {
-  const serviceAccountJSON = '{"foo": 123}';
-
-  it("should work for BigQuery", () => {
-    cy.visit("/admin/databases/create");
-
-    chooseDatabase("BigQuery");
-    typeAndBlurUsingLabel("Display name", "BQ");
-    selectFieldOption("Datasets", "Only these...");
-    cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
-
-    mockUploadServiceAccountJSON(serviceAccountJSON);
-    mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
-      expect(body.details["service-account-json"]).to.equal(serviceAccountJSON);
-    });
   });
 
-  it("should work for Google Analytics", () => {
-    cy.visit("/admin/databases/create");
+  describe("Google service account JSON upload", () => {
+    const serviceAccountJSON = '{"foo": 123}';
 
-    chooseDatabase("Google Analytics");
-    typeAndBlurUsingLabel("Display name", "GA");
-    typeAndBlurUsingLabel("Google Analytics Account ID", " 9  ");
+    it("should work for BigQuery", () => {
+      cy.visit("/admin/databases/create");
 
-    mockUploadServiceAccountJSON(serviceAccountJSON);
-    mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
-      expect(body.details["service-account-json"]).to.equal(serviceAccountJSON);
+      chooseDatabase("BigQuery");
+      typeAndBlurUsingLabel("Display name", "BQ");
+      selectFieldOption("Datasets", "Only these...");
+      cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
+
+      mockUploadServiceAccountJSON(serviceAccountJSON);
+      mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
+        expect(body.details["service-account-json"]).to.equal(
+          serviceAccountJSON,
+        );
+      });
+    });
+
+    it("should work for Google Analytics", () => {
+      cy.visit("/admin/databases/create");
+
+      chooseDatabase("Google Analytics");
+      typeAndBlurUsingLabel("Display name", "GA");
+      typeAndBlurUsingLabel("Google Analytics Account ID", " 9  ");
+
+      mockUploadServiceAccountJSON(serviceAccountJSON);
+      mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
+        expect(body.details["service-account-json"]).to.equal(
+          serviceAccountJSON,
+        );
+      });
     });
   });
 });
