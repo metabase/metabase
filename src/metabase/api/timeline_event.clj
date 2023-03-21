@@ -78,7 +78,7 @@
                                  (boolean timestamp) (update :timestamp u.date/parse))]
     (collection/check-allowed-to-change-collection existing timeline-event-updates)
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
-    (db/update! TimelineEvent id
+    (t2/update! TimelineEvent id
       (u/select-keys-when timeline-event-updates
         :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
         :non-nil #{:name}))
@@ -89,7 +89,7 @@
   "Delete a [[TimelineEvent]]."
   [id]
   (api/write-check TimelineEvent id)
-  (db/delete! TimelineEvent :id id)
+  (t2/delete! TimelineEvent :id id)
   api/generic-204-no-content)
 
 (api/define-routes)

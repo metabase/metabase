@@ -75,7 +75,7 @@
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp Collection [collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
-      ;; use db/execute! instead of db/update! so the updated_at field doesn't get automatically updated!
+      ;; use db/execute! instead of t2/update! so the updated_at field doesn't get automatically updated!
       (when (seq pulses-or-ids)
         (db/execute! {:update :pulse
                       :set    {:collection_id (u/the-id collection)}
@@ -539,7 +539,7 @@
 
     (testing "...and unset (unpin) it as well?"
       (pulse-test/with-pulse-in-collection [_ collection pulse]
-        (db/update! Pulse (u/the-id pulse) :collection_position 1)
+        (t2/update! Pulse (u/the-id pulse) {:collection_position 1})
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:collection_position nil})
@@ -554,7 +554,7 @@
                (t2/select-one-fn :collection_position Pulse :id (u/the-id pulse))))
 
         (testing "shouldn't be able to unset (unpin) a Pulse"
-          (db/update! Pulse (u/the-id pulse) :collection_position 1)
+          (t2/update! Pulse (u/the-id pulse) {:collection_position 1})
           (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse))
                                 {:collection_position nil})
           (is (= 1
@@ -573,7 +573,7 @@
   (testing "Can we unarchive a Pulse?"
     (pulse-test/with-pulse-in-collection [_ collection pulse]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-      (db/update! Pulse (u/the-id pulse) :archived true)
+      (t2/update! Pulse (u/the-id pulse) {:archived true})
       (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                             {:archived false})
       (is (= false

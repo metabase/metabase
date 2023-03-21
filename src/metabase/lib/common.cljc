@@ -36,8 +36,9 @@
      {:pre [(symbol? op-name)
             (every? vector? argvecs) (every? #(every? symbol? %) argvecs)
             (every? #(not-any? #{'query 'stage-number} %) argvecs)]}
-     `(do
-          (mu/defn ~(symbol (str (name op-name) "-clause")) :- ~(keyword "mbql.clause" (name op-name))
+     (let [fn-rename #(name (get {'/ 'div} % %))]
+       `(do
+          (mu/defn ~(symbol (str (fn-rename op-name) "-clause")) :- ~(keyword "mbql.clause" (name op-name))
             ~(format "Create a standalone clause of type `%s`." (name op-name))
             ~@(for [argvec argvecs
                     :let [arglist-expr (if (contains? (set argvec) '&)
@@ -56,7 +57,7 @@
                     :let [arglist-expr (if (contains? (set argvec) '&)
                                          (filterv (complement #{'&}) argvec)
                                          (conj argvec []))]]
-               `([~@argvec]
-                 (fn ~(symbol (str (name op-name) "-closure"))
-                   [~'query ~'stage-number]
-                   (apply ~(symbol (str (name op-name) "-clause")) ~'query ~'stage-number ~@arglist-expr))))))))
+                `([~@argvec]
+                  (fn ~(symbol (str (fn-rename op-name) "-closure"))
+                    [~'query ~'stage-number]
+                    (apply ~(symbol (str (fn-rename op-name) "-clause")) ~'query ~'stage-number ~@arglist-expr)))))))))

@@ -50,7 +50,7 @@
       (if (= (select-keys user user-keys) user-data)
         user
         (do
-          (db/update! User id user-data)
+          (t2/update! User id user-data)
           (t2/select-one User :id id))))))
 
 (defn check-sso-redirect
