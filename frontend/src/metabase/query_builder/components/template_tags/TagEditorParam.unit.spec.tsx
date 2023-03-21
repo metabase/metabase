@@ -81,6 +81,17 @@ describe("TagEditorParam", () => {
     });
   });
 
+  it("should replace old location widget-type values with string/=", () => {
+    const tag = createMockTemplateTag({
+      type: "dimension",
+      dimension: ["field", PEOPLE.NAME, null],
+      "widget-type": "location/country",
+    });
+    setup({ tag });
+
+    expect(screen.getByText("String")).toBeInTheDocument();
+  });
+
   it("should be able to make the tag required", () => {
     const tag = createMockTemplateTag();
     const { setTemplateTag } = setup({ tag });
