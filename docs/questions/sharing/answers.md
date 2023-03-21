@@ -53,15 +53,11 @@ Once you save your question, a down arrow will appear to the right of the questi
 - **Archive** (Folder with down arrow). See [Archiving items][archiving-items].
 - **Bookmark** Save the question as a favorite, which will show up in the bookmarks section of your navigation sidebar. See [Bookmarks](../../exploration-and-organization/exploration.md#bookmarks).
 
-## Caching results
+## Caching question results
 
-{% include plans-blockquote.html feature="Question-specific caching" %}
+{% include plans-blockquote.html feature="Caching question results" %}
 
-If your results don't change frequently, you may want to cache your results, that is: store your results in Metabase so that the next time you visit the question, Metabase can retrieve the stored results rather than query the database again. For example, if your data only updates once a day, there's no point in querying the database more than once a day, as they data won't have changed. Returning cached results can be significantly faster, as the database won't have to redo the work to answer your query.
-
-Administrators can set global caching controls, but if you're using a paid version of Metabase you can set caching per question. To cache results, click on the down arrow next to the question's title to open the __Question detail sidebar__, then click on the __Pencil icon__ to __Edit details__. In the Modal that pops up, in the bottom left, select __More options__. There you'll be able to tell Metabase how long it should cache the question's results. This caching will only apply to this specific question; admins can [configure database-wide caching settings][caching] in the __Admin panel__.
-
-Admins can still set global caching, but setting a cache duration on a specific question will override that global setting–useful for when a particular question has a different natural cadence.
+See [Caching per question](../../configuring-metabase/caching.md#ttl-per-question).
 
 ## Sharing questions with public links
 
