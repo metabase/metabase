@@ -28,6 +28,7 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan.db :as db]
+   [toucan2.core :as t2]
    [toucan2.tools.after :as t2.after]))
 
 (def ^:private identity-condition
@@ -60,7 +61,7 @@
                      (if (coll? v)
                        (json/encode v)
                        v)))
-       (m/mapply db/select-one model)))
+       (m/mapply t2/select-one model)))
 
 (defn- has-post-insert?
   [model]
@@ -147,10 +148,10 @@
                  (for [[position entity existing] update]
                    (let [id (u/the-id existing)]
                      (if (= on-error :abort)
-                       (db/update! model id entity)
+                       (t2/update! model id entity)
                        (with-error-handling
                          (trs "Error updating {0}" (name-for-logging (name model) entity))
-                         (db/update! model id entity)))
+                         (t2/update! model id entity)))
                      [id position])))
          (sort-by second)
          (map first))))

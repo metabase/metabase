@@ -19,7 +19,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
@@ -139,7 +140,7 @@
   nested Fields. Returns `1` if a Field was marked inactive, `nil` otherwise."
   [table :- i/TableInstance, metabase-field :- common/TableMetadataFieldWithID]
   (log/info (trs "Marking Field ''{0}'' as inactive." (common/field-metadata-name-for-logging table metabase-field)))
-  (when (db/update! Field (u/the-id metabase-field) :active false)
+  (when (pos? (t2/update! Field (u/the-id metabase-field) {:active false}))
     1))
 
 (s/defn ^:private retire-fields! :- su/IntGreaterThanOrEqualToZero

@@ -96,7 +96,7 @@
                   Card          [{card-id3 :id} {:name "card3"}]]
     (let [upd-series (fn [series]
                        (dashboard-card/update-dashboard-card-series! {:id dashcard-id} series)
-                       (set (for [card-id (db/select-field :card_id DashboardCardSeries, :dashboardcard_id dashcard-id)]
+                       (set (for [card-id (t2/select-fn-set :card_id DashboardCardSeries, :dashboardcard_id dashcard-id)]
                               (t2/select-one-fn :name Card, :id card-id))))]
       (is (= #{}
              (upd-series [])))
@@ -326,7 +326,7 @@
                                              :col                    3}]]
       ;; NOTE: we need to remove `:created_at` and `:updated_at` because they are not
       ;; transformed by `from-parsed-json`
-      (let [dashcard     (dissoc (db/select-one DashboardCard :id (u/the-id dashcard))
+      (let [dashcard     (dissoc (t2/select-one DashboardCard :id (u/the-id dashcard))
                                  :created_at :updated_at)
             serialized   (json/generate-string dashcard)
             deserialized (json/parse-string serialized true)

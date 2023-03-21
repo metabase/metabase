@@ -255,7 +255,9 @@ describe("Actions > ActionViz > Action", () => {
     it("should render the action name as the form title", async () => {
       await setup({ settings: formSettings });
 
-      expect(screen.getByText("My Awesome Action")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "My Awesome Action" }),
+      ).toBeInTheDocument();
     });
 
     it("should only show form fields with no provided values from dashboard filters", async () => {
@@ -271,7 +273,7 @@ describe("Actions > ActionViz > Action", () => {
     it("should render as a button if no parameters are missing", async () => {
       await setup({
         settings: formSettings,
-        parameterValues: { "dash-param-1": "foo", "dash-param-2": "bar" },
+        parameterValues: { "dash-param-1": "foo", "dash-param-2": 2 },
       });
 
       expect(
@@ -300,7 +302,7 @@ describe("Actions > ActionViz > Action", () => {
         expect(screen.getByLabelText("Parameter 2")).toHaveValue(5),
       );
 
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: ACTION.name }));
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
@@ -327,7 +329,7 @@ describe("Actions > ActionViz > Action", () => {
         expect(screen.getByLabelText("Parameter 1")).toHaveValue("foo"),
       );
 
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: ACTION.name }));
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);

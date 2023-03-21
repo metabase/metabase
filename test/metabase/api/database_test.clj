@@ -219,8 +219,8 @@
                       s/Keyword s/Any}
                      response))
         (when (integer? db-id)
-          (db/select-one Database :id db-id)))
-      (finally (db/delete! Database :name db-name)))))
+          (t2/select-one Database :id db-id)))
+      (finally (t2/delete! Database :name db-name)))))
 
 (deftest create-db-test
   (testing "POST /api/database"
@@ -310,7 +310,7 @@
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
-              (let [curr-db (db/select-one [Database :name :engine :cache_ttl :details :is_full_sync], :id db-id)]
+              (let [curr-db (t2/select-one [Database :name :engine :cache_ttl :details :is_full_sync], :id db-id)]
                 (is (=
                      {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
                       :engine       :h2
@@ -337,10 +337,10 @@
               updates1! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates1))
               updates2! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates2))]
           (updates1!)
-          (let [curr-db (db/select-one [Database :cache_ttl], :id db-id)]
+          (let [curr-db (t2/select-one [Database :cache_ttl], :id db-id)]
             (is (= 1337 (:cache_ttl curr-db))))
           (updates2!)
-          (let [curr-db (db/select-one [Database :cache_ttl], :id db-id)]
+          (let [curr-db (t2/select-one [Database :cache_ttl], :id db-id)]
             (is (= nil (:cache_ttl curr-db)))))))))
 
 (deftest fetch-database-metadata-test
@@ -352,14 +352,14 @@
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
-                                    (db/select-one [Table :created_at :updated_at] :id (mt/id :categories))
+                                    (t2/select-one [Table :created_at :updated_at] :id (mt/id :categories))
                                     {:schema              "PUBLIC"
                                      :name                "CATEGORIES"
                                      :display_name        "Categories"
                                      :entity_type         "entity/GenericTable"
                                      :initial_sync_status "complete"
                                      :fields              [(merge
-                                                            (field-details (db/select-one Field :id (mt/id :categories :id)))
+                                                            (field-details (t2/select-one Field :id (mt/id :categories :id)))
                                                             {:table_id          (mt/id :categories)
                                                              :semantic_type     "type/PK"
                                                              :name              "ID"
@@ -373,7 +373,7 @@
                                                              :database_required false
                                                              :database_is_auto_increment true})
                                                            (merge
-                                                            (field-details (db/select-one Field :id (mt/id :categories :name)))
+                                                            (field-details (t2/select-one Field :id (mt/id :categories :name)))
                                                             {:table_id          (mt/id :categories)
                                                              :semantic_type     "type/Name"
                                                              :name              "NAME"
@@ -521,7 +521,7 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> (into #{:features :native_permissions} (keys (db/select-one Database :id (mt/id))))
+        (let [expected-keys (-> (into #{:features :native_permissions} (keys (t2/select-one Database :id (mt/id))))
                                 (disj :details))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
@@ -766,8 +766,8 @@
                                                          :metadata_sync      schedule-map-for-hourly}}))]
              (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
                      :metadata_sync_schedule      "0 0 * * * ? *"}
-                    (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db))))))
-           (finally (db/delete! Database :name db-name))))))
+                    (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db))))))
+           (finally (t2/delete! Database :name db-name))))))
 
 (deftest update-schedules-for-existing-db
   (let [attempted {:cache_field_values schedule-map-for-last-friday-at-11pm
@@ -781,7 +781,7 @@
                   (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
                                         (assoc db :schedules attempted))))
           (is (not= expected
-                    (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
+                    (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
       (testing "We can if we mark `:let-user-control-scheduling`"
         (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
           (is (=? expected
@@ -790,7 +790,7 @@
                                             (assoc :schedules attempted)
                                             (assoc-in [:details :let-user-control-scheduling] true)))))
           (is (= expected
-                 (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
+                 (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
       (testing "if we update back to metabase managed schedules it randomizes for us"
         (let [original-custom-schedules expected]
           (mt/with-temp Database [db (merge {:engine "h2" :details (assoc (:details (mt/db))
@@ -799,7 +799,7 @@
             (is (=? {:id (u/the-id db)}
                     (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
                                           (assoc-in db [:details :let-user-control-scheduling] false))))
-            (let [schedules (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))]
+            (let [schedules (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))]
               (is (not= original-custom-schedules schedules))
               (is (= "hourly" (-> schedules :metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))
               (is (= "daily" (-> schedules :cache_field_values_schedule u.cron/cron-string->schedule-map :schedule_type))))))))))

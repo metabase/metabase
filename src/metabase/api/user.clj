@@ -42,7 +42,7 @@
     api/*is-superuser?*)))
 
 (defn- fetch-user [& query-criteria]
-  (apply db/select-one (vec (cons User user/admin-or-self-visible-columns)) query-criteria))
+  (apply t2/select-one (vec (cons User user/admin-or-self-visible-columns)) query-criteria))
 
 (defn- maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids]
   (when (and new-groups-or-ids
@@ -77,7 +77,7 @@
       (let [{email :email} user-before-update
             new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
-          (db/update! Collection (:id collection) :name new-collection-name))))))
+          (t2/update! Collection (:id collection) {:name new-collection-name}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
@@ -211,7 +211,7 @@
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
   [{:keys [id] :as user}]
   (let [ts (or
-            (:timestamp (db/select-one [LoginHistory :timestamp] :user_id id
+            (:timestamp (t2/select-one [LoginHistory :timestamp] :user_id id
                                        {:order-by [[:timestamp :asc]]}))
             (t/offset-date-time))]
     (assoc user :first_login ts)))
@@ -341,7 +341,7 @@
                                          api/*is-superuser?* (conj :login_attributes))
                               :non-nil (cond-> #{:email}
                                          api/*is-superuser?* (conj :is_superuser))))]
-          (db/update! User id changes))
+          (t2/update! User id changes))
         (maybe-update-user-personal-collection-name! user-before-update body))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
@@ -352,15 +352,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- reactivate-user! [existing-user]
-  (db/update! User (u/the-id existing-user)
-    :is_active     true
-    :is_superuser  false
-    ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
-    ;; (see metabase#3323)
-    :google_auth   (boolean (and (:google_auth existing-user)
-                                 (google/google-auth-enabled)))
-    :ldap_auth     (boolean (and (:ldap_auth existing-user)
-                                 (api.ldap/ldap-enabled))))
+  (t2/update! User (u/the-id existing-user)
+              {:is_active     true
+               :is_superuser  false
+               ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
+               ;; (see metabase#3323)
+               :google_auth   (boolean (and (:google_auth existing-user)
+                                            (google/google-auth-enabled)))
+               :ldap_auth     (boolean (and (:ldap_auth existing-user)
+                                            (api.ldap/ldap-enabled)))})
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
@@ -369,7 +369,7 @@
   "Reactivate user at `:id`"
   [id]
   (api/check-superuser)
-  (let [user (db/select-one [User :id :is_active :google_auth :ldap_auth] :id id)]
+  (let [user (t2/select-one [User :id :is_active :google_auth :ldap_auth] :id id)]
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
@@ -387,7 +387,7 @@
   [id :as {{:keys [password old_password]} :body}]
   {password su/ValidPassword}
   (check-self-or-superuser id)
-  (api/let-404 [user (db/select-one [User :password_salt :password], :id id, :is_active true)]
+  (api/let-404 [user (t2/select-one [User :password_salt :password], :id id, :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
@@ -408,7 +408,7 @@
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [id]
   (api/check-superuser)
-  (api/check-500 (db/update! User id, :is_active false))
+  (api/check-500 (pos? (t2/update! User id {:is_active false})))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -427,7 +427,7 @@
               (throw (ex-info (tru "Unrecognized modal: {0}" modal)
                               {:modal modal
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
-    (api/check-500 (db/update! User id, k false)))
+    (api/check-500 (pos? (t2/update! User id {k false}))))
   {:success true})
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -435,7 +435,7 @@
   "Resend the user invite email for a given user."
   [id]
   (api/check-superuser)
-  (when-let [user (db/select-one User :id id, :is_active true)]
+  (when-let [user (t2/select-one User :id id, :is_active true)]
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]

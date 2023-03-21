@@ -13,7 +13,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;;; Graph-related stuff
 
@@ -107,11 +108,11 @@
               (is (= {:schemas :block}
                      (test-db-perms group-id)))
               (is (= #{(perms/database-block-perms-path (mt/id))}
-                     (db/select-field :object Permissions {:where [:and
-                                                                   [:or
-                                                                    [:like :object "/block/%"]
-                                                                    [:like :object "/db/%"]]
-                                                                   [:= :group_id group-id]]}))))))))))
+                     (t2/select-fn-set :object Permissions {:where [:and
+                                                                    [:or
+                                                                     [:like :object "/block/%"]
+                                                                     [:like :object "/db/%"]]
+                                                                    [:= :group_id group-id]]}))))))))))
 
 (deftest update-graph-delete-sandboxes-test
   (testing "When setting `:block` permissions any GTAP rows for that Group/Database should get deleted."
@@ -165,7 +166,7 @@
       (letfn [(perms-exist? []
                 (db/exists? Permissions :object (perms/database-block-perms-path db-id)))]
         (is (perms-exist?))
-        (db/delete! Database :id db-id)
+        (t2/delete! Database :id db-id)
         (is (not (perms-exist?)))))))
 
 ;;;; QP perms-check related stuff.

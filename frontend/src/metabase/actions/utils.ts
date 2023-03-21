@@ -1,28 +1,103 @@
 import { t } from "ttag";
+import * as Yup from "yup";
 
-import { getResponseErrorMessage } from "metabase/core/utils/errors";
-import { slugify, humanize } from "metabase/lib/formatting";
-import { isEmpty } from "metabase/lib/validate";
+import * as Errors from "metabase/core/utils/errors";
 
 import type {
   ActionDashboardCard,
+  ActionFormOption,
   ActionFormSettings,
   BaseDashboardOrderedCard,
   Card,
+  FieldType,
   FieldSettings,
   FieldSettingsMap,
+  InputComponentType,
+  InputSettingType,
   Parameter,
-  ParameterId,
-  ParametersForActionExecution,
   WritebackAction,
   WritebackActionBase,
   WritebackImplicitQueryAction,
+  WritebackParameter,
 } from "metabase-types/api";
 
 import { TYPE } from "metabase-lib/types/constants";
 import Field from "metabase-lib/metadata/Field";
 
-import type { FieldSettings as LocalFieldSettings } from "./types";
+import type {
+  ActionFormProps,
+  ActionFormFieldProps,
+  FieldSettings as LocalFieldSettings,
+} from "./types";
+
+type FieldPropTypeMap = Record<InputSettingType, InputComponentType>;
+
+const fieldPropsTypeMap: FieldPropTypeMap = {
+  string: "text",
+  text: "textarea",
+  date: "date",
+  datetime: "datetime-local",
+  time: "time",
+  number: "number",
+  boolean: "boolean",
+  select: "select",
+  radio: "radio",
+};
+
+const getOptionsFromArray = (
+  options: (number | string)[],
+): ActionFormOption[] => options.map(o => ({ name: o, value: o }));
+
+function getSampleOptions(fieldType: FieldType) {
+  return fieldType === "number"
+    ? getOptionsFromArray([1, 2, 3])
+    : getOptionsFromArray([t`Option One`, t`Option Two`, t`Option Three`]);
+}
+
+const AUTOMATIC_DATE_TIME_FIELDS = [
+  TYPE.CreationDate,
+  TYPE.CreationTemporal,
+  TYPE.CreationTime,
+  TYPE.CreationTimestamp,
+
+  TYPE.DeletionDate,
+  TYPE.DeletionTemporal,
+  TYPE.DeletionTime,
+  TYPE.DeletionTimestamp,
+
+  TYPE.UpdatedDate,
+  TYPE.UpdatedTemporal,
+  TYPE.UpdatedTime,
+  TYPE.UpdatedTimestamp,
+];
+
+const isAutomaticDateTimeField = (field: Field) => {
+  return AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type);
+};
+
+const isEditableField = (field: Field, parameter: Parameter) => {
+  const isRealField = typeof field.id === "number";
+  if (!isRealField) {
+    // Filters out custom, aggregated columns, etc.
+    return false;
+  }
+
+  if (field.isPK()) {
+    // Most of the time PKs are auto-generated,
+    // but there are rare cases when they're not
+    // In this case they're marked as `required`
+    return parameter.required;
+  }
+
+  if (isAutomaticDateTimeField(field)) {
+    return parameter.required;
+  }
+
+  return true;
+};
+
+export const inputTypeHasOptions = (inputType: InputSettingType) =>
+  ["select", "radio"].includes(inputType);
 
 export const sortActionParams =
   (formSettings: ActionFormSettings) => (a: Parameter, b: Parameter) => {
@@ -70,92 +145,6 @@ export const getDefaultFieldSettings = (
   ...overrides,
 });
 
-export const generateFieldSettingsFromParameters = (
-  params: Parameter[],
-  fields?: Field[],
-) => {
-  const fieldSettings: Record<ParameterId, LocalFieldSettings> = {};
-
-  const fieldMetadataMap = Object.fromEntries(
-    fields?.map(f => [slugify(f.name), f]) ?? [],
-  );
-
-  params.forEach((param, index) => {
-    const field = fieldMetadataMap[param.id]
-      ? new Field(fieldMetadataMap[param.id])
-      : new Field({
-          id: param.id,
-          name: param.id,
-          slug: param.id,
-          display_name: humanize(param.id),
-          base_type: param.type,
-          semantic_type: param.type,
-        });
-
-    const name = param["display-name"] ?? param.name ?? param.id;
-    const displayName = field?.displayName?.() ?? name;
-
-    fieldSettings[param.id] = getDefaultFieldSettings({
-      id: param.id,
-      name,
-      title: displayName,
-      placeholder: displayName,
-      required: !!param?.required,
-      order: index,
-      description: field?.description ?? "",
-      fieldType: getFieldType(param),
-      inputType: getInputType(param, field),
-    });
-  });
-  return fieldSettings;
-};
-
-const getFieldType = (param: Parameter): "number" | "string" => {
-  return isNumericParameter(param) ? "number" : "string";
-};
-
-const isNumericParameter = (param: Parameter): boolean =>
-  /integer|float/gi.test(param.type);
-
-export const getInputType = (param: Parameter, field?: Field) => {
-  if (!field) {
-    return isNumericParameter(param) ? "number" : "string";
-  }
-
-  if (field.isFK()) {
-    return field.isNumeric() ? "number" : "string";
-  }
-  if (field.isNumeric()) {
-    return "number";
-  }
-  if (field.isBoolean()) {
-    return "boolean";
-  }
-  if (field.isTime()) {
-    return "time";
-  }
-  if (field.isDate()) {
-    return field.isDateWithoutTime() ? "date" : "datetime";
-  }
-  if (
-    field.semantic_type === TYPE.Description ||
-    field.semantic_type === TYPE.Comment ||
-    field.base_type === TYPE.Structured
-  ) {
-    return "text";
-  }
-  if (
-    field.semantic_type === TYPE.Title ||
-    field.semantic_type === TYPE.Email
-  ) {
-    return "string";
-  }
-  if (field.isCategory() && field.semantic_type !== TYPE.Name) {
-    return "string";
-  }
-  return "string";
-};
-
 export function isSavedAction(
   action?: Partial<WritebackActionBase>,
 ): action is WritebackAction {
@@ -174,19 +163,6 @@ export const isActionCard = (card: Card) => card?.display === "action";
 export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;
 };
-
-export function setNumericValues(
-  params: ParametersForActionExecution,
-  fieldSettings: FieldSettingsMap,
-) {
-  Object.entries(params).forEach(([key, value]) => {
-    if (fieldSettings[key]?.fieldType === "number" && !isEmpty(value)) {
-      params[key] = Number(value) ?? null;
-    }
-  });
-
-  return params;
-}
 
 function hasDataFromExplicitAction(result: any) {
   const isInsert = result["created-row"];
@@ -226,10 +202,106 @@ export function getActionExecutionMessage(
 
 export function getActionErrorMessage(error: unknown) {
   return (
-    getResponseErrorMessage(error) ??
+    Errors.getResponseErrorMessage(error) ??
     t`Something went wrong while executing the action`
   );
 }
+
+const getFormField = (
+  parameter: Parameter,
+  fieldSettings: LocalFieldSettings,
+) => {
+  if (
+    fieldSettings.field &&
+    !isEditableField(fieldSettings.field, parameter as Parameter)
+  ) {
+    return undefined;
+  }
+
+  const fieldProps: ActionFormFieldProps = {
+    name: parameter.id,
+    type: fieldPropsTypeMap[fieldSettings?.inputType] ?? "text",
+    title:
+      fieldSettings.title ||
+      fieldSettings.name ||
+      parameter["display-name"] ||
+      parameter.name ||
+      parameter.id,
+    description: fieldSettings.description ?? "",
+    placeholder: fieldSettings?.placeholder,
+    optional: !fieldSettings.required,
+    field: fieldSettings.field,
+  };
+
+  if (inputTypeHasOptions(fieldSettings.inputType)) {
+    fieldProps.options = fieldSettings.valueOptions?.length
+      ? getOptionsFromArray(fieldSettings.valueOptions)
+      : getSampleOptions(fieldSettings.fieldType);
+  }
+
+  return fieldProps;
+};
+
+export const getForm = (
+  parameters: WritebackParameter[] | Parameter[],
+  fieldSettings: Record<string, FieldSettings> = {},
+): ActionFormProps => {
+  const sortedParams = parameters.sort(
+    sortActionParams({ fields: fieldSettings } as ActionFormSettings),
+  );
+  return {
+    fields: sortedParams
+      ?.map(param => getFormField(param, fieldSettings[param.id] ?? {}))
+      .filter(Boolean) as ActionFormFieldProps[],
+  };
+};
+
+const getFieldValidationType = ({
+  inputType,
+  defaultValue,
+}: FieldSettings): Yup.AnySchema => {
+  switch (inputType) {
+    case "number":
+      return Yup.number()
+        .nullable()
+        .default(defaultValue != null ? Number(defaultValue) : null);
+    case "boolean":
+      return Yup.boolean()
+        .nullable()
+        .default(defaultValue != null ? Boolean(defaultValue) : false);
+    case "date":
+    case "datetime":
+    case "time":
+      return Yup.string()
+        .nullable()
+        .default(defaultValue != null ? String(defaultValue) : null);
+    default:
+      return Yup.string()
+        .nullable()
+        .default(defaultValue != null ? String(defaultValue) : null);
+  }
+};
+
+export const getFormValidationSchema = (
+  parameters: WritebackParameter[] | Parameter[],
+  fieldSettings: FieldSettingsMap = {},
+) => {
+  const schema = Object.values(fieldSettings)
+    .filter(fieldSetting =>
+      // only validate fields that are present in the form
+      parameters.find(parameter => parameter.id === fieldSetting.id),
+    )
+    .map(fieldSetting => {
+      let yupType = getFieldValidationType(fieldSetting);
+
+      if (fieldSetting.required) {
+        yupType = yupType.required(Errors.required);
+      }
+
+      return [fieldSetting.id, yupType];
+    });
+  return Yup.object(Object.fromEntries(schema));
+};
 
 export const getSubmitButtonColor = (action: WritebackAction): string => {
   if (action.type === "implicit" && action.kind === "row/delete") {
@@ -257,5 +329,5 @@ export const getSubmitButtonLabel = (action: WritebackAction): string => {
     }
   }
 
-  return t`Run`;
+  return action.name;
 };

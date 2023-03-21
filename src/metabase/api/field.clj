@@ -57,7 +57,7 @@
 (api/defendpoint-schema GET "/:id"
   "Get `Field` with ID."
   [id]
-  (let [field (-> (api/check-404 (db/select-one Field :id id))
+  (let [field (-> (api/check-404 (t2/select-one Field :id id))
                   (hydrate [:table :db] :has_field_values :dimensions :name_field))]
     ;; Normal read perms = normal access.
     ;;
@@ -74,7 +74,7 @@
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
     (when (and dimension-id (= :external dimension-type))
-      (db/delete! Dimension :id dimension-id)))
+      (t2/delete! Dimension :id dimension-id)))
   true)
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
@@ -98,7 +98,7 @@
     (when (and old-dim-id
                (= :internal old-dim-type)
                (not (internal-remapping-allowed? base-type new-semantic-type)))
-      (db/delete! Dimension :id old-dim-id)))
+      (t2/delete! Dimension :id old-dim-id)))
   true)
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -143,7 +143,7 @@
           (clear-dimension-on-fk-change! field)
           true)
         (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-        (db/update! Field id
+        (t2/update! Field id
           (u/select-keys-when (assoc body
                                      :fk_target_field_id (when-not removed-fk? fk-target-field-id)
                                      :effective_type effective-type
@@ -153,7 +153,7 @@
             :non-nil #{:display_name :settings})))))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
-    (u/prog1 (hydrate (db/select-one Field :id id) :dimensions)
+    (u/prog1 (hydrate (t2/select-one Field :id id) :dimensions)
       (when (not= effective-type (:effective_type field))
         (sync.concurrent/submit-task (fn [] (sync/refingerprint-field! <>)))))))
 
@@ -182,24 +182,24 @@
                  (and (= dimension-type "external")
                       human_readable_field_id))
              [400 "Foreign key based remappings require a human readable field id"])
-  (if-let [dimension (db/select-one Dimension :field_id id)]
-    (db/update! Dimension (u/the-id dimension)
-      {:type                    dimension-type
-       :name                    dimension-name
-       :human_readable_field_id human_readable_field_id})
+  (if-let [dimension (t2/select-one Dimension :field_id id)]
+    (t2/update! Dimension (u/the-id dimension)
+                {:type                    dimension-type
+                 :name                    dimension-name
+                 :human_readable_field_id human_readable_field_id})
     (db/insert! Dimension
                 {:field_id                id
                  :type                    dimension-type
                  :name                    dimension-name
                  :human_readable_field_id human_readable_field_id}))
-  (db/select-one Dimension :field_id id))
+  (t2/select-one Dimension :field_id id))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id/dimension"
   "Remove the dimension associated to field at ID"
   [id]
   (api/write-check Field id)
-  (db/delete! Dimension :field_id id)
+  (t2/delete! Dimension :field_id id)
   api/generic-204-no-content)
 
 
@@ -220,7 +220,7 @@
   (if-let [human-readable-field-id (when (= has-field-values-type :list)
                                      (t2/select-one-fn :human_readable_field_id Dimension :field_id (u/the-id field)))]
     {:values          (search-values (api/check-404 field)
-                                     (api/check-404 (db/select-one Field :id human-readable-field-id)))
+                                     (api/check-404 (t2/select-one Field :id human-readable-field-id)))
      :field_id        field-id
      :has_more_values has_more_values}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
@@ -229,7 +229,7 @@
   "Impl for `GET /api/field/:id/values` endpoint; check whether current user has read perms for Field with `id`, and, if
   so, return its values."
   [field-id]
-  (let [field (api/check-404 (db/select-one Field :id field-id))]
+  (let [field (api/check-404 (t2/select-one Field :id field-id))]
     (api/check-403 (params.field-values/current-user-can-fetch-field-values? field))
     (field->values field)))
 
@@ -240,7 +240,7 @@
   [field-id query]
   (if (str/blank? query)
     (check-perms-and-return-field-values field-id)
-    (let [field (api/check-404 (db/select-one Field :id field-id))]
+    (let [field (api/check-404 (t2/select-one Field :id field-id))]
       ;; matching the output of the other params. [["Foo" "Foo"] ["Bar" "Bar"]] -> [["Foo"] ["Bar"]]. This shape
       ;; is what the return-field-values returns above
       {:values (map (comp vector first) (search-values field field query))
@@ -279,10 +279,10 @@
 
 (defn- update-field-values! [field-value-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
-    (api/check-500 (db/update! FieldValues field-value-id
-                     :values (map first value-pairs)
-                     :human_readable_values (when human-readable-values?
-                                              (map second value-pairs))))))
+    (api/check-500 (pos? (t2/update! FieldValues field-value-id
+                                     {:values (map first value-pairs)
+                                      :human_readable_values (when human-readable-values?
+                                                               (map second value-pairs))})))))
 
 (defn- create-field-values!
   [field-or-id value-pairs]
@@ -314,7 +314,7 @@
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
   [id]
-  (let [field (api/write-check (db/select-one Field :id id))]
+  (let [field (api/write-check (t2/select-one Field :id id))]
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -327,7 +327,7 @@
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
-  (field-values/clear-field-values-for-field! (api/write-check (db/select-one Field :id id)))
+  (field-values/clear-field-values-for-field! (api/write-check (t2/select-one Field :id id)))
   {:status :success})
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
@@ -350,7 +350,7 @@
   [{semantic-type :semantic_type, fk-target-field-id :fk_target_field_id, :as field}]
   (if (and (isa? semantic-type :type/FK)
            fk-target-field-id)
-    (db/select-one Field :id fk-target-field-id)
+    (t2/select-one Field :id fk-target-field-id)
     field))
 
 (defn- search-values-query
@@ -413,8 +413,8 @@
   `metabase.api.field/search-values` for a more detailed explanation."
   [id search-id value]
   {value su/NonBlankString}
-  (let [field        (api/check-404 (db/select-one Field :id id))
-        search-field (api/check-404 (db/select-one Field :id search-id))]
+  (let [field        (api/check-404 (t2/select-one Field :id id))
+        search-field (api/check-404 (t2/select-one Field :id search-id))]
     (throw-if-no-read-or-segmented-perms field)
     (throw-if-no-read-or-segmented-perms search-field)
     (search-values field search-field value mw.offset-paging/*limit*)))
@@ -469,6 +469,6 @@
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
-  (-> (db/select-one Field :id id) api/read-check related/related))
+  (-> (t2/select-one Field :id id) api/read-check related/related))
 
 (api/define-routes)

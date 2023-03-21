@@ -47,7 +47,8 @@
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -133,7 +134,7 @@
                    (some-> (driver.u/database->driver db-id) (driver/supports? :nested-queries))
                    (catch Throwable e
                      (log/error e (tru "Error determining whether Database supports nested queries")))))
-               (db/select-ids Database))))
+               (t2/select-pks-set Database))))
 
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables). Since Cards can be either
@@ -343,7 +344,7 @@
   (let [include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
         exclude-uneditable-details?  (Boolean/parseBoolean exclude_uneditable_details)
         filter-by-data-access?       (not (or include-editable-data-model? exclude-uneditable-details?))
-        database                     (api/check-404 (db/select-one Database :id id))]
+        database                     (api/check-404 (t2/select-one Database :id id))]
     (cond-> database
       filter-by-data-access?       api/read-check
       exclude-uneditable-details?  api/write-check
@@ -409,7 +410,7 @@
   {id ms/PositiveInt}
   (api/check-superuser)
   (api/check-404 (db/exists? Database :id id))
-  (let [table-ids (db/select-ids Table :db_id id)]
+  (let [table-ids (t2/select-pks-set Table :db_id id)]
     (first (mdb.query/query
              {:select [:*]
               :from   (for [model database-usage-models
@@ -433,7 +434,7 @@
 
 (defn- db-metadata [id include-hidden? include-editable-data-model?]
   (let [db (-> (if include-editable-data-model?
-                 (api/check-404 (db/select-one Database :id id))
+                 (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
                (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
         db (if include-editable-data-model?
@@ -634,7 +635,7 @@
   [id]
   (api/read-check Database id)
   (let [fields (filter mi/can-read? (-> (db/select [Field :id :name :display_name :table_id :base_type :semantic_type]
-                                          :table_id        [:in (db/select-field :id Table, :db_id id)]
+                                          :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
                                           :visibility_type [:not-in ["sensitive" "retired"]])
                                         (hydrate :table)))]
     (for [{:keys [id name display_name table base_type semantic_type]} fields]
@@ -656,7 +657,7 @@
   (let [[db-perm-check field-perm-check] (if (Boolean/parseBoolean include_editable_data_model)
                                            [check-db-data-model-perms mi/can-write?]
                                            [api/read-check mi/can-read?])]
-    (db-perm-check (db/select-one Database :id id))
+    (db-perm-check (t2/select-one Database :id id))
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
                                           (hydrate :table))))))
@@ -798,7 +799,7 @@
   []
   (api/check-superuser)
   (sample-data/add-sample-database!)
-  (db/select-one Database :is_sample true))
+  (t2/select-one Database :is_sample true))
 
 
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
@@ -824,7 +825,7 @@
   (api/check (public-settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
-  (api/let-404 [database (db/select-one Database :id id)]
+  (api/let-404 [database (t2/select-one Database :id id)]
     (api/write-check database)
     (if (-> database :options :persist-models-enabled)
       ;; todo: some other response if already persisted?
@@ -833,7 +834,7 @@
             schema           (ddl.i/schema-name database (public-settings/site-uuid))]
         (if success?
           ;; do secrets require special handling to not clobber them or mess up encryption?
-          (do (db/update! Database id :options
+          (do (t2/update! Database id :options
                           (assoc (:options database) :persist-models-enabled true))
               (task.persist-refresh/schedule-persistence-for-database!
                 database
@@ -848,10 +849,10 @@
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [id]
   {:id su/IntGreaterThanZero}
-  (api/let-404 [database (db/select-one Database :id id)]
+  (api/let-404 [database (t2/select-one Database :id id)]
     (api/write-check database)
     (if (-> database :options :persist-models-enabled)
-      (do (db/update! Database id :options
+      (do (t2/update! Database id :options
                       (dissoc (:options database) :persist-models-enabled))
           (persisted-info/mark-for-pruning! {:database_id id})
           (task.persist-refresh/unschedule-persistence-for-database! database)
@@ -876,7 +877,7 @@
    cache_ttl          (s/maybe su/IntGreaterThanZero)
    settings           (s/maybe su/Map)}
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
-  (let [existing-database (api/write-check (db/select-one Database :id id))
+  (let [existing-database (api/write-check (t2/select-one Database :id id))
         details           (driver.u/db-details-client->server engine details)
         details           (upsert-sensitive-fields existing-database details)
         conn-error        (when (some? details)
@@ -928,9 +929,9 @@
         ;; scheduling. leave them as they are in the db
 
         ;; unlike the other fields, folks might want to nil out cache_ttl
-        (db/update! Database id {:cache_ttl cache_ttl})
+        (t2/update! Database id {:cache_ttl cache_ttl})
 
-        (let [db (db/select-one Database :id id)]
+        (let [db (t2/select-one Database :id id)]
           (events/publish-event! :database-update db)
           ;; return the DB with the expanded schedules back in place
           (add-expanded-schedules db))))))
@@ -943,8 +944,8 @@
   "Delete a `Database`."
   [id]
   (api/check-superuser)
-  (api/let-404 [db (db/select-one Database :id id)]
-    (db/delete! Database :id id)
+  (api/let-404 [db (t2/select-one Database :id id)]
+    (t2/delete! Database :id id)
     (events/publish-event! :database-delete db))
   api/generic-204-no-content)
 
@@ -972,7 +973,7 @@
   "Trigger a manual update of the schema metadata for this `Database`."
   [id]
   ;; just wrap this in a future so it happens async
-  (let [db (api/write-check (db/select-one Database :id id))]
+  (let [db (api/write-check (t2/select-one Database :id id))]
     (future
       (sync-metadata/sync-db-metadata! db)
       (analyze/analyze-db! db)))
@@ -984,7 +985,7 @@
   tables to be `complete` (see #20863)"
   [id]
   ;; manual full sync needs to be async, but this is a simple update of `Database`
-  (let [db     (api/write-check (db/select-one Database :id id))
+  (let [db     (api/write-check (t2/select-one Database :id id))
         tables (map api/write-check (:tables (first (add-tables [db]))))]
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
@@ -1004,7 +1005,7 @@
   "Trigger a manual scan of the field values for this `Database`."
   [id]
   ;; just wrap this is a future so it happens async
-  (let [db (api/write-check (db/select-one Database :id id))]
+  (let [db (api/write-check (t2/select-one Database :id id))]
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -1033,7 +1034,7 @@
 (api/defendpoint-schema POST "/:id/discard_values"
   "Discards all saved field values for this `Database`."
   [id]
-  (delete-all-field-values-for-database! (api/write-check (db/select-one Database :id id)))
+  (delete-all-field-values-for-database! (api/write-check (t2/select-one Database :id id)))
   {:status :ok})
 
 
@@ -1054,11 +1055,11 @@
   "Returns a list of all the schemas found for the database `id`"
   [id]
   (api/read-check Database id)
-  (->> (db/select-field :schema Table
-         :db_id id :active true
-         ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
-         :visibility_type nil
-         {:order-by [[:%lower.schema :asc]]})
+  (->> (t2/select-fn-set :schema Table
+                         :db_id id :active true
+                         ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
+                         :visibility_type nil
+                         {:order-by [[:%lower.schema :asc]]})
        (filter (partial can-read-schema? id))
        ;; for `nil` schemas return the empty string
        (map #(if (nil? %) "" %))
@@ -1123,7 +1124,7 @@
           :card
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                      [:= :collection_id nil]
-                                     [:in :collection_id (api/check-404 (not-empty (db/select-ids Collection :name schema)))])])
+                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
 (api/defendpoint GET ["/:virtual-db/datasets/:schema"
@@ -1135,7 +1136,7 @@
           :dataset
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                      [:= :collection_id nil]
-                                     [:in :collection_id (api/check-404 (not-empty (db/select-ids Collection :name schema)))])])
+                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
 (api/defendpoint GET "/db-ids-with-deprecated-drivers"
@@ -1148,6 +1149,6 @@
       (let [info (driver.u/available-drivers-info)
             d    (driver.u/database->driver database)]
         (some? (:superseded-by (d info)))))
-    (db/select-ids Database))))
+    (t2/select-pks-set Database))))
 
 (api/define-routes)

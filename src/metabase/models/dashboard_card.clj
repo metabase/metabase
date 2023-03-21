@@ -34,7 +34,7 @@
 (defmethod mi/perms-objects-set DashboardCard
   [dashcard read-or-write]
   (let [card   (or (:card dashcard)
-                   (db/select-one [Card :dataset_query] :id (u/the-id (:card_id dashcard))))
+                   (t2/select-one [Card :dataset_query] :id (u/the-id (:card_id dashcard))))
         series (or (:series dashcard)
                    (series dashcard))]
     (apply set/union (mi/perms-objects-set card read-or-write) (for [series-card series]
@@ -78,7 +78,7 @@
   [_dashboard-card]
   [(serdes/hydrated-hash :card) ; :card is optional, eg. text cards
    (comp serdes/identity-hash
-         #(db/select-one 'Dashboard :id %)
+         #(t2/select-one 'Dashboard :id %)
          :dashboard_id)
    :visualization_settings
    :row :col
@@ -91,7 +91,7 @@
   "Return the Dashboard associated with the DashboardCard."
   [{:keys [dashboard_id]}]
   {:pre [(integer? dashboard_id)]}
-  (db/select-one 'Dashboard, :id dashboard_id))
+  (t2/select-one 'Dashboard, :id dashboard_id))
 
 (mi/define-simple-hydration-method series
   :series
@@ -108,7 +108,7 @@
 (s/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
   [id :- su/IntGreaterThanZero]
-  (-> (db/select-one DashboardCard :id id)
+  (-> (t2/select-one DashboardCard :id id)
       (hydrate :series)))
 
 (defn dashcard->multi-cards
@@ -145,7 +145,7 @@
   [{:keys [id]} :- {:id su/IntGreaterThanZero, s/Keyword s/Any}
    card-ids     :- [su/IntGreaterThanZero]]
   ;; first off, just delete all series on the dashboard card (we add them again below)
-  (db/delete! DashboardCardSeries :dashboardcard_id id)
+  (t2/delete! DashboardCardSeries :dashboardcard_id id)
   ;; now just insert all of the series that were given to us
   (when (seq card-ids)
     (let [cards (map-indexed (fn [i card-id]
@@ -186,7 +186,7 @@
          updates (shallow-updates (select-keys dashboard-card update-ks)
                                   (select-keys old-dashboard-card update-ks))]
      (when (seq updates)
-       (db/update! DashboardCard id updates))
+       (t2/update! DashboardCard id updates))
      (when (not= (:series dashboard-card [])
                  (:series old-dashboard-card []))
        (update-dashboard-card-series! dashboard-card (:series dashboard-card)))
@@ -238,8 +238,8 @@
          (integer? user-id)]}
   (let [{:keys [id]} (dashboard dashboard-card)]
     (db/transaction
-      (db/delete! PulseCard :dashboard_card_id (:id dashboard-card))
-      (db/delete! DashboardCard :id (:id dashboard-card)))
+      (t2/delete! PulseCard :dashboard_card_id (:id dashboard-card))
+      (t2/delete! DashboardCard :id (:id dashboard-card)))
     (events/publish-event! :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
@@ -358,7 +358,7 @@
 ;; DashboardCards are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
 ;; However, we can reuse some of the serdes machinery (especially load-one!) by implementing a few serdes methods.
 (defmethod serdes/generate-path "DashboardCard" [_ dashcard]
-  [(serdes/infer-self-path "Dashboard" (db/select-one 'Dashboard :id (:dashboard_id dashcard)))
+  [(serdes/infer-self-path "Dashboard" (t2/select-one 'Dashboard :id (:dashboard_id dashcard)))
    (serdes/infer-self-path "DashboardCard" dashcard)])
 
 (defmethod serdes/load-xform "DashboardCard"

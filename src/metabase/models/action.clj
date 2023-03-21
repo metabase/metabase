@@ -36,7 +36,7 @@
 
 (defmethod mi/perms-objects-set Action
   [instance read-or-write]
-  (mi/perms-objects-set (db/select-one Card :id (:model_id instance)) read-or-write))
+  (mi/perms-objects-set (t2/select-one Card :id (:model_id instance)) read-or-write))
 
 (models/add-type! ::json-with-nested-parameters
   :in  (comp mi/json-in
@@ -120,7 +120,7 @@
    Deletes the old type table row if the type has changed."
   [{:keys [id] :as action} existing-action]
   (when-let [action-row (not-empty (select-keys action action-columns))]
-    (db/update! Action id action-row))
+    (t2/update! Action id action-row))
   (when-let [type-row (not-empty (cond-> (apply dissoc action :id action-columns)
                                          (= (or (:type action) (:type existing-action))
                                             :implicit)
@@ -129,14 +129,14 @@
           existing-model (type->model (:type existing-action))]
       (if (and (:type action) (not= (:type action) (:type existing-action)))
         (let [new-model (type->model (:type action))]
-          (db/delete! existing-model :action_id id)
+          (t2/delete! existing-model :action_id id)
           (db/insert! new-model (assoc type-row :action_id id)))
-        (db/update! existing-model id type-row)))))
+        (t2/update! existing-model id type-row)))))
 
 (defn- hydrate-subtype [action]
   (let [subtype (type->model (:type action))]
     (-> action
-        (merge (db/select-one subtype :action_id (:id action)))
+        (merge (t2/select-one subtype :action_id (:id action)))
         (dissoc :action_id))))
 
 (defn- normalize-query-actions [actions]

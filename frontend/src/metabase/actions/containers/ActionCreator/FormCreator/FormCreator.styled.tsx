@@ -12,6 +12,10 @@ export const FormContainer = styled.div`
   background-color: ${color("white")};
 `;
 
+export const FormFieldEditorDragContainer = styled.div`
+  margin-bottom: ${space(1)};
+`;
+
 export const InfoText = styled.span`
   display: block;
   color: ${color("text-medium")};

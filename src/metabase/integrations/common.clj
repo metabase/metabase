@@ -10,7 +10,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn sync-group-memberships!
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is
@@ -20,10 +21,10 @@
         excluded-group-ids #{(u/the-id (perms-group/all-users))}
         user-id            (u/the-id user-or-id)
         current-group-ids  (when (seq mapped-group-ids)
-                             (db/select-field :group_id PermissionsGroupMembership
-                                              :user_id  user-id
-                                              :group_id [:in mapped-group-ids]
-                                              :group_id [:not-in excluded-group-ids]))
+                             (t2/select-fn-set :group_id PermissionsGroupMembership
+                                               :user_id  user-id
+                                               :group_id [:in mapped-group-ids]
+                                               :group_id [:not-in excluded-group-ids]))
         new-group-ids      (set/intersection (set (map u/the-id new-groups-or-ids))
                                              mapped-group-ids)
         ;; determine what's different between current mapped groups and new mapped groups
@@ -32,7 +33,7 @@
     (when (seq to-remove)
       (log/debugf "Removing user %s from group(s) %s" user-id to-remove)
       (try
-       (db/delete! PermissionsGroupMembership :group_id [:in to-remove], :user_id user-id)
+       (t2/delete! PermissionsGroupMembership :group_id [:in to-remove], :user_id user-id)
        (catch clojure.lang.ExceptionInfo e
          ;; in case sync attempts to delete the last admin, the pre-delete hooks of
          ;; [[metabase.models.permissions-group-membership/PermissionsGroupMembership]] will throw an exception.

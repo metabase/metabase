@@ -357,15 +357,15 @@
 (defn- upsert-raw-setting!
   [original-value setting-k value]
   (if original-value
-    (db/update! Setting setting-k :value value)
+    (t2/update! Setting setting-k {:value value})
     (db/insert! Setting :key setting-k :value value))
   (setting.cache/restore-cache!))
 
 (defn- restore-raw-setting!
   [original-value setting-k]
   (if original-value
-    (db/update! Setting setting-k :value original-value)
-    (db/delete! Setting :key setting-k))
+    (t2/update! Setting setting-k {:value original-value})
+    (t2/delete! Setting :key setting-k))
   (setting.cache/restore-cache!))
 
 (defn do-with-temporary-setting-value
@@ -481,8 +481,7 @@
     (assert original-column->value
             (format "%s %d not found." (name model) (u/the-id object-or-id)))
     (try
-      (db/update! model (u/the-id object-or-id)
-        column->temp-value)
+      (t2/update! model (u/the-id object-or-id) column->temp-value)
       (f)
       (finally
         (db/execute!
@@ -622,7 +621,7 @@
   (hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
-                                     [model (:max-id (db/select-one [model [(keyword (str "%max." (name (models/primary-key model))))
+                                     [model (:max-id (t2/select-one [model [(keyword (str "%max." (name (models/primary-key model))))
                                                                             :max-id]]))]))]
     (try
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name models))) "\n")
@@ -729,13 +728,13 @@
   (initialize/initialize-if-needed! :db)
   (let [read-path                   (perms/collection-read-path collection-or-id)
         readwrite-path              (perms/collection-readwrite-path collection-or-id)
-        groups-with-read-perms      (db/select-field :group_id Permissions :object read-path)
-        groups-with-readwrite-perms (db/select-field :group_id Permissions :object readwrite-path)]
+        groups-with-read-perms      (t2/select-fn-set :group_id Permissions :object read-path)
+        groups-with-readwrite-perms (t2/select-fn-set :group_id Permissions :object readwrite-path)]
     (hawk.parallel/assert-test-is-not-parallel "with-discarded-collections-perms-changes")
     (try
       (f)
       (finally
-        (db/delete! Permissions :object [:in #{read-path readwrite-path}])
+        (t2/delete! Permissions :object [:in #{read-path readwrite-path}])
         (doseq [group-id groups-with-read-perms]
           (perms/grant-collection-read-permissions! group-id collection-or-id))
         (doseq [group-id groups-with-readwrite-perms]
@@ -752,7 +751,7 @@
     (do-with-discarded-collections-perms-changes
      collection
      (fn []
-       (db/delete! Permissions
+       (t2/delete! Permissions
          :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
          :group_id [:not= (u/the-id (perms-group/admin))])
        (f)))
@@ -762,7 +761,7 @@
     (finally
       (when (and (:metabase.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
-        (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/the-id (perms-group/admin))])]
+        (doseq [group-id (t2/select-pks-set PermissionsGroup :id [:not= (u/the-id (perms-group/admin))])]
           (when-not (db/exists? Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
@@ -853,12 +852,12 @@
      ([] thunk)
      ([thunk] (thunk))
      ([thunk [original-column-id remap]]
-      (let [original       (db/select-one Field :id (u/the-id original-column-id))
+      (let [original       (t2/select-one Field :id (u/the-id original-column-id))
             describe-field (fn [{table-id :table_id, field-name :name}]
                              (format "%s.%s" (t2/select-one-fn :name Table :id table-id) field-name))]
         (if (integer? remap)
           ;; remap is integer => fk remap
-          (let [remapped (db/select-one Field :id (u/the-id remap))]
+          (let [remapped (t2/select-one Field :id (u/the-id remap))]
             (fn []
               (tt/with-temp Dimension [_ {:field_id                (:id original)
                                           :name                    (format "%s [external remap]" (:display_name original))

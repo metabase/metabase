@@ -7,7 +7,8 @@
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel TimelineEvent :timeline_event)
 
@@ -27,7 +28,7 @@
 (defmethod mi/perms-objects-set TimelineEvent
   [event read-or-write]
   (let [timeline (or (:timeline event)
-                     (db/select-one 'Timeline :id (:timeline_id event)))]
+                     (t2/select-one 'Timeline :id (:timeline_id event)))]
     (mi/perms-objects-set timeline read-or-write)))
 
 ;;;; hydration
@@ -36,9 +37,9 @@
   :timeline
   "Attach the parent `:timeline` to this [[TimelineEvent]]."
   [{:keys [timeline_id]}]
-  (db/select-one 'Timeline :id timeline_id))
+  (t2/select-one 'Timeline :id timeline_id))
 
-;(hydrate (db/select-one 'TimelineEvent))
+;(hydrate (t2/select-one 'TimelineEvent))
 
 (defn- fetch-events
   "Fetch events for timelines in `timeline-ids`. Can include optional `start` and `end` dates in the options map, as

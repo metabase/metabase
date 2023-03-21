@@ -70,29 +70,29 @@
   ;; Since this could be long running, double check state just before refreshing
   (when (contains? refreshable-states (t2/select-one-fn :state PersistedInfo :id (:id persisted-info)))
     (log/info (trs "Attempting to refresh persisted model {0}." (:card_id persisted-info)))
-    (let [card (db/select-one Card :id (:card_id persisted-info))
+    (let [card (t2/select-one Card :id (:card_id persisted-info))
           definition (persisted-info/metadata->definition (:result_metadata card)
                                                           (:table_name persisted-info))
-          _ (db/update! PersistedInfo (u/the-id persisted-info)
-                        :definition definition,
-                        :query_hash (persisted-info/query-hash (:dataset_query card))
-                        :active false,
-                        :refresh_begin :%now,
-                        :refresh_end nil,
-                        :state "refreshing"
-                        :state_change_at :%now)
+          _ (t2/update! PersistedInfo (u/the-id persisted-info)
+                        {:definition definition,
+                         :query_hash (persisted-info/query-hash (:dataset_query card))
+                         :active false,
+                         :refresh_begin :%now,
+                         :refresh_end nil,
+                         :state "refreshing"
+                         :state_change_at :%now})
           {:keys [state error]} (try
                                   (refresh! refresher database definition card)
                                   (catch Exception e
                                     (log/info e (trs "Error refreshing persisting model with card-id {0}"
                                                      (:card_id persisted-info)))
                                     {:state :error :error (ex-message e)}))]
-      (db/update! PersistedInfo (u/the-id persisted-info)
-                  :active (= state :success),
-                  :refresh_end :%now,
-                  :state (if (= state :success) "persisted" "error")
-                  :state_change_at :%now
-                  :error (when (= state :error) error))
+      (t2/update! PersistedInfo (u/the-id persisted-info)
+                  {:active (= state :success),
+                   :refresh_end :%now,
+                   :state (if (= state :success) "persisted" "error")
+                   :state_change_at :%now
+                   :error (when (= state :error) error)})
       (if (= :success state)
         (update stats :success inc)
         (-> stats
@@ -134,7 +134,7 @@
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
                                    (let [current-state (t2/select-one-fn :state PersistedInfo :id (:id persisted-info))
-                                         card-info     (db/select-one [Card :archived :dataset]
+                                         card-info     (t2/select-one [Card :archived :dataset]
                                                                       :id (:card_id persisted-info))]
                                      (if (or (contains? prunable-states current-state)
                                              (:archived card-info)
@@ -144,7 +144,7 @@
                                          (try
                                            (unpersist! refresher database persisted-info)
                                            (when (= "deletable" current-state)
-                                             (db/delete! PersistedInfo :id (:id persisted-info)))
+                                             (t2/delete! PersistedInfo :id (:id persisted-info)))
                                            (update stats :success inc)
                                            (catch Exception e
                                              (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id persisted-info)))
@@ -201,7 +201,7 @@
   [database-id refresher]
   (log/info (trs "Starting persisted model refresh task for Database {0}." database-id))
   (persisted-info/ready-unpersisted-models! database-id)
-  (let [database  (db/select-one Database :id database-id)
+  (let [database  (t2/select-one Database :id database-id)
         persisted (refreshable-models database-id)
         thunk     (fn []
                     (reduce (partial refresh-with-stats! refresher database)
@@ -214,9 +214,9 @@
 (defn- refresh-individual!
   "Refresh an individual model based on [[PersistedInfo]]."
   [persisted-info-id refresher]
-  (let [persisted-info (db/select-one PersistedInfo :id persisted-info-id)
+  (let [persisted-info (t2/select-one PersistedInfo :id persisted-info-id)
         database       (when persisted-info
-                         (db/select-one Database :id (:database_id persisted-info)))]
+                         (t2/select-one Database :id (:database_id persisted-info)))]
     (if (and persisted-info database)
       (do
         (save-task-history! "persist-refresh" (u/the-id database)

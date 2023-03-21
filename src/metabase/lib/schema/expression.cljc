@@ -92,7 +92,7 @@
   [:and
    [:or
     [:fn
-     {:error/message "This is shaped like an MBQL clause"}
+     {:error/message "shaped like an MBQL clause"}
      (complement mbql-clause?)]
     [:ref :metabase.lib.schema.mbql-clause/clause]]
    [:fn

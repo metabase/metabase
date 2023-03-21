@@ -14,7 +14,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (com.unboundid.ldap.sdk LDAPConnectionPool)))
 
@@ -42,7 +42,7 @@
 
 (defn- attribute-synced-user
   [{:keys [attributes first-name last-name email]}]
-  (when-let [user (db/select-one [User :id :last_login :first_name :last_name :login_attributes :is_active]
+  (when-let [user (t2/select-one [User :id :last_login :first_name :last_name :login_attributes :is_active]
                                  :%lower.email (u/lower-case-en email))]
     (let [syncable-attributes (syncable-user-attributes attributes)
           old-first-name (:first_name user)
@@ -56,8 +56,8 @@
                           {:last_name last-name}))]
       (if (seq user-changes)
         (do
-          (db/update! User (:id user) user-changes)
-          (db/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
+          (t2/update! User (:id user) user-changes)
+          (t2/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
         user))))
 
 (defenterprise-schema find-user :- (s/maybe EEUserInfo)

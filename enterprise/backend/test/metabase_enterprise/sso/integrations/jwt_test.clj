@@ -151,7 +151,7 @@
   `(try
      ~@body
      (finally
-       (db/delete! User :%lower.email (u/lower-case-en ~user-email)))))
+       (t2/delete! User :%lower.email (u/lower-case-en ~user-email)))))
 
 (deftest create-new-account-test
   (testing "A new account will be created for a JWT user we haven't seen before"
@@ -245,8 +245,8 @@
                (#'mt.jwt/group-names->ids ["group_2" "group_3"])))))))
 
 (defn- group-memberships [user-or-id]
-  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
-    (db/select-field :name PermissionsGroup :id [:in group-ids])))
+  (when-let [group-ids (seq (t2/select-fn-set :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
+    (t2/select-fn-set :name PermissionsGroup :id [:in group-ids])))
 
 (deftest login-sync-group-memberships-test
   (testing "login should sync group memberships if enabled"

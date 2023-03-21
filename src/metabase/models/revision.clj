@@ -30,7 +30,7 @@
 
 (defmethod revert-to-revision! :default
   [model id _user-id serialized-instance]
-  (db/update! model id, serialized-instance))
+  (t2/update! model id, serialized-instance))
 
 (defmulti diff-map
   "Return a map describing the difference between `object-1` and `object-2`."
@@ -118,7 +118,7 @@
                                                                :model    (name model)
                                                                :model_id id
                                                                {:order-by [[:timestamp :desc]]}))))]
-    (db/delete! Revision :id [:in old-revisions])))
+    (t2/delete! Revision :id [:in old-revisions])))
 
 (defn push-revision!
   "Record a new Revision for `entity` with `id`. Returns `object`."
@@ -161,7 +161,7 @@
       ;; Do the reversion of the object
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change
-      (let [last-revision (db/select-one Revision :model (name entity), :model_id id, {:order-by [[:id :desc]]})
+      (let [last-revision (t2/select-one Revision :model (name entity), :model_id id, {:order-by [[:id :desc]]})
             new-revision  (db/insert! Revision
                             :model        (name entity)
                             :model_id     id

@@ -32,7 +32,7 @@
    question_id  (s/maybe su/IntGreaterThanZero)
    archived     (s/maybe s/Bool)}
   ;; deliberately not using api/check-404 so we can have a useful error message.
-  (let [timeline (db/select-one Timeline :id timeline_id)]
+  (let [timeline (t2/select-one Timeline :id timeline_id)]
     (when-not timeline
       (throw (ex-info (tru "Timeline with id {0} not found" timeline_id)
                       {:status-code 404})))
@@ -78,18 +78,18 @@
                                  (boolean timestamp) (update :timestamp u.date/parse))]
     (collection/check-allowed-to-change-collection existing timeline-event-updates)
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
-    (db/update! TimelineEvent id
+    (t2/update! TimelineEvent id
       (u/select-keys-when timeline-event-updates
         :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
         :non-nil #{:name}))
-    (db/select-one TimelineEvent :id id)))
+    (t2/select-one TimelineEvent :id id)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"
   "Delete a [[TimelineEvent]]."
   [id]
   (api/write-check TimelineEvent id)
-  (db/delete! TimelineEvent :id id)
+  (t2/delete! TimelineEvent :id id)
   api/generic-204-no-content)
 
 (api/define-routes)

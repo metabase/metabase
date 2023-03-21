@@ -6,7 +6,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel PulseCard :pulse_card)
 
@@ -24,7 +25,7 @@
   "Return the next available `pulse_card.position` for the given `pulse`"
   [pulse-id]
   {:pre [(integer? pulse-id)]}
-  (-> (db/select-one [PulseCard [:%max.position :max]] :pulse_id pulse-id)
+  (-> (t2/select-one [PulseCard [:%max.position :max]] :pulse_id pulse-id)
       :max
       (some-> inc)
       (or 0)))
@@ -54,7 +55,7 @@
 
 (defmethod serdes/generate-path "PulseCard"
   [_ {:keys [pulse_id] :as card}]
-  [(serdes/infer-self-path "Pulse" (db/select-one 'Pulse :id pulse_id))
+  [(serdes/infer-self-path "Pulse" (t2/select-one 'Pulse :id pulse_id))
    (serdes/infer-self-path "PulseCard" card)])
 
 (defmethod serdes/extract-one "PulseCard"

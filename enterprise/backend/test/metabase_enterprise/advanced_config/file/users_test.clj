@@ -29,7 +29,7 @@
         (is (partial= {:first_name "Cam"
                        :last_name  "Era"
                        :email      "cam+config-file-test@metabase.com"}
-                      (db/select-one User :email "cam+config-file-test@metabase.com")))
+                      (t2/select-one User :email "cam+config-file-test@metabase.com")))
         (is (= 1
                (db/count User :email "cam+config-file-test@metabase.com"))))
       (testing "upsert if User already exists"
@@ -48,7 +48,7 @@
             (is (partial= {:first_name "Cam"
                            :last_name  "Saul"
                            :email      "cam+config-file-test@metabase.com"}
-                          (db/select-one User :email "cam+config-file-test@metabase.com")))
+                          (t2/select-one User :email "cam+config-file-test@metabase.com")))
             (testing "Password should be hashed, but it should be a NEW HASH"
               (let [new-hashed-password (hashed-password)]
                 (is (not= original-hashed-password
@@ -59,7 +59,7 @@
                 (testing "Password should work correctly"
                   (is (u.password/verify-password "2cans" (salt) new-hashed-password)))))))))
     (finally
-      (db/delete! User :email "cam+config-file-test@metabase.com"))))
+      (t2/delete! User :email "cam+config-file-test@metabase.com"))))
 
 (deftest init-from-config-file-force-admin-for-first-user-test
   (testing "If this is the first user being created, always make the user a superuser regardless of what is specified"
@@ -78,7 +78,7 @@
                            :last_name    "Era"
                            :email        "cam+config-file-admin-test@metabase.com"
                            :is_superuser true}
-                          (db/select-one User :email "cam+config-file-admin-test@metabase.com")))
+                          (t2/select-one User :email "cam+config-file-admin-test@metabase.com")))
             (is (= 1
                    (db/count User :email "cam+config-file-admin-test@metabase.com"))))))
       (testing "Create the another User, DO NOT force them to be an admin"
@@ -94,10 +94,10 @@
                          :last_name    "Saul"
                          :email        "cam+config-file-admin-test-2@metabase.com"
                          :is_superuser false}
-                        (db/select-one User :email "cam+config-file-admin-test-2@metabase.com")))
+                        (t2/select-one User :email "cam+config-file-admin-test-2@metabase.com")))
           (is (= 1
                  (db/count User :email "cam+config-file-admin-test-2@metabase.com")))))
-      (finally (db/delete! User :email [:in #{"cam+config-file-admin-test@metabase.com"
+      (finally (t2/delete! User :email [:in #{"cam+config-file-admin-test@metabase.com"
                                               "cam+config-file-admin-test-2@metabase.com"}])))))
 
 (deftest init-from-config-file-env-var-for-password-test
@@ -112,7 +112,7 @@
         (testing "Create a User if it does not already exist"
           (is (= :ok
                  (advanced-config.file/initialize!)))
-          (let [user (db/select-one [User :first_name :last_name :email :password_salt :password]
+          (let [user (t2/select-one [User :first_name :last_name :email :password_salt :password]
                        :email "cam+config-file-password-test@metabase.com")]
             (is (partial= {:first_name "Cam"
                            :last_name  "Era"
@@ -120,7 +120,7 @@
                           user))
             (is (u.password/verify-password "1234cans" (:password_salt user) (:password user))))))
       (finally
-        (db/delete! User :email "cam+config-file-password-test@metabase.com")))))
+        (t2/delete! User :email "cam+config-file-password-test@metabase.com")))))
 
 (deftest init-from-config-file-validation-test
   (are [user error-pattern] (thrown-with-msg?

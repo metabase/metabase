@@ -99,7 +99,7 @@
   (let [action (api/write-check Action action-id)]
     (snowplow/track-event! ::snowplow/action-deleted api/*current-user-id* {:type      (:type action)
                                                                             :action_id action-id}))
-  (db/delete! Action :id action-id)
+  (t2/delete! Action :id action-id)
   api/generic-204-no-content)
 
 (api/defendpoint POST "/"
@@ -133,7 +133,7 @@
                       {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
-       (db/select-one Database :id db-id))))
+       (t2/select-one Database :id db-id))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (snowplow/track-event! ::snowplow/action-created api/*current-user-id* {:type           type
                                                                             :action_id      action-id
@@ -183,9 +183,9 @@
     (actions/check-actions-enabled! action)
     {:uuid (or (:public_uuid action)
                (u/prog1 (str (UUID/randomUUID))
-                 (db/update! Action id
-                             :public_uuid <>
-                             :made_public_by_id api/*current-user-id*)))}))
+                 (t2/update! Action id
+                             {:public_uuid <>
+                              :made_public_by_id api/*current-user-id*})))}))
 
 (api/defendpoint DELETE "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
@@ -196,7 +196,7 @@
   (validation/check-public-sharing-enabled)
   (api/check-exists? Action :id id, :public_uuid [:not= nil], :archived false)
   (actions/check-actions-enabled! id)
-  (db/update! Action id :public_uuid nil, :made_public_by_id nil)
+  (t2/update! Action id {:public_uuid nil, :made_public_by_id nil})
   {:status 204, :body nil})
 
 (api/defendpoint POST "/:id/execute"

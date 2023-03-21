@@ -81,7 +81,7 @@
         (db/simple-insert! Field (assoc mock-field :name "Field 1"))
         (db/simple-insert! Field (assoc mock-field :name "Field 2")))
       (testing "sanity check: Fields should not have a `:database_position` column yet"
-        (is (not (contains? (db/select-one Field :id 1) :database_position))))
+        (is (not (contains? (t2/select-one Field :id 1) :database_position))))
       ;; now run migration 165
       (migrate!)
       (testing "Fields should get `:database_position` equal to their IDs"
@@ -728,10 +728,10 @@
       (let [database-id (db/simple-insert! Database (-> (dissoc (mt/with-temp-defaults Database) :details)
                                                         (assoc :engine "h2")))]
         (is (partial= {:details nil}
-                      (db/select-one Database :id database-id)))
+                      (t2/select-one Database :id database-id)))
         (migrate!)
         (is (partial= {:details {}}
-                      (db/select-one Database :id database-id)))))))
+                      (t2/select-one Database :id database-id)))))))
 
 (deftest populate-collection-created-at-test
   (testing "Migrations v45.00-048 thru v45.00-050: add Collection.created_at and populate it"
@@ -829,12 +829,12 @@
         (is (= #{"F1 D1"
                  "F1 D2"
                  "F2 D1"}
-               (db/select-field :name Dimension {:order-by [[:id :asc]]})))
+               (t2/select-fn-set :name Dimension {:order-by [[:id :asc]]})))
         (migrate!)
         (testing "Keep the newest Dimensions"
           (is (= #{"F1 D2"
                    "F2 D1"}
-                 (db/select-field :name Dimension {:order-by [[:id :asc]]}))))))))
+                 (t2/select-fn-set :name Dimension {:order-by [[:id :asc]]}))))))))
 
 (deftest clean-up-gtap-table-test
   (testing "Migrations v46.00-064 to v46.00-067: rename `group_table_access_policy` table, add `permission_id` FK,
@@ -905,9 +905,9 @@
                                                 :created_at :%now
                                                 :updated_at :%now})]
         (is (thrown? clojure.lang.ExceptionInfo
-                     (db/delete! Database :id db-id)))
+                     (t2/delete! Database :id db-id)))
         (migrate!)
-        (is (db/delete! Database :id db-id))))))
+        (is (t2/delete! Database :id db-id))))))
 
 (deftest split-data-permission-test
   (testing "Migration v46.00-080: split existing v1 data permission paths into v2 data and query permission paths"

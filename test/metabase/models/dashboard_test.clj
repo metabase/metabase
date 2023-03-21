@@ -151,11 +151,11 @@
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
         (dashboard-card/delete-dashboard-card! dashboard-card (test.users/user->id :rasta))
-        (db/update! Dashboard dashboard-id
-          :name        "Revert Test"
-          :description "something")
+        (t2/update! Dashboard dashboard-id
+                    {:name        "Revert Test"
+                     :description "something"})
         (testing "capture updated Dashboard state"
-          (let [dashboard (db/select-one Dashboard :id dashboard-id)]
+          (let [dashboard (t2/select-one Dashboard :id dashboard-id)]
             (is (= empty-dashboard
                    (revision/serialize-instance Dashboard (:id dashboard) dashboard))))))
       (testing "now do the reversion; state should return to original"
@@ -170,12 +170,12 @@
                                :id      false
                                :card_id true
                                :series  true}]}
-               (update (revision/serialize-instance Dashboard dashboard-id (db/select-one Dashboard :id dashboard-id))
+               (update (revision/serialize-instance Dashboard dashboard-id (t2/select-one Dashboard :id dashboard-id))
                        :cards check-ids))))
       (testing "revert back to the empty state"
         (revision/revert-to-revision! Dashboard dashboard-id (test.users/user->id :crowberto) empty-dashboard)
         (is (= empty-dashboard
-               (revision/serialize-instance Dashboard dashboard-id (db/select-one Dashboard :id dashboard-id))))))))
+               (revision/serialize-instance Dashboard dashboard-id (t2/select-one Dashboard :id dashboard-id))))))))
 
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
@@ -199,7 +199,7 @@
                   DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   PulseCard           [_ {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]]
     (testing "Pulse name and collection-id updates"
-      (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves" :collection_id collection-id-2)
+      (t2/update! Dashboard dashboard-id {:name "Lucky's Close Shaves" :collection_id collection-id-2})
       (is (= "Lucky's Close Shaves"
              (t2/select-one-fn :name Pulse :id pulse-id)))
       (is (= collection-id-2
@@ -210,8 +210,8 @@
                                                            :col    0
                                                            :size_x 4
                                                            :size_y 4})
-        (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves")
-        (is (not (nil? (db/select-one PulseCard :card_id new-card-id))))))))
+        (t2/update! Dashboard dashboard-id {:name "Lucky's Close Shaves"})
+        (is (not (nil? (t2/select-one PulseCard :card_id new-card-id))))))))
 
 (deftest parameter-card-test
   (let [default-params {:name       "Category Name"
@@ -228,21 +228,21 @@
                  :parameterized_object_type :dashboard
                  :parameterized_object_id   dashboard-id
                  :parameter_id              "_CATEGORY_NAME_"}
-                (db/select-one 'ParameterCard :card_id card-id)))))
+                (t2/select-one 'ParameterCard :card_id card-id)))))
 
     (testing "Adding a card_id creates a new ParameterCard"
       (tt/with-temp* [Card      [{card-id :id}]
                       Dashboard [{dashboard-id :id}
                                  {:parameters [default-params]}]]
-        (is (nil? (db/select-one 'ParameterCard :card_id card-id)))
-        (db/update! Dashboard dashboard-id :parameters [(merge default-params
-                                                               {:values_source_type    "card"
-                                                                :values_source_config {:card_id card-id}})])
+        (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))
+        (t2/update! Dashboard dashboard-id {:parameters [(merge default-params
+                                                                {:values_source_type    "card"
+                                                                 :values_source_config {:card_id card-id}})]})
         (is (=? {:card_id                   card-id
                  :parameterized_object_type :dashboard
                  :parameterized_object_id   dashboard-id
                  :parameter_id              "_CATEGORY_NAME_"}
-                (db/select-one 'ParameterCard :card_id card-id)))))
+                (t2/select-one 'ParameterCard :card_id card-id)))))
 
     (testing "Removing a card_id deletes old ParameterCards"
       (tt/with-temp* [Card      [{card-id :id}]
@@ -251,8 +251,8 @@
                                                       {:values_source_type    "card"
                                                        :values_source_config {:card_id card-id}})]}]]
         ;; same setup as earlier test, we know the ParameterCard exists right now
-        (db/delete! Dashboard :id dashboard-id)
-        (is (nil? (db/select-one 'ParameterCard :card_id card-id)))))))
+        (t2/delete! Dashboard :id dashboard-id)
+        (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Collections Permissions Tests                                          |
@@ -303,7 +303,7 @@
       (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
         (binding [api/*current-user-id*              (test.users/user->id :rasta)
                   api/*current-user-permissions-set* (-> :rasta test.users/user->id user/permissions-set atom)]
-          (let [dashboard       (magic/automagic-analysis (db/select-one Table :id (mt/id :venues)) {})
+          (let [dashboard       (magic/automagic-analysis (t2/select-one Table :id (mt/id :venues)) {})
                 saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (db/count DashboardCard :dashboard_id (u/the-id saved-dashboard))
                    (-> dashboard :ordered_cards count)))))))))
@@ -318,14 +318,14 @@
                #"A Dashboard can only go in Collections in the \"default\" namespace"
                (db/insert! Dashboard (assoc (tt/with-temp-defaults Dashboard) :collection_id collection-id, :name dashboard-name))))
           (finally
-            (db/delete! Dashboard :name dashboard-name)))))
+            (t2/delete! Dashboard :name dashboard-name)))))
 
     (testing "Shouldn't be able to move a Dashboard to a non-normal Collection"
       (mt/with-temp Dashboard [{card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Dashboard can only go in Collections in the \"default\" namespace"
-             (db/update! Dashboard card-id {:collection_id collection-id})))))))
+             (t2/update! Dashboard card-id {:collection_id collection-id})))))))
 
 (deftest validate-parameters-test
   (testing "Should validate Dashboard :parameters when"
@@ -339,7 +339,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with :id and :type keys"
-             (db/update! Dashboard id :parameters [{:id 100}])))))))
+             (t2/update! Dashboard id {:parameters [{:id 100}]})))))))
 
 (deftest normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
