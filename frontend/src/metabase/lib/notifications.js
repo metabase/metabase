@@ -119,9 +119,9 @@ export const getRecipientsCount = (item, channelType) => {
 export const canArchive = (item, user) => {
   const recipients = item.channels.flatMap(channel => {
     if (channel.recipients) {
-      channel.recipients.map(recipient => recipient.id);
+      return channel.recipients.map(recipient => recipient.id);
     } else {
-      [];
+      return [];
     }
   });
 
