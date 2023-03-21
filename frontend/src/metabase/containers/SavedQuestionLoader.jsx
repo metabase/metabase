@@ -35,9 +35,6 @@ import Question from "metabase-lib/Question";
  * }
  *
  * @example
- *
- * The raw un-connected component is also exported so we can unit test it
- * without the redux store.
  */
 const SavedQuestionLoader = ({ children, card, error, loading }) => {
   const metadata = useSelector(getMetadata);
