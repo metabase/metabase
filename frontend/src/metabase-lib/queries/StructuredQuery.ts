@@ -11,7 +11,6 @@ import {
   Aggregation,
   Breakout,
   Filter,
-  Join,
   LimitClause,
   OrderBy,
   DependentMetadataItem,
@@ -96,10 +95,6 @@ export interface SegmentOption {
   filter: ["segment", number];
   icon: string;
   query: StructuredQuery;
-}
-
-function unwrapJoin(join: Join | JoinWrapper): Join {
-  return join instanceof JoinWrapper ? join.raw() : join;
 }
 
 /**
@@ -618,11 +613,11 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   addJoin(join) {
-    return this._updateQuery(Q.addJoin, [unwrapJoin(join)]);
+    return this._updateQuery(Q.addJoin, arguments);
   }
 
   updateJoin(index, join) {
-    return this._updateQuery(Q.updateJoin, [index, unwrapJoin(join)]);
+    return this._updateQuery(Q.updateJoin, arguments);
   }
 
   removeJoin(index) {
