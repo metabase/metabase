@@ -212,6 +212,7 @@ export interface Settings {
   "slack-files-channel": string | null;
   "slack-token": string | null;
   "slack-token-valid?": boolean;
+  "start-of-week"?: string;
   "subscription-allowed-domains": string | null;
   "token-features": TokenFeatures;
   "token-status": TokenStatus | null;

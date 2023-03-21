@@ -1,17 +1,19 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-
-import "./Calendar.css";
-
 import cx from "classnames";
 import moment, { Moment } from "moment-timezone";
-import { t } from "ttag";
 import Icon from "metabase/components/Icon";
+import {
+  getDayOfWeekOptions,
+  getFirstDayOfWeekIndex,
+} from "metabase/lib/date-time";
+
+import "./Calendar.css";
 import { CalendarDay } from "./Calendar.styled";
 
 export type SelectAll = "after" | "before";
 
-type Props = {
+export type CalendarProps = {
   initial?: Moment;
   selected?: Moment;
   selectedEnd?: Moment;
@@ -31,8 +33,8 @@ type State = {
   current?: Moment;
 };
 
-export default class Calendar extends Component<Props, State> {
-  constructor(props: Props) {
+export default class Calendar extends Component<CalendarProps, State> {
+  constructor(props: CalendarProps) {
     super(props);
     this.state = {
       current: moment(props.initial || undefined),
@@ -43,7 +45,7 @@ export default class Calendar extends Component<Props, State> {
     isRangePicker: true,
   };
 
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: CalendarProps) {
     if (
       // `selected` became null or not null
       (nextProps.selected == null) !== (this.props.selected == null) ||
@@ -133,13 +135,17 @@ export default class Calendar extends Component<Props, State> {
   }
 
   renderDayNames() {
-    // translator: weekdays abbreviations
-    const names = [t`Su`, t`Mo`, t`Tu`, t`We`, t`Th`, t`Fr`, t`Sa`];
+    const days = getDayOfWeekOptions();
+
     return (
       <div className="Calendar-day-names Calendar-week py1">
-        {names.map(name => (
-          <span key={name} className="Calendar-day-name text-centered">
-            {name}
+        {days.map(({ shortName }) => (
+          <span
+            key={shortName}
+            className="Calendar-day-name text-centered"
+            data-testid="calendar-day-name"
+          >
+            {shortName}
           </span>
         ))}
       </div>
@@ -149,7 +155,9 @@ export default class Calendar extends Component<Props, State> {
   renderWeeks(current?: Moment) {
     current = current || moment();
     const weeks = [];
-    const date = moment(current).startOf("month").day("Sunday");
+    const firstDayOfWeek = getFirstDayOfWeekIndex();
+    const date = moment(current).startOf("month").isoWeekday(firstDayOfWeek);
+
     let done = false;
     let monthIndex = date.month();
     let count = 0;
@@ -173,7 +181,11 @@ export default class Calendar extends Component<Props, State> {
       monthIndex = date.month();
     }
 
-    return <div className="Calendar-weeks relative">{weeks}</div>;
+    return (
+      <div className="Calendar-weeks relative" data-testid="calendar-weeks">
+        {weeks}
+      </div>
+    );
   }
 
   renderCalender(current?: Moment, side?: "left" | "right") {
