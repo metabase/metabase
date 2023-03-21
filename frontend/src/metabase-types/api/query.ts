@@ -1,5 +1,5 @@
-import type { TemplateTags } from "../types/Query";
 import type { DatabaseId } from "./database";
+import type { TemplateTags } from "./dataset";
 import type { FieldId } from "./field";
 import type { TableId } from "./table";
 

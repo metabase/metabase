@@ -17,7 +17,9 @@ export const TagName = styled.h3`
 interface ContainerLabelProps {
   paddingTop: boolean;
 }
-export const ContainerLabel = styled.h4<ContainerLabelProps>`
+export const ContainerLabel = styled.label<ContainerLabelProps>`
+  display: block;
+  font-weight: 700;
   padding-bottom: 0.5rem;
   color: ${color("text-medium")};
   padding-top: ${props => (props.paddingTop ? "0.5rem" : "0")};

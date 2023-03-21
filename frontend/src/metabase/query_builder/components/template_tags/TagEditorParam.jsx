@@ -15,15 +15,18 @@ import ValuesSourceSettings from "metabase/parameters/components/ValuesSourceSet
 
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
+import {
+  setTemplateTag,
+  setTemplateTagConfig,
+} from "metabase/query_builder/actions";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import MetabaseSettings from "metabase/lib/settings";
-
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
+
 import {
   getDefaultParameterWidgetType,
   getParameterOptionsForField,
 } from "metabase-lib/parameters/utils/template-tag-options";
-
 import {
   ContainerLabel,
   DefaultParameterValueWidget,
@@ -39,6 +42,7 @@ const propTypes = {
   database: PropTypes.object,
   databases: PropTypes.array,
   setTemplateTag: PropTypes.func.isRequired,
+  setTemplateTagConfig: PropTypes.func.isRequired,
   setParameterValue: PropTypes.func.isRequired,
   fetchField: PropTypes.func.isRequired,
   metadata: PropTypes.object.isRequired,
@@ -267,17 +271,17 @@ export class TagEditorParam extends Component {
 
         {(hasWidgetOptions || !isDimension) && (
           <InputContainer>
-            <ContainerLabel>
+            <ContainerLabel htmlFor="tag-display-name-input">
               {t`Filter widget label`}
               {hasNoWidgetLabel && <ErrorSpan>{t`(required)`}</ErrorSpan>}
             </ContainerLabel>
             <InputBlurChange
+              id="tag-display-name-input"
               type="text"
               value={tag["display-name"]}
               onBlurChange={e =>
                 this.setParameterAttribute("display-name", e.target.value)
               }
-              data-testid="tag-display-name-input"
             />
           </InputContainer>
         )}
@@ -340,4 +344,6 @@ TagEditorParam.propTypes = propTypes;
 
 export default connect(state => ({ metadata: getMetadata(state) }), {
   fetchField,
+  setTemplateTag,
+  setTemplateTagConfig,
 })(TagEditorParam);

@@ -1,6 +1,6 @@
 import Utils from "metabase/lib/utils";
 import { humanize } from "metabase/lib/formatting";
-import { TemplateTag } from "metabase-types/types/Query";
+import { TemplateTag } from "metabase-types/api";
 
 export const createTemplateTag = (tagName: string): TemplateTag => {
   return {
