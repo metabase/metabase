@@ -62,7 +62,7 @@
    id    su/IntGreaterThanZero}
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
   (let [[_ bookmark-model item-key] (lookup model)]
-    (db/delete! bookmark-model
+    (t2/delete! bookmark-model
                 :user_id api/*current-user-id*
                 item-key id)
     api/generic-204-no-content))

@@ -31,7 +31,7 @@
       (is (= [1 2 3 4]
              (venues-price-field-values))))
     (testing "Delete the Field values, make sure they're gone"
-      (db/delete! FieldValues :field_id (mt/id :venues :price))
+      (t2/delete! FieldValues :field_id (mt/id :venues :price))
       (is (= nil
              (venues-price-field-values))))
     (testing "After the delete, a field values should be created, the rest updated"

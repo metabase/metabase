@@ -401,7 +401,7 @@
   (let [email (mt/random-email)]
     (try
       (f email)
-      (finally (db/delete! User :email email)))))
+      (finally (t2/delete! User :email email)))))
 
 (defmacro ^:private with-temp-user-email [[email-binding] & body]
   `(do-with-temp-user-email (fn [~email-binding] ~@body)))
@@ -481,7 +481,7 @@
                                                    :login_attributes {:test "value"}}))
                            (finally
                              ;; clean up after ourselves
-                             (db/delete! User :email email)))))))))
+                             (t2/delete! User :email email)))))))))
 
     (testing "attempting to create a new user with an email with case mutations of an existing email should fail"
       (is (= {:errors {:email "Email address already in use."}}

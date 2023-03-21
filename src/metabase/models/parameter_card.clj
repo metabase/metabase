@@ -51,7 +51,7 @@
                              :parameterized_object_id parameterized-object-id]
                             (when (seq parameter-ids-still-in-use)
                               [:parameter_id [:not-in parameter-ids-still-in-use]]))]
-     (apply db/delete! ParameterCard conditions))))
+     (apply t2/delete! ParameterCard conditions))))
 
 (defn- upsert-from-parameters!
   [parameterized-object-type parameterized-object-id parameters]

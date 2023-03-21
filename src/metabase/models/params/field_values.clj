@@ -112,7 +112,7 @@
 
        ;; If it's expired, delete then try to re-create it
        (field-values/advanced-field-values-expired? fv) (do
-                                                          (db/delete! FieldValues :id (:id fv))
+                                                          (t2/delete! FieldValues :id (:id fv))
                                                           (recur fv-type field constraints))
        :else fv))))
 

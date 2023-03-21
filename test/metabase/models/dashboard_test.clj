@@ -251,7 +251,7 @@
                                                       {:values_source_type    "card"
                                                        :values_source_config {:card_id card-id}})]}]]
         ;; same setup as earlier test, we know the ParameterCard exists right now
-        (db/delete! Dashboard :id dashboard-id)
+        (t2/delete! Dashboard :id dashboard-id)
         (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -318,7 +318,7 @@
                #"A Dashboard can only go in Collections in the \"default\" namespace"
                (t2/insert! Dashboard (assoc (tt/with-temp-defaults Dashboard) :collection_id collection-id, :name dashboard-name))))
           (finally
-            (db/delete! Dashboard :name dashboard-name)))))
+            (t2/delete! Dashboard :name dashboard-name)))))
 
     (testing "Shouldn't be able to move a Dashboard to a non-normal Collection"
       (mt/with-temp Dashboard [{card-id :id}]

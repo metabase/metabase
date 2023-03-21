@@ -89,7 +89,7 @@
   "Delete a [[TimelineEvent]]."
   [id]
   (api/write-check TimelineEvent id)
-  (db/delete! TimelineEvent :id id)
+  (t2/delete! TimelineEvent :id id)
   api/generic-204-no-content)
 
 (api/define-routes)

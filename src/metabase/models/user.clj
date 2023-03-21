@@ -100,7 +100,7 @@
         (first (t2/insert-returning-instances! PermissionsGroupMembership
                                                :group_id (u/the-id (perms-group/admin))
                                                :user_id  id))
-        ;; don't use [[db/delete!]] here because that does the opposite and tries to update this user which leads to a
+        ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
              in-admin-group?)
@@ -114,7 +114,7 @@
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
   (when (false? active?)
-    (db/delete! 'PulseChannelRecipient :user_id id))
+    (t2/delete! 'PulseChannelRecipient :user_id id))
   ;; If we're setting the reset_token then encrypt it before it goes into the DB
   (cond-> user
     true        (merge (hashed-password-values user))
@@ -387,7 +387,7 @@
     (when (seq (concat to-remove to-add))
       (db/transaction
        (when (seq to-remove)
-         (db/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
+         (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
        ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,
        ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
        ;; do things like automatically set the `is_superuser` flag for a User

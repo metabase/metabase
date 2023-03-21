@@ -70,7 +70,7 @@
            (some->> ids#
                     not-empty
                     (vector :in)
-                    (db/delete! model# :id)))))))
+                    (t2/delete! model# :id)))))))
 
 (defn- card-query-results [card]
   (let [query (:dataset_query card)]

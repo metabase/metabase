@@ -946,7 +946,7 @@
   [id]
   (api/check-superuser)
   (api/let-404 [db (t2/select-one Database :id id)]
-    (db/delete! Database :id id)
+    (t2/delete! Database :id id)
     (events/publish-event! :database-delete db))
   api/generic-204-no-content)
 

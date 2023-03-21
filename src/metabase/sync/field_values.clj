@@ -83,7 +83,7 @@
                                        (- (t/as field-values/advanced-field-values-max-age :days))
                                        :day)]]
           rows-count (apply db/count FieldValues conditions)]
-      (apply db/delete! FieldValues conditions)
+      (apply t2/delete! FieldValues conditions)
       rows-count)))
 
 (s/defn delete-expired-advanced-field-values-for-table!

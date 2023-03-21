@@ -347,7 +347,7 @@
                           (t2/select-one [Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
       (when archived?
-        (db/delete! 'DashboardCard :card_id id))
+        (t2/delete! 'DashboardCard :card_id id))
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (get-in changes [:dataset_query :native])
@@ -391,9 +391,9 @@
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
-  (db/delete! ParameterCard :card_id id)
-  (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (db/delete! 'Revision :model "Card", :model_id id))
+  (t2/delete! ParameterCard :card_id id)
+  (t2/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
+  (t2/delete! 'Revision :model "Card", :model_id id))
 
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."

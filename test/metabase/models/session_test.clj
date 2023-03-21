@@ -15,7 +15,7 @@
   (try
     (first (t2/insert-returning-instances! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)}))
     (finally
-      (db/delete! Session :id (str test-uuid)))))
+      (t2/delete! Session :id (str test-uuid)))))
 
 (deftest new-session-include-test-test
   (testing "when creating a new Session, it should come back with an added `:type` key"

@@ -74,7 +74,7 @@
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
     (when (and dimension-id (= :external dimension-type))
-      (db/delete! Dimension :id dimension-id)))
+      (t2/delete! Dimension :id dimension-id)))
   true)
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
@@ -98,7 +98,7 @@
     (when (and old-dim-id
                (= :internal old-dim-type)
                (not (internal-remapping-allowed? base-type new-semantic-type)))
-      (db/delete! Dimension :id old-dim-id)))
+      (t2/delete! Dimension :id old-dim-id)))
   true)
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -199,7 +199,7 @@
   "Remove the dimension associated to field at ID"
   [id]
   (api/write-check Field id)
-  (db/delete! Dimension :field_id id)
+  (t2/delete! Dimension :field_id id)
   api/generic-204-no-content)
 
 

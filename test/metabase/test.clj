@@ -320,7 +320,7 @@
     (try
       (thunk temp-admin)
       (finally
-        (db/delete! User primary-key (primary-key temp-admin))
+        (t2/delete! User primary-key (primary-key temp-admin))
         (when (seq existing-admin-ids)
           (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser true))
         (db/insert-many! PermissionsGroupMembership existing-admin-memberships)))))

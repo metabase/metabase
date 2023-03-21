@@ -403,7 +403,7 @@
                #"A Pulse can only go in Collections in the \"default\" namespace"
                (t2/insert! Pulse (assoc (tt/with-temp-defaults Pulse) :collection_id collection-id, :name pulse-name))))
           (finally
-            (db/delete! Pulse :name pulse-name)))))
+            (t2/delete! Pulse :name pulse-name)))))
 
     (testing "Shouldn't be able to move a Pulse to a non-normal Collection"
       (mt/with-temp Pulse [{card-id :id}]

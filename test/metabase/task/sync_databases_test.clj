@@ -90,7 +90,7 @@
           (update fv-job   :triggers empty)]
         (with-scheduler-setup
           (mt/with-temp Database [database {:engine :postgres}]
-            (db/delete! Database :id (u/the-id database))
+            (t2/delete! Database :id (u/the-id database))
             (current-tasks-for-db database))))))
 
 ;; Check that changing the schedule column(s) for a DB properly updates the scheduled tasks
@@ -161,7 +161,7 @@
               (is (= [sync-job fv-job]
                      (current-tasks-for-db database)))
 
-              (db/delete! Database :id db-id)
+              (t2/delete! Database :id db-id)
               (let [ctx (MockJobExecutionContext. {"db-id" db-id})]
                 (sync-fn ctx))
 

@@ -216,7 +216,7 @@
       (let [details              (t2/select-one-fn :details PulseChannel :id channel-id)
             has-email-addresses? (seq (:emails details))]
         (when-not has-email-addresses?
-          (db/delete! PulseChannel :id channel-id))))))
+          (t2/delete! PulseChannel :id channel-id))))))
 
 
 ;; ## Persistence Functions
