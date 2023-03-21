@@ -129,10 +129,16 @@
 
 (defn- default-dimension-options []
   (as-> @#'api.table/dimension-options-for-response options
-       (m/map-vals #(update % :name str) options)
-       (m/map-keys #(Long/parseLong %) options)
-       ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
-       (mbql.u/replace options :field (mt/obj->json->obj &match))))
+    (m/map-vals #(-> %
+                     (update :name str)
+                     (update :type
+                             (fn [t]
+                               (apply str
+                                      ((juxt namespace (constantly "/") name) t)))))
+                options)
+    (m/map-keys #(Long/parseLong %) options)
+    ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
+    (mbql.u/replace options :field (mt/obj->json->obj &match))))
 
 (defn- query-metadata-defaults []
   (-> (table-defaults)
@@ -185,7 +191,7 @@
                                      :effective_type           "type/DateTime"
                                      :visibility_type          "normal"
                                      :dimension_options        (var-get #'api.table/datetime-dimension-indexes)
-                                     :default_dimension_option (var-get #'api.table/date-default-index)
+                                     :default_dimension_option (var-get #'api.table/datetime-default-index)
                                      :has_field_values         "none"
                                      :position                 2
                                      :database_position        2
@@ -251,7 +257,7 @@
                                      :base_type                "type/DateTime"
                                      :effective_type           "type/DateTime"
                                      :dimension_options        (var-get #'api.table/datetime-dimension-indexes)
-                                     :default_dimension_option (var-get #'api.table/date-default-index)
+                                     :default_dimension_option (var-get #'api.table/datetime-default-index)
                                      :has_field_values         "none"
                                      :position                 2
                                      :database_position        2
@@ -593,7 +599,7 @@
                                          :table_id                 card-virtual-table-id
                                          :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
                                          :semantic_type            nil
-                                         :default_dimension_option (var-get #'api.table/date-default-index)
+                                         :default_dimension_option (var-get #'api.table/datetime-default-index)
                                          :dimension_options        (var-get #'api.table/datetime-dimension-indexes)
                                          :fingerprint              (:fingerprint last-login-metadata)
                                          :field_ref                ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]}]}
@@ -752,7 +758,7 @@
       (testing "dates"
         (mt/test-drivers (mt/normal-drivers)
           (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :checkins)))]
-            (is (= @#'api.table/datetime-dimension-indexes
+            (is (= @#'api.table/date-dimension-indexes
                    (dimension-options-for-field response "date"))))))
 
       (testing "unix timestamps"
