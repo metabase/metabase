@@ -68,7 +68,7 @@
   field-metadata)
 
 (defmethod lib.metadata.calculation/metadata :field
-  [query stage-number [_tag opts :as field-ref]]
+  [query stage-number [_tag {:keys [base-type temporal-unit], :as opts} :as field-ref]]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
         metadata       (merge
                         {:lib/type  :metadata/field
@@ -76,28 +76,38 @@
                         field-metadata
                         {:display_name (or (:display-name opts)
                                            (lib.metadata.calculation/display-name query stage-number field-ref))}
-                        (when (:base-type opts)
-                          {:base_type (:base-type opts)}))]
+                        (when base-type
+                          {:base_type base-type})
+                        (when temporal-unit
+                          {:unit temporal-unit}))]
     (cond->> metadata
       (:parent_id metadata) (add-parent-column-metadata query))))
 
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.
 (defmethod lib.metadata.calculation/display-name-method :metadata/field
-  [query stage-number {field-display-name :display_name, field-name :name, join-alias :source_alias, :as _field-metadata}]
+  [query stage-number {field-display-name :display_name
+                       field-name         :name
+                       temporal-unit      :unit
+                       join-alias         :source_alias
+                       :as                _field-metadata}]
   (let [field-display-name (or field-display-name
                                (u.humanization/name->human-readable-name :simple field-name))
         join-display-name  (when join-alias
                              (let [join (lib.join/resolve-join query stage-number join-alias)]
-                               (lib.metadata.calculation/display-name query stage-number join)))]
-    (if join-display-name
-      (str join-display-name " → " field-display-name)
-      field-display-name)))
+                               (lib.metadata.calculation/display-name query stage-number join)))
+        display-name       (if join-display-name
+                             (str join-display-name " → " field-display-name)
+                             field-display-name)]
+    (if temporal-unit
+      (lib.util/format "%s (%s)" display-name (name temporal-unit))
+      display-name)))
 
 (defmethod lib.metadata.calculation/display-name-method :field
-  [query stage-number [_field {:keys [join-alias], :as _opts} _id-or-name, :as field-clause]]
+  [query stage-number [_field {:keys [join-alias temporal-unit], :as _opts} _id-or-name, :as field-clause]]
   (let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
-                         join-alias (assoc :source_alias join-alias))]
+                         join-alias    (assoc :source_alias join-alias)
+                         temporal-unit (assoc :unit temporal-unit))]
     (lib.metadata.calculation/display-name query stage-number field-metadata)))
 
 (defmulti ^:private ->field

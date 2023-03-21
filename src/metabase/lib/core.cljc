@@ -11,6 +11,7 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
    [metabase.lib.limit :as lib.limit]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
@@ -27,6 +28,7 @@
          lib.filter/keep-me
          lib.join/keep-me
          lib.limit/keep-me
+         lib.metadata.calculation/keep-me
          lib.metric/keep-me
          lib.order-by/keep-me
          lib.query/keep-me
@@ -35,28 +37,28 @@
          lib.temporal-bucket/keep-me)
 
 (shared.ns/import-fns
-  [lib.aggregation
-   aggregate
-   count
-   avg
-   count-where
-   distinct
-   max
-   median
-   min
-   percentile
-   share
-   stddev
-   sum
-   sum-where]
-  [lib.breakout
-   breakout]
-  [lib.dev
-   field
-   query-for-table-name]
-  [lib.field
-   with-join-alias]
-  [lib.filter
+ [lib.aggregation
+  aggregate
+  count
+  avg
+  count-where
+  distinct
+  max
+  median
+  min
+  percentile
+  share
+  stddev
+  sum
+  sum-where]
+ [lib.breakout
+  breakout]
+ [lib.dev
+  field
+  query-for-table-name]
+ [lib.field
+  with-join-alias]
+ [lib.filter
   filter
   and
   or
@@ -86,19 +88,24 @@
   ->contains ->does-not-contain
   ->time-interval
   ->segment]
-  [lib.join
-   join
-   join-clause
-   joins]
-  [lib.limit
-   limit]
-  [lib.order-by
-   order-by
-   order-by-clause
-   order-bys]
-  [lib.query
-   native-query
-   query
-   saved-question-query]
-  [lib.temporal-bucket
-   temporal-bucket])
+ [lib.join
+  join
+  join-clause
+  joins]
+ [lib.limit
+  limit]
+ [lib.metadata.calculation
+  column-name
+  describe-query
+  display-name
+  suggested-name]
+ [lib.order-by
+  order-by
+  order-by-clause
+  order-bys]
+ [lib.query
+  native-query
+  query
+  saved-question-query]
+ [lib.temporal-bucket
+  temporal-bucket])
