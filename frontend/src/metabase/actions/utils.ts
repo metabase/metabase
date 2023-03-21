@@ -1,82 +1,28 @@
 import { t } from "ttag";
 
+import { getResponseErrorMessage } from "metabase/core/utils/errors";
+import { slugify, humanize } from "metabase/lib/formatting";
+import { isEmpty } from "metabase/lib/validate";
+
 import type {
-  ActionFormSettings,
-  Parameter,
-  WritebackAction,
-  WritebackActionBase,
   ActionDashboardCard,
+  ActionFormSettings,
   BaseDashboardOrderedCard,
   Card,
   FieldSettings,
   FieldSettingsMap,
+  Parameter,
   ParameterId,
   ParametersForActionExecution,
-  ImplicitQueryAction,
+  WritebackAction,
+  WritebackActionBase,
+  WritebackImplicitQueryAction,
 } from "metabase-types/api";
-
-import { getResponseErrorMessage } from "metabase/core/utils/errors";
-import { slugify, humanize } from "metabase/lib/formatting";
-import { isEmpty } from "metabase/lib/validate";
 
 import { TYPE } from "metabase-lib/types/constants";
 import Field from "metabase-lib/metadata/Field";
 
 import type { FieldSettings as LocalFieldSettings } from "./types";
-
-const AUTOMATIC_DATE_TIME_FIELDS = [
-  TYPE.CreationDate,
-  TYPE.CreationTemporal,
-  TYPE.CreationTime,
-  TYPE.CreationTimestamp,
-
-  TYPE.DeletionDate,
-  TYPE.DeletionTemporal,
-  TYPE.DeletionTime,
-  TYPE.DeletionTimestamp,
-
-  TYPE.UpdatedDate,
-  TYPE.UpdatedTemporal,
-  TYPE.UpdatedTime,
-  TYPE.UpdatedTimestamp,
-];
-
-const isAutomaticDateTimeField = (field: Field) => {
-  return AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type);
-};
-
-export const isEditableField = (field: Field, parameter: Parameter) => {
-  const isRealField = typeof field.id === "number";
-  if (!isRealField) {
-    // Filters out custom, aggregated columns, etc.
-    return false;
-  }
-
-  if (field.isPK()) {
-    // Most of the time PKs are auto-generated,
-    // but there are rare cases when they're not
-    // In this case they're marked as `required`
-    return parameter.required;
-  }
-
-  if (isAutomaticDateTimeField(field)) {
-    return parameter.required;
-  }
-
-  return true;
-};
-
-export const hasImplicitActions = (actions: WritebackAction[]): boolean =>
-  actions.some(isImplicitAction);
-
-export const isImplicitAction = (action: WritebackAction): boolean =>
-  action.type === "implicit";
-
-export const shouldPrefetchValues = (action: WritebackAction) => {
-  // in the future there should be a setting to configure this
-  // for custom actions
-  return action.type === "implicit" && action.kind === "row/update";
-};
 
 export const sortActionParams =
   (formSettings: ActionFormSettings) => (a: Parameter, b: Parameter) => {
@@ -250,7 +196,9 @@ function hasDataFromExplicitAction(result: any) {
   return !isInsert && !isUpdate && !isDelete;
 }
 
-function getImplicitActionExecutionMessage(action: ImplicitQueryAction) {
+function getImplicitActionExecutionMessage(
+  action: WritebackImplicitQueryAction,
+) {
   if (action.kind === "row/create") {
     return t`Successfully saved`;
   }
@@ -282,3 +230,32 @@ export function getActionErrorMessage(error: unknown) {
     t`Something went wrong while executing the action`
   );
 }
+
+export const getSubmitButtonColor = (action: WritebackAction): string => {
+  if (action.type === "implicit" && action.kind === "row/delete") {
+    return "danger";
+  }
+  return action.visualization_settings?.submitButtonColor ?? "primary";
+};
+
+export const getSubmitButtonLabel = (action: WritebackAction): string => {
+  if (action.visualization_settings?.submitButtonLabel) {
+    return action.visualization_settings.submitButtonLabel;
+  }
+
+  if (action.type === "implicit") {
+    if (action.kind === "row/delete") {
+      return t`Delete`;
+    }
+
+    if (action.kind === "row/update") {
+      return t`Update`;
+    }
+
+    if (action.kind === "row/create") {
+      return t`Save`;
+    }
+  }
+
+  return action.name;
+};
