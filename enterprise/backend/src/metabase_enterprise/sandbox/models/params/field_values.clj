@@ -29,7 +29,7 @@
   "Find the GTAP for current user that apply to table `table-id`."
   [table-id]
   (let [group-ids (t2/select-fn-set :group_id PermissionsGroupMembership :user_id api/*current-user-id*)
-        gtaps     (db/select GroupTableAccessPolicy
+        gtaps     (t2/select GroupTableAccessPolicy
                              :group_id [:in group-ids]
                              :table_id table-id)]
     (when gtaps

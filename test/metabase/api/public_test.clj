@@ -149,7 +149,7 @@
             (is (= "Not found."
                    (client/client :get 404 (str "public/card/" uuid))))))))))
 
-(deftest make-sure--param-values-get-returned-as-expected
+(deftest make-sure-param-values-get-returned-as-expected
   (mt/with-temp Card [card {:dataset_query
                             {:database (mt/id)
                              :type     :native
@@ -164,14 +164,13 @@
                                                                    :dimension    ["field" (mt/id :categories :name) nil]
                                                                    :widget-type  "category"
                                                                    :required     true}}}}}]
-    (is (= {(mt/id :categories :name) {:values                75
+    (is (= {(mt/id :categories :name) {:values                (t2/select-one-fn (comp count :values)
+                                                                                'FieldValues :field_id (mt/id :categories :name))
                                        :human_readable_values []
                                        :field_id              (mt/id :categories :name)}}
            (-> (:param_values (#'api.public/public-card :id (u/the-id card)))
                (update-in [(mt/id :categories :name) :values] count)
                (update (mt/id :categories :name) #(into {} %)))))))
-
-
 
 ;;; ------------------------- GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions) --------------------------
 
@@ -648,10 +647,10 @@
                            :field_id              (mt/id :venues :price)}})
 
 (defn- add-price-param-to-dashboard! [dashboard]
-  (db/update! Dashboard (u/the-id dashboard) :parameters [{:name "Price", :type "category", :slug "price", :id "_PRICE_"}]))
+  (t2/update! Dashboard (u/the-id dashboard) :parameters [{:name "Price", :type "category", :slug "price", :id "_PRICE_"}]))
 
 (defn- add-dimension-param-mapping-to-dashcard! [dashcard card dimension]
-  (db/update! DashboardCard (u/the-id dashcard) :parameter_mappings [{:card_id (u/the-id card)
+  (t2/update! DashboardCard (u/the-id dashcard) :parameter_mappings [{:card_id (u/the-id card)
                                                                       :target  ["dimension" dimension]}]))
 
 (defn- GET-param-values [dashboard]
@@ -660,7 +659,7 @@
 
 (deftest check-that-param-info-comes-back-for-sql-cards
   (with-temp-public-dashboard-and-card [dash card dashcard]
-    (db/update! Card (u/the-id card)
+    (t2/update! Card (u/the-id card)
       :dataset_query {:database (mt/id)
                       :type     :native
                       :native   {:template-tags {:price {:name         "price"
