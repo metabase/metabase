@@ -38,7 +38,7 @@ describe("metabase > scenarios > home > activity-page", () => {
       cy.findByText("Add filter").click();
     });
     cy.findByText("Save").click();
-    cy.get("[value='Products, Filtered by Rating']");
+    cy.get("[value='Products, Filtered by Rating equals 5']");
     cy.findAllByText("Save").last().click();
     cy.findByText("Not now").click();
 
@@ -55,7 +55,7 @@ describe("metabase > scenarios > home > activity-page", () => {
 
     cy.findAllByText("joined!").should("have.length", 2);
     cy.findAllByText(getFullName(normal)).should("have.length", 2);
-    cy.findByText("Products, Filtered by Rating");
+    cy.findByText("Products, Filtered by Rating equals 5");
   });
 
   it("should respect the (added to dashboard) card id in the link (metabase#18547)", () => {

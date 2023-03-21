@@ -12,6 +12,8 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
    [metabase.lib.limit :as lib.limit]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metric :as lib.metric]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.stage :as lib.stage]
@@ -27,6 +29,8 @@
          lib.filter/keep-me
          lib.join/keep-me
          lib.limit/keep-me
+         lib.metadata.calculation/keep-me
+         lib.metric/keep-me
          lib.order-by/keep-me
          lib.query/keep-me
          lib.stage/keep-me
@@ -98,35 +102,35 @@
   [lib.field
    with-join-alias]
   [lib.filter
-  filter
-  and
-  or
-  not
-  = !=
-  < <=
-  > >=
-  between
-  inside
-  is-null not-null
-  is-empty not-empty
-  starts-with ends-with
-  contains does-not-contain
-  time-interval
-  segment
-  ->and
-  ->or
-  ->not
-  ->= ->!=
-  ->< -><=
-  ->> ->>=
-  ->between
-  ->inside
-  ->is-null ->not-null
-  ->is-empty ->not-empty
-  ->starts-with ->ends-with
-  ->contains ->does-not-contain
-  ->time-interval
-  ->segment]
+   filter
+   and
+   or
+   not
+   = !=
+   < <=
+   > >=
+   between
+   inside
+   is-null not-null
+   is-empty not-empty
+   starts-with ends-with
+   contains does-not-contain
+   time-interval
+   segment
+   ->and
+   ->or
+   ->not
+   ->= ->!=
+   ->< -><=
+   ->> ->>=
+   ->between
+   ->inside
+   ->is-null ->not-null
+   ->is-empty ->not-empty
+   ->starts-with ->ends-with
+   ->contains ->does-not-contain
+   ->time-interval
+   ->segment]
   [lib.join
    join
    join-clause
@@ -134,6 +138,11 @@
   [lib.limit
    current-limit
    limit]
+  [lib.metadata.calculation
+   column-name
+   describe-query
+   display-name
+   suggested-name]
   [lib.order-by
    order-by
    order-by-clause
