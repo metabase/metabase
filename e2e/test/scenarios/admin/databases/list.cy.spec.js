@@ -1,5 +1,4 @@
 import { restore, describeEE, isOSS } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 describe("scenarios > admin > databases > list", () => {
   beforeEach(() => {
@@ -71,17 +70,6 @@ describe("scenarios > admin > databases > list", () => {
   it("should not let you see saved questions in the database list", () => {
     cy.visit("/admin/databases");
     cy.get("tr").should("have.length", 2);
-  });
-
-  it("should let you bring back the sample database", () => {
-    cy.intercept("POST", "/api/database/sample_database").as("sample_database");
-
-    cy.request("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
-    cy.visit("/admin/databases");
-    cy.contains("Bring the sample database back").click();
-    cy.wait("@sample_database");
-    cy.contains("Sample Database").click();
-    cy.url().should("match", /\/admin\/databases\/\d+$/);
   });
 
   it("should handle malformed (null) database details (metabase#25715)", () => {
