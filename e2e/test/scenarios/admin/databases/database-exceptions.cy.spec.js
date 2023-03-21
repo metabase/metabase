@@ -46,4 +46,14 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.wait("@createDatabase");
     cy.findByText("DATABASE CONNECTION ERROR").should("exist");
   });
+
+  it("should handle non-existing databases (metabase#11037)", () => {
+    cy.intercept("GET", "/api/database/999").as("loadDatabase");
+    cy.visit("/admin/databases/999");
+    cy.wait("@loadDatabase").then(({ response }) => {
+      expect(response.statusCode).to.eq(404);
+    });
+    cy.findByText("Not found.");
+    cy.findByRole("table").should("not.exist");
+  });
 });
