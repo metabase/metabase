@@ -5,6 +5,12 @@
      (comment ~schema) ;; Reference the schema
      ~@(for [[sym _path] (partition 2 defs)]
          `(do
-            (defn ~sym "docs" [_x#] nil)
-            (defn ~(symbol (str "with-" (name sym))) "docs" [x# _new#] x#)
-            (defn ~(symbol (str (name sym) "-js")) "docs" [x#] x#)))))
+            (defn ~(vary-meta sym
+                              assoc :export true)
+              "docs" [_x#] nil)
+            (defn ~(vary-meta (symbol (str "with-" (name sym)))
+                              assoc :export true)
+              "docs" [x# _new#] x#)
+            (defn ~(vary-meta (symbol (str (name sym) "-js"))
+                              assoc :export true)
+              "docs" [x#] x#)))))
