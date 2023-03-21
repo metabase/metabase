@@ -7,8 +7,12 @@
    [metabase.models.permissions-group-membership
     :as perms-group-membership
     :refer [PermissionsGroupMembership]]
+   [metabase.models.setting.multi-setting :refer [define-multi-setting
+                                                  define-multi-setting-impl]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n :refer [deferred-tru
+                               trs]]
    [metabase.util.log :as log]
    [toucan.db :as db]))
 
@@ -51,3 +55,12 @@
         (db/insert! PermissionsGroupMembership :group_id id, :user_id user-id)
         (catch Throwable e
           (log/error e (trs "Error adding User {0} to Group {1}" user-id id)))))))
+
+#_{:clj-kondo/ignore [:missing-docstring]}
+(define-multi-setting send-new-sso-user-admin-email?
+  (deferred-tru "Should new email notifications be sent to admins, for all new SSO users?")
+  (fn [] (if (premium-features/enable-sso?) :ee :oss)))
+
+(define-multi-setting-impl send-new-sso-user-admin-email? :oss
+  :getter (fn [] (constantly true))
+  :setter :none)

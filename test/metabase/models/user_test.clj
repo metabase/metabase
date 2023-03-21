@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.sso.integrations.saml-test :as saml-test]
    [metabase.http-client :as client]
    [metabase.integrations.google]
    [metabase.models
@@ -192,11 +193,12 @@
                      (select-keys ["crowberto@metabase.com" (:email user)])))))
 
         (testing "...or if setting is disabled"
-          (mt/with-temporary-setting-values [send-new-sso-user-admin-email? false]
-            (mt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
-              (is (= {}
-                     (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                         (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"]))))))))))
+          (saml-test/with-valid-premium-features-token
+            (mt/with-temporary-setting-values [send-new-sso-user-admin-email? false]
+              (mt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+                (is (= {}
+                       (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                           (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))))))))
 
   (testing "if sso enabled and password login is disabled, email should send a link to sso login"
     (mt/with-temporary-setting-values [enable-password-login false]
