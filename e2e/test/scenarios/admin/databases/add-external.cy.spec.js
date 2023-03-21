@@ -1,4 +1,4 @@
-import { restore, typeAndBlurUsingLabel } from "e2e/support/helpers";
+import { restore, popover, typeAndBlurUsingLabel } from "e2e/support/helpers";
 import {
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
@@ -49,6 +49,53 @@ describe(
       typeAndBlurUsingLabel("Database name", "sample");
       typeAndBlurUsingLabel("Username", "metabase");
       typeAndBlurUsingLabel("Password", "metasample123");
+
+      const confirmSSLFields = (visible, hidden) => {
+        visible.forEach(field => cy.findByText(field));
+        hidden.forEach(field => cy.findByText(field).should("not.exist"));
+      };
+
+      const ssl = "Use a secure connection (SSL)",
+        sslMode = "SSL Mode",
+        useClientCert = "Authenticate client certificate?",
+        clientPemCert = "SSL Client Certificate (PEM)",
+        clientPkcsCert = "SSL Client Key (PKCS-8/DER)",
+        sslRootCert = "SSL Root Certificate (PEM)";
+
+      // initially, all SSL sub-properties should be hidden
+      confirmSSLFields(
+        [ssl],
+        [sslMode, useClientCert, clientPemCert, clientPkcsCert, sslRootCert],
+      );
+
+      toggleFieldWithDisplayName(ssl);
+      // when ssl is enabled, the mode and "enable client cert" options should be shown
+      confirmSSLFields(
+        [ssl, sslMode, useClientCert],
+        [clientPemCert, clientPkcsCert, sslRootCert],
+      );
+
+      toggleFieldWithDisplayName(useClientCert);
+      // when the "enable client cert" option is enabled, its sub-properties should be shown
+      confirmSSLFields(
+        [ssl, sslMode, useClientCert, clientPemCert, clientPkcsCert],
+        [sslRootCert],
+      );
+
+      selectFieldOption(sslMode, "verify-ca");
+      // when the ssl mode is set to "verify-ca", then the root cert option should be shown
+      confirmSSLFields(
+        [
+          ssl,
+          sslMode,
+          useClientCert,
+          clientPemCert,
+          clientPkcsCert,
+          sslRootCert,
+        ],
+        [],
+      );
+      toggleFieldWithDisplayName(ssl);
 
       cy.button("Save").should("not.be.disabled").click();
 
@@ -178,3 +225,11 @@ describe(
     });
   },
 );
+function toggleFieldWithDisplayName(displayName) {
+  cy.findByLabelText(displayName).click();
+}
+
+function selectFieldOption(fieldName, option) {
+  cy.findByLabelText(fieldName).click();
+  popover().contains(option).click({ force: true });
+}

@@ -158,52 +158,7 @@ describe("scenarios > admin > databases > add", () => {
     });
   });
 
-  it("should show the various Postgres SSL options correctly", () => {
-    const confirmSSLFields = (visible, hidden) => {
-      visible.forEach(field => cy.findByText(field));
-      hidden.forEach(field => cy.findByText(field).should("not.exist"));
-    };
-
-    const ssl = "Use a secure connection (SSL)",
-      sslMode = "SSL Mode",
-      useClientCert = "Authenticate client certificate?",
-      clientPemCert = "SSL Client Certificate (PEM)",
-      clientPkcsCert = "SSL Client Key (PKCS-8/DER)",
-      sslRootCert = "SSL Root Certificate (PEM)";
-
-    cy.visit("/admin/databases/create");
-    chooseDatabase("PostgreSQL");
-    // initially, all SSL sub-properties should be hidden
-    confirmSSLFields(
-      [ssl],
-      [sslMode, useClientCert, clientPemCert, clientPkcsCert, sslRootCert],
-    );
-
-    toggleFieldWithDisplayName(ssl);
-    // when ssl is enabled, the mode and "enable client cert" options should be shown
-    confirmSSLFields(
-      [ssl, sslMode, useClientCert],
-      [clientPemCert, clientPkcsCert, sslRootCert],
-    );
-
-    toggleFieldWithDisplayName(useClientCert);
-    // when the "enable client cert" option is enabled, its sub-properties should be shown
-    confirmSSLFields(
-      [ssl, sslMode, useClientCert, clientPemCert, clientPkcsCert],
-      [sslRootCert],
-    );
-
-    selectFieldOption(sslMode, "verify-ca");
-    // when the ssl mode is set to "verify-ca", then the root cert option should be shown
-    confirmSSLFields(
-      [ssl, sslMode, useClientCert, clientPemCert, clientPkcsCert, sslRootCert],
-      [],
-    );
-  });
 });
-function toggleFieldWithDisplayName(displayName) {
-  cy.findByLabelText(displayName).click();
-}
 
 function selectFieldOption(fieldName, option) {
   cy.findByLabelText(fieldName).click();
