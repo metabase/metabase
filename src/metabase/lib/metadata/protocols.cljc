@@ -113,7 +113,7 @@
             (:fields table-metadata)))
         (:tables metadata-graph)))
 
-(defrecord ^{:doc "A simple implementation of [[MetadataProvider]] that returns data from a complete graph
+(deftype ^{:doc "A simple implementation of [[MetadataProvider]] that returns data from a complete graph
   e.g. the response provided by `GET /api/database/:id/metadata`."} SimpleGraphMetadataProvider [metadata-graph]
   MetadataProvider
   (database [_this]            (graph-database metadata-graph))

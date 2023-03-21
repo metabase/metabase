@@ -106,7 +106,7 @@
     (lib.dispatch/dispatch-value field)))
 
 (defmethod ->field :field
-  [field-clause]
+  [_query _stage-number field-clause]
   field-clause)
 
 (defmethod ->field :metadata/field

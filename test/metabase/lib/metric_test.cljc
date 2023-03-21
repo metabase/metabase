@@ -12,9 +12,10 @@
                    :tables   [(meta/table-metadata :venues)]
                    :fields   [(meta/field-metadata :venues :price)]
                    :metrics  [{:id         100
+                               :name       "My Metric"
                                :definition {:database (meta/id)
                                             :query    {:filter [:= [:field (meta/id :venues :price) nil] 4]}}}]})
         query    (-> (lib/query-for-table-name metadata "VENUES")
                      (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} 100]))]
-    (is (= "Venues, "
+    (is (= "Venues, My Metric"
            (lib.metadata.calculation/suggested-name query)))))
