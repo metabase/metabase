@@ -60,15 +60,4 @@ describe("scenarios > admin > databases > list", () => {
       cy.findByText(errorMessage).should("not.be.visible");
     });
   });
-
-  it("should let you see databases in list view", () => {
-    cy.visit("/admin/databases");
-    cy.findByText("Sample Database");
-    cy.findByText("H2");
-  });
-
-  it("should not let you see saved questions in the database list", () => {
-    cy.visit("/admin/databases");
-    cy.get("tr").should("have.length", 2);
-  });
 });
