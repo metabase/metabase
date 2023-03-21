@@ -1,6 +1,7 @@
 (ns metabase.lib.field-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.lib.core :as lib]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
@@ -127,3 +128,15 @@
            (lib.metadata.calculation/display-name query -1 field)))
     (is (=? {:display_name "Categories → Name"}
             (lib.metadata.calculation/metadata query -1 field)))))
+
+(deftest ^:parallel field-with-temporal-unit-test
+  (let [query (lib/query-for-table-name meta/metadata-provider "CHECKINS")
+        f (lib/temporal-bucket (lib/field (meta/id :checkins :date)) :year)]
+    (is (fn? f))
+    (let [field (f query -1)]
+      (is (=? [:field {:temporal-unit :year} (meta/id :checkins :date)]
+              field))
+      (is (=? {:unit :year}
+              (lib.metadata.calculation/metadata query -1 field)))
+      (is (= "Date (year)"
+             (lib.metadata.calculation/display-name query -1 field))))))

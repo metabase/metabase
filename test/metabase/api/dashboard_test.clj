@@ -112,7 +112,7 @@
     (mt/with-temp Collection [collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       (doseq [dashboard-or-id dashboards-or-ids]
-        (db/update! Dashboard (u/the-id dashboard-or-id) :collection_id (u/the-id collection)))
+        (t2/update! Dashboard (u/the-id dashboard-or-id) {:collection_id (u/the-id collection)}))
       (f))))
 
 (defmacro ^:private with-dashboards-in-readable-collection [dashboards-or-ids & body]
@@ -192,7 +192,7 @@
                                                                            :collection_id (u/the-id collection)})
                        dashboard-response)))
             (finally
-              (db/delete! Dashboard :name test-dashboard-name))))))))
+              (t2/delete! Dashboard :name test-dashboard-name))))))))
 
 (deftest create-dashboard-with-collection-position-test
   (testing "POST /api/dashboard"
@@ -209,7 +209,7 @@
                       (some-> (t2/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
                               (update :collection_id (partial = (u/the-id collection))))))
               (finally
-                (db/delete! Dashboard :name dashboard-name)))))
+                (t2/delete! Dashboard :name dashboard-name)))))
 
         (testing "..but not if we don't have permissions for the Collection"
           (mt/with-temp Collection [collection]
@@ -424,7 +424,7 @@
                  (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                      :collection_authority_level)))
             (let [collection-id (:collection_id (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))]
-              (db/update! Collection collection-id :authority_level "official"))
+              (t2/update! Collection collection-id {:authority_level "official"}))
             (is (= "official"
                    (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                        :collection_authority_level)))))))))
@@ -718,7 +718,7 @@
                       "d" 4}
                      (api.card-test/get-name->collection-position :rasta collection)))
               (finally
-                (db/delete! Dashboard :collection_id (u/the-id collection))))))))))
+                (t2/delete! Dashboard :collection_id (u/the-id collection))))))))))
 
 (deftest insert-dashboard-no-position-test
   (testing "POST /api/dashboard"
@@ -742,7 +742,7 @@
                       "d" 3}
                      (api.card-test/get-name->collection-position :rasta collection)))
               (finally
-                (db/delete! Dashboard :collection_id (u/the-id collection))))))))))
+                (t2/delete! Dashboard :collection_id (u/the-id collection))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -780,7 +780,7 @@
             (is (not=  (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")
             (finally
-              (db/delete! Dashboard :id (u/the-id response)))))))
+              (t2/delete! Dashboard :id (u/the-id response)))))))
 
     (testing "Ensure name / description / user set when copying"
       (mt/with-temp Dashboard [dashboard  {:name        "Test Dashboard"
@@ -800,7 +800,7 @@
             (is (not= (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")
             (finally
-              (db/delete! Dashboard :id (u/the-id response))))))))
+              (t2/delete! Dashboard :id (u/the-id response))))))))
   (testing "Deep copy: POST /api/dashboard/:id/copy"
     (mt/dataset sample-dataset
       (mt/with-temp* [Collection [source-coll {:name "Source collection"}]
@@ -1160,7 +1160,7 @@
                       :target       [:dimension [:field (mt/id :venues :name) nil]]}]
                    (t2/select-one-fn :parameter_mappings DashboardCard :id dashcard-id)))
            (finally
-             (db/delete! Dashboard :id copy-id))))))))
+             (t2/delete! Dashboard :id copy-id))))))))
 
 (deftest copy-dashboard-into-correct-collection-test
   (testing "POST /api/dashboard/:id/copy"
@@ -1177,7 +1177,7 @@
                                           (u/the-id response))
                      (u/the-id new-collection)))
               (finally
-                (db/delete! Dashboard :id (u/the-id response))))))))))
+                (t2/delete! Dashboard :id (u/the-id response))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -2165,12 +2165,12 @@
   (testing "GET /api/dashboard/:id/params/:param-key/values"
     (testing "If some Dashboard parameters do not have valid Field IDs, we should ignore them"
       (with-chain-filter-fixtures [{:keys [dashcard card dashboard]}]
-        (db/update! DashboardCard (:id dashcard)
-          :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                :card_id      (:id card)
-                                :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
-                               {:parameter_id "_PRICE_"
-                                :card_id      (:id card)}])
+        (t2/update! DashboardCard (:id dashcard)
+                    {:parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                           :card_id      (:id card)
+                                           :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
+                                          {:parameter_id "_PRICE_"
+                                           :card_id      (:id card)}]})
         (testing "Since the _PRICE_ param is not mapped to a valid Field, it should get ignored"
           (let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
             (is (= {:values          ["African" "American" "Artisan"]

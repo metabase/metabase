@@ -49,11 +49,11 @@
     (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
       (thunk))
     (finally
-      (db/delete! User :email (get-in request-body [:user :email]))
+      (t2/delete! User :email (get-in request-body [:user :email]))
       (when-let [invited (get-in request-body [:invite :name])]
-        (db/delete! User :email invited))
+        (t2/delete! User :email invited))
       (when-let [db-name (get-in request-body [:database :name])]
-        (db/delete! Database :name db-name)))))
+        (t2/delete! Database :name db-name)))))
 
 (defn- default-setup-input []
   {:token (setup/create-token!)

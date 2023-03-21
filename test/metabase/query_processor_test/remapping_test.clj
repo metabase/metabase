@@ -10,7 +10,6 @@
    [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest basic-internal-remapping-test
@@ -194,7 +193,7 @@
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys) :redshift :oracle :vertica)
     (mt/dataset test-data-self-referencing-user
       (mt/with-column-remappings [users.created_by users.name]
-        (db/update! Field (mt/id :users :created_by)
+        (t2/update! Field (mt/id :users :created_by)
           {:fk_target_field_id (mt/id :users :id)})
         (is (= ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
                (->> (mt/run-mbql-query users

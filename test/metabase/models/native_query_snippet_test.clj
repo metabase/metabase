@@ -17,7 +17,7 @@
       (is (thrown-with-msg?
            Exception
            #"You cannot update the creator_id of a NativeQuerySnippet\."
-           (db/update! NativeQuerySnippet snippet-id :creator_id (mt/user->id :rasta))))
+           (t2/update! NativeQuerySnippet snippet-id {:creator_id (mt/user->id :rasta)})))
       (is (= (mt/user->id :lucky)
              (t2/select-one-fn :creator_id NativeQuerySnippet :id snippet-id))))))
 
@@ -38,7 +38,7 @@
                       Collection         [{dest-collection-id :id}   {:namespace dest}]
                       NativeQuerySnippet [{snippet-id :id} (when source
                                                              {:collection_id source-collection-id})]]
-        (db/update! NativeQuerySnippet snippet-id :collection_id (when dest dest-collection-id))
+        (t2/update! NativeQuerySnippet snippet-id {:collection_id (when dest dest-collection-id)})
         (is (= (when dest dest-collection-id)
                (t2/select-one-fn :collection_id NativeQuerySnippet :id snippet-id))))))
 
@@ -62,7 +62,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
-             (db/update! NativeQuerySnippet snippet-id :collection_id dest-collection-id)))))))
+             (t2/update! NativeQuerySnippet snippet-id {:collection_id dest-collection-id})))))))
 
 (deftest identity-hash-test
   (testing "Native query snippet hashes are composed of the name and the collection's hash"

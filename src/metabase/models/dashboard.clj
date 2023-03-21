@@ -79,7 +79,7 @@
 (defn- pre-delete [dashboard]
   (let [dashboard-id (u/the-id dashboard)]
     (parameter-card/delete-all-for-parameterized-object! "dashboard" dashboard-id)
-    (db/delete! 'Revision :model "Dashboard" :model_id dashboard-id)))
+    (t2/delete! 'Revision :model "Dashboard" :model_id dashboard-id)))
 
 (defn- pre-insert [dashboard]
   (let [defaults  {:parameters []}
@@ -175,7 +175,7 @@
 (defmethod revision/revert-to-revision! Dashboard
   [_model dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
-  (db/update! Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
+  (t2/update! Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
   ;; Now update the cards as needed
   (let [serialized-cards    (:cards serialized-dashboard)
         id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)

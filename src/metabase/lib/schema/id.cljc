@@ -15,6 +15,9 @@
 (mr/def ::field
   ::common/int-greater-than-or-equal-to-zero)
 
+(mr/def ::card
+  ::common/int-greater-than-or-equal-to-zero)
+
 (mr/def ::segment
   ::common/int-greater-than-or-equal-to-zero)
 

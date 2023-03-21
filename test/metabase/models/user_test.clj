@@ -136,7 +136,7 @@
           (sent-emails new-user-email new-user-first-name new-user-last-name)
           ;; Clean up after ourselves
           (finally
-            (db/delete! User :email new-user-email)))))))
+            (t2/delete! User :email new-user-email)))))))
 
 (def ^:private default-invitor
   {:email "crowberto@metabase.com", :is_active true, :first_name "Crowberto"})
@@ -209,7 +209,7 @@
         (is (= false
                (u.password/verify-password "should be removed" password_salt password))))
       (finally
-        (db/delete! User :email "ldaptest@metabase.com")))))
+        (t2/delete! User :email "ldaptest@metabase.com")))))
 
 (deftest new-admin-user-test
   (testing (str "when you create a new user with `is_superuser` set to `true`, it should create a "
@@ -228,7 +228,7 @@
       (is (= {"local_birds" ["Steller's Jay" "Mountain Chickadee"]}
              (t2/select-one-fn :login_attributes User :email "ldaptest@metabase.com")))
       (finally
-        (db/delete! User :email "ldaptest@metabase.com")))))
+        (t2/delete! User :email "ldaptest@metabase.com")))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -438,14 +438,14 @@
     (testing "updating a User"
       (mt/with-temp User [{user-id :id} {:locale "en_US"}]
         (testing "valid locale"
-          (db/update! User user-id :locale "en_GB")
+          (t2/update! User user-id {:locale "en_GB"})
           (is (= "en_GB"
                  (t2/select-one-fn :locale User :id user-id))))
         (testing "invalid locale"
           (is (thrown-with-msg?
                Throwable
                #"Assert failed: Invalid locale: \"en_XX\""
-               (db/update! User user-id :locale "en_XX"))))))))
+               (t2/update! User user-id {:locale "en_XX"}))))))))
 
 (deftest normalize-locale-test
   (testing "`:locale` should be normalized"
@@ -455,7 +455,7 @@
                (t2/select-one-fn :locale User :id user-id))))
 
       (testing "updating a User"
-        (db/update! User user-id :locale "en-GB")
+        (t2/update! User user-id {:locale "en-GB"})
         (is (= "en_GB"
                (t2/select-one-fn :locale User :id user-id)))))))
 
@@ -470,10 +470,10 @@
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"
-          (is (db/update! User user-id :is_active true))
+          (is (pos? (t2/update! User user-id {:is_active true})))
           (is (subscription-exists?)))
         (testing "archive the user"
-          (is (db/update! User user-id :is_active false)))
+          (is (pos? (t2/update! User user-id {:is_active false}))))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
 
@@ -485,7 +485,7 @@
              (serdes/identity-hash user))))))
 
 (deftest hash-password-on-update-test
-  (testing "Setting `:password` with [[db/update!]] should hash the password, just like [[db/insert!]]"
+  (testing "Setting `:password` with [[t2/update!]] should hash the password, just like [[db/insert!]]"
     (let [plaintext-password "password-1234"]
       (mt/with-temp User [{user-id :id} {:password plaintext-password}]
         (let [salt                     (fn [] (t2/select-one-fn :password_salt User :id user-id))
@@ -495,8 +495,8 @@
             (is (u.password/verify-password plaintext-password
                                             (salt)
                                             original-hashed-password)))
-          (is (= true
-                 (db/update! User user-id :password plaintext-password)))
+          (is (= 1
+                 (t2/update! User user-id {:password plaintext-password})))
           (let [new-hashed-password (hashed-password)]
             (testing "password should have been hashed"
               (is (not= plaintext-password

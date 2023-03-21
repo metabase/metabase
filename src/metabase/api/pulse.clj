@@ -336,7 +336,7 @@
   (api/let-404 [pulse-id (t2/select-one-pk Pulse :id id)
                 pc-id    (t2/select-one-pk PulseChannel :pulse_id pulse-id :channel_type "email")
                 pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
-    (db/delete! PulseChannelRecipient :id pcr-id))
+    (t2/delete! PulseChannelRecipient :id pcr-id))
   api/generic-204-no-content)
 
 (api/define-routes)

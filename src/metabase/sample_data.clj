@@ -90,4 +90,4 @@
    (when sample-db
      (let [intended (try-to-extract-sample-database!)]
        (when (not= (:details sample-db) intended)
-         (db/update! Database (:id sample-db) :details intended))))))
+         (t2/update! Database (:id sample-db) {:details intended}))))))

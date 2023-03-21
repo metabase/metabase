@@ -24,7 +24,6 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -149,7 +148,7 @@
                                         existing-db-id
                                         (str/join "," all-schemas)
                                         session-schema))
-              (db/delete! Database :id existing-db-id))))
+              (t2/delete! Database :id existing-db-id))))
         (swap! oracle-test-dbs-created-by-this-instance conj database-name)))))
 
 (defmethod data.impl/get-or-create-database! :oracle

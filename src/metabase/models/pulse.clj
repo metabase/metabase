@@ -167,8 +167,7 @@
   (when *automatically-archive-when-last-channel-is-deleted*
     (let [other-channels-count (db/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
       (when (zero? other-channels-count)
-        (db/update! Pulse pulse-id :archived true)))))
-
+        (t2/update! Pulse pulse-id {:archived true})))))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
@@ -417,7 +416,7 @@
   *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
   [notification-or-id, card-refs :- (s/maybe [CardRef])]
   ;; first off, just delete any cards associated with this pulse (we add them again below)
-  (db/delete! PulseCard :pulse_id (u/the-id notification-or-id))
+  (t2/delete! PulseCard :pulse_id (u/the-id notification-or-id))
   ;; now just insert all of the cards that were given to us
   (when (seq card-refs)
     (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls dashboard_card_id]}]
@@ -448,7 +447,7 @@
       ;; 1. in channels, NOT in db-channels = CREATE
       (and channel (not existing-channel))  (pulse-channel/create-pulse-channel! channel)
       ;; 2. NOT in channels, in db-channels = DELETE
-      (and (nil? channel) existing-channel) (db/delete! PulseChannel :id (:id existing-channel))
+      (and (nil? channel) existing-channel) (t2/delete! PulseChannel :id (:id existing-channel))
       ;; 3. in channels, in db-channels = UPDATE
       (and channel existing-channel)        (pulse-channel/update-pulse-channel! channel)
       ;; 4. NOT in channels, NOT in db-channels = NO-OP
@@ -546,7 +545,7 @@
                     (s/optional-key :channels)            [su/Map]
                     (s/optional-key :archived)            s/Bool
                     (s/optional-key :parameters)          [su/Map]}]
-  (db/update! Pulse (u/the-id notification)
+  (t2/update! Pulse (u/the-id notification)
     (u/select-keys-when notification
       :present [:collection_id :collection_position :archived]
       :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))

@@ -1012,7 +1012,7 @@
 
   (testing "Let's make sure the 'archived` option works on Collections, nested or not"
     (with-collection-hierarchy [a b c]
-      (db/update! Collection (u/the-id b) :archived true)
+      (t2/update! Collection (u/the-id b) {:archived true})
       (testing "ancestors"
         (is (= {:effective_ancestors []
                 :effective_location  "/"}
@@ -1272,7 +1272,7 @@
 
     (testing "does `archived` work on Collections as well?"
       (with-collection-hierarchy [a b d e f g]
-        (db/update! Collection (u/the-id a) :archived true)
+        (t2/update! Collection (u/the-id a) {:archived true})
         (testing "children"
           (is (= [(collection-item "A")]
                  (remove-non-test-collections (api-get-root-collection-children :archived true)))))))
@@ -1422,7 +1422,7 @@
                                               :descrption "My SQL Snippets"
                                               :namespace  "snippets"})))
           (finally
-            (db/delete! Collection :name collection-name)))))
+            (t2/delete! Collection :name collection-name)))))
     (testing "collection types"
       (mt/with-model-cleanup [Collection]
         (testing "Admins should be able to create with a type"
