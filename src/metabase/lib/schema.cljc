@@ -12,6 +12,7 @@
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
    [metabase.lib.schema.expression.conditional]
+   [metabase.lib.schema.expression.string]
    [metabase.lib.schema.expression.temporal]
    [metabase.lib.schema.filter]
    [metabase.lib.schema.id :as id]
@@ -23,6 +24,7 @@
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
          metabase.lib.schema.expression.conditional/keep-me
+         metabase.lib.schema.expression.string/keep-me
          metabase.lib.schema.expression.temporal/keep-me
          metabase.lib.schema.filter/keep-me
          metabase.lib.schema.literal/keep-me)
