@@ -189,6 +189,7 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
       });
     });
   });
+
   it("can toggle required state", async () => {
     const formSettings: ActionFormSettings = {
       type: "form",
@@ -215,5 +216,28 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
         },
       });
     });
+  });
+
+  it("displays default values", async () => {
+    const defaultValue = "foo bar";
+    const parameter = makeParameter();
+    const fieldSettings = makeFieldSettings({
+      inputType: "string",
+      required: true,
+      defaultValue,
+    });
+    setup({
+      parameters: [makeParameter()],
+      formSettings: {
+        type: "form",
+        fields: {
+          [parameter.id]: fieldSettings,
+        },
+      },
+    });
+
+    expect(await screen.findByLabelText(fieldSettings.title)).toHaveValue(
+      defaultValue,
+    );
   });
 });
