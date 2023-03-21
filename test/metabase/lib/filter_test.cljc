@@ -117,23 +117,33 @@
         venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
         venues-name-metadata        (lib.metadata/field q1 nil "VENUES" "NAME")
         categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")
+        original-filter
+        [:between
+         {:lib/uuid string?}
+         [:field {:base-type :type/Integer :lib/uuid string?} (meta/id :venues :category-id)]
+         42
+         100]
         simple-filtered-query
-        {:lib/type :mbql/query,
+        {:lib/type :mbql/query
          :database (meta/id)
          :type :pipeline
          :stages [{:lib/type :mbql.stage/mbql
                    :source-table (meta/id :categories)
-                   :lib/options {:lib/uuid string?},
-                   :filter [:between
-                            {:lib/uuid string?}
-                            [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]
-                            42
-                            100]}]}]
+                   :lib/options {:lib/uuid string?}
+                   :filter original-filter}]}]
+    (testing "no filter"
+      (is (nil? (lib/current-filter q1)))
+      (is (= [] (lib/current-filters q2))))
     (testing "setting a simple filter"
-      (is (=? simple-filtered-query
-              (-> q1
-                  (lib/filter (lib/between {:lib/metadata meta/metadata} -1 venues-category-id-metadata 42 100))
-                  (dissoc :lib/metadata)))))
+      (let [result-query
+            (lib/filter q1 (lib/between {:lib/metadata meta/metadata} -1 venues-category-id-metadata 42 100))]
+        (is (=? simple-filtered-query
+                (dissoc result-query :lib/metadata)))
+        (testing "and getting the current filter"
+          (is (=? original-filter
+                  (lib/current-filter result-query)))
+          (is (=? [original-filter]
+                  (lib/current-filters result-query))))))
 
     (testing "setting a simple filter thunk"
       (is (=? simple-filtered-query
@@ -181,6 +191,76 @@
                                 [:= venues-category-id-metadata 242 categories-id-metadata]
                                 [:contains venues-name-metadata "part"]]])
                   (dissoc :lib/metadata)))))))
+
+(deftest ^:parallel add-filter-test
+  (let [simple-query         (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+        venues-name-metadata (lib.metadata/field simple-query nil "VENUES" "NAME")
+        first-filter
+        [:between
+         {:lib/uuid string?}
+         [:field
+          {:base-type :type/Integer, :lib/uuid string?}
+          (meta/id :venues :category-id)]
+         42
+         100]
+        second-filter
+        [:starts-with
+         {:lib/uuid string?}
+         [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+         "prefix"]
+        third-filter
+        [:contains
+         {:lib/uuid string?}
+         [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+         "part"]
+        first-add
+        (lib/add-filter simple-query
+                        (lib/->between
+                         (lib.metadata/field simple-query nil "VENUES" "CATEGORY_ID")
+                         42
+                         100))
+        filtered-query
+        (assoc-in simple-query [:stages 0 :filter] first-filter)
+        second-add
+        (lib/add-filter first-add
+                        (lib/starts-with
+                         {:lib/metadata meta/metadata}
+                         0
+                         venues-name-metadata
+                         "prefix"))
+        and-query
+        (assoc-in filtered-query
+                  [:stages 0 :filter]
+                  [:and
+                   {:lib/uuid string?}
+                   first-filter
+                   second-filter])
+        third-add
+        (lib/add-filter second-add
+                        (lib/->contains venues-name-metadata "part"))
+        extended-and-query
+        (assoc-in filtered-query
+                  [:stages 0 :filter]
+                  [:and
+                   {:lib/uuid string?}
+                   first-filter
+                   second-filter
+                   [:contains
+                    {:lib/uuid string?}
+                    [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+                    "part"]])]
+    (testing "adding an initial filter"
+      (is (=? filtered-query first-add))
+      (is (=? [first-filter]
+              (lib/current-filters first-add))))
+    (testing "conjoining to filter"
+      (is (=? and-query second-add))
+      (is (=? [first-filter second-filter]
+              (lib/current-filters second-add))))
+    (testing "conjoining to conjunction filter"
+      (is (=? extended-and-query third-add))
+      (is (=? [first-filter second-filter third-filter]
+              (lib/current-filters third-add))))))
 
 (deftest ^:parallel replace-filter-test
   (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
