@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import {
+  ID_OPTION,
   OPTIONS_WITH_OPERATOR_SUBTYPES,
   PARAMETER_OPERATOR_TYPES,
-  ID_OPTION,
 } from "../constants";
-import { getOperatorDisplayName, buildTypedOperatorOptions } from "./operators";
+import { buildTypedOperatorOptions, getOperatorDisplayName } from "./operators";
 import { fieldFilterForParameter } from "./filters";
 
 export function getParameterOptions() {
@@ -38,13 +38,19 @@ export function getParameterOptionsForField(field) {
 
 export function getDefaultParameterWidgetType(tag, field) {
   const options = getParameterOptionsForField(field);
+  if (options.length === 0) {
+    return;
+  }
 
-  if (
-    tag["widget-type"] &&
-    options.some(({ type }) => type === tag["widget-type"])
-  ) {
-    return tag["widget-type"];
-  } else if (options.length > 0) {
-    return options[0].type;
+  const widgetType = tag["widget-type"];
+  if (widgetType && options.some(option => option.type === widgetType)) {
+    return widgetType;
+  }
+
+  const defaultOption = options.find(option => option.default);
+  if (defaultOption) {
+    return defaultOption.type;
+  } else {
+    options[0].type;
   }
 }
