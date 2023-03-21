@@ -21,7 +21,7 @@ const DataSourceSelectorsPropTypes = {
 const PopulatedDataSourceSelectorsPropTypes = {
   database: PropTypes.object,
   databases: PropTypes.array,
-  isNativeEditorOpen: PropTypes.bool.isRequired,
+  isNativeEditorOpen: PropTypes.bool,
   query: PropTypes.object,
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
