@@ -212,7 +212,7 @@
                            :where  [:= :user_id [:inline user-id]]}]}
              :bookmarks]]}))
 
-(defn recent-views-for-user
+(defn- recent-views-for-user
   [user-id]
   (let [bookmarks (bookmarks user-id)
         qe        {:select [[[:inline "qe"] :source]
@@ -258,7 +258,7 @@
       :limit    [:inline 8]})))
 
 (api/defendpoint GET "/recent_views"
-  "Get the list of 5 things the current user has been viewing most recently."
+  "Get a list of 5 things the current user has been viewing most recently."
   []
   (let [views (recent-views-for-user *current-user-id*)
         model->id->items (models-for-views views)]
