@@ -26,12 +26,11 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.button("Remove this database").should("not.be.disabled");
   });
 
-  it("should show error correctly on server error", () => {
+  it("should show error upon a bad request", () => {
     cy.intercept("POST", "/api/database", req => {
       req.reply({
         statusCode: 400,
         body: "DATABASE CONNECTION ERROR",
-        delay: 1000,
       });
     }).as("createDatabase");
 
@@ -42,8 +41,8 @@ describe("scenarios > admin > databases > exceptions", () => {
     typeAndBlurUsingLabel("Username", "admin");
 
     cy.button("Save").click();
-
     cy.wait("@createDatabase");
+
     cy.findByText("DATABASE CONNECTION ERROR").should("exist");
   });
 
