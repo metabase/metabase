@@ -834,7 +834,7 @@
             schema           (ddl.i/schema-name database (public-settings/site-uuid))]
         (if success?
           ;; do secrets require special handling to not clobber them or mess up encryption?
-          (do (db/update! Database id :options
+          (do (t2/update! Database id :options
                           (assoc (:options database) :persist-models-enabled true))
               (task.persist-refresh/schedule-persistence-for-database!
                 database
@@ -852,7 +852,7 @@
   (api/let-404 [database (t2/select-one Database :id id)]
     (api/write-check database)
     (if (-> database :options :persist-models-enabled)
-      (do (db/update! Database id :options
+      (do (t2/update! Database id :options
                       (dissoc (:options database) :persist-models-enabled))
           (persisted-info/mark-for-pruning! {:database_id id})
           (task.persist-refresh/unschedule-persistence-for-database! database)
@@ -929,7 +929,7 @@
         ;; scheduling. leave them as they are in the db
 
         ;; unlike the other fields, folks might want to nil out cache_ttl
-        (db/update! Database id {:cache_ttl cache_ttl})
+        (t2/update! Database id {:cache_ttl cache_ttl})
 
         (let [db (t2/select-one Database :id id)]
           (events/publish-event! :database-update db)

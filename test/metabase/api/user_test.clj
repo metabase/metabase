@@ -918,8 +918,8 @@
       (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
                                          google-auth-enabled    true]
         (mt/with-temp User [user {:google_auth true}]
-          (db/update! User (u/the-id user)
-            :is_active false)
+          (t2/update! User (u/the-id user)
+                      {:is_active false})
           (mt/with-temporary-setting-values [google-auth-enabled false]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :google_auth false}

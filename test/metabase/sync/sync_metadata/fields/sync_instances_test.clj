@@ -84,7 +84,7 @@
             toucan-field-id       (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "toucan"))
             details-field-id      (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
             age-field-id          (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
-        (db/update! Field age-field-id :active false)
+        (t2/update! Field age-field-id {:active false})
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should be reactivated
@@ -99,7 +99,7 @@
             toucan-field-id       (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "toucan"))
             details-field-id      (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
             age-field-id          (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
-        (db/update! Field details-field-id :active false)
+        (t2/update! Field details-field-id {:active false})
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should be reactivated

@@ -16,6 +16,7 @@ import {
 import ActionParametersInputForm from "./ActionParametersInputForm";
 import ActionParametersInputModal from "./ActionParametersInputModal";
 
+const mockAction = createMockQueryAction();
 const defaultProps = {
   missingParameters: [
     createMockActionParameter({
@@ -28,7 +29,7 @@ const defaultProps = {
     }),
   ],
   dashcardParamValues: {},
-  action: createMockQueryAction(),
+  action: mockAction,
   dashboard: createMockDashboard({ id: 123 }),
   dashcard: createMockDashboard({ id: 456 }),
   onSubmit: jest.fn(() => ({ success: true })),
@@ -89,7 +90,7 @@ describe("Actions > ActionParametersInputForm", () => {
       expect(screen.getByLabelText("Parameter 2")).toHaveValue("dos"),
     );
 
-    userEvent.click(screen.getByText("Run"));
+    userEvent.click(screen.getByText(mockAction.name));
 
     await waitFor(() => {
       expect(submitSpy).toHaveBeenCalledWith({

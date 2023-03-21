@@ -607,7 +607,7 @@
     (log/info (trs "Moving Collection {0} and its descendants from {1} to {2}"
                    (u/the-id collection) (:location collection) new-location))
     (db/transaction
-      (db/update! Collection (u/the-id collection) :location new-location)
+      (t2/update! Collection (u/the-id collection) {:location new-location})
       ;; we need to update all the descendant collections as well...
       (db/execute!
        {:update :collection

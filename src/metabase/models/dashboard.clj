@@ -175,7 +175,7 @@
 (defmethod revision/revert-to-revision! Dashboard
   [_model dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
-  (db/update! Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
+  (t2/update! Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
   ;; Now update the cards as needed
   (let [serialized-cards    (:cards serialized-dashboard)
         id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)

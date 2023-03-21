@@ -168,8 +168,7 @@
   (when *automatically-archive-when-last-channel-is-deleted*
     (let [other-channels-count (db/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
       (when (zero? other-channels-count)
-        (db/update! Pulse pulse-id :archived true)))))
-
+        (t2/update! Pulse pulse-id {:archived true})))))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
@@ -547,7 +546,7 @@
                     (s/optional-key :channels)            [su/Map]
                     (s/optional-key :archived)            s/Bool
                     (s/optional-key :parameters)          [su/Map]}]
-  (db/update! Pulse (u/the-id notification)
+  (t2/update! Pulse (u/the-id notification)
     (u/select-keys-when notification
       :present [:collection_id :collection_position :archived]
       :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))

@@ -356,19 +356,19 @@
   ;; when changing/resetting the password, kill any existing sessions
   (db/simple-delete! Session :user_id user-id)
   ;; NOTE: any password change expires the password reset token
-  (db/update! User user-id
-    :password        password
-    :reset_token     nil
-    :reset_triggered nil))
+  (t2/update! User user-id
+              {:password        password
+               :reset_token     nil
+               :reset_triggered nil}))
 
 (defn set-password-reset-token!
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
   (u/prog1 (str user-id \_ (UUID/randomUUID))
-    (db/update! User user-id
-      :reset_token     <>
-      :reset_triggered (System/currentTimeMillis))))
+    (t2/update! User user-id
+                {:reset_token     <>
+                 :reset_triggered (System/currentTimeMillis)})))
 
 (defn form-password-reset-url
   "Generate a properly formed password reset url given a password reset token."

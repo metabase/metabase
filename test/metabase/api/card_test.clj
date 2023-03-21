@@ -140,7 +140,7 @@
       (doseq [card-or-id (if (sequential? card-or-cards-or-ids)
                            card-or-cards-or-ids
                            [card-or-cards-or-ids])]
-        (db/update! Card (u/the-id card-or-id) {:collection_id (u/the-id collection)}))
+        (t2/update! Card (u/the-id card-or-id) {:collection_id (u/the-id collection)}))
       ;; now use `grant-perms-fn!` to grant appropriate perms
       (grant-perms-fn! (perms-group/all-users) collection)
       ;; call (f)
@@ -2162,7 +2162,7 @@
           (let [metadata (t2/select-one-fn :result_metadata Card :id card-id)
                 ;; simulate updating metadat with user changed stuff
                 user-edited (add-preserved metadata)]
-            (db/update! Card card-id :result_metadata user-edited)
+            (t2/update! Card card-id {:result_metadata user-edited})
             (testing "Saved metadata preserves user edits"
               (is (= (map only-user-edits user-edited)
                      (map only-user-edits (t2/select-one-fn :result_metadata Card :id card-id)))))
@@ -2484,7 +2484,7 @@
   (testing "Old style, inferred parameters from native template-tags"
     (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
       ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
-      (db/update! Card (:id field-filter-card) :parameters [])
+      (t2/update! Card (:id field-filter-card) {:parameters []})
       (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
         (testing "without search query"
           (let [response (mt/user-http-request :rasta :get 200

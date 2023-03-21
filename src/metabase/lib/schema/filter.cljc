@@ -4,7 +4,8 @@
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.schema.mbql-clause :as mbql-clause]))
+   [metabase.lib.schema.mbql-clause :as mbql-clause]
+   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]))
 
 (doseq [op [:and :or]]
   (mbql-clause/define-catn-mbql-clause op :- :type/Boolean
@@ -31,12 +32,12 @@
 
 ;; sugar: a pair of `:between` clauses
 (mbql-clause/define-tuple-mbql-clause :inside :- :type/Boolean
-  #_lat-field [:ref ::expression/orderable]
-  #_lon-field [:ref ::expression/orderable]
-  #_lat-max   [:ref ::expression/orderable]
-  #_lon-min   [:ref ::expression/orderable]
-  #_lat-min   [:ref ::expression/orderable]
-  #_lon-max   [:ref ::expression/orderable])
+  #_lat-expr [:ref ::expression/orderable]
+  #_lon-expr [:ref ::expression/orderable]
+  #_lat-max  [:ref ::expression/orderable]
+  #_lon-min  [:ref ::expression/orderable]
+  #_lat-min  [:ref ::expression/orderable]
+  #_lon-max  [:ref ::expression/orderable])
 
 ;;; null checking expressions
 ;;;
@@ -68,13 +69,10 @@
      [:= op]
      [:merge ::common/options string-filter-options]
      #_whole [:ref ::expression/string]
-     #_part [:ref ::expression/string]]))
+     #_part  [:ref ::expression/string]]))
 
 (def ^:private time-interval-options
   [:map [:include-current {:optional true} :boolean]]) ; default false
-
-(def ^:private relative-datetime-unit
-  [:enum :default :minute :hour :day :week :month :quarter :year])
 
 ;; SUGAR: rewritten as a filter clause with a relative-datetime value
 (mbql-clause/define-mbql-clause :time-interval :- :type/Boolean
@@ -91,7 +89,7 @@
            [:enum :current :last :next]
            ;; I guess there's no reason you shouldn't be able to do something like 1 + 2 in here
            [:ref ::expression/integer]]
-   #_unit relative-datetime-unit])
+   #_unit [:ref ::temporal-bucketing/unit.date-time.interval]])
 
 ;; segments are guaranteed to return valid filter clauses and thus booleans, right?
 (mbql-clause/define-mbql-clause :segment :- :type/Boolean

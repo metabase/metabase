@@ -44,7 +44,7 @@
   (if-let [existing-user-id (t2/select-one-pk User :email (:email user))]
     (do
       (log/info (u/colorize :blue (trs "Updating User with email {0}" (pr-str (:email user)))))
-      (db/update! User existing-user-id user))
+      (t2/update! User existing-user-id user))
     ;; create a new user. If they are the first User, force them to be an admin.
     (let [user (cond-> user
                  (init-from-config-file-is-first-user?) (assoc :is_superuser true))]

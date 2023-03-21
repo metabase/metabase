@@ -1,11 +1,29 @@
 (ns metabase.lib.util
+  (:refer-clojure :exclude [format])
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   #?@(:clj
+       ([potemkin :as p]))
+   #?@(:cljs
+       ([goog.string :as gstring]
+        [goog.string.format :as gstring.format]))))
+
+;; The formatting functionality is only loaded if you depend on goog.string.format.
+#?(:cljs (comment gstring.format/keep-me))
+
+;;; For convenience: [[metabase.lib.util/format]] maps to [[clojure.core/format]] in Clj and [[goog.string/format]] in
+;;; Cljs. They both work like [[clojure.core/format]], but since that doesn't exist in Cljs, you can use this instead.
+#?(:clj
+   (p/import-vars [clojure.core format])
+
+   :cljs
+   (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
 ;;; the near future.
@@ -131,3 +149,24 @@
     (cond-> query
       (= (:lib/type (query-stage query -1)) :mbql.stage/native)
       (update :stages conj (lib.options/ensure-uuid {:lib/type :mbql.stage/mbql})))))
+
+(defn join-strings-with-conjunction
+  "This is basically [[clojure.string/join]] but uses commas to join everything but the last two args, which are joined
+  by a string `conjunction`. Uses Oxford commas for > 2 args.
+
+  (join-strings-with-conjunction \"and\" [\"X\" \"Y\" \"Z\"])
+  ;; => \"X, Y, and Z\""
+  [conjunction coll]
+  (when (seq coll)
+    (if (= (count coll) 1)
+      (first coll)
+      (let [conjunction (str \space (str/trim conjunction) \space)]
+        (if (= (count coll) 2)
+          ;; exactly 2 args: X and Y
+          (str (first coll) conjunction (second coll))
+          ;; > 2 args: X, Y, and Z
+          (str
+           (str/join ", " (butlast coll))
+           ","
+           conjunction
+           (last coll)))))))
