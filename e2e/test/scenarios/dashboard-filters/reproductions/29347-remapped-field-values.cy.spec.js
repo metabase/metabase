@@ -79,7 +79,7 @@ describe.skip("issues 29347, 29346", () => {
       cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
     });
 
-    it("should be able to filter on remapped values  (metabase#29347, metabase#29346)", () => {
+    it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
       cy.get("@dashboardId").then(dashboardId =>
         visitEmbeddedPage({
           resource: { dashboard: dashboardId },
@@ -115,7 +115,7 @@ describe.skip("issues 29347, 29346", () => {
       cy.intercept("GET", "/api/public/dashboard/**/card/*").as("cardQuery");
     });
 
-    it("should be able to filter on remapped values  (metabase#29347, metabase#29346)", () => {
+    it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
       cy.get("@dashboardId").then(dashboardId =>
         visitPublicDashboard(dashboardId),
       );
