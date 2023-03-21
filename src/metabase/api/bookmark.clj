@@ -15,7 +15,8 @@
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (def Models
   "Schema enumerating bookmarkable models."
@@ -51,7 +52,7 @@
     (api/check (not (db/exists? bookmark-model item-key id
                                 :user_id api/*current-user-id*))
       [400 "Bookmark already exists"])
-    (db/insert! bookmark-model {item-key id :user_id api/*current-user-id*})))
+    (first (t2/insert-returning-instances! bookmark-model {item-key id :user_id api/*current-user-id*}))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:model/:id"

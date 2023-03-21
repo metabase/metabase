@@ -24,7 +24,7 @@
                     Dashboard [dash-1]
                     Dashboard [dash-2]]
       (letfn [(add-card-to-dash! [dash]
-                (db/insert! DashboardCard
+                (t2/insert! DashboardCard
                   {:card_id      card-id
                    :dashboard_id (u/the-id dash)
                    :row          0
@@ -219,7 +219,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Card can only go in Collections in the \"default\" namespace"
-               (db/insert! Card (assoc (tt/with-temp-defaults Card) :collection_id collection-id, :name card-name))))
+               (t2/insert! Card (assoc (tt/with-temp-defaults Card) :collection_id collection-id, :name card-name))))
           (finally
             (db/delete! Card :name card-name)))))
 

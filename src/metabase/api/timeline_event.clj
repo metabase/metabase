@@ -52,7 +52,7 @@
                                       :collection_id (:collection_id timeline)}
                                (boolean source)      (assoc :source source)
                                (boolean question_id) (assoc :question_id question_id)))
-      (db/insert! TimelineEvent tl-event))))
+      (first (t2/insert-returning-instances! TimelineEvent tl-event)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"

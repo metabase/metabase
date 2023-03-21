@@ -833,15 +833,17 @@
   ;; Now create the new Collection :)
   (api/check-403 (or (nil? authority_level)
                      (and api/*is-superuser?* authority_level)))
-  (db/insert! Collection
-    (merge
-     {:name        name
-      :color       color
-      :description description
-      :authority_level authority_level
-      :namespace   namespace}
-     (when parent_id
-       {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))}))))
+  (first
+    (t2/insert-returning-instances!
+      Collection
+      (merge
+        {:name        name
+         :color       color
+         :description description
+         :authority_level authority_level
+         :namespace   namespace}
+        (when parent_id
+          {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"

@@ -91,7 +91,7 @@
     (or (db/update-where! QueryCache {:query_hash query-hash}
           :updated_at (t/offset-date-time)
           :results    results)
-        (db/insert! QueryCache
+        (t2/insert! QueryCache
           :updated_at (t/offset-date-time)
           :query_hash query-hash
           :results    results))

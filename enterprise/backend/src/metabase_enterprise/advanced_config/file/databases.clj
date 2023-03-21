@@ -46,7 +46,7 @@
       (t2/update! Database existing-database-id database))
     (do
       (log/info (u/colorize :green (trs "Creating new {0} Database {1}" (:engine database) (pr-str (:name database)))))
-      (let [db (db/insert! Database database)]
+      (let [db (first (t2/insert-returning-instances! Database database))]
         (if (config-from-file-sync-databases)
           ((requiring-resolve 'metabase.sync/sync-database!) db)
           (log/info (trs "Sync on database creation when initializing from file is disabled. Skipping sync.")))))))

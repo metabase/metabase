@@ -575,7 +575,7 @@
     ;; restore the cache
     (setting.cache/restore-cache-if-needed!)
     ;; now set a value for the `toucan-name` setting the wrong way
-    (db/insert! setting/Setting {:key "toucan-name", :value "Reggae"})
+    (t2/insert! setting/Setting {:key "toucan-name", :value "Reggae"})
     ;; ok, now try to set the Setting the correct way
     (toucan-name! "Banana Beak")
     ;; ok, make sure the setting was set
@@ -683,7 +683,7 @@
                                            ;; Setting is Database-local-only
                                            (db/delete! Setting :key (name setting-name))
                                            (when site-wide-value
-                                             (db/insert! Setting :key (name setting-name), :value (str site-wide-value)))
+                                             (t2/insert! Setting :key (name setting-name), :value (str site-wide-value)))
                                            (setting.cache/restore-cache!)
                                            (try
                                              (thunk)

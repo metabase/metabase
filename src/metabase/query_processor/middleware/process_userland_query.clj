@@ -12,7 +12,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,7 +38,7 @@
     (query/save-query-and-update-average-execution-time! query query-hash running-time))
   (if-not context
     (log/warn (trs "Cannot save QueryExecution, missing :context"))
-    (db/insert! QueryExecution (dissoc query-execution :json_query))))
+    (t2/insert! QueryExecution (dissoc query-execution :json_query))))
 
 (defn- save-query-execution!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."

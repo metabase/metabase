@@ -31,7 +31,7 @@
                                                                                        [:> $id 3]
                                                                                        [:< $id 6]]})}}}
         ;; the categories-id doesn't have a field values, we fake it with a full fieldvalues to make it easier to test
-        (db/insert! FieldValues {:type                  :full
+        (t2/insert! FieldValues {:type                  :full
                                  :field_id              (mt/id :categories :id)
                                  :values                (range 10)
                                  :human_readable_values (map #(str "id_" %) (range 10))})

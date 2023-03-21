@@ -73,7 +73,7 @@
     (try
       (log/info (trs "Loading sample database"))
       (let [details (try-to-extract-sample-database!)]
-        (sync/sync-database! (db/insert! Database
+        (sync/sync-database! (t2/insert! Database
                                :name      sample-database-name
                                :details   details
                                :engine    :h2

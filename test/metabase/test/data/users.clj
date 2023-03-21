@@ -64,22 +64,24 @@
 
 (defn- fetch-or-create-user!
   "Create User if they don't already exist and return User."
-  [& {:keys [email first last password superuser active]
+  [& {first-name :first
+      last-name  :last
+      :keys [email password superuser active]
       :or   {superuser false
              active    true}}]
-  {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
+  {:pre [(string? email) (string? first-name) (string? last-name) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (initialize/initialize-if-needed! :db)
   (or (t2/select-one User :email email)
       (locking create-user-lock
         (or (t2/select-one User :email email)
-            (db/insert! User
-              :email        email
-              :first_name   first
-              :last_name    last
-              :password     password
-              :is_superuser superuser
-              :is_qbnewb    true
-              :is_active    active)))))
+            (first (t2/insert-returning-instances! User
+                                                   {:email        email
+                                                    :first_name   first-name
+                                                    :last_name    last-name
+                                                    :password     password
+                                                    :is_superuser superuser
+                                                    :is_qbnewb    true
+                                                    :is_active    active}))))))
 
 (s/defn fetch-user :- (mi/InstanceOf User)
   "Fetch the User object associated with `username`. Creates user if needed.

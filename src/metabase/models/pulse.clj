@@ -484,7 +484,7 @@
   add the Notification to `channels`. Returns the `id` of the newly created Notification."
   [notification card-refs :- (s/maybe [CardRef]) channels]
   (db/transaction
-    (let [notification (db/insert! Pulse notification)]
+    (let [notification (first (t2/insert-returning-instances! Pulse notification))]
       (update-notification-cards! notification card-refs)
       (update-notification-channels! notification channels)
       (u/the-id notification))))

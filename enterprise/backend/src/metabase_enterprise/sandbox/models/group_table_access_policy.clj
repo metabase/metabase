@@ -145,7 +145,7 @@
         (t2/select-one GroupTableAccessPolicy :id id))
       (let [expected-permission-path (perms/table-segmented-query-path (:table_id sandbox))]
         (when-let [permission-path-id (t2/select-one-fn :id Permissions :object expected-permission-path)]
-          (db/insert! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id)))))))
+          (first (t2/insert-returning-instances! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id))))))))
 
 (defn- pre-insert [gtap]
   (u/prog1 gtap

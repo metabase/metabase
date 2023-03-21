@@ -13,8 +13,8 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [toucan.db :as db]
    [toucan.util.test :as tt]
+   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -53,7 +53,8 @@
      (tt/with-temp* ~model-bindings ~@body)))
 
 (defn create! [model & {:as properties}]
-  (db/insert! model (merge (tt/with-temp-defaults model) properties)))
+ (db/insert! model (merge (tt/with-temp-defaults model) properties))
+ #_(first (t2/insert-returning-instances! model (merge (tt/with-temp-defaults model) properties))))
 
 (defn- do-with-in-memory-h2-db [db-name-prefix f]
   (let [db-name           (str db-name-prefix (mt/random-name))

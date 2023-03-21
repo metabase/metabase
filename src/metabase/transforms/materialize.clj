@@ -31,11 +31,11 @@
    (create-collection! collection-name color description (root-container-location)))
   ([collection-name color description location]
    (u/the-id
-    (db/insert! Collection
-      {:name        collection-name
-       :color       color
-       :description description
-       :location    location}))))
+     (first (t2/insert-returning-instances! Collection
+                                            {:name        collection-name
+                                             :color       color
+                                             :description description
+                                             :location    location})))))
 
 (defn- get-or-create-root-container-collection!
   "Get or create container collection for transforms in the root collection."
@@ -65,4 +65,5 @@
         :visualization_settings {}
         :display                :table}
        card/populate-query-fields
-       (db/insert! Card)))
+       (t2/insert-returning-instances! Card)
+       first))

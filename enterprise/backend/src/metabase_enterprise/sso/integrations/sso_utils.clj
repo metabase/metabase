@@ -33,7 +33,7 @@
   to refactor the `core_user` table structure and the function used to populate it so that the enterprise product can
   reuse it"
   [user :- UserAttributes]
-  (u/prog1 (db/insert! User (merge user {:password (str (UUID/randomUUID))}))
+  (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (UUID/randomUUID))})))
     (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))
     ;; send an email to everyone including the site admin if that's set
     (when (sso-settings/send-new-sso-user-admin-email?)

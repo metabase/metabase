@@ -81,7 +81,7 @@
                 (tx/create-db! driver/*driver* {:database-name db-name}))
               (load-from-h2/load-from-h2! h2-fixture-db-file)
               (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
-                (db/insert! Setting {:key "my-site-admin", :value "baz"})
+                (t2/insert! Setting {:key "my-site-admin", :value "baz"})
                 (t2/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
                 (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})
                 (dump-to-h2/dump-to-h2! h2-file-enc {:dump-plaintext? false})

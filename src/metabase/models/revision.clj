@@ -136,7 +136,7 @@
   (let [object (serialize-instance entity id (dissoc object :message))]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? object))
-    (db/insert! Revision
+    (t2/insert! Revision
       :model        (name entity)
       :model_id     id
       :user_id      user-id
@@ -162,11 +162,11 @@
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change
       (let [last-revision (t2/select-one Revision :model (name entity), :model_id id, {:order-by [[:id :desc]]})
-            new-revision  (db/insert! Revision
-                            :model        (name entity)
-                            :model_id     id
-                            :user_id      user-id
-                            :object       serialized-instance
-                            :is_creation  false
-                            :is_reversion true)]
+            new-revision  (first (t2/insert-returning-instances! Revision
+                                                                 :model        (name entity)
+                                                                 :model_id     id
+                                                                 :user_id      user-id
+                                                                 :object       serialized-instance
+                                                                 :is_creation  false
+                                                                 :is_reversion true))]
         (add-revision-details entity new-revision last-revision)))))

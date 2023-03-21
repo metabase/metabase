@@ -10,7 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest bookmarks-test
   (mt/initialize-if-needed! :db)
@@ -58,19 +58,19 @@
   (doseq [model models]
     (cond
       (mi/instance-of? Collection model)
-      (db/insert! CollectionBookmark
-                  {:user_id user-id
-                   :collection_id (u/the-id model)})
+      (first (t2/insert-returning-instances! CollectionBookmark
+                                             {:user_id user-id
+                                              :collection_id (u/the-id model)}))
 
       (mi/instance-of? Card model)
-      (db/insert! CardBookmark
-                  {:user_id user-id
-                   :card_id (u/the-id model)})
+      (first (t2/insert-returning-instances! CardBookmark
+                                             {:user_id user-id
+                                              :card_id (u/the-id model)}))
 
       (mi/instance-of? Dashboard model)
-      (db/insert! DashboardBookmark
-                  {:user_id user-id
-                   :dashboard_id (u/the-id model)})
+      (first (t2/insert-returning-instances! DashboardBookmark
+                                             {:user_id user-id
+                                              :dashboard_id (u/the-id model)}))
 
       :else
       (throw (ex-info "Unknown type" {:user-id user-id :model model})))))

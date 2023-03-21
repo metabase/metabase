@@ -9,7 +9,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (def statuses
   "Schema enum of the acceptable values for the `status` column"
@@ -75,4 +76,4 @@
    (db/update-where! ModerationReview {:moderated_item_id (:moderated_item_id params)
                                        :moderated_item_type (:moderated_item_type params)}
                      :most_recent false)
-   (db/insert! ModerationReview (assoc params :most_recent true))))
+   (first (t2/insert-returning-instances! ModerationReview (assoc params :most_recent true)))))

@@ -127,11 +127,11 @@
   (let [end-time-ms (System/currentTimeMillis)
         duration-ms (- end-time-ms start-time-ms)]
     (try
-      (db/insert! TaskHistory
-        (assoc info
-          :started_at (t/instant start-time-ms)
-          :ended_at   (t/instant end-time-ms)
-          :duration   duration-ms))
+      (first (t2/insert-returning-instances! TaskHistory
+                                             (assoc info
+                                                    :started_at (t/instant start-time-ms)
+                                                    :ended_at   (t/instant end-time-ms)
+                                                    :duration   duration-ms)))
       (catch Throwable e
         (log/warn e (trs "Error saving task history"))))))
 

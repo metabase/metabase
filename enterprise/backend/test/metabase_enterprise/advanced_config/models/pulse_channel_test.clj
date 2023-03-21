@@ -36,9 +36,9 @@
                         (format "\nEmails = %s" (pr-str emails)))
             (let [thunk (case operation
                           :create
-                          #(db/insert! PulseChannel
-                             (merge (tt/with-temp-defaults PulseChannel)
-                                    {:pulse_id pulse-id, :details {:emails emails}}))
+                          #(first (t2/insert-returning-instances! PulseChannel
+                                                                  (merge (tt/with-temp-defaults PulseChannel)
+                                                                         {:pulse_id pulse-id, :details {:emails emails}})))
 
                           :update
                           #(mt/with-temp PulseChannel [{pulse-channel-id :id} {:pulse_id pulse-id}]

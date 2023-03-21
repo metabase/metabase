@@ -87,13 +87,13 @@
                                                  :field_id (:id field)
                                                  :type :full)
                                   values)]
-      (db/insert! FieldValues
-                  :field_id (:id field)
-                  :type fv-type
-                  :hash_key hash-key
-                  :has_more_values has_more_values
-                  :human_readable_values human-readable-values
-                  :values values))))
+      (first (t2/insert-returning-instances! FieldValues
+                                             :field_id (:id field)
+                                             :type fv-type
+                                             :hash_key hash-key
+                                             :has_more_values has_more_values
+                                             :human_readable_values human-readable-values
+                                             :values values)))))
 
 (defn get-or-create-advanced-field-values!
   "Fetch an Advanced FieldValues with type `fv-type` for a `field`, creating them if needed.

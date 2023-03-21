@@ -139,7 +139,7 @@
     (the-driver \"h2\") ; -> :h2
 
     ;; Ensuring a driver you are passed is valid
-    (db/insert! Database :engine (name (the-driver driver)))
+    (t2/insert! Database :engine (name (the-driver driver)))
 
     (the-driver :postgres) ; -> :postgres
     (the-driver :baby)     ; -> Exception"

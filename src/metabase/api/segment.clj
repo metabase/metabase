@@ -31,12 +31,12 @@
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (api/create-check Segment body)
   (let [segment (api/check-500
-                 (db/insert! Segment
-                   :table_id    table_id
-                   :creator_id  api/*current-user-id*
-                   :name        name
-                   :description description
-                   :definition  definition))]
+                  (first (t2/insert-returning-instances! Segment
+                                                         :table_id    table_id
+                                                         :creator_id  api/*current-user-id*
+                                                         :name        name
+                                                         :description description
+                                                         :definition  definition)))]
     (-> (events/publish-event! :segment-create segment)
         (hydrate :creator))))
 

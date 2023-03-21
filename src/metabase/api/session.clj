@@ -35,9 +35,9 @@
 
 (s/defn ^:private record-login-history!
   [session-id :- UUID user-id :- su/IntGreaterThanZero device-info :- request.u/DeviceInfo]
-  (db/insert! LoginHistory (merge {:user_id    user-id
-                                   :session_id (str session-id)}
-                                  device-info)))
+  (first (t2/insert-returning-instances! LoginHistory (merge {:user_id    user-id
+                                                              :session_id (str session-id)}
+                                                             device-info))))
 
 (defmulti create-session!
   "Generate a new Session for a User. `session-type` is the currently either `:password` (for email + password login) or
@@ -54,9 +54,9 @@
 (s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
   [_ user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
   (let [session-uuid (UUID/randomUUID)
-        session      (db/insert! Session
-                                 :id      (str session-uuid)
-                                 :user_id (u/the-id user))]
+        session      (first (t2/insert-returning-instances! Session
+                                                            :id      (str session-uuid)
+                                                            :user_id (u/the-id user)))]
     (assert (map? session))
     (events/publish-event! :user-login
       {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
