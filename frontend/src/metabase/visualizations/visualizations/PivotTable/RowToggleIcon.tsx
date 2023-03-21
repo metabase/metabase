@@ -18,6 +18,7 @@ interface RowToggleIconProps {
   updateSettings: (settings: VisualizationSettings) => void;
   hideUnlessCollapsed?: boolean;
   rowIndex?: string[];
+  "data-testid"?: string;
 }
 
 export function RowToggleIcon({
@@ -26,6 +27,7 @@ export function RowToggleIcon({
   updateSettings,
   hideUnlessCollapsed,
   rowIndex = [],
+  "data-testid": testId,
 }: RowToggleIconProps) {
   if (value == null) {
     return null;
@@ -84,6 +86,7 @@ export function RowToggleIcon({
 
   return (
     <RowToggleIconRoot
+      data-testid={testId}
       onClick={e => {
         e.stopPropagation();
         updateSettings({

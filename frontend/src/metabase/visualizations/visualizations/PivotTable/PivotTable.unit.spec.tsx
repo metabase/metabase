@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import _ from "underscore";
 import type { VisualizationSettings } from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
@@ -77,9 +78,6 @@ const settings = {
 
 // 3 isn't a real column, it's a pivot-grouping
 const columnIndexes = [0, 1, 2, 4, 5];
-
-const BREAKOUT_COLUMNS = [0, 1, 2];
-const METRIC_COLUMNS = [4, 5];
 
 function setup(options?: any) {
   render(<PivotTableWrapper {...options} />);
@@ -167,7 +165,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
     });
   });
 
-  it("should not render hidden column values", () => {
+  it("should collapse columns", () => {
     const hiddenSettings = {
       ...settings,
       "pivot_table.collapsed_rows": {
@@ -178,28 +176,57 @@ describe("Visualizations > PivotTable > PivotTable", () => {
 
     setup({ initialSettings: hiddenSettings });
 
-    expect(screen.getByText("Totals for bar1")).toBeInTheDocument();
+    const COLLAPSED_COLUMN_INDEX = 1;
 
-    //Ensure that
-    expect(screen.getByRole("img", { name: /add/i })).toBeInTheDocument();
+    rows.forEach(row => {
+      const totalsElement = screen.getByText(
+        `Totals for ${row[COLLAPSED_COLUMN_INDEX]}`,
+      );
+      expect(totalsElement).toBeInTheDocument();
 
-    //Collapsed aggregates
-    METRIC_COLUMNS.forEach(colIndex => {
-      expect(
-        screen.queryByText(rows[0][colIndex].toString()),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(rows[1][colIndex].toString()),
-      ).not.toBeInTheDocument();
-    });
+      const totalsContainer = screen.getByTestId(
+        `${row[COLLAPSED_COLUMN_INDEX]}-toggle-button`,
+      );
 
-    //non grouped values are still visible
-    [...BREAKOUT_COLUMNS, ...METRIC_COLUMNS].forEach(colIndex => {
       expect(
-        screen.getByText(rows[2][colIndex].toString()),
+        within(totalsContainer).getByRole("img", {
+          name: /add/i,
+        }),
       ).toBeInTheDocument();
+    });
+  });
+
+  it("expanding collapsed columns", () => {
+    const hiddenSettings = {
+      ...settings,
+      "pivot_table.collapsed_rows": {
+        rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
+        value: ["2"],
+      },
+    } as unknown as VisualizationSettings;
+
+    setup({ initialSettings: hiddenSettings });
+
+    const COLLAPSED_COLUMN_INDEX = 1;
+
+    const LAST_ROW = rows[3];
+
+    // Find and click the toggle button to expand the last row
+    // as it's the easiest to make assertions on
+    const toggleButton = screen.getByTestId(
+      `${LAST_ROW[COLLAPSED_COLUMN_INDEX]}-toggle-button`,
+    );
+
+    expect(
+      within(toggleButton).getByRole("img", { name: /add/i }),
+    ).toBeInTheDocument();
+
+    userEvent.click(toggleButton);
+
+    //Ensure that collapsed data is now visible
+    columnIndexes.forEach(columnIndex => {
       expect(
-        screen.getByText(rows[3][colIndex].toString()),
+        screen.getByText(LAST_ROW[columnIndex].toString()),
       ).toBeInTheDocument();
     });
   });

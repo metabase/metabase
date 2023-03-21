@@ -258,14 +258,12 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("1162").should("be.visible");
     // Collapse "User ID" column
     cy.findByText("User ID").parent().find(".Icon-dash").click();
-    cy.findByText("1162").should("be.visible");
+    cy.findByText("Totals for 1162").should("be.visible");
 
-    //Expanding teh grouped column should still work
-    cy.findByText("Totals for 678").parent().find(".Icon-add").click();
-    cy.findByText("678").should("be.visible");
-    cy.findByText("51").should("be.visible");
-    cy.findByText("129").should("be.visible");
-    cy.findByText("180").should("be.visible");
+    //Expanding the grouped column should still work
+    cy.findByText("Totals for 1162").parent().find(".Icon-add").click();
+    cy.findByText("1162").should("be.visible");
+    cy.findByText("34").should("be.visible");
   });
 
   it("should allow hiding subtotals", () => {
