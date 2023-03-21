@@ -267,12 +267,12 @@ export class TagEditorParam extends Component {
 
         {(hasWidgetOptions || !isDimension) && (
           <InputContainer>
-            <ContainerLabel htmlFor="tag-display-name-input">
+            <ContainerLabel htmlFor="tag-editor-display-name">
               {t`Filter widget label`}
               {hasNoWidgetLabel && <ErrorSpan>{t`(required)`}</ErrorSpan>}
             </ContainerLabel>
             <InputBlurChange
-              id="tag-display-name-input"
+              id="tag-editor-display-name"
               type="text"
               value={tag["display-name"]}
               onBlurChange={e =>
@@ -294,8 +294,9 @@ export class TagEditorParam extends Component {
         )}
 
         <InputContainer lessBottomPadding>
-          <ContainerLabel>{t`Required?`}</ContainerLabel>
+          <ContainerLabel htmlFor="tag-editor-required">{t`Required?`}</ContainerLabel>
           <Toggle
+            id="tag-editor-required"
             value={tag.required}
             onChange={value => this.setRequired(value)}
           />

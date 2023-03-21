@@ -53,7 +53,7 @@ describe("TagEditorParam", () => {
     const tag = createMockTemplateTag();
     const { setTemplateTag } = setup({ tag });
 
-    const input = screen.getByLabelText("Filter widget label");
+    const input = screen.getByRole("textbox", { name: "Filter widget label" });
     userEvent.clear(input);
     userEvent.type(input, "New");
     userEvent.tab();
@@ -61,6 +61,33 @@ describe("TagEditorParam", () => {
     expect(setTemplateTag).toHaveBeenCalledWith({
       ...tag,
       "display-name": "New",
+    });
+  });
+
+  it("should be able to make the tag required", () => {
+    const tag = createMockTemplateTag();
+    const { setTemplateTag } = setup({ tag });
+
+    const toggle = screen.getByRole("switch", { name: "Required?" });
+    userEvent.click(toggle);
+
+    expect(setTemplateTag).toHaveBeenCalledWith({
+      ...tag,
+      required: true,
+    });
+  });
+
+  it("should clear the default value when becoming not required", () => {
+    const tag = createMockTemplateTag({ required: true, default: "abc" });
+    const { setTemplateTag } = setup({ tag });
+
+    const toggle = screen.getByRole("switch", { name: "Required?" });
+    userEvent.click(toggle);
+
+    expect(setTemplateTag).toHaveBeenCalledWith({
+      ...tag,
+      required: false,
+      default: undefined,
     });
   });
 });
