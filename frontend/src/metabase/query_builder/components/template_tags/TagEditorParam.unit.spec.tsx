@@ -8,7 +8,7 @@ import {
   createMockNativeDatasetQuery,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { createSampleDatabase, PEOPLE } from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -61,6 +61,23 @@ describe("TagEditorParam", () => {
     expect(setTemplateTag).toHaveBeenCalledWith({
       ...tag,
       "display-name": "New",
+    });
+  });
+
+  it("should be able to change the widget type", () => {
+    const tag = createMockTemplateTag({
+      type: "dimension",
+      dimension: ["field", PEOPLE.NAME, null],
+      "widget-type": "string/starts-with",
+    });
+    const { setTemplateTag } = setup({ tag });
+
+    userEvent.click(screen.getByText("String starts with"));
+    userEvent.click(screen.getByText("String contains"));
+
+    expect(setTemplateTag).toHaveBeenCalledWith({
+      ...tag,
+      "widget-type": "string/contains",
     });
   });
 
