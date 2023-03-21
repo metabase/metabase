@@ -73,6 +73,26 @@ describe("TagEditorParam", () => {
     });
   });
 
+  it("should be able to change the type of the tag", () => {
+    const tag = createMockTemplateTag({
+      type: "dimension",
+      dimension: ["field", PEOPLE.NAME, null],
+      "widget-type": "string/starts-with",
+    });
+    const { setTemplateTag } = setup({ tag });
+
+    userEvent.click(screen.getByText("Field Filter"));
+    userEvent.click(screen.getByText("Number"));
+
+    expect(setTemplateTag).toHaveBeenCalledWith({
+      ...tag,
+      type: "number",
+      default: undefined,
+      dimension: undefined,
+      "widget-type": undefined,
+    });
+  });
+
   it("should be able to change the widget type", () => {
     const tag = createMockTemplateTag({
       type: "dimension",
