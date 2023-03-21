@@ -61,8 +61,8 @@ const TITLE_LOCALES_BN = {
       'bn': 'জব পোস্টের পরিসংখ্যান'
   },
   'admin.dashboard.teacher.age': {
-      'en': 'Statistics of Age Group',
-      'bn': 'বয়সের গ্রুপের পরিসংখ্যান'
+      'en': 'Statistics of Age Group of teachers',
+      'bn': 'শিক্ষকের বয়সের গ্রুপের পরিসংখ্যান'
   },
   'admin.dashboard.teacher.c-in-ed.bp-in-ed': {
       'en': 'Statistics of C-in-Ed and DPED Training',
@@ -105,8 +105,8 @@ const TITLE_LOCALES_BN = {
       'bn': 'জব পোস্টের পরিসংখ্যান'
   },
   'school.dashboard.teacher.age': {
-      'en': 'Statistics of Age Group',
-      'bn': 'বয়সের গ্রুপের পরিসংখ্যান'
+      'en': 'Statistics of Age Group of teachers',
+      'bn': 'শিক্ষকের বয়সের গ্রুপের পরিসংখ্যান'
   },
   'school.dashboard.teacher.c-in-ed.bp-in-ed': {
       'en': 'Statistics of C-in-Ed and DPED Training',
