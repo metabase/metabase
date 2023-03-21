@@ -12,7 +12,6 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/core/components/Select";
 
 import ValuesSourceSettings from "metabase/parameters/components/ValuesSourceSettings";
-import { getParameterOptionsForField } from "metabase/parameters/utils/template-tag-options";
 
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -20,6 +19,7 @@ import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/componen
 import MetabaseSettings from "metabase/lib/settings";
 
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
+import { getParameterOptionsForField } from "metabase-lib/parameters/utils/template-tag-options";
 
 import {
   ErrorSpan,
