@@ -255,7 +255,7 @@
                   [:not-in [:composite :model :model_id] bookmarks]]]
       :group-by [:model :model_id]
       :order-by [[:timestamp :desc]]
-      :limit    [:inline 5]})))
+      :limit    [:inline 8]})))
 
 (api/defendpoint GET "/recent_views"
   "Get the list of 5 things the current user has been viewing most recently."
