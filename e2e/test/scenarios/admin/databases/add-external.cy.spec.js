@@ -1,4 +1,9 @@
-import { restore, popover, typeAndBlurUsingLabel } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  typeAndBlurUsingLabel,
+  isEE,
+} from "e2e/support/helpers";
 import {
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
@@ -13,7 +18,40 @@ describe("admin > database > add", () => {
     cy.intercept("POST", "/api/database").as("createDatabase");
 
     cy.visit("/admin/databases/create");
+    // should display a setup help card
+    cy.findByText("Need help connecting?");
+
     cy.findByLabelText("Database type").click();
+  });
+
+  it("should add a new database", () => {
+    popover().within(() => {
+      if (isEE) {
+        // EE should ship with Oracle and Vertica as options
+        cy.findByText("Oracle");
+        // cy.findByText("Vertica");
+      }
+      cy.findByText("H2").click();
+    });
+
+    typeAndBlurUsingLabel("Display name", "Test");
+    typeAndBlurUsingLabel("Connection String", "invalid");
+
+    // should surface an error if the connection string is invalid
+    cy.button("Save").click();
+    cy.wait("@createDatabase");
+    cy.findByText(": check your connection string");
+    cy.findByText("Implicitly relative file paths are not allowed.");
+
+    // should be able to recover from an error and add database with the correct connection string
+    cy.findByDisplayValue("invalid")
+      .clear()
+      .type(
+        "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest",
+        { delay: 0 },
+      );
+    cy.button("Save", { timeout: 10000 }).click();
+    cy.wait("@createDatabase");
   });
 
   describe("external databases", { tags: "@external" }, () => {
