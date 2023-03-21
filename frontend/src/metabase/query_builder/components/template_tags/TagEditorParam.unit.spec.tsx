@@ -1,5 +1,6 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
@@ -25,8 +26,7 @@ interface SetupOpts {
 
 const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
   const database = createSampleDatabase();
-
-  const initialState = createMockState({
+  const state = createMockState({
     qb: createMockQueryBuilderState({
       card: createMockCard({
         dataset_query: createMockNativeDatasetQuery(),
@@ -36,6 +36,7 @@ const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
       databases: [database],
     }),
   });
+  const metadata = getMetadata(state);
 
   setupDatabasesEndpoints([database]);
   setupSearchEndpoints([]);
@@ -47,11 +48,13 @@ const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
   renderWithProviders(
     <TagEditorParam
       tag={tag}
+      database={metadata.database(database.id)}
+      databases={metadata.databasesList()}
       setTemplateTag={setTemplateTag}
       setTemplateTagConfig={setTemplateTagConfig}
       setParameterValue={setParameterValue}
     />,
-    { storeInitialState: initialState },
+    { storeInitialState: state },
   );
 
   return { setTemplateTag, setTemplateTagConfig, setParameterValue };
@@ -90,6 +93,24 @@ describe("TagEditorParam", () => {
       default: undefined,
       dimension: undefined,
       "widget-type": undefined,
+    });
+  });
+
+  it("should default to string/contains for a new field filter", async () => {
+    const tag = createMockTemplateTag({
+      type: "dimension",
+      dimension: undefined,
+      "widget-type": undefined,
+    });
+    const { setTemplateTag } = setup({ tag });
+
+    userEvent.click(await screen.findByText("People"));
+    userEvent.click(await screen.findByText("Name"));
+
+    expect(setTemplateTag).toHaveBeenCalledWith({
+      ...tag,
+      dimension: ["field", PEOPLE.NAME, null],
+      "widget-type": "string/contains",
     });
   });
 

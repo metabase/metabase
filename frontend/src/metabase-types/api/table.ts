@@ -1,5 +1,5 @@
 import { ForeignKey } from "./foreign-key";
-import { Database } from "./database";
+import { Database, InitialSyncStatus } from "./database";
 import { Field } from "./field";
 
 export type ConcreteTableId = number;
@@ -29,6 +29,7 @@ export interface Table {
   schema_name?: string;
   visibility_type: TableVisibilityType;
   fields?: Field[];
+  initial_sync_status: InitialSyncStatus;
 }
 
 export interface Schema {
