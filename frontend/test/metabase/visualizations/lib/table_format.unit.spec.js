@@ -3,6 +3,7 @@ import {
   canCompareSubstrings,
   OPERATOR_FORMATTER_FACTORIES,
   compileFormatter,
+  extent,
 } from "metabase/visualizations/lib/table_format";
 
 describe("compileFormatter", () => {
@@ -137,5 +138,11 @@ describe("canCompareSubstrings", () => {
     expect(canCompareSubstrings("", "foo")).toBe(false);
     expect(canCompareSubstrings("foo", "")).toBe(false);
     expect(canCompareSubstrings("", "")).toBe(false);
+  });
+});
+
+describe("extent", () => {
+  it("should ignore null and undefined values", () => {
+    expect(extent([[null], [1], [undefined]], 0)).toEqual([1, 1]);
   });
 });
