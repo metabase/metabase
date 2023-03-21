@@ -1,7 +1,11 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  setupDatabasesEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
 import { createEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import { TemplateTag } from "metabase-types/api";
 import {
   createMockCard,
@@ -20,16 +24,21 @@ interface SetupOpts {
 }
 
 const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
-  const state = createMockState({
+  const database = createSampleDatabase();
+
+  const initialState = createMockState({
     qb: createMockQueryBuilderState({
       card: createMockCard({
         dataset_query: createMockNativeDatasetQuery(),
       }),
     }),
     entities: createEntitiesState({
-      databases: [createSampleDatabase()],
+      databases: [database],
     }),
   });
+
+  setupDatabasesEndpoints([database]);
+  setupSearchEndpoints([]);
 
   const setTemplateTag = jest.fn();
   const setTemplateTagConfig = jest.fn();
@@ -42,7 +51,7 @@ const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
       setTemplateTagConfig={setTemplateTagConfig}
       setParameterValue={setParameterValue}
     />,
-    { storeInitialState: state },
+    { storeInitialState: initialState },
   );
 
   return { setTemplateTag, setTemplateTagConfig, setParameterValue };
@@ -90,6 +99,23 @@ describe("TagEditorParam", () => {
     setup({ tag });
 
     expect(screen.getByText("String")).toBeInTheDocument();
+  });
+
+  it("should allow to change the field for a field filter", async () => {
+    const tag = createMockTemplateTag({
+      type: "dimension",
+      dimension: ["field", PEOPLE.NAME, null],
+      "widget-type": "string/=",
+    });
+    const { setTemplateTag } = setup({ tag });
+
+    userEvent.click(await screen.findByText("Name"));
+    userEvent.click(await screen.findByText("Address"));
+
+    expect(setTemplateTag).toHaveBeenCalledWith({
+      ...tag,
+      dimension: ["field", PEOPLE.ADDRESS, null],
+    });
   });
 
   it("should be able to make the tag required", () => {
