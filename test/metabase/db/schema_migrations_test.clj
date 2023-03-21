@@ -905,9 +905,9 @@
                                                 :created_at :%now
                                                 :updated_at :%now})]
         (is (thrown? clojure.lang.ExceptionInfo
-                     (db/delete! Database :id db-id)))
+                     (t2/delete! Database :id db-id)))
         (migrate!)
-        (is (db/delete! Database :id db-id))))))
+        (is (t2/delete! Database :id db-id))))))
 
 (deftest split-data-permission-test
   (testing "Migration v46.00-080: split existing v1 data permission paths into v2 data and query permission paths"

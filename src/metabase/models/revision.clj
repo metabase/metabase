@@ -118,7 +118,7 @@
                                                                :model    (name model)
                                                                :model_id id
                                                                {:order-by [[:timestamp :desc]]}))))]
-    (db/delete! Revision :id [:in old-revisions])))
+    (t2/delete! Revision :id [:in old-revisions])))
 
 (defn push-revision!
   "Record a new Revision for `entity` with `id`. Returns `object`."

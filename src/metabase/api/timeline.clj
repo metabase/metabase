@@ -107,7 +107,7 @@
   "Delete a [[Timeline]]. Will cascade delete its events as well."
   [id]
   (api/write-check Timeline id)
-  (db/delete! Timeline :id id)
+  (t2/delete! Timeline :id id)
   api/generic-204-no-content)
 
 (api/define-routes)

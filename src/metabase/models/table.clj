@@ -50,7 +50,7 @@
     (merge defaults table)))
 
 (defn- pre-delete [{:keys [db_id schema id]}]
-  (db/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
+  (t2/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
 
 (defmethod mi/perms-objects-set Table
   [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]

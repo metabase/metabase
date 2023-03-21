@@ -880,7 +880,7 @@
 
 (defn- pre-delete [collection]
   ;; Delete all the Children of this Collection
-  (db/delete! Collection :location (children-location collection))
+  (t2/delete! Collection :location (children-location collection))
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)

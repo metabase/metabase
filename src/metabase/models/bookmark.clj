@@ -10,7 +10,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel CardBookmark :card_bookmark)
 (models/defmodel DashboardBookmark :dashboard_bookmark)
@@ -124,7 +125,7 @@
   "Saves a bookmark ordering of shape `[{:type, :item_id}]`
    Deletes all existing orderings for user so should be given a total ordering."
   [user-id orderings]
-  (db/delete! BookmarkOrdering :user_id user-id)
+  (t2/delete! BookmarkOrdering :user_id user-id)
   (db/insert-many! BookmarkOrdering (->> orderings
                                          (map #(select-keys % [:type :item_id]))
                                          (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))

@@ -8,7 +8,6 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (def ^:private root-collection (assoc collection/root-collection :name "Root Collection", :namespace "snippets"))
@@ -83,7 +82,7 @@
              (let [response (mt/user-http-request :rasta :post "native-query-snippet" snippet-properties)]
                (not= response "You don't have permissions to do that."))
              (finally
-               (db/delete! NativeQuerySnippet :name snippet-name)))))))))
+               (t2/delete! NativeQuerySnippet :name snippet-name)))))))))
 
 (deftest edit-test
   (testing "PUT /api/native-query-snippet/:id"

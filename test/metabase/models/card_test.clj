@@ -221,7 +221,7 @@
                #"A Card can only go in Collections in the \"default\" namespace"
                (db/insert! Card (assoc (tt/with-temp-defaults Card) :collection_id collection-id, :name card-name))))
           (finally
-            (db/delete! Card :name card-name)))))
+            (t2/delete! Card :name card-name)))))
 
     (testing "Shouldn't be able to move a Card to a non-normal Collection"
       (mt/with-temp Card [{card-id :id}]
@@ -462,7 +462,7 @@
                   (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))
 
         (testing "delete the card will delete ParameterCard"
-          (db/delete! Card :id card-id)
+          (t2/delete! Card :id card-id)
           (is (= []
                  (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))))
 
@@ -486,7 +486,7 @@
                   :parameterized_object_id   card-id-2
                   :parameter_id              "_CATEGORY_NAME_"}]
                 (db/select 'ParameterCard :card_id source-card-id)))
-        (db/delete! Card :id source-card-id)
+        (t2/delete! Card :id source-card-id)
         (is (= []
                (db/select 'ParameterCard :card_id source-card-id)))))))
 

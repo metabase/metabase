@@ -664,7 +664,7 @@
                  (array-map
                   :count-1 (count ((alert-client :rasta) :get 200 (alert-question-url card)))
                   :count-2 (do
-                             (db/delete! PulseChannelRecipient :id (u/the-id pcr))
+                             (t2/delete! PulseChannelRecipient :id (u/the-id pcr))
                              (api:alert-question-count :rasta card)))))))))
 
   (testing "Non-admin users should not see others alerts, admins see all alerts"

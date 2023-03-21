@@ -46,7 +46,7 @@
       ;; do the initial sync
       (sync-fields/sync-fields-for-table! table)
       (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))]
-        (db/delete! Field :table_id transactions-table-id, :name "age")
+        (t2/delete! Field :table_id transactions-table-id, :name "age")
         ;; ok, resync the Table. `toucan.details.age` should be recreated, but only one. We should *not* have a
         ;; `toucan.age` Field as well, which was happening before the bugfix in this PR
         (sync-fields/sync-fields-for-table! table)
@@ -68,7 +68,7 @@
             toucan-field-id       (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "toucan"))
             details-field-id      (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
             age-field-id          (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
-        (db/delete! Field :id age-field-id)
+        (t2/delete! Field :id age-field-id)
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should be added back

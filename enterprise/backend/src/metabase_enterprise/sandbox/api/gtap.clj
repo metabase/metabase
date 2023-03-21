@@ -79,7 +79,7 @@
   [id]
   {id ms/PositiveInt}
   (api/check-404 (t2/select-one GroupTableAccessPolicy :id id))
-  (db/delete! GroupTableAccessPolicy :id id)
+  (t2/delete! GroupTableAccessPolicy :id id)
   api/generic-204-no-content)
 
 (defn- +check-sandboxes-enabled

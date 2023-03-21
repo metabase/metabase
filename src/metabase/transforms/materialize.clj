@@ -50,7 +50,7 @@
    exists."
   [{:keys [name description]}]
   (if-let [collection-id (get-collection name)]
-    (db/delete! Card :collection_id collection-id)
+    (t2/delete! Card :collection_id collection-id)
     (create-collection! name "#509EE3" description)))
 
 (defn make-card-for-step!

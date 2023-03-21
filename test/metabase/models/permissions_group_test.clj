@@ -37,7 +37,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You cannot edit or delete the .* permissions group"
-               (db/delete! PermissionsGroup :id (u/the-id group)))))
+               (t2/delete! PermissionsGroup :id (u/the-id group)))))
         (testing "make sure we're not allowed to edit the magic groups"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
@@ -94,7 +94,7 @@
 
     (testing "removing user from Admin should set is_superuser -> false"
       (mt/with-temp User [{user-id :id} {:is_superuser true}]
-        (db/delete! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
+        (t2/delete! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
         (is (= false
                (t2/select-one-fn :is_superuser User, :id user-id)))))
 

@@ -417,7 +417,7 @@
   *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
   [notification-or-id, card-refs :- (s/maybe [CardRef])]
   ;; first off, just delete any cards associated with this pulse (we add them again below)
-  (db/delete! PulseCard :pulse_id (u/the-id notification-or-id))
+  (t2/delete! PulseCard :pulse_id (u/the-id notification-or-id))
   ;; now just insert all of the cards that were given to us
   (when (seq card-refs)
     (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls dashboard_card_id]}]
@@ -448,7 +448,7 @@
       ;; 1. in channels, NOT in db-channels = CREATE
       (and channel (not existing-channel))  (pulse-channel/create-pulse-channel! channel)
       ;; 2. NOT in channels, in db-channels = DELETE
-      (and (nil? channel) existing-channel) (db/delete! PulseChannel :id (:id existing-channel))
+      (and (nil? channel) existing-channel) (t2/delete! PulseChannel :id (:id existing-channel))
       ;; 3. in channels, in db-channels = UPDATE
       (and channel existing-channel)        (pulse-channel/update-pulse-channel! channel)
       ;; 4. NOT in channels, NOT in db-channels = NO-OP

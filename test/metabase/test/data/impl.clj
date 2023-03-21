@@ -133,7 +133,7 @@
                             :connection-details connection-details}
                            e)]
             (log/error e "Failed to create test database")
-            (db/delete! Database :id (u/the-id db))
+            (t2/delete! Database :id (u/the-id db))
             (throw e)))))
     (catch Throwable e
       (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
@@ -336,7 +336,7 @@
       (binding [*db-is-temp-copy?* true]
         (do-with-db new-db f))
       (finally
-        (db/delete! Database :id new-db-id)))))
+        (t2/delete! Database :id new-db-id)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

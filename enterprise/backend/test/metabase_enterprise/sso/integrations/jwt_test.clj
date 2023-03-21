@@ -151,7 +151,7 @@
   `(try
      ~@body
      (finally
-       (db/delete! User :%lower.email (u/lower-case-en ~user-email)))))
+       (t2/delete! User :%lower.email (u/lower-case-en ~user-email)))))
 
 (deftest create-new-account-test
   (testing "A new account will be created for a JWT user we haven't seen before"
