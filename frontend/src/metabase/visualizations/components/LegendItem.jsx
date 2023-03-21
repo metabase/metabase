@@ -53,14 +53,18 @@ export default class LegendItem extends Component {
           "no-decoration flex align-center fullscreen-normal-text fullscreen-night-text",
           {
             mr1: showTitle,
-            muted: isMuted,
             "cursor-pointer": onClick,
           },
         )}
-        style={{ overflowX: "hidden", flex: "0 1 auto" }}
+        style={{
+          overflowX: "hidden",
+          flex: "0 1 auto",
+          opacity: isMuted ? 0.4 : 1,
+        }}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
         onClick={onClick}
+        data-testid={`legend-item-${title}`}
       >
         {icon && (
           <IconContainer>

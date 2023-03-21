@@ -29,6 +29,21 @@ describe("scenarios > visualizations > pie chart", () => {
 
     ensurePieChartRendered(["Doohickey", "Gadget", "Gizmo", "Widget"], 200);
   });
+
+  it("should mute items in legend when hovering (metabase#29224)", () => {
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "pie",
+    });
+
+    cy.findByTestId("chart-legend").findByText("Doohickey").realHover();
+    [
+      ["Doohickey", 1],
+      ["Gadget", 0.4],
+      ["Gizmo", 0.4],
+      ["Widget", 0.4],
+    ].map(args => checkLegendItemOpacity(args[0], args[1]));
+  });
 });
 
 function ensurePieChartRendered(rows, totalValue) {
@@ -45,4 +60,11 @@ function ensurePieChartRendered(rows, totalValue) {
       cy.get(".LegendItem").contains(name).should("be.visible");
     });
   });
+}
+
+function checkLegendItemOpacity(title, opacity) {
+  cy.findByTestId("chart-legend")
+    .findByTestId(`legend-item-${title}`)
+    .should("have.attr", "style")
+    .and("include", `opacity: ${opacity}`);
 }
