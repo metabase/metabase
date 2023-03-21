@@ -372,12 +372,12 @@
       values
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
-        (first (t2/insert-returning-instances! FieldValues
-                                               :type :full
-                                               :field_id              (u/the-id field)
-                                               :has_more_values       has_more_values
-                                               :values                values
-                                               :human_readable_values human-readable-values))
+        (t2/insert! FieldValues
+                    :type :full
+                    :field_id              (u/the-id field)
+                    :has_more_values       has_more_values
+                    :values                values
+                    :human_readable_values human-readable-values)
         ::fv-created)
 
       ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist

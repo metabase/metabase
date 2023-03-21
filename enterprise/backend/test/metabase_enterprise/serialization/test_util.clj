@@ -13,8 +13,8 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [toucan.util.test :as tt]
    [toucan.db :as db]
+   [toucan.util.test :as tt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

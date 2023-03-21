@@ -5,7 +5,6 @@
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (declare get-or-create-root-container-collection!)

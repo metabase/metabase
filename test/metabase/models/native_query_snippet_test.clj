@@ -4,7 +4,6 @@
    [metabase.models :refer [Collection NativeQuerySnippet]]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))

@@ -13,7 +13,6 @@
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- do-with-all-user-data-perms

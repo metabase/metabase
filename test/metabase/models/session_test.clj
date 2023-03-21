@@ -4,7 +4,6 @@
    [metabase.models.session :as session :refer [Session]]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")

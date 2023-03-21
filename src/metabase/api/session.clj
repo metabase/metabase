@@ -25,7 +25,6 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (com.unboundid.util LDAPSDKException)

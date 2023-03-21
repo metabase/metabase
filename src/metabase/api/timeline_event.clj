@@ -14,7 +14,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

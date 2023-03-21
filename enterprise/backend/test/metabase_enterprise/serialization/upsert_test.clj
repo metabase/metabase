@@ -8,7 +8,6 @@
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
