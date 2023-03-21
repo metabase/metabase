@@ -104,11 +104,21 @@ class DashboardGrid extends Component {
       return;
     }
 
-    const { dashboard, setMultipleDashCardAttributes } = this.props;
+    const {
+      dashboard,
+      setMultipleDashCardAttributes,
+      loadingDashCards,
+      dashcardData,
+    } = this.props;
+    const visibleCards = this._getVisibleCards(
+      dashboard,
+      loadingDashCards,
+      dashcardData,
+    );
     const changes = [];
 
     layout.forEach(layoutItem => {
-      const dashboardCard = dashboard.ordered_cards.find(
+      const dashboardCard = visibleCards.find(
         card => String(card.id) === layoutItem.i,
       );
 
@@ -174,8 +184,10 @@ class DashboardGrid extends Component {
     };
   }
 
-  getLayouts({ dashboard }) {
-    const desktop = dashboard.ordered_cards.map(this.getLayoutForDashCard);
+  getLayouts({ dashboard, dashcardData }) {
+    const cards = this._getVisibleCards(dashboard, dashcardData);
+    const desktop = cards.map(this.getLayoutForDashCard);
+
     const mobile = generateMobileLayout({
       desktopLayout: desktop,
       defaultCardHeight: 6,
@@ -348,10 +360,30 @@ class DashboardGrid extends Component {
     </DashboardCard>
   );
 
+  _getVisibleCards(dashboard, dashcardData) {
+    return dashboard.ordered_cards.filter(dc => {
+      const dashCardData = dashcardData?.[dc.id];
+      const isDashcardDataLoading =
+        dashCardData == null ||
+        Object.values(dashCardData).some(cardData => cardData == null);
+
+      const hasRows =
+        dashCardData != null &&
+        Object.values(dashCardData)
+          .map(c => c?.row_count > 0)
+          .every(Boolean);
+
+      return isDashcardDataLoading || hasRows;
+    });
+  }
+
   renderGrid() {
-    const { dashboard, width } = this.props;
+    const { dashboard, width, dashcardData } = this.props;
     const { layouts } = this.state;
     const rowHeight = this.getRowHeight();
+
+    const visibleCards = this._getVisibleCards(dashboard, dashcardData);
+
     return (
       <GridLayout
         className={cx("DashboardGrid", {
@@ -370,7 +402,7 @@ class DashboardGrid extends Component {
         onDragStop={this.onDragStop}
         isEditing={this.isEditingLayout}
         compactType="vertical"
-        items={dashboard.ordered_cards}
+        items={visibleCards}
         itemRenderer={this.renderGridItem}
       />
     );
