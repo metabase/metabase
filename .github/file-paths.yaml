@@ -96,3 +96,8 @@ yaml:
 codeql:
   - "frontend/src/**"
   - "enterprise/frontend/src/**"
+
+i18n:
+  - *default
+  - *ci
+  - *sources
