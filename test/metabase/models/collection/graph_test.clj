@@ -43,7 +43,7 @@
                                                                        collection-id))))))))
 
 (defn- clear-graph-revisions! []
-  (db/delete! CollectionPermissionGraphRevision))
+  (t2/delete! CollectionPermissionGraphRevision))
 
 (defn- only-groups
   "Remove entries for non-'magic' groups from a fetched perms `graph`."

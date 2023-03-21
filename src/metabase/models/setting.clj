@@ -343,7 +343,7 @@
            (fn [old-settings] (if value
                                 (assoc old-settings setting-name value)
                                 (dissoc old-settings setting-name))))
-    (db/update! 'User api/*current-user-id* {:settings (json/generate-string @@*user-local-values*)})))
+    (t2/update! 'User api/*current-user-id* {:settings (json/generate-string @@*user-local-values*)})))
 
 (def ^:dynamic *enforce-setting-access-checks*
   "A dynamic var that controls whether we should enforce checks on setting access. Defaults to false; should be

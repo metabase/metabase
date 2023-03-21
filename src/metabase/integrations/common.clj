@@ -33,7 +33,7 @@
     (when (seq to-remove)
       (log/debugf "Removing user %s from group(s) %s" user-id to-remove)
       (try
-       (db/delete! PermissionsGroupMembership :group_id [:in to-remove], :user_id user-id)
+       (t2/delete! PermissionsGroupMembership :group_id [:in to-remove], :user_id user-id)
        (catch clojure.lang.ExceptionInfo e
          ;; in case sync attempts to delete the last admin, the pre-delete hooks of
          ;; [[metabase.models.permissions-group-membership/PermissionsGroupMembership]] will throw an exception.

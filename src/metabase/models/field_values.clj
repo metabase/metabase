@@ -109,13 +109,13 @@
 (defn clear-advanced-field-values-for-field!
   "Remove all advanced FieldValues for a `field-or-id`."
   [field-or-id]
-  (db/delete! FieldValues :field_id (u/the-id field-or-id)
+  (t2/delete! FieldValues :field_id (u/the-id field-or-id)
                           :type     [:in advanced-field-values-types]))
 
 (defn clear-field-values-for-field!
   "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
   [field-or-id]
-  (db/delete! FieldValues :field_id (u/the-id field-or-id)))
+  (t2/delete! FieldValues :field_id (u/the-id field-or-id)))
 
 (defn- pre-insert [{:keys [field_id] :as field-values}]
   (u/prog1 (merge {:type :full}
@@ -348,7 +348,7 @@
         (log/info (trs "Field {0} was previously automatically set to show a list widget, but now has {1} values."
                        field-name (count values))
                   (trs "Switching Field to use a search widget instead."))
-        (db/update! 'Field (u/the-id field) :has_field_values nil)
+        (t2/update! 'Field (u/the-id field) {:has_field_values nil})
         (clear-field-values-for-field! field)
         ::fv-deleted)
 
@@ -404,10 +404,10 @@
 
           (do
             (when existing
-              (db/update! FieldValues (:id existing) :last_used_at :%now))
+              (t2/update! FieldValues (:id existing) {:last_used_at :%now}))
             (t2/select-one FieldValues :field_id field-id :type :full)))
         (do
-          (db/update! FieldValues (:id existing) :last_used_at :%now)
+          (t2/update! FieldValues (:id existing) {:last_used_at :%now})
           existing)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

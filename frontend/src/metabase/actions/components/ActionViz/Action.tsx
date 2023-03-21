@@ -8,18 +8,14 @@ import { getResponseErrorMessage } from "metabase/core/utils/errors";
 
 import Databases from "metabase/entities/databases";
 
-import {
-  generateFieldSettingsFromParameters,
-  setNumericValues,
-} from "metabase/actions/utils";
 import { executeRowAction } from "metabase/dashboard/actions";
 import { getEditingDashcardId } from "metabase/dashboard/selectors";
 
 import type {
   ActionDashboardCard,
-  ParametersForActionExecution,
-  WritebackQueryAction,
   Dashboard,
+  ParametersForActionExecution,
+  WritebackAction,
 } from "metabase-types/api";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
@@ -30,6 +26,7 @@ import type Database from "metabase-lib/metadata/Database";
 import {
   getDashcardParamValues,
   getNotProvidedActionParameters,
+  getMappedActionParameters,
   shouldShowConfirmation,
 } from "./utils";
 
@@ -80,6 +77,16 @@ function ActionComponent({
     );
   }, [dashcard, dashcardParamValues]);
 
+  const mappedParameters = useMemo(() => {
+    if (!dashcard.action) {
+      return [];
+    }
+    return getMappedActionParameters(
+      dashcard.action,
+      dashcardParamValues ?? [],
+    );
+  }, [dashcard, dashcardParamValues]);
+
   const shouldConfirm = shouldShowConfirmation(dashcard?.action);
 
   const shouldDisplayButton = !!(
@@ -89,40 +96,30 @@ function ActionComponent({
   );
 
   const onSubmit = useCallback(
-    (parameterMap: ParametersForActionExecution) => {
-      const action = dashcard.action;
-      const fieldSettings =
-        action?.visualization_settings?.fields ||
-        generateFieldSettingsFromParameters(action?.parameters ?? []);
-
-      const params = setNumericValues(
-        { ...dashcardParamValues, ...parameterMap },
-        fieldSettings,
-      );
-
-      return executeRowAction({
+    (parameters: ParametersForActionExecution) =>
+      executeRowAction({
         dashboard,
         dashcard,
-        parameters: params,
+        parameters,
         dispatch,
         shouldToast: shouldDisplayButton,
-      });
-    },
-    [dashboard, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
+      }),
+    [dashboard, dashcard, dispatch, shouldDisplayButton],
   );
 
   return (
     <ActionVizForm
-      onSubmit={onSubmit}
-      dashcard={dashcard}
+      action={dashcard.action as WritebackAction}
       dashboard={dashboard}
+      dashcard={dashcard}
+      missingParameters={missingParameters}
+      mappedParameters={mappedParameters}
+      dashcardParamValues={dashcardParamValues}
       settings={settings}
       isSettings={isSettings}
-      missingParameters={missingParameters}
-      dashcardParamValues={dashcardParamValues}
-      action={dashcard.action as WritebackQueryAction}
       shouldDisplayButton={shouldDisplayButton}
       isEditingDashcard={isEditingDashcard}
+      onSubmit={onSubmit}
     />
   );
 }

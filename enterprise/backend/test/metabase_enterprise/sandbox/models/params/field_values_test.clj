@@ -57,7 +57,7 @@
                                            {:filter [:and [:> $id 1] [:< $id 4]]})]
               ;; sleeping should ensure that updated_at changes
               (Thread/sleep 1)
-              (db/update! Card card-id :dataset_query new-query))
+              (t2/update! Card card-id {:dataset_query new-query}))
             (params.field-values/get-or-create-advanced-field-values!
              fv-type
              (t2/select-one Field :id (mt/id :categories :id)))

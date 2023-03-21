@@ -59,7 +59,7 @@
                 (testing "Password should work correctly"
                   (is (u.password/verify-password "2cans" (salt) new-hashed-password)))))))))
     (finally
-      (db/delete! User :email "cam+config-file-test@metabase.com"))))
+      (t2/delete! User :email "cam+config-file-test@metabase.com"))))
 
 (deftest init-from-config-file-force-admin-for-first-user-test
   (testing "If this is the first user being created, always make the user a superuser regardless of what is specified"
@@ -97,7 +97,7 @@
                         (t2/select-one User :email "cam+config-file-admin-test-2@metabase.com")))
           (is (= 1
                  (db/count User :email "cam+config-file-admin-test-2@metabase.com")))))
-      (finally (db/delete! User :email [:in #{"cam+config-file-admin-test@metabase.com"
+      (finally (t2/delete! User :email [:in #{"cam+config-file-admin-test@metabase.com"
                                               "cam+config-file-admin-test-2@metabase.com"}])))))
 
 (deftest init-from-config-file-env-var-for-password-test
@@ -120,7 +120,7 @@
                           user))
             (is (u.password/verify-password "1234cans" (:password_salt user) (:password user))))))
       (finally
-        (db/delete! User :email "cam+config-file-password-test@metabase.com")))))
+        (t2/delete! User :email "cam+config-file-password-test@metabase.com")))))
 
 (deftest init-from-config-file-validation-test
   (are [user error-pattern] (thrown-with-msg?

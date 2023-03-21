@@ -9,7 +9,6 @@
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest find-test
@@ -149,7 +148,7 @@
                  (into {} (t2/select-one [User :first_name :last_name :email :login_attributes]
                                          :email "john.smith@metabase.com"))))
           (finally
-            (db/delete! User :%lower.email "john.smith@metabase.com"))))
+            (t2/delete! User :%lower.email "john.smith@metabase.com"))))
 
       (testing "when creating a new user and attribute sync is disabled, attributes should not be synced"
         (mt/with-temporary-setting-values [ldap-sync-user-attributes false]
@@ -163,7 +162,7 @@
                    (into {} (t2/select-one [User :first_name :last_name :email :login_attributes]
                                            :email "john.smith@metabase.com"))))
             (finally
-              (db/delete! User :%lower.email "john.smith@metabase.com"))))))))
+              (t2/delete! User :%lower.email "john.smith@metabase.com"))))))))
 
 (deftest update-attributes-on-login-test
   (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly true)]
@@ -191,7 +190,7 @@
                    (into {} (t2/select-one [User :first_name :last_name :email :login_attributes]
                                            :email "john.smith@metabase.com")))))
           (finally
-            (db/delete! User :%lower.email "john.smith@metabase.com"))))
+            (t2/delete! User :%lower.email "john.smith@metabase.com"))))
 
       (testing "Existing user's attributes are not updated on fetch, when attribute sync is disabled"
         (try
@@ -212,7 +211,7 @@
                      (into {} (t2/select-one [User :first_name :last_name :email :login_attributes]
                                              :email "john.smith@metabase.com"))))))
           (finally
-            (db/delete! User :%lower.email "john.smith@metabase.com")))))))
+            (t2/delete! User :%lower.email "john.smith@metabase.com")))))))
 
 (deftest fetch-or-create-user-test
   (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly true)]
@@ -225,7 +224,7 @@
                  :common_name      "John Smith"
                  :email            "john.smith@metabase.com"}
                 (into {} (t2/select-one [User :first_name :last_name :email] :email "john.smith@metabase.com"))))
-         (finally (db/delete! User :email "john.smith@metabase.com"))))
+         (finally (t2/delete! User :email "john.smith@metabase.com"))))
 
       (try
        (testing "a user without a givenName attribute has `nil` for that attribute"
@@ -248,4 +247,4 @@
                  :last_name        nil
                  :common_name      "jane.miller@metabase.com"}
                 (select-keys (t2/select-one User :email "jane.miller@metabase.com") [:first_name :last_name :common_name]))))
-       (finally (db/delete! User :email "jane.miller@metabase.com"))))))
+       (finally (t2/delete! User :email "jane.miller@metabase.com"))))))

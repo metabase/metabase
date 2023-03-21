@@ -113,7 +113,7 @@
                 (reset! secret-id-unenc (u/the-id secret)))
               (encryption-test/with-secret-key k1
                 (db/insert! Setting {:key "k1crypted", :value "encrypted with k1"})
-                (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
+                (t2/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
                 (let [secret (db/insert! Secret {:name       "My Secret (encrypted)"
                                                  :kind       "password"
                                                  :value      (.getBytes secret-val StandardCharsets/UTF_8)
@@ -170,7 +170,7 @@
                   (is (= {:db "/tmp/k3.db"} (t2/select-one-fn :details Database :name "k3")))))
 
               (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
-                (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
+                (t2/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
                 (db/update-where! Database {:name "k3"} :details "{\"db\":\"/tmp/test.db\"}")
                 (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
                   (rotate-encryption-key! nil))
