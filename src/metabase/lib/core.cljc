@@ -1,7 +1,8 @@
 (ns metabase.lib.core
   "Currently this is mostly a convenience namespace for REPL and test usage. We'll probably have a slightly different
   version of this for namespace for QB and QP usage in the future -- TBD."
-  (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min])
+  (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min
+                            + - * / time abs concat replace])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
@@ -52,6 +53,48 @@
   [lib.dev
    field
    query-for-table-name]
+  [lib.expression
+   expression
+   +
+   -
+   *
+   /
+   case
+   coalesce
+   abs
+   log
+   exp
+   sqrt
+   ceil
+   floor
+   round
+   power
+   interval
+   relative-datetime
+   time
+   absolute-datetime
+   now
+   convert-timezone
+   get-week
+   get-year
+   get-month
+   get-day
+   get-hour
+   get-minute
+   get-second
+   get-quarter
+   datetime-add
+   datetime-subtract
+   concat
+   substring
+   replace
+   regexextract
+   length
+   trim
+   ltrim
+   rtrim
+   upper
+   lower]
   [lib.field
    with-join-alias]
   [lib.filter

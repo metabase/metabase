@@ -1,6 +1,8 @@
 (ns metabase.lib.expression
+  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace])
   (:require
    [clojure.string :as str]
+   [metabase.lib.common :as lib.common]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -112,20 +114,20 @@
   [amount :- :int
    unit   :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
   ;; TODO -- sorta duplicated with [[metabase.shared.parameters.parameters/translated-interval]], but not exactly
-  (let [unit-str (case unit
-                   :millisecond (i18n/trun "millisecond" "milliseconds" (abs amount))
-                   :second      (i18n/trun "second"      "seconds"      (abs amount))
-                   :minute      (i18n/trun "minute"      "minutes"      (abs amount))
-                   :hour        (i18n/trun "hour"        "hours"        (abs amount))
-                   :day         (i18n/trun "day"         "days"         (abs amount))
-                   :week        (i18n/trun "week"        "weeks"        (abs amount))
-                   :month       (i18n/trun "month"       "months"       (abs amount))
-                   :quarter     (i18n/trun "quarter"     "quarters"     (abs amount))
-                   :year        (i18n/trun "year"        "years"        (abs amount)))]
+  (let [unit-str (clojure.core/case unit
+                   :millisecond (i18n/trun "millisecond" "milliseconds" (clojure.core/abs amount))
+                   :second      (i18n/trun "second"      "seconds"      (clojure.core/abs amount))
+                   :minute      (i18n/trun "minute"      "minutes"      (clojure.core/abs amount))
+                   :hour        (i18n/trun "hour"        "hours"        (clojure.core/abs amount))
+                   :day         (i18n/trun "day"         "days"         (clojure.core/abs amount))
+                   :week        (i18n/trun "week"        "weeks"        (clojure.core/abs amount))
+                   :month       (i18n/trun "month"       "months"       (clojure.core/abs amount))
+                   :quarter     (i18n/trun "quarter"     "quarters"     (clojure.core/abs amount))
+                   :year        (i18n/trun "year"        "years"        (clojure.core/abs amount)))]
     (wrap-str-in-parens-if-nested
      (if (pos? amount)
        (lib.util/format "+ %d %s" amount       unit-str)
-       (lib.util/format "- %d %s" (abs amount) unit-str)))))
+       (lib.util/format "- %d %s" (clojure.core/abs amount) unit-str)))))
 
 (defmethod lib.metadata.calculation/display-name-method :datetime-add
   [query stage-number [_datetime-add _opts x amount unit]]
@@ -141,3 +143,57 @@
 (defmethod lib.metadata.calculation/column-name-method :coalesce
   [query stage-number [_coalesce _opts expr _null-expr]]
   (lib.metadata.calculation/column-name query stage-number expr))
+
+(mu/defn expression :- ::lib.schema/query
+  "Adds an expression to query."
+  ([query expression-name an-expression-clause]
+   (expression query -1 expression-name an-expression-clause))
+  ([query stage-number expression-name an-expression-clause]
+   (let [stage-number (or stage-number -1)]
+     (lib.util/update-query-stage
+       query stage-number
+       update :expressions
+       assoc expression-name (lib.common/->op-arg query stage-number an-expression-clause)))))
+
+(lib.common/defop + [x y & more])
+(lib.common/defop - [x y & more])
+(lib.common/defop * [x y & more])
+;; Kondo gets confused
+#_{:clj-kondo/ignore [:unresolved-namespace]}
+(lib.common/defop / [x y & more])
+(lib.common/defop case [x y & more])
+(lib.common/defop coalesce [x y & more])
+(lib.common/defop abs [x])
+(lib.common/defop log [x])
+(lib.common/defop exp [x])
+(lib.common/defop sqrt [x])
+(lib.common/defop ceil [x])
+(lib.common/defop floor [x])
+(lib.common/defop round [x])
+(lib.common/defop power [n expo])
+(lib.common/defop interval [n unit])
+(lib.common/defop relative-datetime [t unit])
+(lib.common/defop time [t unit])
+(lib.common/defop absolute-datetime [t unit])
+(lib.common/defop now [])
+(lib.common/defop convert-timezone [t source dest])
+(lib.common/defop get-week [t mode])
+(lib.common/defop get-year [t])
+(lib.common/defop get-month [t])
+(lib.common/defop get-day [t])
+(lib.common/defop get-hour [t])
+(lib.common/defop get-minute [t])
+(lib.common/defop get-second [t])
+(lib.common/defop get-quarter [t])
+(lib.common/defop datetime-add [t i unit])
+(lib.common/defop datetime-subtract [t i unit])
+(lib.common/defop concat [s1 s2 & more])
+(lib.common/defop substring [s start end])
+(lib.common/defop replace [s search replacement])
+(lib.common/defop regexextract [s regex])
+(lib.common/defop length [s])
+(lib.common/defop trim [s])
+(lib.common/defop ltrim [s])
+(lib.common/defop rtrim [s])
+(lib.common/defop upper [s])
+(lib.common/defop lower [s])
