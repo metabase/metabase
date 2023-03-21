@@ -35,7 +35,7 @@
     (js.metadata/metadata-provider database-id metadata)))
 
 (defn ^:export query
-  "Coerce a plain map `query` to an actual query object that you can use with Metabase lib."
+  "Coerce a plain map `query` to an actual query object that you can use with MLv2."
   [database-id metadata query-map]
   (let [query-map (pMBQL query-map)]
     (log/debugf "query map: %s" (pr-str query-map))
