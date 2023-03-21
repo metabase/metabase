@@ -51,6 +51,6 @@ export function getDefaultParameterWidgetType(tag, field) {
   if (defaultOption) {
     return defaultOption.type;
   } else {
-    options[0].type;
+    return options[0].type;
   }
 }

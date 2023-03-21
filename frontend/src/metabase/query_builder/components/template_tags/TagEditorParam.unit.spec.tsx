@@ -13,7 +13,11 @@ import {
   createMockNativeDatasetQuery,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase, PEOPLE } from "metabase-types/api/mocks/presets";
+import {
+  createSampleDatabase,
+  ORDERS,
+  PEOPLE,
+} from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -111,6 +115,24 @@ describe("TagEditorParam", () => {
       ...tag,
       dimension: ["field", PEOPLE.NAME, null],
       "widget-type": "string/contains",
+    });
+  });
+
+  it("should default to the first parameter option for a new non-string field filter", async () => {
+    const tag = createMockTemplateTag({
+      type: "dimension",
+      dimension: undefined,
+      "widget-type": undefined,
+    });
+    const { setTemplateTag } = setup({ tag });
+
+    userEvent.click(await screen.findByText("Orders"));
+    userEvent.click(await screen.findByText("Quantity"));
+
+    expect(setTemplateTag).toHaveBeenCalledWith({
+      ...tag,
+      dimension: ["field", ORDERS.QUANTITY, null],
+      "widget-type": "number/=",
     });
   });
 
