@@ -45,7 +45,7 @@ If you're using Metabase Cloud, cached queries will be saved to Metabase's serve
 Parameters you can use to define caching in Metabase:
 
 - [Minimum query duration](#minimum-query-duration)
-- [Cache time-to-live (TTL)](#cache-time-to-live-ttl)
+- [Cache time-to-live (TTL) multiplier](#cache-time-to-live-ttl-multiplier)
 - [Max cache entry size](#max-cache-entry-size)
 
 ### Minimum query duration
@@ -120,7 +120,7 @@ This setting that tells Metabase how long to keep the cached results for each of
 
 > The **Cache configuration** will only apply to questions that meet the [minimum query duration](#minimum-query-duration). You can look up a question's average query duration from Metabase's [auditing tools](../usage-and-performance-tools/audit.md).
 
-For questions that meet the minimum query duration, your dashbaord cache configuration will override:
+For questions that meet the minimum query duration, your dashboard cache configuration will override:
 
 - [global TTL settings](#cache-time-to-live-ttl-multiplier)
 - [database cache duration](#caching-per-database)

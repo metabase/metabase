@@ -67,8 +67,8 @@ Click the **bookmark** icon to pin a question to your Metabase sidebar. See [Boo
 To use a saved question as the basis for another question, you can:
 
 - Open the **...** menu > **Turn into a [model](../../data-modeling/models.md)**.
-- [Create a new question](/docs/latest/questions/query-builder/introduction.md#creating-a-new-question-with-the-query-builder) and search for your saved question under **Pick your starting data**.
-- [Refer to the question in a SQL query](/docs/latest/questions/native-editor/referencing-saved-questions-in-queries.md).
+- [Create a new question](../query-builder/introduction.md#creating-a-new-question-with-the-query-builder) and search for your saved question under **Pick your starting data**.
+- [Refer to the question in a SQL query](../native-editor/referencing-saved-questions-in-queries.md).
 
 ## Caching question results
 
