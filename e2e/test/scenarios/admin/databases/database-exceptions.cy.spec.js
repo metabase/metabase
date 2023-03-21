@@ -1,4 +1,4 @@
-import { restore, typeAndBlurUsingLabel } from "e2e/support/helpers";
+import { restore, typeAndBlurUsingLabel, isEE } from "e2e/support/helpers";
 
 describe("scenarios > admin > databases > exceptions", () => {
   beforeEach(() => {
@@ -55,5 +55,39 @@ describe("scenarios > admin > databases > exceptions", () => {
     });
     cy.findByText("Not found.");
     cy.findByRole("table").should("not.exist");
+  });
+
+  it("should handle a failure to `GET` the list of all databases (metabase#20471)", () => {
+    const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
+
+    cy.intercept(
+      {
+        method: "GET",
+        pathname: "/api/database",
+        query: isEE
+          ? {
+              exclude_uneditable_details: "true",
+            }
+          : null,
+      },
+      req => {
+        req.reply({
+          statusCode: 500,
+          body: { message: errorMessage },
+        });
+      },
+    ).as("failedGet");
+
+    cy.visit("/admin/databases");
+    cy.wait("@failedGet");
+
+    cy.findByRole("heading", { name: "Something's gone wrong" });
+    cy.findByText(
+      "We've run into an error. You can try refreshing the page, or just go back.",
+    );
+
+    cy.findByText(errorMessage).should("not.be.visible");
+    cy.findByText("Show error details").click();
+    cy.findByText(errorMessage).should("be.visible");
   });
 });
