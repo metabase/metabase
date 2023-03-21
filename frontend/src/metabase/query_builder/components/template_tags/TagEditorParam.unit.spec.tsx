@@ -31,25 +31,36 @@ const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
     }),
   });
 
+  const setTemplateTag = jest.fn();
+  const setTemplateTagConfig = jest.fn();
   const setParameterValue = jest.fn();
 
   renderWithProviders(
-    <TagEditorParam tag={tag} setParameterValue={setParameterValue} />,
+    <TagEditorParam
+      tag={tag}
+      setTemplateTag={setTemplateTag}
+      setTemplateTagConfig={setTemplateTagConfig}
+      setParameterValue={setParameterValue}
+    />,
     { storeInitialState: state },
   );
 
-  return { setParameterValue };
+  return { setTemplateTag, setTemplateTagConfig, setParameterValue };
 };
 
 describe("TagEditorParam", () => {
   it("should be able to update the name of the tag", async () => {
-    setup();
+    const tag = createMockTemplateTag();
+    const { setTemplateTag } = setup({ tag });
 
     const input = screen.getByLabelText("Filter widget label");
     userEvent.clear(input);
     userEvent.type(input, "New");
     userEvent.tab();
 
-    expect(await screen.findByDisplayValue("New")).toBeInTheDocument();
+    expect(setTemplateTag).toHaveBeenCalledWith({
+      ...tag,
+      "display-name": "New",
+    });
   });
 });

@@ -15,10 +15,6 @@ import ValuesSourceSettings from "metabase/parameters/components/ValuesSourceSet
 
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  setTemplateTag,
-  setTemplateTagConfig,
-} from "metabase/query_builder/actions";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import MetabaseSettings from "metabase/lib/settings";
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
@@ -344,6 +340,4 @@ TagEditorParam.propTypes = propTypes;
 
 export default connect(state => ({ metadata: getMetadata(state) }), {
   fetchField,
-  setTemplateTag,
-  setTemplateTagConfig,
 })(TagEditorParam);
