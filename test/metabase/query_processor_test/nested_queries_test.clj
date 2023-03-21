@@ -21,7 +21,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
