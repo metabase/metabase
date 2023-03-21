@@ -81,7 +81,6 @@
    :updated_at          :timestamp
    ;; returned for Card only
    :dashboardcard_count :integer
-   :dataset_query       :text
    :moderated_status    :text
    ;; returned for Metric and Segment
    :table_id            :integer
@@ -93,7 +92,9 @@
    :initial_sync_status :text
    ;; returned for Action
    :model_id            :integer
-   :model_name          :text))
+   :model_name          :text
+   ;; returned for Card and Action
+   :dataset_query       :text))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
@@ -283,6 +284,8 @@
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/left-join [:report_card :model]
                              [:= :model.id :action.model_id])
+      (sql.helpers/left-join :query_action
+                             [:= :query_action.action_id :action.id])
       (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
 
 (s/defmethod search-query-for-model "card"

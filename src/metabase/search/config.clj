@@ -134,7 +134,8 @@
   (conj default-columns :model_id
         [:model.collection_id :collection_id]
         [:model.id            :model_id]
-        [:model.name          :model_name]))
+        [:model.name          :model_name]
+        [:query_action.dataset_query  :dataset_query]))
 
 (defmethod columns-for-model "card"
   [_]
