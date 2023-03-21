@@ -647,11 +647,11 @@
                            :field_id              (mt/id :venues :price)}})
 
 (defn- add-price-param-to-dashboard! [dashboard]
-  (t2/update! Dashboard (u/the-id dashboard) :parameters [{:name "Price", :type "category", :slug "price", :id "_PRICE_"}]))
+  (t2/update! Dashboard (u/the-id dashboard) {:parameters [{:name "Price", :type "category", :slug "price", :id "_PRICE_"}]}))
 
 (defn- add-dimension-param-mapping-to-dashcard! [dashcard card dimension]
-  (t2/update! DashboardCard (u/the-id dashcard) :parameter_mappings [{:card_id (u/the-id card)
-                                                                      :target  ["dimension" dimension]}]))
+  (t2/update! DashboardCard (u/the-id dashcard) {:parameter_mappings [{:card_id (u/the-id card)
+                                                                       :target  ["dimension" dimension]}]}))
 
 (defn- GET-param-values [dashboard]
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -660,12 +660,12 @@
 (deftest check-that-param-info-comes-back-for-sql-cards
   (with-temp-public-dashboard-and-card [dash card dashcard]
     (t2/update! Card (u/the-id card)
-      :dataset_query {:database (mt/id)
-                      :type     :native
-                      :native   {:template-tags {:price {:name         "price"
-                                                         :display-name "Price"
-                                                         :type         "dimension"
-                                                         :dimension    ["field" (mt/id :venues :price) nil]}}}})
+                {:dataset_query {:database (mt/id)
+                                 :type     :native
+                                 :native   {:template-tags {:price {:name         "price"
+                                                                    :display-name "Price"
+                                                                    :type         "dimension"
+                                                                    :dimension    ["field" (mt/id :venues :price) nil]}}}}})
     (add-price-param-to-dashboard! dash)
     (add-dimension-param-mapping-to-dashcard! dashcard card ["template-tag" "price"])
     (is (= (price-param-values)
