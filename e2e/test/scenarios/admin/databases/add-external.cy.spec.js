@@ -225,6 +225,38 @@ describe(
     });
   },
 );
+
+describe("Google service account JSON upload", () => {
+  const serviceAccountJSON = '{"foo": 123}';
+
+  it("should work for BigQuery", () => {
+    cy.visit("/admin/databases/create");
+
+    chooseDatabase("BigQuery");
+    typeAndBlurUsingLabel("Display name", "BQ");
+    selectFieldOption("Datasets", "Only these...");
+    cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
+
+    mockUploadServiceAccountJSON(serviceAccountJSON);
+    mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
+      expect(body.details["service-account-json"]).to.equal(serviceAccountJSON);
+    });
+  });
+
+  it("should work for Google Analytics", () => {
+    cy.visit("/admin/databases/create");
+
+    chooseDatabase("Google Analytics");
+    typeAndBlurUsingLabel("Display name", "GA");
+    typeAndBlurUsingLabel("Google Analytics Account ID", " 9  ");
+
+    mockUploadServiceAccountJSON(serviceAccountJSON);
+    mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
+      expect(body.details["service-account-json"]).to.equal(serviceAccountJSON);
+    });
+  });
+});
+
 function toggleFieldWithDisplayName(displayName) {
   cy.findByLabelText(displayName).click();
 }
@@ -232,4 +264,33 @@ function toggleFieldWithDisplayName(displayName) {
 function selectFieldOption(fieldName, option) {
   cy.findByLabelText(fieldName).click();
   popover().contains(option).click({ force: true });
+}
+
+function chooseDatabase(database) {
+  selectFieldOption("Database type", database);
+}
+
+function mockUploadServiceAccountJSON(fileContents) {
+  // create blob to act as selected file
+  cy.get("input[type=file]")
+    .then(async input => {
+      const blob = await Cypress.Blob.binaryStringToBlob(fileContents);
+      const file = new File([blob], "service-account.json");
+      const dataTransfer = new DataTransfer();
+
+      dataTransfer.items.add(file);
+      input[0].files = dataTransfer.files;
+      return input;
+    })
+    .trigger("change", { force: true })
+    .trigger("blur", { force: true });
+}
+
+function mockSuccessfulDatabaseSave() {
+  cy.intercept("POST", "/api/database", req => {
+    req.reply({ statusCode: 200, body: { id: 42 }, delay: 100 });
+  }).as("createDatabase");
+
+  cy.button("Save").click();
+  return cy.wait("@createDatabase");
 }
