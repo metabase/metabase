@@ -227,7 +227,7 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
       defaultValue,
     });
     setup({
-      parameters: [makeParameter()],
+      parameters: [parameter],
       formSettings: {
         type: "form",
         fields: {

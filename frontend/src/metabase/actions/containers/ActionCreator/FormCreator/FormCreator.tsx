@@ -83,7 +83,7 @@ function FormCreator({
     [parameters, formSettings],
   );
 
-  const initialValues = useMemo(
+  const displayValues = useMemo(
     () => validationSchema.getDefault(),
     [validationSchema],
   );
@@ -159,7 +159,7 @@ function FormCreator({
         </InfoText>
         <FormProvider
           enableReinitialize
-          initialValues={initialValues}
+          initialValues={displayValues}
           onSubmit={ON_SUBMIT_NOOP}
         >
           <Form role="form" data-testid="action-form-editor">
