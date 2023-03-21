@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.table :as api.table]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
    [metabase.mbql.util :as mbql.u]
@@ -690,11 +691,13 @@
       (is (= (map str (sort (map #(Long/parseLong %) (var-get #'api.table/numeric-dimension-indexes))))
              (var-get #'api.table/numeric-dimension-indexes))))))
 
-(defn- dimension-options-for-field [response, ^String field-name]
+(defn field-from-response [response, ^String field-name]
   (->> response
        :fields
-       (m/find-first #(.equalsIgnoreCase field-name, ^String (:name %)))
-       :dimension_options))
+       (m/find-first #(.equalsIgnoreCase field-name, ^String (:name %)))))
+
+(defn- dimension-options-for-field [response, ^String field-name]
+  (:dimension_options (field-from-response response field-name)))
 
 (defn- extract-dimension-options
   "For the given `field-name` find it's dimension_options following the indexes given in the field"
@@ -757,9 +760,18 @@
 
       (testing "dates"
         (mt/test-drivers (mt/normal-drivers)
-          (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :checkins)))]
-            (is (= @#'api.table/date-dimension-indexes
-                   (dimension-options-for-field response "date"))))))
+          (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :checkins)))
+                field    (field-from-response response "date")]
+            ;; some dbs don't have a date type and return a datetime
+            (is (= (case (:effective_type field)
+                     "type/DateTime" @#'api.table/datetime-dimension-indexes
+                     "type/Date"     @#'api.table/date-dimension-indexes
+                     (throw (ex-info "Invalid type for date field or field not found"
+                                     {:expected-types #{"type/DateTime" "type/Date"}
+                                      :found          (:effective_type field)
+                                      :field          field
+                                      :driver         driver/*driver*})))
+                   (:dimension_options field))))))
 
       (testing "unix timestamps"
         (mt/dataset sad-toucan-incidents
