@@ -927,7 +927,7 @@
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :authority_level])]
       (when (seq updates)
-        (db/update! Collection id updates)))
+        (t2/update! Collection id updates)))
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
     (move-collection-if-needed! collection-before-update collection-updates)
     ;; if we *did* end up archiving this Collection, we most post a few notifications

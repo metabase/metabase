@@ -681,14 +681,14 @@
                                            ;; Set the setting directly instead of using
                                            ;; [[mt/with-temporary-setting-values]] because that blows up when the
                                            ;; Setting is Database-local-only
-                                           (db/delete! Setting :key (name setting-name))
+                                           (t2/delete! Setting :key (name setting-name))
                                            (when site-wide-value
                                              (db/insert! Setting :key (name setting-name), :value (str site-wide-value)))
                                            (setting.cache/restore-cache!)
                                            (try
                                              (thunk)
                                              (finally
-                                               (db/delete! Setting :key (name setting-name))
+                                               (t2/delete! Setting :key (name setting-name))
                                                (setting.cache/restore-cache!)))))
                                        (fn [thunk]
                                          (tu/do-with-temp-env-var-value

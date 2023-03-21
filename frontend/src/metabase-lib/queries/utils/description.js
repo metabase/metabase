@@ -4,16 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import inflection from "inflection";
 
-import { stripId } from "metabase/lib/formatting";
-
 import { FilterClause, MetricClause } from "./description.styled.tsx";
-
-// NOTE: This doesn't support every MBQL clause, e.x. joins. It should also be moved to StructuredQuery.
-
-export function formatField(fieldDef, options = {}) {
-  const name = stripId(fieldDef && (fieldDef.display_name || fieldDef.name));
-  return name;
-}
 
 // -----------------------------------------------------------------------------
 // These functions use the `query_description` field returned by the Segment and
@@ -145,7 +136,7 @@ export function joinList(list, joiner) {
   );
 }
 
-export function conjunctList(list, conjunction) {
+function conjunctList(list, conjunction) {
   switch (list.length) {
     case 0:
       return null;

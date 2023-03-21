@@ -135,8 +135,8 @@
 
                          (contains? #{"deletable" "off"} (:state existing-persisted-info))
                          (do
-                           (db/update! PersistedInfo (u/the-id existing-persisted-info)
-                                       :active false, :state "creating", :state_change_at :%now)
+                           (t2/update! PersistedInfo (u/the-id existing-persisted-info)
+                                       {:active false, :state "creating", :state_change_at :%now})
                            (t2/select-one PersistedInfo :card_id card-id)))]
     persisted-info))
 
@@ -144,11 +144,12 @@
   "Sets PersistedInfo state to `creating` for models without a PeristedInfo or those in a `deletable` state.
    Will ignore explicitly set `off` models."
   [database-id]
-  (db/update! PersistedInfo
-              {:where [:and
-                       [:= :database_id database-id]
-                       [:= :state "deletable"]]
-               :set {:active false,
-                     :state "creating",
-                     :state_change_at :%now}})
+  (t2/query-one
+    {:update [:persisted_info]
+     :where [:and
+             [:= :database_id database-id]
+             [:= :state "deletable"]]
+     :set {:active false,
+           :state "creating",
+           :state_change_at :%now}})
   (ready-unpersisted-models! database-id))

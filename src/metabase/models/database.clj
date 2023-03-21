@@ -98,7 +98,7 @@
         (log/info (trs "Deleting secret ID {0} from app DB because the owning database ({1}) is being deleted"
                        secret-id
                        id))
-        (db/delete! Secret :id secret-id)))))
+        (t2/delete! Secret :id secret-id)))))
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)

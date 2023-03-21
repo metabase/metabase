@@ -220,7 +220,7 @@
                      response))
         (when (integer? db-id)
           (t2/select-one Database :id db-id)))
-      (finally (db/delete! Database :name db-name)))))
+      (finally (t2/delete! Database :name db-name)))))
 
 (deftest create-db-test
   (testing "POST /api/database"
@@ -767,7 +767,7 @@
              (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
                      :metadata_sync_schedule      "0 0 * * * ? *"}
                     (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db))))))
-           (finally (db/delete! Database :name db-name))))))
+           (finally (t2/delete! Database :name db-name))))))
 
 (deftest update-schedules-for-existing-db
   (let [attempted {:cache_field_values schedule-map-for-last-friday-at-11pm

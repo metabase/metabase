@@ -73,26 +73,26 @@
     (let [card (t2/select-one Card :id (:card_id persisted-info))
           definition (persisted-info/metadata->definition (:result_metadata card)
                                                           (:table_name persisted-info))
-          _ (db/update! PersistedInfo (u/the-id persisted-info)
-                        :definition definition,
-                        :query_hash (persisted-info/query-hash (:dataset_query card))
-                        :active false,
-                        :refresh_begin :%now,
-                        :refresh_end nil,
-                        :state "refreshing"
-                        :state_change_at :%now)
+          _ (t2/update! PersistedInfo (u/the-id persisted-info)
+                        {:definition definition,
+                         :query_hash (persisted-info/query-hash (:dataset_query card))
+                         :active false,
+                         :refresh_begin :%now,
+                         :refresh_end nil,
+                         :state "refreshing"
+                         :state_change_at :%now})
           {:keys [state error]} (try
                                   (refresh! refresher database definition card)
                                   (catch Exception e
                                     (log/info e (trs "Error refreshing persisting model with card-id {0}"
                                                      (:card_id persisted-info)))
                                     {:state :error :error (ex-message e)}))]
-      (db/update! PersistedInfo (u/the-id persisted-info)
-                  :active (= state :success),
-                  :refresh_end :%now,
-                  :state (if (= state :success) "persisted" "error")
-                  :state_change_at :%now
-                  :error (when (= state :error) error))
+      (t2/update! PersistedInfo (u/the-id persisted-info)
+                  {:active (= state :success),
+                   :refresh_end :%now,
+                   :state (if (= state :success) "persisted" "error")
+                   :state_change_at :%now
+                   :error (when (= state :error) error)})
       (if (= :success state)
         (update stats :success inc)
         (-> stats
@@ -144,7 +144,7 @@
                                          (try
                                            (unpersist! refresher database persisted-info)
                                            (when (= "deletable" current-state)
-                                             (db/delete! PersistedInfo :id (:id persisted-info)))
+                                             (t2/delete! PersistedInfo :id (:id persisted-info)))
                                            (update stats :success inc)
                                            (catch Exception e
                                              (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id persisted-info)))

@@ -45,7 +45,7 @@
                 (is (= (db/count Table :db_id (u/the-id original-db))
                        (db/count Table :db_id (u/the-id db))))))))
         (finally
-          (db/delete! Database :name test-db-name))))))
+          (t2/delete! Database :name test-db-name))))))
 
 (deftest init-from-config-file-connection-validation-test
   (testing "Validate connection details when creating a Database from a config file, and error if they are invalid"
@@ -79,4 +79,4 @@
               (testing "Database should NOT have been synced"
                 (is (zero? (db/count Table :db_id (u/the-id db))))))))
         (finally
-          (db/delete! Database :name test-db-name))))))
+          (t2/delete! Database :name test-db-name))))))

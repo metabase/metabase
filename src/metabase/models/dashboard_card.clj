@@ -146,7 +146,7 @@
   [{:keys [id]} :- {:id su/IntGreaterThanZero, s/Keyword s/Any}
    card-ids     :- [su/IntGreaterThanZero]]
   ;; first off, just delete all series on the dashboard card (we add them again below)
-  (db/delete! DashboardCardSeries :dashboardcard_id id)
+  (t2/delete! DashboardCardSeries :dashboardcard_id id)
   ;; now just insert all of the series that were given to us
   (when (seq card-ids)
     (let [cards (map-indexed (fn [i card-id]
@@ -187,7 +187,7 @@
          updates (shallow-updates (select-keys dashboard-card update-ks)
                                   (select-keys old-dashboard-card update-ks))]
      (when (seq updates)
-       (db/update! DashboardCard id updates))
+       (t2/update! DashboardCard id updates))
      (when (not= (:series dashboard-card [])
                  (:series old-dashboard-card []))
        (update-dashboard-card-series! dashboard-card (:series dashboard-card)))
@@ -239,8 +239,8 @@
          (integer? user-id)]}
   (let [{:keys [id]} (dashboard dashboard-card)]
     (db/transaction
-      (db/delete! PulseCard :dashboard_card_id (:id dashboard-card))
-      (db/delete! DashboardCard :id (:id dashboard-card)))
+      (t2/delete! PulseCard :dashboard_card_id (:id dashboard-card))
+      (t2/delete! DashboardCard :id (:id dashboard-card)))
     (events/publish-event! :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------

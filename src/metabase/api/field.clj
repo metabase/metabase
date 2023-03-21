@@ -74,7 +74,7 @@
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
     (when (and dimension-id (= :external dimension-type))
-      (db/delete! Dimension :id dimension-id)))
+      (t2/delete! Dimension :id dimension-id)))
   true)
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
@@ -98,7 +98,7 @@
     (when (and old-dim-id
                (= :internal old-dim-type)
                (not (internal-remapping-allowed? base-type new-semantic-type)))
-      (db/delete! Dimension :id old-dim-id)))
+      (t2/delete! Dimension :id old-dim-id)))
   true)
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -143,7 +143,7 @@
           (clear-dimension-on-fk-change! field)
           true)
         (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-        (db/update! Field id
+        (t2/update! Field id
           (u/select-keys-when (assoc body
                                      :fk_target_field_id (when-not removed-fk? fk-target-field-id)
                                      :effective_type effective-type
@@ -183,10 +183,10 @@
                       human_readable_field_id))
              [400 "Foreign key based remappings require a human readable field id"])
   (if-let [dimension (t2/select-one Dimension :field_id id)]
-    (db/update! Dimension (u/the-id dimension)
-      {:type                    dimension-type
-       :name                    dimension-name
-       :human_readable_field_id human_readable_field_id})
+    (t2/update! Dimension (u/the-id dimension)
+                {:type                    dimension-type
+                 :name                    dimension-name
+                 :human_readable_field_id human_readable_field_id})
     (db/insert! Dimension
                 {:field_id                id
                  :type                    dimension-type
@@ -199,7 +199,7 @@
   "Remove the dimension associated to field at ID"
   [id]
   (api/write-check Field id)
-  (db/delete! Dimension :field_id id)
+  (t2/delete! Dimension :field_id id)
   api/generic-204-no-content)
 
 
@@ -279,10 +279,10 @@
 
 (defn- update-field-values! [field-value-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
-    (api/check-500 (db/update! FieldValues field-value-id
-                     :values (map first value-pairs)
-                     :human_readable_values (when human-readable-values?
-                                              (map second value-pairs))))))
+    (api/check-500 (pos? (t2/update! FieldValues field-value-id
+                                     {:values (map first value-pairs)
+                                      :human_readable_values (when human-readable-values?
+                                                               (map second value-pairs))})))))
 
 (defn- create-field-values!
   [field-or-id value-pairs]

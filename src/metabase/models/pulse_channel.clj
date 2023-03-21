@@ -216,7 +216,7 @@
       (let [details              (t2/select-one-fn :details PulseChannel :id channel-id)
             has-email-addresses? (seq (:emails details))]
         (when-not has-email-addresses?
-          (db/delete! PulseChannel :id channel-id))))))
+          (t2/delete! PulseChannel :id channel-id))))))
 
 
 ;; ## Persistence Functions
@@ -300,17 +300,17 @@
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))]
-    (db/update! PulseChannel id
-      :details        (cond-> details
-                        (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
-      :enabled        enabled
-      :schedule_type  schedule_type
-      :schedule_hour  (when (not= schedule_type :hourly)
-                        schedule_hour)
-      :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
-                        schedule_day)
-      :schedule_frame (when (= schedule_type :monthly)
-                        schedule_frame))
+    (t2/update! PulseChannel id
+                {:details        (cond-> details
+                                   (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
+                 :enabled        enabled
+                 :schedule_type  schedule_type
+                 :schedule_hour  (when (not= schedule_type :hourly)
+                                   schedule_hour)
+                 :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
+                                   schedule_day)
+                 :schedule_frame (when (= schedule_type :monthly)
+                                   schedule_frame)})
     (when (supports-recipients? channel_type)
       (update-recipients! id (or (get recipients-by-type true) [])))))
 

@@ -269,19 +269,19 @@
   "Marks initial sync as complete for this table so that it becomes usable in the UI, if not already set"
   [table]
   (when (not= (:initial_sync_status table) "complete")
-    (db/update! Table (u/the-id table) :initial_sync_status "complete")))
+    (t2/update! Table (u/the-id table) {:initial_sync_status "complete"})))
 
 (defn set-initial-database-sync-complete!
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
   [database]
   (when (not= (:initial_sync_status database) "complete")
-    (db/update! Database (u/the-id database) :initial_sync_status "complete")))
+    (t2/update! Database (u/the-id database) {:initial_sync_status "complete"})))
 
 (defn set-initial-database-sync-aborted!
   "Marks initial sync as aborted for this database so that an error can be displayed on the UI"
   [database]
   (when (not= (:initial_sync_status database) "complete")
-    (db/update! Database (u/the-id database) :initial_sync_status "aborted")))
+    (t2/update! Database (u/the-id database) {:initial_sync_status "aborted"})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |

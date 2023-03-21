@@ -417,7 +417,7 @@
                                       :present #{:description :position :collection_id :collection_position :cache_ttl}
                                       :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                                  :embedding_params :archived}))]
-        (db/update! Dashboard id updates))))
+        (t2/update! Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (t2/select-one Dashboard :id id)]
     (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
@@ -434,7 +434,7 @@
   (log/warn (str "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its "
                  "`archived` value via PUT /api/dashboard/:id."))
   (let [dashboard (api/write-check Dashboard id)]
-    (db/delete! Dashboard :id id)
+    (t2/delete! Dashboard :id id)
     (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
@@ -621,9 +621,9 @@
   (api/check-not-archived (api/read-check Dashboard dashboard-id))
   {:uuid (or (t2/select-one-fn :public_uuid Dashboard :id dashboard-id)
              (u/prog1 (str (UUID/randomUUID))
-               (db/update! Dashboard dashboard-id
-                 :public_uuid       <>
-                 :made_public_by_id api/*current-user-id*)))})
+               (t2/update! Dashboard dashboard-id
+                           {:public_uuid       <>
+                            :made_public_by_id api/*current-user-id*})))})
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:dashboard-id/public_link"
@@ -632,9 +632,9 @@
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-exists? Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
-  (db/update! Dashboard dashboard-id
-    :public_uuid       nil
-    :made_public_by_id nil)
+  (t2/update! Dashboard dashboard-id
+              {:public_uuid       nil
+               :made_public_by_id nil})
   {:status 204, :body nil})
 
 #_{:clj-kondo/ignore [:deprecated-var]}

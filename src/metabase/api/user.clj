@@ -77,7 +77,7 @@
       (let [{email :email} user-before-update
             new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
-          (db/update! Collection (:id collection) :name new-collection-name))))))
+          (t2/update! Collection (:id collection) {:name new-collection-name}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
@@ -341,7 +341,7 @@
                                          api/*is-superuser?* (conj :login_attributes))
                               :non-nil (cond-> #{:email}
                                          api/*is-superuser?* (conj :is_superuser))))]
-          (db/update! User id changes))
+          (t2/update! User id changes))
         (maybe-update-user-personal-collection-name! user-before-update body))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
@@ -352,15 +352,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- reactivate-user! [existing-user]
-  (db/update! User (u/the-id existing-user)
-    :is_active     true
-    :is_superuser  false
-    ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
-    ;; (see metabase#3323)
-    :google_auth   (boolean (and (:google_auth existing-user)
-                                 (google/google-auth-enabled)))
-    :ldap_auth     (boolean (and (:ldap_auth existing-user)
-                                 (api.ldap/ldap-enabled))))
+  (t2/update! User (u/the-id existing-user)
+              {:is_active     true
+               :is_superuser  false
+               ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
+               ;; (see metabase#3323)
+               :google_auth   (boolean (and (:google_auth existing-user)
+                                            (google/google-auth-enabled)))
+               :ldap_auth     (boolean (and (:ldap_auth existing-user)
+                                            (api.ldap/ldap-enabled)))})
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
@@ -408,7 +408,7 @@
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [id]
   (api/check-superuser)
-  (api/check-500 (db/update! User id, :is_active false))
+  (api/check-500 (pos? (t2/update! User id {:is_active false})))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -427,7 +427,7 @@
               (throw (ex-info (tru "Unrecognized modal: {0}" modal)
                               {:modal modal
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
-    (api/check-500 (db/update! User id, k false)))
+    (api/check-500 (pos? (t2/update! User id {k false}))))
   {:success true})
 
 #_{:clj-kondo/ignore [:deprecated-var]}

@@ -94,7 +94,7 @@
                      new-body)
         archive?   (:archived changes)]
     (when changes
-      (db/update! Metric id changes))
+      (t2/update! Metric id changes))
     (u/prog1 (hydrated-metric id)
       (events/publish-event! (if archive? :metric-delete :metric-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))

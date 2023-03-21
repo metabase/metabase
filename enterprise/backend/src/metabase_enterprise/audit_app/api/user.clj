@@ -6,7 +6,8 @@
    [metabase.api.user :as api.user]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id/subscriptions"
@@ -16,7 +17,7 @@
   (api.user/check-self-or-superuser id)
   ;; delete all `PulseChannelRecipient` rows for this User, which means they will no longer receive any
   ;; Alerts/DashboardSubscriptions
-  (db/delete! PulseChannelRecipient :user_id id)
+  (t2/delete! PulseChannelRecipient :user_id id)
   ;; archive anything they created.
   (db/update-where! Pulse {:creator_id id, :archived false} :archived true)
   api/generic-204-no-content)

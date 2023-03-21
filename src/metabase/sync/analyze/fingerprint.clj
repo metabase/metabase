@@ -33,10 +33,10 @@
   ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
   ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
   ;; latest fingerprints.
-  (db/update! Field (u/the-id field)
-    :fingerprint         fingerprint
-    :fingerprint_version i/latest-fingerprint-version
-    :last_analyzed       nil))
+  (t2/update! Field (u/the-id field)
+              {:fingerprint         fingerprint
+               :fingerprint_version i/latest-fingerprint-version
+               :last_analyzed       nil}))
 
 (defn empty-stats-map
   "The default stats before any fingerprints happen"

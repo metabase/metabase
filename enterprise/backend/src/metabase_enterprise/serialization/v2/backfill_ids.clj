@@ -24,7 +24,7 @@
       (doseq [entity missing
               :let [hashed (serdes/identity-hash entity)
                     eid    (u/generate-nano-id hashed)]]
-        (db/update! model (get entity pk) :entity_id eid)))))
+        (t2/update! model (get entity pk) {:entity_id eid})))))
 
 (defn- has-entity-id? [model]
   (:entity_id (models/properties model)))
