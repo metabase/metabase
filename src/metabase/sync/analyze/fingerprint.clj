@@ -20,7 +20,6 @@
    [metabase.util.schema :as su]
    [redux.core :as redux]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (comment

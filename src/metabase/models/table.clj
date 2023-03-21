@@ -13,7 +13,6 @@
    [metabase.models.segment :refer [Segment]]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 

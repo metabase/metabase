@@ -33,7 +33,6 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))

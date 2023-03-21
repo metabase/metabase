@@ -8,7 +8,6 @@
    [metabase.task.task-history-cleanup :as cleanup-task]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest cleanup-test
