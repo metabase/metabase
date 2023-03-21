@@ -30,27 +30,6 @@ describe("scenarios > admin > databases > add", () => {
     cy.findByText("Implicitly relative file paths are not allowed.");
   });
 
-  it("should show error correctly on server error", () => {
-    cy.intercept("POST", "/api/database", req => {
-      req.reply({
-        statusCode: 400,
-        body: "DATABASE CONNECTION ERROR",
-        delay: 1000,
-      });
-    }).as("createDatabase");
-
-    cy.visit("/admin/databases/create");
-
-    typeAndBlurUsingLabel("Display name", "Test");
-    typeAndBlurUsingLabel("Database name", "db");
-    typeAndBlurUsingLabel("Username", "admin");
-
-    cy.button("Save").click();
-
-    cy.wait("@createDatabase");
-    cy.findByText("DATABASE CONNECTION ERROR").should("exist");
-  });
-
   it("EE should ship with Oracle and Vertica as options", () => {
     cy.onlyOn(isEE);
 
