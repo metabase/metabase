@@ -26,19 +26,27 @@ You can also [cache models](../data-modeling/models.md#caching-individual-models
 
 Once you've enabled caching, you can choose when and what to cache from your [caching settings](#caching-settings).
 
-## Last updated at
-
-Questions that use the cache (as defined by your [minimum query duration](#minimum-query-duration) setting) will display a "last cached at" timestamp in the question's **info** panel.
-
-## Getting fresh results
-
-To override a cached query result, re-run the question using the **refresh** button (counterclockwise arrow).
+By default, questions will get cached once their [average execution time](#average-query-execution-time) meets a [minimum query duration](#minimum-query-duration) of 60 seconds.
 
 ## Caching location
 
 If you're self-hosting Metabase, cached queries will be saved to your [application database](../installation-and-operation/configuring-application-database.md).
 
 If you're using Metabase Cloud, cached queries will be saved to Metabase's servers in the United States.
+
+## Last updated at
+
+Questions that use the cache will display a "last cached at" timestamp in the question's **info** panel.
+
+## Getting fresh results
+
+To override a cached query result, re-run the question using the **refresh** button (counterclockwise arrow).
+
+## Average query execution time
+
+Your Metabase instance keeps track of how long it takes each question to run. The average query execution time is used in your [caching settings](#caching-settings).
+
+On [paid plans](https://www.metabase.com/pricing/), you can view statistics about query execution time from your [auditing tools](../usage-and-performance-tools/audit.md).
 
 ## Caching settings
 
@@ -50,19 +58,17 @@ Parameters you can use to define caching in Metabase:
 
 ### Minimum query duration
 
-Metabase uses this number to decide whether a question will be cached or not. 
+Metabase uses this number to decide whether a question will be cached or not.
 
-Choose a duration (in seconds) that will trigger the cache. For example, you can enter "60" if you want to cache all questions that take longer than one minute to load.
-
-Your Metabase instance keeps track of the average query execution times of your queries. You can view these statistics from your [auditing tools](../usage-and-performance-tools/audit.md) (on paid plans).
+Choose a duration (in seconds) that will trigger the cache. For example, you'd enter "60" if you want to cache all questions that take longer than 1 minute to load ([on average](#average-query-execution-time)).
 
 ### Cache time-to-live (TTL) multiplier
 
-The TTL multiplier tells Metabase how long to persist a cached query result, using this formula:
+The TTL multiplier tells Metabase how long to persist a cached query result:
 
-> TTL multiplier x query's average execution time = query's cache lifetime
+> Cache lifetime per query = TTL multiplier x [average execution time](#average-query-execution-time) per query
 
-For example, if you enter a multiplier of 10, a query that takes 5 seconds on average will be cached for 50 seconds. A query that takes 10 minutes will be cached for 100 minutes. Each query’s cache lifetime is proportional to that query's execution time.
+For example, if you enter a TTL multiplier of 10, a query that takes 5 seconds on average will be cached for 50 seconds. A query that takes 10 minutes will be cached for 100 minutes. This way, each query’s cache lifetime is proportional to that query's execution time.
 
 ### Max cache entry size
 
@@ -85,11 +91,11 @@ This setting tells Metabase how long to keep the cached results from a specific 
 
 This setting is useful for databases that take longer to query, or databases that are kept up to date on a special cadence. 
 
-The database cache duration will override your [global TTL settings](#cache-time-to-live-ttl-multiplier).
+This setting will override your [global TTL settings](#cache-time-to-live-ttl-multiplier).
 
 ### Caching per question
 
-This setting tells Metabase how long to keep the cached results for a specific question.
+This setting tells Metabase how long to keep the cached results for a specific question. You'll only find these cache settings on questions that exceed the [minimum query duration](#minimum-query-duration).
 
 1. Make sure [caching is enabled](#enabling-global-caching).
 2. Go to your question.
@@ -100,16 +106,14 @@ This setting tells Metabase how long to keep the cached results for a specific q
 
 You can use this setting to update questions on the same cadence as your data. For example, if your data gets updated daily, you can set the **Cache configuration** to 24 hours.
 
-> This setting will only apply to questions that meet the [minimum query duration](#minimum-query-duration). You can look up a question's average query duration from Metabase's [auditing tools](../usage-and-performance-tools/audit.md).
+If set, your question cache duration will override:
 
-If a question meets the minimum query duration, this setting will override:
-
-- [global TTL settings](#cache-time-to-live-ttl-multiplier)
+- [global cache duration](#cache-time-to-live-ttl-multiplier)
 - [database cache duration](#caching-per-database)
 
 ### Caching per dashboard
 
-This setting that tells Metabase how long to keep the cached results for each of the questions on a dashboard.
+This setting tells Metabase how long to keep the cached results for each of the questions on a dashboard.
 
 1. Make sure [caching is enabled](#enabling-global-caching).
 2. Go to your dashboard.
@@ -118,10 +122,10 @@ This setting that tells Metabase how long to keep the cached results for each of
 5. Enter a cache duration in hours.
 6. Click **Save changes**.
 
-> The **Cache configuration** will only apply to questions that meet the [minimum query duration](#minimum-query-duration). You can look up a question's average query duration from Metabase's [auditing tools](../usage-and-performance-tools/audit.md).
+> This setting won't cache the entire dashboard at once. The dashboard cache duration will only apply to questions that exceed the [minimum query duration](#minimum-query-duration).
 
-For questions that meet the minimum query duration, your dashboard cache configuration will override:
+If set, your dashboard cache duration will override:
 
-- [global TTL settings](#cache-time-to-live-ttl-multiplier)
+- [global cache duration](#cache-time-to-live-ttl-multiplier)
 - [database cache duration](#caching-per-database)
-- [question cache configuration](#caching-per-question)
+- [question cache duration](#caching-per-question)
