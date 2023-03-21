@@ -2,18 +2,7 @@
   (:refer-clojure :exclude [defn])
   (:require
     [malli.instrument]
-    [metabase.util.malli :as mu]
     [net.cgrand.macrovich :as macros]))
-
-(defmacro defn
-  "In Clojure this is simply [[mu/defn]].
-
-  That breaks CLJS advanced compilation since it returns a `let` and not a `defn`.
-  So in CLJS this is just [[clojure.core/defn]]."
-  [sym _ return-schema docs args & body]
-  (macros/case
-    :clj  `(mu/defn ~sym :- ~return-schema ~docs ~args ~@body)
-    :cljs `(clojure.core/defn ~sym ~docs ~(mapv first (partition 3 args)) ~@body)))
 
 (defmacro -define-getter
   "Generates an accessor, given the symbol and path to the value."
