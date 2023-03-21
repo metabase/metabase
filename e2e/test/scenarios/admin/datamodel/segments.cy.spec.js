@@ -133,7 +133,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.findByText(
         "Questions about this segment will appear here as they're added",
       ).should("not.exist");
-      cy.findByText(`Orders, Filtered by ${SEGMENT_NAME} and Product ID equals 14`);
+      cy.findByText(`Orders, Filtered by ${SEGMENT_NAME} and Product`);
     });
 
     it("should update that segment", () => {
