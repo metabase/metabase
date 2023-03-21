@@ -1339,13 +1339,11 @@ class QuestionInner {
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
       if (!this.__mlv2MetadataProvider) {
-        console.log("Caching MLv2 metadata");
         this.__mlv2MetadataProvider = MLv2.metadataProvider(
           this.databaseId(),
           metadata,
         );
       }
-      console.log("Using cached MLv2 metadata");
       metadata = this.__mlv2MetadataProvider;
     }
 
@@ -1355,7 +1353,6 @@ class QuestionInner {
     }
 
     if (!this.__mlv2Query) {
-      console.log("Caching MLv2 query based on", this.datasetQuery());
       this.__mlv2QueryMetadata = metadata;
       this.__mlv2Query = MLv2.query(
         this.databaseId(),
@@ -1364,7 +1361,6 @@ class QuestionInner {
       );
     }
 
-    console.log("Using cached MLv2 query");
     return this.__mlv2Query;
   }
 
