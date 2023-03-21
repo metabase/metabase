@@ -336,27 +336,8 @@ export default class Dimension {
     return this.field().aggregationOperators();
   }
 
-  /**
-   * Valid filter operators on this dimension
-   */
-  aggregationOperator(
-    operatorName: string,
-  ): AggregationOperator | null | undefined {
-    return this.field().aggregationOperator(operatorName);
-  }
-
   defaultAggregationOperator(): AggregationOperator | null | undefined {
     return this.aggregationOperators()[0];
-  }
-
-  defaultAggregation() {
-    const aggregation = this.defaultAggregationOperator();
-
-    if (aggregation) {
-      return [aggregation.short, this.mbql()];
-    }
-
-    return null;
   }
 
   // BREAKOUTS
