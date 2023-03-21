@@ -4,6 +4,7 @@ import {
   popover,
   restore,
   visitDashboard,
+  visitEmbeddedPage,
   visitPublicDashboard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -62,6 +63,42 @@ describe("issues 29347, 29346", () => {
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
       cy.get("@dashboardId").then(dashboardId => {
         visitDashboard(dashboardId, {
+          params: { [filterDetails.slug]: filterValue },
+        });
+      });
+      cy.wait("@dashboard");
+      cy.wait("@cardQuery");
+
+      verifyRemappedValues(filterValue);
+    });
+  });
+
+  describe("embedded dashboards", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+    });
+
+    it("should be able to filter on remapped values  (metabase#29347, metabase#29346)", () => {
+      cy.get("@dashboardId").then(dashboardId =>
+        visitEmbeddedPage({
+          resource: { dashboard: dashboardId },
+          params: {},
+        }),
+      );
+      cy.wait("@dashboard");
+      cy.wait("@cardQuery");
+
+      filterOnRemappedValues(filterValue);
+      cy.wait("@cardQuery");
+
+      verifyRemappedValues(filterValue);
+    });
+
+    it("should be able to filter on remapped values in the token (metabase#29347, metabase#29346)", () => {
+      cy.get("@dashboardId").then(dashboardId => {
+        visitEmbeddedPage({
+          resource: { dashboard: dashboardId },
           params: { [filterDetails.slug]: filterValue },
         });
       });
