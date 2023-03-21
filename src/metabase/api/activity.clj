@@ -215,43 +215,47 @@
 (defn recent-views-for-user
   [user-id]
   (let [bookmarks (bookmarks user-id)
-        qe {:select [[[:inline "qe"] :source]
-                     [:executor_id :user_id]
-                     :context
-                     [:started_at :timestamp]
-                     [[:inline "card"] :model]
-                     [:card_id :model_id]
-                     [false :dataset]]
-            :from :query_execution}
-        vl {:select [[[:inline "vl"] :source]
-                     :user_id
-                     [[:inline "question"] :context]
-                     :timestamp
-                     :model
-                     :model_id
-                     [:report_card.dataset :dataset]]
-            :from [:view_log]
-            :left-join [:report_card
-                        [:and
-                         [:= :view_log.model [:inline "card"]]
-                         [:= :view_log.model_id :report_card.id]]]}
-        views {:union-all [qe vl]}]
+        qe        {:select [[[:inline "qe"] :source]
+                            [:executor_id :user_id]
+                            :context
+                            [:started_at :timestamp]
+                            [[:inline "card"] :model]
+                            [:card_id :model_id]
+                            [false :dataset]]
+                   :from   :query_execution}
+        vl        {:select    [[[:inline "vl"] :source]
+                               :user_id
+                               [[:inline "question"] :context]
+                               :timestamp
+                               :model
+                               :model_id
+                               [:report_card.dataset :dataset]]
+                   :from      [:view_log]
+                   :left-join [:report_card
+                               [:and
+                                [:= :view_log.model [:inline "card"]]
+                                [:= :view_log.model_id :report_card.id]]]}
+        views     {:union-all [qe vl]}]
     (t2/query
-     {:select [[[:max :timestamp] :timestamp]
-               :model
-               :model_id]
-      :from [[views :views]]
-      :where [[:and
-               [:= :user_id [:inline user-id]]
-               [:>= :timestamp [:- [:date [:now]] [:inline 30]]]
-               [:not= :context [:inline "pulse"]]
-               [:not= :context [:inline "ad-hoc"]]
-               [:not= [:composite :context :model] [:composite [:inline "dashboard"] [:inline "card"]]]
-               [:not= [:composite :source :model :dataset] [:composite [:inline "vl"] [:inline "card"] [:inline false]]]
-               [:not-in [:composite :model :model_id] bookmarks]]]
+     {:select   [[[:max :timestamp] :timestamp]
+                 :model
+                 :model_id]
+      :from     [[views :views]]
+      :where    [[:and
+                  [:= :user_id [:inline user-id]]
+                  [:>= :timestamp
+                   (case (mdb.connection/db-type)
+                     :postgres [:- [:now] [:cast "30 days" :interval]]
+                     :h2 [:dateadd [:inline "DAY"] [-30] [:current_date]]
+                     [:>= :timestamp [:- [:date [:now]] [:inline 30]]])]
+                  [:not= :context [:inline "pulse"]]
+                  [:not= :context [:inline "ad-hoc"]]
+                  [:not= [:composite :context :model] [:composite [:inline "dashboard"] [:inline "card"]]]
+                  [:not= [:composite :source :model :dataset] [:composite [:inline "vl"] [:inline "card"] [:inline false]]]
+                  [:not-in [:composite :model :model_id] bookmarks]]]
       :group-by [:model :model_id]
       :order-by [[:timestamp :desc]]
-      :limit [:inline 5]})))
+      :limit    [:inline 5]})))
 
 (api/defendpoint GET "/recent_views"
   "Get the list of 5 things the current user has been viewing most recently."
