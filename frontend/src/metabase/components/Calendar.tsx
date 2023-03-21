@@ -13,7 +13,7 @@ import { CalendarDay } from "./Calendar.styled";
 
 export type SelectAll = "after" | "before";
 
-export type CalendarProps = {
+type Props = {
   initial?: Moment;
   selected?: Moment;
   selectedEnd?: Moment;
@@ -33,8 +33,8 @@ type State = {
   current?: Moment;
 };
 
-export default class Calendar extends Component<CalendarProps, State> {
-  constructor(props: CalendarProps) {
+export default class Calendar extends Component<Props, State> {
+  constructor(props: Props) {
     super(props);
     this.state = {
       current: moment(props.initial || undefined),
@@ -45,7 +45,7 @@ export default class Calendar extends Component<CalendarProps, State> {
     isRangePicker: true,
   };
 
-  UNSAFE_componentWillReceiveProps(nextProps: CalendarProps) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (
       // `selected` became null or not null
       (nextProps.selected == null) !== (this.props.selected == null) ||

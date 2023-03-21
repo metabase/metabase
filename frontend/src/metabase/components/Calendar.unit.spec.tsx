@@ -3,7 +3,7 @@ import moment from "moment-timezone";
 import { render, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/lib/settings";
 import { updateMomentStartOfWeek } from "metabase/lib/i18n";
-import Calendar, { CalendarProps } from "./Calendar";
+import Calendar from "./Calendar";
 
 describe("Calendar", () => {
   it("should render weekday short names", () => {
@@ -47,7 +47,5 @@ describe("Calendar", () => {
 });
 
 function setup() {
-  const props: CalendarProps = {};
-
-  return render(<Calendar {...props} />);
+  return render(<Calendar />);
 }
