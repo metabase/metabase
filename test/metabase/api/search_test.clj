@@ -103,7 +103,8 @@
     test-collection
     (make-result "card test card", :model "card", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
     (make-result "dataset test dataset", :model "dataset", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
-    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true, :dataset_query (update (mt/query venues) :type name))
+    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
+                 :dataset_query (update (mt/query venues) :type name), :database_id true)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
      (table-search-results))
@@ -229,11 +230,11 @@
              [:like [:lower :display_name]      "%foo%"] [:inline 0]
              [:like [:lower :description]       "%foo%"] [:inline 0]
              [:like [:lower :collection_name]   "%foo%"] [:inline 0]
-             [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              [:like [:lower :table_schema]      "%foo%"] [:inline 0]
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
+             [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              :else [:inline 1]]]
            (api.search/order-clause "Foo")))))
 

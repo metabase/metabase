@@ -84,10 +84,11 @@
    :moderated_status    :text
    ;; returned for Metric and Segment
    :table_id            :integer
-   :database_id         :integer
    :table_schema        :text
    :table_name          :text
    :table_description   :text
+   ;; returned for Metric, Segment, and Action
+   :database_id         :integer
    ;; returned for Database and Table
    :initial_sync_status :text
    ;; returned for Action
