@@ -16,7 +16,8 @@
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (defn- dashcard-activity? [activity]
   (#{:dashboard-add-cards :dashboard-remove-cards}
