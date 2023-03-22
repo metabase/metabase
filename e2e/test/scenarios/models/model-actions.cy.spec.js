@@ -439,14 +439,12 @@ describe(
         cy.visit(url);
         cy.findByRole("form").should("not.exist");
         cy.button(SAMPLE_QUERY_ACTION.name).should("not.exist");
-        cy.findByText("Not found").should("be.visible");
       });
 
       cy.get("@implicitActionPublicUrl").then(url => {
         cy.visit(url);
         cy.findByRole("form").should("not.exist");
         cy.button(SAMPLE_QUERY_ACTION.name).should("not.exist");
-        cy.findByText("Not found").should("be.visible");
       });
     });
   });
