@@ -12,7 +12,6 @@
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.query-execution :refer [QueryExecution]]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.table :refer [Table]]
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
