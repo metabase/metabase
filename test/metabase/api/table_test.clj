@@ -764,8 +764,8 @@
                 field    (field-from-response response "date")]
             ;; some dbs don't have a date type and return a datetime
             (is (= (case (:effective_type field)
-                     "type/DateTime" @#'api.table/datetime-dimension-indexes
-                     "type/Date"     @#'api.table/date-dimension-indexes
+                     ("type/DateTime" "type/Instant") @#'api.table/datetime-dimension-indexes
+                     "type/Date"                      @#'api.table/date-dimension-indexes
                      (throw (ex-info "Invalid type for date field or field not found"
                                      {:expected-types #{"type/DateTime" "type/Date"}
                                       :found          (:effective_type field)
