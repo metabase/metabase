@@ -174,19 +174,22 @@ describe("scenarios > question > summarize sidebar", () => {
     cy.findByText("318.7");
   });
 
-  it.skip("should keep manually entered parenthesis intact (metabase#13306)", () => {
+  it("should keep manually entered parenthesis intact (metabase#13306)", () => {
     const FORMULA =
       "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))";
 
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
+
     popover().contains("Custom Expression").click();
     popover().within(() => {
-      cy.get(".ace_text-input").type(FORMULA).blur();
+      enterCustomColumnDetails({ formula: FORMULA });
+      cy.get("@formula").blur();
 
-      cy.log("Fails after blur in v0.36.6");
+      cy.wait(100); // waits for formula update after blur
+
       // Implicit assertion
-      cy.contains(FORMULA);
+      cy.get(".ace_text-layer").should("have.text", FORMULA);
     });
   });
 
