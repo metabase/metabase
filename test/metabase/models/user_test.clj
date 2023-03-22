@@ -3,19 +3,12 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.integrations.google]
    [metabase.models
-    :refer [Collection
-            Database
-            PermissionsGroup
-            PermissionsGroupMembership
-            Pulse
-            PulseChannel
-            PulseChannelRecipient
-            Session
-            Table
-            User]]
+    :refer [Collection Database PermissionsGroup PermissionsGroupMembership
+            Pulse PulseChannel PulseChannelRecipient Session Table User]]
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.permissions :as perms]
@@ -196,7 +189,8 @@
           (premium-features-test/with-premium-features #{:sso}
             (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "false"]
               (mt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
-                (is (= {}
+                (is (= (if config/ee-available? {} {"crowberto@metabase.com" ["<New User> created a Metabase account"],
+                                                    "some_other_admin@metabase.com" ["<New User> created a Metabase account"]})
                        (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
                            (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))))))))
 
