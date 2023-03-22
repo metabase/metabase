@@ -16,7 +16,7 @@
 
 (defn model-description [model-id]
   ;; TODO - Create natural language description of a model here using field_vals, etc.
-  (str "I have a table with columns created_at, user_id, and status and the column \"status\""
+  (str "I have a table named FOO with columns created_at, user_id, and status and the column \"status\""
        "has valid values of \"open\", \"closed\", \"blocked\""))
 
 (defn write-sql [model-id prompt]
