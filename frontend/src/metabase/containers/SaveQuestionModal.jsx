@@ -26,7 +26,6 @@ export default class SaveQuestionModal extends Component {
   static propTypes = {
     question: PropTypes.object.isRequired,
     originalQuestion: PropTypes.object,
-    tableMetadata: PropTypes.object, // can't be required, sometimes null
     onCreate: PropTypes.func.isRequired,
     onSave: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
@@ -73,13 +72,12 @@ export default class SaveQuestionModal extends Component {
   };
 
   render() {
-    const { question, originalQuestion, initialCollectionId, tableMetadata } =
-      this.props;
+    const { question, originalQuestion, initialCollectionId } = this.props;
 
     const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
     const initialValues = {
-      name: question.generateQueryDescription(tableMetadata),
+      name: question.generateQueryDescription(),
       description: question.description() || "",
       collection_id:
         question.collectionId() === undefined || isReadonly

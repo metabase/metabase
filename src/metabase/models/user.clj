@@ -191,7 +191,7 @@
     (let [selector (cond-> [PermissionsGroupMembership [:group_id :id]]
                      (premium-features/enable-advanced-permissions?)
                      (conj :is_group_manager))]
-      (db/select selector :user_id (u/the-id user-or-id)))))
+      (t2/select selector :user_id (u/the-id user-or-id)))))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -217,7 +217,7 @@
   In which `is_group_manager` is only added when `advanced-permissions` is enabled."
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (db/select [PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
+    (let [user-id->memberships (group-by :user_id (t2/select [PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
                                                              :user_id [:in (set (map u/the-id users))]))
           membership->group    (fn [membership]
                                  (select-keys membership
@@ -232,7 +232,7 @@
   TODO: deprecate :group_ids and use :user_group_memberships instead"
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (db/select [PermissionsGroupMembership :user_id :group_id]
+    (let [user-id->memberships (group-by :user_id (t2/select [PermissionsGroupMembership :user_id :group_id]
                                                     :user_id [:in (set (map u/the-id users))]))]
       (for [user users]
         (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))

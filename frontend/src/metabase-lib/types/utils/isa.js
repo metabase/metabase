@@ -150,8 +150,6 @@ export const isNumber = field =>
   isNumericBaseType(field) &&
   (field.semantic_type == null || isa(field.semantic_type, TYPE.Number));
 
-export const isBinnedNumber = field => isNumber(field) && !!field.binning_info;
-
 export const isTime = field => {
   if (!field) {
     return false;

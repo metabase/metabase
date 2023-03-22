@@ -65,7 +65,7 @@
         (testing "loading into an empty database succeeds"
           (ts/with-dest-db
             (serdes.load/load-metabase (ingestion-in-memory @serialized))
-            (let [colls (db/select Collection)]
+            (let [colls (t2/select Collection)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))
@@ -73,7 +73,7 @@
         (testing "loading again into the same database does not duplicate"
           (ts/with-dest-db
             (serdes.load/load-metabase (ingestion-in-memory @serialized))
-            (let [colls (db/select Collection)]
+            (let [colls (t2/select Collection)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))))))
@@ -664,8 +664,8 @@
 
             ;; Fetch the relevant bits
             (reset! timeline2d (t2/select-one Timeline :entity_id (:entity_id @timeline2s)))
-            (reset! eventsT1   (db/select TimelineEvent :timeline_id (:id @timeline1d)))
-            (reset! eventsT2   (db/select TimelineEvent :timeline_id (:id @timeline2d)))
+            (reset! eventsT1   (t2/select TimelineEvent :timeline_id (:id @timeline1d)))
+            (reset! eventsT2   (t2/select TimelineEvent :timeline_id (:id @timeline2d)))
 
             (testing "no duplication - there are two timelines with the right event counts"
               (is (some? @timeline2d))

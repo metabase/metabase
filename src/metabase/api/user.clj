@@ -161,7 +161,7 @@
   (when (or status include_deactivated)
     (validation/check-group-manager))
   (let [include_deactivated (Boolean/parseBoolean include_deactivated)]
-    {:data   (cond-> (db/select
+    {:data   (cond-> (t2/select
                       (vec (cons User (user-visible-columns)))
                       (cond-> (user-clauses status query group_id include_deactivated)
                         (some? group_id) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])

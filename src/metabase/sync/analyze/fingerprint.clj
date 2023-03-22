@@ -20,7 +20,6 @@
    [metabase.util.schema :as su]
    [redux.core :as redux]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (comment
@@ -153,7 +152,7 @@
     [:not (mdb.u/isa :semantic_type :type/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not= :base_type "type/Structured"]])
+   [:not (mdb.u/isa :base_type :type/Structured)]])
 
 (def ^:dynamic *refingerprint?*
   "Whether we are refingerprinting or doing the normal fingerprinting. Refingerprinting should get fields that already
@@ -178,7 +177,7 @@
   "Return a sequences of Fields belonging to TABLE for which we should generate (and save) fingerprints.
    This should include NEW fields that are active and visible."
   [table :- i/TableInstance]
-  (seq (db/select Field
+  (seq (t2/select Field
          (honeysql-for-fields-that-need-fingerprint-updating table))))
 
 ;; TODO - `fingerprint-fields!` and `fingerprint-table!` should probably have their names switched

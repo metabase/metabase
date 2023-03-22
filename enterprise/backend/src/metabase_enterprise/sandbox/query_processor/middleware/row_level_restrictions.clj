@@ -31,7 +31,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -75,7 +74,7 @@
     (let [group-ids           (qp.store/cached *current-user-id*
                                 (t2/select-fn-set :group_id PermissionsGroupMembership :user_id *current-user-id*))
           sandboxes           (when (seq group-ids)
-                               (db/select GroupTableAccessPolicy :group_id [:in group-ids]
+                               (t2/select GroupTableAccessPolicy :group_id [:in group-ids]
                                  :table_id [:in table-ids]))
           enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes group-ids)]
        (when (seq enforced-sandboxes)

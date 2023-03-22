@@ -20,7 +20,7 @@
    table_id [:maybe ms/PositiveInt]}
   (if (and group_id table_id)
     (t2/select-one GroupTableAccessPolicy :group_id group_id :table_id table_id)
-    (db/select GroupTableAccessPolicy {:order-by [[:id :asc]]})))
+    (t2/select GroupTableAccessPolicy {:order-by [[:id :asc]]})))
 
 (api/defendpoint GET "/:id"
   "Fetch GTAP by `id`"
