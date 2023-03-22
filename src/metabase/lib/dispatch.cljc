@@ -20,6 +20,10 @@
   ;; TODO -- for Clj, we should probably handle Toucan instances as well, and dispatch off
   ;; of [[toucan2.core/model]]?
   (or (mbql-clause-type x)
-      (when (map? x)
-        (:lib/type x))
+      (if (map? x)
+        (if (and (keyword? (:operator x))
+                 (vector? (:args x))
+                 (map? (:options x {})))
+          :lib/external-op
+          (:lib/type x)))
       (u/dispatch-type-keyword x)))
