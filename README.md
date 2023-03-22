@@ -9,6 +9,17 @@
 [![codecov](https://codecov.io/gh/metabase/metabase/branch/master/graph/badge.svg)](https://codecov.io/gh/metabase/metabase)
 ![Docker Pulls](https://img.shields.io/docker/pulls/metabase/metabase)
 
+## Dadosfera Fork
+
+### Deployment process
+1. Develop, commit and push commits to main;
+2. Go to the [metabase-deploy repo on github](https://github.com/dadosfera/metabase-deploy) and trigger the appropriate action;
+3. Deployment time can take a long time (30 minutes).
+
+### Observations
+- NPM preferably has to be what is defined in package.json
+
+
 ## Features
 
 - [Set up in five minutes](https://www.metabase.com/docs/latest/setting-up-metabase.html) (we're not kidding).
