@@ -36,13 +36,13 @@ export function getParameterOptionsForField(field) {
     });
 }
 
-const HIGH_CARDINALITY_TYPE = "string/contains";
-const HIGH_CARDINALITY_LIMIT = 20;
+const HIGH_CARDINALITY_THRESHOLD = 20;
 
 export function getDefaultParameterWidgetType(tag, field) {
   const options = getParameterOptionsForField(field);
   const widgetType = tag["widget-type"];
   const distinctCount = field.fingerprint?.global["distinct-count"];
+  const highCardinalityOption = options.find(option => option.highCardinality);
 
   if (options.length === 0) {
     return undefined;
@@ -53,10 +53,10 @@ export function getDefaultParameterWidgetType(tag, field) {
     return widgetType;
   } else if (
     distinctCount != null &&
-    distinctCount > HIGH_CARDINALITY_LIMIT &&
-    options.some(option => option.type === HIGH_CARDINALITY_TYPE)
+    distinctCount > HIGH_CARDINALITY_THRESHOLD &&
+    highCardinalityOption != null
   ) {
-    return HIGH_CARDINALITY_TYPE;
+    return highCardinalityOption.type;
   } else {
     return options[0].type;
   }
