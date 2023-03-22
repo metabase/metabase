@@ -8,7 +8,6 @@
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
 

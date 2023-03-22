@@ -9,7 +9,6 @@
    [metabase.models.task-history :as task-history]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

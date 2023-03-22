@@ -22,7 +22,6 @@
             [metabase.util.log :as log]
             [monger.collection :as mcoll]
             [taoensso.nippy :as nippy]
-            [toucan.db :as db]
             [toucan2.core :as t2])
   (:import org.bson.types.ObjectId))
 
