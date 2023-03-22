@@ -50,7 +50,7 @@
         (lib.core/template-tags query-text)
         lib.core/TemplateTags->)))
 
-(defn ^:export suggestedName
+(defn ^:export suggested-name
   "Return a nice description of a query."
   [query]
   (lib.metadata.calculation/suggested-name query))
@@ -64,7 +64,7 @@
     (mbql.normalize/normalize <>)
     (convert/->pMBQL <>)))
 
-(defn ^:export metadataProvider
+(defn ^:export ->metadata-provider
   "Convert metadata to a metadata provider if it is not one already."
   [database-id metadata]
   (if (lib.metadata.protocols/metadata-provider? metadata)
@@ -73,10 +73,13 @@
 
 (defn ^:export query
   "Coerce a plain map `query` to an actual query object that you can use with MLv2."
-  [database-id metadata query-map]
-  (let [query-map (pMBQL query-map)]
-    (log/debugf "query map: %s" (pr-str query-map))
-    (lib.query/query (metadataProvider database-id metadata) query-map)))
+  ([metadata-provider query-map]
+   (let [query-map (pMBQL query-map)]
+     (log/debugf "query map: %s" (pr-str query-map))
+     (lib.query/query metadata-provider query-map)))
+
+  ([database-id metadata query-map]
+   (query (->metadata-provider database-id metadata) query-map)))
 
 (defn- fix-namespaced-values
   "This converts namespaced keywords to strings as `\"foo/bar\"`.

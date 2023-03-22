@@ -1,7 +1,7 @@
 import React from "react";
 import { render, fireEvent, screen, within } from "@testing-library/react";
 
-import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
+import { ORDERS } from "__support__/sample_database_fixture";
 
 import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
 
@@ -11,7 +11,7 @@ const DATA = {
 };
 
 const setup = props => {
-  const question = SAMPLE_DATABASE.question().setDisplay("gauge");
+  const question = ORDERS.question().setDisplay("gauge");
   render(
     <ChartTypeSidebar
       question={question}
