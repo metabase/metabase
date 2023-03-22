@@ -39,9 +39,15 @@
 (defmulti temporal-bucket*
   "Implementation for [[temporal-bucket]]. Implement this to tell [[temporal-bucket]] how to add a bucket to a
   particular MBQL clause."
-  {:arglists '([mbql-clause unit])}
-  (fn [mbql-clause _unit]
-    (lib.dispatch/dispatch-value mbql-clause)))
+  {:arglists '([x unit])}
+  (fn [x _unit]
+    (lib.dispatch/dispatch-value x)))
+
+(defmethod temporal-bucket* :dispatch-type/fn
+  [f unit]
+  (fn [query stage-number]
+    (let [x (f query stage-number)]
+      (temporal-bucket* x unit))))
 
 (mu/defn temporal-bucket
   "Add a temporal bucketing unit, e.g. `:day` or `:day-of-year`, to an MBQL clause or something that can be converted to

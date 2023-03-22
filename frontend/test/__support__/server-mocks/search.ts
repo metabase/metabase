@@ -1,24 +1,22 @@
 import fetchMock from "fetch-mock";
-import type { SearchModelType, CollectionItem } from "metabase-types/api";
+import type { CollectionItem } from "metabase-types/api";
 
-export function setupSearchEndpoints(
-  items: CollectionItem[],
-  models: SearchModelType[] = [],
-) {
-  fetchMock.get("path:/api/search", {
-    available_models: [
-      "dashboard",
-      "card",
-      "dataset",
-      "collection",
-      "table",
-      "database",
-    ],
-    data: items,
-    total: items.length,
-    models, // this should reflect what is in the query param
-    limit: null,
-    offset: null,
-    table_db_id: null,
+export function setupSearchEndpoints(items: CollectionItem[]) {
+  const availableModels = items.map(({ model }) => model);
+
+  fetchMock.get("path:/api/search", uri => {
+    const url = new URL(uri);
+    const models = url.searchParams.getAll("models");
+    const matchedItems = items.filter(({ model }) => models.includes(model));
+
+    return {
+      data: matchedItems,
+      total: matchedItems.length,
+      models, // this should reflect what is in the query param
+      available_models: availableModels,
+      limit: null,
+      offset: null,
+      table_db_id: null,
+    };
   });
 }

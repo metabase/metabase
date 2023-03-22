@@ -34,7 +34,6 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.sql DatabaseMetaData)))
@@ -310,7 +309,7 @@
             ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!
             (is (= [{:name "angry_birds", :active true}]
                    (map (partial into {})
-                        (db/select [Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
+                        (t2/select [Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
 
 (deftest partitioned-table-test
   (mt/test-driver :postgres
@@ -835,7 +834,7 @@
                      {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
                      {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
                    (set (map (partial into {})
-                             (db/select [Field :name :database_type :base_type] :table_id table-id)))))))
+                             (t2/select [Field :name :database_type :base_type] :table_id table-id)))))))
 
         (testing "End-to-end check: make sure everything works as expected when we run an actual query"
           (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")

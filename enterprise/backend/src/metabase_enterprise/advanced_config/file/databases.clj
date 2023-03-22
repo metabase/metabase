@@ -43,7 +43,7 @@
   (if-let [existing-database-id (t2/select-one-pk Database :engine (:engine database), :name (:name database))]
     (do
       (log/info (u/colorize :blue (trs "Updating Database {0} {1}" (:engine database) (pr-str (:name database)))))
-      (db/update! Database existing-database-id database))
+      (t2/update! Database existing-database-id database))
     (do
       (log/info (u/colorize :green (trs "Creating new {0} Database {1}" (:engine database) (pr-str (:name database)))))
       (let [db (db/insert! Database database)]

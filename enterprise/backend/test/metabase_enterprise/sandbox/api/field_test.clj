@@ -107,8 +107,8 @@
     (mt/with-temp-copy-of-db
       (let [field-id   (mt/id :venues :price)
             full-fv-id (t2/select-one-pk FieldValues :field_id field-id :type :full)]
-        (db/update! FieldValues full-fv-id
-                    :human_readable_values ["$" "$$" "$$$" "$$$$"])
+        (t2/update! FieldValues full-fv-id
+                    {:human_readable_values ["$" "$$" "$$$" "$$$$"]})
         ;; sanity test without gtap
         (is (= [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]
                (:values (mt/user-http-request :rasta :get 200 (format "field/%d/values" field-id)))))
@@ -175,7 +175,7 @@
                 new-values ["foo" "bar"]]
             (testing "Sanity check: make sure FieldValues exist"
               (is (some? fv-id)))
-            (db/update! FieldValues fv-id
+            (t2/update! FieldValues fv-id
                         {:values new-values})
             (with-redefs [field-values/distinct-values (constantly {:values          new-values
                                                                     :has_more_values false})]

@@ -215,7 +215,7 @@
                 (into #{}
                       (map #(select-keys % [:base_type :effective_type :coercion_strategy
                                             :semantic_type :name]))
-                      (db/select Field :table_id table-id)))))))))
+                      (t2/select Field :table_id table-id)))))))))
 
 (defn app-db-column-types
   "Returns a map of all column names to their respective type names, for the given `table-name`, by using the JDBC
@@ -648,7 +648,7 @@
                                              :collection_id          nil})]
        (migrate!)
        (is (= nil
-              (:parameters (first (db/simple-select Card {:where [:= :id card-id]})))))))))
+              (:parameters (first (t2/select (t2/table-name Card) {:where [:= :id card-id]})))))))))
 
 (deftest add-parameter-mappings-to-cards-test
   (testing "Migration v44.00-024: Add parameter_mappings to cards"
@@ -673,7 +673,7 @@
                                      :collection_id          nil})]
         (migrate!)
         (is (= nil
-               (:parameter_mappings (first (db/simple-select Card {:where [:= :id card-id]})))))))))
+               (:parameter_mappings (first (t2/select (t2/table-name Card) {:where [:= :id card-id]})))))))))
 
 (deftest grant-all-users-root-snippets-collection-readwrite-perms-test
   (letfn [(perms-path [] "/collection/namespace/snippets/root/")
@@ -905,9 +905,9 @@
                                                 :created_at :%now
                                                 :updated_at :%now})]
         (is (thrown? clojure.lang.ExceptionInfo
-                     (db/delete! Database :id db-id)))
+                     (t2/delete! Database :id db-id)))
         (migrate!)
-        (is (db/delete! Database :id db-id))))))
+        (is (t2/delete! Database :id db-id))))))
 
 (deftest split-data-permission-test
   (testing "Migration v46.00-080: split existing v1 data permission paths into v2 data and query permission paths"

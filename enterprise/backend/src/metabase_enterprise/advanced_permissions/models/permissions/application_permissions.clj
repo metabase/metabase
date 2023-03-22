@@ -9,7 +9,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
@@ -26,7 +27,7 @@
   "Returns a map of group-id -> application permissions paths.
   Only groups that has at least one application permission enabled will be included."
   []
-  (let [application-permissions (db/select Permissions
+  (let [application-permissions (t2/select Permissions
                                            {:where [:or
                                                     [:= :object "/"]
                                                     [:like :object (h2x/literal "/application/%")]]})]

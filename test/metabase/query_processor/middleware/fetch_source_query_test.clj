@@ -249,7 +249,7 @@
                                    :type     :query
                                    :query    {:source-table (str "card__" card-id)}}
             save-error            (try
-                                    ;; `db/update!` will fail because it will try to validate the query when it saves
+                                    ;; `t2/update!` will fail because it will try to validate the query when it saves
                                     (db/execute! {:update :report_card
                                                   :set    {:dataset_query (json/generate-string circular-source-query)}
                                                   :where  [:= :id card-id]})
@@ -273,7 +273,7 @@
                       Card [{card-2-id :id} {:dataset_query (circular-source-query card-1-id)}]]
         ;; Make sure save isn't the thing throwing the Exception
         (let [save-error (try
-                           ;; `db/update!` will fail because it will try to validate the query when it saves,
+                           ;; `t2/update!` will fail because it will try to validate the query when it saves,
                            (db/execute! {:update :report_card
                                          :set    {:dataset_query (json/generate-string (circular-source-query card-2-id))}
                                          :where  [:= :id card-1-id]})

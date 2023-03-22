@@ -38,7 +38,7 @@
                mt/derecordize))))
 
   (testing "make sure it works for multiple fields efficiently. Should only require one DB call to hydrate many Fields"
-    (let [venues-fields (db/select Field :table_id (mt/id :venues))]
+    (let [venues-fields (t2/select Field :table_id (mt/id :venues))]
       (db/with-call-counting [call-count]
         (hydrate venues-fields :name_field)
         (is (= 1

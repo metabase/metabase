@@ -348,7 +348,7 @@ function shouldReparent(leftType: NodeType, rightType: NodeType) {
   }
 }
 
-export function getASType(type: NodeType, parentType: NodeType) {
+function getASType(type: NodeType, parentType: NodeType) {
   if (type === GROUP) {
     // A list of function call arguments is first interpreted as a GROUP, then
     // reinterpreted as an ARG_LIST if its the child of a CALL
