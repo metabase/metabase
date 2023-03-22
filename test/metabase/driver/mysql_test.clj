@@ -422,9 +422,12 @@
 ;; Therefore, no JSON tests.
 (defn- version-query [db-id] {:type :native, :native {:query "SELECT VERSION();"}, :database db-id})
 
-(defn- is-mariadb? [db-id] (str/includes?
-                             (or (get-in (qp/process-userland-query (version-query db-id)) [:data :rows 0 0]) "")
-                             "Maria"))
+(defn is-mariadb?
+  "Returns true if the database is MariaDB, false otherwise."
+  [db-id]
+  (str/includes?
+   (or (get-in (qp/process-userland-query (version-query db-id)) [:data :rows 0 0]) "")
+   "Maria"))
 
 (deftest nested-field-column-test
   (mt/test-driver :mysql
