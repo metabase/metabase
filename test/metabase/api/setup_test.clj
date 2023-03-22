@@ -203,7 +203,7 @@
                 (assert (some? db))
                 (is (= 4
                        (wait-for-result (fn []
-                                          (let [cnt (db/count Table :db_id (u/the-id db))]
+                                          (let [cnt (t2/count Table :db_id (u/the-id db))]
                                             (when (= cnt 4)
                                               cnt))))))))))))
 
@@ -301,7 +301,7 @@
 
 (deftest has-user-setup-setting-test
   (testing "has-user-setup is true iff there are 1 or more users"
-    (let [user-count (db/count User)]
+    (let [user-count (t2/count User)]
       (if (zero? user-count)
         (is (not (setup/has-user-setup)))
         (is (setup/has-user-setup))))))
@@ -413,7 +413,7 @@
 (deftest admin-checklist-test
   (testing "GET /api/setup/admin_checklist"
     (with-redefs [db/exists?              (constantly true)
-                  db/count                (constantly 5)
+                  t2/count                (constantly 5)
                   email/email-configured? (constantly true)
                   slack/slack-configured? (constantly false)]
       (is (= [{:name  "Get connected"

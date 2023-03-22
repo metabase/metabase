@@ -175,7 +175,7 @@
                (or api/*is-superuser?*
                    api/*is-group-manager?*)
                (hydrate :group_ids))
-     :total  (db/count User (user-clauses status query group_id include_deactivated))
+     :total  (t2/count User (user-clauses status query group_id include_deactivated))
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 

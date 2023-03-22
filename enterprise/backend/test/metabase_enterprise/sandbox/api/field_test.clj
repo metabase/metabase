@@ -151,7 +151,7 @@
       (testing "Do we use cached values when available?"
         (with-redefs [field-values/distinct-values (fn [_] (assert false "Should not be called"))]
           (is (some? (:values (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values")))))
-          (is (= 1 (db/count FieldValues
+          (is (= 1 (t2/count FieldValues
                              :field_id (:id field)
                              :type :sandbox)))))
 
@@ -164,7 +164,7 @@
                                                    :attributes {:cat 5}}
               (mt/user-http-request another-user :get 200 (str "field/" (:id field) "/values"))
               ;; create another one for the new user
-              (is (= 2 (db/count FieldValues
+              (is (= 2 (t2/count FieldValues
                                  :field_id (:id field)
                                  :type :sandbox)))))))
 
@@ -196,4 +196,4 @@
             ;; did the old one get deleted?
             (is (not (db/exists? FieldValues :id old-sandbox-fv-id)))
             ;; make sure we created a new one
-            (is (= 1 (db/count FieldValues :field_id (:id field) :type :sandbox)))))))))
+            (is (= 1 (t2/count FieldValues :field_id (:id field) :type :sandbox)))))))))

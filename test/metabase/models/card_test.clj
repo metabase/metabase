@@ -75,7 +75,7 @@
                     DashboardCard [_dashcard {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]]
       (t2/update! Card (u/the-id card) {:archived true})
       (is (= 0
-             (db/count DashboardCard :dashboard_id (u/the-id dashboard)))))))
+             (t2/count DashboardCard :dashboard_id (u/the-id dashboard)))))))
 
 (deftest public-sharing-test
   (testing "test that a Card's :public_uuid comes back if public sharing is enabled..."

@@ -356,10 +356,10 @@
                (mt/user-http-request :rasta :put 403 (format "permissions/membership/%d/clear" group-id)))))
 
       (testing "Membership of a group can be cleared succesfully, while preserving the group itself"
-        (is (= 1 (db/count PermissionsGroupMembership :group_id group-id)))
+        (is (= 1 (t2/count PermissionsGroupMembership :group_id group-id)))
         (mt/user-http-request :crowberto :put 204 (format "permissions/membership/%d/clear" group-id))
         (is (true? (db/exists? PermissionsGroup :id group-id)))
-        (is (= 0 (db/count PermissionsGroupMembership :group_id group-id))))
+        (is (= 0 (t2/count PermissionsGroupMembership :group_id group-id))))
 
       (testing "The admin group cannot be cleared using this endpoint"
         (mt/user-http-request :crowberto :put 400 (format "permissions/membership/%d/clear" (u/the-id (perms-group/admin))))))))

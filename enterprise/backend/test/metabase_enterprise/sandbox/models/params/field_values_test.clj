@@ -50,7 +50,7 @@
             (params.field-values/get-or-create-advanced-field-values!
              fv-type
              (t2/select-one Field :id (mt/id :categories :id)))
-            (is (= 1 (db/count FieldValues :field_id categories-id :type fv-type))))
+            (is (= 1 (t2/count FieldValues :field_id categories-id :type fv-type))))
 
           (testing "after changing the question, should create new FieldValues"
             (let [new-query (mt/mbql-query categories

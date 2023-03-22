@@ -419,7 +419,7 @@
       (is (= 1
              (t2/delete! Collection :id (u/the-id a))))
       (is (= 0
-             (db/count Collection :id [:in (map u/the-id [a b c d e f g])])))))
+             (t2/count Collection :id [:in (map u/the-id [a b c d e f g])])))))
 
   (testing "parents & siblings should be untouched"
     ;; ...put
@@ -432,7 +432,7 @@
     (with-collection-hierarchy [{:keys [a b c d e f g]}]
       (t2/delete! Collection :id (u/the-id c))
       (is (= 2
-             (db/count Collection :id [:in (map u/the-id [a b c d e f g])]))))))
+             (t2/count Collection :id [:in (map u/the-id [a b c d e f g])]))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

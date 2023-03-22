@@ -133,7 +133,7 @@
       (is (= :full (-> (t2/select-one Field :id (mt/id :categories :name))
                        field-values/get-or-create-full-field-values!
                        :type))
-          (is (= 1 (db/count FieldValues :field_id (mt/id :categories :name) :type :full))))
+          (is (= 1 (t2/count FieldValues :field_id (mt/id :categories :name) :type :full))))
 
       (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
         (mt/with-temp FieldValues [_ {:field_id (mt/id :categories :name)

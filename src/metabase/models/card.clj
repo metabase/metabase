@@ -24,7 +24,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -41,14 +40,14 @@
   :dashboard_count
   "Return the number of Dashboards this Card is in."
   [{:keys [id]}]
-  (db/count 'DashboardCard, :card_id id))
+  (t2/count 'DashboardCard, :card_id id))
 
 (mi/define-simple-hydration-method parameter-usage-count
   :parameter_usage_count
   "Return the number of dashboard/card filters and other widgets that use this card to populate their available
   values (via ParameterCards)"
   [{:keys [id]}]
-  (db/count ParameterCard, :card_id id))
+  (t2/count ParameterCard, :card_id id))
 
 (mi/define-simple-hydration-method average-query-time
   :average_query_time
@@ -330,10 +329,10 @@
   "Delete all implicit actions of a model if exists."
   [model-id]
   (when-let [action-ids (t2/select-pks-set  'Action {:select [:action.id]
-                                                    :from   [:action]
-                                                    :join   [:implicit_action
-                                                             [:= :action.id :implicit_action.action_id]]
-                                                    :where  [:= :action.model_id model-id]})]
+                                                     :from   [:action]
+                                                     :join   [:implicit_action
+                                                              [:= :action.id :implicit_action.action_id]]
+                                                     :where  [:= :action.model_id model-id]})]
     (t2/delete! 'Action :id [:in action-ids])))
 
 (defn- pre-update [{archived? :archived, id :id, :as changes}]

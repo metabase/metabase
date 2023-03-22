@@ -305,7 +305,7 @@
                   api/*current-user-permissions-set* (-> :rasta test.users/user->id user/permissions-set atom)]
           (let [dashboard       (magic/automagic-analysis (t2/select-one Table :id (mt/id :venues)) {})
                 saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
-            (is (= (db/count DashboardCard :dashboard_id (u/the-id saved-dashboard))
+            (is (= (t2/count DashboardCard :dashboard_id (u/the-id saved-dashboard))
                    (-> dashboard :ordered_cards count)))))))))
 
 (deftest validate-collection-namespace-test

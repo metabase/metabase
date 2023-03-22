@@ -657,21 +657,21 @@
 (deftest with-model-cleanup-test
   (testing "Make sure the with-model-cleanup macro actually works as expected"
     (tt/with-temp Card [other-card]
-      (let [card-count-before (db/count Card)
+      (let [card-count-before (t2/count Card)
             card-name         (tu.random/random-name)]
         (with-model-cleanup [Card]
           (db/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
           (testing "Card count should have increased by one"
             (is (= (inc card-count-before)
-                   (db/count Card))))
+                   (t2/count Card))))
           (testing "Card should exist"
             (is (db/exists? Card :name card-name))))
         (testing "Card should be deleted at end of with-model-cleanup form"
           (is (= card-count-before
-                 (db/count Card)))
+                 (t2/count Card)))
           (is (not (db/exists? Card :name card-name)))
           (testing "Shouldn't delete other Cards"
-            (is (pos? (db/count Card)))))))))
+            (is (pos? (t2/count Card)))))))))
 
 
 ;; TODO - not 100% sure I understand

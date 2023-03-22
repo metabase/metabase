@@ -82,7 +82,7 @@
                                        :%now
                                        (- (t/as field-values/advanced-field-values-max-age :days))
                                        :day)]]
-          rows-count (apply db/count FieldValues conditions)]
+          rows-count (apply t2/count FieldValues conditions)]
       (apply t2/delete! FieldValues conditions)
       rows-count)))
 

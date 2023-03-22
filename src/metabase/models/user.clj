@@ -244,7 +244,7 @@
   the wording for this user on a homepage banner that prompts them to add their database."
   [users]
   (when (seq users)
-    (let [user-count (db/count User)]
+    (let [user-count (t2/count User)]
       (for [user users]
         (assoc user :has_invited_second_user (and (= (:id user) 1)
                                                   (> user-count 1)))))))

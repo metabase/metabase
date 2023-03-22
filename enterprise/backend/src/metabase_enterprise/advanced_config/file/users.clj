@@ -36,7 +36,7 @@
   create that User as a superuser, regardless of what is specified in the config file. (It doesn't make sense to
   create the first User as anything other than a superuser)."
   []
-  (zero? (db/count User)))
+  (zero? (t2/count User)))
 
 (defn- init-from-config-file!
   [user]

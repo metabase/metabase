@@ -415,7 +415,7 @@
       (mt/with-temp* [User [{user-id :id}]]
         (dotimes [_ 2]
           (db/insert! Session {:id (str (java.util.UUID/randomUUID)), :user_id user-id}))
-        (letfn [(session-count [] (db/count Session :user_id user-id))]
+        (letfn [(session-count [] (t2/count Session :user_id user-id))]
           (is (= 2
                  (session-count)))
           (user/set-password! user-id "p@ssw0rd")

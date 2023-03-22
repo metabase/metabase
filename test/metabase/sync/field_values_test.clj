@@ -225,7 +225,7 @@
                  (into {} (t2/select-one [FieldValues :values :human_readable_values :has_more_values]
                                          :field_id (mt/id :blueberries_consumed :str))))))
         (testing "The advanced field values of this field should be deleted"
-          (is (= 0 (db/count FieldValues :field_id (mt/id :blueberries_consumed :str)
+          (is (= 0 (t2/count FieldValues :field_id (mt/id :blueberries_consumed :str)
                              :type [:not= :full]))))))))
 
 (deftest list-with-max-length-threshold-test
