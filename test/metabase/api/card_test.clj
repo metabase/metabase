@@ -1751,7 +1751,7 @@
   in."
   [cards-or-card-ids]
   (when (seq cards-or-card-ids)
-    (let [cards               (db/select [Card :collection_id] :id [:in (map u/the-id cards-or-card-ids)])
+    (let [cards               (t2/select [Card :collection_id] :id [:in (map u/the-id cards-or-card-ids)])
           collection-ids      (set (filter identity (map :collection_id cards)))
           collection-id->name (when (seq collection-ids)
                                 (t2/select-pk->fn :name Collection :id [:in collection-ids]))]
@@ -1813,7 +1813,7 @@
                 (-> card (hydrate [:moderation_reviews :moderator_details])
                     :moderation_reviews first :status #{"verified"} boolean))
               (reviews [card]
-                (db/select ModerationReview
+                (t2/select ModerationReview
                            :moderated_item_type "card"
                            :moderated_item_id (u/the-id card)
                            {:order-by [[:id :desc]]}))

@@ -438,7 +438,7 @@
                        :last_name    "User"
                        :date_joined  true
                        :common_name  "New User"}]
-                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                     (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login)))))
               (testing "attributes"
                 (is (= (some-saml-attributes "newuser")
@@ -465,7 +465,7 @@
                        :last_name    nil
                        :date_joined  true
                        :common_name  "newuser@metabase.com"}]
-                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                     (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login))))))
             ;; login with the same user, but now givenname and surname attributes exist
             (let [req-options (saml-post-request-options (new-user-saml-test-response)
@@ -479,7 +479,7 @@
                        :last_name    "User"
                        :date_joined  true
                        :common_name  "New User"}]
-                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                     (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login))))))
             (finally
               (t2/delete! User :%lower.email "newuser@metabase.com"))))))))

@@ -8,7 +8,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (def ^{:arglists '([form])} field-reference?
   "Is given form an MBQL field reference?"
@@ -140,7 +140,7 @@
   ([dashboard dimensions max-filters]
    (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
                                                         (:ordered_cards dashboard))))]
-               (->> (db/select Field :fk_target_field_id [:not= nil]
+               (->> (t2/select Field :fk_target_field_id [:not= nil]
                                :table_id [:in table-ids])
                     field/with-targets))]
      (->> dimensions
