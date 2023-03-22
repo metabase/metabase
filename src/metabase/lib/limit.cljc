@@ -24,3 +24,11 @@
                                                      (if n
                                                        (assoc stage :limit n)
                                                        (dissoc stage :limit))))))
+
+(mu/defn current-limit :- [:maybe ::lib.schema.common/int-greater-than-zero]
+  "Get the maximum number of rows to be returned by a stage of a query. `nil` indicates there is no limit"
+  ([query :- ::lib.schema/query]
+   (current-limit query -1))
+  ([query :- ::lib.schema/query
+    stage-number :- :int]
+   (:limit (lib.util/query-stage query stage-number))))

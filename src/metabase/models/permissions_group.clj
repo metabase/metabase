@@ -133,4 +133,4 @@
 (defn non-admin-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
   []
-  (db/select PermissionsGroup :name [:not= admin-group-name]))
+  (t2/select PermissionsGroup :name [:not= admin-group-name]))

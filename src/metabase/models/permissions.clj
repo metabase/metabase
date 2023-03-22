@@ -834,7 +834,7 @@
              db-ids)))
 
 (defn- permissions-by-group-ids [where-clause]
-  (let [permissions (db/select [Permissions [:group_id :group-id] [:object :path]]
+  (let [permissions (t2/select [Permissions [:group_id :group-id] [:object :path]]
                       {:where where-clause})]
     (reduce (fn [m {:keys [group-id path]}]
               (update m group-id conj path))
@@ -966,7 +966,7 @@
                              other-conditions)}]
     (when-let [revoked (t2/select-fn-set :object Permissions where)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
-      (db/delete! Permissions where))))
+      (t2/delete! Permissions where))))
 
 ;; TODO: rename this function to `revoke-permissions!` and make its behavior consistent with `grant-permissions!`
 (defn revoke-data-perms!
@@ -1033,8 +1033,8 @@
    ;; interpreted as being new, and hence will not get deleted.
    ;; But we can simply delete them here:
    ;; This must be pulled out once the frontend is sending up a proper v2 graph.
-   (db/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/query/%"])
-   (db/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/data/%"])
+   (t2/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/query/%"])
+   (t2/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/data/%"])
    (try
      (db/insert-many! Permissions
        (map (fn [path-object]
@@ -1208,7 +1208,7 @@
       ;; We don't want to call `delete-related-permissions!` here because that would also delete prefixes of the native
       ;; downloads path, including `/download/db/:id/`, thus removing download permissions for the entire DB. Instead
       ;; we just delete the native downloads path directly, so that we can replace it with a new value.
-      (db/delete! Permissions :group_id group-id, :object (native-feature-perms-path :download perm-value db-id)))
+      (t2/delete! Permissions :group_id group-id, :object (native-feature-perms-path :download perm-value db-id)))
     (when (not= native-perm-level :none)
       (grant-permissions! group-id (native-feature-perms-path :download native-perm-level db-id)))))
 
@@ -1292,7 +1292,7 @@
     ;; work, especially if you downgraded from enterprise... FWIW the sandboxing code (for updating the graph) is not enterprise only.
     (letfn [(delete-block-perms-for-this-db! []
               (log/trace "Deleting block permissions entries for Group %d for Database %d" group-id db-id)
-              (db/delete! Permissions :group_id group-id, :object (database-block-perms-path db-id)))]
+              (t2/delete! Permissions :group_id group-id, :object (database-block-perms-path db-id)))]
       (condp = schemas
         :all (do
                (revoke-db-schema-permissions! group-id db-id)

@@ -26,8 +26,8 @@
 
 (mu/defn display-name :- ::lib.schema.common/non-blank-string
   "Calculate a nice human-friendly display name for something."
-  [query                                    :- ::lib.schema/query
-   stage-number                             :- :int
+  [query        :- ::lib.schema/query
+   stage-number :- :int
    x]
   (or
    ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
@@ -37,8 +37,9 @@
      ;; if this errors, just catch the error and return something like `Unknown :field`. We shouldn't blow up the
      ;; whole Query Builder if there's a bug
      (catch #?(:clj Throwable :cljs js/Error) e
-       (log/error e (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e)))
-       (i18n/tru "Unknown {0}" (pr-str (lib.dispatch/dispatch-value x)))))))
+       (throw (ex-info (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e))
+                       {:query query, :x x}
+                       e))))))
 
 (mu/defn column-name :- ::lib.schema.common/non-blank-string
   "Calculate a database-friendly name to use for an expression."
@@ -116,4 +117,8 @@
   as [[describe-query]] except for native queries, where we don't describe anything."
   [query]
   (when-not (= (:lib/type (lib.util/query-stage query -1)) :mbql.stage/native)
-    (describe-query query)))
+    (try
+      (describe-query query)
+      (catch #?(:clj Throwable :cljs js/Error) e
+        (log/error e (i18n/tru "Error calculating display name for query: {0}" (ex-message e)))
+        nil))))

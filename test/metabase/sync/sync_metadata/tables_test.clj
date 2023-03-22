@@ -7,7 +7,6 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (tx/defdataset db-with-some-cruft
@@ -29,7 +28,7 @@
     (mt/dataset metabase.sync.sync-metadata.tables-test/db-with-some-cruft
       (is (= #{{:name "SOUTH_MIGRATIONHISTORY", :visibility_type :cruft, :initial_sync_status "complete"}
                {:name "ACQUIRED_TOUCANS",       :visibility_type nil,    :initial_sync_status "complete"}}
-             (set (for [table (db/select [Table :name :visibility_type :initial_sync_status], :db_id (mt/id))]
+             (set (for [table (t2/select [Table :name :visibility_type :initial_sync_status], :db_id (mt/id))]
                     (into {} table))))))))
 
 (deftest retire-tables-test

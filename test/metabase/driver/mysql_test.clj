@@ -33,7 +33,6 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
@@ -127,7 +126,7 @@
 
 (defn- db->fields [db]
   (let [table-ids (t2/select-pks-set Table :db_id (u/the-id db))]
-    (set (map (partial into {}) (db/select [Field :name :base_type :semantic_type] :table_id [:in table-ids])))))
+    (set (map (partial into {}) (t2/select [Field :name :base_type :semantic_type] :table_id [:in table-ids])))))
 
 (deftest tiny-int-1-test
   (mt/test-driver :mysql
@@ -163,7 +162,7 @@
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}}
                (db->fields (mt/db)))))
       (let [table  (t2/select-one Table :db_id (u/id (mt/db)))
-            fields (db/select Field :table_id (u/id table) :name "year_column")]
+            fields (t2/select Field :table_id (u/id table) :name "year_column")]
         (testing "Can select from this table"
           (is (= [[#t "2001-01-01"] [#t "2002-01-01"] [#t "1999-01-01"]]
                  (metadata-queries/table-rows-sample table fields (constantly conj)))))
@@ -353,7 +352,7 @@
                                  :base_type :type/Integer}
                                 {:name      "t"
                                  :base_type :type/Text}]}]
-                     (->> (hydrate (db/select Table :db_id (:id database) {:order-by [:name]}) :fields)
+                     (->> (hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
                           (map table-fingerprint)))))))))))
 
 (deftest group-on-time-column-test
@@ -605,14 +604,14 @@
     ;; in here we fiddle with the mysql db details
     (let [db (t2/select-one Database :id (mt/id))]
       (try
-        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding true)})
+        (t2/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding true)})
         (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
-        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding false)})
+        (t2/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding false)})
         (is (= false (driver/database-supports? :mysql :nested-field-columns (mt/db))))
-        (db/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding nil)})
+        (t2/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding nil)})
         (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
         ;; un fiddle with the mysql db details.
-        (finally (db/update! Database (mt/id) :details (:details db)))))))
+        (finally (t2/update! Database (mt/id) {:details (:details db)}))))))
 
 (deftest ddl-execute-with-timeout-test1
   (mt/test-driver :mysql

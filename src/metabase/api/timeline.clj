@@ -47,7 +47,7 @@
   {include  (s/maybe Include)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)
-        timelines (->> (db/select Timeline
+        timelines (->> (t2/select Timeline
                          {:where    [:and
                                      [:= :archived archived?]
                                      (collection/visible-collection-ids->honeysql-filter-clause
@@ -94,7 +94,7 @@
   (let [existing (api/write-check Timeline id)
         current-archived (:archived (t2/select-one Timeline :id id))]
     (collection/check-allowed-to-change-collection existing timeline-updates)
-    (db/update! Timeline id
+    (t2/update! Timeline id
       (u/select-keys-when timeline-updates
         :present #{:description :icon :collection_id :default :archived}
         :non-nil #{:name}))
@@ -107,7 +107,7 @@
   "Delete a [[Timeline]]. Will cascade delete its events as well."
   [id]
   (api/write-check Timeline id)
-  (db/delete! Timeline :id id)
+  (t2/delete! Timeline :id id)
   api/generic-204-no-content)
 
 (api/define-routes)

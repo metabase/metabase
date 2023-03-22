@@ -11,19 +11,20 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (defn backfill-ids-for
   "Updates all rows of a particular model to have `:entity_id` set, based on the [[serdes/identity-hash]]."
   [model]
-  (let [missing (db/select model :entity_id nil)
+  (let [missing (t2/select model :entity_id nil)
         pk      (models/primary-key model)]
     (when (seq missing)
       (log/info (trs "Backfilling entity_id for {0} rows of {1}" (pr-str (count missing)) (name model)))
       (doseq [entity missing
               :let [hashed (serdes/identity-hash entity)
                     eid    (u/generate-nano-id hashed)]]
-        (db/update! model (get entity pk) :entity_id eid)))))
+        (t2/update! model (get entity pk) {:entity_id eid})))))
 
 (defn- has-entity-id? [model]
   (:entity_id (models/properties model)))

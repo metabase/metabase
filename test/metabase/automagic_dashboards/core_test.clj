@@ -85,7 +85,7 @@
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
       (doseq [[table cardinality] (map vector
-                                       (db/select Table :db_id (mt/id) {:order-by [[:id :asc]]})
+                                       (t2/select Table :db_id (mt/id) {:order-by [[:id :asc]]})
                                        [7 5 8 2])]
         (test-automagic-analysis table cardinality)))
 
@@ -108,7 +108,7 @@
 (deftest mass-field-test
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup
-        (doseq [field (db/select Field
+        (doseq [field (t2/select Field
                                  :table_id [:in (t2/select-fn-set :id Table :db_id (mt/id))]
                                  :visibility_type "normal"
                                  {:order-by [[:id :asc]]})]
@@ -356,7 +356,7 @@
         ;; These can be matched against dimension definitions with simple 1-element vector table specs
         ;; Example: {:field_type [:type/CreationTimestamp]}
         ;; More context is needed (see below test) for two-element dimension definitions
-        (let [context    {:source {:fields (db/select Field :id [:in [(mt/id :people :created_at)
+        (let [context    {:source {:fields (t2/select Field :id [:in [(mt/id :people :created_at)
                                                                       (mt/id :people :latitude)
                                                                       (mt/id :orders :created_at)]])}}
               ;; Lifted from the GenericTable dimensions definition

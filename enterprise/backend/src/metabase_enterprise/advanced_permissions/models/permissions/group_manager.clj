@@ -14,7 +14,7 @@
   Group Membership is a map with 2 keys [:id :is_group_manager]."
   [user-or-id]
   (when user-or-id
-    (db/select [PermissionsGroupMembership [:group_id :id] :is_group_manager] :user_id (u/the-id user-or-id))))
+    (t2/select [PermissionsGroupMembership [:group_id :id] :is_group_manager] :user_id (u/the-id user-or-id))))
 
 (defn- user-group-memberships->map
   "Transform user-group-memberships to a map in which keys are group-ids and values are maps containing membership info.
@@ -47,7 +47,7 @@
                         {:status-code 403}))))
     (db/transaction
      (when (seq to-remove-group-ids)
-       (db/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove-group-ids]))
+       (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove-group-ids]))
      (when (seq to-add-group-ids)
        ;; do multiple single inserts because insert-many! does not call post-insert! hook
        (doseq [group-id to-add-group-ids]
