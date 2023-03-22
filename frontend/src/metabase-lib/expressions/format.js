@@ -121,11 +121,27 @@ function formatOperator([op, ...args], options) {
     // FIXME: how should we format args?
     args = args.slice(0, -1);
   }
+
   const formattedOperator = getExpressionName(op) || op;
-  const formattedArgs = args.map(arg => {
+  const formattedArgs = args.map((arg, index) => {
+    const argOp = isOperator(arg) && arg[0];
     const isLowerPrecedence =
-      isOperator(arg) && OPERATOR_PRECEDENCE[op] > OPERATOR_PRECEDENCE[arg[0]];
-    return format(arg, { ...options, parens: isLowerPrecedence });
+      isOperator(arg) && OPERATOR_PRECEDENCE[op] > OPERATOR_PRECEDENCE[argOp];
+
+    // "*","/" always have two arguments. If the second argument of "/" is an expression, we have to calculate it first.
+    // Hence, adding parenthesis.
+    // "a / b * c" vs "a / (b * c)"
+    // "a / b / c" vs "a / (b / c)"
+    const isSamePrecedenceWithExecutionPriority =
+      index > 0 &&
+      isOperator(arg) &&
+      OPERATOR_PRECEDENCE[op] === OPERATOR_PRECEDENCE[argOp] &&
+      op === "/";
+
+    return format(arg, {
+      ...options,
+      parens: isLowerPrecedence || isSamePrecedenceWithExecutionPriority,
+    });
   });
   const clause = MBQL_CLAUSES[op];
   const formatted =
