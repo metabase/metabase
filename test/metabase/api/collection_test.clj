@@ -119,7 +119,7 @@
 
     (testing "You should only see your collection and public collections"
       (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
-            crowberto-root (db/select-one Collection :personal_owner_id admin-user-id)]
+            crowberto-root (t2/select-one Collection :personal_owner_id admin-user-id)]
         (t2.with-temp/with-temp [Collection collection          {}
                                  Collection {collection-id :id} {:name "Collection with Items"}
                                  Collection _                   {:name            "subcollection"
@@ -131,7 +131,7 @@
                                       crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
                                       crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
                                       luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
-                                  (is (= (into (set (map :name (db/select Collection))) public-collections)
+                                  (is (= (into (set (map :name (t2/select Collection))) public-collections)
                                          crowbertos))
                                   (is (= (into public-collections #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
                                          crowbertos-with-excludes))
@@ -1012,7 +1012,7 @@
 
   (testing "Let's make sure the 'archived` option works on Collections, nested or not"
     (with-collection-hierarchy [a b c]
-      (db/update! Collection (u/the-id b) :archived true)
+      (t2/update! Collection (u/the-id b) {:archived true})
       (testing "ancestors"
         (is (= {:effective_ancestors []
                 :effective_location  "/"}
@@ -1024,7 +1024,7 @@
 (deftest personal-collection-ancestors-test
   (testing "Effective ancestors of a personal collection will contain a :personal_owner_id"
     (let [root-owner-id   (u/the-id (test.users/fetch-user :rasta))
-          root-collection (db/select-one Collection :personal_owner_id root-owner-id)]
+          root-collection (t2/select-one Collection :personal_owner_id root-owner-id)]
       (mt/with-temp* [Collection [collection {:name     "Som Test Child Collection"
                                               :location (collection/location-path root-collection)}]]
         (is (= [{:metabase.models.collection.root/is-root? true,
@@ -1272,7 +1272,7 @@
 
     (testing "does `archived` work on Collections as well?"
       (with-collection-hierarchy [a b d e f g]
-        (db/update! Collection (u/the-id a) :archived true)
+        (t2/update! Collection (u/the-id a) {:archived true})
         (testing "children"
           (is (= [(collection-item "A")]
                  (remove-non-test-collections (api-get-root-collection-children :archived true)))))))
@@ -1422,7 +1422,7 @@
                                               :descrption "My SQL Snippets"
                                               :namespace  "snippets"})))
           (finally
-            (db/delete! Collection :name collection-name)))))
+            (t2/delete! Collection :name collection-name)))))
     (testing "collection types"
       (mt/with-model-cleanup [Collection]
         (testing "Admins should be able to create with a type"
@@ -1474,12 +1474,12 @@
                                          {:name "foo" :authority_level "official"})
                    :authority_level)))
         (is (= :official
-               (db/select-one-field :authority_level Collection :id (u/the-id collection)))))
+               (t2/select-one-fn :authority_level Collection :id (u/the-id collection)))))
       (testing "But not for personal collections"
         (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
           (mt/user-http-request :crowberto :put 403 (str "collection/" (u/the-id personal-coll))
                                 {:authority_level "official"})
-          (is (nil? (db/select-one-field :authority_level Collection :id (u/the-id personal-coll))))))
+          (is (nil? (t2/select-one-fn :authority_level Collection :id (u/the-id personal-coll))))))
       (testing "And not for children of personal collections"
         (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
           (mt/with-temp Collection [child-coll]
@@ -1533,7 +1533,7 @@
                    (mt/regex-email-bodies #"the question was archived by Crowberto Corv"))))
           (testing "Pulse"
             (is (= nil
-                   (db/select-one Pulse :id pulse-id)))))))
+                   (t2/select-one Pulse :id pulse-id)))))))
 
     (testing "I shouldn't be allowed to archive a Collection without proper perms"
       (mt/with-non-admin-groups-no-root-collection-perms

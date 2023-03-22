@@ -31,7 +31,7 @@
   exist."
   [table :- i/TableInstance, new-field-metadatas :- [i/TableMetadataField], parent-id :- common/ParentID]
   (when (seq new-field-metadatas)
-    (db/select     Field
+    (t2/select     Field
       :table_id    (u/the-id table)
       :%lower.name [:in (map common/canonical-name new-field-metadatas)]
       :parent_id   parent-id
@@ -89,7 +89,7 @@
           new-field-ids (insert-new-fields! table (remove reactivated? new-field-metadatas) parent-id)]
       ;; now return the newly created or reactivated Fields
       (when-let [new-and-updated-fields (seq (map u/the-id (concat fields-to-reactivate new-field-ids)))]
-        (db/select Field :id [:in new-and-updated-fields])))))
+        (t2/select Field :id [:in new-and-updated-fields])))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -140,7 +140,7 @@
   nested Fields. Returns `1` if a Field was marked inactive, `nil` otherwise."
   [table :- i/TableInstance, metabase-field :- common/TableMetadataFieldWithID]
   (log/info (trs "Marking Field ''{0}'' as inactive." (common/field-metadata-name-for-logging table metabase-field)))
-  (when (db/update! Field (u/the-id metabase-field) :active false)
+  (when (pos? (t2/update! Field (u/the-id metabase-field) {:active false}))
     1))
 
 (s/defn ^:private retire-fields! :- su/IntGreaterThanOrEqualToZero

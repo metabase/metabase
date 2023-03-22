@@ -10,6 +10,7 @@ import { Provider } from "react-redux";
 import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
+import type { MatcherFunction } from "@testing-library/dom";
 
 import { state as sampleDatabaseReduxState } from "__support__/sample_database_fixture";
 
@@ -161,6 +162,17 @@ export function getIcon(name: string, role: ByRoleMatcher = "img") {
 
 export function queryIcon(name: string, role: ByRoleMatcher = "img") {
   return screen.queryByRole(role, { name: `${name} icon` });
+}
+
+/**
+ * Returns a matcher function to find text content that is broken up by multiple elements
+ *
+ * @param {string} textToFind
+ * @example
+ * screen.getByText(getBrokenUpTextMatcher("my text with a styled word"))
+ */
+export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
+  return (content, element) => element?.textContent === textToFind;
 }
 
 export * from "@testing-library/react";

@@ -61,7 +61,7 @@
                                     ;; and insert a new one to arrive at 10 again, our invariant.
                                     :order-by [[:id :desc]]}))]
     (when (seq ids)
-      (db/delete! ModerationReview :id [:in ids]))))
+      (t2/delete! ModerationReview :id [:in ids]))))
 
 (s/defn create-review!
   "Create a new ModerationReview"

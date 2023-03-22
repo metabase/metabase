@@ -100,6 +100,10 @@
         (is (= nil
                (get id->member :trashbird)))))
 
+    (testing "returns 404 for nonexistent id"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 "permissions/group/10000"))))
+
     (testing "requires superuers"
       (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 (format "permissions/group/%d" (:id (perms-group/all-users)))))))))
@@ -315,7 +319,7 @@
                         :user_id su/IntGreaterThanZero
                         :is_group_manager s/Bool}]}
                      result))
-        (is (= (db/select-field :id 'User) (set (keys result))))))))
+        (is (= (t2/select-fn-set :id 'User) (set (keys result))))))))
 
 (deftest add-group-membership-test
   (testing "POST /api/permissions/membership"

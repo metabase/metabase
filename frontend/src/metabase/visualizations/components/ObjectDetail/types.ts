@@ -21,20 +21,20 @@ export type OnVisualizationClickType =
 
 export interface ObjectDetailProps {
   data: DatasetData;
-  question: Question;
+  question?: Question;
   card?: SavedCard;
   dashcard?: DashboardOrderedCard;
   isObjectDetail?: boolean; // whether this should be shown in a modal
-  table: Table | null;
-  zoomedRow: unknown[] | undefined;
-  zoomedRowID: ObjectId;
-  tableForeignKeys: ForeignKey[];
-  tableForeignKeyReferences: {
+  table?: Table | null;
+  zoomedRow?: unknown[] | undefined;
+  zoomedRowID?: ObjectId;
+  tableForeignKeys?: ForeignKey[];
+  tableForeignKeyReferences?: {
     [key: number]: { status: number; value: number };
   };
   settings: any;
-  canZoom: boolean;
-  canZoomPreviousRow: boolean;
+  canZoom?: boolean;
+  canZoomPreviousRow?: boolean;
   canZoomNextRow?: boolean;
   isDataApp?: boolean;
   showActions?: boolean;

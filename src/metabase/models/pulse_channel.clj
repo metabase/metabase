@@ -174,7 +174,7 @@
       ;; be sneaky and pass in a valid User ID but different email so they can send test Pulses out to arbitrary email
       ;; addresses
       (when-let [user-ids (not-empty (into #{} (comp (filter some?) (map :id)) user-recipients))]
-        (let [user-id->email (db/select-id->field :email User, :id [:in user-ids])]
+        (let [user-id->email (t2/select-pk->fn :email User, :id [:in user-ids])]
           (doseq [{:keys [id email]} user-recipients
                   :let               [correct-email (get user-id->email id)]]
             (when-not correct-email
@@ -213,10 +213,10 @@
         last-recipient?        (zero? other-recipients-count)]
     (when last-recipient?
       ;; make sure this channel doesn't have any email-address (non-User) recipients.
-      (let [details              (db/select-one-field :details PulseChannel :id channel-id)
+      (let [details              (t2/select-one-fn :details PulseChannel :id channel-id)
             has-email-addresses? (seq (:emails details))]
         (when-not has-email-addresses?
-          (db/delete! PulseChannel :id channel-id))))))
+          (t2/delete! PulseChannel :id channel-id))))))
 
 
 ;; ## Persistence Functions
@@ -247,7 +247,7 @@
                                       :else                "invalid")
         monthly-schedule-day-or-nil (when (= :other monthday)
                                       weekday)]
-    (db/select [PulseChannel :id :pulse_id :schedule_type :channel_type]
+    (t2/select [PulseChannel :id :pulse_id :schedule_type :channel_type]
       {:where [:and [:= :enabled true]
                [:or [:= :schedule_type "hourly"]
                 [:and [:= :schedule_type "daily"]
@@ -273,7 +273,7 @@
   {:pre [(integer? id)
          (coll? user-ids)
          (every? integer? user-ids)]}
-  (let [recipients-old (set (db/select-field :user_id PulseChannelRecipient, :pulse_channel_id id))
+  (let [recipients-old (set (t2/select-fn-set :user_id PulseChannelRecipient, :pulse_channel_id id))
         recipients-new (set user-ids)
         recipients+    (set/difference recipients-new recipients-old)
         recipients-    (set/difference recipients-old recipients-new)]
@@ -300,17 +300,17 @@
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))]
-    (db/update! PulseChannel id
-      :details        (cond-> details
-                        (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
-      :enabled        enabled
-      :schedule_type  schedule_type
-      :schedule_hour  (when (not= schedule_type :hourly)
-                        schedule_hour)
-      :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
-                        schedule_day)
-      :schedule_frame (when (= schedule_type :monthly)
-                        schedule_frame))
+    (t2/update! PulseChannel id
+                {:details        (cond-> details
+                                   (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
+                 :enabled        enabled
+                 :schedule_type  schedule_type
+                 :schedule_hour  (when (not= schedule_type :hourly)
+                                   schedule_hour)
+                 :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
+                                   schedule_day)
+                 :schedule_frame (when (= schedule_type :monthly)
+                                   schedule_frame)})
     (when (supports-recipients? channel_type)
       (update-recipients! id (or (get recipients-by-type true) [])))))
 
@@ -356,7 +356,7 @@
 
 (defmethod serdes/generate-path "PulseChannel"
   [_ {:keys [pulse_id] :as channel}]
-  [(serdes/infer-self-path "Pulse" (db/select-one 'Pulse :id pulse_id))
+  [(serdes/infer-self-path "Pulse" (t2/select-one 'Pulse :id pulse_id))
    (serdes/infer-self-path "PulseChannel" channel)])
 
 (defmethod serdes/extract-one "PulseChannel"
@@ -376,10 +376,10 @@
 
 (defn- import-recipients [channel-id emails]
   (let [incoming-users (set (for [email emails
-                                  :let [id (db/select-one-id 'User :email email)]]
+                                  :let [id (t2/select-one-pk 'User :email email)]]
                               (or id
                                   (:id (user/serdes-synthesize-user! {:email email})))))
-        current-users  (set (db/select-field :user_id PulseChannelRecipient :pulse_channel_id channel-id))
+        current-users  (set (t2/select-fn-set :user_id PulseChannelRecipient :pulse_channel_id channel-id))
         combined       (set/union incoming-users current-users)]
     (when-not (empty? combined)
       (update-recipients! channel-id combined))))

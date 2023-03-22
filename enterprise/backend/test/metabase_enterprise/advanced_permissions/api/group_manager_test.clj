@@ -81,7 +81,7 @@
               (delete-group user 204 true)
 
               (testing "admins could view all groups"
-                (is (= (db/select-field :name PermissionsGroup)
+                (is (= (t2/select-fn-set :name PermissionsGroup)
                        (set (map :name (get-groups :crowberto 200)))))))))))))
 
 (deftest memebership-apis-test
@@ -213,7 +213,7 @@
                                                 :is_group_manager true})))))
 
               (testing "Admin can could view all groups"
-                (is (= (db/select-field :id PermissionsGroup)
+                (is (= (t2/select-fn-set :id PermissionsGroup)
                        (membership->groups-ids (get-membership :crowberto 200))))))))))))
 
 (deftest get-users-api-test
@@ -311,7 +311,7 @@
 
                 (add-user-to-group [req-user status group-to-add]
                   ;; ensure `user-to-update` is not in `group-to-add`
-                  (db/delete! PermissionsGroupMembership
+                  (t2/delete! PermissionsGroupMembership
                               :user_id (:id user-to-update)
                               :group_id (:id group-to-add))
                   (let [current-user-group-membership (gm/user-group-memberships user-to-update)
@@ -354,11 +354,11 @@
                             {:is_group_manager true})
 
                 (testing "Can't edit users' info"
-                  (let [current-user-first-name (db/select-one-field :first_name User :id (:id user))]
+                  (let [current-user-first-name (t2/select-one-fn :first_name User :id (:id user))]
                     (update-user-firstname user 200)
                     ;; call still success but first name won't get updated
                     (is (= current-user-first-name
-                           (db/select-one-field :first_name User :id (:id user))))))
+                           (t2/select-one-fn :first_name User :id (:id user))))))
 
                 (testing "Can add/remove user to groups they're manager of"
                   (is (= (set [{:id               (:id (perms-group/all-users))

@@ -17,7 +17,7 @@
   (api.user/check-self-or-superuser id)
   ;; delete all `PulseChannelRecipient` rows for this User, which means they will no longer receive any
   ;; Alerts/DashboardSubscriptions
-  (db/delete! PulseChannelRecipient :user_id id)
+  (t2/delete! PulseChannelRecipient :user_id id)
   ;; archive anything they created.
   (t2/update! Pulse {:creator_id id, :archived false} {:archived true})
   api/generic-204-no-content)

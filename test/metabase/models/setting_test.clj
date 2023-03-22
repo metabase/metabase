@@ -87,12 +87,12 @@
 (defn db-fetch-setting
   "Fetch `Setting` value from the DB to verify things work as we expect."
   [setting-name]
-  (db/select-one-field :value Setting, :key (name setting-name)))
+  (t2/select-one-fn :value Setting, :key (name setting-name)))
 
 (defn setting-exists-in-db?
   "Returns a boolean indicating whether a setting has a value stored in the application DB."
   [setting-name]
-  (boolean (db/select-one Setting :key (name setting-name))))
+  (boolean (t2/select-one Setting :key (name setting-name))))
 
 (defn- test-assert-setting-has-tag [setting-var expected-tag]
   (let [{:keys [tag arglists]} (meta setting-var)]
@@ -414,7 +414,7 @@
 
 (defn- set-and-fetch-csv-setting-value! [v]
   (test-csv-setting! v)
-  {:db-value     (db/select-one-field :value setting/Setting :key "test-csv-setting")
+  {:db-value     (t2/select-one-fn :value setting/Setting :key "test-csv-setting")
    :parsed-value (test-csv-setting)})
 
 (deftest csv-setting-test
@@ -519,7 +519,7 @@
 (defn settings-last-updated-value-in-db
   "Fetches the timestamp of the last updated setting."
   []
-  (db/select-one-field :value Setting :key setting.cache/settings-last-updated-key))
+  (t2/select-one-fn :value Setting :key setting.cache/settings-last-updated-key))
 
 (defsetting uncached-setting
   "A test setting that should *not* be cached."
@@ -681,14 +681,14 @@
                                            ;; Set the setting directly instead of using
                                            ;; [[mt/with-temporary-setting-values]] because that blows up when the
                                            ;; Setting is Database-local-only
-                                           (db/delete! Setting :key (name setting-name))
+                                           (t2/delete! Setting :key (name setting-name))
                                            (when site-wide-value
                                              (db/insert! Setting :key (name setting-name), :value (str site-wide-value)))
                                            (setting.cache/restore-cache!)
                                            (try
                                              (thunk)
                                              (finally
-                                               (db/delete! Setting :key (name setting-name))
+                                               (t2/delete! Setting :key (name setting-name))
                                                (setting.cache/restore-cache!)))))
                                        (fn [thunk]
                                          (tu/do-with-temp-env-var-value
@@ -861,7 +861,7 @@
                                        test-setting-2 "123"]
       (is (= "5f7f150c"
              (serdes/raw-hash ["test-setting-1"])
-             (serdes/identity-hash (db/select-one Setting :key "test-setting-1")))))))
+             (serdes/identity-hash (t2/select-one Setting :key "test-setting-1")))))))
 
 (deftest enabled?-test
   (testing "Settings can be disabled"

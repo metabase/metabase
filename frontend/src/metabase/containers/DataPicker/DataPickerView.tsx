@@ -48,7 +48,6 @@ function DataPickerViewContent({
   if (searchQuery.trim().length > MIN_SEARCH_LENGTH) {
     return (
       <DataSearch
-        value={value}
         searchQuery={searchQuery}
         availableDataTypes={availableDataTypes}
         onChange={onChange}

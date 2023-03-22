@@ -155,22 +155,24 @@ describe("metabase/lib/expression/suggest", () => {
       });
 
       it("should provide help text for the function", () => {
-        const { structure, args } = helpText({
+        const { structure, example, args } = helpText({
           source: "substring(",
           query: ORDERS.query(),
           startRule: "expression",
         });
-        expect(structure).toEqual("substring(text, position, length)");
+        expect(structure).toEqual("substring");
+        expect(example).toEqual("substring([Title], 1, 10)");
         expect(args).toHaveLength(3);
       });
 
       it("should provide help text for the unique match", () => {
-        const { structure, args } = helpText({
+        const { structure, example, args } = helpText({
           source: "lower", // doesn't need to be "lower(" since it's a unique match
           query: ORDERS.query(),
           startRule: "expression",
         });
-        expect(structure).toEqual("lower(text)");
+        expect(structure).toEqual("lower");
+        expect(example).toEqual("lower([Status])");
         expect(args).toHaveLength(1);
       });
 

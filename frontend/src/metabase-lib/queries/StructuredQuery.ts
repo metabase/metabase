@@ -11,9 +11,11 @@ import {
   Aggregation,
   Breakout,
   Filter,
+  Join,
   LimitClause,
   OrderBy,
   DependentMetadataItem,
+  ExpressionClause,
 } from "metabase-types/types/Query";
 import {
   DatasetQuery,
@@ -31,13 +33,16 @@ import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
-import { isCompatibleAggregationOperatorForField } from "metabase-lib/operators/utils";
+import {
+  getAggregationOperators,
+  isCompatibleAggregationOperatorForField,
+} from "metabase-lib/operators/utils";
 import { TYPE } from "metabase-lib/types/constants";
 import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import { isSegment } from "metabase-lib/queries/utils/filter";
 import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
 import * as Q from "metabase-lib/queries/utils/query";
-import { memoizeClass } from "metabase-lib/utils";
+import { createLookupByProperty, memoizeClass } from "metabase-lib/utils";
 import Dimension, {
   FieldDimension,
   ExpressionDimension,
@@ -91,6 +96,10 @@ export interface SegmentOption {
   filter: ["segment", number];
   icon: string;
   query: StructuredQuery;
+}
+
+function unwrapJoin(join: Join | JoinWrapper): Join {
+  return join instanceof JoinWrapper ? join.raw() : join;
 }
 
 /**
@@ -609,11 +618,11 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   addJoin(join) {
-    return this._updateQuery(Q.addJoin, arguments);
+    return this._updateQuery(Q.addJoin, [unwrapJoin(join)]);
   }
 
   updateJoin(index, join) {
-    return this._updateQuery(Q.updateJoin, arguments);
+    return this._updateQuery(Q.updateJoin, [index, unwrapJoin(join)]);
   }
 
   removeJoin(index) {
@@ -639,7 +648,27 @@ class StructuredQueryInner extends AtomicQuery {
    * @returns an array of aggregation options for the currently selected table
    */
   aggregationOperators(): AggregationOperator[] {
-    return (this.table() && this.table().aggregationOperators()) || [];
+    const expressionFields = this.expressionDimensions().map(
+      expressionDimension => expressionDimension.field(),
+    );
+
+    const table = this.table();
+    return (
+      (table &&
+        getAggregationOperators(table, [
+          ...expressionFields,
+          ...table.fields,
+        ])) ||
+      []
+    );
+  }
+
+  aggregationOperatorsLookup(): Record<string, AggregationOperator> {
+    return createLookupByProperty(this.aggregationOperators(), "short");
+  }
+
+  aggregationOperator(short: string): AggregationOperator {
+    return this.aggregationOperatorsLookup()[short];
   }
 
   /**
@@ -656,7 +685,7 @@ class StructuredQueryInner extends AtomicQuery {
    */
   aggregationFieldOptions(agg: string | AggregationOperator): DimensionOptions {
     const aggregation: AggregationOperator =
-      typeof agg === "string" ? this.table().aggregationOperator(agg) : agg;
+      typeof agg === "string" ? this.aggregationOperator(agg) : agg;
 
     if (aggregation) {
       const fieldOptions = this.fieldOptions(field => {
@@ -1080,7 +1109,7 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   // EXPRESSIONS
-  expressions(): Record<string, any> {
+  expressions(): ExpressionClause {
     return Q.getExpressions(this.query());
   }
 
@@ -1259,8 +1288,6 @@ class StructuredQueryInner extends AtomicQuery {
     const table = this.table();
 
     if (table) {
-      const dimensionIsFKReference = dimension => dimension.field?.().isFK();
-
       const filteredNonFKDimensions = this.dimensions().filter(dimensionFilter);
 
       for (const dimension of filteredNonFKDimensions) {
@@ -1271,6 +1298,7 @@ class StructuredQueryInner extends AtomicQuery {
       // de-duplicate explicit and implicit joined tables
       const explicitJoins = this._getExplicitJoinsSet(joins);
 
+      const dimensionIsFKReference = dimension => dimension.field?.().isFK();
       const fkDimensions = this.dimensions().filter(dimensionIsFKReference);
 
       for (const dimension of fkDimensions) {
@@ -1718,6 +1746,7 @@ class StructuredQuery extends memoizeClass<StructuredQueryInner>(
   "joinedDimensions",
   "breakoutDimensions",
   "aggregationDimensions",
+  "aggregationOperatorsLookup",
   "fieldDimensions",
   "columnDimensions",
   "columnNames",

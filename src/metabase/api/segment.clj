@@ -17,7 +17,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -40,14 +41,14 @@
         (hydrate :creator))))
 
 (s/defn ^:private hydrated-segment [id :- su/IntGreaterThanZero]
-  (-> (api/read-check (db/select-one Segment :id id))
+  (-> (api/read-check (t2/select-one Segment :id id))
       (hydrate :creator)))
 
 (defn- add-query-descriptions
   [segments] {:pre [(coll? segments)]}
   (when (some? segments)
     (for [segment segments]
-      (let [table (db/select-one Table :id (:table_id segment))]
+      (let [table (t2/select-one Table :id (:table_id segment))]
         (assoc segment
                :query_description
                (api.qd/generate-query-description table (:definition segment)))))))
@@ -62,7 +63,7 @@
 (api/defendpoint-schema GET "/"
   "Fetch *all* `Segments`."
   []
-  (as-> (db/select Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
+  (as-> (t2/select Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
     (hydrate segments :creator)
     (add-query-descriptions segments)))
@@ -83,7 +84,7 @@
                      new-body)
         archive?   (:archived changes)]
     (when changes
-      (db/update! Segment id changes))
+      (t2/update! Segment id changes))
     (u/prog1 (hydrated-segment id)
       (events/publish-event! (if archive? :segment-delete :segment-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
@@ -139,6 +140,6 @@
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
-  (-> (db/select-one Segment :id id) api/read-check related/related))
+  (-> (t2/select-one Segment :id id) api/read-check related/related))
 
 (api/define-routes)

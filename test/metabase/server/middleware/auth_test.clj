@@ -48,7 +48,7 @@
         (is (= (test.users/user->id :rasta)
                (-> (auth-enforced-handler (request-with-session-id session-id))
                    :metabase-user-id)))
-        (finally (db/delete! Session :id session-id)))))
+        (finally (t2/delete! Session :id session-id)))))
 
   (testing "Invalid requests should return unauthed response"
     (testing "when no session ID is sent with request"
@@ -67,7 +67,7 @@
             {:created_at (t/instant 0)})
           (is (= mw.util/response-unauthentic
                  (auth-enforced-handler (request-with-session-id session-id))))
-          (finally (db/delete! Session :id session-id)))))
+          (finally (t2/delete! Session :id session-id)))))
 
     (testing "when a Session tied to an inactive User is sent with the request"
       ;; create a new session (specifically created some time in the past so it's EXPIRED)
@@ -80,7 +80,7 @@
           (is (= mw.util/response-unauthentic
                  (auth-enforced-handler
                   (request-with-session-id session-id))))
-          (finally (db/delete! Session :id session-id)))))))
+          (finally (t2/delete! Session :id session-id)))))))
 
 
 ;;; ------------------------------------------ TEST wrap-api-key middleware ------------------------------------------

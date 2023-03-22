@@ -12,7 +12,7 @@
    [metabase.util.ssh :as ssh]
    [monger.core :as mg]
    [monger.credentials :as mcred]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI)))
 
@@ -90,7 +90,7 @@
    values for DATABASE, such as plain strings or the usual MB details map."
   [database]
   (cond
-    (integer? database)             (db/select-one [Database :details] :id database)
+    (integer? database)             (t2/select-one [Database :details] :id database)
     (string? database)              {:dbname database}
     (:dbname (:details database))   (:details database) ; entire Database obj
     (:dbname database)              database            ; connection details map only
@@ -194,7 +194,7 @@
   :type)
 
 (defmethod connect :srv
-  [{:keys [^MongoClientURI uri ]}]
+  [{:keys [^MongoClientURI uri]}]
   (let [mongo-client (MongoClient. uri)]
     (if-let [db-name (.getDatabase uri)]
       [mongo-client (.getDB mongo-client db-name)]
@@ -223,7 +223,7 @@
   (let [details (database->details database)]
     (ssh/with-ssh-tunnel [details-with-tunnel details]
       (let [connection-info (details->mongo-connection-info (normalize-details details-with-tunnel))
-           [mongo-client db] (connect connection-info)]
+            [mongo-client db] (connect connection-info)]
        (log/debug (u/format-color 'cyan (trs "Opened new MongoDB connection.")))
        (try
          (binding [*mongo-connection* db]

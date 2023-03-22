@@ -48,15 +48,15 @@
    (when-not (= k :field_type)
      ;; fetch the corresponding Table, then set the Table or Field property
      (if table-name
-       (when-let [table-id (db/select-one-id Table
+       (when-let [table-id (t2/select-one-pk Table
                              ;; TODO: this needs to support schemas
                              :db_id  (u/the-id database)
                              :name   table-name
                              :active true)]
          (if field-name
            (t2/update! Field {:name field-name, :table_id table-id} {k value})
-           (db/update! Table table-id k value)))
-       (db/update! Database (u/the-id database) k value)))))
+           (t2/update! Table table-id {k value})))
+       (t2/update! Database (u/the-id database) {k value})))))
 
 (s/defn ^:private sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other

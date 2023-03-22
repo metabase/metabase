@@ -236,7 +236,7 @@
       (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (db/delete! Session :id (str test-uuid)))))
+        (t2/delete! Session :id (str test-uuid)))))
 
   (testing "superusers should come back as `:is-superuser?`"
     (try
@@ -244,7 +244,7 @@
       (is (= {:metabase-user-id (mt/user->id :crowberto), :is-superuser? true, :is-group-manager? false, :user-locale nil}
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (db/delete! Session :id (str test-uuid)))))
+        (t2/delete! Session :id (str test-uuid)))))
 
   (testing "If user is a group manager of at least one group, `:is-group-manager?` "
     (try
@@ -267,7 +267,7 @@
             (is (= true
                    (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil)))))))
       (finally
-        (db/delete! Session :id (str test-uuid)))))
+        (t2/delete! Session :id (str test-uuid)))))
 
   (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
     (try
@@ -277,7 +277,7 @@
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (db/delete! Session :id (str test-uuid))))
+        (t2/delete! Session :id (str test-uuid))))
 
     (testing "...but if we do specifiy the token, they should come back"
       (try
@@ -287,7 +287,7 @@
         (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
                (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token)))
         (finally
-          (db/delete! Session :id (str test-uuid))))
+          (t2/delete! Session :id (str test-uuid))))
 
       (testing "(unless the token is wrong)"
         (try
@@ -297,7 +297,7 @@
           (is (= nil
                  (#'mw.session/current-user-info-for-session (str test-uuid) (str/join (reverse test-anti-csrf-token)))))
           (finally
-            (db/delete! Session :id (str test-uuid)))))))
+            (t2/delete! Session :id (str test-uuid)))))))
 
   (testing "if we specify an anti-csrf token we shouldn't get back a session without that token"
     (try
@@ -306,7 +306,7 @@
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token)))
       (finally
-        (db/delete! Session :id (str test-uuid)))))
+        (t2/delete! Session :id (str test-uuid)))))
 
   (testing "shouldn't fetch expired sessions"
     (try
@@ -317,7 +317,7 @@
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (db/delete! Session :id (str test-uuid)))))
+        (t2/delete! Session :id (str test-uuid)))))
 
   (testing "shouldn't fetch sessions for inactive users"
     (try
@@ -325,7 +325,7 @@
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (db/delete! Session :id (str test-uuid))))))
+        (t2/delete! Session :id (str test-uuid))))))
 
 ;; create a simple example of our middleware wrapped around a handler that simply returns our bound variables for users
 (defn- user-bound-handler [request]
