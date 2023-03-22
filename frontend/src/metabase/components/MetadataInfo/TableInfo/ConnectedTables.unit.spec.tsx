@@ -20,11 +20,13 @@ describe("ConnectedTables", () => {
   it("should show a label for each connected table", () => {
     const table = new Table({
       id: 1,
+      db_id: 2,
       fks: [
         {
           origin: {
             table: {
               id: 2,
+              db_id: 2,
               display_name: "Foo",
             },
           },
@@ -33,6 +35,7 @@ describe("ConnectedTables", () => {
           origin: {
             table: {
               id: 3,
+              db_id: 2,
               display_name: "Bar",
             },
           },
