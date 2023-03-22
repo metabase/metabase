@@ -3,6 +3,9 @@ import {
   createMockDatabase,
   createMockTable,
   createMockField,
+  createMockFingerprint,
+  createMockGlobalFieldFingerprint,
+  createMockTextFieldFingerprint,
 } from "metabase-types/api/mocks";
 
 export const SAMPLE_DB_ID = 1;
@@ -275,6 +278,16 @@ export const createPeopleAddressField = (opts?: Partial<Field>): Field =>
     display_name: "Address",
     base_type: "type/Text",
     semantic_type: null,
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 2490,
+      }),
+      type: {
+        "type/Text": createMockTextFieldFingerprint({
+          "average-length": 20.85,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -286,6 +299,17 @@ export const createPeopleEmailField = (opts?: Partial<Field>): Field =>
     display_name: "Email",
     base_type: "type/Text",
     semantic_type: "type/Email",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 2500,
+      }),
+      type: {
+        "type/Text": createMockTextFieldFingerprint({
+          "percent-email": 1,
+          "average-length": 24.1824,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -297,6 +321,16 @@ export const createPeoplePasswordField = (opts?: Partial<Field>): Field =>
     display_name: "Password",
     base_type: "type/Text",
     semantic_type: null,
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 2500,
+      }),
+      type: {
+        "type/Text": createMockTextFieldFingerprint({
+          "average-length": 36,
+        }),
+      },
+    }),
     ...opts,
   });
 

@@ -37,8 +37,8 @@ export type NumberFieldFingerprint = {
 };
 
 export type DateTimeFieldFingerprint = {
-  earliest: "2016-04-26T19:29:55.147Z";
-  latest: "2019-04-15T13:34:19.931Z";
+  earliest: string;
+  latest: string;
 };
 
 export type FieldVisibilityType =

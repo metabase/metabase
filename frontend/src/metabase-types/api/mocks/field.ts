@@ -1,8 +1,11 @@
 import {
+  DateTimeFieldFingerprint,
   Field,
   FieldFingerprint,
   FieldGlobalFingerprint,
   FieldValues,
+  NumberFieldFingerprint,
+  TextFieldFingerprint,
 } from "metabase-types/api";
 
 export const createMockField = (opts?: Partial<Field>): Field => ({
@@ -44,12 +47,45 @@ export const createMockFieldValues = (
 export const createMockFingerprint = (
   opts?: Partial<FieldFingerprint>,
 ): FieldFingerprint => ({
-  global: createMockGlobalFingerprint(),
+  global: createMockGlobalFieldFingerprint(),
   ...opts,
 });
 
-export const createMockGlobalFingerprint = (
+export const createMockGlobalFieldFingerprint = (
   opts?: Partial<FieldGlobalFingerprint>,
 ): FieldGlobalFingerprint => ({
+  "distinct-count": 0,
+  "nil%": 0,
+  ...opts,
+});
+
+export const createMockTextFieldFingerprint = (
+  opts?: Partial<TextFieldFingerprint>,
+): TextFieldFingerprint => ({
+  "average-length": 0,
+  "percent-email": 0,
+  "percent-json": 0,
+  "percent-state": 0,
+  "percent-url": 0,
+  ...opts,
+});
+
+export const createMockNumberFieldFingerprint = (
+  opts?: Partial<NumberFieldFingerprint>,
+): NumberFieldFingerprint => ({
+  avg: 0,
+  max: 0,
+  min: 0,
+  q1: 0,
+  q3: 0,
+  sd: 0,
+  ...opts,
+});
+
+export const createMockDateTimeFieldFingerprint = (
+  opts?: Partial<DateTimeFieldFingerprint>,
+): DateTimeFieldFingerprint => ({
+  earliest: "2016-04-26T19:29:55.147Z",
+  latest: "2019-04-15T13:34:19.931Z",
   ...opts,
 });
