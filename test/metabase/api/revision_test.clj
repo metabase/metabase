@@ -128,7 +128,7 @@
                                  :col    0)]
         (is (=? {:id id}
                 (create-dashboard-revision! dash false :rasta)))
-        (is (true? (t2/delete! (t2/table-name DashboardCard) :id (:id dashcard)))))
+        (is (pos? (t2/delete! (t2/table-name DashboardCard) :id (:id dashcard)))))
       (is (=? {:id id}
               (create-dashboard-revision! dash false :rasta)))
       (testing "Revert to the previous revision, allowed because rasta has permissions on parent collection"
