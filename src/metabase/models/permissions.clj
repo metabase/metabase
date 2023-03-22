@@ -834,7 +834,7 @@
              db-ids)))
 
 (defn- permissions-by-group-ids [where-clause]
-  (let [permissions (db/select [Permissions [:group_id :group-id] [:object :path]]
+  (let [permissions (t2/select [Permissions [:group_id :group-id] [:object :path]]
                       {:where where-clause})]
     (reduce (fn [m {:keys [group-id path]}]
               (update m group-id conj path))

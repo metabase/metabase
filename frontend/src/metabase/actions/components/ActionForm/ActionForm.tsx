@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import type { FormikHelpers } from "formik";
@@ -9,68 +9,84 @@ import FormProvider from "metabase/core/components/FormProvider";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 
-import { getForm, getFormValidationSchema } from "metabase/actions/utils";
+import useActionForm from "metabase/actions/hooks/use-action-form";
+import {
+  getSubmitButtonColor,
+  getSubmitButtonLabel,
+} from "metabase/actions/utils";
 
 import type {
   ActionFormInitialValues,
-  ActionFormSettings,
-  WritebackParameter,
-  Parameter,
+  ParameterId,
   ParametersForActionExecution,
+  WritebackAction,
 } from "metabase-types/api";
 
 import ActionFormFieldWidget from "../ActionFormFieldWidget";
+
 import { ActionFormButtonContainer } from "./ActionForm.styled";
 
 interface ActionFormProps {
-  parameters: WritebackParameter[] | Parameter[];
+  action: WritebackAction;
   initialValues?: ActionFormInitialValues;
-  formSettings?: ActionFormSettings;
-  submitTitle?: string;
-  submitButtonColor?: string;
+
+  // Parameters that shouldn't be displayed in the form
+  // Can be used to "lock" certain parameter values.
+  // E.g. when a value is coming from a dashboard filter.
+  // Hidden field values should still be included in initialValues,
+  // and they will be submitted together in batch.
+  hiddenFields?: ParameterId[];
+
   onSubmit: (
-    params: ParametersForActionExecution,
+    parameters: ParametersForActionExecution,
     actions: FormikHelpers<ParametersForActionExecution>,
   ) => void;
   onClose?: () => void;
 }
 
 function ActionForm({
-  parameters,
-  initialValues = {},
-  formSettings,
-  submitTitle,
-  submitButtonColor = "primary",
+  action,
+  initialValues: rawInitialValues = {},
+  hiddenFields = [],
   onSubmit,
   onClose,
 }: ActionFormProps): JSX.Element {
-  // allow us to change the color of the submit button
-  const submitButtonVariant = { [submitButtonColor]: true };
+  const { initialValues, form, validationSchema, getCleanValues } =
+    useActionForm({
+      action,
+      initialValues: rawInitialValues,
+    });
 
-  const form = useMemo(
-    () => getForm(parameters, formSettings?.fields),
-    [parameters, formSettings?.fields],
+  const editableFields = useMemo(
+    () => form.fields.filter(field => !hiddenFields.includes(field.name)),
+    [form, hiddenFields],
   );
 
-  const formValidationSchema = useMemo(
-    () => getFormValidationSchema(parameters, formSettings?.fields),
-    [parameters, formSettings?.fields],
-  );
+  const submitButtonProps = useMemo(() => {
+    const variant = getSubmitButtonColor(action);
+    return {
+      title: getSubmitButtonLabel(action),
+      [variant]: true,
+    };
+  }, [action]);
 
-  const formInitialValues = useMemo(
-    () => formValidationSchema.cast(initialValues),
-    [initialValues, formValidationSchema],
+  const handleSubmit = useCallback(
+    (
+      values: ParametersForActionExecution,
+      actions: FormikHelpers<ParametersForActionExecution>,
+    ) => onSubmit(getCleanValues(values), actions),
+    [getCleanValues, onSubmit],
   );
 
   return (
     <FormProvider
-      initialValues={formInitialValues}
-      validationSchema={formValidationSchema}
-      onSubmit={onSubmit}
+      initialValues={initialValues}
+      validationSchema={validationSchema}
+      onSubmit={handleSubmit}
       enableReinitialize
     >
       <Form role="form" data-testid="action-form">
-        {form.fields.map(field => (
+        {editableFields.map(field => (
           <ActionFormFieldWidget key={field.name} formField={field} />
         ))}
 
@@ -78,10 +94,7 @@ function ActionForm({
           {onClose && (
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
           )}
-          <FormSubmitButton
-            title={submitTitle ?? t`Submit`}
-            {...submitButtonVariant}
-          />
+          <FormSubmitButton {...submitButtonProps} />
         </ActionFormButtonContainer>
 
         <FormErrorMessage />

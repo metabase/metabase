@@ -28,7 +28,7 @@
   "Fetch all snippets"
   [archived]
   {archived (s/maybe su/BooleanString)}
-  (let [snippets (db/select NativeQuerySnippet
+  (let [snippets (t2/select NativeQuerySnippet
                             :archived (Boolean/parseBoolean archived)
                             {:order-by [[:%lower.name :asc]]})]
     (hydrate (filter mi/can-read? snippets) :creator)))

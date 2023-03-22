@@ -278,7 +278,7 @@
 
   Guaranteed to always generate a valid HoneySQL form, so this can be used directly in a query without further checks.
 
-    (db/select Card
+    (t2/select Card
       {:where (collection/visible-collection-ids->honeysql-filter-clause
                (collection/permissions-set->visible-collection-ids
                 @*current-user-permissions-set*))})"
@@ -361,7 +361,7 @@
 (s/defn ^:private ancestors* :- [(mi/InstanceOf Collection)]
   [{:keys [location]}]
   (when-let [ancestor-ids (seq (location-path->ids location))]
-    (db/select [Collection :name :id :personal_owner_id]
+    (t2/select [Collection :name :id :personal_owner_id]
       :id [:in ancestor-ids]
       {:order-by [:location]})))
 
@@ -416,7 +416,7 @@
      (children-location collection) ; -> \"/10/20/30/\";
 
      ;; To get children of this collection:
-     (db/select Collection :location \"/10/20/30/\")"
+     (t2/select Collection :location \"/10/20/30/\")"
   [{:keys [location], :as collection} :- CollectionWithLocationAndIDOrRoot]
   (if (collection.root/is-root-collection? collection)
     "/"
@@ -444,7 +444,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
   ;; first, fetch all the descendants of the `collection`, and build a map of location -> children. This will be used
   ;; so we can fetch the immediate children of each Collection
-  (let [location->children (group-by :location (db/select [Collection :name :id :location :description]
+  (let [location->children (group-by :location (t2/select [Collection :name :id :location :description]
                                                  {:where
                                                   (apply
                                                    vector
@@ -523,7 +523,7 @@
 
 (s/defn ^:private effective-children* :- #{(mi/InstanceOf Collection)}
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
-  (set (db/select [Collection :id :name :description]
+  (set (t2/select [Collection :id :name :description]
                   {:where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})))
 
 (mi/define-simple-hydration-method effective-children

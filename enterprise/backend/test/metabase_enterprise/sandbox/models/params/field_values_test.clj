@@ -40,7 +40,7 @@
               card-id       (-> f :table_id (#'ee-params.field-values/table-id->gtap) :card :id)
               fv            (params.field-values/get-or-create-advanced-field-values! fv-type f)]
           (is (= [(range 4 6)]
-                 (->> (db/select [FieldValues :values] :field_id categories-id :type fv-type)
+                 (->> (t2/select [FieldValues :values] :field_id categories-id :type fv-type)
                       (map :values))))
           (is (= [4 5] (:values fv)))
           (is (= ["id_4" "id_5"] (:human_readable_values fv)))
@@ -63,7 +63,7 @@
              (t2/select-one Field :id (mt/id :categories :id)))
             (is (= [(range 4 6)
                     (range 2 4)]
-                   (->> (db/select [FieldValues :values]
+                   (->> (t2/select [FieldValues :values]
                                    :field_id categories-id :type fv-type
                                    {:order-by [:id]})
                         (map :values))))))))

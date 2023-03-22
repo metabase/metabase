@@ -179,7 +179,7 @@
   ;; Now update the cards as needed
   (let [serialized-cards    (:cards serialized-dashboard)
         id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)
-        current-cards       (db/select [DashboardCard :size_x :size_y :row :col :id :card_id :dashboard_id]
+        current-cards       (t2/select [DashboardCard :size_x :size_y :row :col :id :card_id :dashboard_id]
                                        :dashboard_id dashboard-id)
         id->current-card    (zipmap (map :id current-cards) current-cards)
         all-dashcard-ids    (concat (map :id serialized-cards)
@@ -500,7 +500,7 @@
        (set/union (serdes/parameters-deps parameters))))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id]
-  (let [dashcards (db/select ['DashboardCard :card_id :action_id :parameter_mappings]
+  (let [dashcards (t2/select ['DashboardCard :card_id :action_id :parameter_mappings]
                              :dashboard_id id)
         dashboard (t2/select-one Dashboard :id id)]
     (set/union

@@ -247,7 +247,7 @@
                                       :else                "invalid")
         monthly-schedule-day-or-nil (when (= :other monthday)
                                       weekday)]
-    (db/select [PulseChannel :id :pulse_id :schedule_type :channel_type]
+    (t2/select [PulseChannel :id :pulse_id :schedule_type :channel_type]
       {:where [:and [:= :enabled true]
                [:or [:= :schedule_type "hourly"]
                 [:and [:= :schedule_type "daily"]

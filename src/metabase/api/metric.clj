@@ -72,7 +72,7 @@
 (api/defendpoint-schema GET "/"
   "Fetch *all* `Metrics`."
   []
-  (as-> (db/select Metric, :archived false, {:order-by [:%lower.name]}) metrics
+  (as-> (t2/select Metric, :archived false, {:order-by [:%lower.name]}) metrics
     (hydrate metrics :creator)
     (add-db-ids metrics)
     (filter mi/can-read? metrics)

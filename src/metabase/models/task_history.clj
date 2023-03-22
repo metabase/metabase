@@ -106,7 +106,7 @@
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"
   [limit  :- (s/maybe su/IntGreaterThanZero)
    offset :- (s/maybe su/IntGreaterThanOrEqualToZero)]
-  (db/select TaskHistory (merge {:order-by [[:ended_at :desc]]}
+  (t2/select TaskHistory (merge {:order-by [[:ended_at :desc]]}
                                 (when limit
                                   {:limit limit})
                                 (when offset

@@ -606,7 +606,7 @@
                          [model-name 'Card]
                          [dash-name  'Dashboard]]]
                   (testing (format "model %s from link cards are loaded properly" model)
-                   (is (some? (db/select model :name name)))))
+                   (is (some? (t2/select model :name name)))))
 
                 (testing "linkcards are loaded with correct fk"
                   (let [new-db-id    (t2/select-one-pk Database :name db-name)

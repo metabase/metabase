@@ -25,6 +25,34 @@
    :cljs
    (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
 
+(defn- clause? [clause]
+  (and (vector? clause)
+       (> (count clause) 1)
+       (keyword? (first clause))))
+
+(defn- clause-uuid [clause]
+  (when (clause? clause)
+    (get-in clause [1 :lib/uuid])))
+
+(defn replace-clause
+  "Replace the clause with `target-uuid` in `clause` with `new-clause`.
+  If `clause` itself has :lib/uuid equal to `target-uuid`, `new-clause` is returned.
+  If `clause` contains no clause with `target-uuid` no replacement happens.
+  Since UUIDs are assumed to be unique, at most one replacement happens."
+  [clause target-uuid new-clause]
+  (if (clause? clause)
+    (if (= (clause-uuid clause) target-uuid)
+      new-clause
+      (reduce (fn [clause i]
+                (let [arg (clause i)
+                      arg' (replace-clause arg target-uuid new-clause)]
+                  (if (not= arg' arg)
+                    (reduced (assoc clause i arg'))
+                    clause)))
+              clause
+              (range 2 (count clause))))
+    clause))
+
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
 ;;; the near future.
 

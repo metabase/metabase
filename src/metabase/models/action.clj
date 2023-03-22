@@ -141,14 +141,14 @@
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)
-    (let [query-actions (db/select QueryAction :action_id [:in (map :id actions)])
+    (let [query-actions (t2/select QueryAction :action_id [:in (map :id actions)])
           action-id->query-actions (m/index-by :action_id query-actions)]
       (for [action actions]
         (merge action (-> action :id action-id->query-actions (dissoc :action_id)))))))
 
 (defn- normalize-http-actions [actions]
   (when (seq actions)
-    (let [http-actions (db/select HTTPAction :action_id [:in (map :id actions)])
+    (let [http-actions (t2/select HTTPAction :action_id [:in (map :id actions)])
           http-actions-by-action-id (m/index-by :action_id http-actions)]
       (map (fn [action]
              (let [http-action (get http-actions-by-action-id (:id action))]
@@ -161,7 +161,7 @@
 
 (defn- normalize-implicit-actions [actions]
   (when (seq actions)
-    (let [implicit-actions (db/select ImplicitAction :action_id [:in (map :id actions)])
+    (let [implicit-actions (t2/select ImplicitAction :action_id [:in (map :id actions)])
           implicit-actions-by-action-id (m/index-by :action_id implicit-actions)]
       (map (fn [action]
              (let [implicit-action (get implicit-actions-by-action-id (:id action))]
@@ -172,9 +172,9 @@
 (defn- select-actions-without-implicit-params
   "Select Actions and fill in sub type information. Don't use this if you need implicit parameters
    for implicit actions, use [[select-action]] instead.
-   `options` is passed to `db/select` `& options` arg."
+   `options` is passed to `t2/select` `& options` arg."
   [& options]
-  (let [{:keys [query http implicit]} (group-by :type (apply db/select Action options))
+  (let [{:keys [query http implicit]} (group-by :type (apply t2/select Action options))
         query-actions                 (normalize-query-actions query)
         http-actions                  (normalize-http-actions http)
         implicit-actions              (normalize-implicit-actions implicit)]
@@ -194,7 +194,7 @@
                                      :when table-id]
                                  [table-id card]))
         tables (when-let [table-ids (seq (keys card-by-table-id))]
-                 (hydrate (db/select 'Table :id [:in table-ids]) :fields))]
+                 (hydrate (t2/select 'Table :id [:in table-ids]) :fields))]
     (into {}
           (for [table tables
                 :let [fields (:fields table)]
@@ -235,7 +235,7 @@
                                              (filter #(contains? implicit-action-model-ids (:id %)))
                                              distinct)
                                         (when (seq implicit-action-model-ids)
-                                          (db/select 'Card :id [:in implicit-action-model-ids])))
+                                          (t2/select 'Card :id [:in implicit-action-model-ids])))
         model-id->db-id               (into {} (for [card implicit-action-models]
                                                  [(:id card) (:database_id card)]))
         model-id->implicit-parameters (when (seq implicit-action-models)
@@ -269,7 +269,7 @@
 
 (defn select-action
   "Selects an Action and fills in the subtype data and implicit parameters.
-   `options` is passed to `db/select-one` `& options` arg."
+   `options` is passed to `t2/select-one` `& options` arg."
   [& options]
   (first (apply select-actions nil options)))
 

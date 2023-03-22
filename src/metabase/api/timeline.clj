@@ -47,7 +47,7 @@
   {include  (s/maybe Include)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)
-        timelines (->> (db/select Timeline
+        timelines (->> (t2/select Timeline
                          {:where    [:and
                                      [:= :archived archived?]
                                      (collection/visible-collection-ids->honeysql-filter-clause

@@ -27,7 +27,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (metabase.plugins.jdbc_proxy ProxyDriver)))
@@ -235,7 +234,7 @@
                     {:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}]
                    (map
                     mt/derecordize
-                    (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))
+                    (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))
           (finally
             (redshift.test/execute! (str "DROP TABLE IF EXISTS %s;%n"
                                          "DROP VIEW IF EXISTS %s;")
@@ -268,7 +267,7 @@
              (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",              :base_type :type/Decimal}
                      {:name "raw_null",                    :database_type "varchar",              :base_type :type/Text}
                      {:name "raw_var",                     :database_type "character varying(5)", :base_type :type/Text}]
-                    (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))
+                    (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))
            (finally
              (redshift.test/execute! (str "DROP VIEW IF EXISTS %s;")
                                      qual-view-nm))))))))

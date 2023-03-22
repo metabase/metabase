@@ -69,7 +69,7 @@
       (update :visibility_type #(when % (name %)))))
 
 (defn- expected-tables [db-or-id]
-  (map table-details (db/select Table
+  (map table-details (t2/select Table
                        :db_id (u/the-id db-or-id), :active true, :visibility_type nil
                        {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 

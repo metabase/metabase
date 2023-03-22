@@ -33,7 +33,6 @@
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -170,7 +169,7 @@
   The gerenerated contents will follow the pulse's creator permissions."
   [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as _options}]
   (let [dashboard-id      (u/the-id dashboard)
-        dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
+        dashcards         (t2/select DashboardCard :dashboard_id dashboard-id)
         ordered-dashcards (sort dashcard-comparator dashcards)]
     (mw.session/with-current-user pulse-creator-id
       (doall (for [dashcard ordered-dashcards

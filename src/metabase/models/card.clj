@@ -282,7 +282,7 @@
   - card is archived
   - card.result_metadata changes and the parameter values source field can't be found anymore"
   [{id :id, :as changes}]
-  (let [parameter-cards   (db/select ParameterCard :card_id id)]
+  (let [parameter-cards   (t2/select ParameterCard :card_id id)]
     (doseq [[[po-type po-id] param-cards]
             (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
       (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)

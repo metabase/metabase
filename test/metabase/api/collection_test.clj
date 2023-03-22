@@ -131,7 +131,7 @@
                                       crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
                                       crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
                                       luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
-                                  (is (= (into (set (map :name (db/select Collection))) public-collections)
+                                  (is (= (into (set (map :name (t2/select Collection))) public-collections)
                                          crowbertos))
                                   (is (= (into public-collections #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
                                          crowbertos-with-excludes))

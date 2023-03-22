@@ -308,7 +308,7 @@
 
 (defn do-with-single-admin-user
   [attributes thunk]
-  (let [existing-admin-memberships (db/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
+  (let [existing-admin-memberships (t2/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
         _                          (db/simple-delete! PermissionsGroupMembership :group_id (:id (perms-group/admin)))
         existing-admin-ids         (t2/select-pks-set User :is_superuser true)
         _                          (when (seq existing-admin-ids)

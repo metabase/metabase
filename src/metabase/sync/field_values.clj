@@ -46,7 +46,7 @@
 
 (defn- table->fields-to-scan
   [table]
-  (db/select Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
+  (t2/select Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
 
 (s/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for TABLE."

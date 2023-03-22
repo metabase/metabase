@@ -110,7 +110,7 @@
     (when (= task-type "persist-refresh")
       (when-let [error-details (seq (:error-details task-details))]
         (let [error-details-by-id (m/index-by :persisted-info-id error-details)
-              persisted-infos (->> (hydrate (db/select PersistedInfo :id [:in (keys error-details-by-id)])
+              persisted-infos (->> (hydrate (t2/select PersistedInfo :id [:in (keys error-details-by-id)])
                                             [:card :collection] :database)
                                    (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
           (messages/send-persistent-model-error-email!
@@ -129,7 +129,7 @@
   "Seam for tests to pass in specific deletables to drop."
   [refresher deletables]
   (when (seq deletables)
-    (let [db-id->db    (m/index-by :id (db/select Database :id [:in (map :database_id deletables)]))
+    (let [db-id->db    (m/index-by :id (t2/select Database :id [:in (map :database_id deletables)]))
           unpersist-fn (fn []
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
@@ -420,7 +420,7 @@
   "Reschedule refresh for all enabled databases. Removes all existing triggers, and schedules refresh for databases with
   `:persist-models-enabled` in the options at interval [[public-settings/persisted-model-refresh-cron-schedule]]."
   []
-  (let [dbs-with-persistence (filter (comp :persist-models-enabled :options) (db/select Database))
+  (let [dbs-with-persistence (filter (comp :persist-models-enabled :options) (t2/select Database))
         cron-schedule        (public-settings/persisted-model-refresh-cron-schedule)]
     (unschedule-all-refresh-triggers! refresh-job-key)
     (doseq [db dbs-with-persistence]
