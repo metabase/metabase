@@ -401,7 +401,7 @@
   (let [email (mt/random-email)]
     (try
       (f email)
-      (finally (db/delete! User :email email)))))
+      (finally (t2/delete! User :email email)))))
 
 (defmacro ^:private with-temp-user-email [[email-binding] & body]
   `(do-with-temp-user-email (fn [~email-binding] ~@body)))
@@ -481,7 +481,7 @@
                                                    :login_attributes {:test "value"}}))
                            (finally
                              ;; clean up after ourselves
-                             (db/delete! User :email email)))))))))
+                             (t2/delete! User :email email)))))))))
 
     (testing "attempting to create a new user with an email with case mutations of an existing email should fail"
       (is (= {:errors {:email "Email address already in use."}}
@@ -918,8 +918,8 @@
       (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
                                          google-auth-enabled    true]
         (mt/with-temp User [user {:google_auth true}]
-          (db/update! User (u/the-id user)
-            :is_active false)
+          (t2/update! User (u/the-id user)
+                      {:is_active false})
           (mt/with-temporary-setting-values [google-auth-enabled false]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :google_auth false}

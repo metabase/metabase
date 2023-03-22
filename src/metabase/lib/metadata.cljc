@@ -46,6 +46,12 @@
    [:id {:optional true} ::lib.schema.id/field]
    [:name ::lib.schema.common/non-blank-string]])
 
+(def ^:private CardMetadata
+  [:map
+   [:lib/type [:= :metadata/card]]
+   [:id ::lib.schema.id/card]
+   [:name ::lib.schema.common/non-blank-string]])
+
 (def ^:private SegmentMetadata
   [:map
    [:lib/type [:= :metadata/segment]]
@@ -229,6 +235,12 @@
            (when (= (:name column) column-name)
              column))
          (:columns (stage query stage-number)))))
+
+(mu/defn card :- [:maybe CardMetadata]
+  "Get metadata for a Card, aka Saved Question, with `card-id`, if it can be found."
+  [metadata-provider
+   card-id :- ::lib.schema.id/card]
+  (lib.metadata.protocols/card (->metadata-provider metadata-provider) card-id))
 
 (mu/defn segment :- [:maybe SegmentMetadata]
   "Get metadata for the Segment with `segment-id`, if it can be found."

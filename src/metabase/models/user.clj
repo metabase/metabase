@@ -100,7 +100,7 @@
         (db/insert! PermissionsGroupMembership
           :group_id (u/the-id (perms-group/admin))
           :user_id  id)
-        ;; don't use [[db/delete!]] here because that does the opposite and tries to update this user which leads to a
+        ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
              in-admin-group?)
@@ -114,7 +114,7 @@
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
   (when (false? active?)
-    (db/delete! 'PulseChannelRecipient :user_id id))
+    (t2/delete! 'PulseChannelRecipient :user_id id))
   ;; If we're setting the reset_token then encrypt it before it goes into the DB
   (cond-> user
     true        (merge (hashed-password-values user))
@@ -191,7 +191,7 @@
     (let [selector (cond-> [PermissionsGroupMembership [:group_id :id]]
                      (premium-features/enable-advanced-permissions?)
                      (conj :is_group_manager))]
-      (db/select selector :user_id (u/the-id user-or-id)))))
+      (t2/select selector :user_id (u/the-id user-or-id)))))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -217,7 +217,7 @@
   In which `is_group_manager` is only added when `advanced-permissions` is enabled."
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (db/select [PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
+    (let [user-id->memberships (group-by :user_id (t2/select [PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
                                                              :user_id [:in (set (map u/the-id users))]))
           membership->group    (fn [membership]
                                  (select-keys membership
@@ -232,7 +232,7 @@
   TODO: deprecate :group_ids and use :user_group_memberships instead"
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (db/select [PermissionsGroupMembership :user_id :group_id]
+    (let [user-id->memberships (group-by :user_id (t2/select [PermissionsGroupMembership :user_id :group_id]
                                                     :user_id [:in (set (map u/the-id users))]))]
       (for [user users]
         (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))
@@ -356,19 +356,19 @@
   ;; when changing/resetting the password, kill any existing sessions
   (db/simple-delete! Session :user_id user-id)
   ;; NOTE: any password change expires the password reset token
-  (db/update! User user-id
-    :password        password
-    :reset_token     nil
-    :reset_triggered nil))
+  (t2/update! User user-id
+              {:password        password
+               :reset_token     nil
+               :reset_triggered nil}))
 
 (defn set-password-reset-token!
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
   (u/prog1 (str user-id \_ (UUID/randomUUID))
-    (db/update! User user-id
-      :reset_token     <>
-      :reset_triggered (System/currentTimeMillis))))
+    (t2/update! User user-id
+                {:reset_token     <>
+                 :reset_triggered (System/currentTimeMillis)})))
 
 (defn form-password-reset-url
   "Generate a properly formed password reset url given a password reset token."
@@ -387,7 +387,7 @@
     (when (seq (concat to-remove to-add))
       (db/transaction
        (when (seq to-remove)
-         (db/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
+         (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
        ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,
        ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
        ;; do things like automatically set the `is_superuser` flag for a User

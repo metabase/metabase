@@ -18,3 +18,19 @@
         (is (= ::not-found
                (limit (-> query
                           (lib/limit nil)))))))))
+
+(deftest ^:parallel current-limit-test
+  (testing "Last stage"
+    (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")]
+      (is (nil? (lib/current-limit query)))
+      (is (nil? (lib/current-limit query -1)))
+      (is (= 100 (lib/current-limit (lib/limit query 100))))
+      (is (= 100 (lib/current-limit (lib/limit query 100) -1)))))
+  (testing "First stage"
+    (let [query (lib/query meta/metadata-provider {:database (meta/id)
+                                                   :type     :query
+                                                   :query    {:source-query {:source-table (meta/id :venues)}}})]
+      (is (nil? (lib/current-limit query 0)))
+      (is (nil? (lib/current-limit query 1)))
+      (is (= 100 (lib/current-limit (lib/limit query 0 100) 0)))
+      (is (nil? (lib/current-limit query 1))))))

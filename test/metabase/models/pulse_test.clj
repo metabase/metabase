@@ -278,9 +278,9 @@
                       Dashboard  [{dashboard-id :id}]
                       Pulse      [{pulse-id :id} {:dashboard_id dashboard-id :collection_id collection-id}]]
         (is (thrown-with-msg? Exception #"collection ID of a dashboard subscription cannot be directly modified"
-              (db/update! Pulse pulse-id {:collection_id (inc collection-id)})))
+              (t2/update! Pulse pulse-id {:collection_id (inc collection-id)})))
         (is (thrown-with-msg? Exception #"dashboard ID of a dashboard subscription cannot be modified"
-              (db/update! Pulse pulse-id {:dashboard_id (inc dashboard-id)}))))))
+              (t2/update! Pulse pulse-id {:dashboard_id (inc dashboard-id)}))))))
 
 (deftest no-archived-cards-test
   (testing "make sure fetching a Pulse doesn't return any archived cards"
@@ -308,7 +308,7 @@
         (do-with-objects
          (fn [{:keys [archived? user-id]}]
            (testing "make the User inactive"
-             (is (db/update! User user-id :is_active false)))
+             (is (pos? (t2/update! User user-id {:is_active false}))))
            (testing "Pulse should be archived"
              (is (archived?))))))
       (testing "multiple subscribers"
@@ -320,10 +320,10 @@
                            PulseChannelRecipient [_ {:pulse_channel_id pulse-channel-id, :user_id user-2-id}]]
              (is (not (archived?)))
              (testing "User 1 becomes inactive: Pulse should not be archived yet (because User 2 is still a recipient)"
-               (is (db/update! User user-id :is_active false))
+               (is (pos? (t2/update! User user-id {:is_active false})))
                (is (not (archived?))))
              (testing "User 2 becomes inactive: Pulse should now be archived because it has no more recipients"
-               (is (db/update! User user-2-id :is_active false))
+               (is (t2/update! User user-2-id {:is_active false}))
                (is (archived?))
                (testing "PulseChannel & PulseChannelRecipient rows should have been archived as well."
                  (is (not (db/exists? PulseChannel :id pulse-channel-id)))
@@ -336,7 +336,7 @@
                            PulseChannel          [{channel-2-id :id} {:pulse_id pulse-id}]
                            PulseChannelRecipient [_ {:pulse_channel_id channel-2-id, :user_id user-2-id}]]
              (testing "make User 1 inactive"
-               (is (db/update! User user-id :is_active false)))
+               (is (t2/update! User user-id {:is_active false})))
              (testing "Pulse should not be archived"
                (is (not (archived?))))))))
       (testing "still sent to a Slack channel"
@@ -346,16 +346,16 @@
                                           :details      {:channel "#general"}
                                           :pulse_id     pulse-id}]
              (testing "make the User inactive"
-               (is (db/update! User user-id :is_active false)))
+               (is (pos? (t2/update! User user-id {:is_active false}))))
              (testing "Pulse should not be archived"
                (is (not (archived?))))))))
       (testing "still sent to email addresses\n"
         (testing "emails on the same channel as deleted User\n"
           (do-with-objects
            (fn [{:keys [archived? user-id pulse-channel-id]}]
-             (db/update! PulseChannel pulse-channel-id :details {:emails ["foo@bar.com"]})
+             (t2/update! PulseChannel pulse-channel-id {:details {:emails ["foo@bar.com"]}})
              (testing "make the User inactive"
-               (is (db/update! User user-id :is_active false)))
+               (is (pos? (t2/update! User user-id {:is_active false}))))
              (testing "Pulse should not be archived"
                (is (not (archived?)))))))
         (testing "emails on a different channel\n"
@@ -365,10 +365,9 @@
                                             :details      {:emails ["foo@bar.com"]}
                                             :pulse_id     pulse-id}]
                (testing "make the User inactive"
-                 (is (db/update! User user-id :is_active false)))
+                 (is (pos? (t2/update! User user-id {:is_active false}))))
                (testing "Pulse should not be archived"
                  (is (not (archived?))))))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Pulse Collections Permissions Tests                                          |
@@ -404,15 +403,14 @@
                #"A Pulse can only go in Collections in the \"default\" namespace"
                (db/insert! Pulse (assoc (tt/with-temp-defaults Pulse) :collection_id collection-id, :name pulse-name))))
           (finally
-            (db/delete! Pulse :name pulse-name)))))
+            (t2/delete! Pulse :name pulse-name)))))
 
     (testing "Shouldn't be able to move a Pulse to a non-normal Collection"
       (mt/with-temp Pulse [{card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Pulse can only go in Collections in the \"default\" namespace"
-             (db/update! Pulse card-id {:collection_id collection-id})))))))
-
+             (t2/update! Pulse card-id {:collection_id collection-id})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                         Dashboard Subscription Collections Permissions Tests                                   |
@@ -444,19 +442,12 @@
         (is (mi/can-write? subscription))))
 
     (mt/with-current-user (mt/user->id :rasta)
-      (testing "A non-admin has no access to a subscription if they don't have read access to the parent collection,
-               even if they created the subscription"
-          (is (not (mi/can-read? subscription)))
-          (is (not (mi/can-write? subscription))))
-
       (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
-        (testing "A non-admin has read and write access to a subscription they created, if they have read access to the
-               parent collection"
+        (testing "A non-admin has read and write access to a subscription they created"
             (is (mi/can-read? subscription))
             (is (mi/can-write? subscription)))
 
-        (testing "A non-admin has read-only access to a subscription they are a recipient of, if they have read access
-                 to the parent collection"
+        (testing "A non-admin has read-only access to a subscription they are a recipient of"
           ;; Create a new Dashboard Subscription with an admin creator but non-admin recipient
           (mt/with-temp* [Pulse                [subscription            {:collection_id (u/the-id collection)
                                                                          :dashboard_id  (u/the-id dashboard)

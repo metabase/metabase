@@ -1,14 +1,8 @@
 import { isProduction } from "metabase/env";
 
-export const VOID = Symbol("Unknown Type");
-
-export type VariableKind =
-  | "dimension"
-  | "segment"
-  | "aggregation"
-  | "expression";
-export type Type = VariableKind | "string" | "number" | "boolean";
-export type VariableId = number;
+type VariableKind = "dimension" | "segment" | "aggregation" | "expression";
+type Type = VariableKind | "string" | "number" | "boolean";
+type VariableId = number;
 
 export interface Token {
   type: NodeType;
@@ -88,7 +82,7 @@ export interface Hooks {
  * easily distinguish between compilation error exceptions and exceptions due to
  * bugs
  */
-export abstract class ExpressionError extends Error {
+abstract class ExpressionError extends Error {
   abstract get pos(): number | null;
   abstract get len(): number | null;
 }
@@ -121,7 +115,7 @@ export class ResolverError extends ExpressionError {
   }
 }
 
-export class AssertionError extends Error {
+class AssertionError extends Error {
   data?: any;
 
   constructor(message: string, data?: any) {

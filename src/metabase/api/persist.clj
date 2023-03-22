@@ -66,7 +66,7 @@
   (validation/check-has-application-permission :monitoring)
   (let [db-ids (t2/select-fn-set :database_id PersistedInfo)
         writable-db-ids (when (seq db-ids)
-                          (->> (db/select Database :id [:in db-ids])
+                          (->> (t2/select Database :id [:in db-ids])
                                (filter mi/can-write?)
                                (map :id)
                                set))
@@ -138,12 +138,12 @@
   - remove `:persist-models-enabled` from relevant [[Database]] options
   - schedule a task to [[metabase.driver.ddl.interface/unpersist]] each table"
   []
-  (let [id->db      (m/index-by :id (db/select Database))
+  (let [id->db      (m/index-by :id (t2/select Database))
         enabled-dbs (filter (comp :persist-models-enabled :options) (vals id->db))]
     (log/info (tru "Disabling model persistence"))
     (doseq [db enabled-dbs]
-      (db/update! Database (u/the-id db)
-        :options (not-empty (dissoc (:options db) :persist-models-enabled))))
+      (t2/update! Database (u/the-id db)
+                  {:options (not-empty (dissoc (:options db) :persist-models-enabled))}))
     (task.persist-refresh/disable-persisting!)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

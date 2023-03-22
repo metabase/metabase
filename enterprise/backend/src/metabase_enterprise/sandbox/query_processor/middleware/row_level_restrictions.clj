@@ -31,7 +31,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -75,7 +74,7 @@
     (let [group-ids           (qp.store/cached *current-user-id*
                                 (t2/select-fn-set :group_id PermissionsGroupMembership :user_id *current-user-id*))
           sandboxes           (when (seq group-ids)
-                               (db/select GroupTableAccessPolicy :group_id [:in group-ids]
+                               (t2/select GroupTableAccessPolicy :group_id [:in group-ids]
                                  :table_id [:in table-ids]))
           enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes group-ids)]
        (when (seq enforced-sandboxes)
@@ -228,7 +227,7 @@
     ;; save the result metadata so we don't have to do it again next time if applicable
     (when (and card-id save?)
       (log/tracef "Saving results metadata for GTAP Card %s" card-id)
-      (db/update! Card card-id :result_metadata metadata))
+      (t2/update! Card card-id {:result_metadata metadata}))
     ;; make sure the fetched Fields are present the QP store
     (when-let [field-ids (not-empty (filter some? (map :id metadata)))]
       (qp.store/fetch-and-store-fields! field-ids))

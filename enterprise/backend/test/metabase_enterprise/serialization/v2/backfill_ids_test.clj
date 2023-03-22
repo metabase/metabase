@@ -5,7 +5,6 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.models :refer [Collection]]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest backfill-needed-test
@@ -25,7 +24,7 @@
 
         (testing "removing the entity_ids"
           (doseq [id coll-ids]
-            (db/update! Collection id :entity_id nil))
+            (t2/update! Collection id {:entity_id nil}))
           (is (every? nil? (all-eids))))
 
         (testing "backfill now recreates them"
@@ -37,7 +36,7 @@
     (ts/with-temp-dpc [Collection [{c1-id :id c1-eid :entity_id} {:name "some collection"}]
                        Collection [{c2-id :id}                   {:name "other collection"}]]
       (testing "deleting the entity_id for one of them"
-        (db/update! Collection c2-id {:entity_id nil})
+        (t2/update! Collection c2-id {:entity_id nil})
         (is (= #{c1-eid nil}
                (t2/select-fn-set :entity_id Collection))))
 
@@ -53,14 +52,14 @@
     (ts/with-temp-dpc [Collection [{c1-eid :entity_id} {:name "some collection"}]
                        Collection [{c2-id :id}         {:name "other collection"}]]
       (testing "deleting the entity_id for one of them"
-        (db/update! Collection c2-id {:entity_id nil})
+        (t2/update! Collection c2-id {:entity_id nil})
         (is (= #{c1-eid nil}
                (t2/select-fn-set :entity_id Collection))))
 
       (testing "backfilling twice"
         (serdes.backfill/backfill-ids-for Collection)
         (let [first-eid (t2/select-one-fn :entity_id Collection :id c2-id)]
-          (db/update! Collection c2-id {:entity_id nil})
+          (t2/update! Collection c2-id {:entity_id nil})
           (is (= #{c1-eid nil}
                  (t2/select-fn-set :entity_id Collection)))
           (serdes.backfill/backfill-ids-for Collection)

@@ -9,7 +9,8 @@
    [metabase.models.task-history :as task-history]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -50,11 +51,11 @@
                                              :task task-5)]]
         ;; When the sync process runs, it creates several TaskHistory rows. We just want to work with the
         ;; temp ones created, so delete any stale ones from previous tests
-        (db/delete! TaskHistory :id [:not-in (map u/the-id [t1 t2 t3 t4 t5])])
+        (t2/delete! TaskHistory :id [:not-in (map u/the-id [t1 t2 t3 t4 t5])])
         ;; Delete all but 2 task history rows
         (task-history/cleanup-task-history! 2)
         (is (= #{task-4 task-5}
-               (set (map :task (db/select TaskHistory)))))))))
+               (set (map :task (t2/select TaskHistory)))))))))
 
 (deftest no-op-test
   (testing "Basic cleanup test where no work needs to be done and nothing is deleted"
@@ -67,13 +68,13 @@
                       TaskHistory [t2 (assoc (make-10-millis-task t2-start)
                                              :task task-2)]]
         ;; Cleanup any stale TalkHistory entries that are not the two being tested
-        (db/delete! TaskHistory :id [:not-in (map u/the-id [t1 t2])])
+        (t2/delete! TaskHistory :id [:not-in (map u/the-id [t1 t2])])
         ;; We're keeping 100 rows, but there are only 2 present, so there should be no affect on running this
         (is (= #{task-1 task-2}
-               (set (map :task (db/select TaskHistory)))))
+               (set (map :task (t2/select TaskHistory)))))
         (task-history/cleanup-task-history! 100)
         (is (= #{task-1 task-2}
-               (set (map :task (db/select TaskHistory)))))))))
+               (set (map :task (t2/select TaskHistory)))))))))
 
 (defn- last-snowplow-event
   []

@@ -55,8 +55,8 @@
                              :active true)]
          (if field-name
            (db/update-where! Field {:name field-name, :table_id table-id} k value)
-           (db/update! Table table-id k value)))
-       (db/update! Database (u/the-id database) k value)))))
+           (t2/update! Table table-id {k value})))
+       (t2/update! Database (u/the-id database) {k value})))))
 
 (s/defn ^:private sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other

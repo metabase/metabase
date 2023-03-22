@@ -86,7 +86,7 @@
                           s/Keyword    s/Any}
                          snippet-from-api)))
           (finally
-            (db/delete! NativeQuerySnippet :name "test-snippet"))))))
+            (t2/delete! NativeQuerySnippet :name "test-snippet"))))))
 
   (testing "Attempting to create a Snippet with a name that's already in use should throw an error"
     (try
@@ -96,7 +96,7 @@
         (is (= 1
                (db/count NativeQuerySnippet :name "test-snippet-1"))))
       (finally
-        (db/delete! NativeQuerySnippet :name "test-snippet-1"))))
+        (t2/delete! NativeQuerySnippet :name "test-snippet-1"))))
 
   (testing "Shouldn't be able to specify non-default creator_id"
     (try
@@ -105,7 +105,7 @@
         (is (= (mt/user->id :crowberto)
                (:creator_id snippet))))
       (finally
-        (db/delete! NativeQuerySnippet :name "test-snippet")))))
+        (t2/delete! NativeQuerySnippet :name "test-snippet")))))
 
 (deftest create-snippet-in-collection-test
   (testing "POST /api/native-query-snippet"
@@ -117,7 +117,7 @@
                     {:response response
                      :db       (some->> (:id response) (t2/select-one NativeQuerySnippet :id))})
                   (finally
-                    (db/delete! NativeQuerySnippet :name "test-snippet"))))]
+                    (t2/delete! NativeQuerySnippet :name "test-snippet"))))]
         (mt/with-temp Collection [{collection-id :id} {:namespace "snippets"}]
           (let [{:keys [response db]} (create! 200 collection-id)]
             (testing "\nAPI response"

@@ -28,7 +28,7 @@
   "Fetch all snippets"
   [archived]
   {archived (s/maybe su/BooleanString)}
-  (let [snippets (db/select NativeQuerySnippet
+  (let [snippets (t2/select NativeQuerySnippet
                             :archived (Boolean/parseBoolean archived)
                             {:order-by [[:%lower.name :asc]]})]
     (hydrate (filter mi/can-read? snippets) :creator)))
@@ -74,7 +74,7 @@
       (api/update-check snippet changes)
       (when-let [new-name (:name changes)]
         (check-snippet-name-is-unique new-name))
-      (db/update! NativeQuerySnippet id changes))
+      (t2/update! NativeQuerySnippet id changes))
     (hydrated-native-query-snippet id)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
