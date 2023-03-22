@@ -1,33 +1,70 @@
 import React, { useMemo } from "react";
 import { ngettext, msgid, t } from "ttag";
+import { connect } from "react-redux";
 
 import { formatNumber } from "metabase/lib/formatting";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+
+import { setLimit } from "metabase/query_builder/actions";
+import {
+  getFirstQueryResult,
+  getIsResultDirty,
+  getQuestion,
+} from "metabase/query_builder/selectors";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";
 
 import type { Dataset } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
+import * as MetabaseLib from "metabase-lib/v2";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
+import type { Limit } from "metabase-lib/v2/types";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { RowCountButton, RowCountStaticLabel } from "./QuestionRowCount.styled";
 
-interface QuestionRowCountProps {
+interface OwnProps {
+  className?: string;
+}
+
+interface StateProps {
   question: Question;
+  limit: Limit;
   result: Dataset;
   isResultDirty: boolean;
-  className?: string;
-  onQueryChange: (query: StructuredQuery) => void;
 }
+
+interface DispatchProps {
+  onChangeLimit: (limit: Limit) => void;
+}
+
+type QuestionRowCountProps = OwnProps & StateProps & DispatchProps;
+
+function mapStateToProps(state: State) {
+  // Not expected to render before question is loaded
+  const question = getQuestion(state) as Question;
+
+  const limit = MetabaseLib.currentLimit(question._getMLv2Query());
+  return {
+    limit,
+    question,
+    result: getFirstQueryResult(state),
+    isResultDirty: getIsResultDirty(state),
+  };
+}
+
+const mapDispatchToProps = {
+  onChangeLimit: setLimit,
+};
 
 function QuestionRowCount({
   question,
   result,
   isResultDirty,
   className,
-  onQueryChange,
+  onChangeLimit,
 }: QuestionRowCountProps) {
   const message = useMemo(() => {
     if (!question.isStructured()) {
@@ -39,11 +76,10 @@ function QuestionRowCount({
   }, [question, result, isResultDirty]);
 
   const handleLimitChange = (limit: number) => {
-    const query = question.query() as StructuredQuery;
     if (limit > 0) {
-      onQueryChange(query.updateLimit(limit));
+      onChangeLimit(limit);
     } else {
-      onQueryChange(query.clearLimit());
+      onChangeLimit(null);
     }
   };
 
@@ -131,7 +167,12 @@ function getRowCountMessage(result: Dataset): string {
   return t`Showing ${formatRowCount(result.row_count)}`;
 }
 
-QuestionRowCount.shouldRender = ({
+const ConnectedQuestionRowCount = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(QuestionRowCount);
+
+function shouldRender({
   question,
   result,
   isObjectDetail,
@@ -139,7 +180,10 @@ QuestionRowCount.shouldRender = ({
   question: Question;
   result?: Dataset;
   isObjectDetail: boolean;
-}) =>
-  result && result.data && !isObjectDetail && question.display() === "table";
+}) {
+  return (
+    result && result.data && !isObjectDetail && question.display() === "table"
+  );
+}
 
-export default QuestionRowCount;
+export default Object.assign(ConnectedQuestionRowCount, { shouldRender });
