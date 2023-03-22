@@ -32,7 +32,7 @@
                      {:name "LONGITUDE",   :database_type "DOUBLE PRECISION"}
                      {:name "NAME",        :database_type "CHARACTER VARYING"}}
                    (set (mt/derecordize
-                         (db/select [Field :name :database_type] :table_id (u/the-id venues-table))))))))))))
+                         (t2/select [Field :name :database_type] :table_id (u/the-id venues-table))))))))))))
 
 (deftest update-base-type-test
   (testing "make sure that if a driver reports back a different base-type the Field gets updated accordingly"
@@ -59,4 +59,4 @@
                      {:name "NAME",        :base_type :type/Text}
                      {:name "ID",          :base_type :type/BigInteger}}
                    (set (mt/derecordize
-                         (db/select [Field :name :base_type] :table_id (u/the-id venues-table))))))))))))
+                         (t2/select [Field :name :base_type] :table_id (u/the-id venues-table))))))))))))

@@ -59,7 +59,7 @@
                     (fn [database]
                       (set
                        (map (partial into {})
-                            (db/select [Field :id :name :active]
+                            (t2/select [Field :id :name :active]
                               :table_id [:in (t2/select-pks-set Table :db_id (u/the-id database))])))))]
       (is (= {:before-sync #{{:name "species",      :active true}
                              {:name "example_name", :active true}}
@@ -84,7 +84,7 @@
             (fn [database]
               (set
                (map (partial into {})
-                    (db/select [Field :name :active]
+                    (t2/select [Field :name :active]
                       :table_id [:in (t2/select-pks-set Table :db_id (u/the-id database))])))))))))
 
 (deftest dont-show-deleted-fields-test

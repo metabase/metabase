@@ -564,7 +564,7 @@
   (mt/with-model-cleanup [FieldValues]
     (let [field-id         (u/the-id field-or-field-id)
           has_field_values (t2/select-one-fn :has_field_values Field :id field-id)
-          fvs              (db/select FieldValues :field_id field-id)]
+          fvs              (t2/select FieldValues :field_id field-id)]
       ;; switch to "list" to prevent [[field-values/create-or-update-full-field-values!]]
       ;; from changing this to `nil` if the field is `auto-list` and exceeds threshholds
       (t2/update! Field field-id {:has_field_values "list"})

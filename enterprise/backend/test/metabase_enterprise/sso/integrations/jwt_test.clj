@@ -14,7 +14,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
 
@@ -158,7 +157,7 @@
     (with-jwt-default-setup
       (with-users-with-email-deleted "newuser@metabase.com"
         (letfn [(new-user-exists? []
-                  (boolean (seq (db/select User :%lower.email "newuser@metabase.com"))))]
+                  (boolean (seq (t2/select User :%lower.email "newuser@metabase.com"))))]
           (is (= false
                  (new-user-exists?)))
           (let [response (saml-test/client-full-response :get 302 "/auth/sso"
@@ -180,7 +179,7 @@
                        :last_name    "User"
                        :date_joined  true
                        :common_name  "New User"}]
-                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                     (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login))))))
             (testing "attributes"
               (is (= {"more" "stuff"
@@ -192,7 +191,7 @@
     (with-jwt-default-setup
       (with-users-with-email-deleted "newuser@metabase.com"
         (letfn [(new-user-exists? []
-                  (boolean (seq (db/select User :%lower.email "newuser@metabase.com"))))]
+                  (boolean (seq (t2/select User :%lower.email "newuser@metabase.com"))))]
           (is (= false
                  (new-user-exists?)))
           (let [response (saml-test/client-full-response :get 302 "/auth/sso"
@@ -210,7 +209,7 @@
                        :last_name    nil
                        :date_joined  true
                        :common_name  "newuser@metabase.com"}]
-                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                     (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login)))))))
           (let [response (saml-test/client-full-response :get 302 "/auth/sso"
                                                            {:request-options {:redirect-strategy :none}}
@@ -229,7 +228,7 @@
                        :last_name    "User"
                        :date_joined  true
                        :common_name  "New User"}]
-                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                     (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login))))))))))))
 
 (deftest group-mappings-test

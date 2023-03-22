@@ -449,7 +449,7 @@
                   :parameterized_object_type :card
                   :parameterized_object_id   card-id
                   :parameter_id              "_CATEGORY_NAME_"}]
-                (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
+                (t2/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
 
         (testing "update values_source_config.card_id will update ParameterCard"
           (t2/update! Card card-id {:parameters [(merge default-params
@@ -459,12 +459,12 @@
                     :parameterized_object_type :card
                     :parameterized_object_id   card-id
                     :parameter_id              "_CATEGORY_NAME_"}]
-                  (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))
+                  (t2/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))
 
         (testing "delete the card will delete ParameterCard"
           (t2/delete! Card :id card-id)
           (is (= []
-                 (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))))
+                 (t2/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))))
 
     (testing "Delete a card will delete any ParameterCard that linked to it"
       (tt/with-temp* [Card  [{source-card-id :id}]
@@ -485,10 +485,10 @@
                   :parameterized_object_type :card
                   :parameterized_object_id   card-id-2
                   :parameter_id              "_CATEGORY_NAME_"}]
-                (db/select 'ParameterCard :card_id source-card-id)))
+                (t2/select 'ParameterCard :card_id source-card-id)))
         (t2/delete! Card :id source-card-id)
         (is (= []
-               (db/select 'ParameterCard :card_id source-card-id)))))))
+               (t2/select 'ParameterCard :card_id source-card-id)))))))
 
 (deftest cleanup-parameter-on-card-changes-test
   (mt/dataset sample-dataset
@@ -520,7 +520,7 @@
                 :parameter_id              "param_2"
                 :parameterized_object_type :dashboard
                 :parameterized_object_id   (:id dashboard)}]
-              (db/select ParameterCard :card_id source-card-id)))
+              (t2/select ParameterCard :card_id source-card-id)))
       ;; update card with removing the products.category
       (testing "on update result_metadata"
         (t2/update! Card source-card-id
@@ -533,7 +533,7 @@
                     :parameter_id              "param_1"
                     :parameterized_object_type :card
                     :parameterized_object_id   (:id card)}]
-                  (db/select ParameterCard :card_id source-card-id))))
+                  (t2/select ParameterCard :card_id source-card-id))))
 
         (testing "update the dashboard parameter and remove values_config of dashboard"
           (is (=? [{:id   "param_2"
@@ -554,7 +554,7 @@
         (t2/update! Card source-card-id {:archived true})
 
         (testing "ParameterCard for card is removed"
-          (is (=? [] (db/select ParameterCard :card_id source-card-id))))
+          (is (=? [] (t2/select ParameterCard :card_id source-card-id))))
 
         (testing "update the dashboard parameter and remove values_config of card"
           (is (=? [{:id   "param_1"
@@ -613,4 +613,6 @@
       (is (= {:version 2
               :pie.show_legend true
               :pie.percent_visibility "inside"}
-             (:visualization_settings (db/simple-select-one Card {:where [:= :id card-id]})))))))
+             (-> (t2/select-one (t2/table-name Card) {:where [:= :id card-id]})
+                 :visualization_settings
+                 (json/parse-string keyword)))))))

@@ -72,7 +72,7 @@
                            (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
                                                       table-name
                                                       (u/pprint-to-str (dissoc table-definition :rows))
-                                                      (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
+                                                      (u/pprint-to-str (t2/select [Table :schema :name], :db_id (:id db))))))))]
       (doseq [{:keys [field-name], :as field-definition} (:field-definitions table-definition)]
         (let [field (delay (or (tx/metabase-instance field-definition @table)
                                (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
@@ -213,7 +213,7 @@
     field-name))
 
 (defn- all-field-names [table-id]
-  (into {} (for [field (db/select Field :active true, :table_id table-id)]
+  (into {} (for [field (t2/select Field :active true, :table_id table-id)]
              [(u/the-id field) (qualified-field-name field)])))
 
 (defn- the-field-id* [table-id field-name & {:keys [parent-id]}]
@@ -253,12 +253,12 @@
 
 (defn- copy-table-fields! [old-table-id new-table-id]
   (db/insert-many! Field
-    (for [field (db/select Field :table_id old-table-id {:order-by [[:id :asc]]})]
+    (for [field (t2/select Field :table_id old-table-id {:order-by [[:id :asc]]})]
       (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
   ;; now copy the FieldValues as well.
   (let [old-field-id->name (t2/select-pk->fn :name Field :table_id old-table-id)
         new-field-name->id (t2/select-fn->pk :name Field :table_id new-table-id)
-        old-field-values   (db/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
+        old-field-values   (t2/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
     (db/insert-many! FieldValues
       (for [{old-field-id :field_id, :as field-values} old-field-values
             :let                                       [field-name (get old-field-id->name old-field-id)]]
@@ -267,7 +267,7 @@
             (assoc :field_id (get new-field-name->id field-name)))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
-  (let [old-tables    (db/select Table :db_id old-db-id {:order-by [[:id :asc]]})
+  (let [old-tables    (t2/select Table :db_id old-db-id {:order-by [[:id :asc]]})
         new-table-ids (db/insert-many! Table
                         (for [table old-tables]
                           (-> table (dissoc :id) (assoc :db_id new-db-id))))]
@@ -309,7 +309,7 @@
 (defn- copy-secrets [database]
   (let [prop->old-id (get-linked-secrets database)]
     (if (seq prop->old-id)
-      (let [secrets (db/select [Secret :id :name :kind :source :value] :id [:in (set (vals prop->old-id))])
+      (let [secrets (t2/select [Secret :id :name :kind :source :value] :id [:in (set (vals prop->old-id))])
             new-ids (db/insert-many! Secret (map #(dissoc % :id) secrets))
             old-id->new-id (zipmap (map :id secrets) new-ids)]
         (assoc database

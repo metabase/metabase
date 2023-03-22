@@ -22,7 +22,7 @@
              "name"    nil}})
 
 (defn- actual-fields-hierarchy [table-or-id]
-  (let [parent-id->children (group-by :parent_id (db/select [Field :id :parent_id :name] :table_id (u/the-id table-or-id)))
+  (let [parent-id->children (group-by :parent_id (t2/select [Field :id :parent_id :name] :table_id (u/the-id table-or-id)))
         format-fields       (fn format-fields [fields]
                               (into {} (for [field fields]
                                          [(:name field) (when-let [nested-fields (seq (parent-id->children (:id field)))]
