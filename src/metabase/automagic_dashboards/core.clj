@@ -40,7 +40,6 @@
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
@@ -747,7 +746,7 @@
    be returned."
   [table]
   (for [{:keys [id target]} (field/with-targets
-                              (db/select Field
+                              (t2/select Field
                                 :table_id           (u/the-id table)
                                 :fk_target_field_id [:not= nil]
                                 :active             true))
@@ -799,7 +798,7 @@
   [{:keys [source _entity] :as _root} tables]
   (let [engine (source->engine source)]
     (if (mi/instance-of? Table source)
-      (comp (->> (db/select Field
+      (comp (->> (t2/select Field
                    :table_id [:in (map u/the-id tables)]
                    :visibility_type "normal"
                    :preview_display true
@@ -1439,7 +1438,7 @@
   ([database] (candidate-tables database nil))
   ([database schema]
    (let [rules (rules/get-rules ["table"])]
-     (->> (apply db/select [Table :id :schema :display_name :entity_type :db_id]
+     (->> (apply t2/select [Table :id :schema :display_name :entity_type :db_id]
                  (cond-> [:db_id           (u/the-id database)
                           :visibility_type nil
                           :active          true]

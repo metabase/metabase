@@ -76,7 +76,7 @@
    namespace (s/maybe su/NonBlankString)}
   (let [archived? (Boolean/parseBoolean archived)
         exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)]
-    (as-> (db/select Collection
+    (as-> (t2/select Collection
             {:where    [:and
                         [:= :archived archived?]
                         [:= :namespace namespace]
@@ -139,7 +139,7 @@
                                                           :from            [:report_card]
                                                           :where           [:= :archived false]}))
         colls (cond->>
-                (db/select Collection
+                (t2/select Collection
                   {:where [:and
                            (when exclude-archived?
                              [:= :archived false])
@@ -166,7 +166,7 @@
                                                                                :from            [:report_card]
                                                                                :where           [:= :archived false]}))
            colls                           (cond->>
-                                             (db/select Collection
+                                             (t2/select Collection
                                                {:where [:and
                                                         (when exclude-archived?
                                                           [:= :archived false])
@@ -927,7 +927,7 @@
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :authority_level])]
       (when (seq updates)
-        (db/update! Collection id updates)))
+        (t2/update! Collection id updates)))
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
     (move-collection-if-needed! collection-before-update collection-updates)
     ;; if we *did* end up archiving this Collection, we most post a few notifications

@@ -25,6 +25,7 @@ import type {
 
 import {
   getForm,
+  getFormValidationSchema,
   getDefaultFormSettings,
   sortActionParams,
 } from "../../../utils";
@@ -40,7 +41,6 @@ import {
 } from "./FormCreator.styled";
 
 // FormEditor's can't be submitted as it serves as a form preview
-const BLANK_INITIAL_VALUES = {};
 const ON_SUBMIT_NOOP = _.noop;
 
 interface FormCreatorProps {
@@ -74,6 +74,18 @@ function FormCreator({
   const form = useMemo(
     () => getForm(parameters, formSettings?.fields),
     [parameters, formSettings?.fields],
+  );
+
+  // Validation schema here should only be used to get default values
+  // for a form preview. We don't want error messages on the preview though.
+  const validationSchema = useMemo(
+    () => getFormValidationSchema(parameters, formSettings.fields),
+    [parameters, formSettings],
+  );
+
+  const displayValues = useMemo(
+    () => validationSchema.getDefault(),
+    [validationSchema],
   );
 
   const sortedParams = useMemo(
@@ -147,7 +159,7 @@ function FormCreator({
         </InfoText>
         <FormProvider
           enableReinitialize
-          initialValues={BLANK_INITIAL_VALUES}
+          initialValues={displayValues}
           onSubmit={ON_SUBMIT_NOOP}
         >
           <Form role="form" data-testid="action-form-editor">

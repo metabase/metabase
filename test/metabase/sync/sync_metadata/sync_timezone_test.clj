@@ -7,7 +7,6 @@
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- db-timezone [db-or-id]
@@ -20,7 +19,7 @@
       (mt/dataset test-data
         (let [db                               (mt/db)
               tz-on-load                       (db-timezone db)
-              _                                (db/update! Database (:id db) :timezone nil)
+              _                                (t2/update! Database (:id db) {:timezone nil})
               tz-after-update                  (db-timezone db)
               ;; It looks like we can get some stale timezone information depending on which thread is used for querying the
               ;; database in sync. Clearing the connection pool to ensure we get the most updated TZ data

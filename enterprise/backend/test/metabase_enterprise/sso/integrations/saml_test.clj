@@ -438,13 +438,13 @@
                        :last_name    "User"
                        :date_joined  true
                        :common_name  "New User"}]
-                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                     (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login)))))
               (testing "attributes"
                 (is (= (some-saml-attributes "newuser")
                        (saml-login-attributes "newuser@metabase.com")))))
             (finally
-              (db/delete! User :%lower.email "newuser@metabase.com"))))))))
+              (t2/delete! User :%lower.email "newuser@metabase.com"))))))))
 
 (deftest login-update-account-test
   (testing "A new 'Unknown' name account will be created for a SAML user with no configured first or last name"
@@ -465,7 +465,7 @@
                        :last_name    nil
                        :date_joined  true
                        :common_name  "newuser@metabase.com"}]
-                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                     (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login))))))
             ;; login with the same user, but now givenname and surname attributes exist
             (let [req-options (saml-post-request-options (new-user-saml-test-response)
@@ -479,10 +479,10 @@
                        :last_name    "User"
                        :date_joined  true
                        :common_name  "New User"}]
-                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                     (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login))))))
             (finally
-              (db/delete! User :%lower.email "newuser@metabase.com"))))))))
+              (t2/delete! User :%lower.email "newuser@metabase.com"))))))))
 
 (defn- group-memberships [user-or-id]
   (when-let [group-ids (seq (t2/select-fn-set :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
@@ -508,7 +508,7 @@
                            ":metabase-enterprise.sso.integrations.saml-test/group-1"}
                          (group-memberships (t2/select-one-pk User :email "newuser@metabase.com")))))
                 (finally
-                  (db/delete! User :%lower.email "newuser@metabase.com"))))))))))
+                  (t2/delete! User :%lower.email "newuser@metabase.com"))))))))))
 
 (deftest login-should-sync-multiple-group-membership
   (testing "saml group sync works when there are multiple groups, which gets interpreted as a list of strings"
@@ -534,7 +534,7 @@
                              ":metabase-enterprise.sso.integrations.saml-test/group-2"}
                            (group-memberships (t2/select-one-pk User :email "newuser@metabase.com")))))
                   (finally
-                    (db/delete! User :%lower.email "newuser@metabase.com")))))))))
+                    (t2/delete! User :%lower.email "newuser@metabase.com")))))))))
     (testing "when several Attribute nodes exist (issue #20744)"
       (with-saml-default-setup
         (do-with-some-validators-disabled
@@ -557,7 +557,7 @@
                              ":metabase-enterprise.sso.integrations.saml-test/group-2"}
                            (group-memberships (t2/select-one-pk User :email "newuser@metabase.com")))))
                   (finally
-                    (db/delete! User :%lower.email "newuser@metabase.com")))))))))))
+                    (t2/delete! User :%lower.email "newuser@metabase.com")))))))))))
 
 (deftest relay-state-e2e-test
   (testing "Redirect URL (RelayState) should work correctly end-to-end (#13666)"

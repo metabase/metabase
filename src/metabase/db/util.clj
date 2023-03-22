@@ -32,15 +32,15 @@
   "Convenience for generating an HoneySQL `IN` clause for a keyword and all of its descendents.
    Intended for use with the type hierarchy in `metabase.types`.
 
-     (db/select Field :semantic_type (mdb/isa :type/URL))
+     (t2/select Field :semantic_type (mdb/isa :type/URL))
       ->
-     (db/select Field :semantic_type [:in #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}])
+     (t2/select Field :semantic_type [:in #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}])
 
    Also accepts optional `expr` for use directly in a HoneySQL `where`:
 
-     (db/select Field {:where (mdb/isa :semantic_type :type/URL)})
+     (t2/select Field {:where (mdb/isa :semantic_type :type/URL)})
      ->
-     (db/select Field {:where [:in :semantic_type #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}]})"
+     (t2/select Field {:where [:in :semantic_type #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}]})"
   ([type-keyword]
    [:in (type-keyword->descendants type-keyword)])
   ;; when using this with an `expr` (e.g. `(isa :semantic_type :type/URL)`) just go ahead and take the results of the

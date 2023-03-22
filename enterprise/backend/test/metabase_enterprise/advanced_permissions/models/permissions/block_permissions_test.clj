@@ -166,7 +166,7 @@
       (letfn [(perms-exist? []
                 (db/exists? Permissions :object (perms/database-block-perms-path db-id)))]
         (is (perms-exist?))
-        (db/delete! Database :id db-id)
+        (t2/delete! Database :id db-id)
         (is (not (perms-exist?)))))))
 
 ;;;; QP perms-check related stuff.

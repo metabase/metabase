@@ -41,7 +41,7 @@
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
-  (as-> (db/select Table, :active true, {:order-by [[:name :asc]]}) tables
+  (as-> (t2/select Table, :active true, {:order-by [[:name :asc]]}) tables
     (hydrate tables :db)
     (filterv mi/can-read? tables)))
 
@@ -64,7 +64,7 @@
   (when-let [changes (not-empty (u/select-keys-when body
                                   :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
                                   :present [:description :caveats :points_of_interest :visibility_type]))]
-    (api/check-500 (db/update! Table id changes)))
+    (api/check-500 (pos? (t2/update! Table id changes))))
   (let [updated-table        (t2/select-one Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
@@ -89,7 +89,7 @@
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
-  (let [existing-tables (db/select Table :id [:in ids])]
+  (let [existing-tables (t2/select Table :id [:in ids])]
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
     (let [updated-tables (db/transaction (mapv #(update-table!* % body) existing-tables))
@@ -325,7 +325,7 @@
   [card-id database-id metadata]
   (let [add-field-dimension-options #(assoc-field-dimension-options (driver.u/database->driver database-id) %)
         underlying (m/index-by :id (when-let [ids (seq (keep :id metadata))]
-                                     (db/select Field :id [:in ids])))
+                                     (t2/select Field :id [:in ids])))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
                      (update :base_type keyword)
@@ -415,7 +415,7 @@
   {id ms/PositiveInt}
   (api/read-check Table id)
   (when-let [field-ids (seq (t2/select-pks-set Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
-    (for [origin-field (db/select Field, :fk_target_field_id [:in field-ids], :active true)]
+    (for [origin-field (t2/select Field, :fk_target_field_id [:in field-ids], :active true)]
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)

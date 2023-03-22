@@ -183,8 +183,9 @@
       (apply client-fn user args))
     (let [user-id             (u/the-id user)
           user-email          (t2/select-one-fn :email User :id user-id)
-          [old-password-info] (db/simple-select User {:select [:password :password_salt]
-                                                      :where  [:= :id user-id]})]
+          [old-password-info] (t2/query {:select [:password :password_salt]
+                                         :from   [:core_user]
+                                         :where  [:= :id user-id]})]
       (when-not user-email
         (throw (ex-info "User does not exist" {:user user})))
       (try

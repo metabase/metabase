@@ -90,9 +90,9 @@
   "If there is a version in the db-metadata update the DB to have that in the DB model"
   [database :- i/DatabaseInstance db-metadata :- i/DatabaseMetadata]
   (log/info (trs "Found new version for DB: {0}" (:version db-metadata)))
-  (db/update! Database (u/the-id database)
-    :details
-    (assoc (:details database) :version (:version db-metadata))))
+  (t2/update! Database (u/the-id database)
+              {:details
+               (assoc (:details database) :version (:version db-metadata))}))
 
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
@@ -103,8 +103,8 @@
                          :name table-name
                          :active false)]
     ;; if the table already exists but is marked *inactive*, mark it as *active*
-    (db/update! Table existing-id
-      :active true)
+    (t2/update! Table existing-id
+      {:active true})
     ;; otherwise create a new Table
     (let [is-crufty? (is-crufty-table? table)]
       (db/insert! Table
@@ -170,7 +170,7 @@
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
   (set (map (partial into {})
-            (db/select [Table :name :schema :description]
+            (t2/select [Table :name :schema :description]
               :db_id  (u/the-id database)
               :active true))))
 

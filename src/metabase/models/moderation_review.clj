@@ -9,7 +9,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (def statuses
   "Schema enum of the acceptable values for the `status` column"
@@ -60,7 +61,7 @@
                                     ;; and insert a new one to arrive at 10 again, our invariant.
                                     :order-by [[:id :desc]]}))]
     (when (seq ids)
-      (db/delete! ModerationReview :id [:in ids]))))
+      (t2/delete! ModerationReview :id [:in ids]))))
 
 (s/defn create-review!
   "Create a new ModerationReview"

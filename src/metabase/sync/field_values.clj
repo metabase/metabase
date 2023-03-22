@@ -46,7 +46,7 @@
 
 (defn- table->fields-to-scan
   [table]
-  (db/select Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
+  (t2/select Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
 
 (s/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for TABLE."
@@ -83,7 +83,7 @@
                                        (- (t/as field-values/advanced-field-values-max-age :days))
                                        :day)]]
           rows-count (apply db/count FieldValues conditions)]
-      (apply db/delete! FieldValues conditions)
+      (apply t2/delete! FieldValues conditions)
       rows-count)))
 
 (s/defn delete-expired-advanced-field-values-for-table!

@@ -137,7 +137,7 @@
 
   Returns a reducible stream of modeled Toucan maps.
 
-  Defaults to using `(toucan.db/select model)` for the entire table.
+  Defaults to using `(toucan.t2/select model)` for the entire table.
 
   You may want to override this to eg. skip archived entities, or otherwise filter what gets serialized."
   {:arglists '([model-name opts])}
@@ -291,7 +291,7 @@
   "Called by the default [[load-one!]] if there is a corresponding entity already in the appdb.
   `(load-update! \"ModelName\" ingested-and-xformed local-Toucan-entity)`
 
-  Defaults to a straightforward [[db/update!]], and you may not need to update it.
+  Defaults to a straightforward [[t2/update!]], and you may not need to update it.
 
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
@@ -304,7 +304,7 @@
         pk       (models/primary-key model)
         id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
-    (db/update! model id ingested)
+    (t2/update! model id ingested)
     (t2/select-one model pk id)))
 
 (defmulti load-insert!
@@ -417,7 +417,7 @@
   "Creates the basic context for storage. This is a map with a single entry: `:collections` is a map from collection ID
   to the path of collections."
   []
-  (let [colls      (db/select ['Collection :id :entity_id :location :slug])
+  (let [colls      (t2/select ['Collection :id :entity_id :location :slug])
         coll-names (into {} (for [{:keys [id entity_id slug]} colls]
                               [(str id) (storage-leaf-file-name entity_id slug)]))
         coll->path (into {} (for [{:keys [entity_id id location]} colls

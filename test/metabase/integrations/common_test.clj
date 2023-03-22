@@ -13,7 +13,6 @@
    [metabase.test :as mt :refer [with-user-in-groups]]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -114,7 +113,7 @@
     (mt/with-log-level :warn
       (with-user-in-groups [user [(perms-group/admin)]]
         (let [log-warn-count (atom #{})]
-          (with-redefs [db/delete!
+          (with-redefs [t2/delete!
                         (fn [model & _args]
                           (when (= model PermissionsGroupMembership)
                             (throw (ex-info (str perms-group-membership/fail-to-remove-last-admin-msg)
