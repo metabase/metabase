@@ -56,7 +56,6 @@ interface Props {
     mode: string,
     opt: { datasetEditorTab: string },
   ) => void;
-  turnDatasetIntoQuestion: () => void;
   onInfoClick: () => void;
   onModelPersistenceChange: () => void;
   isModerator: boolean;
@@ -70,7 +69,6 @@ const QuestionActions = ({
   onOpenModal,
   question,
   setQueryBuilderMode,
-  turnDatasetIntoQuestion,
   onInfoClick,
   onModelPersistenceChange,
   isModerator,
@@ -169,13 +167,6 @@ const QuestionActions = ({
         icon: "model",
         action: handleTurnToModel,
         testId: TURN_INTO_DATASET_TESTID,
-      });
-    }
-    if (isDataset) {
-      extraButtons.push({
-        title: t`Turn back to saved question`,
-        icon: "model_framed",
-        action: turnDatasetIntoQuestion,
       });
     }
   }

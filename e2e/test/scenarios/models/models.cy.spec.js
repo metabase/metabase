@@ -157,28 +157,6 @@ describe("scenarios > models", () => {
     assertIsQuestion();
   });
 
-  it("allows to turn a model back into a saved question", () => {
-    cy.request("PUT", "/api/card/1", { dataset: true });
-    cy.intercept("PUT", "/api/card/1").as("cardUpdate");
-    cy.visit("/model/1");
-
-    openQuestionActions();
-    popover().within(() => {
-      cy.findByText("Turn back to saved question").click();
-    });
-
-    cy.wait("@cardUpdate");
-
-    cy.findByText("This is a question now.");
-    openQuestionActions();
-    assertIsQuestion();
-
-    cy.findByText("Undo").click();
-    cy.wait("@cardUpdate");
-    openQuestionActions();
-    assertIsModel();
-  });
-
   it("shows 404 when opening a question with a /dataset URL", () => {
     cy.visit("/model/1");
     cy.findByText(/We're a little lost/i);

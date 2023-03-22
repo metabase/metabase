@@ -83,27 +83,6 @@ describe("scenarios > models metadata", () => {
 
       cy.findByText("Subtotal");
     });
-
-    it("clears custom metadata when a model is turned back into a question", () => {
-      openQuestionActions();
-
-      cy.findByText("Edit metadata").click();
-
-      openColumnOptions("Subtotal");
-
-      renameColumn("Subtotal", "Pre-tax");
-      setColumnType("No special type", "Cost");
-      cy.button("Save changes").click();
-
-      openQuestionActions();
-      popover().within(() => {
-        cy.findByText("Turn back to saved question").click();
-      });
-
-      cy.wait("@dataset");
-
-      cy.findByText("Subtotal");
-    });
   });
 
   it("should edit native model metadata", () => {

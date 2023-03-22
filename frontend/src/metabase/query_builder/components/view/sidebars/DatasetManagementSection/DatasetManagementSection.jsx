@@ -3,10 +3,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import {
-  setQueryBuilderMode,
-  turnDatasetIntoQuestion,
-} from "metabase/query_builder/actions";
+import { setQueryBuilderMode } from "metabase/query_builder/actions";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import Question from "metabase-lib/Question";
@@ -22,20 +19,14 @@ import {
 
 const mapDispatchToProps = {
   setQueryBuilderMode,
-  turnDatasetIntoQuestion,
 };
 
 DatasetManagementSection.propTypes = {
   dataset: PropTypes.instanceOf(Question).isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
-  turnDatasetIntoQuestion: PropTypes.func.isRequired,
 };
 
-function DatasetManagementSection({
-  dataset,
-  setQueryBuilderMode,
-  turnDatasetIntoQuestion,
-}) {
+function DatasetManagementSection({ dataset, setQueryBuilderMode }) {
   const onEditQueryDefinitionClick = () => {
     setQueryBuilderMode("dataset", {
       datasetEditorTab: "query",
@@ -65,10 +56,6 @@ function DatasetManagementSection({
             <DatasetMetadataStrengthIndicator dataset={dataset} />
           </MetadataIndicatorContainer>
         </Row>
-        <Button
-          icon="model_framed"
-          onClick={turnDatasetIntoQuestion}
-        >{t`Turn back into a saved question`}</Button>
         <PLUGIN_MODERATION.QuestionModerationSection
           question={dataset}
           VerifyButton={Button}

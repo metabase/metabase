@@ -60,19 +60,6 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   );
 };
 
-export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
-  const dataset = getQuestion(getState());
-  const question = dataset.setDataset(false);
-  await dispatch(apiUpdateQuestion(question, { rerunQuery: true }));
-
-  dispatch(
-    addUndo({
-      message: t`This is a question now.`,
-      actions: [apiUpdateQuestion(dataset)],
-    }),
-  );
-};
-
 export const SET_RESULTS_METADATA = "metabase/qb/SET_RESULTS_METADATA";
 export const setResultsMetadata = createAction(SET_RESULTS_METADATA);
 

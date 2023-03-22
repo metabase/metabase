@@ -337,7 +337,6 @@ ViewTitleHeaderRightSide.propTypes = {
   onEditSummary: PropTypes.func,
   onCloseSummary: PropTypes.func,
   setQueryBuilderMode: PropTypes.func,
-  turnDatasetIntoQuestion: PropTypes.func,
   areFiltersExpanded: PropTypes.bool,
   onExpandFilters: PropTypes.func,
   onCollapseFilters: PropTypes.func,
@@ -373,7 +372,6 @@ function ViewTitleHeaderRightSide(props) {
     onEditSummary,
     onCloseSummary,
     setQueryBuilderMode,
-    turnDatasetIntoQuestion,
     areFiltersExpanded,
     onExpandFilters,
     onCollapseFilters,
@@ -487,7 +485,6 @@ function ViewTitleHeaderRightSide(props) {
           onOpenModal={onOpenModal}
           question={question}
           setQueryBuilderMode={setQueryBuilderMode}
-          turnDatasetIntoQuestion={turnDatasetIntoQuestion}
           onInfoClick={handleInfoClick}
           onModelPersistenceChange={onModelPersistenceChange}
         />

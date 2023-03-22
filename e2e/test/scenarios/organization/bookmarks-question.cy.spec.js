@@ -41,8 +41,9 @@ describe("scenarios > question > bookmarks", () => {
     });
 
     // Convert back to question
-    openQuestionActions();
-    cy.findByText("Turn back to saved question").click();
+    cy.findByTestId("toast-undo").within(() => {
+      cy.button("Undo").click();
+    });
 
     navigationSidebar().within(() => {
       cy.icon("model").should("not.exist");
