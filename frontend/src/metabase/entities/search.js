@@ -3,8 +3,6 @@ import { createEntity } from "metabase/lib/entities";
 import { GET } from "metabase/lib/api";
 import { entityTypeForObject } from "metabase/lib/schema";
 
-import { ObjectUnionSchema } from "metabase/schema";
-
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import Actions from "./actions";
@@ -74,8 +72,6 @@ export default createEntity({
       }
     },
   },
-
-  schema: ObjectUnionSchema,
 
   // delegate to the actual object's entity wrapEntity
   wrapEntity(object, dispatch = null) {
