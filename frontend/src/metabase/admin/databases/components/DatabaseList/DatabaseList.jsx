@@ -13,10 +13,7 @@ import Modal from "metabase/components/Modal";
 import DatabaseSyncModal from "metabase/databases/containers/DatabaseSyncModal";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
-import {
-  TableCellContent,
-  TableCellSpinner,
-} from "../../containers/DatabaseListApp.styled";
+import { TableCellContent, TableCellSpinner } from "./DatabaseListApp.styled";
 
 const query = {
   ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,

@@ -8,19 +8,19 @@ import LoadingAndGenericErrorWrapper from "metabase/components/LoadingAndGeneric
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Database from "metabase/entities/databases";
-import DatabaseList from "../components/DatabaseList";
+import DatabaseList from "../../components/DatabaseList";
 
 import {
   getDeletes,
   getDeletionError,
   getIsAddingSampleDatabase,
   getAddSampleDatabaseError,
-} from "../selectors";
+} from "../../selectors";
 import {
   deleteDatabase,
   addSampleDatabase,
   closeSyncingModal,
-} from "../database";
+} from "../../database";
 
 const RELOAD_INTERVAL = 2000;
 
