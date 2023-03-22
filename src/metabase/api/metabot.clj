@@ -29,7 +29,7 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/model"
   "Fetch a native version of an MBQL query."
-  [:as {{:keys [database model source-table question] :as x} :body}]
+  [:as {{:keys [source-model question] :as x} :body}]
   (tap> x)
   (binding [persisted-info/*allow-persisted-substitution* false]
     ;(qp.perms/check-current-user-has-adhoc-native-query-perms query)
