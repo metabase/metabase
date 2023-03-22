@@ -12,6 +12,10 @@ export const FormContainer = styled.div`
   background-color: ${color("white")};
 `;
 
+export const FormFieldEditorDragContainer = styled.div`
+  margin-bottom: ${space(1)};
+`;
+
 export const InfoText = styled.span`
   display: block;
   color: ${color("text-medium")};
@@ -19,14 +23,9 @@ export const InfoText = styled.span`
 `;
 
 export const FieldSettingsButtonsContainer = styled.div`
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  padding: ${space(0)};
   display: flex;
-  gap: ${space(1)};
   align-items: center;
-  justify-content: flex-end;
+  gap: ${space(1)};
 `;
 
 export const EmptyFormPlaceholderWrapper = styled.div`

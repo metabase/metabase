@@ -9,11 +9,15 @@
   {:arglists '([x])}
   lib.dispatch/dispatch-value)
 
+(defn- default-MBQL-clause->pMBQL [mbql-clause]
+  (let [[clause-type options & args] (lib.options/ensure-uuid mbql-clause)]
+    (into [clause-type options] (map ->pMBQL) args)))
+
 (defmethod ->pMBQL :default
   [x]
   (if (and (vector? x)
            (keyword? (first x)))
-    (lib.options/ensure-uuid x)
+    (default-MBQL-clause->pMBQL x)
     x))
 
 (defmethod ->pMBQL :mbql/query
@@ -30,6 +34,12 @@
    stage
    [:aggregation :breakout :expressions :fields :filter :order-by :joins]))
 
+(defmethod ->pMBQL :mbql/join
+  [join]
+  (-> join
+      (update :condition ->pMBQL)
+      (update :stages ->pMBQL)))
+
 (defmethod ->pMBQL :dispatch-type/sequential
   [xs]
   (mapv ->pMBQL xs))
@@ -40,10 +50,10 @@
     (-> (lib.util/pipeline m)
         (update :stages (fn [stages]
                           (mapv ->pMBQL stages))))
-    (update-vals ->pMBQL m)))
+    (update-vals m ->pMBQL)))
 
 (defmethod ->pMBQL :field
-  [[_field x y]]
+  [[_tag x y]]
   (let [[id-or-name options] (if (map? x)
                                [y x]
                                [x y])
@@ -51,6 +61,11 @@
                                (not (:lib/uuid options))
                                (assoc :lib/uuid (str (random-uuid))))]
     [:field options id-or-name]))
+
+(defmethod ->pMBQL :aggregation-options
+  [[_tag aggregation options]]
+  (let [[tag opts & args] (->pMBQL aggregation)]
+    (into [tag (merge opts options)] args)))
 
 (defmulti ->legacy-MBQL
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's

@@ -10,8 +10,9 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.yaml :as yaml]
    [toucan.db :as db]
-   [yaml.core :as yaml])
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
@@ -115,7 +116,7 @@
                 (is (= 2 (db/count DashboardCard)) "# DashboardCards")>)))
           (testing "remove one of the questions in the source's dashboard"
             (ts/with-source-db
-              (db/delete! Card :name "Card_2")
+              (t2/delete! Card :name "Card_2")
               (is (= 1 (db/count Card)) "# Cards")
               (is (= 1 (db/count DashboardCard)) "# DashboardCards")))
           (testing "dump again"

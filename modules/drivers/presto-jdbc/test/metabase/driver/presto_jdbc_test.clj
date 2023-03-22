@@ -19,7 +19,7 @@
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.io File)))
 
@@ -70,7 +70,7 @@
                        :database-type "integer"
                        :base-type     :type/Integer
                        :database-position 0}}}
-           (driver/describe-table :presto-jdbc (mt/db) (db/select-one 'Table :id (mt/id :venues)))))))
+           (driver/describe-table :presto-jdbc (mt/db) (t2/select-one 'Table :id (mt/id :venues)))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :presto-jdbc
@@ -79,9 +79,9 @@
             [3 "The Apple Pan"]
             [4 "Wurstküche"]
             [5 "Brite Spot Family Restaurant"]]
-           (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
-                  [(db/select-one Field :id (mt/id :venues :id))
-                   (db/select-one Field :id (mt/id :venues :name))]
+           (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
+                  [(t2/select-one Field :id (mt/id :venues :id))
+                   (t2/select-one Field :id (mt/id :venues :name))]
                   (constantly conj))
                 (sort-by first)
                 (take 5))))))
@@ -204,7 +204,7 @@
             ;; same as test_data, but with schema, so should NOT pick up venues, users, etc.
             (sync/sync-database! db)
             (is (= [{:name t, :schema s, :db_id (mt/id)}]
-                   (map #(select-keys % [:name :schema :db_id]) (db/select Table :db_id (mt/id)))))))
+                   (map #(select-keys % [:name :schema :db_id]) (t2/select Table :db_id (mt/id)))))))
         (execute-ddl! [(format "DROP TABLE %s.%s" s t)
                        (format "DROP SCHEMA %s" s)])))))
 

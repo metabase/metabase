@@ -1,15 +1,17 @@
 import { capitalize } from "inflection";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-export function enableActionsForDB(dbId = SAMPLE_DB_ID) {
+
+export function setActionsEnabledForDB(dbId, enabled = true) {
   return cy.request("PUT", `/api/database/${dbId}`, {
     settings: {
-      "database-enable-actions": true,
+      "database-enable-actions": enabled,
     },
   });
 }
 
 export function fillActionQuery(query) {
-  cy.get(".ace_content").type(query, { parseSpecialCharSequences: false });
+  cy.get(".ace_content:visible").type(query, {
+    parseSpecialCharSequences: false,
+  });
 }
 /**
  *

@@ -4,11 +4,20 @@ import {
   openOrdersTable,
   openPeopleTable,
   openProductsTable,
+  visitQuestionAdhoc,
+  resetTestTable,
+  resyncDatabase,
+  getTableId,
+  visitPublicQuestion,
+  visitPublicDashboard,
 } from "e2e/support/helpers";
+
+import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 const FIRST_ORDER_ID = 9676;
 const SECOND_ORDER_ID = 10874;
@@ -178,6 +187,49 @@ describe("scenarios > question > object details", () => {
     cy.location("search").should("eq", "?objectId=Rustic%20Paper%20Wallet");
     cy.findByTestId("object-detail").contains("Rustic Paper Wallet");
   });
+
+  it("should work as a viz display type", () => {
+    const questionDetails = {
+      display: "object",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+
+          joins: [
+            {
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+              ],
+              alias: "Products",
+            },
+            {
+              fields: "all",
+              "source-table": PEOPLE_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.USER_ID, null],
+                ["field", PEOPLE.ID, { "join-alias": "People" }],
+              ],
+              alias: "People",
+            },
+          ],
+        },
+        type: "query",
+      },
+    };
+    visitQuestionAdhoc(questionDetails);
+
+    cy.findByTestId("object-detail");
+
+    cy.log("metabase(#29023)");
+    cy.findByText("People → Name").scrollIntoView().should("be.visible");
+    cy.findByText(/Item 1 of/i).should("be.visible");
+  });
 });
 
 function drillPK({ id }) {
@@ -223,3 +275,99 @@ function changeSorting(columnName, direction) {
   });
   cy.wait("@dataset");
 }
+
+['postgres', 'mysql'].forEach(dialect => {
+  describe(`Object Detail > composite keys (${dialect})`, { tags: ['@external'] }, () => {
+    const TEST_TABLE = "composite_pk_table";
+
+    beforeEach(() => {
+      resetTestTable({ type: dialect, table: TEST_TABLE });
+      restore(`${dialect}-writable`);
+      cy.signInAsAdmin();
+      resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+    });
+
+    it('can show object detail modal for items with composite keys', () => {
+      getTableId({ name: TEST_TABLE }).then(tableId => {
+        cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
+      });
+
+      cy.icon('expand').first().click();
+
+      cy.findByRole('dialog').within(() => {
+        cy.findAllByText("Duck").should('have.length', 2);
+        cy.icon('chevrondown').click();
+        cy.findAllByText("Horse").should('have.length', 2);
+      });
+    });
+  });
+
+  describe(`Object Detail > no primary keys (${dialect})`, { tags: ['@external'] }, () => {
+    const TEST_TABLE = "no_pk_table";
+
+    beforeEach(() => {
+      resetTestTable({ type: dialect, table: TEST_TABLE });
+      restore(`${dialect}-writable`);
+      cy.signInAsAdmin();
+      resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+    });
+
+    it('can show object detail modal for items with no primary key', () => {
+      getTableId({ name: TEST_TABLE }).then(tableId => {
+        cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
+      });
+
+      cy.icon('expand').first().click();
+
+      cy.findByRole('dialog').within(() => {
+        cy.findAllByText("Duck").should('have.length', 2);
+        cy.icon('chevrondown').click();
+        cy.findAllByText("Horse").should('have.length', 2);
+      });
+    });
+  });
+});
+
+describe(`Object Detail > public`, () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it('can view a public object detail question', () => {
+
+    cy.createQuestion({ ...TEST_QUESTION, display: 'object' }).then(
+      ({ body: { id: questionId } }) => {
+        visitPublicQuestion(questionId);
+      },
+    );
+    cy.icon('warning').should('not.exist');
+
+    cy.findByTestId('object-detail').within(() => {
+      cy.findByText('User ID').should('be.visible');
+      cy.findByText('1283').should('be.visible');
+    });
+
+    cy.findByTestId('pagination-footer').within(() => {
+      cy.findByText("Item 1 of 3").should('be.visible');
+    });
+  });
+
+  it('can view an object detail question on a public dashboard', () => {
+    cy.createQuestionAndDashboard({ questionDetails: { ...TEST_QUESTION, display: 'object' } }).then(
+      ({ body: { dashboard_id } }) => {
+        visitPublicDashboard(dashboard_id);
+      });
+
+    cy.icon('warning').should('not.exist');
+
+    cy.findByTestId('object-detail').within(() => {
+      cy.findByText('User ID').should('be.visible');
+      cy.findByText('1283').should('be.visible');
+    });
+
+    cy.findByTestId('pagination-footer').within(() => {
+      cy.findByText("Item 1 of 3").should('be.visible');
+    });
+  });
+});

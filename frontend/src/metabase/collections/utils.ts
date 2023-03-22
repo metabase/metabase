@@ -67,6 +67,10 @@ export function isItemQuestion(item: CollectionItem) {
   return item.model === "card";
 }
 
+export function isItemModel(item: CollectionItem) {
+  return item.model === "dataset";
+}
+
 export function isItemCollection(item: CollectionItem) {
   return item.model === "collection";
 }

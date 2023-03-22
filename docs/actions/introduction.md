@@ -4,21 +4,21 @@ title: Introduction to actions
 
 # Introduction to actions
 
-> For now, actions are only available for PostgreSQL, MySQL, and H2 
+> For now, actions are only available for PostgreSQL, MySQL, and H2. 
 
 ![Example action](./images/example-action.png)
 
-**Actions** are entities in Metabase that let you build custom forms and business logic.
-
 ## What are actions?
+
+**Actions** are entities in Metabase that let you build custom forms and business logic.
 
 Actions let you write parameterized SQL that writes back to your database. Actions can be attached to [buttons on dashboards](../dashboards/actions.md) to create custom workflows. You can even publicly share the parameterized forms they generate to collect data.
 
 Here are a few ideas for what you can do with actions:
 
-- Create a customer feedback form and embed it on your website.
 - Mark the customer you’re viewing in a dashboard as a VIP.
 - Let team members remove redundant data.
+- Create a customer feedback form and embed it on your website.
 
 Actions are associated with [models](../data-modeling/models.md), but actions operate on the raw tables that back those models (actions don't directly affect models).
 

@@ -81,14 +81,14 @@
         (db/simple-insert! Field (assoc mock-field :name "Field 1"))
         (db/simple-insert! Field (assoc mock-field :name "Field 2")))
       (testing "sanity check: Fields should not have a `:database_position` column yet"
-        (is (not (contains? (db/select-one Field :id 1) :database_position))))
+        (is (not (contains? (t2/select-one Field :id 1) :database_position))))
       ;; now run migration 165
       (migrate!)
       (testing "Fields should get `:database_position` equal to their IDs"
         (doseq [id [1 2]]
           (testing (format "Field %d" id)
             (is (= id
-                   (db/select-one-field :database_position Field :id id)))))))))
+                   (t2/select-one-fn :database_position Field :id id)))))))))
 
 (defn- create-raw-user!
   "create a user but skip pre and post insert steps"
@@ -215,7 +215,7 @@
                 (into #{}
                       (map #(select-keys % [:base_type :effective_type :coercion_strategy
                                             :semantic_type :name]))
-                      (db/select Field :table_id table-id)))))))))
+                      (t2/select Field :table_id table-id)))))))))
 
 (defn app-db-column-types
   "Returns a map of all column names to their respective type names, for the given `table-name`, by using the JDBC
@@ -648,7 +648,7 @@
                                              :collection_id          nil})]
        (migrate!)
        (is (= nil
-              (:parameters (first (db/simple-select Card {:where [:= :id card-id]})))))))))
+              (:parameters (first (t2/select (t2/table-name Card) {:where [:= :id card-id]})))))))))
 
 (deftest add-parameter-mappings-to-cards-test
   (testing "Migration v44.00-024: Add parameter_mappings to cards"
@@ -673,7 +673,7 @@
                                      :collection_id          nil})]
         (migrate!)
         (is (= nil
-               (:parameter_mappings (first (db/simple-select Card {:where [:= :id card-id]})))))))))
+               (:parameter_mappings (first (t2/select (t2/table-name Card) {:where [:= :id card-id]})))))))))
 
 (deftest grant-all-users-root-snippets-collection-readwrite-perms-test
   (letfn [(perms-path [] "/collection/namespace/snippets/root/")
@@ -728,10 +728,10 @@
       (let [database-id (db/simple-insert! Database (-> (dissoc (mt/with-temp-defaults Database) :details)
                                                         (assoc :engine "h2")))]
         (is (partial= {:details nil}
-                      (db/select-one Database :id database-id)))
+                      (t2/select-one Database :id database-id)))
         (migrate!)
         (is (partial= {:details {}}
-                      (db/select-one Database :id database-id)))))))
+                      (t2/select-one Database :id database-id)))))))
 
 (deftest populate-collection-created-at-test
   (testing "Migrations v45.00-048 thru v45.00-050: add Collection.created_at and populate it"
@@ -776,12 +776,12 @@
         (migrate!)
         (testing "A personal Collection should get created_at set by to the date_joined from its owner"
           (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
-                 (t/offset-date-time (db/select-one-field :created_at Collection :id personal-collection-id)))))
+                 (t/offset-date-time (t2/select-one-fn :created_at Collection :id personal-collection-id)))))
         (testing "A non-personal Collection should get created_at set to its oldest object"
           (is (= (t/offset-date-time #t "2021-10-20T02:09Z")
-                 (t/offset-date-time (db/select-one-field :created_at Collection :id impersonal-collection-id)))))
+                 (t/offset-date-time (t2/select-one-fn :created_at Collection :id impersonal-collection-id)))))
         (testing "Empty Collection should not have been updated"
-          (let [empty-collection-created-at (t/offset-date-time (db/select-one-field :created_at Collection :id empty-collection-id))]
+          (let [empty-collection-created-at (t/offset-date-time (t2/select-one-fn :created_at Collection :id empty-collection-id))]
             (is (not= (t/offset-date-time #t "2021-10-20T02:09Z")
                       empty-collection-created-at))
             (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
@@ -829,12 +829,12 @@
         (is (= #{"F1 D1"
                  "F1 D2"
                  "F2 D1"}
-               (db/select-field :name Dimension {:order-by [[:id :asc]]})))
+               (t2/select-fn-set :name Dimension {:order-by [[:id :asc]]})))
         (migrate!)
         (testing "Keep the newest Dimensions"
           (is (= #{"F1 D2"
                    "F2 D1"}
-                 (db/select-field :name Dimension {:order-by [[:id :asc]]}))))))))
+                 (t2/select-fn-set :name Dimension {:order-by [[:id :asc]]}))))))))
 
 (deftest clean-up-gtap-table-test
   (testing "Migrations v46.00-064 to v46.00-067: rename `group_table_access_policy` table, add `permission_id` FK,
@@ -905,9 +905,9 @@
                                                 :created_at :%now
                                                 :updated_at :%now})]
         (is (thrown? clojure.lang.ExceptionInfo
-                     (db/delete! Database :id db-id)))
+                     (t2/delete! Database :id db-id)))
         (migrate!)
-        (is (db/delete! Database :id db-id))))))
+        (is (t2/delete! Database :id db-id))))))
 
 (deftest split-data-permission-test
   (testing "Migration v46.00-080: split existing v1 data permission paths into v2 data and query permission paths"

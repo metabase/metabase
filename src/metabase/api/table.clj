@@ -21,10 +21,12 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,14 +41,16 @@
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
-  (as-> (db/select Table, :active true, {:order-by [[:name :asc]]}) tables
+  (as-> (t2/select Table, :active true, {:order-by [[:name :asc]]}) tables
     (hydrate tables :db)
     (filterv mi/can-read? tables)))
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
   [id include_editable_data_model]
-  (let [api-perm-check-fn (if (Boolean/parseBoolean include_editable_data_model)
+  {id ms/PositiveInt
+   include_editable_data_model [:maybe :boolean]}
+  (let [api-perm-check-fn (if include_editable_data_model
                             api/write-check
                             api/read-check)]
     (-> (api-perm-check-fn Table id)
@@ -56,11 +60,12 @@
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
   [{:keys [id] :as existing-table} body]
+  {id ms/PositiveInt}
   (when-let [changes (not-empty (u/select-keys-when body
                                   :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
                                   :present [:description :caveats :points_of_interest :visibility_type]))]
-    (api/check-500 (db/update! Table id changes)))
-  (let [updated-table        (db/select-one Table :id id)
+    (api/check-500 (pos? (t2/update! Table id changes))))
+  (let [updated-table        (t2/select-one Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
@@ -84,7 +89,7 @@
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
-  (let [existing-tables (db/select Table :id [:in ids])]
+  (let [existing-tables (t2/select Table :id [:in ids])]
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
     (let [updated-tables (db/transaction (mapv #(update-table!* % body) existing-tables))
@@ -310,7 +315,7 @@
   {include_sensitive_fields (s/maybe su/BooleanString)
    include_hidden_fields (s/maybe su/BooleanString)
    include_editable_data_model (s/maybe su/BooleanString)}
-  (fetch-query-metadata (db/select-one Table :id id) {:include-sensitive-fields?    include_sensitive_fields
+  (fetch-query-metadata (t2/select-one Table :id id) {:include-sensitive-fields?    include_sensitive_fields
                                                       :include-hidden-fields?       include_hidden_fields
                                                       :include-editable-data-model? include_editable_data_model}))
 
@@ -320,7 +325,7 @@
   [card-id database-id metadata]
   (let [add-field-dimension-options #(assoc-field-dimension-options (driver.u/database->driver database-id) %)
         underlying (m/index-by :id (when-let [ids (seq (keep :id metadata))]
-                                     (db/select Field :id [:in ids])))
+                                     (t2/select Field :id [:in ids])))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
                      (update :base_type keyword)
@@ -379,7 +384,7 @@
 (api/defendpoint-schema GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [id]
-  (let [{:keys [database_id] :as card} (db/select-one [Card :id :dataset_query :result_metadata :name :description
+  (let [{:keys [database_id] :as card} (t2/select-one [Card :id :dataset_query :result_metadata :name :description
                                                        :collection_id :database_id]
                                          :id id)
         moderated-status              (->> (mdb.query/query {:select   [:status]
@@ -407,21 +412,23 @@
 (api/defendpoint GET "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [id]
+  {id ms/PositiveInt}
   (api/read-check Table id)
-  (when-let [field-ids (seq (db/select-ids Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
-    (for [origin-field (db/select Field, :fk_target_field_id [:in field-ids], :active true)]
+  (when-let [field-ids (seq (t2/select-pks-set Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
+    (for [origin-field (t2/select Field, :fk_target_field_id [:in field-ids], :active true)]
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)
        :origin         (hydrate origin-field [:table :db])
        :destination_id (:fk_target_field_id origin-field)
-       :destination    (hydrate (db/select-one Field :id (:fk_target_field_id origin-field)) :table)})))
+       :destination    (hydrate (t2/select-one Field :id (:fk_target_field_id origin-field)) :table)})))
 
 (api/defendpoint POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [id]
-  (let [table (api/write-check (db/select-one Table :id id))]
+  {id ms/PositiveInt}
+  (let [table (api/write-check (t2/select-one Table :id id))]
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -436,21 +443,23 @@
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
-  (api/write-check (db/select-one Table :id id))
-  (when-let [field-ids (db/select-ids Field :table_id id)]
+  {id ms/PositiveInt}
+  (api/write-check (t2/select-one Table :id id))
+  (when-let [field-ids (t2/select-pks-set Field :table_id id)]
     (db/simple-delete! FieldValues :field_id [:in field-ids]))
   {:status :success})
 
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (-> (db/select-one Table :id id) api/read-check related/related))
+  {id ms/PositiveInt}
+  (-> (t2/select-one Table :id id) api/read-check related/related))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id/fields/order"
+(api/defendpoint PUT "/:id/fields/order"
   "Reorder fields"
   [id :as {field_order :body}]
-  {field_order [su/IntGreaterThanZero]}
-  (-> (db/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
+  {id ms/PositiveInt
+   field_order [:sequential ms/PositiveInt]}
+  (-> (t2/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
 (api/define-routes)

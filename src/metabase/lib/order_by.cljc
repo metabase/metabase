@@ -2,11 +2,30 @@
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.util :as lib.util]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
+
+(defmethod lib.metadata.calculation/describe-top-level-key :order-by
+  [query stage-number _k]
+  (when-let [order-bys (not-empty (:order-by (lib.util/query-stage query stage-number)))]
+    (i18n/tru "Sorted by {0}"
+              (lib.util/join-strings-with-conjunction
+               (i18n/tru "and")
+               (for [order-by order-bys]
+                 (lib.metadata.calculation/display-name query stage-number order-by))))))
+
+(defmethod lib.metadata.calculation/display-name-method :asc
+  [query stage-number [_tag _opts expr]]
+  (i18n/tru "{0} ascending" (lib.metadata.calculation/display-name query stage-number expr)))
+
+(defmethod lib.metadata.calculation/display-name-method :desc
+  [query stage-number [_tag _opts expr]]
+  (i18n/tru "{0} descending" (lib.metadata.calculation/display-name query stage-number expr)))
 
 (defmulti ^:private ->order-by-clause
   {:arglists '([query stage-number x])}
@@ -58,10 +77,10 @@
     x
     direction    :- [:maybe [:enum :asc :desc]]]
    (let [stage-number (or stage-number -1)
-         order-by     (cond-> (->order-by-clause query stage-number x)
+         new-order-by (cond-> (->order-by-clause query stage-number x)
                         direction (with-direction direction))]
      (lib.util/update-query-stage query stage-number update :order-by (fn [order-bys]
-                                                                        (conj (vec order-bys) order-by))))))
+                                                                        (conj (vec order-bys) new-order-by))))))
 
 (mu/defn order-bys :- [:sequential ::lib.schema.order-by/order-by]
   "Get the order-by clauses in a query."

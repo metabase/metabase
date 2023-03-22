@@ -14301,6 +14301,14 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
+      id: v46.00-086
+      author: calherries
+      comment: Added 0.46.0 - Delete the abandonment email task
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteAbandonmentEmailTask"
+
+  - changeSet:
       id: v47.00-001
       author: calherries
       comment: Added 0.47.0 -- set base-type to type/JSON for JSON database-types for postgres and mysql
@@ -14388,7 +14396,7 @@ databaseChangeLog:
               UPDATE metabase_field f
               JOIN metabase_table t ON f.table_id = t.id
               JOIN metabase_database d ON t.db_id = d.id
-              SET json_unfolding = coalesce(JSON_UNQUOTE(JSON_EXTRACT(d.details, '$.json-unfolding'))::boolean, true)
+              SET json_unfolding = coalesce(JSON_UNQUOTE(JSON_EXTRACT(d.details, '$.json-unfolding')) = 'true', true)
               WHERE f.base_type = 'type/JSON'
         - sql:
             dbms: h2
@@ -14408,6 +14416,22 @@ databaseChangeLog:
               WHEN MATCHED THEN
                 UPDATE SET f.json_unfolding = updates.json_unfolding
       rollback: # nothing to do, since json_unfolding is new in 47
+
+  - changeSet:
+      id: v47.00-004
+      author: qnkhuat
+      comment: Added 0.47.0 - Add auto_incremented to metabase_field
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_auto_increment
+                  type: boolean
+                  remarks: Indicates this field is auto incremented
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
 
 
 ########################################################################################################################

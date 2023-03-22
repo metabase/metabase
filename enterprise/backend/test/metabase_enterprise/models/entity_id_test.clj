@@ -10,7 +10,7 @@
    [metabase.models]
    [metabase.models.interface :as mi]
    [metabase.models.revision-test]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [toucan.models :as models]))
 
 (set! *warn-on-reflection* true)
@@ -87,6 +87,6 @@
                      (remove entities-not-exported))]
     (testing (format "Model %s should implement identity-hash-fields" model)
       (is (some? (try
-                   (serdes.hash/identity-hash-fields model)
+                   (serdes/hash-fields model)
                    (catch java.lang.IllegalArgumentException _
                      nil)))))))

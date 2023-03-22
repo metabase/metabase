@@ -40,6 +40,10 @@
       (slack/clear-channel-cache!))
     (let [processed-files-channel (slack/process-files-channel-name slack-files-channel)]
       (when (and processed-files-channel (not (slack/channel-exists? processed-files-channel)))
+        ;; Files channel could not be found; clear the token we had previously set since the integration should not be
+        ;; enabled.
+        (slack/slack-token-valid?! false)
+        (slack/slack-app-token! nil)
         (throw (ex-info (tru "Slack channel not found.")
                         {:errors {:slack-files-channel (tru "channel not found")}})))
       (slack/slack-files-channel! processed-files-channel))

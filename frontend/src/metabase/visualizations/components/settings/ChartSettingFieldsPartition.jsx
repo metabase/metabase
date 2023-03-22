@@ -102,6 +102,7 @@ class ChartSettingFieldsPartition extends React.Component {
         .filter(col => col != null),
     );
 
+    const { getColumnTitle } = this.props;
     return (
       <DragDropContext onDragEnd={this.handleDragEnd}>
         {this.props.partitions.map(({ name: partitionName, title }, index) => {
@@ -141,6 +142,7 @@ class ChartSettingFieldsPartition extends React.Component {
                                 column={col}
                                 index={index}
                                 onEditFormatting={this.handleEditFormatting}
+                                title={getColumnTitle(col)}
                               />
                             </div>
                           )}
@@ -170,11 +172,10 @@ class Column extends React.Component {
   };
 
   render() {
-    const { column } = this.props;
-
+    const { title } = this.props;
     return (
       <FieldPartitionColumn
-        title={column.display_name}
+        title={title}
         onEdit={this.handleEditFormatting}
         draggable
         isDisabled={false}

@@ -45,7 +45,7 @@ export default class AggregationPopover extends Component {
   static propTypes = {
     aggregation: PropTypes.array,
     onChangeAggregation: PropTypes.func.isRequired,
-    onClose: PropTypes.func.isRequired,
+    onClose: PropTypes.func,
 
     query: PropTypes.object,
 
@@ -147,7 +147,7 @@ export default class AggregationPopover extends Component {
     return (
       aggregationOperators ||
       dimension?.aggregationOperators() ||
-      query.table().aggregationOperators()
+      query.aggregationOperators()
     ).filter(
       aggregationOperator =>
         showRawData || aggregationOperator.short !== "rows",

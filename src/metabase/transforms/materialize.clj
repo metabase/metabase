@@ -5,14 +5,15 @@
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (declare get-or-create-root-container-collection!)
 
 (defn- root-container-location
   []
   (collection/children-location
-   (db/select-one [Collection :location :id]
+   (t2/select-one [Collection :location :id]
      :id (get-or-create-root-container-collection!))))
 
 (defn get-collection
@@ -21,7 +22,7 @@
   ([collection-name]
    (get-collection collection-name (root-container-location)))
   ([collection-name location]
-   (db/select-one-id Collection
+   (t2/select-one-pk Collection
      :name     collection-name
      :location location)))
 
@@ -49,7 +50,7 @@
    exists."
   [{:keys [name description]}]
   (if-let [collection-id (get-collection name)]
-    (db/delete! Card :collection_id collection-id)
+    (t2/delete! Card :collection_id collection-id)
     (create-collection! name "#509EE3" description)))
 
 (defn make-card-for-step!

@@ -29,6 +29,7 @@
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
+;;; TODO -- this does not actually ensure that the string cannot be BLANK at all!
 (def NonBlankString
   "Schema for a string that cannot be blank."
   (mu/with-api-error-message
@@ -39,13 +40,13 @@
   "Schema representing an integer than must also be greater than or equal to zero."
   (mu/with-api-error-message
     [:int {:min 0}]
+    ;; FIXME: greater than _or equal to_ zero.
     (deferred-tru "value must be an integer greater than zero.")))
 
-;; TODO - rename this to `PositiveInt`?
-(def IntGreaterThanZero
+(def PositiveInt
   "Schema representing an integer than must also be greater than zero."
   (mu/with-api-error-message
-    [:int {:min 1}]
+    pos-int?
     (deferred-tru "value must be an integer greater than zero.")))
 
 (def PositiveNum
@@ -227,7 +228,7 @@
   (mc/schema
     [:map
      [:values {:optional true} [:* :any]]
-     [:card_id {:optional true} IntGreaterThanZero]
+     [:card_id {:optional true} PositiveInt]
      [:value_field {:optional true} Field]
      [:label_field {:optional true} Field]]))
 
@@ -269,7 +270,7 @@
   (mu/with-api-error-message
     [:map [:parameter_id NonBlankString]
      [:target :any]
-     [:card_id {:optional true} IntGreaterThanZero]]
+     [:card_id {:optional true} PositiveInt]]
     (deferred-tru "parameter_mapping must be a map with :parameter_id and :target keys")))
 
 (def EmbeddingParams

@@ -2,12 +2,12 @@
   (:require
    [change-set.strict]
    [change-set.unstrict]
+   [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.walk :as walk]
-   [yaml.core :as yaml]))
+   [clojure.walk :as walk]))
 
 (comment change-set.strict/keep-me
          change-set.unstrict/keep-me)
@@ -154,7 +154,12 @@
 (defn migrations []
   (let [file (io/file filename)]
     (assert (.exists file) (format "%s does not exist" filename))
-    (yaml/from-file file)))
+    (letfn [(fix-vals [x]
+                      ;; convert any lazy seqs to regular vectors and maps
+                      (cond (map? x)        (update-vals x fix-vals)
+                            (sequential? x) (mapv fix-vals x)
+                            :else           x))]
+      (fix-vals (yaml/parse-string (slurp file))))))
 
 (defn- validate-all []
   (validate-migrations (migrations)))

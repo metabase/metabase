@@ -17,6 +17,7 @@ import {
   SAMPLE_MODEL,
   SAMPLE_MODEL_2,
   SAMPLE_MODEL_3,
+  SAMPLE_QUESTION,
 } from "./common";
 
 const ROOT_COLLECTION_MODEL_VIRTUAL_SCHEMA_ID = getCollectionVirtualSchemaId(
@@ -188,5 +189,55 @@ describe("DataPicker — picking models", () => {
     expect(
       screen.queryByRole("button", { name: /Back/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("should be able to search for a model", async () => {
+    const { onChange } = await setup({
+      filters: {
+        types: type => type === "models",
+      },
+    });
+
+    userEvent.type(screen.getByRole("textbox"), SAMPLE_MODEL.name);
+    expect(await screen.findByText(SAMPLE_MODEL.name)).toBeInTheDocument();
+    expect(screen.queryByText(SAMPLE_QUESTION.name)).not.toBeInTheDocument();
+
+    userEvent.click(screen.getByText(SAMPLE_MODEL.name));
+    expect(onChange).toHaveBeenLastCalledWith({
+      type: "models",
+      databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+      schemaId: getCollectionVirtualSchemaId(SAMPLE_COLLECTION, {
+        isDatasets: true,
+      }),
+      collectionId: SAMPLE_MODEL.collection_id,
+      tableIds: [getQuestionVirtualTableId(SAMPLE_MODEL.id)],
+    });
+  });
+
+  it("should be able to search for a model when a question was selected", async () => {
+    const { onChange } = await setup({
+      initialValue: {
+        type: "questions",
+        databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        schemaId: getCollectionVirtualSchemaId(SAMPLE_COLLECTION),
+        collectionId: "root",
+        tableIds: [getQuestionVirtualTableId(SAMPLE_QUESTION.id)],
+      },
+    });
+
+    userEvent.type(screen.getByRole("textbox"), "Sample");
+    expect(await screen.findByText(SAMPLE_MODEL.name)).toBeInTheDocument();
+    expect(screen.getByText(SAMPLE_QUESTION.name)).toBeInTheDocument();
+
+    userEvent.click(screen.getByText(SAMPLE_MODEL.name));
+    expect(onChange).toHaveBeenLastCalledWith({
+      type: "models",
+      databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+      schemaId: getCollectionVirtualSchemaId(SAMPLE_COLLECTION, {
+        isDatasets: true,
+      }),
+      collectionId: SAMPLE_MODEL.collection_id,
+      tableIds: [getQuestionVirtualTableId(SAMPLE_MODEL.id)],
+    });
   });
 });

@@ -7,7 +7,8 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn default-get-or-create-field-values-for-current-user!
   "OSS implementation; used as a fallback for the EE implementation if the field isn't sandboxed."
@@ -28,7 +29,7 @@
 
 (defn- postprocess-field-values
   "Format a FieldValues to use by params functions.
-  ;; (postprocess-field-values (db/select-one FieldValues :id 1) (Field 1))
+  ;; (postprocess-field-values (t2/select-one FieldValues :id 1) (Field 1))
   ;; => {:values          [1 2 3 4]
          :field_id        1
          :has_more_values boolean}"
@@ -82,7 +83,7 @@
   (when-let [{:keys [values has_more_values]} (fetch-advanced-field-values fv-type field constraints)]
     (let [;; If the full FieldValues of this field has a human-readable-values, fix it with the new values
           human-readable-values (field-values/fixup-human-readable-values
-                                  (db/select-one FieldValues
+                                  (t2/select-one FieldValues
                                                  :field_id (:id field)
                                                  :type :full)
                                   values)]
@@ -102,7 +103,7 @@
 
   ([fv-type field constraints]
    (let [hash-key (hash-key-for-advanced-field-values fv-type (:id field) constraints)
-         fv       (or (db/select-one FieldValues :field_id (:id field)
+         fv       (or (t2/select-one FieldValues :field_id (:id field)
                                      :type fv-type
                                      :hash_key hash-key)
                       (create-advanced-field-values! fv-type field hash-key constraints))]
@@ -111,7 +112,7 @@
 
        ;; If it's expired, delete then try to re-create it
        (field-values/advanced-field-values-expired? fv) (do
-                                                          (db/delete! FieldValues :id (:id fv))
+                                                          (t2/delete! FieldValues :id (:id fv))
                                                           (recur fv-type field constraints))
        :else fv))))
 

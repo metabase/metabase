@@ -122,7 +122,7 @@
     "@deploysentinel/cypress-debugger": "^0.7.8",
     "@emotion/babel-plugin": "^11.7.2",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
-    "@percy/cli": "^1.16.0",
+    "@percy/cli": "^1.21.0",
     "@percy/cypress": "^3.1.2",
     "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
     "@sinonjs/fake-timers": "^9.1.2",
@@ -281,7 +281,7 @@
     "type-check": "rm -rf frontend/src/{cljs,cljs_release} && yarn build-quick:cljs && tsc --noEmit",
     "remove-webpack-cache": "rm -rf ./node_modules/.cache",
     "lint": "yarn lint-eslint && yarn lint-prettier && yarn lint-docs-links && yarn lint-yaml && yarn type-check",
-    "lint-eslint": "yarn build-quick:cljs && eslint --ext .js,.jsx,.ts,.tsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 enterprise/frontend/src frontend/src frontend/test",
+    "lint-eslint": "yarn build-quick:cljs && eslint --ext .js,.jsx,.ts,.tsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 enterprise/frontend/src frontend/src frontend/test e2e/test",
     "lint-prettier": "yarn && prettier -l '{enterprise/,}frontend/**/*.{js,jsx,ts,tsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
     "lint-docs-links": "yarn && ./bin/verify-doc-links",
     "lint-yaml": "yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}",
@@ -348,6 +348,7 @@
       "node ./bin/verify-doc-links"
     ],
     "e2e/test/scenarios/*/{*.js,!(helpers|shared)/*.js}": [
+      "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0",
       "node e2e/validate-e2e-test-files.js"
     ]
   },

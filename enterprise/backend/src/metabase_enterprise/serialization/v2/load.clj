@@ -5,8 +5,7 @@
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
-   [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
-   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization :as serdes]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
@@ -24,7 +23,7 @@
                 (load-one ctx dep)
                 (catch Exception e
                   (if (and (= (:error (ex-data e)) ::not-found)
-                           (serdes.base/load-find-local dep))
+                           (serdes/load-find-local dep))
                     ;; It was missing but we found it locally, so just return the context.
                     ctx
                     ;; Different error, or couldn't find it locally, so rethrow.
@@ -43,7 +42,7 @@
 
   Circular dependencies are not allowed, and are detected and thrown as an error."
   [{:keys [expanding ingestion seen] :as ctx} path]
-  (log/info (trs "Loading {0}" (u.yaml/log-path-str path)))
+  (log/info (trs "Loading {0}" (serdes/log-path-str path)))
   (cond
     (expanding path) (throw (ex-info (format "Circular dependency on %s" (pr-str path)) {:path path}))
     (seen path) ctx ; Already been done, just skip it.
@@ -55,17 +54,17 @@
                                               :deps-chain expanding
                                               :error      ::not-found}
                                              e))))
-                deps     (serdes.base/serdes-dependencies ingested)
+                deps     (serdes/dependencies ingested)
                 ctx      (-> ctx
                              (update :expanding conj path)
                              (load-deps deps)
                              (update :seen conj path)
                              (update :expanding disj path))
                 ;; Use the abstract path as attached by the ingestion process, not the original one we were passed.
-                rebuilt-path    (serdes.base/serdes-path ingested)
-                local-or-nil    (serdes.base/load-find-local rebuilt-path)]
+                rebuilt-path    (serdes/path ingested)
+                local-or-nil    (serdes/load-find-local rebuilt-path)]
             (try
-              (serdes.base/load-one! ingested local-or-nil)
+              (serdes/load-one! ingested local-or-nil)
               ctx
               (catch Exception e
                 (throw (ex-info (format "Failed to load into database for %s" (pr-str path))
@@ -78,7 +77,7 @@
   (try
     (load-one ctx path)
     (catch Exception e
-      (log/error (trs "Error importing {0}. Continuing..." (u.yaml/log-path-str path)))
+      (log/error (trs "Error importing {0}. Continuing..." (serdes/log-path-str path)))
       (update ctx :errors conj e))))
 
 (defn load-metabase
@@ -95,7 +94,7 @@
                   :errors    []}
         result   (reduce (if abort-on-error load-one try-load-one) ctx contents)]
     (when-let [errors (seq (:errors result))]
-      (log/error (trs "Errors were encountered during import. Individual errors:"))
+      (log/error (trs "Errors were encountered during import."))
       (doseq [e errors]
-        (log/error e)))
+        (log/error e "Import error details:")))
     result))

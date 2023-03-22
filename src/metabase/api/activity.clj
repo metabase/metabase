@@ -14,7 +14,8 @@
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (defn- dashcard-activity? [activity]
   (#{:dashboard-add-cards :dashboard-remove-cards}
@@ -43,7 +44,7 @@
   [referenced-objects]
   (merge
    (when-let [card-ids (get referenced-objects "card")]
-     (let [id->dataset?                       (db/select-id->field :dataset Card
+     (let [id->dataset?                       (t2/select-pk->fn :dataset Card
                                                                    :id [:in card-ids])
            {dataset-ids true card-ids' false} (group-by (comp boolean id->dataset?)
                                                         ;; only existing ids go back
@@ -54,10 +55,10 @@
    (into {} (for [[model ids] (dissoc referenced-objects "card")
                   :when       (seq ids)]
               [model (case model
-                       "dashboard" (db/select-ids 'Dashboard, :id [:in ids])
-                       "metric"    (db/select-ids 'Metric,    :id [:in ids], :archived false)
-                       "pulse"     (db/select-ids 'Pulse,     :id [:in ids])
-                       "segment"   (db/select-ids 'Segment,   :id [:in ids], :archived false)
+                       "dashboard" (t2/select-pks-set 'Dashboard, :id [:in ids])
+                       "metric"    (t2/select-pks-set 'Metric,    :id [:in ids], :archived false)
+                       "pulse"     (t2/select-pks-set 'Pulse,     :id [:in ids])
+                       "segment"   (t2/select-pks-set 'Segment,   :id [:in ids], :archived false)
                        nil)])))) ; don't care about other models
 
 (defn- add-model-exists-info
@@ -87,13 +88,13 @@
 (api/defendpoint-schema GET "/"
   "Get recent activity."
   []
-  (filter mi/can-read? (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
+  (filter mi/can-read? (-> (t2/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
                            (hydrate :user :table :database)
                            add-model-exists-info)))
 
 (defn- models-query
   [model ids]
-  (db/select
+  (t2/select
       (case model
         "card"      [Card
                      :id :name :collection_id :description :display
@@ -145,7 +146,7 @@
   from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
   query results for dashboard and table views."
   [views-limit card-runs-limit all-users?]
-  (let [dashboard-and-table-views (db/select [ViewLog
+  (let [dashboard-and-table-views (t2/select [ViewLog
                                               [[:min :view_log.user_id] :user_id]
                                               :model
                                               :model_id
@@ -163,7 +164,7 @@
                                                            [:= :model "dashboard"]
                                                            [:= :bm.user_id *current-user-id*]
                                                            [:= :model_id :bm.dashboard_id]]]})
-        card-runs                 (->> (db/select [QueryExecution
+        card-runs                 (->> (t2/select [QueryExecution
                                                    [:%min.executor_id :user_id]
                                                    [(db/qualify QueryExecution :card_id) :model_id]
                                                    [:%count.* :cnt]

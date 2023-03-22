@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.models.setting :as setting]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]))
 
 (defn- do-with-setting-access-control
@@ -43,7 +44,7 @@
 (api/defendpoint GET "/:key"
   "Fetch a single `Setting`."
   [key]
-  {key [:string {:min 1}]}
+  {key ms/NonBlankString}
   (with-setting-access-control
     (setting/user-facing-value key)))
 
