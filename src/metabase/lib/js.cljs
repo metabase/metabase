@@ -40,3 +40,8 @@
   (let [query-map (pMBQL query-map)]
     (log/debugf "query map: %s" (pr-str query-map))
     (lib.query/query (metadataProvider database-id metadata) query-map)))
+
+(defn ^:export legacy-query
+  "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."
+  [query-map]
+  (-> query-map convert/->legacy-MBQL clj->js))
