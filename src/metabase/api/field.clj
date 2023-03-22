@@ -151,19 +151,17 @@
     ;; everything checks out, now update the field
     (api/check-500
      (db/transaction
-       (and
-        (if removed-fk?
-          (clear-dimension-on-fk-change! field)
-          true)
-        (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-        (t2/update! Field id
-          (u/select-keys-when (assoc body
-                                     :fk_target_field_id (when-not removed-fk? fk-target-field-id)
-                                     :effective_type effective-type
-                                     :coercion_strategy coercion-strategy)
-                              :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
-                                         :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
-                              :non-nil #{:display_name :settings})))))
+      (when removed-fk?
+        (clear-dimension-on-fk-change! field))
+      (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
+      (t2/update! Field id
+                  (u/select-keys-when (assoc body
+                                             :fk_target_field_id (when-not removed-fk? fk-target-field-id)
+                                             :effective_type effective-type
+                                             :coercion_strategy coercion-strategy)
+                                      :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
+                                                 :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
+                                      :non-nil #{:display_name :settings}))))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
     (u/prog1 (hydrate (t2/select-one Field :id id) :dimensions)
