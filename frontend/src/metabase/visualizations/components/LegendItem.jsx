@@ -64,7 +64,6 @@ export default class LegendItem extends Component {
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
         onClick={onClick}
-        data-testid={`legend-item-${title}`}
       >
         {icon && (
           <IconContainer>

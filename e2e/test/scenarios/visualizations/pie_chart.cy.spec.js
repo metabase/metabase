@@ -38,11 +38,11 @@ describe("scenarios > visualizations > pie chart", () => {
 
     cy.findByTestId("chart-legend").findByText("Doohickey").realHover();
     [
-      ["Doohickey", 1],
-      ["Gadget", 0.4],
-      ["Gizmo", 0.4],
-      ["Widget", 0.4],
-    ].map(args => checkLegendItemOpacity(args[0], args[1]));
+      ["Doohickey", "true"],
+      ["Gadget", "false"],
+      ["Gizmo", "false"],
+      ["Widget", "false"],
+    ].map(args => checkLegendItemAriaCurrent(args[0], args[1]));
   });
 });
 
@@ -62,9 +62,8 @@ function ensurePieChartRendered(rows, totalValue) {
   });
 }
 
-function checkLegendItemOpacity(title, opacity) {
+function checkLegendItemAriaCurrent(title, value) {
   cy.findByTestId("chart-legend")
     .findByTestId(`legend-item-${title}`)
-    .should("have.attr", "style")
-    .and("include", `opacity: ${opacity}`);
+    .should("have.attr", "aria-current", value);
 }
