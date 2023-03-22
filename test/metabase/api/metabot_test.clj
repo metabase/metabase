@@ -8,7 +8,10 @@
 
 (deftest simple-echo-test
   (testing "POST /api/metabot/model"
-    (let [q "What is interesting?"
+    (let [q "At what time was the status closed for each user?"
           {:keys [sql_query original_question suggested_visualization]
-           :as   _response} (mt/user-http-request :rasta :post 200 "/metabot/model" {:question q})]
+           :as   _response} (mt/user-http-request :rasta :post 200 "/metabot/model"
+                                                  (assoc
+                                                   (mt/mbql-query venues {:fields [$id $name]})
+                                                    :question q))]
       (is (= original_question q)))))
