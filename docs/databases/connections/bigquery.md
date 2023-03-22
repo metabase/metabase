@@ -87,7 +87,7 @@ This can be useful for [auditing](../../usage-and-performance-tools/audit.md) an
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [action menu](https://www.metabase.com/glossary/action_menu). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/glossary/action_menu). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when Metabase syncs and scans
 
@@ -136,8 +136,8 @@ You can connect Metabase to Google Drive data sources via BigQuery. There is som
 To connect to a data source stored in Google Drive (like a Google Sheet), first make sure you've completed the steps above, including:
 
 - creating a project in Google Cloud Platform,
-- adding a BigQuery dataset, and 
-- creating a [service account](#google-cloud-platform-creating-a-service-account-and-json-file). 
+- adding a BigQuery dataset, and
+- creating a [service account](#google-cloud-platform-creating-a-service-account-and-json-file).
 
 ### Share your Google Drive source with the service account
 
