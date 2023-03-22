@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
@@ -146,16 +147,19 @@
                #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
 
 (deftest json-details-only-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (mt/dataset json
-      (let [spec (sql-jdbc.conn/connection-details->spec driver/*driver* (:details (mt/db)))
-            table (t2/select-one Table :id (mt/id :json))]
-        (with-open [conn (jdbc/get-connection spec)]
-          (let [fields (sql-jdbc.describe-table/describe-table-fields driver/*driver* conn table nil)
-                json-field (first (filter #(= (:name %) "json_bit") fields))
-                text-field (first (filter #(= (:name %) "bloop") fields))]
-            (is (= (:visibility-type json-field) :details-only))
-            (is (nil? (:visibility-type text-field)))))))))
+  (testing "fields with base-type=type/JSON should have visibility-type=details-only, unlike other fields."
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+      (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
+        (mt/dataset json
+          (let [spec  (sql-jdbc.conn/connection-details->spec driver/*driver* (:details (mt/db)))
+                table (t2/select-one Table :id (mt/id :json))]
+            (with-open [conn (jdbc/get-connection spec)]
+              (let [fields     (sql-jdbc.describe-table/describe-table-fields driver/*driver* conn table nil)
+                    json-field (first (filter #(= (:name %) "json_bit") fields))
+                    text-field (first (filter #(= (:name %) "bloop") fields))]
+                (is (= :details-only
+                       (:visibility-type json-field)))
+                (is (nil? (:visibility-type text-field)))))))))))
 
 (deftest describe-nested-field-columns-test
   (testing "flattened-row"
