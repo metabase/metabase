@@ -7,7 +7,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest normalize-attribute-remappings-test
   (testing "make sure attribute-remappings come back from the DB normalized the way we'd expect"
@@ -20,7 +20,7 @@
       (is (= {"venue_id" {:type   :category
                           :target [:variable [:field (mt/id :venues :id) nil]]
                           :value  5}}
-             (db/select-one-field :attribute_remappings GroupTableAccessPolicy :id (u/the-id gtap)))))
+             (t2/select-one-fn :attribute_remappings GroupTableAccessPolicy :id (u/the-id gtap)))))
 
     (testing (str "apparently sometimes they are saved with just the target, but not type or value? Make sure these "
                   "get normalized correctly.")
@@ -28,7 +28,7 @@
                                                   :group_id             (u/the-id (perms-group/all-users))
                                                   :attribute_remappings {"user" ["variable" ["field" (mt/id :venues :id) nil]]}}]
         (is (= {"user" [:variable [:field (mt/id :venues :id) nil]]}
-               (db/select-one-field :attribute_remappings GroupTableAccessPolicy :id (u/the-id gtap))))))))
+               (t2/select-one-fn :attribute_remappings GroupTableAccessPolicy :id (u/the-id gtap))))))))
 
 (deftest disallow-changing-table-id-test
   (testing "You can't change the table_id of a GTAP after it has been created."
@@ -37,7 +37,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"You cannot change the Table ID of a GTAP once it has been created"
-           (db/update! GroupTableAccessPolicy (:id gtap) :table_id (mt/id :checkins)))))))
+           (t2/update! GroupTableAccessPolicy (:id gtap) {:table_id (mt/id :checkins)}))))))
 
 (deftest disallow-queries-that-add-columns-test
   (testing "Don't allow saving a Sandboxing query that contains columns not in the Table it replaces (#13715)"
@@ -56,7 +56,7 @@
                                                                      :result_metadata (qp/query->expected-cols query)}]
                                        GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
                                                                      :group_id (u/the-id (perms-group/all-users))}]]
-                         (db/update! GroupTableAccessPolicy (:id gtap) :card_id (:id card))
+                         (t2/update! GroupTableAccessPolicy (:id gtap) {:card_id (:id card)})
                          :ok))
 
                      "Update query for Card associated with an existing GTAP"
@@ -66,7 +66,7 @@
                                        GroupTableAccessPolicy [_    {:table_id (mt/id :venues)
                                                                      :group_id (u/the-id (perms-group/all-users))
                                                                      :card_id  (:id card)}]]
-                         (db/update! Card (:id card) :dataset_query query)
+                         (t2/update! Card (:id card) {:dataset_query query})
                          :ok))}]
       (testing (str "\n" msg "\n")
         (testing "sanity check"
@@ -98,7 +98,7 @@
                                                                      :result_metadata metadata}]
                                        GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
                                                                      :group_id (u/the-id (perms-group/all-users))}]]
-                         (db/update! GroupTableAccessPolicy (:id gtap) :card_id (:id card))
+                         (t2/update! GroupTableAccessPolicy (:id gtap) {:card_id (:id card)})
                          :ok))
 
                      "Update query for Card associated with an existing GTAP"
@@ -108,7 +108,7 @@
                                        GroupTableAccessPolicy [_    {:table_id (mt/id :venues)
                                                                      :group_id (u/the-id (perms-group/all-users))
                                                                      :card_id  (:id card)}]]
-                         (db/update! Card (:id card) :result_metadata metadata)
+                         (t2/update! Card (:id card) {:result_metadata metadata})
                          :ok))}]
       (testing (str "\n" msg "\n")
         (is (thrown-with-msg?

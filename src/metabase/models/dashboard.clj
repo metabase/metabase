@@ -79,7 +79,7 @@
 (defn- pre-delete [dashboard]
   (let [dashboard-id (u/the-id dashboard)]
     (parameter-card/delete-all-for-parameterized-object! "dashboard" dashboard-id)
-    (db/delete! 'Revision :model "Dashboard" :model_id dashboard-id)))
+    (t2/delete! 'Revision :model "Dashboard" :model_id dashboard-id)))
 
 (defn- pre-insert [dashboard]
   (let [defaults  {:parameters []}
@@ -122,7 +122,7 @@
                                       set)
             cards-to-add         (set/difference correct-card-ids stale-card-ids)
             card-id->dashcard-id (when (seq cards-to-add)
-                                   (db/select-field->id :card_id DashboardCard :dashboard_id dashboard-id
+                                   (t2/select-fn->pk :card_id DashboardCard :dashboard_id dashboard-id
                                                         :card_id [:in cards-to-add]))
             positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
                                                       (range)))
@@ -175,11 +175,11 @@
 (defmethod revision/revert-to-revision! Dashboard
   [_model dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
-  (db/update! Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
+  (t2/update! Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
   ;; Now update the cards as needed
   (let [serialized-cards    (:cards serialized-dashboard)
         id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)
-        current-cards       (db/select [DashboardCard :size_x :size_y :row :col :id :card_id :dashboard_id]
+        current-cards       (t2/select [DashboardCard :size_x :size_y :row :col :id :card_id :dashboard_id]
                                        :dashboard_id dashboard-id)
         id->current-card    (zipmap (map :id current-cards) current-cards)
         all-dashcard-ids    (concat (map :id serialized-cards)
@@ -251,7 +251,7 @@
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
-  (let [dash (-> (db/select-one Dashboard :id (u/the-id dashboard-or-id))
+  (let [dash (-> (t2/select-one Dashboard :id (u/the-id dashboard-or-id))
                  (hydrate [:ordered_cards :card]))]
     (params/dashcards->param-field-ids (:ordered_cards dash))))
 
@@ -323,7 +323,7 @@
   [card]
   (cond
     ;; If this is a pre-existing card, just return it
-    (and (integer? (:id card)) (db/select-one Card :id (:id card)))
+    (and (integer? (:id card)) (t2/select-one Card :id (:id card)))
     card
 
     ;; Don't save text cards
@@ -350,7 +350,7 @@
   [collection-name parent-collection-id]
   (let [c (db/count Collection
             :name     [:like (format "%s%%" collection-name)]
-            :location (collection/children-location (db/select-one [Collection :location :id]
+            :location (collection/children-location (t2/select-one [Collection :location :id]
                                                       :id parent-collection-id)))]
     (if (zero? c)
       collection-name
@@ -411,7 +411,7 @@
 (mi/define-simple-hydration-method dashboard->resolved-params
   :resolved-params
   "Return map of Dashboard parameter key -> param with resolved `:mappings`.
-    (dashboard->resolved-params (db/select-one Dashboard :id 62))
+    (dashboard->resolved-params (t2/select-one Dashboard :id 62))
     ;; ->
     {\"ee876336\" {:name     \"Category Name\"
                    :slug     \"category_name\"
@@ -481,7 +481,7 @@
   (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :ordered_cards) maybe-local)]
     (doseq [dashcard (:ordered_cards ingested)]
       (serdes/load-one! (dashcard-for dashcard dashboard)
-                             (db/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
+                        (t2/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
 
 (defn- serdes-deps-dashcard
   [{:keys [card_id parameter_mappings visualization_settings]}]
@@ -498,9 +498,9 @@
        (set/union (serdes/parameters-deps parameters))))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id]
-  (let [dashcards (db/select ['DashboardCard :card_id :action_id :parameter_mappings]
+  (let [dashcards (t2/select ['DashboardCard :card_id :action_id :parameter_mappings]
                              :dashboard_id id)
-        dashboard (db/select-one Dashboard :id id)]
+        dashboard (t2/select-one Dashboard :id id)]
     (set/union
       ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
       ;; here. So their actions, and their cards both direct and mentioned in their parameters

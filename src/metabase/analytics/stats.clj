@@ -36,7 +36,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -144,7 +145,7 @@
   "Get metrics based on user records.
   TODO: get activity in terms of created questions, pulses and dashboards"
   []
-  {:users (merge-count-maps (for [user (db/select [User :is_active :is_superuser :last_login :google_auth])]
+  {:users (merge-count-maps (for [user (t2/select [User :is_active :is_superuser :last_login :google_auth])]
                               {:total     1
                                :active    (:is_active    user)
                                :admin     (:is_superuser user)
@@ -164,7 +165,7 @@
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
-  (let [cards (db/select [Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query])]
+  (let [cards (t2/select [Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query])]
     {:questions (merge-count-maps (for [card cards]
                                     (let [native? (= (keyword (:query_type card)) :native)]
                                       {:total       1
@@ -188,8 +189,8 @@
   "Get metrics based on dashboards
   TODO characterize by # of revisions, and created by an admin"
   []
-  (let [dashboards (db/select [Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params])
-        dashcards  (db/select [DashboardCard :card_id :dashboard_id])]
+  (let [dashboards (t2/select [Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params])
+        dashcards  (t2/select [DashboardCard :card_id :dashboard_id])]
     {:dashboards         (count dashboards)
      :with_params        (count (filter (comp seq :parameters) dashboards))
      :num_dashs_per_user (medium-histogram dashboards :creator_id)
@@ -231,7 +232,7 @@
     ;; -> {\"googleanalytics\" 4, \"postgres\" 48, \"h2\" 9}"
   {:style/indent 2}
   [model column & [additonal-honeysql]]
-  (into {} (for [{:keys [k count]} (db/select [model [column :k] [:%count.* :count]]
+  (into {} (for [{:keys [k count]} (t2/select [model [column :k] [:%count.* :count]]
                                      (merge {:group-by [column]}
                                             additonal-honeysql))]
              [k count])))
@@ -283,8 +284,8 @@
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
-  (let [collections (db/select Collection)
-        cards       (db/select [Card :collection_id])]
+  (let [collections (t2/select Collection)
+        cards       (t2/select [Card :collection_id])]
     {:collections              (count collections)
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
@@ -294,7 +295,7 @@
 (defn- database-metrics
   "Get metrics based on Databases."
   []
-  (let [databases (db/select [Database :is_full_sync :engine :dbms_version])]
+  (let [databases (t2/select [Database :is_full_sync :engine :dbms_version])]
     {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} databases]
                                     {:total    1
                                      :analyzed is-full-sync?}))
@@ -308,7 +309,7 @@
 (defn- table-metrics
   "Get metrics based on Tables."
   []
-  (let [tables (db/select [Table :db_id :schema])]
+  (let [tables (t2/select [Table :db_id :schema])]
     {:tables           (count tables)
      :num_per_database (medium-histogram tables :db_id)
      :num_per_schema   (medium-histogram tables :schema)}))
@@ -316,7 +317,7 @@
 (defn- field-metrics
   "Get metrics based on Fields."
   []
-  (let [fields (db/select [Field :table_id])]
+  (let [fields (t2/select [Field :table_id])]
     {:fields        (count fields)
      :num_per_table (medium-histogram fields :table_id)}))
 
@@ -365,7 +366,7 @@
 (defn- cache-metrics
   "Metrics based on use of the QueryCache."
   []
-  (let [{:keys [length count]} (db/select-one [QueryCache [[:avg [:length :results]] :length] [:%count.* :count]])]
+  (let [{:keys [length count]} (t2/select-one [QueryCache [[:avg [:length :results]] :length] [:%count.* :count]])]
     {:average_entry_size (int (or length 0))
      :num_queries_cached (bin-small-number count)}))
 

@@ -16,7 +16,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -36,12 +37,12 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You cannot edit or delete the .* permissions group"
-               (db/delete! PermissionsGroup :id (u/the-id group)))))
+               (t2/delete! PermissionsGroup :id (u/the-id group)))))
         (testing "make sure we're not allowed to edit the magic groups"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You cannot edit or delete the .* permissions group"
-               (db/update! PermissionsGroup (u/the-id group) :name "Cool People"))))))))
+               (t2/update! PermissionsGroup (u/the-id group) {:name "Cool People"}))))))))
 
 (deftest new-users-test
   (testing "newly created users should get added to the appropriate magic groups"
@@ -89,22 +90,22 @@
     (mt/with-temp User [{user-id :id}]
       (db/insert! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
       (is (= true
-             (db/select-one-field :is_superuser User, :id user-id))))
+             (t2/select-one-fn :is_superuser User, :id user-id))))
 
     (testing "removing user from Admin should set is_superuser -> false"
       (mt/with-temp User [{user-id :id} {:is_superuser true}]
-        (db/delete! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
+        (t2/delete! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
         (is (= false
-               (db/select-one-field :is_superuser User, :id user-id)))))
+               (t2/select-one-fn :is_superuser User, :id user-id)))))
 
     (testing "setting is_superuser -> true should add user to Admin"
       (mt/with-temp User [{user-id :id}]
-        (db/update! User user-id, :is_superuser true)
+        (t2/update! User user-id {:is_superuser true})
         (is (= true
                (db/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))
 
     (testing "setting is_superuser -> false should remove user from Admin"
       (mt/with-temp User [{user-id :id} {:is_superuser true}]
-        (db/update! User user-id, :is_superuser false)
+        (t2/update! User user-id {:is_superuser false})
         (is (= false
                (db/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))

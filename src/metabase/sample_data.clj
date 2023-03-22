@@ -9,7 +9,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [ring.util.codec :as codec]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.net URL)))
 
@@ -83,10 +84,10 @@
 (defn update-sample-database-if-needed!
   "Update the path to the sample database DB if it exists in case the JAR has moved."
   ([]
-   (update-sample-database-if-needed! (db/select-one Database :is_sample true)))
+   (update-sample-database-if-needed! (t2/select-one Database :is_sample true)))
 
   ([sample-db]
    (when sample-db
      (let [intended (try-to-extract-sample-database!)]
        (when (not= (:details sample-db) intended)
-         (db/update! Database (:id sample-db) :details intended))))))
+         (t2/update! Database (:id sample-db) {:details intended}))))))

@@ -9,7 +9,7 @@
    [metabase.models.table :as table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -58,14 +58,14 @@
                      :database-position 5
                      :database-required false
                      :database-is-auto-increment false}}}
-         (driver/describe-table :h2 (mt/db) (db/select-one Table :id (mt/id :venues))))))
+         (driver/describe-table :h2 (mt/db) (t2/select-one Table :id (mt/id :venues))))))
 
 (deftest ^:parallel describe-table-fks-test
   (is (= #{{:fk-column-name   "CATEGORY_ID"
             :dest-table       {:name   "CATEGORIES"
                                :schema "PUBLIC"}
             :dest-column-name "ID"}}
-         (driver/describe-table-fks :h2 (mt/db) (db/select-one Table :id (mt/id :venues))))))
+         (driver/describe-table-fks :h2 (mt/db) (t2/select-one Table :id (mt/id :venues))))))
 
 (deftest ^:parallel table-rows-sample-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
@@ -74,8 +74,8 @@
             ["33 Taps"]
             ["800 Degrees Neapolitan Pizzeria"]
             ["BCD Tofu House"]]
-           (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
-                  [(db/select-one Field :id (mt/id :venues :name))]
+           (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
+                  [(t2/select-one Field :id (mt/id :venues :name))]
                   (constantly conj))
                 ;; since order is not guaranteed do some sorting here so we always get the same results
                 (sort-by first)
@@ -90,7 +90,7 @@
             {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
            (for [row (take 5 (sort-by :id (driver/table-rows-seq driver/*driver*
                                                                  (mt/db)
-                                                                 (db/select-one Table :id (mt/id :venues)))))]
+                                                                 (t2/select-one Table :id (mt/id :venues)))))]
              ;; different DBs use different precisions for these
              (-> (dissoc row :latitude :longitude)
                  (update :price int)

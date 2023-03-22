@@ -8,8 +8,22 @@ import {
 } from "__support__/sample_database_fixture";
 import Question from "metabase-lib/Question";
 
-const NUMBER_AND_DATE_FILTERS = ["<", ">", "=", "!="];
-const OTHER_FILTERS = ["=", "!="];
+const NUMBER_AND_DATE_FILTERS = [
+  { name: "<", operator: "<" },
+  { name: ">", operator: ">" },
+  { name: "=", operator: "=" },
+  { name: "≠", operator: "!=" },
+];
+
+const NULL_FILTERS = [
+  { name: "=", operator: "is-null" },
+  { name: "≠", operator: "not-null" },
+];
+
+const OTHER_FILTERS = [
+  { name: "=", operator: "=" },
+  { name: "≠", operator: "!=" },
+];
 
 const DEFAULT_NUMERIC_CELL_VALUE = 42;
 
@@ -111,14 +125,14 @@ describe("QuickFilterDrill", () => {
     const { actions } = setup({ column: clickedField.column() });
 
     it("should return correct filters", () => {
-      const filters = NUMBER_AND_DATE_FILTERS.map(operator => ({
-        name: operator,
+      const filters = NUMBER_AND_DATE_FILTERS.map(({ name }) => ({
+        name,
       }));
       expect(actions).toMatchObject(filters);
     });
 
     actions.forEach((action, i) => {
-      const operator = NUMBER_AND_DATE_FILTERS[i];
+      const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
         expect(question.datasetQuery().query).toEqual({
@@ -141,14 +155,14 @@ describe("QuickFilterDrill", () => {
     });
 
     it("should return correct filters", () => {
-      const filters = NUMBER_AND_DATE_FILTERS.map(operator => ({
-        name: operator,
+      const filters = NUMBER_AND_DATE_FILTERS.map(({ name }) => ({
+        name,
       }));
       expect(actions).toMatchObject(filters);
     });
 
     actions.forEach((action, i) => {
-      const operator = NUMBER_AND_DATE_FILTERS[i];
+      const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
         expect(question.datasetQuery().query).toEqual({
@@ -173,14 +187,14 @@ describe("QuickFilterDrill", () => {
     });
 
     it("should return correct filters", () => {
-      const filters = NUMBER_AND_DATE_FILTERS.map(operator => ({
-        name: operator,
+      const filters = NUMBER_AND_DATE_FILTERS.map(({ name }) => ({
+        name,
       }));
       expect(actions).toMatchObject(filters);
     });
 
     actions.forEach((action, i) => {
-      const operator = NUMBER_AND_DATE_FILTERS[i];
+      const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
         expect(question.datasetQuery().query).toEqual({
@@ -213,19 +227,43 @@ describe("QuickFilterDrill", () => {
     });
 
     it("should return correct filters", () => {
-      const filters = NUMBER_AND_DATE_FILTERS.map(operator => ({
-        name: operator,
+      const filters = NUMBER_AND_DATE_FILTERS.map(({ name }) => ({
+        name,
       }));
       expect(actions).toMatchObject(filters);
     });
 
     actions.forEach((action, i) => {
-      const operator = NUMBER_AND_DATE_FILTERS[i];
+      const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
         expect(question.datasetQuery().query).toEqual({
           "source-table": NESTED_QUESTION_SOURCE_TABLE_ID,
           filter: [operator, fieldRef, cellValue],
+        });
+        expect(question.display()).toBe("table");
+      });
+    });
+  });
+
+  describe("numeric cells with null values", () => {
+    const clickedField = ORDERS.TOTAL;
+    const { actions } = setup({ column: clickedField.column(), value: null });
+
+    it("should return correct filters", () => {
+      const filters = NULL_FILTERS.map(({ name }) => ({
+        name,
+      }));
+      expect(actions).toMatchObject(filters);
+    });
+
+    actions.forEach((action, i) => {
+      const { operator } = NULL_FILTERS[i];
+      it(`should correctly apply "${operator}" filter`, () => {
+        const question = action.question();
+        expect(question.datasetQuery().query).toEqual({
+          "source-table": ORDERS.id,
+          filter: [operator, clickedField.reference()],
         });
         expect(question.display()).toBe("table");
       });
@@ -240,14 +278,14 @@ describe("QuickFilterDrill", () => {
     });
 
     it("should return correct filters", () => {
-      const filters = NUMBER_AND_DATE_FILTERS.map(operator => ({
-        name: operator,
+      const filters = NUMBER_AND_DATE_FILTERS.map(({ name }) => ({
+        name,
       }));
       expect(actions).toMatchObject(filters);
     });
 
     actions.forEach((action, i) => {
-      const operator = NUMBER_AND_DATE_FILTERS[i];
+      const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
         expect(question.datasetQuery().query).toEqual({
@@ -268,14 +306,14 @@ describe("QuickFilterDrill", () => {
     });
 
     it("should return correct filters", () => {
-      const filters = OTHER_FILTERS.map(operator => ({
-        name: operator,
+      const filters = OTHER_FILTERS.map(({ name }) => ({
+        name,
       }));
       expect(actions).toMatchObject(filters);
     });
 
     actions.forEach((action, i) => {
-      const operator = OTHER_FILTERS[i];
+      const { operator } = OTHER_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
         expect(question.datasetQuery().query).toEqual({
@@ -294,14 +332,14 @@ describe("QuickFilterDrill", () => {
     });
 
     it("should return correct filters", () => {
-      const filters = OTHER_FILTERS.map(operator => ({
-        name: operator,
+      const filters = OTHER_FILTERS.map(({ name }) => ({
+        name,
       }));
       expect(actions).toMatchObject(filters);
     });
 
     actions.forEach((action, i) => {
-      const operator = OTHER_FILTERS[i];
+      const { operator } = OTHER_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
         expect(question.datasetQuery().query).toEqual({

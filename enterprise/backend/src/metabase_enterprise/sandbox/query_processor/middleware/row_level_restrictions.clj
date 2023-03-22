@@ -31,7 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -72,9 +72,9 @@
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
     (let [group-ids           (qp.store/cached *current-user-id*
-                                (db/select-field :group_id PermissionsGroupMembership :user_id *current-user-id*))
+                                (t2/select-fn-set :group_id PermissionsGroupMembership :user_id *current-user-id*))
           sandboxes           (when (seq group-ids)
-                               (db/select GroupTableAccessPolicy :group_id [:in group-ids]
+                               (t2/select GroupTableAccessPolicy :group_id [:in group-ids]
                                  :table_id [:in table-ids]))
           enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes group-ids)]
        (when (seq enforced-sandboxes)
@@ -99,7 +99,7 @@
   (when-let [field-id (mbql.u/match-one target-field-clause [:field (field-id :guard integer?) _] field-id)]
     ;; TODO -- we should be using the QP store for this. But when trying to change this I ran into "QP Store is not
     ;; initialized" errors. We should figure out why that's the case and then fix this
-    (db/select-one-field :base_type Field :id field-id)))
+    (t2/select-one-fn :base_type Field :id field-id)))
 
 (defn- attr-value->param-value
   "Take an `attr-value` with a desired `target-type` and coerce to that type if need be. If not type is given or it's
@@ -227,7 +227,7 @@
     ;; save the result metadata so we don't have to do it again next time if applicable
     (when (and card-id save?)
       (log/tracef "Saving results metadata for GTAP Card %s" card-id)
-      (db/update! Card card-id :result_metadata metadata))
+      (t2/update! Card card-id {:result_metadata metadata}))
     ;; make sure the fetched Fields are present the QP store
     (when-let [field-ids (not-empty (filter some? (map :id metadata)))]
       (qp.store/fetch-and-store-fields! field-ids))
@@ -258,8 +258,8 @@
   [{card-id :card_id, table-id :table_id}]
   (if card-id
     (qp.store/cached card-id
-      (query-perms/perms-set (db/select-one-field :dataset_query Card :id card-id), :throw-exceptions? true))
-    #{(perms/table-query-path (db/select-one Table :id table-id))}))
+      (query-perms/perms-set (t2/select-one-fn :dataset_query Card :id card-id), :throw-exceptions? true))
+    #{(perms/table-query-path (t2/select-one Table :id table-id))}))
 
 (defn- gtaps->perms-set [gtaps]
   (set (mapcat gtap->perms-set gtaps)))

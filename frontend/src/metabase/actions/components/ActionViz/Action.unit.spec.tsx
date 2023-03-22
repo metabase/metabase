@@ -2,14 +2,11 @@ import React from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
+import { renderWithProviders, screen, getIcon, waitFor } from "__support__/ui";
 import {
-  renderWithProviders,
-  screen,
-  getIcon,
-  waitFor,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
+  setupDatabasesEndpoints,
+  setupUnauthorizedDatabasesEndpoints,
+} from "__support__/server-mocks";
 
 import type { ActionDashboardCard } from "metabase-types/api";
 import type { ParameterTarget } from "metabase-types/types/Parameter";
@@ -76,7 +73,7 @@ function createMockActionDashboardCard(
 }
 
 type SetupOpts = Partial<ActionProps> & {
-  awaitLoading?: boolean;
+  hasDataPermissions?: boolean;
 };
 
 async function setup({
@@ -84,14 +81,17 @@ async function setup({
   dashcard = createMockActionDashboardCard(),
   settings = {},
   parameterValues = {},
-  awaitLoading = true,
+  hasDataPermissions = true,
   ...props
 }: SetupOpts = {}) {
-  setupDatabasesEndpoints([DATABASE, DATABASE_WITHOUT_ACTIONS]);
+  const databases = [DATABASE, DATABASE_WITHOUT_ACTIONS];
 
-  fetchMock.post(ACTION_EXEC_MOCK_PATH, {
-    "rows-updated": [1],
-  });
+  if (hasDataPermissions) {
+    setupDatabasesEndpoints(databases);
+    fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": [1] });
+  } else {
+    setupUnauthorizedDatabasesEndpoints(databases);
+  }
 
   renderWithProviders(
     <Action
@@ -107,11 +107,8 @@ async function setup({
     />,
   );
 
-  if (awaitLoading) {
-    await waitForElementToBeRemoved(() =>
-      screen.queryAllByTestId("loading-spinner"),
-    );
-  }
+  // Wait until UI is ready
+  await screen.findByRole("button");
 }
 
 describe("Actions > ActionViz > Action", () => {
@@ -119,7 +116,6 @@ describe("Actions > ActionViz > Action", () => {
     it("should render an empty state for a button with no action", async () => {
       await setup({
         dashcard: createMockActionDashboardCard({ action: undefined }),
-        awaitLoading: false,
       });
       expect(getIcon("bolt")).toBeInTheDocument();
       expect(screen.getByRole("button")).toBeDisabled();
@@ -138,6 +134,15 @@ describe("Actions > ActionViz > Action", () => {
       expect(screen.getByRole("button")).toBeDisabled();
       expect(
         screen.getByLabelText(/actions are not enabled/i),
+      ).toBeInTheDocument();
+    });
+
+    it("should render a disabled state if the user doesn't have permissions to action database", async () => {
+      await setup({ hasDataPermissions: false });
+      expect(getIcon("bolt")).toBeInTheDocument();
+      expect(screen.getByRole("button")).toBeDisabled();
+      expect(
+        screen.getByLabelText(/don't have permission/i),
       ).toBeInTheDocument();
     });
 
@@ -250,7 +255,9 @@ describe("Actions > ActionViz > Action", () => {
     it("should render the action name as the form title", async () => {
       await setup({ settings: formSettings });
 
-      expect(screen.getByText("My Awesome Action")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "My Awesome Action" }),
+      ).toBeInTheDocument();
     });
 
     it("should only show form fields with no provided values from dashboard filters", async () => {
@@ -266,7 +273,7 @@ describe("Actions > ActionViz > Action", () => {
     it("should render as a button if no parameters are missing", async () => {
       await setup({
         settings: formSettings,
-        parameterValues: { "dash-param-1": "foo", "dash-param-2": "bar" },
+        parameterValues: { "dash-param-1": "foo", "dash-param-2": 2 },
       });
 
       expect(
@@ -295,7 +302,7 @@ describe("Actions > ActionViz > Action", () => {
         expect(screen.getByLabelText("Parameter 2")).toHaveValue(5),
       );
 
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: ACTION.name }));
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
@@ -322,7 +329,7 @@ describe("Actions > ActionViz > Action", () => {
         expect(screen.getByLabelText("Parameter 1")).toHaveValue("foo"),
       );
 
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: ACTION.name }));
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);

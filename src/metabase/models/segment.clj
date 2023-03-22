@@ -9,8 +9,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel Segment :segment)
 
@@ -23,13 +23,13 @@
   (u/prog1 updates
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? updates :creator_id)
-      (when (not= creator_id (db/select-one-field :creator_id Segment :id id))
+      (when (not= creator_id (t2/select-one-fn :creator_id Segment :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment.")))))))
 
 (defmethod mi/perms-objects-set Segment
   [segment read-or-write]
   (let [table (or (:table segment)
-                  (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
+                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
 (mi/define-methods

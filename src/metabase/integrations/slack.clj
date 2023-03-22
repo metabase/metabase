@@ -192,12 +192,13 @@
                         params)))
 
 (defn channel-exists?
-  "Returns true if the channel it exists."
+  "Returns a Boolean indicating whether a channel with a given name exists in the cache."
   [channel-name]
-  (let [channel-names (into #{} (comp (map (juxt :name :id))
-                                      cat)
-                            (:channels (slack-cached-channels-and-usernames)))]
-    (and channel-name (contains? channel-names channel-name))))
+  (boolean
+   (let [channel-names (into #{} (comp (map (juxt :name :id))
+                                       cat)
+                             (:channels (slack-cached-channels-and-usernames)))]
+     (and channel-name (contains? channel-names channel-name)))))
 
 (s/defn valid-token?
   "Check whether a Slack token is valid by checking if the `conversations.list` Slack api accepts it."

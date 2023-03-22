@@ -433,7 +433,7 @@
     (let [updated-db (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
                          (assoc-in [:details :dataset-filters-patterns] dataset-id)
                          (m/dissoc-in [:details :dataset-id]))]
-      (db/update! Database db-id :details (:details updated-db))
+      (t2/update! Database db-id {:details (:details updated-db)})
       updated-db)))
 
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk

@@ -343,7 +343,7 @@
            (fn [old-settings] (if value
                                 (assoc old-settings setting-name value)
                                 (dissoc old-settings setting-name))))
-    (db/update! 'User api/*current-user-id* {:settings (json/generate-string @@*user-local-values*)})))
+    (t2/update! 'User api/*current-user-id* {:settings (json/generate-string @@*user-local-values*)})))
 
 (def ^:dynamic *enforce-setting-access-checks*
   "A dynamic var that controls whether we should enforce checks on setting access. Defaults to false; should be
@@ -429,14 +429,14 @@
     ;; cannot use db (and cache populated from db) if db is not set up
     (when (and (db-is-set-up?) (allows-site-wide-values? setting))
       (let [v (if *disable-cache*
-                (db/select-one-field :value Setting :key (setting-name setting-definition-or-name))
+                (t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name))
                 (do
                   (setting.cache/restore-cache-if-needed!)
                   (let [cache (setting.cache/cache)]
                     (if (nil? cache)
                       ;; If another thread is populating the cache for the first time, we will have a nil value for
                       ;; the cache and must hit the db while the cache populates
-                      (db/select-one-field :value Setting :key (setting-name setting-definition-or-name))
+                      (t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name))
                       (clojure.core/get cache (setting-name setting-definition-or-name))))))]
         (not-empty v)))))
 

@@ -9,7 +9,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (def ^:private FKRelationshipObjects
   "Relevant objects for a foreign key relationship."
@@ -20,20 +20,20 @@
 (s/defn ^:private fetch-fk-relationship-objects :- (s/maybe FKRelationshipObjects)
   "Fetch the Metabase objects (Tables and Fields) that are relevant to a foreign key relationship described by FK."
   [database :- i/DatabaseInstance, table :- i/TableInstance, fk :- i/FKMetadataEntry]
-  (when-let [source-field (db/select-one Field
+  (when-let [source-field (t2/select-one Field
                             :table_id           (u/the-id table)
                             :%lower.name        (u/lower-case-en (:fk-column-name fk))
                             :fk_target_field_id nil
                             :active             true
                             :visibility_type    [:not= "retired"])]
-    (when-let [dest-table (db/select-one Table
+    (when-let [dest-table (t2/select-one Table
                             :db_id           (u/the-id database)
                             :%lower.name     (u/lower-case-en (-> fk :dest-table :name))
                             :%lower.schema   (when-let [schema (-> fk :dest-table :schema)]
                                                (u/lower-case-en schema))
                             :active          true
                             :visibility_type nil)]
-      (when-let [dest-field (db/select-one Field
+      (when-let [dest-field (t2/select-one Field
                               :table_id           (u/the-id dest-table)
                               :%lower.name        (u/lower-case-en (:dest-column-name fk))
                               :active             true
@@ -51,9 +51,9 @@
                 (sync-util/name-for-logging source-field)
                 (sync-util/name-for-logging dest-table)
                 (sync-util/name-for-logging dest-field)))
-    (db/update! Field (u/the-id source-field)
-      :semantic_type      :type/FK
-      :fk_target_field_id (u/the-id dest-field))
+    (t2/update! Field (u/the-id source-field)
+                {:semantic_type      :type/FK
+                 :fk_target_field_id (u/the-id dest-field)})
     true))
 
 

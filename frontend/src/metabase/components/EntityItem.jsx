@@ -3,12 +3,18 @@ import React, { useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
+import * as Urls from "metabase/lib/urls";
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/core/components/Swapper";
 import CheckBox from "metabase/core/components/CheckBox";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
-import { isFullyParametrized, isItemPinned } from "metabase/collections/utils";
+import {
+  isPreviewShown,
+  isFullyParametrized,
+  isItemModel,
+  isItemPinned,
+} from "metabase/collections/utils";
 
 import {
   EntityIconWrapper,
@@ -83,8 +89,7 @@ function EntityItemName({ name, variant }) {
 function EntityItemMenu({
   item,
   isBookmarked,
-  isPreviewShown,
-  isPreviewAvailable,
+  isXrayEnabled,
   onPin,
   onMove,
   onCopy,
@@ -95,7 +100,10 @@ function EntityItemMenu({
   analyticsContext,
 }) {
   const isPinned = isItemPinned(item);
+  const isPreviewed = isPreviewShown(item);
   const isParametrized = isFullyParametrized(item);
+  const isModel = isItemModel(item);
+  const isXrayShown = isModel && isXrayEnabled;
 
   const actions = useMemo(
     () =>
@@ -106,17 +114,22 @@ function EntityItemMenu({
           action: onPin,
           event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
         },
+        isXrayShown && {
+          title: t`X-ray this`,
+          link: Urls.xrayModel(item.id),
+          icon: "bolt",
+          event: `${analyticsContext};Entity Item;X-ray Item;${item.model}`,
+        },
         onTogglePreview && {
-          title: isPreviewShown
+          title: isPreviewed
             ? t`Don’t show visualization`
             : t`Show visualization`,
-          icon: isPreviewShown ? "eye_crossed_out" : "eye",
+          icon: isPreviewed ? "eye_crossed_out" : "eye",
           action: onTogglePreview,
-          tooltip:
-            !isPreviewAvailable && !isParametrized
-              ? t`Open this question and fill in its variables to see it.`
-              : undefined,
-          disabled: !isPreviewAvailable,
+          tooltip: !isParametrized
+            ? t`Open this question and fill in its variables to see it.`
+            : undefined,
+          disabled: !isParametrized,
           event: `${analyticsContext};Entity Item;Preview Item;${item.model}`,
         },
         onMove && {
@@ -145,12 +158,13 @@ function EntityItemMenu({
         },
       ].filter(action => action),
     [
+      item.id,
       item.model,
       isPinned,
+      isXrayShown,
+      isPreviewed,
       isParametrized,
       isBookmarked,
-      isPreviewShown,
-      isPreviewAvailable,
       onPin,
       onMove,
       onCopy,

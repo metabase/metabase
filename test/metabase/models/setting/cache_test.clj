@@ -8,7 +8,8 @@
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -106,7 +107,7 @@
   (setting-test/toucan-name! "Reggae Toucan")
   (simulate-another-instance-updating-setting! :toucan-name "Bird Can")
   (is (= "Bird Can"
-         (db/select-one-field :value Setting :key "toucan-name")))
+         (t2/select-one-fn :value Setting :key "toucan-name")))
   (reset-last-update-check!)
   ;; calling `setting-test/toucan-name` will call `restore-cache-if-needed!`, which will in turn call `should-restore-cache?`.
   ;; Since memoized value is no longer present, this should call `cache-out-of-date?`, which checks the DB; it will

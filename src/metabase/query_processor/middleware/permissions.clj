@@ -18,7 +18,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (def ^:dynamic *card-id*
   "ID of the Card currently being executed, if there is one. Bind this in a Card-execution so we will use
@@ -59,7 +59,7 @@
 (s/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [card-id :- su/IntGreaterThanZero]
-  (let [card (or (db/select-one [Card :collection_id] :id card-id)
+  (let [card (or (t2/select-one [Card :collection_id] :id card-id)
                  (throw (ex-info (tru "Card {0} does not exist." card-id)
                                  {:type    qp.error-type/invalid-query
                                   :card-id card-id})))]
@@ -136,10 +136,6 @@
 ;;; |                                                Writeback fns                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- query-action-perms
-  [{:keys [database]}]
-  #{(perms/data-perms-path database)})
-
 (s/defn check-query-action-permissions*
   "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
   [outer-query :- su/Map]
@@ -147,9 +143,7 @@
   (when *card-id*
     (check-card-read-perms *card-id*))
   (when-not (has-data-perms? (required-perms outer-query))
-    (check-block-permissions outer-query))
-  (when-not (has-data-perms? (query-action-perms outer-query))
-    (throw (perms-exception (required-perms outer-query)))))
+    (check-block-permissions outer-query)))
 
 (defn check-query-action-permissions
   "Middleware that check that the current user has permissions to run the current query action."

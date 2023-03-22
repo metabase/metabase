@@ -9,7 +9,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.util.concurrent.locks ReentrantLock)))
 
@@ -90,7 +91,7 @@
                             (with-out-str (jdbc/print-sql-exception-chain e))))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes
-  (swap! (cache*) assoc settings-last-updated-key (db/select-one-field :value 'Setting :key settings-last-updated-key)))
+  (swap! (cache*) assoc settings-last-updated-key (t2/select-one-fn :value 'Setting :key settings-last-updated-key)))
 
 (defn- cache-out-of-date?
   "Check whether our Settings cache is out of date. We know the cache is out of date if either of the following
@@ -111,7 +112,7 @@
         (when-let [last-known-update (core/get current-cache settings-last-updated-key)]
           ;; compare it to the value in the DB. This is done be seeing whether a row exists
           ;; WHERE value > <local-value>
-          (u/prog1 (db/select-one-field :value 'Setting
+          (u/prog1 (t2/select-one-fn :value 'Setting
                      {:where [:and
                               [:= :key settings-last-updated-key]
                               [:> :value last-known-update]]})
@@ -137,7 +138,7 @@
   "Populate cache with the latest hotness from the db"
   []
   (log/debug (trs "Refreshing Settings cache..."))
-  (reset! (cache*) (db/select-field->field :key :value 'Setting)))
+  (reset! (cache*) (t2/select-fn->fn :key :value 'Setting)))
 
 (defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))
 
