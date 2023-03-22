@@ -36,20 +36,26 @@ export function getParameterOptionsForField(field) {
     });
 }
 
+const MIN_DISTINCT_COUNT = 20;
+
 export function getDefaultParameterWidgetType(tag, field) {
   const options = getParameterOptionsForField(field);
-  if (options.length === 0) {
-    return;
-  }
-
   const widgetType = tag["widget-type"];
-  if (widgetType && options.some(option => option.type === widgetType)) {
-    return widgetType;
-  }
+  const distinctCount = field.fingerprint?.global["distinct-count"];
 
-  const defaultOption = options.find(option => option.default);
-  if (defaultOption) {
-    return defaultOption.type;
+  if (options.length === 0) {
+    return undefined;
+  } else if (
+    widgetType != null &&
+    options.some(option => option.type === widgetType)
+  ) {
+    return widgetType;
+  } else if (
+    field.isString() &&
+    distinctCount != null &&
+    distinctCount > MIN_DISTINCT_COUNT
+  ) {
+    return "string/contains";
   } else {
     return options[0].type;
   }

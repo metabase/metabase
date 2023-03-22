@@ -3,6 +3,22 @@ import { TableId } from "./table";
 
 export type FieldId = number;
 
+export interface FieldFingerprint {
+  global: FieldGlobalFingerprint;
+  type?: FieldTypeFingerprint;
+}
+
+export interface FieldGlobalFingerprint {
+  "distinct-count"?: number;
+  "nil%": number;
+}
+
+export interface FieldTypeFingerprint {
+  "type/Text"?: TextFieldFingerprint;
+  "type/Number"?: NumberFieldFingerprint;
+  "type/DateTime"?: DateTimeFieldFingerprint;
+}
+
 export type TextFieldFingerprint = {
   "average-length": number;
   "percent-email": number;
@@ -24,18 +40,6 @@ export type DateTimeFieldFingerprint = {
   earliest: "2016-04-26T19:29:55.147Z";
   latest: "2019-04-15T13:34:19.931Z";
 };
-
-export interface FieldFingerprint {
-  global: {
-    "distinct-count"?: number;
-    "nil%": number;
-  };
-  type?: {
-    "type/Text"?: TextFieldFingerprint;
-    "type/Number"?: NumberFieldFingerprint;
-    "type/DateTime"?: DateTimeFieldFingerprint;
-  };
-}
 
 export type FieldVisibilityType =
   | "details-only"
