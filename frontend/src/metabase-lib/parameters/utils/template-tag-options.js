@@ -36,7 +36,8 @@ export function getParameterOptionsForField(field) {
     });
 }
 
-const MIN_DISTINCT_COUNT = 20;
+const HIGH_CARDINALITY_TYPE = "string/contains";
+const HIGH_CARDINALITY_LIMIT = 20;
 
 export function getDefaultParameterWidgetType(tag, field) {
   const options = getParameterOptionsForField(field);
@@ -51,11 +52,11 @@ export function getDefaultParameterWidgetType(tag, field) {
   ) {
     return widgetType;
   } else if (
-    field.isString() &&
     distinctCount != null &&
-    distinctCount > MIN_DISTINCT_COUNT
+    distinctCount > HIGH_CARDINALITY_LIMIT &&
+    options.some(option => option.type === HIGH_CARDINALITY_TYPE)
   ) {
-    return "string/contains";
+    return HIGH_CARDINALITY_TYPE;
   } else {
     return options[0].type;
   }
