@@ -358,7 +358,7 @@
           (is (= [{:engine "bigquery-cloud-sdk"}]
                  (mdb.query/query {:select [:engine], :from [:metabase_database], :where [:= :id (u/the-id db)]}))))
         (finally
-          (db/simple-delete! Database :name "Legacy BigQuery driver DB"))))))
+          (t2/delete! (t2/table-name Database) :name "Legacy BigQuery driver DB"))))))
 
 (deftest create-root-permissions-entry-for-admin-test
   (testing "Migration v0.43.00-006: Add root permissions entry for 'Administrators' magic group"

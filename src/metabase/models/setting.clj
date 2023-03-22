@@ -639,7 +639,7 @@
             ;; write to DB
             (cond
               (nil? new-value)
-              (db/simple-delete! Setting :key setting-name)
+              (t2/delete! (t2/table-name Setting) :key setting-name)
 
               ;; if there's a value in the cache then the row already exists in the DB; update that
               (contains? (setting.cache/cache) setting-name)

@@ -104,7 +104,7 @@
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
              in-admin-group?)
-        (db/simple-delete! PermissionsGroupMembership
+        (t2/delete! (t2/table-name PermissionsGroupMembership)
           :group_id (u/the-id (perms-group/admin))
           :user_id  id))))
   ;; make sure email and locale are valid if set
@@ -354,7 +354,7 @@
   by [[pre-insert]] or [[pre-update]])"
   [user-id password]
   ;; when changing/resetting the password, kill any existing sessions
-  (db/simple-delete! Session :user_id user-id)
+  (t2/delete! (t2/table-name Session) :user_id user-id)
   ;; NOTE: any password change expires the password reset token
   (t2/update! User user-id
               {:password        password

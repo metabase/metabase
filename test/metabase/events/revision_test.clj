@@ -138,7 +138,7 @@
     (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
                     Card          [{card-id :id}                     (card-properties)]
                     DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
-      (db/simple-delete! DashboardCard, :id (:id dashcard))
+      (t2/delete! (t2/table-name DashboardCard), :id (:id dashcard))
       (revision/process-revision-event! {:topic :dashboard-remove-cards
                                          :item  {:id        dashboard-id
                                                  :actor_id  (mt/user->id :rasta)
