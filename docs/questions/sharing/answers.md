@@ -18,7 +18,7 @@ Now, whenever you want to refer to your question again you can find it by search
 
 ## Downloading your question's results
 
-You can export the results of a question by clicking on the **Download arrow** (a down arrow in a cloud) in the lower right of the screen, or from a chart on a dashboard by clicking on the **...** in the upper right or a dashboard card.
+You can export the results of a question by clicking on the **download arrow** (a down arrow in a cloud) in the lower right of the screen, or from a chart on a dashboard by clicking on the **three dot** (...) menu in the upper right or a dashboard card.
 
 Results can be downloaded as:
 
@@ -33,7 +33,7 @@ The maximum download size is 1 million rows. Exported .xlsx files preserve the f
 You can download most charts (excluding table and number charts) as images in .png format.
 
 - From a question: click on the **download arrow** (a down arrow in a cloud in the bottom right) and select .png.
-- From a dashboard card: click on the **...** in the upper right of the card and select .png.
+- From a dashboard card: click on the **three dot** (...) menu in the upper right of the card and select .png.
 
 You can't download the image of a dashboard, but you can set up a [dashboard subscription](../../dashboards/subscriptions.md).
 
@@ -41,7 +41,7 @@ You can't download the image of a dashboard, but you can set up a [dashboard sub
 
 Click into the question's title to edit the name of your question.
 
-Open the **...** menu to:
+Open the **three dot** (...) menu to:
 
 - [Verify](../../exploration-and-organization/exploration.md#verified-items) this question
 - Add to [dashboard](../../dashboards/start.md)
@@ -66,7 +66,7 @@ Click the **bookmark** icon to pin a question to your Metabase sidebar. See [Boo
 
 To use a saved question as the basis for another question, you can:
 
-- Open the **...** menu > **Turn into a [model](../../data-modeling/models.md)**.
+- Open the **three dot** (...) menu > **Turn into a [model](../../data-modeling/models.md)**.
 - [Create a new question](../query-builder/introduction.md#creating-a-new-question-with-the-query-builder) and search for your saved question under **Pick your starting data**.
 - [Refer to the question in a SQL query](../native-editor/referencing-saved-questions-in-queries.md).
 
@@ -74,7 +74,7 @@ To use a saved question as the basis for another question, you can:
 
 {% include plans-blockquote.html feature="Caching question results" %}
 
-See [Caching per question](../../configuring-metabase/caching.md#ttl-per-question).
+See [Caching per question](../../configuring-metabase/caching.md#caching-per-question).
 
 ## Sharing questions with public links
 
