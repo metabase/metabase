@@ -107,6 +107,7 @@
   format-name
   id
   mbql-query
+  mbql-query-no-test
   native-query
   query
   run-mbql-query
