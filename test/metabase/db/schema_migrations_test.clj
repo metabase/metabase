@@ -75,11 +75,11 @@
   (testing "Migration 165: add `database_position` to Field"
     (impl/test-migrations 165 [migrate!]
       ;; create a Database with a Table with 2 Fields
-      (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
-      (db/simple-insert! Table {:name "Table", :db_id 1, :created_at :%now, :updated_at :%now, :active true})
+      (t2/insert! (t2/table-name Database) {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
+      (t2/insert! (t2/table-name Table) {:name "Table", :db_id 1, :created_at :%now, :updated_at :%now, :active true})
       (let [mock-field {:table_id 1, :created_at :%now, :updated_at :%now, :base_type "type/Text", :database_type "VARCHAR"}]
-        (db/simple-insert! Field (assoc mock-field :name "Field 1"))
-        (db/simple-insert! Field (assoc mock-field :name "Field 2")))
+        (t2/insert! (t2/table-name Field) (assoc mock-field :name "Field 1"))
+        (t2/insert! (t2/table-name Field) (assoc mock-field :name "Field 2")))
       (testing "sanity check: Fields should not have a `:database_position` column yet"
         (is (not (contains? (t2/select-one Field :id 1) :database_position))))
       ;; now run migration 165
@@ -93,7 +93,7 @@
 (defn- create-raw-user!
   "create a user but skip pre and post insert steps"
   [email]
-  (db/simple-insert! User
+  (t2/insert! (t2/table-name User)
     :email        email
     :first_name   (tu.random/random-name)
     :last_name    (tu.random/random-name)
@@ -120,8 +120,8 @@
     (impl/test-migrations [283 296] [migrate!]
       ;; by name hoists results into a map by name so diffs are easier to read than sets.
       (let [by-name  #(into {} (map (juxt :name identity)) %)
-            db-id    (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
-            table-id (db/simple-insert! Table {:name "Table", :db_id db-id, :created_at :%now, :updated_at :%now, :active true})]
+            db-id    (t2/insert! (t2/table-name Database) {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
+            table-id (t2/insert! (t2/table-name Table) {:name "Table", :db_id db-id, :created_at :%now, :updated_at :%now, :active true})]
         ;; Using [[db/simple-insert-many!]] instead of [[db/insert-many!]] so we don't run into the field type validation
         ;; added in 38
         (db/simple-insert-many! Field
@@ -349,11 +349,11 @@
         ;; we're using `simple-insert!` here instead of `with-temp` because Toucan `post-insert` for the DB will
         ;; normally try to add it to the magic Permissions Groups which don't exist yet. They're added in later
         ;; migrations
-        (let [db (db/simple-insert! Database {:name       "Legacy BigQuery driver DB"
-                                              :engine     "bigquery"
-                                              :details    (json/generate-string {:service-account-json "{\"fake_key\": 14}"})
-                                              :created_at :%now
-                                              :updated_at :%now})]
+        (let [db (t2/insert! (t2/table-name Database) {:name       "Legacy BigQuery driver DB"
+                                                       :engine     "bigquery"
+                                                       :details    (json/generate-string {:service-account-json "{\"fake_key\": 14}"})
+                                                       :created_at :%now
+                                                       :updated_at :%now})]
           (migrate!)
           (is (= [{:engine "bigquery-cloud-sdk"}]
                  (mdb.query/query {:select [:engine], :from [:metabase_database], :where [:= :id (u/the-id db)]}))))
@@ -631,21 +631,21 @@
   (testing "Migration v44.00-022: Add parameters to report_card"
     (impl/test-migrations ["v44.00-022" "v44.00-024"] [migrate!]
       (let [user-id
-            (db/simple-insert! User {:first_name  "Howard"
-                                     :last_name   "Hughes"
-                                     :email       "howard@aircraft.com"
-                                     :password    "superstrong"
-                                     :date_joined :%now})
-            database-id (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
-            card-id (db/simple-insert! Card {:name                   "My Saved Question"
-                                             :created_at             :%now
-                                             :updated_at             :%now
-                                             :creator_id             user-id
-                                             :display                "table"
-                                             :dataset_query          "{}"
-                                             :visualization_settings "{}"
-                                             :database_id            database-id
-                                             :collection_id          nil})]
+            (t2/insert! (t2/table-name User) {:first_name  "Howard"
+                                              :last_name   "Hughes"
+                                              :email       "howard@aircraft.com"
+                                              :password    "superstrong"
+                                              :date_joined :%now})
+            database-id (t2/insert! (t2/table-name Database) {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
+            card-id (t2/insert! (t2/table-name Card) {:name                   "My Saved Question"
+                                                      :created_at             :%now
+                                                      :updated_at             :%now
+                                                      :creator_id             user-id
+                                                      :display                "table"
+                                                      :dataset_query          "{}"
+                                                      :visualization_settings "{}"
+                                                      :database_id            database-id
+                                                      :collection_id          nil})]
        (migrate!)
        (is (= nil
               (:parameters (first (t2/select (t2/table-name Card) {:where [:= :id card-id]})))))))))
@@ -654,23 +654,23 @@
   (testing "Migration v44.00-024: Add parameter_mappings to cards"
     (impl/test-migrations ["v44.00-024" "v44.00-026"] [migrate!]
       (let [user-id
-            (db/simple-insert! User {:first_name  "Howard"
-                                     :last_name   "Hughes"
-                                     :email       "howard@aircraft.com"
-                                     :password    "superstrong"
-                                     :date_joined :%now})
+            (t2/insert! (t2/table-name User) {:first_name  "Howard"
+                                              :last_name   "Hughes"
+                                              :email       "howard@aircraft.com"
+                                              :password    "superstrong"
+                                              :date_joined :%now})
             database-id
-            (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
+            (t2/insert! (t2/table-name Database) {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
             card-id
-            (db/simple-insert! Card {:name                   "My Saved Question"
-                                     :created_at             :%now
-                                     :updated_at             :%now
-                                     :creator_id             user-id
-                                     :display                "table"
-                                     :dataset_query          "{}"
-                                     :visualization_settings "{}"
-                                     :database_id            database-id
-                                     :collection_id          nil})]
+            (t2/insert! (t2/table-name Card) {:name                   "My Saved Question"
+                                              :created_at             :%now
+                                              :updated_at             :%now
+                                              :creator_id             user-id
+                                              :display                "table"
+                                              :dataset_query          "{}"
+                                              :visualization_settings "{}"
+                                              :database_id            database-id
+                                              :collection_id          nil})]
         (migrate!)
         (is (= nil
                (:parameter_mappings (first (t2/select (t2/table-name Card) {:where [:= :id card-id]})))))))))
@@ -695,8 +695,8 @@
 
       (testing "Should run for new EE instances"
         (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
-          (db/simple-insert! Setting {:key   "premium-embedding-token"
-                                      :value "fake-key"})
+          (t2/insert! (t2/table-name Setting) {:key   "premium-embedding-token"
+                                               :value "fake-key"})
           (migrate!)
           (is (= ["All Users"] (get-perms)))))
 
@@ -709,8 +709,8 @@
       (testing "Should not run for existing EE instances"
         (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
           (create-raw-user! "ngoc@metabase.com")
-          (db/simple-insert! Setting {:key   "premium-embedding-token"
-                                      :value "fake-key"})
+          (t2/insert! (t2/table-name Setting) {:key   "premium-embedding-token"
+                                               :value "fake-key"})
           (migrate!)
           (is (= [] (get-perms)))))
 
@@ -725,8 +725,8 @@
 (deftest make-database-details-not-null-test
   (testing "Migrations v45.00-042 and v45.00-043: set default value of '{}' for Database rows with NULL details"
     (impl/test-migrations ["v45.00-042" "v45.00-043"] [migrate!]
-      (let [database-id (db/simple-insert! Database (-> (dissoc (mt/with-temp-defaults Database) :details)
-                                                        (assoc :engine "h2")))]
+      (let [database-id (t2/insert! (t2/table-name Database) (-> (dissoc (mt/with-temp-defaults Database) :details)
+                                                              (assoc :engine "h2")))]
         (is (partial= {:details nil}
                       (t2/select-one Database :id database-id)))
         (migrate!)
@@ -736,43 +736,43 @@
 (deftest populate-collection-created-at-test
   (testing "Migrations v45.00-048 thru v45.00-050: add Collection.created_at and populate it"
     (impl/test-migrations ["v45.00-048" "v45.00-050"] [migrate!]
-      (let [database-id              (db/simple-insert! Database {:details   "{}"
-                                                                  :engine    "h2"
-                                                                  :is_sample false
-                                                                  :name      "populate-collection-created-at-test-db"})
-            user-id                  (db/simple-insert! User {:first_name  "Cam"
-                                                              :last_name   "Era"
-                                                              :email       "cam@example.com"
-                                                              :password    "123456"
-                                                              :date_joined #t "2022-10-20T02:09Z"})
-            personal-collection-id   (db/simple-insert! Collection {:name              "Cam Era's Collection"
-                                                                    :personal_owner_id user-id
-                                                                    :color             "#ff0000"
-                                                                    :slug              "personal_collection"})
-            impersonal-collection-id (db/simple-insert! Collection {:name  "Regular Collection"
-                                                                    :color "#ff0000"
-                                                                    :slug  "regular_collection"})
-            empty-collection-id      (db/simple-insert! Collection {:name  "Empty Collection"
-                                                                    :color "#ff0000"
-                                                                    :slug  "empty_collection"})
-            _                        (db/simple-insert! Card {:collection_id          impersonal-collection-id
-                                                              :name                   "Card 1"
-                                                              :display                "table"
-                                                              :dataset_query          "{}"
-                                                              :visualization_settings "{}"
-                                                              :creator_id             user-id
-                                                              :database_id            database-id
-                                                              :created_at             #t "2022-10-20T02:09Z"
-                                                              :updated_at             #t "2022-10-20T02:09Z"})
-            _                        (db/simple-insert! Card {:collection_id          impersonal-collection-id
-                                                              :name                   "Card 2"
-                                                              :display                "table"
-                                                              :dataset_query          "{}"
-                                                              :visualization_settings "{}"
-                                                              :creator_id             user-id
-                                                              :database_id            database-id
-                                                              :created_at             #t "2021-10-20T02:09Z"
-                                                              :updated_at             #t "2022-10-20T02:09Z"})]
+      (let [database-id              (t2/insert! (t2/table-name Database) {:details   "{}"
+                                                                           :engine    "h2"
+                                                                           :is_sample false
+                                                                           :name      "populate-collection-created-at-test-db"})
+            user-id                  (t2/insert! (t2/table-name User) {:first_name  "Cam"
+                                                                       :last_name   "Era"
+                                                                       :email       "cam@example.com"
+                                                                       :password    "123456"
+                                                                       :date_joined #t "2022-10-20T02:09Z"})
+            personal-collection-id   (t2/insert! (t2/table-name Collection) {:name              "Cam Era's Collection"
+                                                                             :personal_owner_id user-id
+                                                                             :color             "#ff0000"
+                                                                             :slug              "personal_collection"})
+            impersonal-collection-id (t2/insert! (t2/table-name Collection) {:name  "Regular Collection"
+                                                                             :color "#ff0000"
+                                                                             :slug  "regular_collection"})
+            empty-collection-id      (t2/insert! (t2/table-name Collection) {:name  "Empty Collection"
+                                                                             :color "#ff0000"
+                                                                             :slug  "empty_collection"})
+            _                        (t2/insert! (t2/table-name Card) {:collection_id          impersonal-collection-id
+                                                                       :name                   "Card 1"
+                                                                       :display                "table"
+                                                                       :dataset_query          "{}"
+                                                                       :visualization_settings "{}"
+                                                                       :creator_id             user-id
+                                                                       :database_id            database-id
+                                                                       :created_at             #t "2022-10-20T02:09Z"
+                                                                       :updated_at             #t "2022-10-20T02:09Z"})
+            _                        (t2/insert! (t2/table-name Card) {:collection_id          impersonal-collection-id
+                                                                       :name                   "Card 2"
+                                                                       :display                "table"
+                                                                       :dataset_query          "{}"
+                                                                       :visualization_settings "{}"
+                                                                       :creator_id             user-id
+                                                                       :database_id            database-id
+                                                                       :created_at             #t "2021-10-20T02:09Z"
+                                                                       :updated_at             #t "2022-10-20T02:09Z"})]
         (migrate!)
         (testing "A personal Collection should get created_at set by to the date_joined from its owner"
           (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
@@ -790,42 +790,42 @@
 (deftest deduplicate-dimensions-test
   (testing "Migrations v46.00-029 thru v46.00-031: make Dimension field_id unique instead of field_id + name"
     (impl/test-migrations ["v46.00-029" "v46.00-031"] [migrate!]
-      (let [database-id (db/simple-insert! Database {:details   "{}"
-                                                     :engine    "h2"
-                                                     :is_sample false
-                                                     :name      "populate-collection-created-at-test-db"})
-            table-id    (db/simple-insert! Table {:db_id      database-id
-                                                  :name       "Table"
-                                                  :created_at :%now
-                                                  :updated_at :%now
-                                                  :active     true})
-            field-1-id  (db/simple-insert! Field {:name          "F1"
-                                                  :table_id      table-id
-                                                  :base_type     "type/Text"
-                                                  :database_type "TEXT"
-                                                  :created_at    :%now
-                                                  :updated_at    :%now})
-            field-2-id  (db/simple-insert! Field {:name          "F2"
-                                                  :table_id      table-id
-                                                  :base_type     "type/Text"
-                                                  :database_type "TEXT"
-                                                  :created_at    :%now
-                                                  :updated_at    :%now})
-            _           (db/simple-insert! Dimension {:field_id   field-1-id
-                                                      :name       "F1 D1"
-                                                      :type       "internal"
-                                                      :created_at #t "2022-12-07T18:30:30.000-08:00"
-                                                      :updated_at #t "2022-12-07T18:30:30.000-08:00"})
-            _           (db/simple-insert! Dimension {:field_id   field-1-id
-                                                      :name       "F1 D2"
-                                                      :type       "internal"
-                                                      :created_at #t "2022-12-07T18:45:30.000-08:00"
-                                                      :updated_at #t "2022-12-07T18:45:30.000-08:00"})
-            _           (db/simple-insert! Dimension {:field_id   field-2-id
-                                                      :name       "F2 D1"
-                                                      :type       "internal"
-                                                      :created_at #t "2022-12-07T18:45:30.000-08:00"
-                                                      :updated_at #t "2022-12-07T18:45:30.000-08:00"})]
+      (let [database-id (t2/insert! (t2/table-name Database) {:details   "{}"
+                                                              :engine    "h2"
+                                                              :is_sample false
+                                                              :name      "populate-collection-created-at-test-db"})
+            table-id    (t2/insert! (t2/table-name Table) {:db_id      database-id
+                                                           :name       "Table"
+                                                           :created_at :%now
+                                                           :updated_at :%now
+                                                           :active     true})
+            field-1-id  (t2/insert! (t2/table-name Field) {:name          "F1"
+                                                           :table_id      table-id
+                                                           :base_type     "type/Text"
+                                                           :database_type "TEXT"
+                                                           :created_at    :%now
+                                                           :updated_at    :%now})
+            field-2-id  (t2/insert! (t2/table-name Field) {:name          "F2"
+                                                           :table_id      table-id
+                                                           :base_type     "type/Text"
+                                                           :database_type "TEXT"
+                                                           :created_at    :%now
+                                                           :updated_at    :%now})
+            _           (t2/insert! (t2/table-name Dimension) {:field_id   field-1-id
+                                                               :name       "F1 D1"
+                                                               :type       "internal"
+                                                               :created_at #t "2022-12-07T18:30:30.000-08:00"
+                                                               :updated_at #t "2022-12-07T18:30:30.000-08:00"})
+            _           (t2/insert! (t2/table-name Dimension) {:field_id   field-1-id
+                                                               :name       "F1 D2"
+                                                               :type       "internal"
+                                                               :created_at #t "2022-12-07T18:45:30.000-08:00"
+                                                               :updated_at #t "2022-12-07T18:45:30.000-08:00"})
+            _           (t2/insert! (t2/table-name Dimension) {:field_id   field-2-id
+                                                               :name       "F2 D1"
+                                                               :type       "internal"
+                                                               :created_at #t "2022-12-07T18:45:30.000-08:00"
+                                                               :updated_at #t "2022-12-07T18:45:30.000-08:00"})]
         (is (= #{"F1 D1"
                  "F1 D2"
                  "F2 D1"}
@@ -840,16 +840,16 @@
   (testing "Migrations v46.00-064 to v46.00-067: rename `group_table_access_policy` table, add `permission_id` FK,
            and clean up orphaned rows"
     (impl/test-migrations ["v46.00-064" "v46.00-067"] [migrate!]
-      (let [db-id    (db/simple-insert! Database {:name       "DB"
-                                                  :engine     "h2"
-                                                  :created_at :%now
-                                                  :updated_at :%now
-                                                  :details    "{}"})
-            table-id (db/simple-insert! Table {:db_id      db-id
-                                               :name       "Table"
-                                               :created_at :%now
-                                               :updated_at :%now
-                                               :active     true})
+      (let [db-id    (t2/insert! (t2/table-name Database) {:name       "DB"
+                                                           :engine     "h2"
+                                                           :created_at :%now
+                                                           :updated_at :%now
+                                                           :details    "{}"})
+            table-id (t2/insert! (t2/table-name Table) {:db_id      db-id
+                                                        :name       "Table"
+                                                        :created_at :%now
+                                                        :updated_at :%now
+                                                        :active     true})
             _        (db/execute! {:insert-into :group_table_access_policy
                                    :values      [{:group_id             1
                                                   :table_id             table-id
@@ -857,8 +857,8 @@
                                                  {:group_id             2
                                                   :table_id             table-id
                                                   :attribute_remappings "{\"foo\", 1}"}]})
-            perm-id  (db/simple-insert! Permissions {:group_id 1
-                                                     :object   "/db/1/schema/PUBLIC/table/1/query/segmented/"})]
+            perm-id  (t2/insert! (t2/table-name Permissions) {:group_id 1
+                                                              :object   "/db/1/schema/PUBLIC/table/1/query/segmented/"})]
           ;; Two rows are present in `group_table_access_policy`
           (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}"}
                   {:id 2, :group_id 2, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}"}]
@@ -872,38 +872,38 @@
   (testing "Migrations v46.00-084 and v46.00-085 set delete CASCADE for action.model_id to
            fix the bug of unable to delete database with actions"
     (impl/test-migrations ["v46.00-084" "v46.00-085"] [migrate!]
-      (let [user-id  (db/simple-insert! User {:first_name  "Howard"
-                                              :last_name   "Hughes"
-                                              :email       "howard@aircraft.com"
-                                              :password    "superstrong"
-                                              :date_joined :%now})
-            db-id    (db/simple-insert! Database {:name       "db"
-                                                  :engine     "postgres"
-                                                  :created_at :%now
-                                                  :updated_at :%now
-                                                  :settings    "{\"database-enable-actions\":true}"
-                                                  :details    "{}"})
-            table-id (db/simple-insert! Table {:db_id      db-id
-                                               :name       "Table"
-                                               :created_at :%now
-                                               :updated_at :%now
-                                               :active     true})
-            model-id (db/simple-insert! Card {:name                   "My Saved Question"
-                                              :created_at             :%now
-                                              :updated_at             :%now
-                                              :creator_id             user-id
-                                              :table_id               table-id
-                                              :display                "table"
-                                              :dataset_query          "{}"
-                                              :visualization_settings "{}"
-                                              :database_id            db-id
-                                              :collection_id          nil})
-            _        (db/simple-insert! Action {:name       "Update user name"
-                                                :type       "implicit"
-                                                :model_id   model-id
-                                                :archived   false
-                                                :created_at :%now
-                                                :updated_at :%now})]
+      (let [user-id  (t2/insert! (t2/table-name User) {:first_name  "Howard"
+                                                       :last_name   "Hughes"
+                                                       :email       "howard@aircraft.com"
+                                                       :password    "superstrong"
+                                                       :date_joined :%now})
+            db-id    (t2/insert! (t2/table-name Database) {:name       "db"
+                                                           :engine     "postgres"
+                                                           :created_at :%now
+                                                           :updated_at :%now
+                                                           :settings    "{\"database-enable-actions\":true}"
+                                                           :details    "{}"})
+            table-id (t2/insert! (t2/table-name Table) {:db_id      db-id
+                                                        :name       "Table"
+                                                        :created_at :%now
+                                                        :updated_at :%now
+                                                        :active     true})
+            model-id (t2/insert! (t2/table-name Card) {:name                   "My Saved Question"
+                                                       :created_at             :%now
+                                                       :updated_at             :%now
+                                                       :creator_id             user-id
+                                                       :table_id               table-id
+                                                       :display                "table"
+                                                       :dataset_query          "{}"
+                                                       :visualization_settings "{}"
+                                                       :database_id            db-id
+                                                       :collection_id          nil})
+            _        (t2/insert! (t2/table-name Action) {:name       "Update user name"
+                                                         :type       "implicit"
+                                                         :model_id   model-id
+                                                         :archived   false
+                                                         :created_at :%now
+                                                         :updated_at :%now})]
         (is (thrown? clojure.lang.ExceptionInfo
                      (t2/delete! Database :id db-id)))
         (migrate!)
