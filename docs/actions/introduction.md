@@ -4,7 +4,7 @@ title: Introduction to actions
 
 # Introduction to actions
 
-> For now, actions are only available for PostgreSQL, MySQL, and H2. 
+> For now, actions are only available for PostgreSQL, MySQL, and H2.
 
 ![Example action](./images/example-action.png)
 
@@ -12,7 +12,7 @@ title: Introduction to actions
 
 **Actions** are entities in Metabase that let you build custom forms and business logic.
 
-Actions let you write parameterized SQL that writes back to your database. Actions can be attached to [buttons on dashboards](../dashboards/actions.md) to create custom workflows. You can even publicly share the parameterized forms they generate to collect data.
+Actions let you write parameterized SQL that writes back to your database. Actions can be attached to [buttons on dashboards](../dashboards/actions.md) to create custom workflows. You can even publicly share the parameterized forms that actions generate to collect data.
 
 Here are a few ideas for what you can do with actions:
 
@@ -20,11 +20,11 @@ Here are a few ideas for what you can do with actions:
 - Let team members remove redundant data.
 - Create a customer feedback form and embed it on your website.
 
-Actions are associated with [models](../data-modeling/models.md), but actions operate on the raw tables that back those models (actions don't directly affect models).
+Actions are associated with [models](../data-modeling/models.md), but actions operate on the raw tables that back those models (so actions indirectly affect models based on the affected tables).
 
 ## Enabling actions
 
-To enable actions for a database connection, admins should click on the gear icon in the upper right and navigate to **Admin settings** > **Databases**, then click on the database you want to create actions for. On the right side of the connection settings form, toggle the **Model actions** option. 
+To enable actions for a database connection, admins should click on the gear icon in the upper right and navigate to **Admin settings** > **Databases**, then click on the database you want to create actions for. On the right side of the connection settings form, toggle the **Model actions** option.
 
 For actions to work, the database user account (the account you're using to connect to the database) must have write permissions. And for now, actions are only supported on PostgreSQL, MySQL, and H2 databases.
 
@@ -50,3 +50,15 @@ There are multiple ways to run actions:
 - From a [public form](./custom.md#make-public) of an action.
 - From a [button on dashboard](../dashboards/actions.md).
 
+## Actions change data in tables, not models
+
+While actions are associated with models, they run their SQL code against the underlying data in the tables. Which means that anyone who has access to the underlying table, or to questions and models based on that underlying table, will be able to see changes to that table made by an action. This also means that tools other than Metabase that are connected to that database will pick up the changes made by actions.
+
+
+Before using actions in production, consider playing around with actions on some sample data (like the Sample Database included with Metabase) to get a feel for how they work.
+
+## Action gotchas
+
+- If caching is on for the relevant table or model, you may not see the effects of an action until Metabase refreshes the data (though you can always manually refresh the data).
+- When creating records on a table that lacks an automatically generated primary key, you'll need to input an available ID.
+- You can't "undo" actions. You can however, create and run an action to recreate a deleted record, or change an updated record back to its original values (provided you know the original values).
