@@ -58,19 +58,19 @@
   (doseq [model models]
     (cond
       (mi/instance-of? Collection model)
-      (first (t2/insert-returning-instances! CollectionBookmark
-                                             {:user_id user-id
-                                              :collection_id (u/the-id model)}))
+      (t2/insert! CollectionBookmark
+                  {:user_id user-id
+                   :collection_id (u/the-id model)})
 
       (mi/instance-of? Card model)
-      (first (t2/insert-returning-instances! CardBookmark
-                                             {:user_id user-id
-                                              :card_id (u/the-id model)}))
+      (t2/insert! CardBookmark
+                  {:user_id user-id
+                   :card_id (u/the-id model)})
 
       (mi/instance-of? Dashboard model)
-      (first (t2/insert-returning-instances! DashboardBookmark
-                                             {:user_id user-id
-                                              :dashboard_id (u/the-id model)}))
+      (t2/insert! DashboardBookmark
+                  {:user_id user-id
+                   :dashboard_id (u/the-id model)})
 
       :else
       (throw (ex-info "Unknown type" {:user-id user-id :model model})))))

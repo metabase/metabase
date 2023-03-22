@@ -4,7 +4,6 @@
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.query-processor :as qp]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (declare get-or-create-root-container-collection!)
@@ -29,12 +28,11 @@
   ([collection-name color description]
    (create-collection! collection-name color description (root-container-location)))
   ([collection-name color description location]
-   (u/the-id
-     (first (t2/insert-returning-instances! Collection
-                                            {:name        collection-name
-                                             :color       color
-                                             :description description
-                                             :location    location})))))
+   (first (t2/insert-returning-pks! Collection
+                                    {:name        collection-name
+                                     :color       color
+                                     :description description
+                                     :location    location}))))
 
 (defn- get-or-create-root-container-collection!
   "Get or create container collection for transforms in the root collection."

@@ -97,9 +97,9 @@
       (cond
         (and superuser?
              (not in-admin-group?))
-        (first (t2/insert-returning-instances! PermissionsGroupMembership
-                                               :group_id (u/the-id (perms-group/admin))
-                                               :user_id  id))
+        (t2/insert! PermissionsGroupMembership
+                    :group_id (u/the-id (perms-group/admin))
+                    :user_id  id)
         ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)

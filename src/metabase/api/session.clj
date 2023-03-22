@@ -34,9 +34,9 @@
 
 (s/defn ^:private record-login-history!
   [session-id :- UUID user-id :- su/IntGreaterThanZero device-info :- request.u/DeviceInfo]
-  (first (t2/insert-returning-instances! LoginHistory (merge {:user_id    user-id
-                                                              :session_id (str session-id)}
-                                                             device-info))))
+  (t2/insert! LoginHistory (merge {:user_id    user-id
+                                   :session_id (str session-id)}
+                                  device-info)))
 
 (defmulti create-session!
   "Generate a new Session for a User. `session-type` is the currently either `:password` (for email + password login) or

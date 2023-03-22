@@ -187,11 +187,11 @@
                 {:type                    dimension-type
                  :name                    dimension-name
                  :human_readable_field_id human_readable_field_id})
-    (first (t2/insert-returning-instances! Dimension
-                                           {:field_id                id
-                                            :type                    dimension-type
-                                            :name                    dimension-name
-                                            :human_readable_field_id human_readable_field_id})))
+    (t2/insert! Dimension
+                {:field_id                id
+                 :type                    dimension-type
+                 :name                    dimension-name
+                 :human_readable_field_id human_readable_field_id}))
   (t2/select-one Dimension :field_id id))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -287,12 +287,12 @@
 (defn- create-field-values!
   [field-or-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
-    (first (t2/insert-returning-instances! FieldValues
-                                           :type :full
-                                           :field_id (u/the-id field-or-id)
-                                           :values (map first value-pairs)
-                                           :human_readable_values (when human-readable-values?
-                                                                    (map second value-pairs))))))
+    (t2/insert! FieldValues
+                :type :full
+                :field_id (u/the-id field-or-id)
+                :values (map first value-pairs)
+                :human_readable_values (when human-readable-values?
+                                         (map second value-pairs)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/values"

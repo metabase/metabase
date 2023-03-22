@@ -453,10 +453,10 @@
    {:keys [steps] :as sync-md} :- SyncOperationMetadata]
   (try
     (->> (for [[step-name step-info] steps
-                 :let                  [task-details (dissoc step-info :start-time :end-time :log-summary-fn)]]
-             (assoc (create-task-history step-name database step-info)
-                    :task_details (when (seq task-details)
-                                    task-details)))
+               :let                  [task-details (dissoc step-info :start-time :end-time :log-summary-fn)]]
+           (assoc (create-task-history step-name database step-info)
+                  :task_details (when (seq task-details)
+                                  task-details)))
          (cons (create-task-history operation database sync-md))
          (map #(t2/insert-returning-pks! TaskHistory %))
          doall)
