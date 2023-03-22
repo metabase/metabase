@@ -12,7 +12,7 @@ Whenever you’ve arrived at an answer that you want to save for later, click th
 
 ![Save button](../images/save-button.png)
 
-A modal will appear, prompting you to give your question a name and description, and to pick which [collection](../../exploration-and-organization/collections.md) to save it in. Note that your administrator might have set things up so that you're only allowed to [save questions in certain collection](../../permissions/collections.md), but you can always save things in your Personal Collection. After saving your question, you'll be asked if you want to add it to a new or existing dashboard.
+A modal will appear, prompting you to give your question a name and description, and to pick which [collection](../../exploration-and-organization/collections.md) to save the question in. Note that your administrator might have set things up so that you're only allowed to [save questions in certain collection](../../permissions/collections.md), but you can always save items in your Personal Collection. After saving your question, you'll be asked if you want to add the question to a new or existing dashboard.
 
 Now, whenever you want to refer to your question again you can find it by searching for it in the search bar at the top of Metabase, or by navigating to the collection where you saved it.
 
@@ -43,7 +43,7 @@ Click into the question's title to edit the name of your question.
 
 Open the **...** menu to:
 
-- [Verify](../../exploration-and-organization/exploration.md#verified-items) this question \*
+- [Verify](../../exploration-and-organization/exploration.md#verified-items) this question
 - Add to [dashboard](../../dashboards/start.md)
 - Move to another [collection](../../exploration-and-organization/collections.md)
 - Turn into a [model](../../data-modeling/models.md)
@@ -62,7 +62,7 @@ Click the **info** icon to:
 
 Click the **bookmark** icon to pin a question to your Metabase sidebar. See [Bookmarks](../../exploration-and-organization/exploration.md#bookmarks).
 
-## Re-using a question
+## Building on saved questions
 
 To use a saved question as the basis for another question, you can:
 

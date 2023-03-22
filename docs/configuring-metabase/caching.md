@@ -7,26 +7,26 @@ redirect_from:
 
 # Caching query results
 
-If your results don't change frequently, you may want to cache your results, that is: store your results in Metabase so that the next time you visit the question, Metabase can retrieve the stored results rather than query the database again. 
+If your question results don't change frequently, you may want to store the results in Metabase so that the next time you visit the question, Metabase can retrieve the stored results rather than query the database again.
 
-For example, if your data only updates once a day, there's no point in querying the database more than once a day, as they data won't have changed. Returning cached results can be significantly faster, as the database won't have to redo the work to answer your query.
+For example, if your data only updates once a day, there's no point in querying the database more than once a day, as they data won't have changed. Returning cached results can be significantly faster, as the database won't have to recompute the results to answer your query.
 
-Metabase gives you the ability to automatically cache query results. On [paid plans](https://www.metabase.com/pricing/), you can also control caching for specific:
+Metabase gives you the ability to automatically cache question results that meet a [minimum query duration](#minimum-query-duration). [Paid plans](https://www.metabase.com/pricing/) include granular caching controls for specific:
 
 - [Databases](#caching-per-database)
 - [Questions](#caching-per-question)
 - [Dashboards](#caching-per-dashboard)
 
-You can also [cache models](../data-modeling/models.md#caching-individual-models).
+If your questions share a common model, you can enable [model caching](../data-modeling/models.md#model-caching) instead.
 
 ## Enabling global caching
 
-1. Go to **Admin settings** > **Caching** (in the side nav).
+1. Go to **Admin settings** > **Caching** (in the sidebar).
 2. Click the toggle under **Saved Questions**.
 
 Once you've enabled caching, you can choose when and what to cache from your [caching settings](#caching-settings).
 
-By default, questions will get cached once their [average execution time](#average-query-execution-time) meets a [minimum query duration](#minimum-query-duration) of 60 seconds.
+By default, questions will get cached once their [average execution time](#average-query-execution-time) meets a [minimum query duration](#minimum-query-duration) of 60 seconds. You can change this minimum query duration in the [caching settings](#caching-settings).
 
 ## Caching location
 
@@ -89,13 +89,13 @@ This setting tells Metabase how long to keep the cached results from a specific 
 3. Open **Advanced options** and find the **Default result cache duration**.
 4. Click **Custom** and enter a cache duration in hours.
 
-This setting is useful for databases that take longer to query, or databases that are kept up to date on a special cadence. 
+The cache duration setting is useful for databases that take longer to query, or databases that are kept up to date on a special cadence.
 
 This setting will override your [global TTL settings](#cache-time-to-live-ttl-multiplier).
 
 ### Caching per question
 
-This setting tells Metabase how long to keep the cached results for a specific question. You'll only find these cache settings on questions that exceed the [minimum query duration](#minimum-query-duration).
+You can tell Metabase how long to keep the cached results for specific questions. You'll only find these cache settings on questions that exceed the [minimum query duration](#minimum-query-duration).
 
 1. Make sure [caching is enabled](#enabling-global-caching).
 2. Go to your question.
@@ -113,7 +113,7 @@ If set, your question cache duration will override:
 
 ### Caching per dashboard
 
-This setting tells Metabase how long to keep the cached results for each of the questions on a dashboard.
+You can tell Metabase how long to keep the cached results for each of the questions on a dashboard.
 
 1. Make sure [caching is enabled](#enabling-global-caching).
 2. Go to your dashboard.
