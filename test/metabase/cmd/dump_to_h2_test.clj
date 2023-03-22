@@ -19,7 +19,6 @@
    [metabase.test.data.interface :as tx]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n.impl :as i18n.impl]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
