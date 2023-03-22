@@ -58,7 +58,7 @@ class TableInner extends Base {
 
   question() {
     return Question.create({
-      databaseId: this.db && this.db.id,
+      databaseId: (this.db && this.db.id) || this.db_id,
       tableId: this.id,
       metadata: this.metadata,
     });
