@@ -3,17 +3,13 @@ import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import { alpha, color, lighten } from "metabase/lib/colors";
-import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { space } from "metabase/styled-components/theme";
 
-export const UndoList = styled.ul<{ isNavbarOpen: boolean }>`
+export const UndoList = styled.ul`
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
   bottom: 0;
-  margin-left: ${props =>
-    props.isNavbarOpen ? `${parseInt(NAV_SIDEBAR_WIDTH) / 2}px` : 0};
-  margin-bottom: ${space(2)};
+  margin: ${space(2)};
   z-index: 999;
 `;
 

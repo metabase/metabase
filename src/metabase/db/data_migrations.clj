@@ -18,7 +18,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -62,7 +63,7 @@
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
-  (let [ran-migrations (db/select-ids DataMigrations)]
+  (let [ran-migrations (t2/select-pks-set DataMigrations)]
     (doseq [migration @data-migrations]
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))
@@ -166,7 +167,7 @@
                    (filter :visualization_settings))
              (completing
               (fn [_ {:keys [id visualization_settings]}]
-                (db/update! DashboardCard id :visualization_settings visualization_settings)))
+                (t2/update! DashboardCard id {:visualization_settings visualization_settings})))
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
              ;; https://github.com/metabase/metabase/issues/15014
@@ -190,7 +191,7 @@
   For some reasons during data-migration [[metabase.models.setting/get]] return the default value defined in
   [[metabase.models.setting/defsetting]] instead of value from Setting table."
   [k]
-  (db/select-one-field :value Setting :key (name k)))
+  (t2/select-one-fn :value Setting :key (name k)))
 
 (defn- remove-admin-group-from-mappings-by-setting-key!
   [mapping-setting-key]
@@ -200,12 +201,12 @@
                         (catch Exception _e
                           {}))]
     (when-not (empty? mapping)
-      (db/update! Setting (name mapping-setting-key)
-                  :value
-                  (->> mapping
-                       (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
-                       (into {})
-                       json/generate-string)))))
+      (t2/update! Setting (name mapping-setting-key)
+                  {:value
+                   (->> mapping
+                        (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
+                        (into {})
+                        json/generate-string)}))))
 
 (defmigration
   ^{:author "qnkhuat"

@@ -13,7 +13,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,7 +24,7 @@
   (b) owned by this user (when user ID is non-nil); or
   (c) descended from one of the above."
   [user-or-nil]
-  (let [roots    (db/select ['Collection :id :location :personal_owner_id] :location "/")
+  (let [roots    (t2/select ['Collection :id :location :personal_owner_id] :location "/")
         unowned  (remove :personal_owner_id roots)
         owned    (when user-or-nil
                    (filter #(= user-or-nil (:personal_owner_id %)) roots))
@@ -82,20 +83,20 @@
   Returns a data structure detailing the gaps. Use [[escape-report]] to output this data in a human-friendly format.
   Returns nil if there are no escaped values, which is useful for a test."
   [collection-ids]
-  (let [collection-set (->> (db/select Collection :id [:in (set collection-ids)])
+  (let [collection-set (->> (t2/select Collection :id [:in (set collection-ids)])
                             (mapcat metabase.models.collection/descendant-ids)
                             set
                             (set/union (set collection-ids)))
-        dashboards     (db/select Dashboard :collection_id [:in collection-set])
+        dashboards     (t2/select Dashboard :collection_id [:in collection-set])
         ;; All cards that are in this collection set.
         cards          (reduce set/union (for [coll-id collection-set]
-                                           (db/select-ids Card :collection_id coll-id)))
+                                           (t2/select-pks-set Card :collection_id coll-id)))
 
         ;; Map of {dashboard-id #{DashboardCard}} for dashcards whose cards OR parameter-bound cards are outside the
         ;; transitive collection set.
         escaped-dashcards  (into {}
                                  (for [dash  dashboards
-                                       :let [dcs (db/select DashboardCard :dashboard_id (:id dash))
+                                       :let [dcs (t2/select DashboardCard :dashboard_id (:id dash))
                                              escapees (->> dcs
                                                            (keep :card_id) ; Text cards have a nil card_id
                                                            set)
@@ -108,7 +109,7 @@
                                    [(:id dash) combined]))
         ;; {source-card-id target-card-id} the key is in the curated set, the value is not.
         all-cards          (for [id cards]
-                             (db/select-one [Card :id :collection_id :dataset_query] :id id))
+                             (t2/select-one [Card :id :collection_id :dataset_query] :id id))
         bad-source         (for [card all-cards
                                  :let [^String src (some-> card :dataset_query :query :source-table)]
                                  :when (and (string? src) (.startsWith src "card__"))
@@ -130,7 +131,7 @@
 
 (defn- collection-label [coll-id]
   (if coll-id
-    (let [collection (hydrate (db/select-one Collection :id coll-id) :ancestors)
+    (let [collection (hydrate (t2/select-one Collection :id coll-id) :ancestors)
           names      (->> (conj (:ancestors collection) collection)
                           (map :name)
                           (str/join " > "))]
@@ -144,10 +145,10 @@
     (log/info "Dashboard cards outside the collection")
     (log/info "======================================")
     (doseq [[dash-id card-ids] escaped-dashcards
-            :let [dash-name (db/select-one-field :name Dashboard :id dash-id)]]
+            :let [dash-name (t2/select-one-fn :name Dashboard :id dash-id)]]
       (log/infof "Dashboard %d: %s\n" dash-id dash-name)
       (doseq [card_id card-ids
-              :let [card (db/select-one [Card :collection_id :name] :id card_id)]]
+              :let [card (t2/select-one [Card :collection_id :name] :id card_id)]]
         (log/infof "          \tCard %d: %s\n"    card_id (:name card))
         (log/infof "        from collection %s\n" (collection-label (:collection_id card))))))
 
@@ -155,8 +156,8 @@
     (log/info "Questions based on outside questions")
     (log/info "====================================")
     (doseq [[curated-id alien-id] escaped-questions
-            :let [curated-card (db/select-one [Card :collection_id :name] :id curated-id)
-                  alien-card   (db/select-one [Card :collection_id :name] :id alien-id)]]
+            :let [curated-card (t2/select-one [Card :collection_id :name] :id curated-id)
+                  alien-card   (t2/select-one [Card :collection_id :name] :id alien-id)]]
       (log/infof "%-4d      %s    (%s)\n  -> %-4d %s    (%s)\n"
                  curated-id (:name curated-card) (collection-label (:collection_id curated-card))
                  alien-id   (:name alien-card)   (collection-label (:collection_id alien-card))))))

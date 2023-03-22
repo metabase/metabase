@@ -20,7 +20,7 @@
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -71,8 +71,8 @@
   "Combine all dimensions into a vector and dump it into YAML at in the directory for the
    corresponding schema starting at `path`."
   [path]
-  (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (db/select Dimension))
-          :let [table (db/select-one Table :id table-id)]]
+  (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (t2/select Dimension))
+          :let [table (t2/select-one Table :id table-id)]]
     (spit-yaml (if (:schema table)
                  (format "%s%s/schemas/%s/dimensions.yaml"
                          path

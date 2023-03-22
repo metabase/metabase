@@ -6,7 +6,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel ParameterCard :parameter_card)
 
@@ -50,7 +51,7 @@
                              :parameterized_object_id parameterized-object-id]
                             (when (seq parameter-ids-still-in-use)
                               [:parameter_id [:not-in parameter-ids-still-in-use]]))]
-     (apply db/delete! ParameterCard conditions))))
+     (apply t2/delete! ParameterCard conditions))))
 
 (defn- upsert-from-parameters!
   [parameterized-object-type parameterized-object-id parameters]

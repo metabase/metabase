@@ -3,7 +3,9 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field :as lib.field]
    #_{:clj-kondo/ignore [:unused-namespace]}
-   [metabase.lib.options :as lib.options])
+   [metabase.lib.options :as lib.options]
+   #_{:clj-kondo/ignore [:unused-namespace]}
+   [metabase.util.malli :as mu])
   #?(:cljs (:require-macros [metabase.lib.common])))
 
 (defmulti ->op-arg
@@ -13,8 +15,10 @@
     (lib.dispatch/dispatch-value x)))
 
 (defmethod ->op-arg :default
-  [_query _stage-number x]
-  x)
+  [query stage-number x]
+  (if (vector? x)
+    (mapv #(->op-arg query stage-number %) x)
+    x))
 
 (defmethod ->op-arg :metadata/field
   [query stage-number field-metadata]
@@ -28,21 +32,32 @@
    (defmacro defop
      "Defines a clause creating function with given args.
       Calling the clause without query and stage produces a fn that can be resolved later."
-     [op-name argvec]
+     [op-name & argvecs]
      {:pre [(symbol? op-name)
-            (vector? argvec) (every? symbol? argvec)
-            (not-any? #{'query 'stage-number} argvec)]}
-     (let [arglist-expr (if (contains? (set argvec) '&)
-                          (cons 'list* (remove #{'&} argvec))
-                          argvec)]
-       `(mu/defn ~op-name :- [:or fn? ~(keyword "mbql.clause" (name op-name))]
-          ~(format "Create a clause of type `%s`." (name op-name))
-          ([~@argvec]
-           (fn [~'query ~'stage-number]
-             (~op-name ~'query ~'stage-number ~@argvec)))
-          ([~'query ~'stage-number ~@argvec]
-           (-> (into [~(keyword op-name)]
-                     (map (fn [~'arg]
-                            (->op-arg ~'query ~'stage-number ~'arg)))
-                     ~arglist-expr)
-               lib.options/ensure-uuid))))))
+            (every? vector? argvecs) (every? #(every? symbol? %) argvecs)
+            (every? #(not-any? #{'query 'stage-number} %) argvecs)]}
+     (let [fn-rename #(name (get {'/ 'div} % %))]
+       `(do
+          (mu/defn ~(symbol (str (fn-rename op-name) "-clause")) :- ~(keyword "mbql.clause" (name op-name))
+            ~(format "Create a standalone clause of type `%s`." (name op-name))
+            ~@(for [argvec argvecs
+                    :let [arglist-expr (if (contains? (set argvec) '&)
+                                         (cons `list* (remove #{'&} argvec))
+                                         argvec)]]
+                `([~'query ~'stage-number ~@argvec]
+                  (-> (into [~(keyword op-name)]
+                            (map (fn [~'arg]
+                                   (->op-arg ~'query ~'stage-number ~'arg)))
+                            ~arglist-expr)
+                      lib.options/ensure-uuid))))
+
+          (mu/defn ~op-name :- fn?
+            ~(format "Create a closure of clause of type `%s`." (name op-name))
+            ~@(for [argvec argvecs
+                    :let [arglist-expr (if (contains? (set argvec) '&)
+                                         (filterv (complement #{'&}) argvec)
+                                         (conj argvec []))]]
+                `([~@argvec]
+                  (fn ~(symbol (str (fn-rename op-name) "-closure"))
+                    [~'query ~'stage-number]
+                    (apply ~(symbol (str (fn-rename op-name) "-clause")) ~'query ~'stage-number ~@arglist-expr)))))))))

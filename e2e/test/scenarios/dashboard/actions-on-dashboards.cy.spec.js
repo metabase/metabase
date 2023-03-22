@@ -2,7 +2,7 @@ import {
   restore,
   queryWritableDB,
   resetTestTable,
-  getTableId,
+  createModelFromTableName,
   fillActionQuery,
   resyncDatabase,
   visitDashboard,
@@ -55,9 +55,12 @@ const MODEL_NAME = "Test Action Model";
           restore(`${dialect}-writable`);
           cy.signInAsAdmin();
           resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+          createModelFromTableName({ tableName: TEST_TABLE, modelName: MODEL_NAME });
         });
 
         it("adds a custom query action to a dashboard and runs it", () => {
+          const ACTION_NAME = "Update Score";
+
           queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
             dialect,
@@ -65,8 +68,6 @@ const MODEL_NAME = "Test Action Model";
             expect(result.rows.length).to.equal(1);
             expect(result.rows[0].score).to.equal(0);
           });
-
-          createModelFromTable(TEST_TABLE);
 
           cy.get("@modelId").then(id => {
             cy.visit(`/model/${id}/detail`);
@@ -90,14 +91,13 @@ const MODEL_NAME = "Test Action Model";
             cy.findByText("Save").click();
           });
 
-
           cy.findByPlaceholderText("My new fantastic action").type(
-            "Update Score",
+            ACTION_NAME
           );
           cy.findByText("Create").click();
 
           createDashboardWithActionButton({
-            actionName: "Update Score",
+            actionName: ACTION_NAME,
             idFilter: true,
           });
 
@@ -108,7 +108,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.findByRole("dialog").within(() => {
             cy.findByLabelText("New score").type("55");
-            cy.button("Run").click();
+            cy.button(ACTION_NAME).click();
           });
 
           cy.wait("@executeAPI");
@@ -123,7 +123,6 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("adds an implicit create action to a dashboard and runs it", () => {
-          createModelFromTable(TEST_TABLE);
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "create",
@@ -158,8 +157,6 @@ const MODEL_NAME = "Test Action Model";
 
         it("adds an implicit update action to a dashboard and runs it", () => {
           const actionName = "Update";
-
-          createModelFromTable(TEST_TABLE);
 
           cy.get("@modelId").then(id => {
             createImplicitAction({
@@ -215,8 +212,6 @@ const MODEL_NAME = "Test Action Model";
             expect(result.rows[0].id).to.equal(3);
           });
 
-          createModelFromTable(TEST_TABLE);
-
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "delete",
@@ -251,11 +246,11 @@ const MODEL_NAME = "Test Action Model";
           resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
           restore(`${dialect}-writable`);
           cy.signInAsAdmin();
-          resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+          resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_COLUMNS_TABLE });
+          createModelFromTableName({ tableName: TEST_COLUMNS_TABLE, modelName: MODEL_NAME });
         });
 
         it("can update various data types via implicit actions", () => {
-          createModelFromTable(TEST_COLUMNS_TABLE);
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "update",
@@ -352,7 +347,6 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("can insert various data types via implicit actions", () => {
-          createModelFromTable(TEST_COLUMNS_TABLE);
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "create",
@@ -438,7 +432,6 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("does not show json, enum, or binary columns for implicit actions", () => {
-          createModelFromTable(TEST_COLUMNS_TABLE);
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "create",
@@ -467,7 +460,6 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("properly loads and updates date and time fields for implicit update actions", () => {
-          createModelFromTable(TEST_COLUMNS_TABLE);
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "update",
@@ -579,25 +571,6 @@ const MODEL_NAME = "Test Action Model";
       });
     });
 });
-
-const createModelFromTable = tableName => {
-  getTableId({ name: tableName }).then(tableId => {
-    cy.createQuestion(
-      {
-        database: WRITABLE_DB_ID,
-        name: MODEL_NAME,
-        query: {
-          "source-table": tableId,
-        },
-        dataset: true,
-      },
-      {
-        wrapId: true,
-        idAlias: "modelId",
-      },
-    );
-  });
-};
 
 function createDashboardWithActionButton({
   actionName,

@@ -49,7 +49,8 @@
    [potemkin :as p]
    [toucan.db :as db]
    [toucan.models :as models]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -307,9 +308,9 @@
 
 (defn do-with-single-admin-user
   [attributes thunk]
-  (let [existing-admin-memberships (db/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
+  (let [existing-admin-memberships (t2/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
         _                          (db/simple-delete! PermissionsGroupMembership :group_id (:id (perms-group/admin)))
-        existing-admin-ids         (db/select-ids User :is_superuser true)
+        existing-admin-ids         (t2/select-pks-set User :is_superuser true)
         _                          (when (seq existing-admin-ids)
                                      (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser false))
         temp-admin                 (db/insert! User (merge (with-temp-defaults User)
@@ -319,7 +320,7 @@
     (try
       (thunk temp-admin)
       (finally
-        (db/delete! User primary-key (primary-key temp-admin))
+        (t2/delete! User primary-key (primary-key temp-admin))
         (when (seq existing-admin-ids)
           (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser true))
         (db/insert-many! PermissionsGroupMembership existing-admin-memberships)))))
@@ -406,7 +407,7 @@
         (is (= (merge (mt/object-defaults User)
                       (select-keys user [:id :last_name :created_at :updated_at])
                       {:name \"Cam\"})
-               (mt/decrecordize (db/select-one User :id (:id user)))))))"
+               (mt/decrecordize (t2/select-one User :id (:id user)))))))"
   (comp
    (memoize
     (fn [toucan-model]

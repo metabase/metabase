@@ -1,10 +1,14 @@
 (ns metabase.lib.metadata-test
   (:require
-   [clojure.test :refer [are deftest is]]
+   [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-metadata :as meta])
-  #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel field-metadata-test
   (are [x] (=? (merge
@@ -38,3 +42,9 @@
                  x)
       (lib.metadata/stage-column query "CATEGORY_ID")
       (lib.metadata/stage-column query -1 "CATEGORY_ID"))))
+
+(deftest ^:parallel display-name-from-name-test
+  (testing "Use the 'simple humanization' logic to calculate a display name for a Field that doesn't have one"
+    (is (= "Venue ID"
+           (lib.metadata.calculation/display-name lib.tu/venues-query -1 {:lib/type :metadata/field
+                                                                          :name     "venue_id"})))))

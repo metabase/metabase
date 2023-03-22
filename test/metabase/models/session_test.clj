@@ -4,7 +4,8 @@
    [metabase.models.session :as session :refer [Session]]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")
 
@@ -14,7 +15,7 @@
   (try
     (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)})
     (finally
-      (db/delete! Session :id (str test-uuid)))))
+      (t2/delete! Session :id (str test-uuid)))))
 
 (deftest new-session-include-test-test
   (testing "when creating a new Session, it should come back with an added `:type` key"

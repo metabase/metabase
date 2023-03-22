@@ -357,9 +357,9 @@
               action-path    (str "action/" action-id)]
           (testing "Archiving"
             (mt/user-http-request :crowberto :put 200 action-path {:archived true})
-            (is (true? (db/select-one-field :archived Action :id action-id)))
+            (is (true? (t2/select-one-fn :archived Action :id action-id)))
             (mt/user-http-request :crowberto :put 200 action-path {:archived false})
-            (is (false? (db/select-one-field :archived Action :id action-id))))
+            (is (false? (t2/select-one-fn :archived Action :id action-id))))
           (testing "Validate POST"
             (testing "Required fields"
               (is (partial= {:errors {:name "string"},
@@ -521,7 +521,7 @@
                                      (format "action/%s/execute" action-id)
                                      {:parameters {:id 1 :name "European"}})))))
     (mt/with-actions [{:keys [action-id]} unshared-action-opts]
-      (let [nonexistent-id (inc (db/select-one-id Action {:order-by [[:id :desc]]}))]
+      (let [nonexistent-id (inc (t2/select-one-pk Action {:order-by [[:id :desc]]}))]
         (testing "Check that we get a 404 if the action doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :crowberto

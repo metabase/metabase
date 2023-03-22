@@ -1,7 +1,6 @@
-import _ from "underscore";
 import { STANDARD_AGGREGATIONS } from "metabase-lib/expressions";
 import * as FieldRef from "./field-ref";
-import { noNullValues, add, update, remove, clear } from "./util";
+import { add, update, remove, clear } from "./util";
 
 // returns canonical list of Aggregations, i.e. with deprecated "rows" removed
 export function getAggregations(aggregation) {
@@ -50,14 +49,6 @@ export function isBareRows(ac) {
   return getAggregations(ac).length === 0;
 }
 
-export function hasEmptyAggregation(ac) {
-  return _.any(getAggregations(ac), aggregation => !noNullValues(aggregation));
-}
-
-export function hasValidAggregation(ac) {
-  return _.all(getAggregations(ac), aggregation => noNullValues(aggregation));
-}
-
 // AGGREGATION TYPES
 
 // NOTE: these only differentiate between "standard", "metric", and "custom", but do not validate the aggregation
@@ -82,10 +73,10 @@ export function isCustom(aggregation) {
 
 // AGGREGATION OPTIONS / NAMED AGGREGATIONS
 
-export function hasOptions(aggregation) {
+function hasOptions(aggregation) {
   return Array.isArray(aggregation) && aggregation[0] === "aggregation-options";
 }
-export function getOptions(aggregation) {
+function getOptions(aggregation) {
   return hasOptions(aggregation) && aggregation[2] ? aggregation[2] : {};
 }
 export function getContent(aggregation) {
@@ -123,15 +114,6 @@ export function getMetric(aggregation) {
 export function getOperator(aggregation) {
   if (isStandard(aggregation)) {
     return aggregation[0];
-  } else {
-    return null;
-  }
-}
-
-// get the fieldId from a standard aggregation clause
-export function getField(aggregation) {
-  if (isStandard(aggregation)) {
-    return aggregation[1];
   } else {
     return null;
   }

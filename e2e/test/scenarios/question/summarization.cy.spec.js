@@ -71,7 +71,7 @@ describe("scenarios > question > summarize sidebar", () => {
     });
   });
 
-  it("selected dimensions from another table includes the table name when becomes pinned to the top", () => {
+  it("selected dimensions from another table includes the table alias when becomes pinned to the top", () => {
     getDimensionByName({ name: "State" }).click();
 
     cy.button("Done").click();
@@ -79,16 +79,16 @@ describe("scenarios > question > summarize sidebar", () => {
     summarize();
 
     cy.findByTestId("pinned-dimensions").within(() => {
-      getDimensionByName({ name: "People → State" }).should(
+      getDimensionByName({ name: "User → State" }).should(
         "have.attr",
         "aria-selected",
         "true",
       );
     });
 
-    getRemoveDimensionButton({ name: "People → State" }).click();
+    getRemoveDimensionButton({ name: "User → State" }).click();
 
-    cy.findByText("People → State").should("not.exist");
+    cy.findByText("User → State").should("not.exist");
   });
 
   it("selecting a binning adds a dimension", () => {
