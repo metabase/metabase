@@ -42,11 +42,18 @@ class DashboardGrid extends Component {
     super(props, context);
 
     this.state = {
-      layouts: this.getLayouts(props),
+      layouts: this.getLayouts({ cards: props.dashboard.ordered_cards }),
       dashcards: this.getSortedDashcards(props),
       addSeriesModalDashCard: null,
       isDragging: false,
       isAnimationPaused: true,
+      visibleCards: props.dashboard.ordered_cards.reduce(
+        (visibleCards, card) => {
+          visibleCards[card.id] = true;
+          return visibleCards;
+        },
+        {},
+      ),
     };
   }
 
@@ -89,10 +96,44 @@ class DashboardGrid extends Component {
     clearTimeout(this._pauseAnimationTimer);
   }
 
+  _getCardsVisibility({ dashboard, dashcardData }) {
+    const { visibleCards } = this.state;
+
+    const newVisibleCards = dashboard.ordered_cards.filter(dc => {
+      const dashCardData = dashcardData?.[dc.id];
+
+      const isDashcardDataLoading =
+        dashCardData == null ||
+        Object.values(dashCardData).some(cardData => cardData == null);
+
+      const hasRows =
+        dashCardData != null &&
+        Object.values(dashCardData)
+          .map(c => c?.row_count > 0)
+          .every(Boolean);
+
+      const wasVisible = !!visibleCards[dc.id];
+
+      return hasRows || (isDashcardDataLoading && wasVisible);
+    });
+
+    return newVisibleCards.reduce((visibleCards, card) => {
+      visibleCards[card.id] = true;
+      return visibleCards;
+    }, {});
+  }
+
   UNSAFE_componentWillReceiveProps(nextProps) {
+    const visibleCards = this._getCardsVisibility(nextProps);
+    const cards = this._getVisibleCards(nextProps.dashboard, visibleCards);
+    const layouts = this.getLayouts({ cards });
+
+    console.log;
+
     this.setState({
       dashcards: this.getSortedDashcards(nextProps),
-      layouts: this.getLayouts(nextProps),
+      layouts,
+      visibleCards: this._getCardsVisibility(nextProps),
     });
   }
 
@@ -104,16 +145,10 @@ class DashboardGrid extends Component {
       return;
     }
 
-    const {
-      dashboard,
-      setMultipleDashCardAttributes,
-      loadingDashCards,
-      dashcardData,
-    } = this.props;
+    const { dashboard, setMultipleDashCardAttributes } = this.props;
     const visibleCards = this._getVisibleCards(
       dashboard,
-      loadingDashCards,
-      dashcardData,
+      this.state.visibleCards,
     );
     const changes = [];
 
@@ -184,10 +219,8 @@ class DashboardGrid extends Component {
     };
   }
 
-  getLayouts({ dashboard, dashcardData }) {
-    const cards = this._getVisibleCards(dashboard, dashcardData);
+  getLayouts({ cards }) {
     const desktop = cards.map(this.getLayoutForDashCard);
-
     const mobile = generateMobileLayout({
       desktopLayout: desktop,
       defaultCardHeight: 6,
@@ -292,6 +325,10 @@ class DashboardGrid extends Component {
     }
   };
 
+  _getVisibleCards = (dashboard, visibleCards) => {
+    return dashboard.ordered_cards.filter(card => !!visibleCards[card.id]);
+  };
+
   renderDashCard(dc, { isMobile, gridItemWidth, totalNumGridCols }) {
     return (
       <DashCard
@@ -360,29 +397,12 @@ class DashboardGrid extends Component {
     </DashboardCard>
   );
 
-  _getVisibleCards(dashboard, dashcardData) {
-    return dashboard.ordered_cards.filter(dc => {
-      const dashCardData = dashcardData?.[dc.id];
-      const isDashcardDataLoading =
-        dashCardData == null ||
-        Object.values(dashCardData).some(cardData => cardData == null);
-
-      const hasRows =
-        dashCardData != null &&
-        Object.values(dashCardData)
-          .map(c => c?.row_count > 0)
-          .every(Boolean);
-
-      return isDashcardDataLoading || hasRows;
-    });
-  }
-
   renderGrid() {
-    const { dashboard, width, dashcardData } = this.props;
-    const { layouts } = this.state;
+    const { dashboard, width } = this.props;
+    const { layouts, visibleCards } = this.state;
     const rowHeight = this.getRowHeight();
 
-    const visibleCards = this._getVisibleCards(dashboard, dashcardData);
+    const cards = this._getVisibleCards(dashboard, visibleCards);
 
     return (
       <GridLayout
@@ -402,7 +422,7 @@ class DashboardGrid extends Component {
         onDragStop={this.onDragStop}
         isEditing={this.isEditingLayout}
         compactType="vertical"
-        items={visibleCards}
+        items={cards}
         itemRenderer={this.renderGridItem}
       />
     );
