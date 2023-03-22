@@ -1,4 +1,9 @@
-import { Field, FieldValues } from "metabase-types/api";
+import {
+  Field,
+  FieldFingerprint,
+  FieldGlobalFingerprint,
+  FieldValues,
+} from "metabase-types/api";
 
 export const createMockField = (opts?: Partial<Field>): Field => ({
   id: 1,
@@ -17,6 +22,7 @@ export const createMockField = (opts?: Partial<Field>): Field => ({
   preview_display: true,
   position: 1,
   nfc_path: null,
+  fingerprint: null,
 
   has_field_values: "list",
 
@@ -32,5 +38,18 @@ export const createMockFieldValues = (
   field_id: 1,
   values: [],
   has_more_values: false,
+  ...opts,
+});
+
+export const createMockFingerprint = (
+  opts?: Partial<FieldFingerprint>,
+): FieldFingerprint => ({
+  global: createMockGlobalFingerprint(),
+  ...opts,
+});
+
+export const createMockGlobalFingerprint = (
+  opts?: Partial<FieldGlobalFingerprint>,
+): FieldGlobalFingerprint => ({
   ...opts,
 });

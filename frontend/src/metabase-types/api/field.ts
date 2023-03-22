@@ -10,7 +10,7 @@ export interface FieldFingerprint {
 
 export interface FieldGlobalFingerprint {
   "distinct-count"?: number;
-  "nil%": number;
+  "nil%"?: number;
 }
 
 export interface FieldTypeFingerprint {
@@ -87,7 +87,7 @@ export interface ConcreteField {
   points_of_interest?: string;
 
   nfc_path: string[] | null;
-  fingerprint?: FieldFingerprint;
+  fingerprint: FieldFingerprint | null;
 
   last_analyzed: string;
   created_at: string;
