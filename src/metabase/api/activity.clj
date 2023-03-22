@@ -136,7 +136,7 @@
         (group-by :model views)))
 
 (defn- views-and-runs
-  "Common query implementation for `recent_views` and `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
+  "Query implementation for `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
   Cards have a query limit of `card-runs-limit`.
 
   The expected output of the query is a single row per unique model viewed by the current user including a `:max_ts` which
@@ -249,6 +249,7 @@
                      :h2 [:dateadd [:inline "DAY"] [-30] [:current_date]]
                      [:>= :timestamp [:- [:date [:now]] [:inline 30]]])]
                   [:not= :context [:inline "pulse"]]
+                  [:not= :context [:inline "collection"]]
                   [:not= :context [:inline "ad-hoc"]]
                   [:not= [:composite :context :model] [:composite [:inline "dashboard"] [:inline "card"]]]
                   [:not= [:composite :source :model :dataset] [:composite [:inline "vl"] [:inline "card"] [:inline false]]]
