@@ -1572,6 +1572,7 @@ describe("Question", () => {
   describe("Question.generateQueryDescription", () => {
     it("should work with multiple aggregations", () => {
       const question = base_question.setDatasetQuery({
+        type: "query",
         query: {
           "source-table": ORDERS.id,
           aggregation: [["count"], ["sum", ["field", 6, null]]],
@@ -1584,6 +1585,7 @@ describe("Question", () => {
 
     it("should work with named aggregations", () => {
       const question = base_question.setDatasetQuery({
+        type: "query",
         query: {
           "source-table": ORDERS.id,
           aggregation: [
