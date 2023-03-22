@@ -12,12 +12,12 @@ type Props = {
 };
 
 function SQLSnippetsDocLink() {
-  const href = MetabaseSettings.docsUrl("users-guide/sql-snippets");
+  const href = MetabaseSettings.docsUrl("questions/native-editor/sql-snippets");
   return <ExternalLink href={href}>{t`SQL snippets`}</ExternalLink>;
 }
 
 function ReferencingQuestionsDocLink() {
-  const href = MetabaseSettings.docsUrl("users-guide/sql-snippets");
+  const href = MetabaseSettings.docsUrl("questions/native-editor/sql-snippets");
   return (
     <ExternalLink
       href={href}
