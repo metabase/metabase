@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [compojure.core :refer [GET]]
+   [java-time :as t]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
    [metabase.db.connection :as mdb.connection]
@@ -11,6 +12,7 @@
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.query-execution :refer [QueryExecution]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.table :refer [Table]]
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -190,42 +192,42 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-(defn- bookmarks
+(defn- bookmarks-query
   [user-id]
   (let [as-null (when (= (mdb.connection/db-type) :postgres) (h2x/->integer nil))]
-    {:select    [[:type :model] [:item_id :model_id]]
-     :from [[{:union-all [{:select [:card_id
-                                    [as-null :dashboard_id]
-                                    [as-null :collection_id]
-                                    [:card_id :item_id]
-                                    [[:inline "card"] :type]
-                                    :created_at]
-                           :from   [:card_bookmark]
-                           :where  [:= :user_id [:inline user-id]]}
-                          {:select [[as-null :card_id]
-                                    :dashboard_id
-                                    [as-null :collection_id]
-                                    [:dashboard_id :item_id]
-                                    [[:inline "dashboard"] :type]
-                                    :created_at]
-                           :from   [:dashboard_bookmark]
-                           :where  [:= :user_id [:inline user-id]]}]}
-             :bookmarks]]}))
+    {:select [[:type :model] [:item_id :model_id]]
+     :from   [[{:union-all [{:select [:card_id
+                                      [as-null :dashboard_id]
+                                      [as-null :collection_id]
+                                      [:card_id :item_id]
+                                      [(h2x/literal "card") :type]
+                                      :created_at]
+                             :from   [:card_bookmark]
+                             :where  [:= :user_id [:inline user-id]]}
+                            {:select [[as-null :card_id]
+                                      :dashboard_id
+                                      [as-null :collection_id]
+                                      [:dashboard_id :item_id]
+                                      [(h2x/literal "dashboard") :type]
+                                      :created_at]
+                             :from   [:dashboard_bookmark]
+                             :where  [:= :user_id [:inline user-id]]}]}
+               :bookmarks]]}))
 
 (defn- recent-views-for-user
   [user-id]
-  (let [bookmarks (bookmarks user-id)
-        qe        {:select [[[:inline "qe"] :source]
+  (let [bookmarks (bookmarks-query user-id)
+        qe        {:select [[(h2x/literal "qe") :source]
                             [:executor_id :user_id]
                             :context
                             [:started_at :timestamp]
-                            [[:inline "card"] :model]
+                            [(h2x/literal "card") :model]
                             [:card_id :model_id]
                             [false :dataset]]
                    :from   :query_execution}
-        vl        {:select    [[[:inline "vl"] :source]
+        vl        {:select    [[(h2x/literal "vl") :source]
                                :user_id
-                               [[:inline "question"] :context]
+                               [(h2x/literal "question") :context]
                                :timestamp
                                :model
                                :model_id
@@ -233,7 +235,7 @@
                    :from      [:view_log]
                    :left-join [:report_card
                                [:and
-                                [:= :view_log.model [:inline "card"]]
+                                [:= :view_log.model (h2x/literal "card")]
                                 [:= :view_log.model_id :report_card.id]]]}
         views     {:union-all [qe vl]}]
     (t2/query
@@ -243,16 +245,12 @@
       :from     [[views :views]]
       :where    [[:and
                   [:= :user_id [:inline user-id]]
-                  [:>= :timestamp
-                   (case (mdb.connection/db-type)
-                     :postgres [:- [:now] [:cast "30 days" :interval]]
-                     :h2 [:dateadd [:inline "DAY"] [-30] [:current_date]]
-                     [:>= :timestamp [:- [:date [:now]] [:inline 30]]])]
-                  [:not= :context [:inline "pulse"]]
-                  [:not= :context [:inline "collection"]]
-                  [:not= :context [:inline "ad-hoc"]]
-                  [:not= [:composite :context :model] [:composite [:inline "dashboard"] [:inline "card"]]]
-                  [:not= [:composite :source :model :dataset] [:composite [:inline "vl"] [:inline "card"] [:inline false]]]
+                  [:>= :timestamp (t/minus (t/offset-date-time) (t/days 30))]
+                  [:not= :context (h2x/literal "pulse")]
+                  [:not= :context (h2x/literal "collection")]
+                  [:not= :context (h2x/literal "ad-hoc")]
+                  [:not= [:composite :context :model] [:composite (h2x/literal "dashboard") (h2x/literal "card")]]
+                  [:not= [:composite :source :model :dataset] [:composite (h2x/literal "vl") (h2x/literal "card") [:inline false]]]
                   [:not-in [:composite :model :model_id] bookmarks]]]
       :group-by [:model :model_id]
       :order-by [[:timestamp :desc]]
