@@ -95,3 +95,7 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mousemove", 0, distance * 50, { force: true })
     .trigger("mouseup", 0, distance * 50, { force: true });
 };
+
+export const queryBuilderMain = () => {
+  return cy.findByTestId("query-builder-main");
+};

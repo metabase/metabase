@@ -11,7 +11,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
 - [Aggregations](#aggregations)
   - [Average](#average)
   - [Count](#count)
-  - [CountIf](#countif)
+  - [CountIf](./expressions/countif.md)
   - [CumulativeCount](#cumulativecount)
   - [CumulativeSum](#cumulativesum)
   - [Distinct](#distinct)
@@ -50,6 +50,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [lower](#lower)
   - [minute](#minute)
   - [month](#month)
+  - [now](./expressions/now.md)
   - [power](#power)
   - [quarter](#quarter)
   - [regexextract](./expressions/regexextract.md)
@@ -86,7 +87,7 @@ Syntax: `Count`
 
 Example: `Count` If a table or result returns 10 rows, `Count` will return `10`.
 
-### CountIf
+### [CountIf](./expressions/countif.md)
 
 Only counts rows where the condition is true.
 
@@ -429,6 +430,12 @@ Takes a datetime and returns the month number (1-12) as an integer.
 Syntax: `month([datetime column])`.
 
 Example: `month("2021-03-25T12:52:37")` would return the month as an integer, `3`.
+
+### [now](./expressions/now.md)
+
+Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
+
+Syntax: `now`.
 
 ### power
 

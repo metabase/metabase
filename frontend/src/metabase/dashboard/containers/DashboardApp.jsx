@@ -109,12 +109,11 @@ const mapDispatchToProps = {
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
-  const options = parseHashOptions(window.location.hash);
-
   const { isRunning, isLoadingComplete, dashboard } = props;
 
-  const [editingOnLoad] = useState(options.edit);
-  const [addCardOnLoad] = useState(options.add && parseInt(options.add));
+  const options = parseHashOptions(window.location.hash);
+  const editingOnLoad = options.edit;
+  const addCardOnLoad = options.add && parseInt(options.add);
 
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 

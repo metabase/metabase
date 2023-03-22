@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { connect } from "react-redux";
+import _ from "underscore";
 
 import { useMount, usePrevious } from "react-use";
 import { State } from "metabase-types/store";
@@ -31,6 +32,7 @@ import {
   getCanZoomPreviousRow,
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
+import { getUser } from "metabase/selectors/user";
 
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
@@ -61,6 +63,12 @@ import {
 } from "./ObjectDetail.styled";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
+  const isLoggedIn = !!getUser(state);
+
+  if (!isLoggedIn) {
+    return {};
+  }
+
   const table = getTableMetadata(state);
   let zoomedRowID = getZoomedObjectId(state);
   const isZooming = zoomedRowID != null;
@@ -130,6 +138,7 @@ export function ObjectDetailFn({
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
+  className,
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const prevZoomedRowId = usePrevious(zoomedRowID);
@@ -193,7 +202,9 @@ export function ObjectDetailFn({
 
   const onFollowForeignKey = useCallback(
     (fk: ForeignKey) => {
-      followForeignKey({ objectId: zoomedRowID, fk });
+      zoomedRowID !== undefined
+        ? followForeignKey({ objectId: zoomedRowID, fk })
+        : _.noop();
     },
     [zoomedRowID, followForeignKey],
   );
@@ -237,7 +248,7 @@ export function ObjectDetailFn({
     showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);
 
   return (
-    <ObjectDetailContainer wide={hasRelationships}>
+    <ObjectDetailContainer wide={hasRelationships} className={className}>
       {hasNotFoundError ? (
         <ErrorWrapper>
           <NotFound />
@@ -249,10 +260,12 @@ export function ObjectDetailFn({
         >
           {showHeader && (
             <ObjectDetailHeader
-              canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
+              canZoom={Boolean(
+                canZoom && (canZoomNextRow || canZoomPreviousRow),
+              )}
               objectName={objectName}
               objectId={displayId}
-              canZoomPreviousRow={canZoomPreviousRow}
+              canZoomPreviousRow={!!canZoomPreviousRow}
               canZoomNextRow={canZoomNextRow}
               showActions={showActions}
               viewPreviousObjectDetail={viewPreviousObjectDetail}
@@ -329,6 +342,7 @@ export function ObjectDetailWrapper({
       />
       {hasPagination && (
         <PaginationFooter
+          data-testid="pagination-footer"
           start={currentObjectIndex}
           end={currentObjectIndex}
           total={data.rows.length}
@@ -423,11 +437,11 @@ export interface ObjectDetailBodyProps {
   hasRelationships: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
-  tableForeignKeys: ForeignKey[];
-  tableForeignKeyReferences: {
+  tableForeignKeys?: ForeignKey[];
+  tableForeignKeyReferences?: {
     [key: number]: { status: number; value: number };
   };
-  followForeignKey: (fk: ForeignKey) => void;
+  followForeignKey?: (fk: ForeignKey) => void;
 }
 
 export function ObjectDetailBody({
@@ -442,6 +456,12 @@ export function ObjectDetailBody({
   tableForeignKeyReferences,
   followForeignKey,
 }: ObjectDetailBodyProps): JSX.Element {
+  const showRelationships =
+    hasRelationships &&
+    tableForeignKeys &&
+    tableForeignKeyReferences &&
+    followForeignKey;
+
   return (
     <ObjectDetailBodyWrapper>
       <DetailsTable
@@ -451,7 +471,7 @@ export function ObjectDetailBody({
         onVisualizationClick={onVisualizationClick}
         visualizationIsClickable={visualizationIsClickable}
       />
-      {hasRelationships && (
+      {showRelationships && (
         <Relationships
           objectName={objectName}
           tableForeignKeys={tableForeignKeys}

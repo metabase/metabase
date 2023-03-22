@@ -120,7 +120,11 @@ class ChartWithLegend extends Component {
           paddingRight: PADDING,
         }}
       >
-        {legend && <div className={cx(styles.LegendWrapper)}>{legend}</div>}
+        {legend && (
+          <div className={cx(styles.LegendWrapper)} data-testid="chart-legend">
+            {legend}
+          </div>
+        )}
         <div
           className={cx(styles.Chart)}
           style={{ width: chartWidth, height: chartHeight }}

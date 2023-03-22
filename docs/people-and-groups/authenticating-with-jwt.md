@@ -8,7 +8,9 @@ redirect_from:
 
 {% include plans-blockquote.html feature="JWT-based authentication" %}
 
-You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people.
+You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people. If the user doesn't exist, Metabase will create an account on the fly.
+
+Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase.
 
 ## Authentication flows
 
@@ -62,9 +64,11 @@ You can use your JWT to assign Metabase users to custom groups by following thes
 2. In the Admin Panel in Metabase, go to the Authentication tab of the Settings section and click the Configure button on JWT. On this screen, turn on the toggle under "SYNCHRONIZE GROUP MEMBERSHIPS".
 3. Next, click Edit Mappings. In this modal, type in the name of one of your groups as defined in the JWT, then click Add. In the row that appears, click the dropdown to pick the Metabase group that this should map to. Repeat this for each of the groups you want to map.
 
-## Disabling password login
+## Disabling password logins
 
-Once you have set up your JWT authentication and confirmed that it's working, if you want to disable the option for users to log in via username and password, return to **Admin** > **Settings** > **Authentication**  and scroll to the bottom. A toggle should now be visible that allows you disable password authentication. 
+> **Avoid locking yourself out of your Metabase!** This setting will apply to all Metabase accounts, _including your Metabase admin account_. We recommend that you keep password authentication **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
+
+To require people to log in with SSO, disable password authentication from **Admin settings** > **Authentication**.
 
 ![Password disable](images/password-disable.png)
 

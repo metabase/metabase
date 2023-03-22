@@ -27,7 +27,8 @@
    [metabase.util.schema :as su]
    [schema.core]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GRAPH ENDPOINTS                                           |
@@ -54,8 +55,7 @@
   (throw (ex-info (tru "Sandboxes are an Enterprise feature. Please upgrade to a paid plan to use this feature.")
                   {:status-code 402})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/graph"
+(api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
   format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This
   modified graph must correspond to the `PermissionsGraph` schema. If successful, this endpoint returns the updated
@@ -70,7 +70,7 @@
   response will be returned if this key is present and the server is not running the Enterprise Edition, and/or the
   `:sandboxes` feature flag is not present."
   [:as {body :body}]
-  {body su/Map}
+  {body :map}
   (api/check-superuser)
   (let [graph (mc/decode api.permission-graph/DataPermissionsGraph
                          body
@@ -82,8 +82,9 @@
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
                              (pr-str explained))
                         {:status-code 400
-                         :error explained
-                         :humanized (me/humanize explained)}))))
+                         :error (str (me/humanize explained)
+                                     "\n"
+                                     (pr-str explained))}))))
     (db/transaction
      (perms/update-data-perms-graph! (dissoc graph :sandboxes))
      (if-let [sandboxes (:sandboxes body)]
@@ -112,7 +113,7 @@
 (defn- ordered-groups
   "Return a sequence of ordered `PermissionsGroups`."
   [limit offset query]
-  (db/select PermissionsGroup
+  (t2/select PermissionsGroup
              (cond-> {:order-by [:%lower.name]}
                (some? limit)  (sql.helpers/limit  limit)
                (some? offset) (sql.helpers/offset offset)
@@ -134,9 +135,9 @@
   is manager of."
   []
   (try
-   (validation/check-group-manager)
-   (catch clojure.lang.ExceptionInfo _e
-     (validation/check-has-application-permission :setting)))
+    (validation/check-group-manager)
+    (catch clojure.lang.ExceptionInfo _e
+      (validation/check-has-application-permission :setting)))
   (let [query (when (and (not api/*is-superuser?*)
                          (premium-features/enable-advanced-permissions?)
                          api/*is-group-manager?*)
@@ -153,8 +154,9 @@
   "Fetch the details for a certain permissions group."
   [id]
   (validation/check-group-manager id)
-  (-> (db/select-one PermissionsGroup :id id)
-      (hydrate :members)))
+  (api/check-404
+   (-> (t2/select-one PermissionsGroup :id id)
+       (hydrate :members))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/group"
@@ -163,7 +165,7 @@
   {name su/NonBlankString}
   (api/check-superuser)
   (db/insert! PermissionsGroup
-    :name name))
+              :name name))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/group/:group-id"
@@ -172,17 +174,17 @@
   {name su/NonBlankString}
   (validation/check-manager-of-group group-id)
   (api/check-404 (db/exists? PermissionsGroup :id group-id))
-  (db/update! PermissionsGroup group-id
-    :name name)
+  (t2/update! PermissionsGroup group-id
+              {:name name})
   ;; return the updated group
-  (db/select-one PermissionsGroup :id group-id))
+  (t2/select-one PermissionsGroup :id group-id))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/group/:group-id"
   "Delete a specific `PermissionsGroup`."
   [group-id]
   (validation/check-manager-of-group group-id)
-  (db/delete! PermissionsGroup :id group-id)
+  (t2/delete! PermissionsGroup :id group-id)
   api/generic-204-no-content)
 
 
@@ -197,7 +199,7 @@
                  :is_group_manager boolean}]}"
   []
   (validation/check-group-manager)
-  (group-by :user_id (db/select [PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
+  (group-by :user_id (t2/select [PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
                                 (cond-> {}
                                   (and (not api/*is-superuser?*)
                                        api/*is-group-manager?*)
@@ -211,8 +213,8 @@
 (api/defendpoint POST "/membership"
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
   [:as {{:keys [group_id user_id is_group_manager]} :body}]
-  {group_id         ms/IntGreaterThanZero
-   user_id          ms/IntGreaterThanZero
+  {group_id         ms/PositiveInt
+   user_id          ms/PositiveInt
    is_group_manager [:maybe :boolean]}
   (let [is_group_manager (boolean is_group_manager)]
     (validation/check-manager-of-group group_id)
@@ -233,37 +235,40 @@
 (api/defendpoint PUT "/membership/:id"
   "Update a Permission Group membership. Returns the updated record."
   [id :as {{:keys [is_group_manager]} :body}]
-  {is_group_manager :boolean}
+  {id ms/PositiveInt
+   is_group_manager :boolean}
   ;; currently this API is only used to update the `is_group_manager` flag and it requires advanced-permissions
   (validation/check-advanced-permissions-enabled :group-manager)
   ;; Make sure only Super user or Group Managers can call this
   (validation/check-group-manager)
-  (let [old (db/select-one PermissionsGroupMembership :id id)]
+  (let [old (t2/select-one PermissionsGroupMembership :id id)]
     (api/check-404 old)
     (validation/check-manager-of-group (:group_id old))
     (api/check
-       (db/exists? User :id (:user_id old) :is_superuser false)
-       [400 (tru "Admin cant be a group manager.")])
-    (db/update! PermissionsGroupMembership (:id old)
-                :is_group_manager is_group_manager)
-    (db/select-one PermissionsGroupMembership :id (:id old))))
+     (db/exists? User :id (:user_id old) :is_superuser false)
+     [400 (tru "Admin cant be a group manager.")])
+    (t2/update! PermissionsGroupMembership (:id old)
+                {:is_group_manager is_group_manager})
+    (t2/select-one PermissionsGroupMembership :id (:id old))))
 
 (api/defendpoint PUT "/membership/:group-id/clear"
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
   [group-id]
+  {group-id ms/PositiveInt}
   (validation/check-manager-of-group group-id)
   (api/check-404 (db/exists? PermissionsGroup :id group-id))
   (api/check-400 (not= group-id (u/the-id (perms-group/admin))))
-  (db/delete! PermissionsGroupMembership :group_id group-id)
+  (t2/delete! PermissionsGroupMembership :group_id group-id)
   api/generic-204-no-content)
 
 (api/defendpoint DELETE "/membership/:id"
   "Remove a User from a PermissionsGroup (delete their membership)."
   [id]
-  (let [membership (db/select-one PermissionsGroupMembership :id id)]
+  {id ms/PositiveInt}
+  (let [membership (t2/select-one PermissionsGroupMembership :id id)]
     (api/check-404 membership)
     (validation/check-manager-of-group (:group_id membership))
-    (db/delete! PermissionsGroupMembership :id id)
+    (t2/delete! PermissionsGroupMembership :id id)
     api/generic-204-no-content))
 
 

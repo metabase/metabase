@@ -11,7 +11,7 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- do-with-mocked-field-values-updating
   "Run F the function responsible for updating FieldValues bound to a mock function that instead just records the names
@@ -83,7 +83,7 @@
                 (reset! updated-field-names #{})
                 ;; now update the Card... since param didn't change at all FieldValues
                 ;; should not be updated
-                (db/update! Card (u/the-id card) card))))))
+                (t2/update! Card (u/the-id card) card))))))
 
     (testing "with changed param referencing Field in On-Demand DB should get updated FieldValues"
       (is (= #{"New Field"}
@@ -97,8 +97,8 @@
                 (mt/with-temp Field [new-field {:table_id         (u/the-id table)
                                                 :has_field_values "list"
                                                 :name             "New Field"}]
-                  (db/update! Card (u/the-id card)
-                              :dataset_query (native-query-with-template-tag new-field))))))))
+                  (t2/update! Card (u/the-id card)
+                            {:dataset_query (native-query-with-template-tag new-field)})))))))
 
     (testing "with newly added param referencing Field in On-Demand DB should get updated FieldValues"
       (is (= #{"New Field"}
@@ -110,8 +110,8 @@
               (fn [{:keys [field card]}]
                 ;; now change the query to one that references our Field in a
                 ;; on-demand DB. Field should have updated values
-                (db/update! Card (u/the-id card)
-                            :dataset_query (native-query-with-template-tag field)))))))
+                (t2/update! Card (u/the-id card)
+                            {:dataset_query (native-query-with-template-tag field)}))))))
 
     (testing "with unchanged param referencing Field in non-On-Demand DB should *not* get updated FieldValues"
       (is (= #{}
@@ -120,7 +120,7 @@
               {:db {:is_on_demand false}}
               (fn [{:keys [card]}]
                 ;; update the Card. Field should get updated values
-                (db/update! Card (u/the-id card) card))))))
+                (t2/update! Card (u/the-id card) card))))))
 
     (testing "with newly added param referencing Field in non-On-Demand DB should *not* get updated FieldValues"
       (is (= #{}
@@ -131,8 +131,8 @@
               (fn [{:keys [field card]}]
                 ;; now change the query to one that references a Field. Field should
                 ;; not get values since DB is not On-Demand
-                (db/update! Card (u/the-id card)
-                            :dataset_query (native-query-with-template-tag field)))))))
+                (t2/update! Card (u/the-id card)
+                            {:dataset_query (native-query-with-template-tag field)}))))))
 
     (testing "with changed param referencing Field in non-On-Demand DB should *not* get updated FieldValues"
       (is (= #{}
@@ -145,8 +145,8 @@
                 (mt/with-temp Field [new-field {:table_id         (u/the-id table)
                                                 :has_field_values "list"
                                                 :name             "New Field"}]
-                  (db/update! Card (u/the-id card)
-                              :dataset_query (native-query-with-template-tag new-field))))))))))
+                  (t2/update! Card (u/the-id card)
+                              {:dataset_query (native-query-with-template-tag new-field)})))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

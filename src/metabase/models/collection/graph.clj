@@ -14,7 +14,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               PERMISSIONS GRAPH                                                |
@@ -38,7 +39,7 @@
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
 (defn- group-id->permissions-set []
-  (into {} (for [[group-id perms] (group-by :group_id (db/select Permissions))]
+  (into {} (for [[group-id perms] (group-by :group_id (t2/select Permissions))]
              {group-id (set (map :object perms))})))
 
 (s/defn ^:private perms-type-for-collection :- CollectionPermissions
@@ -60,7 +61,7 @@
   "Return a set of IDs of all Collections that are neither Personal Collections nor descendants of Personal
   Collections (i.e., things that you can set Permissions for, and that should go in the graph.)"
   [collection-namespace :- (s/maybe su/KeywordOrString)]
-  (let [personal-collection-ids (db/select-ids Collection :personal_owner_id [:not= nil])
+  (let [personal-collection-ids (t2/select-pks-set Collection :personal_owner_id [:not= nil])
         honeysql-form           {:select [[:id :id]]
                                  :from   [:collection]
                                  :where  (into [:and
@@ -76,7 +77,7 @@
   ([collection-ids collection-namespace]
    (let [group-id->perms (group-id->permissions-set)]
      {:revision (c-perm-revision/latest-id)
-      :groups   (into {} (for [group-id (db/select-ids PermissionsGroup)]
+      :groups   (into {} (for [group-id (t2/select-pks-set PermissionsGroup)]
                            {group-id (group-permissions-graph collection-namespace
                                                               (group-id->perms group-id)
                                                               collection-ids)}))})))

@@ -2,7 +2,7 @@ import {
   restore,
   queryWritableDB,
   resetTestTable,
-  getTableId,
+  createModelFromTableName,
   fillActionQuery,
   resyncDatabase,
   visitDashboard,
@@ -14,6 +14,7 @@ import {
   popover,
   filterWidget,
   createImplicitAction,
+  dragField,
 } from "e2e/support/helpers";
 
 import { many_data_types_rows } from "e2e/support/test_tables_data";
@@ -35,7 +36,8 @@ const MODEL_NAME = "Test Action Model";
         cy.intercept("GET", "/api/card?f=using_model&model_id=**").as(
           "getCardAssociations",
         );
-        cy.intercept("GET", "/api/action?model-id=*").as("getActions");
+        cy.intercept("GET", "/api/action").as("getActions");
+        cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
 
         cy.intercept(
           "GET",
@@ -52,22 +54,24 @@ const MODEL_NAME = "Test Action Model";
           resetTestTable({ type: dialect, table: TEST_TABLE });
           restore(`${dialect}-writable`);
           cy.signInAsAdmin();
-          resyncDatabase(WRITABLE_DB_ID);
+          resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+          createModelFromTableName({ tableName: TEST_TABLE, modelName: MODEL_NAME });
         });
 
         it("adds a custom query action to a dashboard and runs it", () => {
+          const ACTION_NAME = "Update Score";
+
           queryWritableDB(
-            `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
+            `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
             dialect,
           ).then(result => {
-            expect(result.rows.length).to.equal(0);
+            expect(result.rows.length).to.equal(1);
+            expect(result.rows[0].score).to.equal(0);
           });
-
-          createModelFromTable(TEST_TABLE);
 
           cy.get("@modelId").then(id => {
             cy.visit(`/model/${id}/detail`);
-            cy.wait(["@getModel", "@getActions", "@getCardAssociations"]);
+            cy.wait(["@getModel", "@getModelActions", "@getCardAssociations"]);
           });
 
           cy.findByRole("tab", { name: "Actions" }).click();
@@ -75,34 +79,50 @@ const MODEL_NAME = "Test Action Model";
 
           cy.findByRole("dialog").within(() => {
             fillActionQuery(
-              `INSERT INTO ${TEST_TABLE} (team_name) VALUES ('Zany Zebras')`,
+              `UPDATE ${TEST_TABLE} SET score = {{ new_score }} WHERE id = {{ id }}`,
             );
+          });
+
+          // can't have this in the .within() because it needs access to document.body
+          dragField(1, 0);
+
+          cy.findByRole("dialog").within(() => {
+            cy.findAllByText("Number").click({ multiple: true })
             cy.findByText("Save").click();
           });
 
           cy.findByPlaceholderText("My new fantastic action").type(
-            "Add Zebras",
+            ACTION_NAME
           );
           cy.findByText("Create").click();
 
           createDashboardWithActionButton({
-            actionName: "Add Zebras",
+            actionName: ACTION_NAME,
+            idFilter: true,
           });
 
-          clickHelper("Add Zebras");
+          filterWidget().click();
+          addWidgetStringFilter("1")
+
+          clickHelper("Update Score");
+
+          cy.findByRole("dialog").within(() => {
+            cy.findByLabelText("New score").type("55");
+            cy.button(ACTION_NAME).click();
+          });
 
           cy.wait("@executeAPI");
 
           queryWritableDB(
-            `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
+            `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
             dialect,
           ).then(result => {
             expect(result.rows.length).to.equal(1);
+            expect(result.rows[0].score).to.equal(55);
           });
         });
 
         it("adds an implicit create action to a dashboard and runs it", () => {
-          createModelFromTable(TEST_TABLE);
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "create",
@@ -137,8 +157,6 @@ const MODEL_NAME = "Test Action Model";
 
         it("adds an implicit update action to a dashboard and runs it", () => {
           const actionName = "Update";
-
-          createModelFromTable(TEST_TABLE);
 
           cy.get("@modelId").then(id => {
             createImplicitAction({
@@ -194,8 +212,6 @@ const MODEL_NAME = "Test Action Model";
             expect(result.rows[0].id).to.equal(3);
           });
 
-          createModelFromTable(TEST_TABLE);
-
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "delete",
@@ -230,11 +246,11 @@ const MODEL_NAME = "Test Action Model";
           resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
           restore(`${dialect}-writable`);
           cy.signInAsAdmin();
-          resyncDatabase(WRITABLE_DB_ID);
+          resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_COLUMNS_TABLE });
+          createModelFromTableName({ tableName: TEST_COLUMNS_TABLE, modelName: MODEL_NAME });
         });
 
         it("can update various data types via implicit actions", () => {
-          createModelFromTable(TEST_COLUMNS_TABLE);
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "update",
@@ -331,7 +347,6 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("can insert various data types via implicit actions", () => {
-          createModelFromTable(TEST_COLUMNS_TABLE);
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "create",
@@ -417,7 +432,6 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("does not show json, enum, or binary columns for implicit actions", () => {
-          createModelFromTable(TEST_COLUMNS_TABLE);
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "create",
@@ -446,7 +460,6 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("properly loads and updates date and time fields for implicit update actions", () => {
-          createModelFromTable(TEST_COLUMNS_TABLE);
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "update",
@@ -559,25 +572,6 @@ const MODEL_NAME = "Test Action Model";
     });
 });
 
-const createModelFromTable = tableName => {
-  getTableId({ name: tableName }).then(tableId => {
-    cy.createQuestion(
-      {
-        database: WRITABLE_DB_ID,
-        name: MODEL_NAME,
-        query: {
-          "source-table": tableId,
-        },
-        dataset: true,
-      },
-      {
-        wrapId: true,
-        idAlias: "modelId",
-      },
-    );
-  });
-};
-
 function createDashboardWithActionButton({
   actionName,
   modelName = MODEL_NAME,
@@ -613,6 +607,8 @@ function createDashboardWithActionButton({
 
   if (idFilter) {
     cy.findByRole("dialog").within(() => {
+      cy.findByText(/has no parameters to map/i).should("not.exist");
+      cy.findByText(/Where should the values/i);
       cy.findAllByText(/ask the user/i)
         .first()
         .click();

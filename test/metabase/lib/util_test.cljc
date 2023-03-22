@@ -1,8 +1,11 @@
 (ns metabase.lib.util-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [metabase.lib.util :as lib.util])
-  #?(:cljs (:require [metabase.test-runner.assert-exprs.approximately-equal])))
+   [clojure.test.check.generators :as gen]
+   [com.gfredericks.test.chuck.clojure-test :refer [checking]]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.util :as lib.util]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (deftest ^:parallel pipeline-test
   (are [query expected] (=? expected
@@ -47,6 +50,53 @@
      :type     :pipeline
      :stages   [{:lib/type :mbql.stage/native
                  :native   "SELECT * FROM VENUES;"}]}))
+
+(deftest ^:parallel pipeline-joins-test
+  ;; this isn't meant to be 100% correct pMBQL -- `->pipeline` is just supposed to put stuff in the generally correct
+  ;; shape, just to make sure we have `:stages` and stuff looking the way they should. [[metabase.lib.convert]] uses
+  ;; this as part of what it does
+  (is (=? {:lib/type :mbql/query
+           :type     :pipeline
+           :stages   [{:lib/type    :mbql.stage/mbql
+                       :lib/options {:lib/uuid string?}
+                       :fields      [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+                       :joins       [{:lib/type    :mbql/join
+                                      :lib/options {:lib/uuid string?}
+                                      :alias       "CATEGORIES__via__CATEGORY_ID"
+                                      :condition   [:=
+                                                    [:field (meta/id :venues :category-id)]
+                                                    [:field (meta/id :categories :id) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+                                      :strategy    :left-join
+                                      :fk-field-id (meta/id :venues :category-id)
+                                      :stages      [{:lib/type     :mbql.stage/mbql
+                                                     :lib/options  {:lib/uuid string?}
+                                                     :source-table (meta/id :venues)}]}]}]
+           :database (meta/id)}
+          (lib.util/pipeline
+           {:database (meta/id)
+            :type     :query
+            :query    {:fields [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+                       :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
+                                 :source-table (meta/id :venues)
+                                 :condition    [:=
+                                                [:field (meta/id :venues :category-id)]
+                                                [:field (meta/id :categories :id) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+                                 :strategy     :left-join
+                                 :fk-field-id  (meta/id :venues :category-id)}]}}))))
+
+(deftest ^:parallel pipeline-source-metadata-test
+  (testing "`:source-metadata` should get moved to the previous stage as `:lib/stage-metadata`"
+    (is (=? {:lib/type :mbql/query
+             :type     :pipeline
+             :stages   [{:lib/type           :mbql.stage/mbql
+                         :source-table       (meta/id :venues)
+                         :lib/stage-metadata [(meta/field-metadata :venues :id)]}
+                        {:lib/type :mbql.stage/mbql}]}
+            (lib.util/pipeline
+             {:database (meta/id)
+              :type     :query
+              :query    {:source-query    {:source-table (meta/id :venues)}
+                         :source-metadata [(meta/field-metadata :venues :id)]}})))))
 
 (deftest ^:parallel query-stage-test
   (is (=? {:lib/type     :mbql.stage/mbql
@@ -158,3 +208,37 @@
           (lib.util/ensure-mbql-final-stage {:database 1
                                              :type     :native
                                              :native   {:query "SELECT * FROM venues;"}}))))
+
+(deftest ^:parallel join-strings-with-conjunction-test
+  (are [coll expected] (= expected
+                          (lib.util/join-strings-with-conjunction "and" coll))
+    []                nil
+    ["a"]             "a"
+    ["a" "b"]         "a and b"
+    ["a" "b" "c"]     "a, b, and c"
+    ["a" "b" "c" "d"] "a, b, c, and d"))
+
+(deftest ^:parallel replace-clause-test
+  (checking "can be called with anything"
+    [x gen/any]
+    (is (identical? x (lib.util/replace-clause x
+                                               (str (random-uuid))
+                                               (random-uuid)))))
+  (let [target-uuid (random-uuid)
+        replacement (random-uuid)]
+    (testing "full replacement"
+      (is (identical? replacement
+                      (lib.util/replace-clause [:= {:lib/uuid target-uuid}]
+                                               target-uuid
+                                               replacement))))
+    (let [clause [:= {:lib/uuid (str (random-uuid))}
+                  3
+                  [:field {:lib/uuid (str (random-uuid))}]
+                  [:+ 2 [:expression {:lib/uuid target-uuid} "a"] 7]]]
+      (testing "nested replacement"
+        (is (= (assoc-in clause [4 2] replacement)
+               (lib.util/replace-clause clause target-uuid replacement))))
+      (testing "only one occurrence is replaced"
+        (let [clause (assoc clause 5 [:< [:field {:lib/uuid target-uuid} 2]])]
+          (is (= (assoc-in clause [4 2] replacement)
+                 (lib.util/replace-clause clause target-uuid replacement))))))))

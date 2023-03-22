@@ -15,7 +15,8 @@
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (def Models
   "Schema enumerating bookmarkable models."
@@ -61,7 +62,7 @@
    id    su/IntGreaterThanZero}
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
   (let [[_ bookmark-model item-key] (lookup model)]
-    (db/delete! bookmark-model
+    (t2/delete! bookmark-model
                 :user_id api/*current-user-id*
                 item-key id)
     api/generic-204-no-content))

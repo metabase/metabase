@@ -34,11 +34,16 @@ export interface DatasetData {
   download_perms?: DownloadPermission;
 }
 
+export type JsonQuery = {
+  parameters: unknown[];
+};
+
 export interface Dataset {
   data: DatasetData;
   database_id: DatabaseId;
   row_count: number;
   running_time: number;
+  json_query?: JsonQuery;
 }
 
 export interface NativeQueryForm {

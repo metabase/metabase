@@ -6,6 +6,7 @@ import {
   visitQuestion,
   visitDashboard,
   visitIframe,
+  dragField,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -83,7 +84,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
   it("should allow drill through on cells", () => {
     createAndVisitTestQuestion();
-    // open actions menu
+    // open drill-through menu
     cy.findByText("783").click();
     // drill through to orders list
     cy.findByText("View these Orders").click();
@@ -96,7 +97,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
   it("should allow drill through on left/top header values", () => {
     createAndVisitTestQuestion();
-    // open actions menu and filter to that value
+    // open drill-through menu and filter to that value
     cy.findByText("Doohickey").click();
     popover().within(() => cy.findByText("=").click());
     // filter is applied
@@ -488,7 +489,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     it("should allow filtering drill through (metabase#14632)", () => {
       assertOnPivotFields();
-      cy.findByText("Google").click(); // open actions menu
+      cy.findByText("Google").click(); // open drill-through menu
       popover().within(() => cy.findByText("=").click()); // drill with additional filter
       cy.findByText("Source is Google"); // filter was added
       cy.findByText("Row totals"); // it's still a pivot table
@@ -991,46 +992,6 @@ function dragColumnHeader(el, xDistance = 50) {
       })
       .trigger("mouseup");
   });
-}
-
-// Rely on native drag events, rather than on the coordinates
-// We have 3 "drag-handles" in this test. Their indexes are 0-based.
-function dragField(startIndex, dropIndex) {
-  cy.get(".Icon-grabber2").should("be.visible").as("dragHandle");
-
-  const BUTTON_INDEX = 0;
-  const SLOPPY_CLICK_THRESHOLD = 10;
-  cy.get("@dragHandle")
-    .eq(dropIndex)
-    .then($target => {
-      const coordsDrop = $target[0].getBoundingClientRect();
-      cy.get("@dragHandle")
-        .eq(startIndex)
-        .then(subject => {
-          const coordsDrag = subject[0].getBoundingClientRect();
-          cy.wrap(subject)
-            .trigger("mousedown", {
-              button: BUTTON_INDEX,
-              clientX: coordsDrag.x,
-              clientY: coordsDrag.y,
-              force: true,
-            })
-            .trigger("mousemove", {
-              button: BUTTON_INDEX,
-              clientX: coordsDrag.x + SLOPPY_CLICK_THRESHOLD,
-              clientY: coordsDrag.y,
-              force: true,
-            });
-          cy.get("body")
-            .trigger("mousemove", {
-              button: BUTTON_INDEX,
-              clientX: coordsDrop.x,
-              clientY: coordsDrop.y,
-              force: true,
-            })
-            .trigger("mouseup");
-        });
-    });
 }
 
 function getIframeBody(selector = "iframe") {

@@ -9,7 +9,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (def ^:private same? (comp nil? second data/diff))
 
@@ -55,7 +56,7 @@
                 (let [[e1 e2]   @cards
                       [id1 id2] (upsert/maybe-upsert-many! {:mode mode} Card @cards)]
                   (is (every? (partial apply same?)
-                              [[(db/select-one Card :id id1) e1] [(db/select-one Card :id id2) e2]])))))]
+                              [[(t2/select-one Card :id id1) e1] [(t2/select-one Card :id id2) e2]])))))]
       (doseq [mode [:skip :update]]
         (test-mode mode)))))
 
@@ -68,9 +69,9 @@
       (testing "Card 1 ID"
         (is (= id1 id1-mutated)))
       (testing "Card 1"
-        (is (same? (db/select-one Card :id id1-mutated) e1-mutated)))
+        (is (same? (t2/select-one Card :id id1-mutated) e1-mutated)))
       (testing "Card 2"
-        (is (same? (db/select-one Card :id id2) e2))))))
+        (is (same? (t2/select-one Card :id id2) e2))))))
 
 (defn- dummy-entity [dummy-dashboard model entity instance-num]
   (cond
@@ -94,7 +95,7 @@
                       ;; create an additional entity so we're sure whe get the right one
                       model     [_ (dummy-entity dashboard model e1 1)]
                       model     [{id :id} (dummy-entity dashboard model e2 2)]]
-        (let [e (db/select-one model (models/primary-key model) id)]
+        (let [e (t2/select-one model (models/primary-key model) id)]
           ;; make sure that all columns in identity-condition actually exist in the model
           (is (= (set id-cond) (-> e
                                    (select-keys id-cond)

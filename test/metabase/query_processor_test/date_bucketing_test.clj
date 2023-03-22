@@ -35,7 +35,7 @@
    [metabase.util.regex :as u.regex]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import [java.time LocalDate LocalDateTime]))
 
 (set! *warn-on-reflection* true)
@@ -951,7 +951,7 @@
     (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
       (binding [*recreate-db-if-stale?* false]
         (log/infof "DB for %s is stale! Deleteing and running test again\n" dataset)
-        (db/delete! Database :id (mt/id))
+        (t2/delete! Database :id (mt/id))
         (apply count-of-grouping dataset field-grouping relative-datetime-args))
       (let [results (mt/run-mbql-query checkins
                       {:aggregation [[:count]]
@@ -1267,7 +1267,7 @@
               (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
                     june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
                     checkins     (mt/with-everything-store
-                                   (sql.qp/->honeysql driver/*driver* (db/select-one Table :id (mt/id :checkins))))
+                                   (sql.qp/->honeysql driver/*driver* (t2/select-one Table :id (mt/id :checkins))))
                     honeysql     {:select [[june-31 :june_31]]
                                   :from   [(sql.qp/maybe-wrap-unaliased-expr checkins)]}
                     honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})

@@ -100,6 +100,10 @@
         (is (= nil
                (get id->member :trashbird)))))
 
+    (testing "returns 404 for nonexistent id"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 "permissions/group/10000"))))
+
     (testing "requires superuers"
       (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 (format "permissions/group/%d" (:id (perms-group/all-users)))))))))
@@ -213,7 +217,14 @@
         (is (= {:data {:schemas :all}}
                (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id])))
         (is (= {:query {:schemas :all}, :data {:native :write}}
-               (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))))
+               (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))
+
+    (testing "permissions when group has no permissions"
+      (mt/with-temp* [PermissionsGroup [group]]
+        (mt/user-http-request :crowberto :put 200 "permissions/graph"
+         (assoc-in (perms/data-perms-graph) [:groups (u/the-id group)] nil))
+        (is (= nil (get-in (perms/data-perms-graph) [:groups (u/the-id group)])))
+        (is (= nil (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group)])))))))
 
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"
@@ -308,7 +319,7 @@
                         :user_id su/IntGreaterThanZero
                         :is_group_manager s/Bool}]}
                      result))
-        (is (= (db/select-field :id 'User) (set (keys result))))))))
+        (is (= (t2/select-fn-set :id 'User) (set (keys result))))))))
 
 (deftest add-group-membership-test
   (testing "POST /api/permissions/membership"

@@ -695,10 +695,11 @@
           (instance? java.util.regex.Pattern x)))
 
 (derive :dispatch-type/nil      :dispatch-type/*)
+(derive :dispatch-type/boolean  :dispatch-type/*)
 (derive :dispatch-type/string   :dispatch-type/*)
 (derive :dispatch-type/keyword  :dispatch-type/*)
-(derive :dispatch-type/integer  :dispatch-type/*)
 (derive :dispatch-type/number   :dispatch-type/*)
+(derive :dispatch-type/integer  :dispatch-type/number)
 (derive :dispatch-type/map      :dispatch-type/*)
 (derive :dispatch-type/sequence :dispatch-type/*)
 (derive :dispatch-type/set      :dispatch-type/*)
@@ -722,6 +723,7 @@
   [x]
   (cond
     (nil? x)        :dispatch-type/nil
+    (boolean? x)    :dispatch-type/boolean
     (string? x)     :dispatch-type/string
     (keyword? x)    :dispatch-type/keyword
     (integer? x)    :dispatch-type/integer

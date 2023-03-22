@@ -84,12 +84,14 @@ const setup = (
     React.ComponentProps<typeof ConnectedActionDashcardSettings>
   >,
 ) => {
+  const searchItems = models.map(model =>
+    createMockCollectionItem({ ...model, model: "dataset" }),
+  );
   const closeSpy = jest.fn();
 
-  setupSearchEndpoints(models.map(model => createMockCollectionItem(model)));
+  setupSearchEndpoints(searchItems);
   setupCardsEndpoints(models);
-  setupActionsEndpoints(models[0].id, actions1);
-  setupActionsEndpoints(models[1].id, actions2);
+  setupActionsEndpoints([...actions1, ...actions2]);
 
   renderWithProviders(
     <ConnectedActionDashcardSettings

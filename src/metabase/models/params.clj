@@ -23,7 +23,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -96,12 +95,12 @@
   (filter #(isa? (:semantic_type %) :type/PK) fields))
 
 (def ^:private Field:params-columns-only
-  "Form for use in Toucan `db/select` expressions (as a drop-in replacement for using `Field`) that returns Fields with
+  "Form for use in Toucan `t2/select` expressions (as a drop-in replacement for using `Field`) that returns Fields with
   only the columns that are appropriate for returning in public/embedded API endpoints, which make heavy use of the
   functions in this namespace. Use `conj` to add additional Fields beyond the ones already here. Use `rest` to get
   just the column identifiers, perhaps for use with something like `select-keys`. Clutch!
 
-    (db/select Field:params-columns-only)"
+    (t2/select Field:params-columns-only)"
   ['Field :id :table_id :display_name :base_type :semantic_type :has_field_values])
 
 (defn- fields->table-id->name-field
@@ -109,7 +108,7 @@
   cases where more than one name Field exists for a Table, this just adds the first one it finds."
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
-    (m/index-by :table_id (-> (db/select Field:params-columns-only
+    (m/index-by :table_id (-> (t2/select Field:params-columns-only
                                 :table_id      [:in table-ids]
                                 :semantic_type (mdb.u/isa :type/Name))
                               ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
@@ -155,7 +154,7 @@
   parameter widgets."
   [field-ids :- (s/maybe #{su/IntGreaterThanZero})]
   (when (seq field-ids)
-    (m/index-by :id (-> (db/select Field:params-columns-only :id [:in field-ids])
+    (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
                         (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
                         remove-dimensions-nonpublic-columns))))
 
@@ -176,11 +175,11 @@
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private dashboard->parameter-mapping-field-clauses :- (s/maybe #{mbql.s/field})
+(s/defn ^:private dashcards->parameter-mapping-field-clauses :- (s/maybe #{mbql.s/field})
   "Return set of any Fields referenced directly by the Dashboard's `:parameters` (i.e., 'explicit' parameters) by
   looking at the appropriate `:parameter_mappings` entries for its Dashcards."
-  [dashboard]
-  (when-let [fields (seq (for [dashcard (:ordered_cards dashboard)
+  [dashcards]
+  (when-let [fields (seq (for [dashcard dashcards
                                param    (:parameter_mappings dashcard)
                                :let     [field-clause (param-target->field-clause (:target param) (:card dashcard))]
                                :when    field-clause]
@@ -189,28 +188,28 @@
 
 (declare card->template-tag-field-ids)
 
-(defn- dashboard->card-param-field-ids
+(defn- cards->card-param-field-ids
   "Return the IDs of any Fields referenced in the 'implicit' template tag field filter parameters for native queries in
-  the Cards in `dashboard`."
-  [dashboard]
-  (reduce
-   set/union
-   (for [{card :card} (:ordered_cards dashboard)]
-     (card->template-tag-field-ids card))))
+  `cards`."
+  [cards]
+  (reduce set/union (map card->template-tag-field-ids cards)))
 
-(s/defn dashboard->param-field-ids :- #{su/IntGreaterThanZero}
-  "Return a set of Field IDs referenced by parameters in Cards in this `dashboard`, or `nil` if none are referenced. This
-  also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters."
-  [dashboard]
-  (let [dashboard (hydrate dashboard [:ordered_cards :card])]
-    (set/union
-     (set (mbql.u/match (seq (dashboard->parameter-mapping-field-clauses dashboard))
-            [:field (id :guard integer?) _]
-            id))
-     (dashboard->card-param-field-ids dashboard))))
+(s/defn dashcards->param-field-ids :- #{su/IntGreaterThanZero}
+  "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if none are referenced. This
+  also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters.
+  `dashcards` must be hydrated with :card."
+  [dashcards]
+  (set/union
+   (set (mbql.u/match (seq (dashcards->parameter-mapping-field-clauses dashcards))
+          [:field (id :guard integer?) _]
+          id))
+   (cards->card-param-field-ids (map :card dashcards))))
 
 (defmethod param-fields :metabase.models.dashboard/Dashboard [dashboard]
-  (-> dashboard dashboard->param-field-ids param-field-ids->fields))
+  (-> (hydrate dashboard [:ordered_cards :card])
+      :ordered_cards
+      dashcards->param-field-ids
+      param-field-ids->fields))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 CARD-SPECIFIC                                                  |

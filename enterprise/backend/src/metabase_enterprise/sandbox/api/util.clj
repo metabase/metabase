@@ -9,7 +9,7 @@
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- enforce-sandbox?
   "Takes the permission set for each group a user is in, and a sandbox, and determines whether the sandbox should be
@@ -28,7 +28,7 @@
   different permissions group that grants full access to the table."
   [sandboxes group-ids]
   (let [perms               (when (seq group-ids)
-                             (db/select Permissions {:where [:in :group_id group-ids]}))
+                             (t2/select Permissions {:where [:in :group_id group-ids]}))
         group-id->perms-set (-> (group-by :group_id perms)
                                 (update-vals (fn [perms] (into #{} (map :object) perms))))]
     (filter (partial enforce-sandbox? group-id->perms-set)
@@ -41,10 +41,10 @@
   (boolean
    (when-not *is-superuser?*
      (if *current-user-id*
-       (let [group-ids          (db/select-field :group_id PermissionsGroupMembership :user_id *current-user-id*)
+       (let [group-ids          (t2/select-fn-set :group_id PermissionsGroupMembership :user_id *current-user-id*)
              sandboxes          (when (seq group-ids)
-                                  (db/select GroupTableAccessPolicy :group_id [:in group-ids]))]
-           (seq (enforced-sandboxes sandboxes group-ids)))
+                                  (t2/select GroupTableAccessPolicy :group_id [:in group-ids]))]
+         (seq (enforced-sandboxes sandboxes group-ids)))
        ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
        ;; returning `false` for users who should actually be sandboxes.
        (throw (ex-info (str (tru "No current user found"))

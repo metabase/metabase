@@ -34,7 +34,7 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.sql DatabaseMetaData)))
 
@@ -208,7 +208,7 @@
                    (mt/rows (qp/process-query
                               {:database (u/the-id database)
                                :type     :query
-                               :query    {:source-table (db/select-one-id Table :name "presents-and-gifts")}}))))))))))
+                               :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -309,7 +309,7 @@
             ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!
             (is (= [{:name "angry_birds", :active true}]
                    (map (partial into {})
-                        (db/select [Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
+                        (t2/select [Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
 
 (deftest partitioned-table-test
   (mt/test-driver :postgres
@@ -807,35 +807,38 @@
 
         (testing "check that describe-table properly describes the database & base types of the enum fields"
           (is (= {:name   "birds"
-                  :fields #{{:name              "name"
-                             :database-type     "varchar"
-                             :base-type         :type/Text
-                             :pk?               true
-                             :database-position 0
-                             :database-required true}
-                            {:name              "status"
-                             :database-type     "bird_status"
-                             :base-type         :type/PostgresEnum
-                             :database-position 1
-                             :database-required true}
-                            {:name              "type"
-                             :database-type     "bird type"
-                             :base-type         :type/PostgresEnum
-                             :database-position 2
-                             :database-required true}}}
+                  :fields #{{:name                      "name"
+                             :database-type             "varchar"
+                             :base-type                 :type/Text
+                             :pk?                       true
+                             :database-position         0
+                             :database-required         true
+                             :database-is-auto-increment false}
+                            {:name                      "status"
+                             :database-type             "bird_status"
+                             :base-type                 :type/PostgresEnum
+                             :database-position         1
+                             :database-required         true
+                             :database-is-auto-increment false}
+                            {:name                      "type"
+                             :database-type             "bird type"
+                             :base-type                 :type/PostgresEnum
+                             :database-position         2
+                             :database-required         true
+                             :database-is-auto-increment false}}}
                  (driver/describe-table :postgres db {:name "birds"}))))
 
         (testing "check that when syncing the DB the enum types get recorded appropriately"
-          (let [table-id (db/select-one-id Table :db_id (u/the-id db), :name "birds")]
+          (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")]
             (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
                      {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
                      {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
                    (set (map (partial into {})
-                             (db/select [Field :name :database_type :base_type] :table_id table-id)))))))
+                             (t2/select [Field :name :database_type :base_type] :table_id table-id)))))))
 
         (testing "End-to-end check: make sure everything works as expected when we run an actual query"
-          (let [table-id           (db/select-one-id Table :db_id (u/the-id db), :name "birds")
-                bird-type-field-id (db/select-one-id Field :table_id table-id, :name "type")]
+          (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")
+                bird-type-field-id (t2/select-one-pk Field :table_id table-id, :name "type")]
             (is (= {:rows        [["Rasta" "good bird" "toucan"]]
                     :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
                                                " \"public\".\"birds\".\"status\" AS \"status\","
@@ -935,9 +938,8 @@
                                                      :percent-email  0.0
                                                      :percent-state  0.0
                                                      :average-length 12.0}}}}
-                 (db/select-field->field :name :fingerprint Field
-                   :table_id (db/select-one-id Table :db_id (u/the-id database))))))))))
-
+                 (t2/select-fn->fn :name :fingerprint Field
+                   :table_id (t2/select-one-pk Table :db_id (u/the-id database))))))))))
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
@@ -1006,7 +1008,7 @@
         (mt/with-temp Database [database {:engine :postgres, :details test-user-details}]
           (sync/sync-database! database)
           (is (= #{"table_with_perms"}
-                 (db/select-field :name Table :db_id (:id database)))))))))
+                 (t2/select-fn-set :name Table :db_id (:id database)))))))))
 
 (deftest json-operator-?-works
   (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"

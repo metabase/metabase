@@ -28,8 +28,8 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 
 import { isSavedAction } from "../../utils";
 import ActionContext, { useActionContext } from "./ActionContext";
+import { ACE_ELEMENT_ID } from "./ActionContext/QueryActionContextProvider";
 import ActionCreatorView from "./ActionCreatorView";
-import { ACE_ELEMENT_ID } from "./QueryActionEditor";
 import CreateActionForm, {
   FormValues as CreateActionFormValues,
 } from "./CreateActionForm";
@@ -184,9 +184,7 @@ function ActionCreator({
 function ensureAceEditorClosed() {
   // @ts-expect-error — `ace` isn't typed yet
   const editor = window.ace?.edit(ACE_ELEMENT_ID);
-  if (editor) {
-    editor.completer.popup.hide();
-  }
+  editor?.completer?.popup?.hide();
 }
 
 function ActionCreatorWithContext({

@@ -14301,6 +14301,14 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
+      id: v46.00-086
+      author: calherries
+      comment: Added 0.46.0 - Delete the abandonment email task
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteAbandonmentEmailTask"
+
+  - changeSet:
       id: v47.00-001
       author: calherries
       comment: Added 0.47.0 -- set base-type to type/JSON for JSON database-types for postgres and mysql
@@ -14353,6 +14361,22 @@ databaseChangeLog:
               ON f.id = updates.id
               WHEN MATCHED THEN
                 UPDATE SET f.base_type = updates.base_type;
+
+  - changeSet:
+      id: v47.00-004
+      author: qnkhuat
+      comment: Added 0.47.0 - Add auto_incremented to metabase_field
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_auto_increment
+                  type: boolean
+                  remarks: Indicates this field is auto incremented
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
