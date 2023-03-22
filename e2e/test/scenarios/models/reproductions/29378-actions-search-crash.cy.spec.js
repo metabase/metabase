@@ -26,7 +26,7 @@ const ACTION_DETAILS = {
   },
 };
 
-describe.skip("issue 29378", () => {
+describe("issue 29378", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
