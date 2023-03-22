@@ -194,7 +194,7 @@
 
         (testing "...or if setting is disabled"
           (premium-features-test/with-premium-features #{:sso}
-            (mt/with-temporary-setting-values [send-new-sso-user-admin-email? false]
+            (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "false"]
               (mt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
                 (is (= {}
                        (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
