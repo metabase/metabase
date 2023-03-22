@@ -6,6 +6,8 @@ import {
   createMockFingerprint,
   createMockGlobalFieldFingerprint,
   createMockTextFieldFingerprint,
+  createMockNumberFieldFingerprint,
+  createMockDateTimeFieldFingerprint,
 } from "metabase-types/api/mocks";
 
 export const SAMPLE_DB_ID = 1;
@@ -342,6 +344,16 @@ export const createPeopleNameField = (opts?: Partial<Field>): Field =>
     display_name: "Name",
     base_type: "type/Text",
     semantic_type: "type/Name",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 2499,
+      }),
+      type: {
+        "type/Text": createMockTextFieldFingerprint({
+          "average-length": 13.532,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -353,6 +365,17 @@ export const createPeopleCityField = (opts?: Partial<Field>): Field =>
     display_name: "City",
     base_type: "type/Text",
     semantic_type: "type/City",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 1966,
+      }),
+      type: {
+        "type/Text": createMockTextFieldFingerprint({
+          "percent-state": 0.002,
+          "average-length": 8.284,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -364,6 +387,21 @@ export const createPeopleLongitudeField = (opts?: Partial<Field>): Field =>
     display_name: "Longitude",
     base_type: "type/Float",
     semantic_type: "type/Longitude",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 2491,
+      }),
+      type: {
+        "type/Number": createMockNumberFieldFingerprint({
+          min: -166.5425726,
+          q1: -101.58350792373135,
+          q3: -84.65289348288829,
+          max: -67.96735199999999,
+          sd: 15.399698968175663,
+          avg: -95.18741780363999,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -375,6 +413,17 @@ export const createPeopleStateField = (opts?: Partial<Field>): Field =>
     display_name: "State",
     base_type: "type/Text",
     semantic_type: "type/State",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 49,
+      }),
+      type: {
+        "type/Text": createMockTextFieldFingerprint({
+          "percent-state": 1,
+          "average-length": 2,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -386,6 +435,16 @@ export const createPeopleSourceField = (opts?: Partial<Field>): Field =>
     display_name: "Source",
     base_type: "type/Text",
     semantic_type: "type/Source",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 5,
+      }),
+      type: {
+        "type/Text": createMockTextFieldFingerprint({
+          "average-length": 7.4084,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -397,6 +456,17 @@ export const createPeopleBirthDateField = (opts?: Partial<Field>): Field =>
     display_name: "Birth Date",
     base_type: "type/Date",
     semantic_type: null,
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 2308,
+      }),
+      type: {
+        "type/DateTime": createMockDateTimeFieldFingerprint({
+          earliest: "1958-04-26",
+          latest: "2000-04-03",
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -408,6 +478,16 @@ export const createPeopleZipField = (opts?: Partial<Field>): Field =>
     display_name: "Zip",
     base_type: "type/Text",
     semantic_type: "type/ZipCode",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 2234,
+      }),
+      type: {
+        "type/Text": createMockTextFieldFingerprint({
+          "average-length": 5,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -419,6 +499,21 @@ export const createPeopleLatitudeField = (opts?: Partial<Field>): Field =>
     display_name: "Latitude",
     base_type: "type/Float",
     semantic_type: "type/Latitude",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 2491,
+      }),
+      type: {
+        "type/Number": createMockNumberFieldFingerprint({
+          min: 25.775827,
+          q1: 35.302705923023126,
+          q3: 43.773802584662,
+          max: 70.6355001,
+          sd: 6.390832341883712,
+          avg: 39.87934670484002,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -430,6 +525,18 @@ export const createPeopleCreatedAtField = (opts?: Partial<Field>): Field =>
     display_name: "Created At",
     base_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 2500,
+        "nil%": 0,
+      }),
+      type: {
+        "type/DateTime": createMockDateTimeFieldFingerprint({
+          earliest: "2016-04-19T21:35:18.752Z",
+          latest: "2019-04-19T14:06:27.3Z",
+        }),
+      },
+    }),
     ...opts,
   });
 

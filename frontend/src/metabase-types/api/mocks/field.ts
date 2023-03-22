@@ -85,7 +85,7 @@ export const createMockNumberFieldFingerprint = (
 export const createMockDateTimeFieldFingerprint = (
   opts?: Partial<DateTimeFieldFingerprint>,
 ): DateTimeFieldFingerprint => ({
-  earliest: "2016-04-26T19:29:55.147Z",
-  latest: "2019-04-15T13:34:19.931Z",
+  earliest: "2000-01-01",
+  latest: "2020-01-01",
   ...opts,
 });

@@ -107,7 +107,7 @@ describe("TagEditorParam", () => {
   });
 
   describe("tag dimension", () => {
-    it("should default to string/contains for a new field filter", async () => {
+    it("should default to string/= for a new string field filter", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
         dimension: undefined,
@@ -121,11 +121,11 @@ describe("TagEditorParam", () => {
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
         dimension: ["field", PEOPLE.NAME, null],
-        "widget-type": "string/contains",
+        "widget-type": "string/=",
       });
     });
 
-    it("should default to the first parameter option for a new non-string field filter", async () => {
+    it("should default to number/= for a new numeric field filter", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
         dimension: undefined,

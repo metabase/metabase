@@ -46,7 +46,6 @@ export const PARAMETER_OPERATOR_TYPES = {
       operator: "contains",
       name: t`Contains`,
       description: t`Match values that contain the entered text.`,
-      highCardinality: true,
     },
     {
       type: "string/does-not-contain",
