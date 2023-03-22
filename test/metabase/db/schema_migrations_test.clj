@@ -122,9 +122,9 @@
       (let [by-name  #(into {} (map (juxt :name identity)) %)
             db-id    (t2/insert! (t2/table-name Database) {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
             table-id (t2/insert! (t2/table-name Table) {:name "Table", :db_id db-id, :created_at :%now, :updated_at :%now, :active true})]
-        ;; Using [[db/simple-insert-many!]] instead of [[db/insert-many!]] so we don't run into the field type validation
+        ;; Using insert with table-name, so we don't run into the field type validation
         ;; added in 38
-        (db/simple-insert-many! Field
+        (t2/insert! (t2/table-name Field)
           (for [field [{:base_type     :type/Text
                         :semantic_type :type/Address
                         :name          "address"

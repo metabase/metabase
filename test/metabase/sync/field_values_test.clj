@@ -93,8 +93,8 @@
            valid-sandbox-id
            valid-linked-filter-id
            old-full-id
-           new-full-id]             (db/simple-insert-many!
-                                      FieldValues
+           new-full-id]             (t2/insert-returning-pks!
+                                      (t2/table-name FieldValues)
                                       [;; expired sandbox fieldvalues
                                        {:field_id   field-id
                                         :type       "sandbox"
