@@ -56,7 +56,6 @@
         (catch Throwable e
           (log/error e (trs "Error adding User {0} to Group {1}" user-id id)))))))
 
-#_{:clj-kondo/ignore [:missing-docstring]}
 (define-multi-setting send-new-sso-user-admin-email?
   (deferred-tru "Should new email notifications be sent to admins, for all new SSO users?")
   (fn [] (if (premium-features/enable-sso?) :ee :oss)))
