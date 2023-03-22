@@ -351,15 +351,6 @@
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
 
-(serdes.base/register-ingestion-path!
-  "Database"
-  ;; ["databases" "my-db" "my-db"]
-  (fn [[a b c :as path]]
-    (when (and (= (count path) 3)
-               (= a "databases")
-               (= b c))
-      [{:model "Database" :id c}])))
-
 (defn json-unfolding-default
   "Returns true if JSON fields should be unfolded by default for this database, and false otherwise."
   [database]
