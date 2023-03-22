@@ -7,7 +7,6 @@
    [metabase.models :refer [Field FieldValues User]]
    [metabase.models.field-values :as field-values]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest fetch-field-test
@@ -194,6 +193,6 @@
                                                                       (= (:id fv) old-sandbox-fv-id))]
             (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
             ;; did the old one get deleted?
-            (is (not (db/exists? FieldValues :id old-sandbox-fv-id)))
+            (is (not (t2/exists? FieldValues :id old-sandbox-fv-id)))
             ;; make sure we created a new one
             (is (= 1 (t2/count FieldValues :field_id (:id field) :type :sandbox)))))))))

@@ -132,9 +132,9 @@
       (is (= (repeat 2 {:deleted 2})
              (sync-database!' "delete-expired-advanced-field-values" (data/db))))
       (testing "The expired Advanced FieldValues should be deleted"
-        (is (not (db/exists? FieldValues :id [:in [expired-sandbox-id expired-linked-filter-id]]))))
+        (is (not (t2/exists? FieldValues :id [:in [expired-sandbox-id expired-linked-filter-id]]))))
       (testing "The valid Advanced FieldValues and full Fieldvalues(both old and new) should not be deleted"
-        (is (db/exists? FieldValues :id [:in [valid-sandbox-id valid-linked-filter-id new-full-id old-full-id]]))))))
+        (is (t2/exists? FieldValues :id [:in [valid-sandbox-id valid-linked-filter-id new-full-id old-full-id]]))))))
 
 (deftest auto-list-with-cardinality-threshold-test
   ;; A Field with 50 values should get marked as `auto-list` on initial sync, because it should be 'list', but was

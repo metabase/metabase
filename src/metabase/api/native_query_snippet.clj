@@ -40,7 +40,7 @@
   (hydrated-native-query-snippet id))
 
 (defn- check-snippet-name-is-unique [snippet-name]
-  (when (db/exists? NativeQuerySnippet :name snippet-name)
+  (when (t2/exists? NativeQuerySnippet :name snippet-name)
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
 

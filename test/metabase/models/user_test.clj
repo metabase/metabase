@@ -216,7 +216,7 @@
                 "PermissionsGroupMembership object")
     (mt/with-temp User [user {:is_superuser true}]
       (is (= true
-             (db/exists? PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
+             (t2/exists? PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
 
 (deftest ldap-sequential-login-attributes-test
   (testing "You should be able to create a new LDAP user if some `login_attributes` are vectors (#10291)"
@@ -466,7 +466,7 @@
                     PulseChannel          [{pulse-channel-id :id} {:pulse_id pulse-id}]
                     PulseChannelRecipient [_ {:pulse_channel_id pulse-channel-id, :user_id user-id}]]
       (letfn [(subscription-exists? []
-                (db/exists? PulseChannelRecipient :pulse_channel_id pulse-channel-id, :user_id user-id))]
+                (t2/exists? PulseChannelRecipient :pulse_channel_id pulse-channel-id, :user_id user-id))]
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"

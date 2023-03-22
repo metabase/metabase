@@ -26,7 +26,6 @@
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -611,7 +610,7 @@
   (testing "Search should only return Collections in the 'default' namespace"
     (mt/with-temp* [Collection [_c1 {:name "Normal Collection"}]
                     Collection [_c2 {:name "Coin Collection", :namespace "currency"}]]
-      (assert (not (db/exists? Collection :name "Coin Collection", :namespace nil)))
+      (assert (not (t2/exists? Collection :name "Coin Collection", :namespace nil)))
       (is (=? [{:name "Normal Collection"}]
               (->> (search-request-data :crowberto :q "Collection")
                    (filter #(and (= (:model %) "collection")

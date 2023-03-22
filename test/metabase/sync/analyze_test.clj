@@ -152,8 +152,8 @@
 (defn- fake-field-was-analyzed? [field]
   ;; don't let ourselves be fooled if the test passes because the table is
   ;; totally broken or has no fields. Make sure we actually test something
-  (assert (db/exists? Field :id (u/the-id field)))
-  (db/exists? Field :id (u/the-id field), :last_analyzed [:not= nil]))
+  (assert (t2/exists? Field :id (u/the-id field)))
+  (t2/exists? Field :id (u/the-id field), :last_analyzed [:not= nil]))
 
 (defn- latest-sync-time [table]
   (t2/select-one-fn :last_analyzed Field

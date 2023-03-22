@@ -15,7 +15,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -358,7 +357,7 @@
       (testing "Membership of a group can be cleared succesfully, while preserving the group itself"
         (is (= 1 (t2/count PermissionsGroupMembership :group_id group-id)))
         (mt/user-http-request :crowberto :put 204 (format "permissions/membership/%d/clear" group-id))
-        (is (true? (db/exists? PermissionsGroup :id group-id)))
+        (is (true? (t2/exists? PermissionsGroup :id group-id)))
         (is (= 0 (t2/count PermissionsGroupMembership :group_id group-id))))
 
       (testing "The admin group cannot be cleared using this endpoint"

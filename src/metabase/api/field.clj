@@ -133,7 +133,7 @@
     ;; validate that fk_target_field_id is a valid Field
     ;; TODO - we should also check that the Field is within the same database as our field
     (when fk-target-field-id
-      (api/checkp (db/exists? Field :id fk-target-field-id)
+      (api/checkp (t2/exists? Field :id fk-target-field-id)
         :fk_target_field_id "Invalid target field"))
     ;; everything checks out, now update the field
     (api/check-500

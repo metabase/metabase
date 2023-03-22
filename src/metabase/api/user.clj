@@ -253,7 +253,7 @@
    user_group_memberships (s/maybe [user/UserGroupMembership])
    login_attributes       (s/maybe user/LoginAttributes)}
   (api/check-superuser)
-  (api/checkp (not (db/exists? User :%lower.email (u/lower-case-en email)))
+  (api/checkp (not (t2/exists? User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))
   (db/transaction
     (let [new-user-id (u/the-id (user/create-and-invite-user!
@@ -328,7 +328,7 @@
       (api/checkp (valid-name-update? user-before-update :last_name last_name)
         "last_name" (tru "Editing last name is not allowed for SSO users.")))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-    (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
+    (api/checkp (not (t2/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
       "email" (tru "Email address already associated to another user."))
     (db/transaction
       ;; only superuser or self can update user info

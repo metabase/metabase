@@ -272,7 +272,7 @@
                                            :hash_key "random-hash"}]]
     (db/insert! FieldValues {:field_id (mt/id :venues :id)
                              :type     :full})
-    (is (not (db/exists? FieldValues :id (:id sandbox-fv))))))
+    (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
 
 (deftest update-full-field-values-should-remove-all-cached-field-values
   (mt/with-temp* [FieldValues [fv         {:field_id (mt/id :venues :id)
@@ -281,7 +281,7 @@
                                            :type     :sandbox
                                            :hash_key "random-hash"}]]
     (t2/update! FieldValues (:id fv) {:values [1 2 3]})
-    (is (not (db/exists? FieldValues :id (:id sandbox-fv))))))
+    (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
 
 (deftest cant-update-type-or-has-of-a-field-values-test
   (mt/with-temp FieldValues [fv {:field_id (mt/id :venues :id)

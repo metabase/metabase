@@ -108,7 +108,7 @@
             (ts/with-dest-db
               (testing "Create admin user"
                 (is (some? (ts/create! User, :is_superuser true)))
-                (is (db/exists? User :is_superuser true)))
+                (is (t2/exists? User :is_superuser true)))
               (is (nil? (cmd/load dump-dir "--on-error" :abort)))
               (testing "verify that things were loaded as expected"
                 (is (= 1 (t2/count Dashboard)) "# Dashboards")

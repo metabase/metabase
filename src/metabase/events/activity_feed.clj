@@ -149,7 +149,7 @@
 
 (defmethod process-activity! :install
   [& _]
-  (when-not (db/exists? Activity :topic "install")
+  (when-not (t2/exists? Activity :topic "install")
     (db/insert! Activity, :topic "install", :model "install")))
 
 (defn process-activity-event!

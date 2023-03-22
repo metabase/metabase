@@ -15,7 +15,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -168,8 +167,8 @@
                    (t2/select-fn-set :name Database)))
             (is (= #{(:id @db1d) (:id @db2d)}
                    (t2/select-fn-set :db_id Table :name "posts")))
-            (is (db/exists? Table :name "posts" :db_id (:id @db1d)))
-            (is (db/exists? Table :name "posts" :db_id (:id @db2d)))))))))
+            (is (t2/exists? Table :name "posts" :db_id (:id @db1d)))
+            (is (t2/exists? Table :name "posts" :db_id (:id @db2d)))))))))
 
 (deftest card-dataset-query-test
   ;; Card.dataset_query is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be

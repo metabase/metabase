@@ -665,11 +665,11 @@
             (is (= (inc card-count-before)
                    (t2/count Card))))
           (testing "Card should exist"
-            (is (db/exists? Card :name card-name))))
+            (is (t2/exists? Card :name card-name))))
         (testing "Card should be deleted at end of with-model-cleanup form"
           (is (= card-count-before
                  (t2/count Card)))
-          (is (not (db/exists? Card :name card-name)))
+          (is (not (t2/exists? Card :name card-name)))
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count Card)))))))))
 
@@ -762,7 +762,7 @@
       (when (and (:metabase.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
         (doseq [group-id (t2/select-pks-set PermissionsGroup :id [:not= (u/the-id (perms-group/admin))])]
-          (when-not (db/exists? Permissions :group_id group-id, :object "/collection/root/")
+          (when-not (t2/exists? Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
 (defmacro with-non-admin-groups-no-root-collection-perms

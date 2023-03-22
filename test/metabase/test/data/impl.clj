@@ -363,7 +363,7 @@
                              (binding [db/*disable-db-logging* true]
                                (let [db (get-or-create-database! driver dbdef)]
                                  (assert db)
-                                 (assert (db/exists? Database :id (u/the-id db)))
+                                 (assert (t2/exists? Database :id (u/the-id db)))
                                  db))))]
     (binding [*get-db* (fn []
                          (locking do-with-dataset

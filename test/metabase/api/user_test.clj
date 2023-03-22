@@ -22,7 +22,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :as hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -432,11 +431,11 @@
                                  :email                  email
                                  :user_group_memberships (group-or-ids->user-group-memberships [group])})
           (is (= false
-                 (db/exists? User :%lower.email (u/lower-case-en email)))))))))
+                 (t2/exists? User :%lower.email (u/lower-case-en email)))))))))
 
 (defn- superuser-and-admin-pgm-info [email]
   {:is-superuser? (t2/select-one-fn :is_superuser User :%lower.email (u/lower-case-en email))
-   :pgm-exists?   (db/exists? PermissionsGroupMembership
+   :pgm-exists?   (t2/exists? PermissionsGroupMembership
                     :user_id  (t2/select-one-pk User :%lower.email (u/lower-case-en email))
                     :group_id (u/the-id (perms-group/admin)))})
 

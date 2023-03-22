@@ -29,6 +29,11 @@
 
 (set! *warn-on-reflection* true)
 
+(t2/select 'User :id 1)
+
+
+(t2/exists? 'User :id 1)
+(t2/exists? 'User :id 1)
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel User :core_user)
@@ -86,7 +91,7 @@
 (defn- pre-update
   [{reset-token :reset_token, superuser? :is_superuser, active? :is_active, :keys [email id locale], :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
-  (let [in-admin-group?  (db/exists? PermissionsGroupMembership
+  (let [in-admin-group?  (t2/exists? PermissionsGroupMembership
                            :group_id (:id (perms-group/admin))
                            :user_id  id)]
     ;; Do not let the last admin archive themselves

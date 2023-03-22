@@ -1201,14 +1201,14 @@
     (testing (str "Make sure that when creating a new Collection as child of a Personal Collection, no group "
                   "permissions are created")
       (mt/with-temp Collection [child {:name "{child}", :location (lucky-collection-children-location)}]
-        (is (not (db/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))))
+        (is (not (t2/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))))
 
     (testing (str "Make sure that when creating a new Collection as grandchild of a Personal Collection, no group "
                   "permissions are created")
       (mt/with-temp* [Collection [child {:location (lucky-collection-children-location)}]
                       Collection [grandchild {:location (collection/children-location child)}]]
-        (is (not (db/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))
-        (is (not (db/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id grandchild))])))))))
+        (is (not (t2/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))
+        (is (not (t2/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id grandchild))])))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1492,16 +1492,16 @@
                     Dashboard  [{dashboard-id :id} {:collection_id coll-id}]
                     Pulse      [{pulse-id :id}     {:collection_id coll-id}]]
       (t2/delete! Collection :id coll-id)
-      (is (db/exists? Card :id card-id)
+      (is (t2/exists? Card :id card-id)
           "Card")
-      (is (db/exists? Dashboard :id dashboard-id)
+      (is (t2/exists? Dashboard :id dashboard-id)
           "Dashboard")
-      (is (db/exists? Pulse :id pulse-id)
+      (is (t2/exists? Pulse :id pulse-id)
           "Pulse"))
     (mt/with-temp* [Collection         [{coll-id :id}    {:namespace "snippets"}]
                     NativeQuerySnippet [{snippet-id :id} {:collection_id coll-id}]]
       (t2/delete! Collection :id coll-id)
-      (is (db/exists? NativeQuerySnippet :id snippet-id)
+      (is (t2/exists? NativeQuerySnippet :id snippet-id)
           "Snippet"))))
 
 (deftest collections->tree-test
