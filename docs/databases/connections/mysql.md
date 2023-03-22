@@ -52,7 +52,7 @@ You can append options to the connection string that Metabase uses to connect to
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [action menu](https://www.metabase.com/glossary/action_menu). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/glossary/action_menu). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when Metabase syncs and scans
 
@@ -96,7 +96,7 @@ If you are on a paid plan, you can also set cache duration per questions. See [A
 
 ## Connecting to MySQL 8+ servers
 
-Metabase uses the MariaDB connector to connect to MariaDB and MySQL servers. The MariaDB connector does not currently support MySQL 8's default authentication plugin, so in order to connect, you'll need to change the plugin used by the Metabase user to 
+Metabase uses the MariaDB connector to connect to MariaDB and MySQL servers. The MariaDB connector does not currently support MySQL 8's default authentication plugin, so in order to connect, you'll need to change the plugin used by the Metabase user to
 
 ```
 mysql_native_password`: `ALTER USER 'metabase'@'%' IDENTIFIED WITH mysql_native_password BY 'thepassword';
@@ -118,13 +118,13 @@ Note the host name `172.17.0.1` (in this case a Docker network IP address), and 
 
 You'll see the same error message when attempting to connect to the MySQL server with the command-line client: `mysql -h 127.0.0.1 -u metabase -p`.
 
-**How to fix this:** Recreate the MySQL user with the correct host name: 
+**How to fix this:** Recreate the MySQL user with the correct host name:
 
 ```
 CREATE USER 'metabase'@'172.17.0.1' IDENTIFIED BY 'thepassword';
 ```
 
-Otherwise, if necessary, a wildcard may be used for the host name: 
+Otherwise, if necessary, a wildcard may be used for the host name:
 
 ```
 CREATE USER 'metabase'@'%' IDENTIFIED BY 'thepassword';
@@ -137,7 +137,7 @@ GRANT SELECT ON targetdb.* TO 'metabase'@'172.17.0.1';
 FLUSH PRIVILEGES;
 ```
 
-Remember to drop the old user: 
+Remember to drop the old user:
 
 ```
 DROP USER 'metabase'@'localhost';
