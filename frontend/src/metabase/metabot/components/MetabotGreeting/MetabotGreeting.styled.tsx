@@ -6,7 +6,6 @@ export const GreetingRoot = styled.div`
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1.5rem;
 `;
 
 export const GreetingMetabotLogo = styled(MetabotLogo)`
@@ -14,7 +13,7 @@ export const GreetingMetabotLogo = styled(MetabotLogo)`
 `;
 
 export const GreetingMessage = styled.div`
-  display: flex;
+  display: inline-flex;
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   background-color: ${color("bg-light")};

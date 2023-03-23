@@ -44,8 +44,8 @@ const MetabotPrompt = ({
       />
       <PromptRunButton
         isRunning={isRunning}
-        isDirty={false}
         compact
+        isDirty
         onRun={handleRunClick}
       />
     </PromptSection>

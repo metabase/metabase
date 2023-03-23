@@ -1,11 +1,7 @@
 import React from "react";
 import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/Question";
-import {
-  ModelLinkIcon,
-  ModelLinkRoot,
-  ModelLinkText,
-} from "./ModelLink.styled";
+import { ModelLinkRoot } from "./ModelLink.styled";
 
 interface ModelLinkProps {
   model: Question;
@@ -14,8 +10,7 @@ interface ModelLinkProps {
 const ModelLink = ({ model }: ModelLinkProps) => {
   return (
     <ModelLinkRoot to={Urls.question(model.card())}>
-      <ModelLinkIcon name="model" />
-      <ModelLinkText>{model.displayName()}</ModelLinkText>
+      {model.displayName()}
     </ModelLinkRoot>
   );
 };

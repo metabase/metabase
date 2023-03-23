@@ -1,8 +1,8 @@
 import React from "react";
 import MetabotMode from "metabase/modes/components/modes/MetabotMode";
-import Visualization from "metabase/visualizations/components/Visualization/Visualization";
 import { Dataset } from "metabase-types/types/Dataset";
 import Question from "metabase-lib/Question";
+import { FullVisualization } from "./MetabotVisualization.styled";
 
 interface MetabotVisualizationProps {
   question: Question;
@@ -17,7 +17,7 @@ const MetabotVisualization = ({
   const metadata = question.metadata();
 
   return (
-    <Visualization
+    <FullVisualization
       mode={MetabotMode}
       rawSeries={[{ card, data: result && result.data }]}
       error={result && result.error}
