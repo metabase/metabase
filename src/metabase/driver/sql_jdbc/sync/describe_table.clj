@@ -409,7 +409,7 @@
               unfold-json-fields      (filter (fn [field]
                                                 ;; unfold json if the field has json_unfolding = true
                                                 ;; don't unfold json if the field has json_unfolding = false
-                                                ;; otherwise if the field doesn't exist or json_unfolding = nil
+                                                ;; otherwise if the field doesn't exist
                                                 ;; use the database default
                                                 (let [existing-field (existing-fields-by-name (:name field))]
                                                   (or (:json_unfolding existing-field)
