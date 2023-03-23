@@ -26,6 +26,7 @@ import {
 } from "../selectors";
 
 import { updateQuestion } from "./core";
+import { setIsNativeEditorOpen } from "./native";
 import { updateUrl } from "./navigation";
 
 export const SET_DOCUMENT_TITLE = "metabase/qb/SET_DOCUMENT_TITLE";
@@ -152,13 +153,20 @@ export const runQuestionQuery = ({
 export const runMetabotQuery = query => async (dispatch, getState) => {
   const originalQuestion = getOriginalQuestion(getState());
   const modelId = originalQuestion.id();
-  const newCard = await MetabotApi.modelPrompt({ modelId, question: query });
+  const cancelQueryDeferred = defer();
+  dispatch.action(RUN_QUERY, { cancelQueryDeferred });
+
+  const newCard = await MetabotApi.modelPrompt(
+    { modelId, question: query },
+    { cancelled: cancelQueryDeferred.promise },
+  );
   const newQuestion = new Question(
     newCard,
     getMetadata(getState()),
   ).lockDisplay();
 
   await dispatch(updateQuestion(newQuestion));
+  await dispatch(setIsNativeEditorOpen(false));
   await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
 };
 
