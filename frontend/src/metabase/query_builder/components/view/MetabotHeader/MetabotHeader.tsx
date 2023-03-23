@@ -1,4 +1,9 @@
-import React, { ChangeEvent, useCallback, useState } from "react";
+import React, {
+  ChangeEvent,
+  KeyboardEvent,
+  useCallback,
+  useState,
+} from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
@@ -30,6 +35,7 @@ import {
   GreetingSection,
   HeaderRoot,
   PromptRunButton,
+  PromptRunButtonContainer,
   PromptSection,
   PromptUserAvatar,
 } from "./MetabotHeader.styled";
@@ -121,6 +127,15 @@ const MetabotHeader = ({
     onRun(query);
   }, [query, onRun]);
 
+  const handleKeyPress = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        handleRun();
+      }
+    },
+    [handleRun],
+  );
+
   const handleCancel = useCallback(() => {
     onCancel();
   }, [onCancel]);
@@ -148,18 +163,22 @@ const MetabotHeader = ({
         <PromptSection>
           {user && <PromptUserAvatar user={user} />}
           <Input
+            onKeyPress={handleKeyPress}
             value={query}
             placeholder={t`Ask something`}
             fullWidth
             onChange={handleQueryChange}
           />
-          <PromptRunButton
-            isRunning={isRunning}
-            isDirty={isResultDirty}
-            compact
-            onRun={handleRun}
-            onCancel={handleCancel}
-          />
+          <PromptRunButtonContainer>
+            Return
+            <PromptRunButton
+              isRunning={isRunning}
+              isDirty={isResultDirty}
+              compact
+              onRun={handleRun}
+              onCancel={handleCancel}
+            />
+          </PromptRunButtonContainer>
         </PromptSection>
       ) : (
         <DatabaseDataSelector

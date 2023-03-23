@@ -51,6 +51,15 @@ export const PromptRunButton = styled(RunButton)`
   flex-shrink: 0;
 `;
 
+export const PromptRunButtonContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-weight: 700;
+  color: ${color("text-medium")};
+  font-size: 13px;
+`;
+
 export const EntityLink = styled(Link)`
   color: ${color("brand")};
 `;
