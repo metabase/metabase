@@ -100,19 +100,6 @@
                (not (internal-remapping-allowed? base-type new-semantic-type)))
       (t2/delete! Dimension :id old-dim-id))))
 
-(defn- clear-nested-fields!
-  "Removes nested fields if JSON unfolding is disabled"
-  [old-field json_unfolding]
-  (when (and (false? json_unfolding)
-             (true? (:json_unfolding old-field)))
-    (let [nested-fields (->> (t2/select Field :table_id (:table_id old-field) :nfc_path [:not= nil] :active true)
-                             (filter (fn [field]
-                                       (= (first (:nfc_path field))
-                                          (:name old-field)))))]
-
-      (doseq [field nested-fields]
-        (t2/update! Field (:id field) :active false)))))
-
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update `Field` with ID."
