@@ -141,6 +141,13 @@ describe("QuestionRowCount", () => {
             expect(getNextQuery().limit()).toBeUndefined();
           });
         });
+
+        it("doesn't allow managing limit if query is read-only", () => {
+          question.query().isEditable = () => false;
+          setup({ question });
+
+          expect(screen.queryByTestId("trigger")).not.toBeInTheDocument();
+        });
       });
     });
   });
@@ -180,6 +187,13 @@ describe("QuestionRowCount", () => {
           const { rowCount } = setup({ question, result });
 
           expect(rowCount).toHaveTextContent("Showing first 70 rows");
+        });
+
+        it("doesn't allow managing limit", () => {
+          question.query().isEditable = () => false;
+          setup({ question });
+
+          expect(screen.queryByTestId("trigger")).not.toBeInTheDocument();
         });
       });
     });
