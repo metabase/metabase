@@ -3,8 +3,10 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [compojure.core :refer [GET]]
+   [java-time :as t]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
+   [metabase.db.connection :as mdb.connection]
    [metabase.models.activity :refer [Activity]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -14,7 +16,8 @@
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (defn- dashcard-activity? [activity]
   (#{:dashboard-add-cards :dashboard-remove-cards}
@@ -134,7 +137,7 @@
         (group-by :model views)))
 
 (defn- views-and-runs
-  "Common query implementation for `recent_views` and `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
+  "Query implementation for `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
   Cards have a query limit of `card-runs-limit`.
 
   The expected output of the query is a single row per unique model viewed by the current user including a `:max_ts` which
@@ -188,11 +191,74 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/recent_views"
-  "Get the list of 5 things the current user has been viewing most recently."
+(defn- bookmarks-query
+  [user-id]
+  (let [as-null (when (= (mdb.connection/db-type) :postgres) (h2x/->integer nil))]
+    {:select [[:type :model] [:item_id :model_id]]
+     :from   [[{:union-all [{:select [:card_id
+                                      [as-null :dashboard_id]
+                                      [as-null :collection_id]
+                                      [:card_id :item_id]
+                                      [(h2x/literal "card") :type]
+                                      :created_at]
+                             :from   [:card_bookmark]
+                             :where  [:= :user_id [:inline user-id]]}
+                            {:select [[as-null :card_id]
+                                      :dashboard_id
+                                      [as-null :collection_id]
+                                      [:dashboard_id :item_id]
+                                      [(h2x/literal "dashboard") :type]
+                                      :created_at]
+                             :from   [:dashboard_bookmark]
+                             :where  [:= :user_id [:inline user-id]]}]}
+               :bookmarks]]}))
+
+(defn- recent-views-for-user
+  [user-id]
+  (let [bookmarks (bookmarks-query user-id)
+        qe        {:select [[(h2x/literal "qe") :source]
+                            [:executor_id :user_id]
+                            :context
+                            [:started_at :timestamp]
+                            [(h2x/literal "card") :model]
+                            [:card_id :model_id]
+                            [false :dataset]]
+                   :from   :query_execution}
+        vl        {:select    [[(h2x/literal "vl") :source]
+                               :user_id
+                               [(h2x/literal "question") :context]
+                               :timestamp
+                               :model
+                               :model_id
+                               [:report_card.dataset :dataset]]
+                   :from      [:view_log]
+                   :left-join [:report_card
+                               [:and
+                                [:= :view_log.model (h2x/literal "card")]
+                                [:= :view_log.model_id :report_card.id]]]}
+        views     {:union-all [qe vl]}]
+    (t2/query
+     {:select   [[[:max :timestamp] :timestamp]
+                 :model
+                 :model_id]
+      :from     [[views :views]]
+      :where    [[:and
+                  [:= :user_id [:inline user-id]]
+                  [:>= :timestamp (t/minus (t/offset-date-time) (t/days 30))]
+                  [:not= :context (h2x/literal "pulse")]
+                  [:not= :context (h2x/literal "collection")]
+                  [:not= :context (h2x/literal "ad-hoc")]
+                  [:not= [:composite :context :model] [:composite (h2x/literal "dashboard") (h2x/literal "card")]]
+                  [:not= [:composite :source :model :dataset] [:composite (h2x/literal "vl") (h2x/literal "card") [:inline false]]]
+                  [:not-in [:composite :model :model_id] bookmarks]]]
+      :group-by [:model :model_id]
+      :order-by [[:timestamp :desc]]
+      :limit    [:inline 8]})))
+
+(api/defendpoint GET "/recent_views"
+  "Get a list of 5 things the current user has been viewing most recently."
   []
-  (let [views (views-and-runs views-limit card-runs-limit false)
+  (let [views (recent-views-for-user *current-user-id*)
         model->id->items (models-for-views views)]
     (->> (for [{:keys [model model_id] :as view-log} views
                :let [model-object (-> (get-in model->id->items [model model_id])
