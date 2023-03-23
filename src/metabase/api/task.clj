@@ -7,7 +7,7 @@
    [metabase.models.task-history :as task-history :refer [TaskHistory]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.task :as task]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -15,7 +15,7 @@
   "Fetch a list of recent tasks stored as Task History"
   []
   (validation/check-has-application-permission :monitoring)
-  {:total  (db/count TaskHistory)
+  {:total  (t2/count TaskHistory)
    :limit  mw.offset-paging/*limit*
    :offset mw.offset-paging/*offset*
    :data   (task-history/all mw.offset-paging/*limit* mw.offset-paging/*offset*)})

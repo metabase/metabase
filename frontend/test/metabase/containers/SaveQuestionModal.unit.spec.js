@@ -30,7 +30,6 @@ const setup = async (
     <SaveQuestionModal
       question={question}
       originalQuestion={originalQuestion}
-      tableMetadata={question.table()}
       onCreate={onCreateMock}
       onSave={onSaveMock}
       onClose={onCloseMock}

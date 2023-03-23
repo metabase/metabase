@@ -24,10 +24,6 @@ export const clearAggregations = query =>
   setAggregationClause(query, A.clearAggregations(query.aggregation));
 
 export const isBareRows = query => A.isBareRows(query.aggregation);
-export const hasEmptyAggregation = query =>
-  A.hasEmptyAggregation(query.aggregation);
-export const hasValidAggregation = query =>
-  A.hasValidAggregation(query.aggregation);
 
 // BREAKOUT
 
@@ -82,7 +78,6 @@ export const clearOrderBy = query =>
   setOrderByClause(query, O.clearOrderBy(query["order-by"]));
 
 // FIELD
-export const getFields = query => FIELD.getFields(query.fields);
 export const addField = (query, field) =>
   setFieldsClause(query, FIELD.addField(query.fields, field));
 export const updateField = (query, index, field) =>
@@ -103,8 +98,6 @@ export const clearLimit = query =>
 // EXPRESSIONS
 
 export const getExpressions = query => E.getExpressions(query.expressions);
-export const getExpressionsList = query =>
-  E.getExpressionsList(query.expressions);
 export const addExpression = (query, name, expression) =>
   setExpressionClause(
     query,

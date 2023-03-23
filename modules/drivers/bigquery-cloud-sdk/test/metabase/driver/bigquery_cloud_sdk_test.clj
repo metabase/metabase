@@ -265,7 +265,7 @@
               (is (nil? more-tbl))
               (is (= "taxi_trips" (:name tbl)))
               ;; make sure all the fields for taxi_tips were synced
-              (is (= 23 (db/count Field :table_id (u/the-id tbl))))))
+              (is (= 23 (t2/count Field :table_id (u/the-id tbl))))))
           (testing " for querying"
             (is (= 23
                    (count (mt/first-row

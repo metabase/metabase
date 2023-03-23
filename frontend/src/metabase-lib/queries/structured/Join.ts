@@ -102,15 +102,6 @@ export default class Join extends MBQLObjectClause {
     return this["source-query"];
   }
 
-  setJoinSourceQuery(query: StructuredQuery) {
-    return this.set({
-      ...this,
-      "source-table": undefined,
-      "source-query": query,
-      condition: null,
-    });
-  }
-
   _uniqueAlias(name: JoinAlias): JoinAlias {
     const usedAliases = new Set(
       this.query()

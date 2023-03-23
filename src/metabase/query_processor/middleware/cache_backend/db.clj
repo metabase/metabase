@@ -91,10 +91,10 @@
     (or (pos? (t2/update! QueryCache {:query_hash query-hash}
                           {:updated_at (t/offset-date-time)
                            :results    results}))
-        (db/insert! QueryCache
-          :updated_at (t/offset-date-time)
-          :query_hash query-hash
-          :results    results))
+        (first (t2/insert-returning-instances! QueryCache
+                                               :updated_at (t/offset-date-time)
+                                               :query_hash query-hash
+                                               :results    results)))
     (catch Throwable e
       (log/error e (trs "Error saving query results to cache."))))
   nil)

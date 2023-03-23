@@ -359,9 +359,9 @@ saved later when it is ready."
                                ;; Adding a new card at `collection_position` could cause other cards in this
                                ;; collection to change position, check that and fix it if needed
                                (api/maybe-reconcile-collection-position! card-data)
-                               (db/insert! Card (cond-> card-data
-                                                  (and metadata (not timed-out?))
-                                                  (assoc :result_metadata metadata))))]
+                               (first (t2/insert-returning-instances! Card (cond-> card-data
+                                                                             (and metadata (not timed-out?))
+                                                                             (assoc :result_metadata metadata)))))]
      (when-not delay-event?
        (events/publish-event! :card-create card))
      (when timed-out?

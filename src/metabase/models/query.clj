@@ -63,10 +63,10 @@
   "Record a query and its execution time for a `query` with `query-hash` that's not already present in the DB.
   `execution-time-ms` is used as a starting point."
   [query ^bytes query-hash ^Integer execution-time-ms]
-  (db/insert! Query
-    :query                  query
-    :query_hash             query-hash
-    :average_execution_time execution-time-ms))
+  (first (t2/insert-returning-instances! Query
+                                         :query                  query
+                                         :query_hash             query-hash
+                                         :average_execution_time execution-time-ms)))
 
 (defn save-query-and-update-average-execution-time!
   "Update the recorded average execution time (or insert a new record if needed) for `query` with `query-hash`."

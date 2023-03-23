@@ -1570,19 +1570,14 @@ describe("Question", () => {
   });
 
   describe("Question.generateQueryDescription", () => {
-    const mockTableMetadata = {
-      display_name: "Order",
-      fields: [{ id: 1, display_name: "Total" }],
-    };
-
     it("should work with multiple aggregations", () => {
       const question = base_question.setDatasetQuery({
         query: {
           "source-table": ORDERS.id,
-          aggregation: [["count"], ["sum", ["field", 1, null]]],
+          aggregation: [["count"], ["sum", ["field", 6, null]]],
         },
       });
-      expect(question.generateQueryDescription(mockTableMetadata)).toEqual(
+      expect(question.generateQueryDescription()).toEqual(
         "Orders, Count and Sum of Total",
       );
     });
@@ -1600,9 +1595,7 @@ describe("Question", () => {
           ],
         },
       });
-      expect(question.generateQueryDescription(mockTableMetadata)).toEqual(
-        "Orders, Revenue",
-      );
+      expect(question.generateQueryDescription()).toEqual("Orders, Revenue");
     });
   });
 });

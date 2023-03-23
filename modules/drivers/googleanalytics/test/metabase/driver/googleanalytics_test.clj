@@ -16,7 +16,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (comment metabase.driver.googleanalytics/keep-me)
@@ -387,6 +386,6 @@
                    ;; just make sure the API call actually worked by checking that the created Card is actually
                    ;; successfully saved in the DB
                    u/the-id
-                   (db/count Card :id))]
+                   (t2/count Card :id))]
       (is (= 1
              cnt)))))

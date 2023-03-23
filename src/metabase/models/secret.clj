@@ -228,16 +228,16 @@
   {:added "0.42.0"}
   [existing-id nm kind src value]
   (let [insert-new     (fn [id v]
-                         (let [inserted (db/insert! Secret (cond-> {:version    v
-                                                                    :name       nm
-                                                                    :kind       kind
-                                                                    :source     src
-                                                                    :value      value
-                                                                    :creator_id api/*current-user-id*}
-                                                             id
-                                                             (assoc :id id)))]
+                         (let [inserted (first (t2/insert-returning-instances! Secret (cond-> {:version    v
+                                                                                               :name       nm
+                                                                                               :kind       kind
+                                                                                               :source     src
+                                                                                               :value      value
+                                                                                               :creator_id api/*current-user-id*}
+                                                                                        id
+                                                                                        (assoc :id id))))]
                            ;; Toucan doesn't support composite primary keys, so adding a new record with incremented
-                           ;; version for an existing ID won't return a result from db/insert!, hence we may need to
+                           ;; version for an existing ID won't return a result from t2/insert!, hence we may need to
                            ;; manually select it here
                            (t2/select-one Secret :id (or id (u/the-id inserted)) :version v)))
         latest-version (when existing-id (latest-for-id existing-id))]

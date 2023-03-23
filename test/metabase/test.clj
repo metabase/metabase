@@ -313,9 +313,9 @@
         existing-admin-ids         (t2/select-pks-set User :is_superuser true)
         _                          (when (seq existing-admin-ids)
                                      (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser false}))
-        temp-admin                 (db/insert! User (merge (with-temp-defaults User)
-                                                           attributes
-                                                           {:is_superuser true}))
+        temp-admin                 (first (t2/insert-returning-instances! User (merge (with-temp-defaults User)
+                                                                                      attributes
+                                                                                      {:is_superuser true})))
         primary-key                (models/primary-key User)]
     (try
       (thunk temp-admin)

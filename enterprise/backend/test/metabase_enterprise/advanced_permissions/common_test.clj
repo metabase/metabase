@@ -13,7 +13,6 @@
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- do-with-all-user-data-perms
@@ -393,7 +392,7 @@
           (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))
 
       (testing "A non-admin with no data access can discard field values if they have DB details perms"
-        (db/insert! FieldValues :id values-id :field_id field-id :values [1 2 3 4])
+        (t2/insert! FieldValues :id values-id :field_id field-id :values [1 2 3 4])
         (with-all-users-data-perms {db-id {:data    {:schemas :block :native :none}
                                            :details :yes}}
           (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id)))

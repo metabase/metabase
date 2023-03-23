@@ -34,7 +34,7 @@
                                             :status              status
                                             :moderated_item_id   card-id
                                             :moderated_item_type "card"})))
-                  (review-count [] (db/count ModerationReview
+                  (review-count [] (t2/count ModerationReview
                                      :moderated_item_id card-id
                                      :moderated_item_type "card"))]
             (testing "Non admin cannot create a moderation review"

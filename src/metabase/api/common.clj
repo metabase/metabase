@@ -103,7 +103,7 @@
   ([entity id]
    (check-exists? entity :id id))
   ([entity k v & more]
-   (check-404 (apply db/exists? entity k v more))))
+   (check-404 (apply t2/exists? entity k v more))))
 
 (defn check-superuser
   "Check that `*current-user*` is a superuser or throw a 403. This doesn't require a DB call."

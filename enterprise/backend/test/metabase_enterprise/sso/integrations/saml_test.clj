@@ -426,7 +426,7 @@
       (fn []
         (with-saml-default-setup
           (try
-            (is (not (db/exists? User :%lower.email "newuser@metabase.com")))
+            (is (not (t2/exists? User :%lower.email "newuser@metabase.com")))
             (let [req-options (saml-post-request-options (new-user-saml-test-response)
                                                          (saml/str->base64 default-redirect-uri))]
               (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options)))
@@ -452,7 +452,7 @@
       (fn []
         (with-saml-default-setup
           (try
-            (is (not (db/exists? User :%lower.email "newuser@metabase.com")))
+            (is (not (t2/exists? User :%lower.email "newuser@metabase.com")))
             ;; login with a user with no givenname or surname attributes
             (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
                                                          (saml/str->base64 default-redirect-uri))]
