@@ -1,15 +1,13 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { ngettext, msgid, t } from "ttag";
 
 import { formatNumber } from "metabase/lib/formatting";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";
-import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 
 const QuestionRowCount = ({
   question,
@@ -17,7 +15,6 @@ const QuestionRowCount = ({
   className,
   isResultDirty,
   onQueryChange,
-  ...props
 }) => {
   const formatRowCount = count => {
     const countString = formatNumber(count);
@@ -25,12 +22,13 @@ const QuestionRowCount = ({
   };
 
   const query = question.query();
+  const isStructured = question.isStructured();
 
   const cappedMessage = t`Showing first ${HARD_ROW_LIMIT} rows`;
 
   // Shown based on a query that has been altered
   let limitMessage = null;
-  if (query instanceof StructuredQuery) {
+  if (isStructured) {
     if (query.limit() == null || query.limit() >= HARD_ROW_LIMIT) {
       if (typeof result.row_count === "number") {
         // The query has been altered but we might still have the old result set,
@@ -57,7 +55,7 @@ const QuestionRowCount = ({
   const message = isResultDirty ? limitMessage : resultMessage;
 
   let content;
-  if (query instanceof StructuredQuery && query.isEditable()) {
+  if (isStructured && query.isEditable()) {
     const limit = query.limit();
     content = (
       <PopoverWithTrigger
