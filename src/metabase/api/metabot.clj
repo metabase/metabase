@@ -8,6 +8,7 @@
    [metabase.models.field-values :refer [FieldValues]]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]
    [wkok.openai-clojure.api :as openai.api]
@@ -25,7 +26,7 @@
 
 (def bot-directions
   (str "You are a helpful assistant that writes SQL based on my input."
-       "Don't explain your answer, just show me the SQL."))
+       "Don't explain your answer, just show me the SQL using Postgresql as the dialect."))
 
 (defn- column-types
   "Given a model, provide a set of statements about each column type and display name."
@@ -168,6 +169,10 @@
 (defn extract-sql [bot-response]
   (let [[_pre sql _post] (str/split bot-response #"```")]
     (when sql (mdb.query/format-sql sql))))
+
+(defn standardize-name [{:keys [id name] :as _model} sql]
+  (let [rgx (re-pattern (format "\\Q\"%s\"\\E" name))]
+    (str/replace sql rgx (format "{{#%s-%s}}" id (u/slugify name)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/model/:model-id"
