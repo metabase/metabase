@@ -164,8 +164,8 @@
   [:as {{:keys [name]} :body}]
   {name su/NonBlankString}
   (api/check-superuser)
-  (db/insert! PermissionsGroup
-              :name name))
+  (first (t2/insert-returning-instances! PermissionsGroup
+                                         :name name)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/group/:group-id"
@@ -224,7 +224,7 @@
       (api/check
        (db/exists? User :id user_id :is_superuser false)
        [400 (tru "Admin cant be a group manager.")]))
-    (db/insert! PermissionsGroupMembership
+    (t2/insert! PermissionsGroupMembership
                 :group_id         group_id
                 :user_id          user_id
                 :is_group_manager is_group_manager)

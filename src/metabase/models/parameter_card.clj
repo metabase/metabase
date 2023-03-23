@@ -61,7 +61,7 @@
                       :parameterized_object_type parameterized-object-type
                       :parameter_id              id}]
       (or (db/update-where! ParameterCard conditions :card_id card-id)
-          (db/insert! ParameterCard (merge conditions {:card_id card-id}))))))
+          (t2/insert! ParameterCard (merge conditions {:card_id card-id}))))))
 
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,
