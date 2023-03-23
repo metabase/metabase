@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import { ngettext, msgid, t } from "ttag";
-import cx from "classnames";
 
 import { formatNumber } from "metabase/lib/formatting";
 
@@ -12,6 +11,8 @@ import type { Dataset } from "metabase-types/api";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
+import { RowCountButton, RowCountStaticLabel } from "./QuestionRowCount.styled";
 
 interface QuestionRowCountProps {
   question: Question;
@@ -79,33 +80,19 @@ function QuestionRowCount({
 }
 
 function RowCountLabel({
-  children,
-  highlighted,
   disabled,
-  className,
+  ...props
 }: {
   children: string;
   highlighted: boolean;
   disabled: boolean;
   className?: string;
 }) {
-  const Element = disabled ? "span" : "button";
-  return (
-    <Element
-      className={cx(
-        "text-bold text-medium",
-        {
-          "cursor-pointer": !disabled,
-          "text-brand-hover": !disabled,
-          "text-hover": highlighted,
-        },
-        className,
-      )}
-      disabled={disabled}
-      aria-label={t`Row count`}
-    >
-      {children}
-    </Element>
+  const label = t`Row count`;
+  return disabled ? (
+    <RowCountStaticLabel {...props} aria-label={label} />
+  ) : (
+    <RowCountButton {...props} aria-label={label} />
   );
 }
 
