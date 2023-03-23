@@ -14409,8 +14409,7 @@ databaseChangeLog:
                 FROM metabase_field f
                 JOIN metabase_table t ON f.table_id = t.id
                 JOIN metabase_database d ON t.db_id = d.id
-                WHERE lower(f.database_type) in ('json', 'jsonb')
-                  AND d.engine in ('postgres', 'mysql')
+                WHERE f.base_type = 'type/JSON'
               ) as updates
               ON f.id = updates.id
               WHEN MATCHED THEN
