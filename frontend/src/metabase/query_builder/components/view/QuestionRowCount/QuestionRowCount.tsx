@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import { ngettext, msgid, t } from "ttag";
 
@@ -7,21 +6,32 @@ import { formatNumber } from "metabase/lib/formatting";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";
 
-import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
+import type { Dataset } from "metabase-types/api";
 
-const QuestionRowCount = ({
+import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
+import type Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
+const formatRowCount = (count: number) => {
+  const countString = formatNumber(count);
+  return ngettext(msgid`${countString} row`, `${countString} rows`, count);
+};
+
+interface QuestionRowCountProps {
+  question: Question;
+  result: Dataset;
+  isResultDirty: boolean;
+  className?: string;
+  onQueryChange: (query: StructuredQuery) => void;
+}
+
+function QuestionRowCount({
   question,
   result,
-  className,
   isResultDirty,
+  className,
   onQueryChange,
-}) => {
-  const formatRowCount = count => {
-    const countString = formatNumber(count);
-    return ngettext(msgid`${countString} row`, `${countString} rows`, count);
-  };
-
-  const query = question.query();
+}: QuestionRowCountProps) {
   const isStructured = question.isStructured();
 
   const cappedMessage = t`Showing first ${HARD_ROW_LIMIT} rows`;
@@ -29,7 +39,10 @@ const QuestionRowCount = ({
   // Shown based on a query that has been altered
   let limitMessage = null;
   if (isStructured) {
-    if (query.limit() == null || query.limit() >= HARD_ROW_LIMIT) {
+    const query = question.query() as StructuredQuery;
+    const limit = query.limit();
+
+    if (limit == null || limit >= HARD_ROW_LIMIT) {
       if (typeof result.row_count === "number") {
         // The query has been altered but we might still have the old result set,
         // so show that instead of a generic HARD_ROW_LIMIT
@@ -38,7 +51,7 @@ const QuestionRowCount = ({
         limitMessage = cappedMessage;
       }
     } else {
-      limitMessage = t`Show ${formatRowCount(query.limit())}`;
+      limitMessage = t`Show ${formatRowCount(limit)}`;
     }
   }
 
@@ -55,7 +68,8 @@ const QuestionRowCount = ({
   const message = isResultDirty ? limitMessage : resultMessage;
 
   let content;
-  if (isStructured && query.isEditable()) {
+  if (isStructured && question.query().isEditable()) {
+    const query = question.query() as StructuredQuery;
     const limit = query.limit();
     content = (
       <PopoverWithTrigger
@@ -64,11 +78,11 @@ const QuestionRowCount = ({
         }
         triggerClasses={limit != null ? "text-brand" : ""}
       >
-        {({ onClose }) => (
+        {({ onClose }: { onClose: () => void }) => (
           <LimitPopover
             className="p2"
             limit={limit}
-            onChangeLimit={limit => {
+            onChangeLimit={(limit: number) => {
               if (limit > 0) {
                 onQueryChange(query.updateLimit(limit));
               } else {
@@ -85,9 +99,17 @@ const QuestionRowCount = ({
   }
 
   return <span className={className}>{content}</span>;
-};
+}
 
-QuestionRowCount.shouldRender = ({ question, result, isObjectDetail }) =>
+QuestionRowCount.shouldRender = ({
+  question,
+  result,
+  isObjectDetail,
+}: {
+  question: Question;
+  result?: Dataset;
+  isObjectDetail: boolean;
+}) =>
   result && result.data && !isObjectDetail && question.display() === "table";
 
 export default QuestionRowCount;
