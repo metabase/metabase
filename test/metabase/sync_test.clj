@@ -120,6 +120,7 @@
     :last_analyzed       false
     :parent_id           false
     :position            0
+    :json_unfolding      false
     :table_id            true
     :updated_at          true}))
 
