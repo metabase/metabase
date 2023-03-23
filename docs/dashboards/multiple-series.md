@@ -17,7 +17,7 @@ Data in isolation is rarely all that useful. One of the best ways to add context
 
 There are two main ways to visualize data side by side:
 
-1. [**Ask a question that involves multiple dimensions**](#ask-a-question-that-involves-multiple-dimensions) with the Simple or Custom query builders (or in SQL, if you’re fancy). Example: the count of users by region over time.
+1. [**Ask a question that involves multiple dimensions**](#ask-a-question-that-involves-multiple-dimensions) with the query builder (or in SQL, if you’re fancy). Example: the count of users by region over time.
 
 2. [**Combine two saved questions**](#combining-two-saved-questions) that share a common dimension (like time) on a dashboard. For example, you could look at revenue over time and costs over time together.
 
@@ -41,7 +41,7 @@ Note: you won’t be able to add another saved question to multi-series visualiz
 
 ## Combining two saved questions
 
-If you already have two or more saved questions you’d like to compare, and they share a dimension, they can be combined on any dashboard. Here’s how:
+If you already have two or more saved questions you’d like to compare, and they share a dimension, they can be combined onto a single dashboard card. You can even compare questions that pull data from different databases. Here’s how:
 
 1. Add a question with a dimension like time or category to a dashboard. In practice, these will usually be line charts or bar charts.
 

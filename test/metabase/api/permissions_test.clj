@@ -223,8 +223,31 @@
       (mt/with-temp* [PermissionsGroup [group]]
         (mt/user-http-request :crowberto :put 200 "permissions/graph"
          (assoc-in (perms/data-perms-graph) [:groups (u/the-id group)] nil))
+        (is (empty? (t2/select :permissions :group_id (u/the-id group))))
         (is (= nil (get-in (perms/data-perms-graph) [:groups (u/the-id group)])))
         (is (= nil (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group)])))))))
+
+(deftest can-delete-permsissions-via-graph-test
+  (testing "PUT /api/permissions/graph"
+    (testing "permissions when group has no permissions"
+      (let [db-id (mt/id :venues)]
+        (mt/with-temp* [PermissionsGroup [group]]
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (assoc-in (perms/data-perms-graph)
+                     [:groups (u/the-id group) (mt/id) :data :schemas] {"PUBLIC" {db-id :all}}))
+          (is (= (set (for [template ["/data/db/%s/schema/PUBLIC/table/%s/"
+                                      "/query/db/%s/schema/PUBLIC/table/%s/"
+                                      "/db/%s/schema/PUBLIC/table/%s/"]]
+                        (format template (mt/id) db-id)))
+                 (set (mapv :object (t2/select :permissions :group_id (u/the-id group))))))
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (assoc-in (perms/data-perms-graph)
+                     [:groups (u/the-id group) (mt/id)]
+                     {:data {:native "none" :schemas "none"}}))
+          (is (= #{}
+                 (set (mapv :object (t2/select :permissions :group_id (u/the-id group)))))))))))
 
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"

@@ -10,13 +10,13 @@ X-rays are a fast and easy way to get automatic insights and explorations of you
 
 ## Viewing X-rays by clicking on charts or tables
 
-One great way to explore your data in general in Metabase is to click on points of interest in charts or tables, which shows you ways to further explore that point. We've added X-rays to this action menu, so if you for example find a point on your line chart that seems extra interesting, give it a click and X-ray it! We think you'll like what you see.
+One great way to explore your data in general in Metabase is to click on points of interest in charts or tables, which shows you ways to further explore that point. We've added X-rays to this drill-through menu, so if you for example find a point on your line chart that seems extra interesting, give it a click and X-ray it! We think you'll like what you see.
 
 ![X-ray action in drill-through menu](./images/drill-through.png)
 
 ## Comparisons
 
-To see how the value of a bar, point, or geographic region compares to the rest of the data, click on it to pull up the action menu, then select **Compare to the rest**.
+To see how the value of a bar, point, or geographic region compares to the rest of the data, click on it to pull up the drill-through menu, then select **Compare to the rest**.
 
 ![Compare menu](./images/x-ray-compare-popover.png)
 
