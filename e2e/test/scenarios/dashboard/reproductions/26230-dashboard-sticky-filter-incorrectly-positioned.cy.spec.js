@@ -5,10 +5,11 @@ describe("issue 26230", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+
+    prepareAndVisitDashboards();
   });
 
   it("should show dashboard header when navigate from the end of other long dashboard (metabase#26230)", () => {
-    prepareAndVisitDashboards();
 
     cy.findByRole("main").scrollTo("bottom");
     cy.button("Toggle sidebar").click();
