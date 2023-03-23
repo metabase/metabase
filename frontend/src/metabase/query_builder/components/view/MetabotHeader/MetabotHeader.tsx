@@ -1,9 +1,12 @@
-import React from "react";
+import React, { ChangeEvent, useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import { getUser } from "metabase/selectors/user";
-import { cancelQuery, runQuestionQuery } from "metabase/query_builder/actions";
+import {
+  cancelQuery,
+  runNaturalLanguageQuery,
+} from "metabase/query_builder/actions";
 import {
   getIsResultDirty,
   getIsRunning,
@@ -27,12 +30,8 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onRun: (opts?: RunQueryOpts) => void;
+  onRun: (queryText: string) => void;
   onCancel: () => void;
-}
-
-interface RunQueryOpts {
-  ignoreCache?: boolean;
 }
 
 type MetabotHeaderProps = StateProps & DispatchProps;
@@ -44,7 +43,7 @@ const mapStateToProps = (state: State): StateProps => ({
 });
 
 const mapDispatchToProps = {
-  onRun: runQuestionQuery,
+  onRun: runNaturalLanguageQuery,
   onCancel: cancelQuery,
 };
 
@@ -55,8 +54,22 @@ const MetabotHeader = ({
   onRun,
   onCancel,
 }: MetabotHeaderProps) => {
-  const handleRun = () => onRun({ ignoreCache: true });
-  const handleCancel = () => onCancel();
+  const [query, setQuery] = useState("");
+
+  const handleQueryChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setQuery(event.target.value);
+    },
+    [],
+  );
+
+  const handleRun = useCallback(() => {
+    onRun(query);
+  }, [query, onRun]);
+
+  const handleCancel = useCallback(() => {
+    onCancel();
+  }, [onCancel]);
 
   return (
     <HeaderRoot>
@@ -66,7 +79,12 @@ const MetabotHeader = ({
       </GreetingSection>
       <PromptSection>
         {user && <PromptUserAvatar user={user} />}
-        <Input placeholder={t`Ask something`} fullWidth />
+        <Input
+          value={query}
+          placeholder={t`Ask something`}
+          fullWidth
+          onChange={handleQueryChange}
+        />
         <PromptRunButton
           isRunning={isRunning}
           isDirty={isResultDirty}
