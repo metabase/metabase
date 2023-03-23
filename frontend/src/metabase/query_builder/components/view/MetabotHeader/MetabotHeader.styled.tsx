@@ -15,6 +15,7 @@ export const HeaderRoot = styled(ViewSection)`
 export const GreetingSection = styled.div`
   display: flex;
   align-items: center;
+  gap: 1rem;
   margin-bottom: 1.5rem;
 `;
 
@@ -23,7 +24,6 @@ export const GreetingMetabotLogo = styled(MetabotLogo)`
 `;
 
 export const GreetingMessage = styled.div`
-  margin-left: 0.5rem;
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
   color: ${color("text-medium")};
