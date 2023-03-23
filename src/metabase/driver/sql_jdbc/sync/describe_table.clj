@@ -413,7 +413,7 @@
                                                 ;; use the database default
                                                 (let [existing-field (existing-fields-by-name (:name field))]
                                                   (or (:json_unfolding existing-field)
-                                                      (and (nil? (:json_unfolding existing-field))
+                                                      (and (nil? existing-field)
                                                            (database/json-unfolding-default (table/database table))))))
                                               json-fields)]
           (if (empty? unfold-json-fields)
