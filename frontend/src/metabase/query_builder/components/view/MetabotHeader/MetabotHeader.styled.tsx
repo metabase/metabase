@@ -4,6 +4,7 @@ import MetabotLogo from "metabase/core/components/MetabotLogo";
 import UserAvatar from "metabase/components/UserAvatar";
 import RunButton from "metabase/query_builder/components/RunButton";
 import ViewSection from "metabase/query_builder/components/view/ViewSection";
+import Link from "metabase/core/components/Link";
 
 export const HeaderRoot = styled(ViewSection)`
   display: block;
@@ -48,4 +49,17 @@ export const PromptUserAvatar = styled(UserAvatar)`
 
 export const PromptRunButton = styled(RunButton)`
   flex-shrink: 0;
+`;
+
+export const PromptRunButtonContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-weight: 700;
+  color: ${color("text-medium")};
+  font-size: 13px;
+`;
+
+export const EntityLink = styled(Link)`
+  color: ${color("brand")};
 `;

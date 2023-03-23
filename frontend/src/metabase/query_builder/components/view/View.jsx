@@ -47,6 +47,7 @@ import {
   QueryBuilderViewRoot,
   StyledDebouncedFrame,
   StyledSyncedParametersList,
+  MetabotEmptyState,
 } from "./View.styled";
 
 const DEFAULT_POPOVER_STATE = {
@@ -436,6 +437,7 @@ class View extends React.Component {
 
   render() {
     const {
+      results,
       question,
       query,
       databases,
@@ -488,6 +490,9 @@ class View extends React.Component {
       ? SIDEBAR_SIZES.TIMELINE
       : SIDEBAR_SIZES.NORMAL;
 
+    const shouldShowMetabotZeroState =
+      queryBuilderMode === "metabot" && results == null;
+
     return (
       <div className="full-height">
         <QueryBuilderViewRoot className="QueryBuilder">
@@ -496,23 +501,29 @@ class View extends React.Component {
               ? this.renderMetabotHeader()
               : this.renderRegularHeader())}
           <QueryBuilderContentContainer>
-            {isStructured && (
-              <QueryViewNotebook
-                isNotebookContainerOpen={isNotebookContainerOpen}
-                {...this.props}
-              />
+            {shouldShowMetabotZeroState ? (
+              <MetabotEmptyState />
+            ) : (
+              <>
+                {isStructured && (
+                  <QueryViewNotebook
+                    isNotebookContainerOpen={isNotebookContainerOpen}
+                    {...this.props}
+                  />
+                )}
+                <ViewSidebar side="left" isOpen={!!leftSidebar}>
+                  {leftSidebar}
+                </ViewSidebar>
+                {this.renderMain({ leftSidebar, rightSidebar })}
+                <ViewSidebar
+                  side="right"
+                  isOpen={!!rightSidebar}
+                  width={rightSidebarWidth}
+                >
+                  {rightSidebar}
+                </ViewSidebar>
+              </>
             )}
-            <ViewSidebar side="left" isOpen={!!leftSidebar}>
-              {leftSidebar}
-            </ViewSidebar>
-            {this.renderMain({ leftSidebar, rightSidebar })}
-            <ViewSidebar
-              side="right"
-              isOpen={!!rightSidebar}
-              width={rightSidebarWidth}
-            >
-              {rightSidebar}
-            </ViewSidebar>
           </QueryBuilderContentContainer>
         </QueryBuilderViewRoot>
 
