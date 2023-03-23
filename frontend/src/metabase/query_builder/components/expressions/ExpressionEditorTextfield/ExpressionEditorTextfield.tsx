@@ -1,9 +1,8 @@
 import React, { RefObject } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import AceEditor from "react-ace";
+import AceEditor, { ICommand, IMarker } from "react-ace";
 import * as ace from "ace-builds/src-noconflict/ace";
-import { ICommand, IMarker } from "react-ace/src/types";
 import { Ace } from "ace-builds";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import type { Expression } from "metabase-types/types/Query";
@@ -26,11 +25,6 @@ import {
 } from "./ExpressionEditorTextfield.styled";
 
 ace.config.set("basePath", "/assets/ui/");
-
-interface CommandManager extends Ace.CommandManager {
-  // "commandKeyBinding" is not typed, but used in the code, and it works. So, adding an explicit typing here
-  commandKeyBinding: Ace.CommandMap;
-}
 
 type ErrorWithMessage = { message: string; pos?: number; len?: number };
 
@@ -274,7 +268,7 @@ class ExpressionEditorTextfield extends React.Component<
 
     this.clearSuggestions();
 
-    const errorMessage = this.diagnoseExpression() as ErrorWithMessage | null;
+    const errorMessage = this.diagnoseExpression();
     this.setState({ errorMessage });
 
     // whenever our input blurs we push the updated expression to our parent if valid
@@ -308,8 +302,7 @@ class ExpressionEditorTextfield extends React.Component<
     if (this.input.current) {
       const { editor } = this.input.current;
       const { suggestions } = this.state;
-      const tabBinding = (editor.commands as CommandManager).commandKeyBinding
-        .tab;
+      const tabBinding = editor.commands.commandKeyBinding.tab;
       if (suggestions.length > 0) {
         // Something to suggest? Tab is for choosing one of them
         editor.commands.bindKey("Tab", editor.commands.byName.chooseSuggestion);
@@ -317,8 +310,7 @@ class ExpressionEditorTextfield extends React.Component<
         if (Array.isArray(tabBinding) && tabBinding.length > 1) {
           // No more suggestions? Keep a single binding and remove the
           // second one (added to choose a suggestion)
-          (editor.commands as CommandManager).commandKeyBinding.tab =
-            tabBinding.shift();
+          editor.commands.commandKeyBinding.tab = tabBinding.shift();
         }
       }
     }
@@ -335,7 +327,7 @@ class ExpressionEditorTextfield extends React.Component<
     return expression;
   }
 
-  diagnoseExpression() {
+  diagnoseExpression(): ErrorWithMessage | null {
     const { source } = this.state;
     const {
       query,

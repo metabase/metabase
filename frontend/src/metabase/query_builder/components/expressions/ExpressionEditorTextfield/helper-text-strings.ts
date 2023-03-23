@@ -1,8 +1,7 @@
 import { t } from "ttag";
 import moment from "moment-timezone";
-
-import type { Database } from "metabase-types/api";
 import { HelpText, HelpTextConfig } from "metabase-lib/expressions/types";
+import type Database from "metabase-lib/metadata/Database";
 import {
   formatIdentifier,
   formatStringLiteral,
@@ -973,7 +972,7 @@ See the full list here: https://w.wiki/4Jx`,
 
 export const getHelpText = (
   name: string,
-  database: Pick<Database, "features" | "engine">,
+  database: Database,
   reportTimezone?: string,
 ): HelpText | undefined => {
   const helperTextConfig = HELPER_TEXT_STRINGS.find(h => h.name === name);

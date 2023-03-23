@@ -27,11 +27,17 @@ export function countMatchingParentheses(tokens) {
 }
 
 /**
+ * @typedef {Object} ErrorWithMessage
+ * @property {string} message
+ */
+
+/**
  * @private
  * @param {string} source
  * @param {string} startRule
  * @param {object} query
  * @param {string | null} name
+ * @returns {ErrorWithMessage | null}
  */
 export function diagnose(source, startRule, query, name = null) {
   if (!source || source.length === 0) {
