@@ -107,15 +107,15 @@
       {:active true})
     ;; otherwise create a new Table
     (let [is-crufty? (is-crufty-table? table)]
-      (db/insert! Table
-        :db_id (u/the-id database)
-        :schema schema
-        :name table-name
-        :display_name (humanization/name->human-readable-name table-name)
-        :active true
-        :visibility_type (when is-crufty? :cruft)
-        ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
-        :initial_sync_status (if is-crufty? "complete" "incomplete")))))
+      (first (t2/insert-returning-instances! Table
+                                             :db_id (u/the-id database)
+                                             :schema schema
+                                             :name table-name
+                                             :display_name (humanization/name->human-readable-name table-name)
+                                             :active true
+                                             :visibility_type (when is-crufty? :cruft)
+                                             ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
+                                             :initial_sync_status (if is-crufty? "complete" "incomplete"))))))
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 

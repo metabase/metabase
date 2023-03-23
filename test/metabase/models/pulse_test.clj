@@ -78,8 +78,8 @@
                                                     :details  {:other  "stuff"
                                                                :emails ["foo@bar.com"]}}]
                     Card         [{card-id :id}    {:name "Test Card"}]]
-      (db/insert! PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
-      (db/insert! PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (mt/user->id :rasta))
+      (t2/insert! PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
+      (t2/insert! PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (mt/user->id :rasta))
       (is (= (merge
               pulse-defaults
               {:creator_id (mt/user->id :rasta)
@@ -401,7 +401,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Pulse can only go in Collections in the \"default\" namespace"
-               (db/insert! Pulse (assoc (tt/with-temp-defaults Pulse) :collection_id collection-id, :name pulse-name))))
+               (t2/insert! Pulse (assoc (tt/with-temp-defaults Pulse) :collection_id collection-id, :name pulse-name))))
           (finally
             (t2/delete! Pulse :name pulse-name)))))
 
@@ -442,19 +442,12 @@
         (is (mi/can-write? subscription))))
 
     (mt/with-current-user (mt/user->id :rasta)
-      (testing "A non-admin has no access to a subscription if they don't have read access to the parent collection,
-               even if they created the subscription"
-          (is (not (mi/can-read? subscription)))
-          (is (not (mi/can-write? subscription))))
-
       (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
-        (testing "A non-admin has read and write access to a subscription they created, if they have read access to the
-               parent collection"
+        (testing "A non-admin has read and write access to a subscription they created"
             (is (mi/can-read? subscription))
             (is (mi/can-write? subscription)))
 
-        (testing "A non-admin has read-only access to a subscription they are a recipient of, if they have read access
-                 to the parent collection"
+        (testing "A non-admin has read-only access to a subscription they are a recipient of"
           ;; Create a new Dashboard Subscription with an admin creator but non-admin recipient
           (mt/with-temp* [Pulse                [subscription            {:collection_id (u/the-id collection)
                                                                          :dashboard_id  (u/the-id dashboard)

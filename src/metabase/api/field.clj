@@ -209,7 +209,7 @@
                 {:type                    dimension-type
                  :name                    dimension-name
                  :human_readable_field_id human_readable_field_id})
-    (db/insert! Dimension
+    (t2/insert! Dimension
                 {:field_id                id
                  :type                    dimension-type
                  :name                    dimension-name
@@ -309,12 +309,12 @@
 (defn- create-field-values!
   [field-or-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
-    (db/insert! FieldValues
-      :type :full
-      :field_id (u/the-id field-or-id)
-      :values (map first value-pairs)
-      :human_readable_values (when human-readable-values?
-                               (map second value-pairs)))))
+    (t2/insert! FieldValues
+                :type :full
+                :field_id (u/the-id field-or-id)
+                :values (map first value-pairs)
+                :human_readable_values (when human-readable-values?
+                                         (map second value-pairs)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/values"

@@ -38,8 +38,6 @@
   [{:keys [timeline_id]}]
   (t2/select-one 'Timeline :id timeline_id))
 
-;(hydrate (t2/select-one 'TimelineEvent))
-
 (defn- fetch-events
   "Fetch events for timelines in `timeline-ids`. Can include optional `start` and `end` dates in the options map, as
   well as `all?`. By default, will return only unarchived events, unless `all?` is truthy and will return all events

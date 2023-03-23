@@ -76,4 +76,4 @@
    (db/update-where! ModerationReview {:moderated_item_id (:moderated_item_id params)
                                        :moderated_item_type (:moderated_item_type params)}
                      :most_recent false)
-   (db/insert! ModerationReview (assoc params :most_recent true))))
+   (first (t2/insert-returning-instances! ModerationReview (assoc params :most_recent true)))))

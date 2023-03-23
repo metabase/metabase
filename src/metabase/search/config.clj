@@ -132,9 +132,11 @@
 (defmethod columns-for-model "action"
   [_]
   (conj default-columns :model_id
-        [:model.collection_id :collection_id]
-        [:model.id            :model_id]
-        [:model.name          :model_name]))
+        [:model.collection_id        :collection_id]
+        [:model.id                   :model_id]
+        [:model.name                 :model_name]
+        [:query_action.database_id   :database_id]
+        [:query_action.dataset_query :dataset_query]))
 
 (defmethod columns-for-model "card"
   [_]
