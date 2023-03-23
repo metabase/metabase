@@ -29,11 +29,6 @@
 
 (set! *warn-on-reflection* true)
 
-(t2/select 'User :id 1)
-
-
-(t2/exists? 'User :id 1)
-(t2/exists? 'User :id 1)
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel User :core_user)
