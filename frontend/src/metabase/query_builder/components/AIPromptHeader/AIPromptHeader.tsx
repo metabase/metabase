@@ -33,7 +33,14 @@ const AIPromptHeader = ({
         <AIMetabotLogo />
         <MetabotReply>{metabotReply}</MetabotReply>
       </AIMetabotSection>
-      <AIPrompt user={user} onRun={onRun} onCancel={onCancel} />
+      <AIPrompt
+        user={user}
+        isDirty={false}
+        isRunning={false}
+        circular={false}
+        onRun={onRun}
+        onCancel={onCancel}
+      />
     </AIPromptHeaderRoot>
   );
 };

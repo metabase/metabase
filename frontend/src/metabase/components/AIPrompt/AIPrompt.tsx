@@ -46,7 +46,6 @@ const AIPrompt = ({
       </AIPromptInputContainer>
       <AIPromptActions>
         <RunButton
-          compact
           isRunning={isRunning}
           isDirty={isDirty}
           circular={circular}
