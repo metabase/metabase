@@ -130,6 +130,18 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`Enable X-ray features`,
         type: "boolean",
       },
+      {
+        key: "openai-api-key",
+        display_name: t`OpenAI API Key`,
+        description: null,
+        type: "string",
+      },
+      {
+        key: "openai-organization",
+        display_name: t`OpenAPI Organization ID`,
+        description: null,
+        type: "string",
+      },
     ],
   },
   updates: {
