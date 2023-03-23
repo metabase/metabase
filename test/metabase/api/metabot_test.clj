@@ -1,38 +1,97 @@
 (ns metabase.api.metabot-test
-  (:require [clojure.test :refer :all]
-   ;[metabase.models.permissions :as perms]
-   ;[metabase.models.permissions-group :as perms-group]
+  (:require [clojure.core.async :as a]
+            [clojure.test :refer :all]
             [metabase.api.common :as api]
+            [metabase.models :refer [Card Collection Database Field Metric Table]]
+            [metabase.query-processor.async :as qp.async]
             [metabase.test :as mt]
-   ;[schema.core :as s]
             [toucan2.core :as t2]))
+
+(deftest metabot-only-works-on-models-test
+  (testing "POST /api/metabot/model/:model-id"
+    (mt/dataset sample-dataset
+      (let [q        "At what time was the status closed for each user?"
+            response (mt/user-http-request :rasta :post 404
+                                           (format "/metabot/model/%s" (mt/id :people))
+                                           {:question q})]
+        (is (= "Not found." response))))))
+
+(defn- result-metadata-for-query [query]
+  (first
+   (a/alts!!
+    [(qp.async/result-metadata-for-query-async query)
+     (a/timeout 1000)])))
 
 (deftest simple-echo-test
   (testing "POST /api/metabot/model"
     (mt/dataset sample-dataset
-      (let [q "At what time was the status closed for each user?"
-            {:keys [sql_query original_question suggested_visualization]
-             :as   _response} (mt/user-http-request :rasta :post 200 "/metabot/model"
-                                                    {:database     (mt/id)
-                                                     :source-model (mt/id :people)
-                                                     :question     q
-                                                     :fake         true})]
-        (is (= original_question q))))))
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [source-query {:database (mt/id)
+                            :type     :query
+                            :query    (mt/$ids
+                                       {:source-table $$orders
+                                        :joins        [{:fields       [&u.people.state
+                                                                       &u.people.longitude
+                                                                       &u.people.latitude]
+                                                        :source-table $$people
+                                                        :condition    [:= $orders.user_id &u.people.id]}
+                                                       {:fields       [&u.products.price]
+                                                        :source-table $$products
+                                                        :condition    [:= $orders.product_id &u.products.id]}]
+                                        :fields       [$orders.created_at]})}]
+          (mt/with-temp* [Collection [{collection-id :id}]
+                          Card [{model-id :id} {:table_id        (mt/id :products)
+                                                :collection_id   collection-id
+                                                :dataset_query   source-query
+                                                :result_metadata (mt/with-test-user
+                                                                   :rasta
+                                                                   (result-metadata-for-query
+                                                                    source-query))
+                                                :dataset         true}]]
+            (let [q "At what time was the status closed for each user?"
+                  {:keys [original_question
+                          assertions
+                          sql_query
+                          database_id
+                          id
+                          suggested_visualization]
+                   :as   response} (mt/user-http-request
+                                    :rasta
+                                    :post
+                                    200
+                                    (format "/metabot/model/%s" model-id)
+                                    {:question q
+                                     :fake     true})]
+              (is (= original_question q))
+              (is (seq? assertions))
+              (is (= "SELECT * FROM THIS IS FAKE TO NOT BURN CREDITS" sql_query))
+              (is (= (mt/id) database_id))
+              (is (= model-id id))
+              (is (map? suggested_visualization)))))))))
 
 (comment
+  ;; The following are example based and assume you have a model locally with the given id
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user*                 (delay (t2/select-one 'User :id 1))]
     (mt/user-http-request
-     :rasta :post 200 "/metabot/model"
-     {:database     1
-      :source-model 1036
-      :question     "What is the total price of all purchases in the state of CA?"}))
+     :rasta :post 200 (format "/metabot/model/%s" 1036)
+     {:question     "What is the total price of all purchases in the state of CA?"}))
 
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user*                 (delay (t2/select-one 'User :id 1))]
     (mt/user-http-request
-     :rasta :post 200 "/metabot/model"
-     {:database     1
-      :source-model 1036
-      :question     "What is the average rating of items in the mountain west?"}))
+     :rasta :post 200 (format "/metabot/model/%s" 1036)
+     {:question     "What is the average rating of items in the mountain west?"}))
+
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user*                 (delay (t2/select-one 'User :id 1))]
+    (mt/user-http-request
+     :rasta :post 200 (format "/metabot/model/%s" 1036)
+     {:question     "What is the average rating of items in the mountain west?"}))
+
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user*                 (delay (t2/select-one 'User :id 1))]
+    (mt/user-http-request
+     :rasta :post 200 (format "/metabot/model/%s" 1036)
+     {:question     "In which states do Doohickeys sell the best?"}))
   )

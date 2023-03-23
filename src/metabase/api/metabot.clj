@@ -26,7 +26,9 @@
   (str "You are a helpful assistant that writes SQL based on my input."
        "Don't explain your answer, just show me the SQL."))
 
-(defn column-types [{:keys [result_metadata]}]
+(defn- column-types
+  "Given a model, provide a set of statements about each column type and display name."
+  [{:keys [result_metadata]}]
   (map (fn [{:keys [name display_name description]}]
          (format "The column '%s' has a display name of '%s' and is described as '%s'"
                  name
@@ -34,7 +36,9 @@
                  description))
        result_metadata))
 
-(defn enumerated-values [{:keys [result_metadata]}]
+(defn- enumerated-values
+  "Given a model, provide a set of statements about which values a column may take on."
+  [{:keys [result_metadata]}]
   (for [{column-name :name :keys [id]} result_metadata
         :let [{:keys [values]} (t2/select-one FieldValues :field_id id)]
         :when (seq values)]
@@ -42,9 +46,13 @@
             column-name
             (str/join ", " (map (partial format "'%s'") values)))))
 
-(defn model-messages [model-id]
-  (let [{model-name :name :keys [result_metadata] :as model} (t2/select-one [Card :name :result_metadata] :id model-id)
-        col-names (str/join ", " (map (comp (partial format "'%s'") :name) result_metadata))]
+(defn model-messages
+  "Given a model, provide a set of statements about this model, including:
+   - The model name (called a table)
+   - The types in each column and column aliases
+   - What types the column may take on, if low cardinality"
+  [{model-name :name :keys [result_metadata] :as model}]
+  (let [col-names (str/join ", " (map (comp (partial format "'%s'") :name) result_metadata))]
     (map
      (fn [s] {:role "assistant" :content s})
      (reduce
@@ -68,15 +76,15 @@
   (model-messages 1036)
   )
 
-(defn write-sql [model-id prompt]
+(defn write-sql [model-assertions prompt]
   (openai.api/create-chat-completion
    {:model    "gpt-3.5-turbo"
     :messages (conj
                (into
                 [{:role "system" :content bot-directions}]
-                (model-messages model-id))
+                model-assertions)
                {:role "user" :content prompt})}
-   {:api-key (openai-api-key)
+   {:api-key      (openai-api-key)
     :organization (openai-organization)}))
 
 (def dataset-result
@@ -157,23 +165,27 @@
      :insights         nil}})
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/model"
-  "Fetch a native version of an MBQL query."
-  [:as {{:keys [database source-model question fake] :as x} :body}]
-  (tap> x)
+(api/defendpoint-schema POST "/model/:model-id"
+  "Ask Metabot to generate a SQL query given a prompt about a given model."
+  [model-id :as {{:keys [question fake] :as body} :body}]
+  (tap> {:model-id model-id
+         :request  body})
   (binding [persisted-info/*allow-persisted-substitution* false]
     ;(qp.perms/check-current-user-has-adhoc-native-query-perms query)
-    (let [response {:sql_query               (cond
-                                               fake "SELECT * FROM THIS IS FAKE TO NOT BURN CREDITS"
-                                               (and
-                                                (openai-api-key)
-                                                (openai-organization)) (->> (:choices (write-sql source-model question)) first :message :content)
-                                               :else "Set OPENAI_API_KEY and OPENAI_ORGANIZATION env vars and relaunch!")
-                    :original_question       question
-                    :database_id             database
-                    :model_id                source-model
-                    ;; Hard coded dataset result. Has nothing to do with any of the above.
-                    :suggested_visualization [dataset-result]}]
+    (let [{:keys [database_id] :as model} (api/check-404 (t2/select-one Card :id model-id))
+          model-assertions (model-messages model)
+          response         {:original_question       question
+                            :assertions              (mapv :content model-assertions)
+                            :sql_query               (cond
+                                                       fake "SELECT * FROM THIS IS FAKE TO NOT BURN CREDITS"
+                                                       (and
+                                                        (openai-api-key)
+                                                        (openai-organization)) (->> (:choices (write-sql model-assertions question)) first :message :content)
+                                                       :else "Set MB_OPENAI_API_KEY and MB_OPENAI_ORGANIZATION env vars and relaunch!")
+                            :database_id             database_id
+                            :id                      model-id
+                            ;; Hard coded dataset result. Has nothing to do with any of the above.
+                            :suggested_visualization dataset-result}]
       (tap> response)
       response)))
 
