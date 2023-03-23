@@ -74,8 +74,7 @@
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
     (when (and dimension-id (= :external dimension-type))
-      (t2/delete! Dimension :id dimension-id)))
-  true)
+      (t2/delete! Dimension :id dimension-id))))
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
   (and (not= old-semantic-type new-semantic-type)
