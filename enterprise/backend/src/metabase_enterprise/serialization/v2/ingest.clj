@@ -40,7 +40,7 @@
   "Convert suitable string keys to clojure keywords, ignoring keys with whitespace, etc."
   [{k :key}]
   (if (re-matches #"^[0-9a-zA-Z_\./\-]+$" k)
-    (apply keyword (str/split k #"/"))
+    (keyword k)
     k))
 
 (defn- strip-labels
