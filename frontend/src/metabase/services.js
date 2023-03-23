@@ -510,5 +510,5 @@ export const ActionsApi = {
 };
 
 export const MetabotApi = {
-  modelPrompt: POST("/api/metabot/model"),
+  modelPrompt: POST("/api/metabot/model/:id"),
 };

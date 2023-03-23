@@ -24,7 +24,7 @@ function Metabot({ user, metadata, modelCard }) {
 
   const handleRun = async prompt => {
     const result = await MetabotApi.modelPrompt({
-      "source-model": modelCard.id,
+      id: modelCard.id,
       question: prompt,
     });
 
