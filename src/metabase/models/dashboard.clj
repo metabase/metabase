@@ -349,7 +349,7 @@
 
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
-  (let [c (db/count Collection
+  (let [c (t2/count Collection
             :name     [:like (format "%s%%" collection-name)]
             :location (collection/children-location (t2/select-one [Collection :location :id]
                                                       :id parent-collection-id)))]

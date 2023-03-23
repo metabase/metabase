@@ -16,7 +16,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.sql ResultSet)))
@@ -101,7 +100,7 @@
 
 (defn- count-active-tables-in-db
   [db-id]
-  (db/count Table
+  (t2/count Table
     :db_id  db-id
     :active true))
 

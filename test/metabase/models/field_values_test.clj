@@ -133,7 +133,7 @@
       (is (= :full (-> (t2/select-one Field :id (mt/id :categories :name))
                        field-values/get-or-create-full-field-values!
                        :type))
-          (is (= 1 (db/count FieldValues :field_id (mt/id :categories :name) :type :full))))
+          (is (= 1 (t2/count FieldValues :field_id (mt/id :categories :name) :type :full))))
 
       (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
         (mt/with-temp FieldValues [_ {:field_id (mt/id :categories :name)
@@ -272,7 +272,7 @@
                                            :hash_key "random-hash"}]]
     (t2/insert! FieldValues {:field_id (mt/id :venues :id)
                              :type     :full})
-    (is (not (db/exists? FieldValues :id (:id sandbox-fv))))))
+    (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
 
 (deftest update-full-field-values-should-remove-all-cached-field-values
   (mt/with-temp* [FieldValues [fv         {:field_id (mt/id :venues :id)
@@ -281,7 +281,7 @@
                                            :type     :sandbox
                                            :hash_key "random-hash"}]]
     (t2/update! FieldValues (:id fv) {:values [1 2 3]})
-    (is (not (db/exists? FieldValues :id (:id sandbox-fv))))))
+    (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
 
 (deftest cant-update-type-or-has-of-a-field-values-test
   (mt/with-temp FieldValues [fv {:field_id (mt/id :venues :id)
