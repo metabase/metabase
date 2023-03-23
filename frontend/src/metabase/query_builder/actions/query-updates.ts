@@ -14,7 +14,8 @@ export const setLimit =
       return;
     }
     const query = question._getMLv2Query();
-    const nextV2Query = MetabaseLib.limit(query, limit);
-    const nextV1Query = MetabaseLib.toV1Query(nextV2Query);
-    dispatch(updateQuestion(nextV1Query, { run: true }));
+    const nextQuery = MetabaseLib.limit(query, limit);
+    const nextLegacyQuery = MetabaseLib.toLegacyQuery(nextQuery);
+    const nextQuestion = question.setDatasetQuery(nextLegacyQuery);
+    dispatch(updateQuestion(nextQuestion, { run: true }));
   };

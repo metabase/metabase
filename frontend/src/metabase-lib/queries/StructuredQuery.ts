@@ -134,7 +134,7 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   private updateWithMLv2(nextQuery: MLv2Query) {
-    const nextMLv1Query = MLv2.toV1Query(nextQuery);
+    const nextMLv1Query = MLv2.toLegacyQuery(nextQuery);
     return this.setDatasetQuery(nextMLv1Query);
   }
 
