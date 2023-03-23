@@ -27,6 +27,34 @@ export function duration(milliseconds: number) {
   return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
 }
 
+export function fullDuration(milliseconds: number) {
+  const SECOND = 1000;
+  const MINUTE = 60 * SECOND;
+  const HOUR = 60 * MINUTE;
+
+  let text = [];
+  if (milliseconds >= HOUR) {
+    const hours = Math.round(milliseconds / HOUR);
+    text.push(ngettext(msgid`${hours} hr`, `${hours} hrs`, hours));
+    milliseconds -= hours * HOUR;
+  }
+  if (milliseconds >= MINUTE) {
+    const minutes = Math.round(milliseconds / MINUTE);
+    text.push(ngettext(msgid`${minutes} min`, `${minutes} mins`, minutes)) ;
+    milliseconds -= minutes * MINUTE;
+  }
+  if (milliseconds >= SECOND) {
+    const seconds = Math.round(milliseconds / SECOND);
+    text.push(ngettext(msgid`${seconds} s`, `${seconds} s`, seconds));
+    milliseconds -= seconds * SECOND;
+  }
+  if (milliseconds > 0) {
+    text.push(ngettext(msgid`${milliseconds} ms`, `${milliseconds} ms`, milliseconds));
+  }
+
+  return text.join(' ');
+}
+
 export function formatTime(time: Moment) {
   const parsedTime = parseTime(time);
 

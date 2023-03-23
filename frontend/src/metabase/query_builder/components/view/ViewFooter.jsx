@@ -23,6 +23,7 @@ import QuestionTimelineWidget from "./QuestionTimelineWidget";
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionLastUpdated from "./QuestionLastUpdated";
 import { ViewFooterRoot, FooterButtonGroup } from "./ViewFooter.styled";
+import QuestionRunningTime from "./QuestionRunningTime";
 
 const ViewFooter = ({
   question,
@@ -129,6 +130,19 @@ const ViewFooter = ({
               className="mx1"
               question={question}
               isResultDirty={isResultDirty}
+              result={result}
+              onQueryChange={onQueryChange}
+            />
+          ),
+          QuestionRunningTime.shouldRender({
+            question,
+            result,
+            isObjectDetail,
+          }) && (
+            <QuestionRunningTime
+              key="running_time"
+              className="mx1"
+              question={question}
               result={result}
               onQueryChange={onQueryChange}
             />
