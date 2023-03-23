@@ -1091,11 +1091,11 @@
   [user-or-id]
   (or (user->existing-personal-collection user-or-id)
       (try
-        (db/insert! Collection
-          :name              (user->personal-collection-name user-or-id :site)
-          :personal_owner_id (u/the-id user-or-id)
-          ;; a nice slate blue color
-          :color             "#31698A")
+        (first (t2/insert-returning-instances! Collection
+                                               :name              (user->personal-collection-name user-or-id :site)
+                                               :personal_owner_id (u/the-id user-or-id)
+                                               ;; a nice slate blue color
+                                               :color             "#31698A"))
         ;; if an Exception was thrown why trying to create the Personal Collection, we can assume it was a race
         ;; condition where some other thread created it in the meantime; try one last time to fetch it
         (catch Throwable _

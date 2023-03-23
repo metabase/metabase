@@ -67,7 +67,7 @@
       (testing msg
         (is (thrown?
              Exception
-             (db/insert! Collection {:name "My Favorite Cards", :color input})))))))
+             (t2/insert! Collection {:name "My Favorite Cards", :color input})))))))
 
 (deftest with-temp-defaults-test
   (testing "double-check that `with-temp-defaults` are working correctly for Collection"
@@ -360,7 +360,7 @@
 (defmacro ^:private with-collection-in-location [[collection-binding location] & body]
   `(let [name# (mt/random-name)]
      (try
-       (let [~collection-binding (db/insert! Collection :name name#, :color "#ABCDEF", :location ~location)]
+       (let [~collection-binding (first (t2/insert-returning-instances! Collection :name name#, :color "#ABCDEF", :location ~location))]
          ~@body)
        (finally
          (t2/delete! Collection :name name#)))))
@@ -1432,7 +1432,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Collection must be in the same namespace as its parent"
-             (db/insert! Collection
+             (t2/insert! Collection
                {:location  (format "/%d/" (:id parent-collection))
                 :color     "#F38630"
                 :name      "Child Collection"
@@ -1459,7 +1459,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Personal Collections must be in the default namespace"
-           (db/insert! Collection
+           (t2/insert! Collection
              {:color             "#F38630"
               :name              "Personal Collection"
               :namespace         "x"

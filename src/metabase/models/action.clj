@@ -101,7 +101,7 @@
   "Inserts an Action and related type table. Returns the action id."
   [action-data]
   (db/transaction
-    (let [action (db/insert! Action (select-keys action-data action-columns))
+    (let [action (first (t2/insert-returning-instances! Action (select-keys action-data action-columns)))
           model  (type->model (:type action))]
       (db/execute! {:insert-into (t2/table-name model)
                     :values [(-> (apply dissoc action-data action-columns)
@@ -130,7 +130,7 @@
       (if (and (:type action) (not= (:type action) (:type existing-action)))
         (let [new-model (type->model (:type action))]
           (t2/delete! existing-model :action_id id)
-          (db/insert! new-model (assoc type-row :action_id id)))
+          (t2/insert! new-model (assoc type-row :action_id id)))
         (t2/update! existing-model id type-row)))))
 
 (defn- hydrate-subtype [action]

@@ -52,7 +52,7 @@
     (api/check (not (t2/exists? bookmark-model item-key id
                                 :user_id api/*current-user-id*))
       [400 "Bookmark already exists"])
-    (db/insert! bookmark-model {item-key id :user_id api/*current-user-id*})))
+    (first (t2/insert-returning-instances! bookmark-model {item-key id :user_id api/*current-user-id*}))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:model/:id"

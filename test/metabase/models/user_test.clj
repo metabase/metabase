@@ -245,7 +245,7 @@
 (defn- do-with-group [group-properties group-members f]
   (mt/with-temp PermissionsGroup [group group-properties]
     (doseq [member group-members]
-      (db/insert! PermissionsGroupMembership
+      (t2/insert! PermissionsGroupMembership
         {:group_id (u/the-id group)
          :user_id  (if (keyword? member)
                      (mt/user->id member)
@@ -417,7 +417,7 @@
     (testing "should clear out all existing Sessions"
       (mt/with-temp* [User [{user-id :id}]]
         (dotimes [_ 2]
-          (db/insert! Session {:id (str (java.util.UUID/randomUUID)), :user_id user-id}))
+          (t2/insert! Session {:id (str (java.util.UUID/randomUUID)), :user_id user-id}))
         (letfn [(session-count [] (t2/count Session :user_id user-id))]
           (is (= 2
                  (session-count)))
@@ -488,7 +488,7 @@
              (serdes/identity-hash user))))))
 
 (deftest hash-password-on-update-test
-  (testing "Setting `:password` with [[t2/update!]] should hash the password, just like [[db/insert!]]"
+  (testing "Setting `:password` with [[t2/update!]] should hash the password, just like [[t2/insert!]]"
     (let [plaintext-password "password-1234"]
       (mt/with-temp User [{user-id :id} {:password plaintext-password}]
         (let [salt                     (fn [] (t2/select-one-fn :password_salt User :id user-id))

@@ -150,7 +150,7 @@
 (defmethod process-activity! :install
   [& _]
   (when-not (t2/exists? Activity :topic "install")
-    (db/insert! Activity, :topic "install", :model "install")))
+    (t2/insert! Activity, :topic "install", :model "install")))
 
 (defn process-activity-event!
   "Handle processing for a single event notification received on the activity-feed-channel"

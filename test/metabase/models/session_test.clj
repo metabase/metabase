@@ -4,7 +4,6 @@
    [metabase.models.session :as session :refer [Session]]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")
@@ -13,7 +12,7 @@
   ;; the way we'd expect :/
 (defn- new-session []
   (try
-    (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)})
+    (first (t2/insert-returning-instances! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)}))
     (finally
       (t2/delete! Session :id (str test-uuid)))))
 

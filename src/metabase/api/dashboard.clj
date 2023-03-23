@@ -101,7 +101,7 @@
                         ;; position, check that and fix up if needed
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
-                        (db/insert! Dashboard dashboard-data))]
+                        (first (t2/insert-returning-instances! Dashboard dashboard-data)))]
     (events/publish-event! :dashboard-create dash)
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
     (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
@@ -340,7 +340,7 @@
                         ;; collection to change position, check that and fix up if needed
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
-                        (let [dash (db/insert! Dashboard dashboard-data)
+                        (let [dash (first (t2/insert-returning-instances! Dashboard dashboard-data))
                               {id->new-card :copied uncopied :uncopied}
                               (when is_deep_copy
                                 (duplicate-cards existing-dashboard collection_id))]

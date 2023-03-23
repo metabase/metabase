@@ -270,7 +270,7 @@
   (mt/with-temp* [FieldValues [sandbox-fv {:field_id (mt/id :venues :id)
                                            :type     :sandbox
                                            :hash_key "random-hash"}]]
-    (db/insert! FieldValues {:field_id (mt/id :venues :id)
+    (t2/insert! FieldValues {:field_id (mt/id :venues :id)
                              :type     :full})
     (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
 

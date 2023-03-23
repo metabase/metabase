@@ -358,7 +358,7 @@
   [original-value setting-k value]
   (if original-value
     (t2/update! Setting setting-k {:value value})
-    (db/insert! Setting :key setting-k :value value))
+    (t2/insert! Setting :key setting-k :value value))
   (setting.cache/restore-cache!))
 
 (defn- restore-raw-setting!
@@ -660,7 +660,7 @@
       (let [card-count-before (t2/count Card)
             card-name         (tu.random/random-name)]
         (with-model-cleanup [Card]
-          (db/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
+          (t2/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
           (testing "Card count should have increased by one"
             (is (= (inc card-count-before)
                    (t2/count Card))))
