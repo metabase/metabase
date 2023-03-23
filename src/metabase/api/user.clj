@@ -204,6 +204,7 @@
         perms-query {:where [:and
                              [:= :archived false]
                              coll-ids-filter]}]
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (assoc user :has_question_and_dashboard (and (db/exists? 'Card (perms-query user))
                                                  (db/exists? 'Dashboard (perms-query user))))))
 

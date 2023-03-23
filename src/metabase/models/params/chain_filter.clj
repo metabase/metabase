@@ -85,7 +85,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;; so the hydration method for name_field is loaded
@@ -647,7 +646,7 @@
 (defn- search-cached-field-values? [field-id constraints]
   (and (use-cached-field-values? field-id)
        (isa? (t2/select-one-fn :base_type Field :id field-id) :type/Text)
-       (apply db/exists? FieldValues (mapcat
+       (apply t2/exists? FieldValues (mapcat
                                        identity
                                        (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
                                               ;; if we are doing a search, make sure we only use field values
