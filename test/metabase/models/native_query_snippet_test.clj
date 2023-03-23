@@ -4,7 +4,6 @@
    [metabase.models :refer [Collection NativeQuerySnippet]]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))
@@ -49,7 +48,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
-             (db/insert! NativeQuerySnippet
+             (t2/insert! NativeQuerySnippet
                {:name          (mt/random-name)
                 :content       "1 = 1"
                 :creator_id    (mt/user->id :rasta)

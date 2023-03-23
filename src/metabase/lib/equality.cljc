@@ -41,7 +41,7 @@
                       (get m2 k)))
                  m1-keys))))
 
-(defmethod = :dispatch-type/sequence
+(defmethod = :dispatch-type/sequential
   [xs ys]
   (and (clojure.core/= (count xs) (count ys))
        (loop [[x & more-x] xs, [y & more-y] ys]
@@ -54,6 +54,6 @@
 (defmethod = :default
   [x y]
   (cond
-    (map? x)        ((get-method = :dispatch-type/map) x y)
-    (sequential? x) ((get-method = :dispatch-type/sequence) x y)
-    :else           (clojure.core/= x y)))
+    (map? x)                   ((get-method = :dispatch-type/map) x y)
+    (sequential? x)            ((get-method = :dispatch-type/sequential) x y)
+    :else                      (clojure.core/= x y)))

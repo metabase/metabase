@@ -46,7 +46,7 @@
          (if catch?
            (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
            (throw e))))
-      (db/insert! DataMigrations
+      (t2/insert! DataMigrations
         :id        migration-name
         :timestamp :%now))))
 
