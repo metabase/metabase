@@ -98,9 +98,9 @@ describe("QuestionRowCount", () => {
         });
 
         it("allows setting a limit", async () => {
-          const { getNextQuery } = setup({ question });
+          const { rowCount, getNextQuery } = setup({ question });
 
-          userEvent.click(screen.getByTestId("trigger"));
+          userEvent.click(rowCount);
           const input = await screen.findByPlaceholderText("Pick a limit");
           fireEvent.change(input, { target: { value: "25" } });
           fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
@@ -112,11 +112,11 @@ describe("QuestionRowCount", () => {
 
         it("allows updating a limit", async () => {
           const query = question.query() as StructuredQuery;
-          const { getNextQuery } = setup({
+          const { rowCount, getNextQuery } = setup({
             question: query.updateLimit(25).question(),
           });
 
-          userEvent.click(screen.getByTestId("trigger"));
+          userEvent.click(rowCount);
           const input = await screen.findByDisplayValue("25");
           fireEvent.change(input, { target: { value: "400" } });
           fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
@@ -128,11 +128,11 @@ describe("QuestionRowCount", () => {
 
         it("allows resetting a limit", async () => {
           const query = question.query() as StructuredQuery;
-          const { getNextQuery } = setup({
+          const { rowCount, getNextQuery } = setup({
             question: query.updateLimit(25).question(),
           });
 
-          userEvent.click(screen.getByTestId("trigger"));
+          userEvent.click(rowCount);
           userEvent.click(
             await screen.findByRole("radio", { name: /Show maximum/i }),
           );
@@ -144,9 +144,15 @@ describe("QuestionRowCount", () => {
 
         it("doesn't allow managing limit if query is read-only", () => {
           question.query().isEditable = () => false;
-          setup({ question });
+          const { rowCount } = setup({ question });
 
-          expect(screen.queryByTestId("trigger")).not.toBeInTheDocument();
+          expect(
+            screen.queryByRole("button", { name: "Row count" }),
+          ).not.toBeInTheDocument();
+
+          userEvent.click(rowCount);
+
+          expect(screen.queryByTestId("limit-popover")).not.toBeInTheDocument();
         });
       });
     });
@@ -191,9 +197,15 @@ describe("QuestionRowCount", () => {
 
         it("doesn't allow managing limit", () => {
           question.query().isEditable = () => false;
-          setup({ question });
+          const { rowCount } = setup({ question });
 
-          expect(screen.queryByTestId("trigger")).not.toBeInTheDocument();
+          expect(
+            screen.queryByRole("button", { name: "Row count" }),
+          ).not.toBeInTheDocument();
+
+          userEvent.click(rowCount);
+
+          expect(screen.queryByTestId("limit-popover")).not.toBeInTheDocument();
         });
       });
     });

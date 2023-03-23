@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { ngettext, msgid, t } from "ttag";
+import cx from "classnames";
 
 import { formatNumber } from "metabase/lib/formatting";
 
@@ -29,7 +30,7 @@ function QuestionRowCount({
 }: QuestionRowCountProps) {
   const message = useMemo(() => {
     if (!question.isStructured()) {
-      return isResultDirty ? null : getRowCountMessage(result);
+      return isResultDirty ? "" : getRowCountMessage(result);
     }
     return isResultDirty
       ? getLimitMessage(question.query() as StructuredQuery, result)
@@ -45,37 +46,66 @@ function QuestionRowCount({
     }
   };
 
-  let content: React.ReactNode = message;
+  const canChangeLimit =
+    question.isStructured() && question.query().isEditable();
 
-  if (question.isStructured() && question.query().isEditable()) {
-    const query = question.query() as StructuredQuery;
-    const limit = query.limit();
-
-    content = (
-      <PopoverWithTrigger
-        triggerElement={
-          <span className="text-brand-hover text-bold" data-testid="trigger">
-            {message}
-          </span>
-        }
-        triggerClasses={limit != null ? "text-brand" : ""}
-      >
-        {({ onClose }: { onClose: () => void }) => (
-          <LimitPopover
-            className="p2"
-            limit={limit}
-            onChangeLimit={handleLimitChange}
-            onClose={onClose}
-          />
-        )}
-      </PopoverWithTrigger>
-    );
-  }
+  const limit = canChangeLimit
+    ? (question.query() as StructuredQuery).limit()
+    : null;
 
   return (
-    <span className={className} aria-label={t`Row count`}>
-      {content}
-    </span>
+    <PopoverWithTrigger
+      triggerElement={
+        <RowCountLabel
+          className={className}
+          highlighted={limit != null}
+          disabled={!canChangeLimit}
+        >
+          {message}
+        </RowCountLabel>
+      }
+      disabled={!canChangeLimit}
+    >
+      {({ onClose }: { onClose: () => void }) => (
+        <LimitPopover
+          className="p2"
+          limit={limit}
+          onChangeLimit={handleLimitChange}
+          onClose={onClose}
+        />
+      )}
+    </PopoverWithTrigger>
+  );
+}
+
+function RowCountLabel({
+  children,
+  highlighted,
+  disabled,
+  className,
+}: {
+  children: string;
+  highlighted: boolean;
+  disabled: boolean;
+  className?: string;
+}) {
+  const Element = disabled ? "span" : "button";
+  return (
+    <Element
+      className={cx(
+        "text-bold text-medium",
+        {
+          "cursor-pointer": !disabled,
+          "text-brand-hover": !disabled,
+          "text-hover": highlighted,
+        },
+        className,
+      )}
+      disabled={disabled}
+      aria-label={t`Row count`}
+    >
+      {children}
+    </Element>
   );
 }
 
