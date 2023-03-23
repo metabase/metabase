@@ -3,10 +3,12 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.api.common :as api]
+            [metabase.api.metabot :as metabot]
             [metabase.db.query :as mdb.query]
             [metabase.models :refer [Card Collection Database Field Metric Table]]
             [metabase.query-processor.async :as qp.async]
             [metabase.test :as mt]
+            [metabase.util :as u]
             [toucan2.core :as t2]))
 
 (deftest metabot-only-works-on-models-test
@@ -109,7 +111,7 @@
 
  ```
  SELECT SOURCE, AVG(RATING) as AVERAGE_RATING
- FROM `My Model 2`
+ FROM \"My Model 2\"
  GROUP BY SOURCE
  ORDER BY AVERAGE_RATING DESC
  ```
@@ -117,5 +119,11 @@
  This will group the data by SOURCE and calculate the average rating for each one. The results will be ordered in descending order based on the average rating, which will help you identify which SOURCE has the highest rating.")
 
 
-;(let [[_pre sql _post] (str/split example-response #"```")]
-;  (mdb.query/format-sql sql))
+(let [[_pre sql _post] (str/split example-response #"```")]
+  (metabot/standardize-name
+   (t2/select-one Card :id 1036)
+   (mdb.query/format-sql sql)))
+
+(t2/select-one Card :id 1036)
+
+(u/slugify (:name (t2/select-one Card :id 1036)))
