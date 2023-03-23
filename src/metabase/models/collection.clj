@@ -626,10 +626,11 @@
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived false))]
     (db/transaction
-      (t2/query {:update :collection
-                 :set    {:archived false}
-                 :where  [:and [:in :id affected-collection-ids]
-                               [:= :archived false]]})
+      ;; call with table-name to avoid trigger pre-update hooks which will make this run into a ∞ loop
+      (t2/update! (t2/table-name Collection)
+                  {:id       [:in affected-collection-ids]
+                   :archived false}
+                  {:archived true})
       (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
         (t2/update! model {:collection_id [:in affected-collection-ids]
                            :archived      false}
@@ -641,10 +642,11 @@
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived true))]
     (db/transaction
-      (t2/query {:update :collection
-                 :set    {:archived false}
-                 :where  [:and [:in :id affected-collection-ids]
-                               [:= :archived false]]})
+      ;; call with table-name to avoid trigger pre-update hooks which will make this run into a ∞ loop
+      (t2/update! (t2/table-name Collection)
+               {:id       [:in affected-collection-ids]
+                :archived true}
+               {:archived false})
      (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
        (t2/update! model {:collection_id [:in affected-collection-ids]
                           :archived      true}

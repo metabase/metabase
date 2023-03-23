@@ -738,7 +738,8 @@ saved later when it is ready."
         (when-let [cards-without-position (seq (for [card cards
                                                      :when (not (:collection_position card))]
                                                  (u/the-id card)))]
-          (t2/update! Card {:id [:in (set cards-without-position)]}
+          (t2/update! Card
+                      {:id [:in (set cards-without-position)]}
                       {:collection_id new-collection-id-or-nil}))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

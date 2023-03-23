@@ -6,7 +6,6 @@
    [metabase.api.user :as api.user]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
