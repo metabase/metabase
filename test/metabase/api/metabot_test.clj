@@ -120,7 +120,7 @@
    This will group the data by SOURCE and calculate the average rating for each one. The results will be ordered in descending order based on the average rating, which will help you identify which SOURCE has the highest rating.")
 
   (metabot/extract-sql
-   "The SQL query to find the total price of all purchases in the state of CA would be:\n\n```sql\nSELECT SUM(PRICE) as total_price\nFROM \"My Model 2\"\nWHERE STATE = 'CA';\n```")
+   "The SQL query to find the total price of all purchases in the state of CA would be:\n\n```SQL\nSELECT SUM(PRICE) as total_price\nFROM \"My Model 2\"\nWHERE STATE = 'CA';\n```")
 
   (let [[_pre sql _post] (str/split example-response #"```")]
     (metabot/standardize-name

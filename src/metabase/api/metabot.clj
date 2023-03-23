@@ -90,7 +90,7 @@
     :organization (openai-organization)}))
 
 (defn extract-sql [bot-response]
-  (let [[_pre sql _post] (str/split bot-response #"```(sql)?")]
+  (let [[_pre sql _post] (str/split bot-response #"```(sql|SQL)?")]
     (when sql (mdb.query/format-sql sql))))
 
 (defn standardize-name [{:keys [id name] :as _model} sql]
