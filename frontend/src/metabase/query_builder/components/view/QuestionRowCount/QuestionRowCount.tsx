@@ -57,7 +57,7 @@ function QuestionRowCount({
 
   // Shown based on a query that has been run
   let resultMessage;
-  if (result.data.rows_truncated != null) {
+  if (result.data.rows_truncated > 0) {
     resultMessage = t`Showing first ${formatRowCount(result.row_count)}`;
   } else if (result.row_count === HARD_ROW_LIMIT) {
     resultMessage = cappedMessage;
@@ -98,7 +98,11 @@ function QuestionRowCount({
     content = message;
   }
 
-  return <span className={className}>{content}</span>;
+  return (
+    <span className={className} aria-label={t`Row count`}>
+      {content}
+    </span>
+  );
 }
 
 QuestionRowCount.shouldRender = ({
