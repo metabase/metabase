@@ -10,7 +10,6 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.hydrate :as hydrate]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]

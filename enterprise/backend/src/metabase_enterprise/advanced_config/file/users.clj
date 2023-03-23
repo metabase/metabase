@@ -6,7 +6,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/first_name

@@ -19,7 +19,6 @@
     :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

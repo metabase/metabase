@@ -27,7 +27,6 @@
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :as hydrate]
    [toucan2.core :as t2]))
 

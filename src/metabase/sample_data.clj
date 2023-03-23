@@ -9,7 +9,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [ring.util.codec :as codec]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.net URL)))
