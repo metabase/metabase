@@ -37,28 +37,6 @@ export const OPERATOR_PRECEDENCE = {
   or: 5,
 };
 
-export const EXPRESSION_TYPES = [
-  "expression",
-  "aggregation",
-  "boolean",
-  "string",
-  "number",
-];
-
-export const EXPRESSION_SUBTYPES = {
-  // can't currently add "boolean" as a subtype of expression due to conflict between segments and fields
-  expression: new Set(["string", "number"]),
-};
-
-export const isExpressionType = (typeA, typeB) =>
-  typeA === typeB ||
-  (EXPRESSION_SUBTYPES[typeB] && EXPRESSION_SUBTYPES[typeB].has(typeA)) ||
-  false;
-
-export function getFunctionArgType(clause, index) {
-  return clause.multiple ? clause.args[0] : clause.args[index];
-}
-
 export const MBQL_CLAUSES = {
   // aggregation functions
   count: { displayName: `Count`, type: "aggregation", args: [] },
@@ -502,12 +480,12 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "coalesce",
 ]);
 
-export const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
+const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
 export const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
 
-export const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);
-export const LOGICAL_AND_OPERATOR = new Set(["and"]);
-export const LOGICAL_OR_OPERATOR = new Set(["or"]);
+const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);
+const LOGICAL_AND_OPERATOR = new Set(["and"]);
+const LOGICAL_OR_OPERATOR = new Set(["or"]);
 
 export const FUNCTIONS = new Set([
   ...EXPRESSION_FUNCTIONS,
