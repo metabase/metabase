@@ -6,6 +6,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
+import { MetabotApi } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
@@ -24,6 +25,7 @@ import {
   getIsResultDirty,
 } from "../selectors";
 
+import { updateQuestion } from "./core";
 import { updateUrl } from "./navigation";
 
 export const SET_DOCUMENT_TITLE = "metabase/qb/SET_DOCUMENT_TITLE";
@@ -145,6 +147,16 @@ export const runQuestionQuery = ({
 
     dispatch.action(RUN_QUERY, { cancelQueryDeferred });
   };
+};
+
+export const runMetabotQuery = query => async (dispatch, getState) => {
+  const originalQuestion = getOriginalQuestion(getState());
+  const modelId = originalQuestion.id();
+  const newCard = await MetabotApi.modelPrompt({ modelId, question: query });
+  const newQuestion = new Question(newCard, getMetadata(getState()));
+
+  await dispatch(updateQuestion(newQuestion));
+  await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
 };
 
 const loadStartUIControls = createThunkAction(

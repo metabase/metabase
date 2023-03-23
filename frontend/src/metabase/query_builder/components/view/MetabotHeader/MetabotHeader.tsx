@@ -3,10 +3,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import { getUser } from "metabase/selectors/user";
-import {
-  cancelQuery,
-  runNaturalLanguageQuery,
-} from "metabase/query_builder/actions";
+import { cancelQuery, runMetabotQuery } from "metabase/query_builder/actions";
 import {
   getIsResultDirty,
   getIsRunning,
@@ -43,7 +40,7 @@ const mapStateToProps = (state: State): StateProps => ({
 });
 
 const mapDispatchToProps = {
-  onRun: runNaturalLanguageQuery,
+  onRun: runMetabotQuery,
   onCancel: cancelQuery,
 };
 
