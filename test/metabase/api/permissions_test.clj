@@ -223,7 +223,7 @@
       (mt/with-temp* [PermissionsGroup [group]]
         (mt/user-http-request :crowberto :put 200 "permissions/graph"
          (assoc-in (perms/data-perms-graph) [:groups (u/the-id group)] nil))
-        (is (empty? (db/select :permissions :group_id (u/the-id group))))
+        (is (empty? (t2/select Permissions :group_id (u/the-id group))))
         (is (= nil (get-in (perms/data-perms-graph) [:groups (u/the-id group)])))
         (is (= nil (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group)])))))))
 
@@ -240,14 +240,14 @@
                                       "/query/db/%s/schema/PUBLIC/table/%s/"
                                       "/db/%s/schema/PUBLIC/table/%s/"]]
                         (format template (mt/id) db-id)))
-                 (set (mapv :object (db/select :permissions :group_id (u/the-id group))))))
+                 (set (mapv :object (t2/select Permissions :group_id (u/the-id group))))))
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
            (assoc-in (perms/data-perms-graph)
                      [:groups (u/the-id group) (mt/id)]
                      {:data {:native "none" :schemas "none"}}))
           (is (= #{}
-                 (set (mapv :object (db/select :permissions :group_id (u/the-id group)))))))))))
+                 (set (mapv :object (t2/select Permissions :group_id (u/the-id group)))))))))))
 
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"
