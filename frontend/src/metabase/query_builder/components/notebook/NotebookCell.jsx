@@ -86,10 +86,11 @@ export function NotebookCellItem(props) {
     right,
     rightContainerStyle,
     children,
+    readOnly,
     ...restProps
   } = props;
 
-  const hasRightSide = React.isValidElement(right);
+  const hasRightSide = React.isValidElement(right) && !readOnly;
   const mainContentRoundedCorners = ["left"];
   if (!hasRightSide) {
     mainContentRoundedCorners.push("right");
