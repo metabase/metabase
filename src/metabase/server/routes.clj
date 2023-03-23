@@ -48,6 +48,7 @@
   ;; ^/$ -> index.html
   (GET "/" [] index/index)
   (GET "/favicon.ico" [] (response/resource-response (public-settings/application-favicon-url)))
+  (GET "/mockServiceWorker.js" [] (response/content-type (response/resource-response "frontend_client/app/mockServiceWorker.js") "text/javascript"))
   ;; ^/api/health -> Health Check Endpoint
   (GET "/api/health" []
        (if (init-status/complete?)

@@ -51,6 +51,7 @@ import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
 
 import GlobalStyles from "metabase/styled-components/containers/GlobalStyles";
 import { getStore } from "./store";
+import "../mock";
 
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");

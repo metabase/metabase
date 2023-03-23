@@ -55,6 +55,7 @@
     "leaflet-draw": "^0.4.9",
     "leaflet.heat": "^0.2.0",
     "moment-timezone": "^0.5.38",
+    "msw": "^1.0.1",
     "mustache": "^2.3.2",
     "mysql2": "^3.1.0",
     "normalizr": "^3.0.2",
@@ -356,5 +357,8 @@
   },
   "browserslist": [
     "defaults"
-  ]
+  ],
+  "msw": {
+    "workerDirectory": "resources/frontend_client/app"
+  }
 }
