@@ -59,7 +59,7 @@
                  :name          name
                  :collection_id collection_id}]
     (api/create-check NativeQuerySnippet snippet)
-    (api/check-500 (db/insert! NativeQuerySnippet snippet))))
+    (api/check-500 (first (t2/insert-returning-instances! NativeQuerySnippet snippet)))))
 
 (defn- check-perms-and-update-snippet!
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns

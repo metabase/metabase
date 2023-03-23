@@ -36,7 +36,9 @@ describe("issue 12720", () => {
     cy.signInAsAdmin();
 
     // In this test we're using already present question ("Orders") and the dashboard with that question ("Orders in a dashboard")
-    cy.addFilterToDashboard({ filter: dashboardFilter, dashboard_id: 1 });
+    cy.request("PUT", "/api/dashboard/1", {
+      parameters: [dashboardFilter],
+    });
 
     cy.createNativeQuestion(questionDetails).then(
       ({ body: { id: SQL_ID } }) => {

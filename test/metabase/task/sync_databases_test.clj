@@ -13,7 +13,6 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
 
@@ -128,7 +127,7 @@
       (testing (format "Insert DB with invalid %s" k)
         (is (thrown?
              Exception
-             (db/insert! Database {:engine :postgres, k "0 * ABCD"}))))))
+             (t2/insert! Database {:engine :postgres, k "0 * ABCD"}))))))
 
   (testing "Check that you can't UPDATE a DB's schedule to something invalid"
     (mt/with-temp Database [database {:engine :postgres}]

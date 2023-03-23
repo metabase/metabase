@@ -43,7 +43,7 @@
   (testing "Valid requests should add `metabase-user-id` to requests with valid session info"
     (let [session-id (random-session-id)]
       (try
-        (db/insert! Session {:id      session-id
+        (t2/insert! Session {:id      session-id
                              :user_id (test.users/user->id :rasta)})
         (is (= (test.users/user->id :rasta)
                (-> (auth-enforced-handler (request-with-session-id session-id))
@@ -61,7 +61,7 @@
       ;; expiration
       (let [session-id (random-session-id)]
         (try
-          (db/insert! Session {:id      session-id
+          (t2/insert! Session {:id      session-id
                                :user_id (test.users/user->id :rasta)})
           (db/update-where! Session {:id session-id}
             :created_at (t/instant 0))
@@ -75,7 +75,7 @@
       ;; NOTE that :trashbird is our INACTIVE test user
       (let [session-id (random-session-id)]
         (try
-          (db/insert! Session {:id      session-id
+          (t2/insert! Session {:id      session-id
                                :user_id (test.users/user->id :trashbird)})
           (is (= mw.util/response-unauthentic
                  (auth-enforced-handler
