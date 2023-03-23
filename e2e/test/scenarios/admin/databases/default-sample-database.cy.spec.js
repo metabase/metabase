@@ -3,6 +3,8 @@ import { restore, popover, modal, describeEE } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
+import { visitDatabase } from "./helpers/e2e-database-helpers";
+
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > databases > sample database", () => {
@@ -13,9 +15,7 @@ describe("scenarios > admin > databases > sample database", () => {
   });
 
   it("database settings", () => {
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`).as("loadDatabase");
-    cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-    cy.wait("@loadDatabase");
+    visitDatabase(SAMPLE_DB_ID);
     // should not display a setup help card
     cy.findByText("Need help connecting?").should("not.exist");
 
@@ -134,9 +134,7 @@ describe("scenarios > admin > databases > sample database", () => {
       },
     });
 
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`).as("loadDatabase");
-    cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-    cy.wait("@loadDatabase");
+    visitDatabase(SAMPLE_DB_ID);
 
     // lets you trigger the manual database schema sync
     cy.button("Sync database schema now").click();
@@ -224,9 +222,7 @@ describe("scenarios > admin > databases > sample database", () => {
     it("should set custom cache ttl", () => {
       cy.request("PUT", "api/setting/enable-query-caching", { value: true });
 
-      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`).as("loadDatabase");
-      cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-      cy.wait("@loadDatabase").then(({ response: { body } }) => {
+      visitDatabase(SAMPLE_DB_ID).then(({ response: { body } }) => {
         expect(body.cache_ttl).to.be.null;
       });
 
