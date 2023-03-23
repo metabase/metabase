@@ -2,8 +2,16 @@ import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import { getUser } from "metabase/selectors/user";
+import RunButton from "metabase/query_builder/components/RunButton";
+import { cancelQuery, runQuestionQuery } from "metabase/query_builder/actions";
+import {
+  getIsDirty,
+  getIsRunning,
+  getQuestion,
+} from "metabase/query_builder/selectors";
 import { User } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Question from "metabase-lib/Question";
 import {
   HeaderRoot,
   GreetingSection,
@@ -15,21 +23,51 @@ import {
 } from "./MetabotHeader.styled";
 
 interface StateProps {
-  user: User | null;
+  user: User | undefined;
+  question: Question | undefined;
+  isRunning: boolean;
+  isDirty: boolean;
 }
 
-type MetabotHeaderProps = StateProps;
+interface DispatchProps {
+  onRun: (opts?: RunQueryOpts) => void;
+  onCancel: () => void;
+}
+
+interface RunQueryOpts {
+  ignoreCache?: boolean;
+}
+
+type MetabotHeaderProps = StateProps & DispatchProps;
 
 const mapStateToProps = (state: State): StateProps => ({
-  user: getUser(state),
+  question: getQuestion(state),
+  user: getUser(state) ?? undefined,
+  isRunning: getIsRunning(state),
+  isDirty: getIsDirty(state),
 });
 
-const MetabotHeader = ({ user }: MetabotHeaderProps) => {
+const mapDispatchToProps = {
+  onRun: runQuestionQuery,
+  onCancel: cancelQuery,
+};
+
+const MetabotHeader = ({
+  question,
+  user,
+  isRunning,
+  isDirty,
+  onRun,
+  onCancel,
+}: MetabotHeaderProps) => {
+  const handleRun = () => onRun({ ignoreCache: true });
+  const handleCancel = () => onCancel();
+
   return (
     <HeaderRoot>
       <GreetingSection>
         <GreetingMetabotLogo />
-        <GreetingMessage>{t`What can I answer for you?`}</GreetingMessage>
+        <GreetingMessage>{getGreetingMessage(question, user)}</GreetingMessage>
       </GreetingSection>
       <PromptSection>
         {user && (
@@ -37,9 +75,29 @@ const MetabotHeader = ({ user }: MetabotHeaderProps) => {
             <PromptUserAvatar user={user} />
           </PromptUserAvatarContainer>
         )}
+        <RunButton
+          isRunning={isRunning}
+          isDirty={isDirty}
+          compact
+          onRun={handleRun}
+          onCancel={handleCancel}
+        />
       </PromptSection>
     </HeaderRoot>
   );
 };
 
-export default connect(mapStateToProps)(MetabotHeader);
+const getGreetingMessage = (question?: Question, user?: User) => {
+  const questionName = question?.displayName();
+  const userName = user?.first_name;
+
+  if (questionName && userName) {
+    return t`What do you want to know about ${questionName}, ${userName}? `;
+  } else if (questionName) {
+    return t`What do you want to know about ${questionName}? `;
+  } else {
+    return t`What can I answer for you?`;
+  }
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(MetabotHeader);

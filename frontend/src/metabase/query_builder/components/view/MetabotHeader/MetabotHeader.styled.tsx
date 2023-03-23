@@ -33,6 +33,7 @@ export const GreetingMessage = styled.div`
 export const PromptSection = styled.div`
   display: flex;
   padding: 1rem;
+  justify-content: space-between;
   align-items: center;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
