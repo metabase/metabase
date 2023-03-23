@@ -28,7 +28,7 @@
                      :database-position 0
                      :database-required false
                      :database-is-auto-increment true
-                     :json-unfolding    true}
+                     :json-unfolding    false}
                     {:name              "NAME"
                      :database-type     "CHARACTER VARYING"
                      :base-type         :type/Text
