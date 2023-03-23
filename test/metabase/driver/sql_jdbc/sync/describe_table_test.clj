@@ -54,19 +54,22 @@
                          :database-required         false
                          :database-type             "INTEGER"
                          :name                      "id"
-                         :pk?                       true}
+                         :pk?                       true
+                         :json-unfolding            false}
                         {:base-type                 :type/Integer
                          :database-is-auto-increment true
                          :database-position         1
                          :database-required         false
                          :database-type             "INTEGER"
-                         :name                      "count"}
+                         :name                      "count"
+                         :json-unfolding            false}
                         {:base-type                 :type/Integer
                          :database-is-auto-increment false
                          :database-position         2
                          :database-required         true
                          :database-type             "INTEGER"
-                         :name                      "rank"}}
+                         :name                      "rank"
+                         :json-unfolding            false}}
               :name "employee_counter"}
              (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
 
