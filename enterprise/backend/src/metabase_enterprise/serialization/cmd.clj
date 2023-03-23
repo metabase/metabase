@@ -26,7 +26,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.models.serialization :as serdes]))
 
 (set! *warn-on-reflection* true)
 
@@ -81,7 +82,8 @@
   ;(when-not (load/compatible? path)
   ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
   (log/info (trs "Loading serialized Metabase files from {0}" path))
-  (v2.load/load-metabase (v2.ingest/ingest-yaml path) opts))
+  (serdes/with-cache
+    (v2.load/load-metabase (v2.ingest/ingest-yaml path) opts)))
 
 (defn- select-entities-in-collections
   ([model collections]
@@ -196,8 +198,9 @@
   (log/info (trs "Exporting Metabase to {0}" path) (u/emoji "🏭 🚛💨"))
   (mdb/setup-db!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
-  (-> (v2-extract opts)
-      (v2.storage/store! path))
+  (serdes/with-cache
+    (-> (v2-extract opts)
+        (v2.storage/store! path)))
   (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦")))
 
 (defn seed-entity-ids

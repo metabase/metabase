@@ -389,8 +389,10 @@
   name)
 
 (defmethod serdes/extract-query "Field" [_model-name _opts]
-  (let [dimensions (->> (t2/select Dimension)
+  (let [d (t2/select Dimension)
+        dimensions (->> d
                         (group-by :field_id))]
+    (println "dimensions count =" (count d))
     (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
               (db/select-reducible Field))))
 
