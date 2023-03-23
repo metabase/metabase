@@ -171,7 +171,7 @@
 
               (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
                 (t2/update! Database 1 {:details {:db "/tmp/test.db"}})
-                (db/update-where! Database {:name "k3"} {:details {:db "/tmp/test.db"}})
+                (t2/update! Database {:name "k3"} {:details {:db "/tmp/test.db"}})
                 (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
                   (rotate-encryption-key! nil))
                 (is (= "unencrypted value" (raw-value "nocrypt")))
