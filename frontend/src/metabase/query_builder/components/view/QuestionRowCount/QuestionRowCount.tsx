@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { ngettext, msgid, t } from "ttag";
 
 import { formatNumber } from "metabase/lib/formatting";
@@ -11,11 +11,6 @@ import type { Dataset } from "metabase-types/api";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-
-const formatRowCount = (count: number) => {
-  const countString = formatNumber(count);
-  return ngettext(msgid`${countString} row`, `${countString} rows`, count);
-};
 
 interface QuestionRowCountProps {
   question: Question;
@@ -32,45 +27,30 @@ function QuestionRowCount({
   className,
   onQueryChange,
 }: QuestionRowCountProps) {
-  const isStructured = question.isStructured();
-
-  const cappedMessage = t`Showing first ${HARD_ROW_LIMIT} rows`;
-
-  // Shown based on a query that has been altered
-  let limitMessage = null;
-  if (isStructured) {
-    const query = question.query() as StructuredQuery;
-    const limit = query.limit();
-
-    if (limit == null || limit >= HARD_ROW_LIMIT) {
-      if (typeof result.row_count === "number") {
-        // The query has been altered but we might still have the old result set,
-        // so show that instead of a generic HARD_ROW_LIMIT
-        limitMessage = t`Showing ${formatRowCount(result.row_count)}`;
-      } else {
-        limitMessage = cappedMessage;
-      }
-    } else {
-      limitMessage = t`Show ${formatRowCount(limit)}`;
+  const message = useMemo(() => {
+    if (!question.isStructured()) {
+      return isResultDirty ? null : getRowCountMessage(result);
     }
-  }
+    return isResultDirty
+      ? getLimitMessage(question.query() as StructuredQuery, result)
+      : getRowCountMessage(result);
+  }, [question, result, isResultDirty]);
 
-  // Shown based on a query that has been run
-  let resultMessage;
-  if (result.data.rows_truncated > 0) {
-    resultMessage = t`Showing first ${formatRowCount(result.row_count)}`;
-  } else if (result.row_count === HARD_ROW_LIMIT) {
-    resultMessage = cappedMessage;
-  } else {
-    resultMessage = t`Showing ${formatRowCount(result.row_count)}`;
-  }
+  const handleLimitChange = (limit: number) => {
+    const query = question.query() as StructuredQuery;
+    if (limit > 0) {
+      onQueryChange(query.updateLimit(limit));
+    } else {
+      onQueryChange(query.clearLimit());
+    }
+  };
 
-  const message = isResultDirty ? limitMessage : resultMessage;
+  let content: React.ReactNode = message;
 
-  let content;
-  if (isStructured && question.query().isEditable()) {
+  if (question.isStructured() && question.query().isEditable()) {
     const query = question.query() as StructuredQuery;
     const limit = query.limit();
+
     content = (
       <PopoverWithTrigger
         triggerElement={
@@ -82,20 +62,12 @@ function QuestionRowCount({
           <LimitPopover
             className="p2"
             limit={limit}
-            onChangeLimit={(limit: number) => {
-              if (limit > 0) {
-                onQueryChange(query.updateLimit(limit));
-              } else {
-                onQueryChange(query.clearLimit());
-              }
-            }}
+            onChangeLimit={handleLimitChange}
             onClose={onClose}
           />
         )}
       </PopoverWithTrigger>
     );
-  } else {
-    content = message;
   }
 
   return (
@@ -103,6 +75,41 @@ function QuestionRowCount({
       {content}
     </span>
   );
+}
+
+const formatRowCount = (count: number) => {
+  const countString = formatNumber(count);
+  return ngettext(msgid`${countString} row`, `${countString} rows`, count);
+};
+
+function getLimitMessage(query: StructuredQuery, result: Dataset): string {
+  const limit = query.limit();
+  const hasRowCount = typeof result.row_count === "number";
+
+  const isValidLimit =
+    typeof limit === "number" && limit > 0 && limit < HARD_ROW_LIMIT;
+
+  if (isValidLimit) {
+    return t`Show ${formatRowCount(limit)}`;
+  }
+
+  if (hasRowCount) {
+    // The query has been altered but we might still have the old result set,
+    // so show that instead of a generic HARD_ROW_LIMIT
+    return t`Showing ${formatRowCount(result.row_count)}`;
+  }
+
+  return t`Showing first ${HARD_ROW_LIMIT} rows`;
+}
+
+function getRowCountMessage(result: Dataset): string {
+  if (result.data.rows_truncated > 0) {
+    return t`Showing first ${formatRowCount(result.row_count)}`;
+  }
+  if (result.row_count === HARD_ROW_LIMIT) {
+    return t`Showing first ${HARD_ROW_LIMIT} rows`;
+  }
+  return t`Showing ${formatRowCount(result.row_count)}`;
 }
 
 QuestionRowCount.shouldRender = ({
