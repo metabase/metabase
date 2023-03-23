@@ -535,6 +535,22 @@ describe("scenarios > dashboard", () => {
     cy.findAllByText("18,760").should("have.length", 2);
   });
 
+  it("should allow you to add questions using 'Add a saved question' button (metabase#29450)", () => {
+    cy.createDashboard({ name: "dash:29450" });
+
+    cy.visit("/collection/root");
+    // enter newly created dashboard
+    cy.findByText("dash:29450").click();
+
+    cy.findByText("Add a saved question").click();
+
+    sidebar().within(() => {
+      cy.findByText("Orders, Count").click();
+    });
+
+    saveDashboard();
+  });
+
   it("should show collection breadcrumbs for a dashboard", () => {
     visitDashboard(1);
     appbar().within(() => cy.findByText("Our analytics").click());
