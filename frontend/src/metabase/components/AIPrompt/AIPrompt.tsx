@@ -1,7 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
-import Input from "metabase/core/components/Input";
 import RunButton from "metabase/query_builder/components/RunButton";
 import { User } from "metabase-types/api";
 import UserAvatar from "../UserAvatar";
@@ -30,6 +29,8 @@ const AIPrompt = ({
   onCancel,
   user,
 }: Props) => {
+  const [promptText, setPromptText] = useState("");
+
   return (
     <AIPromptRoot>
       <AIPromptUserAvatar>
@@ -38,6 +39,8 @@ const AIPrompt = ({
       <AIPromptInputContainer>
         <AIPromptInput
           fullWidth
+          value={promptText}
+          onChange={e => setPromptText(e.target.value)}
           placeholder={t`Ask something like, how many subscriptions have we had over time?`}
         />
       </AIPromptInputContainer>
@@ -47,7 +50,7 @@ const AIPrompt = ({
           isRunning={isRunning}
           isDirty={isDirty}
           circular={circular}
-          onRun={onRun}
+          onRun={() => onRun(promptText)}
           onCancel={onCancel}
         />
       </AIPromptActions>
