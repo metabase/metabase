@@ -7,6 +7,7 @@ import Question from "metabase-lib/Question";
 import ModelLink from "../ModelLink";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotGreeting from "../MetabotGreeting";
+import MetabotVisualization from "../MetabotVisualization";
 
 interface ModelMetabotProps {
   model: Question;
@@ -14,7 +15,7 @@ interface ModelMetabotProps {
 }
 
 const ModelMetabot = ({ model, user }: ModelMetabotProps) => {
-  const [{ loading }, run] = useAsyncFn(getQuestionAndResults);
+  const [{ value, loading }, run] = useAsyncFn(getQuestionAndResults);
 
   const handleRun = useCallback(
     (text: string) => {
@@ -31,6 +32,12 @@ const ModelMetabot = ({ model, user }: ModelMetabotProps) => {
         isRunning={loading}
         onRun={handleRun}
       />
+      {value && (
+        <MetabotVisualization
+          question={value.question}
+          results={value.results}
+        />
+      )}
     </div>
   );
 };
