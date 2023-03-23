@@ -153,7 +153,10 @@ export const runMetabotQuery = query => async (dispatch, getState) => {
   const originalQuestion = getOriginalQuestion(getState());
   const modelId = originalQuestion.id();
   const newCard = await MetabotApi.modelPrompt({ modelId, question: query });
-  const newQuestion = new Question(newCard, getMetadata(getState()));
+  const newQuestion = new Question(
+    newCard,
+    getMetadata(getState()),
+  ).lockDisplay();
 
   await dispatch(updateQuestion(newQuestion));
   await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
