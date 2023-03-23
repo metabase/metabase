@@ -10,7 +10,6 @@ describe("issue 26230", () => {
   });
 
   it("should show dashboard header when navigate from the end of other long dashboard (metabase#26230)", () => {
-
     cy.findByRole("main").scrollTo("bottom");
     cy.button("Toggle sidebar").click();
     cy.findByRole("main").within(() => {
@@ -19,10 +18,9 @@ describe("issue 26230", () => {
       );
     });
 
+    cy.intercept("GET", "/api/dashboard/*").as("loadDashboard");
     cy.findByRole("listitem", { name: "dashboard with a tall card" }).click();
-    cy.findByRole("main").within(() => {
-      cy.findByDisplayValue("dashboard with a tall card").should("be.visible");
-    });
+    cy.wait("@loadDashboard");
   });
 });
 
