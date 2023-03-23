@@ -470,7 +470,7 @@
             (is (= {:values          ["African" "American" "Artisan"]
                     :has_more_values false}
                    (take-n-values 3 (chain-filter categories.name nil))))
-            (is (= 1 (db/count FieldValues :field_id field-id :type :full)))))
+            (is (= 1 (t2/count FieldValues :field_id field-id :type :full)))))
 
         (testing "should create a linked-filter FieldValues when have constraints"
           ;; make sure we have a clean start
@@ -482,7 +482,7 @@
             (is (= {:values          ["Japanese" "Steakhouse"]
                     :has_more_values false}
                    (chain-filter categories.name {venues.price 4})))
-            (is (= 1 (db/count FieldValues :field_id field-id :type :linked-filter)))))
+            (is (= 1 (t2/count FieldValues :field_id field-id :type :linked-filter)))))
 
         (testing "should do in-memory search with the cached FieldValues when search without constraints"
           (mt/with-temp-vals-in-db FieldValues (t2/select-one-pk FieldValues :field_id field-id :type "full") {:values ["Good" "Bad"]}
@@ -496,7 +496,7 @@
           (testing "should create a linked-filter FieldValues"
             ;; warm up the cache
             (chain-filter categories.name {venues.price 4})
-            (is (= 1 (db/count FieldValues :field_id field-id :type "linked-filter"))))
+            (is (= 1 (t2/count FieldValues :field_id field-id :type "linked-filter"))))
 
           (testing "should search for the values of linked-filter FieldValues"
             (db/update-where! FieldValues {:field_id field-id

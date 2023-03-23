@@ -153,7 +153,7 @@
    ;; of IDs
    (let [ids (location-path->ids location-path)]
      (= (count ids)
-        (db/count Collection :id [:in ids])))))
+        (t2/count Collection :id [:in ids])))))
 
 (defn- assert-valid-location
   "Assert that the `location` property of a `collection`, if specified, is valid. This checks that it is valid both from
@@ -557,7 +557,7 @@
   (when (collection.root/is-root-collection? collection)
     (throw (Exception. (tru "You cannot archive the Root Collection."))))
   ;; also make sure we're not trying to archive a PERSONAL Collection
-  (when (db/exists? Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
+  (when (t2/exists? Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
     (throw (Exception. (tru "You cannot archive a Personal Collection."))))
   (set
    (for [collection-or-id (cons
@@ -670,7 +670,7 @@
     ;; Otherwise try to get the ID of its highest-level ancestor, e.g. if `location` is `/1/2/3/` we would get `1`.
     ;; Then see if the root-level ancestor is a Personal Collection (Personal Collections can only got in the Root
     ;; Collection.)
-    (db/exists? Collection
+    (t2/exists? Collection
       :id                (first (location-path->ids (:location collection)))
       :personal_owner_id [:not= nil]))))
 

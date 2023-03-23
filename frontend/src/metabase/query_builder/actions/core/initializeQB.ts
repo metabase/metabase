@@ -40,11 +40,18 @@ import {
   getParameterValuesForQuestion,
 } from "./parameterUtils";
 
+type InitOptions = {
+  type?: QueryType;
+};
+
+type QueryType = "query" | "native";
+
 type BlankQueryOptions = {
   db?: string;
   table?: string;
   segment?: string;
   metric?: string;
+  type?: QueryType;
 };
 
 type QueryParams = BlankQueryOptions & {
@@ -73,11 +80,12 @@ function getCardForBlankQuestion({
   table,
   segment,
   metric,
+  type = "query",
 }: BlankQueryOptions) {
   const databaseId = db ? parseInt(db) : undefined;
   const tableId = table ? parseInt(table) : undefined;
 
-  let question = Question.create({ databaseId, tableId });
+  let question = Question.create({ databaseId, tableId, type });
 
   if (databaseId && tableId) {
     if (segment) {
@@ -239,7 +247,12 @@ async function handleQBInit(
   {
     location,
     params,
-  }: { location: LocationDescriptorObject; params: QueryParams },
+    initOptions,
+  }: {
+    location: LocationDescriptorObject;
+    params: QueryParams;
+    initOptions?: InitOptions;
+  },
 ) {
   dispatch(resetQB());
   dispatch(cancelQuery());
@@ -257,7 +270,10 @@ async function handleQBInit(
   let { card, originalCard } = await resolveCards({
     cardId,
     deserializedCard,
-    options,
+    options: {
+      ...options,
+      ...initOptions,
+    },
     dispatch,
     getState,
   });
@@ -361,10 +377,14 @@ async function handleQBInit(
 }
 
 export const initializeQB =
-  (location: LocationDescriptorObject, params: QueryParams) =>
+  (
+    location: LocationDescriptorObject,
+    params: QueryParams,
+    initOptions: InitOptions,
+  ) =>
   async (dispatch: Dispatch, getState: GetState) => {
     try {
-      await handleQBInit(dispatch, getState, { location, params });
+      await handleQBInit(dispatch, getState, { location, params, initOptions });
     } catch (error) {
       console.warn("initializeQB failed because of an error:", error);
       dispatch(setErrorPage(error));

@@ -16,7 +16,6 @@
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -809,13 +808,13 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 url)))
           (testing "FieldValues should still exist"
-            (is (db/exists? FieldValues :id (u/the-id field-values)))))
+            (is (t2/exists? FieldValues :id (u/the-id field-values)))))
 
         (testing "Admins should be able to successfuly delete them"
           (is (= {:status "success"}
                  (mt/user-http-request :crowberto :post 200 url)))
           (testing "FieldValues should be gone"
-            (is (not (db/exists? FieldValues :id (u/the-id field-values))))))))
+            (is (not (t2/exists? FieldValues :id (u/the-id field-values))))))))
 
     (testing "For tables that don't exist, we should return a 404."
       (is (= "Not found."

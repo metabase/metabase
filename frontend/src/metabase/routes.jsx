@@ -89,6 +89,7 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 
 import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal";
 import ModelDetailPage from "metabase/models/containers/ModelDetailPage";
+import MetabotPage from "./query_builder/containers/MetabotPage";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
@@ -260,6 +261,11 @@ export const getRoutes = store => (
             />
           </Route>
           <Redirect from="*" to="usage" />
+        </Route>
+
+        <Route path="/metabot">
+          <IndexRoute component={MetabotPage} />
+          <Route path=":databaseId" component={MetabotPage} />
         </Route>
 
         <Route path="/model">

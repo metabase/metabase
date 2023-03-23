@@ -129,9 +129,9 @@
   ;; TODO - rewrite this to use a schema
   {:pre [(models/model? entity)
          (integer? user-id)
-         (db/exists? User :id user-id)
+         (t2/exists? User :id user-id)
          (integer? id)
-         (db/exists? entity :id id)
+         (t2/exists? entity :id id)
          (map? object)]}
   (let [object (serialize-instance entity id (dissoc object :message))]
     ;; make sure we still have a map after calling out serialization function
@@ -152,9 +152,9 @@
   [& {:keys [entity id user-id revision-id]}]
   {:pre [(models/model? entity)
          (integer? id)
-         (db/exists? entity :id id)
+         (t2/exists? entity :id id)
          (integer? user-id)
-         (db/exists? User :id user-id)
+         (t2/exists? User :id user-id)
          (integer? revision-id)]}
   (let [serialized-instance (t2/select-one-fn :object Revision, :model (name entity), :model_id id, :id revision-id)]
     (db/transaction
