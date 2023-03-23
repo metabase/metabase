@@ -511,5 +511,5 @@ export const ActionsApi = {
 
 export const MetabotApi = {
   modelPrompt: POST("/api/metabot/model/:modelId"),
-  databasePrompt: POST("/api/metabot/database/:id"),
+  databasePrompt: POST("/api/metabot/database/:databaseId"),
 };

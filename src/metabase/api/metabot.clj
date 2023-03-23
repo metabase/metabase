@@ -95,7 +95,9 @@
 
 (defn standardize-name [{:keys [id name] :as _model} sql]
   (let [rgx (re-pattern (format "\\Q\"%s\"\\E" name))]
-    (str/replace sql rgx (format "{{#%s-%s}}" id (str/replace (u/slugify name) #"_" "-")))))
+    (str/replace sql rgx (format "{{#%s}}" id))
+    ;(str/replace sql rgx (format "{{#%s-%s}}" id (str/replace (u/slugify name) #"_" "-")))
+    ))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/model/:model-id"
@@ -137,6 +139,22 @@
       (tap> response)
       response)))
 
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/database/:database-id"
+  "Ask Metabot to generate a SQL query given a prompt about a given database."
+  [database-id :as {{:keys [question fake] :as body} :body}]
+  (tap> {:database-id database-id
+         :request  body})
+  (binding [persisted-info/*allow-persisted-substitution* false]
+    (let [response         {:dataset_query          {:database database-id
+                                                     :type     "native"
+                                                     :native   {:query "SELECT * FROM ORDERS; -- THIS IS FAKE"}}
+                            :display                :table
+                            :visualization_settings {}}
+          ]
+      (tap> response)
+      response)))
 
 ;{
 ; dataset_query: {
