@@ -470,7 +470,7 @@
    \newline
    ["CREATE TABLE describe_json_table ("
     "  coherent_json_val JSON NOT NULL,"
-    "  incoherent_json_val JSON NOT NULL"
+    "  incoherent_json_val JSONB NOT NULL"
     ");"
     "INSERT INTO"
     "  describe_json_table (coherent_json_val, incoherent_json_val)"
@@ -497,12 +497,12 @@
         (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [describe-json-table-sql]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= :type/SerializedJSON
+          (is (= [:type/JSON :type/SerializedJSON]
                  (->> (sql-jdbc.sync/describe-table :postgres database {:name "describe_json_table"})
                       (:fields)
                       (:take 1)
                       (first)
-                      (:semantic-type))))
+                      ((juxt :base-type :semantic-type)))))
           (is (= '#{{:name              "incoherent_json_val → b",
                      :database-type     "text",
                      :base-type         :type/Text,
