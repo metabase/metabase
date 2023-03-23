@@ -22,7 +22,9 @@ export const saveChartImage = async (selector: string, fileName: string) => {
 
   node.classList.add(SAVING_CHART_IMAGE_CLASS);
 
-  const canvas = await html2canvas(node);
+  const canvas = await html2canvas(node, {
+    useCORS: true,
+  });
 
   node.classList.remove(SAVING_CHART_IMAGE_CLASS);
 

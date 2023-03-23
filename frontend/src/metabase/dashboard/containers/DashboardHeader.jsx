@@ -31,6 +31,8 @@ import {
 } from "metabase/dashboard/actions";
 
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
+import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
+
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
 import {
@@ -358,6 +360,14 @@ class DashboardHeader extends Component {
         event: "Dashboard;Copy",
       });
 
+      extraButtons.push({
+        title: t`Export as PDF`,
+        icon: "png",
+        action: () => {
+          this.saveAsImage();
+        },
+      });
+
       if (canEdit) {
         extraButtons.push({
           title: t`Move`,
@@ -401,6 +411,7 @@ class DashboardHeader extends Component {
           </Tooltip>,
           <EntityMenu
             key="dashboard-action-menu-button"
+            triggerAriaLabel="dashboard-menu-button"
             items={extraButtons}
             triggerIcon="ellipsis"
             tooltip={t`Move, archive, and more...`}
@@ -411,6 +422,12 @@ class DashboardHeader extends Component {
 
     return buttons;
   }
+
+  saveAsImage = async () => {
+    const { dashboard } = this.props;
+    const cardNodeSelector = "#Dashboard-Cards-Container";
+    await saveDashboardPdf(cardNodeSelector, dashboard.name);
+  };
 
   render() {
     const {
