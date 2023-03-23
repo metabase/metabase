@@ -167,8 +167,14 @@
      :insights         nil}})
 
 (defn extract-sql [bot-response]
-  (let [[_pre sql _post] (str/split bot-response #"```")]
-    (when sql (mdb.query/format-sql sql))))
+  (let [candidates (map str/trim (str/split bot-response #"```"))]
+    (when (seq candidates)
+      (some
+       (fn [candidate]
+         (println candidate)
+         (when (str/starts-with? candidate "SELECT")
+           (mdb.query/format-sql candidate)))
+       candidates))))
 
 (defn standardize-name [{:keys [id name] :as _model} sql]
   (let [rgx (re-pattern (format "\\Q\"%s\"\\E" name))]
@@ -188,11 +194,15 @@
                              fake "SELECT * FROM ORDERS; -- THIS IS FAKE"
                              (and
                               (openai-api-key)
-                              (openai-organization)) (some->> (:choices (write-sql model-assertions question))
-                                                              first
-                                                              :message
-                                                              :content
-                                                              extract-sql)
+                              (openai-organization)) (let [resp (write-sql model-assertions question)]
+                                                       (tap> resp)
+                                                       (some->> resp
+                                                                :choices
+                                                                first
+                                                                :message
+                                                                :content
+                                                                extract-sql
+                                                                (standardize-name model)))
                              :else "Set MB_OPENAI_API_KEY and MB_OPENAI_ORGANIZATION env vars and relaunch!")
           ;response         {:original_question       question
           ;                  :assertions              (mapv :content model-assertions)
