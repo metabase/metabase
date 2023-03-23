@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
+   [metabase.db.query :as mdb.query]
    [metabase.models.card :refer [Card]]
    [metabase.models.field-values :refer [FieldValues]]
    [metabase.models.persisted-info :as persisted-info]
@@ -164,6 +165,10 @@
          :type   {:type/Number {:min 4203.0, :q1 4302.5, :q3 5077.5, :max 5313.0, :sd 493.74284804946797, :avg 4690.0}}}}]},
      :insights         nil}})
 
+(defn extract-sql [bot-response]
+  (let [[_pre sql _post] (str/split bot-response #"```")]
+    (when sql (mdb.query/format-sql sql))))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/model/:model-id"
   "Ask Metabot to generate a SQL query given a prompt about a given model."
@@ -174,23 +179,28 @@
     ;(qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [{:keys [database_id] :as model} (api/check-404 (t2/select-one Card :id model-id))
           model-assertions (model-messages model)
-          response         {:original_question       question
-                            :assertions              (mapv :content model-assertions)
-                            :sql_query               (cond
-                                                       fake "SELECT * FROM THIS IS FAKE TO NOT BURN CREDITS"
-                                                       (and
-                                                        (openai-api-key)
-                                                        (openai-organization)) (->> (:choices (write-sql model-assertions question)) first :message :content)
-                                                       :else "Set MB_OPENAI_API_KEY and MB_OPENAI_ORGANIZATION env vars and relaunch!")
-                            :database_id             database_id
-                            :id                      model-id
-                            ;; Hard coded dataset result. Has nothing to do with any of the above.
-                            :suggested_visualization dataset-result}
-          response {:dataset_query {:database 1
-                                    :type "native"
-                                    :native {:query "SELECT * FROM ORDERS"}}
-                    :display :table
-                    :visualization_settings {}}
+          response-sql     (cond
+                             fake "SELECT * FROM ORDERS; -- THIS IS FAKE"
+                             (and
+                              (openai-api-key)
+                              (openai-organization)) (some->> (:choices (write-sql model-assertions question))
+                                                              first
+                                                              :message
+                                                              :content
+                                                              extract-sql)
+                             :else "Set MB_OPENAI_API_KEY and MB_OPENAI_ORGANIZATION env vars and relaunch!")
+          ;response         {:original_question       question
+          ;                  :assertions              (mapv :content model-assertions)
+          ;                  :sql_query               text
+          ;                  :database_id             database_id
+          ;                  :id                      model-id
+          ;                  ;; Hard coded dataset result. Has nothing to do with any of the above.
+          ;                  :suggested_visualization dataset-result}
+          response         {:dataset_query          {:database database_id
+                                                     :type     "native"
+                                                     :native   {:query response-sql}}
+                            :display                :table
+                            :visualization_settings {}}
           ]
       (tap> response)
       response)))
