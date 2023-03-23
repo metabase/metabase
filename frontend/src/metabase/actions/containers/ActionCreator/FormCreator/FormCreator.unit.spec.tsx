@@ -86,7 +86,6 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
       formSettings,
     });
 
-    // click the settings cog then the number input type
     userEvent.click(
       screen.getByRole("radio", {
         name: /number/i,
