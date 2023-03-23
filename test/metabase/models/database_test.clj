@@ -320,5 +320,6 @@
     (are [details expected] (= expected
                                (database/json-unfolding-default {:details details}))
       {}                      true
+      {:json-unfolding nil}   true
       {:json-unfolding true}  true
       {:json-unfolding false} false)))

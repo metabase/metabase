@@ -354,4 +354,4 @@
 (defn json-unfolding-default
   "Returns true if JSON fields should be unfolded by default for this database, and false otherwise."
   [database]
-  (get-in database [:details :json-unfolding] true))
+  ((fnil identity true) (get-in database [:details :json-unfolding])))
