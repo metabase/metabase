@@ -14,6 +14,7 @@ import App from "metabase/App.tsx";
 
 import ActivityApp from "metabase/home/containers/ActivityApp";
 import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
+import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
 
 // auth containers
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
@@ -90,7 +91,6 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 
 import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal";
 import ModelDetailPage from "metabase/models/containers/ModelDetailPage";
-import MetabotPage from "./query_builder/containers/MetabotPage";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
@@ -265,9 +265,10 @@ export const getRoutes = store => (
         </Route>
 
         <Route path="/metabot">
-          <IndexRoute component={MetabotPage} />
+          <IndexRoute component={DatabaseMetabotApp} />
+          <Route path="database" component={DatabaseMetabotApp} />
+          <Route path="database/:databaseId" component={DatabaseMetabotApp} />
           <Route path="model/:slug" component={ModelMetabotApp} />
-          <Route path=":databaseId" component={MetabotPage} />
         </Route>
 
         <Route path="/model">

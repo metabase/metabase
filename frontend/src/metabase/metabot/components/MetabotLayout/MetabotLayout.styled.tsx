@@ -1,13 +1,13 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-export const MetabotRoot = styled.div`
+export const MetabotRoot = styled.main`
   display: flex;
   flex-direction: column;
   height: 100%;
 `;
 
-export const MetabotHeader = styled.div`
+export const MetabotHeader = styled.header`
   display: flex;
   flex-direction: column;
   gap: 1.5rem;

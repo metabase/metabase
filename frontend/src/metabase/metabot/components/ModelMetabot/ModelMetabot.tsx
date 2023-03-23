@@ -8,7 +8,7 @@ import ModelLink from "../ModelLink";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotGreeting from "../MetabotGreeting";
 import MetabotVisualization from "../MetabotVisualization";
-import { MetabotHeader, MetabotRoot } from "./ModelMetabot.styled";
+import { MetabotHeader, MetabotRoot } from "../MetabotLayout";
 
 interface ModelMetabotProps {
   model: Question;
