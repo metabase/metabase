@@ -1,6 +1,7 @@
 import moment from "moment-timezone";
 import _ from "underscore";
 import { t } from "ttag";
+import { DayOfWeekId } from "metabase-types/api";
 
 // returns 0-6 where Sunday as 0 and Saturday as 6
 // Note: Keep in mind that this relays on moment internal state, which is not ideal.
@@ -8,7 +9,14 @@ export const getFirstDayOfWeekIndex = (): number => {
   return moment().startOf("week").isoWeekday();
 };
 
-export const DAY_OF_WEEK_OPTIONS = [
+type DayOfWeekOption = {
+  name: string;
+  shortName: string;
+  value: string;
+  id: DayOfWeekId;
+};
+
+export const DAY_OF_WEEK_OPTIONS: DayOfWeekOption[] = [
   { name: t`Sunday`, shortName: t`Su`, value: "sun", id: "sunday" },
   { name: t`Monday`, shortName: t`Mo`, value: "mon", id: "monday" },
   { name: t`Tuesday`, shortName: t`Tu`, value: "tue", id: "tuesday" },
@@ -18,7 +26,7 @@ export const DAY_OF_WEEK_OPTIONS = [
   { name: t`Saturday`, shortName: t`Sa`, value: "sat", id: "saturday" },
 ];
 
-export const getDayOfWeekOptions = (): typeof DAY_OF_WEEK_OPTIONS => {
+export const getDayOfWeekOptions = (): DayOfWeekOption[] => {
   const firstDayOfWeek = getFirstDayOfWeekIndex();
 
   if (firstDayOfWeek === 0) {

@@ -1,5 +1,4 @@
 import React from "react";
-import moment from "moment-timezone";
 import { render, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/lib/settings";
 import { updateMomentStartOfWeek } from "metabase/lib/i18n";
@@ -12,37 +11,43 @@ describe("Calendar", () => {
     expect(
       screen
         .getAllByTestId("calendar-day-name")
-        .map((dayEl, index) => dayEl.textContent),
+        .map(dayEl => dayEl.textContent),
     ).toEqual(["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]);
   });
 
-  it("should render days based on first day of the week settings", () => {
-    MetabaseSettings.set("start-of-week", "wednesday");
-    updateMomentStartOfWeek();
+  describe('with custom "start-of-week" setting', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date("2023-03-23T08:00:00"));
 
-    setup();
+      MetabaseSettings.set("start-of-week", "wednesday");
+      updateMomentStartOfWeek();
+    });
 
-    expect(
-      screen
-        .getAllByTestId("calendar-day-name")
-        .map((dayEl, index) => dayEl.textContent),
-    ).toEqual(["We", "Th", "Fr", "Sa", "Su", "Mo", "Tu"]);
+    afterEach(() => {
+      MetabaseSettings.set("start-of-week", "sunday"); // rollback to default
+      updateMomentStartOfWeek();
 
-    // check that dates listed start with proper day-of-week
-    const startDate = moment().startOf("month").isoWeekday(3);
-    const endDate = moment().endOf("month").isoWeekday(2);
-    const days = [];
-    while (startDate <= endDate) {
-      days.push(startDate.date());
-      startDate.add(1, "day");
-    }
+      jest.useRealTimers();
+    });
 
-    expect(screen.getByTestId("calendar-weeks")).toHaveTextContent(
-      new RegExp(days.join("")),
-    );
+    it("should render days based on first day of the week settings", () => {
+      setup();
 
-    MetabaseSettings.set("start-of-week", "sunday"); // rollback to default
-    updateMomentStartOfWeek();
+      expect(
+        screen
+          .getAllByTestId("calendar-day-name")
+          .map((dayEl, index) => dayEl.textContent),
+      ).toEqual(["We", "Th", "Fr", "Sa", "Su", "Mo", "Tu"]);
+
+      // check that listed dates are correct and start with proper day-of-week
+      expect(screen.getByTestId("calendar-weeks")).toHaveTextContent(
+        [
+          1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+          21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 1, 2, 3, 4,
+        ].join(""), // days in March 2023 + days of the first week of April until Wednesday (not including it)
+      );
+    });
   });
 });
 
