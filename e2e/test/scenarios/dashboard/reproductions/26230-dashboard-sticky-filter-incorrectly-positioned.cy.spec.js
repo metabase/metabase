@@ -1,5 +1,5 @@
 import { merge } from "icepick";
-import { restore } from "e2e/support/helpers";
+import { restore, visitDashboard } from "e2e/support/helpers";
 
 describe("issue 26230", () => {
   beforeEach(() => {
@@ -81,7 +81,7 @@ function prepareAndVisitDashboards() {
       }),
     );
     bookmarkDashboard(id);
-    cy.visit(`/dashboard/${id}`);
+    visitDashboard(id);
   });
 }
 
