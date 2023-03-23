@@ -15,6 +15,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
+   #_{:clj-kondo/ignore [:unused-namespace]}
+   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
