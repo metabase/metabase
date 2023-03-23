@@ -1,0 +1,23 @@
+import styled from "@emotion/styled";
+import { color } from "metabase/lib/colors";
+import RunButton from "metabase/query_builder/components/RunButton";
+import UserAvatar from "metabase/components/UserAvatar";
+
+export const PromptSection = styled.div`
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  align-items: center;
+  border: 1px solid ${color("border")};
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 2px ${color("shadow")};
+`;
+
+export const PromptUserAvatar = styled(UserAvatar)`
+  flex-shrink: 0;
+  background-color: ${color("accent2")};
+`;
+
+export const PromptRunButton = styled(RunButton)`
+  flex-shrink: 0;
+`;
