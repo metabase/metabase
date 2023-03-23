@@ -66,7 +66,7 @@
           :coercion_strategy         (when effective-type coercion-strategy)
           :semantic_type             (common/semantic-type field)
           :parent_id                 parent-id
-          :json_unfolding    json-unfolding
+          :json_unfolding            json-unfolding
           :nfc_path                  nfc-path
           :description               field-comment
           :position                  database-position

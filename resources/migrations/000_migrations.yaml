@@ -14381,7 +14381,6 @@ databaseChangeLog:
       id: v47.00-003
       author: calherries
       comment: Added 0.47.0 - Populate metabase_field.json_unfolding based on database details
-      validCheckSum: ANY
       changes:
         - sql:
             dbms: postgres
