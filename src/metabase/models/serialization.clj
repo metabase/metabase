@@ -311,9 +311,10 @@
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
   `(load-insert! \"ModelName\" ingested-and-xformed)`
 
-  Defaults to a straightforward [[db/insert!]], and you probably don't need to implement this.
+  Defaults to a straightforward [[(comp first t2/insert-returning-instances!)]] (returning the created object),
+  and you probably don't need to implement this.
 
-  Note that any [[db/insert!]] behavior we don't want to run (like generating an `:entity_id`!) should be skipped based
+  Note that any [[t2/insert!]] behavior we don't want to run (like generating an `:entity_id`!) should be skipped based
   on the [[mi/*deserializing?*]] dynamic var.
 
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
@@ -324,7 +325,7 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s: %s" model-name (pr-str ingested))
-  (db/insert! (symbol model-name) ingested))
+  (first (t2/insert-returning-instances! (symbol model-name) ingested)))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.

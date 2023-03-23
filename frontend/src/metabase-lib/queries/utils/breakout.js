@@ -6,7 +6,7 @@ export function getBreakouts(breakouts) {
 }
 
 // turns a list of Breakouts into the canonical BreakoutClause
-export function getBreakoutClause(breakouts) {
+function getBreakoutClause(breakouts) {
   breakouts = getBreakouts(breakouts);
   if (breakouts.length === 0) {
     return undefined;

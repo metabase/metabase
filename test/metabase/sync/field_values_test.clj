@@ -154,7 +154,7 @@
                                      :field_id (mt/id :blueberries_consumed :str))))))
 
     ;; Manually add an advanced field values to test whether or not it got deleted later
-    (db/insert! FieldValues {:field_id (mt/id :blueberries_consumed :str)
+    (t2/insert! FieldValues {:field_id (mt/id :blueberries_consumed :str)
                              :type :sandbox
                              :hash_key "random-key"})
 
@@ -208,7 +208,7 @@
         (is (= false
                (t2/select-one-fn :has_more_values FieldValues :field_id (mt/id :blueberries_consumed :str)))))
       ;; Manually add an advanced field values to test whether or not it got deleted later
-      (db/insert! FieldValues {:field_id (mt/id :blueberries_consumed :str)
+      (t2/insert! FieldValues {:field_id (mt/id :blueberries_consumed :str)
                                :type :sandbox
                                :hash_key "random-key"})
       (testing "adding more values even if it's exceed our cardinality limit, "

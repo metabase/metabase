@@ -40,7 +40,7 @@ const SlackStatus = ({
   }, []);
 
   const docsUrl = useMemo(() => {
-    return Settings.docsUrl("administration-guide/09-setting-up-slack");
+    return Settings.docsUrl("configuring-metabase/slack");
   }, []);
 
   return (

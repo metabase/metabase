@@ -79,12 +79,12 @@
 (defn- insert-many-individually!
   [model on-error entities]
   (for [entity entities]
-    (when-let [entity (if (= :abort on-error)
-                        (db/insert! model entity)
-                        (with-error-handling
-                          (trs "Error inserting {0}" (name-for-logging model entity))
-                          (db/insert! model entity)))]
-      (u/the-id entity))))
+    (when-let [entity-id (if (= :abort on-error)
+                           (first (t2/insert-returning-pks! model entity))
+                           (with-error-handling
+                             (trs "Error inserting {0}" (name-for-logging model entity))
+                             (first (t2/insert-returning-pks! model entity))))]
+      entity-id)))
 
 (defn- maybe-insert-many!
   [model on-error entities]

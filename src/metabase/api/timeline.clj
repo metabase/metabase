@@ -38,7 +38,7 @@
             {:creator_id api/*current-user-id*}
             (when-not icon
               {:icon timeline/DefaultIcon}))]
-    (db/insert! Timeline tl)))
+    (first (t2/insert-returning-instances! Timeline tl))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"

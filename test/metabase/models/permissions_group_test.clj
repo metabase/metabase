@@ -88,7 +88,7 @@
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "adding user to Admin should set is_superuser -> true")
     (mt/with-temp User [{user-id :id}]
-      (db/insert! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
+      (t2/insert! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
       (is (= true
              (t2/select-one-fn :is_superuser User, :id user-id))))
 

@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [clojure.string :as str]
    [metabase.db.query :as mdb.query]
+   [metabase.integrations.common :as integrations.common]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -74,12 +75,12 @@
     ;; add the newly created user to the magic perms groups
     (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
       (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
-      (db/insert! PermissionsGroupMembership
+      (t2/insert! PermissionsGroupMembership
         :user_id  user-id
         :group_id (:id (perms-group/all-users))))
     (when superuser?
       (log/info (trs "Adding User {0} to Admin permissions group..." user-id))
-      (db/insert! PermissionsGroupMembership
+      (t2/insert! PermissionsGroupMembership
         :user_id  user-id
         :group_id (:id (perms-group/admin))))))
 
@@ -97,9 +98,9 @@
       (cond
         (and superuser?
              (not in-admin-group?))
-        (db/insert! PermissionsGroupMembership
-          :group_id (u/the-id (perms-group/admin))
-          :user_id  id)
+        (t2/insert! PermissionsGroupMembership
+                    :group_id (u/the-id (perms-group/admin))
+                    :user_id  id)
         ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
@@ -311,7 +312,7 @@
 (schema/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
-  (db/insert! User (update new-user :password #(or % (str (UUID/randomUUID))))))
+  (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (UUID/randomUUID)))))))
 
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
@@ -332,8 +333,9 @@
   [new-user :- NewUser]
   (u/prog1 (insert-new-user! (assoc new-user :google_auth true))
     ;; send an email to everyone including the site admin if that's set
-    (classloader/require 'metabase.email.messages)
-    ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true)))
+    (when (integrations.common/send-new-sso-user-admin-email?)
+      (classloader/require 'metabase.email.messages)
+      ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
 
 (schema/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
@@ -392,5 +394,5 @@
        ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
        ;; do things like automatically set the `is_superuser` flag for a User
        (doseq [group-id to-add]
-         (db/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
+         (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))
