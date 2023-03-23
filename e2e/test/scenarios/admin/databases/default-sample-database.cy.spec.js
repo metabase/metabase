@@ -164,10 +164,10 @@ describe("scenarios > admin > databases > sample database", () => {
 
       cy.get("@deleteButton").should("be.disabled");
 
-      cy.findByPlaceholderText("Are you completely sure?").type(
-        "Sample Database",
-      );
-      cy.get("@deleteButton").click();
+      cy.findByPlaceholderText("Are you completely sure?")
+        .type("Sample Database")
+        .blur();
+      cy.get("@deleteButton").should("be.enabled").click();
       cy.wait("@delete");
     });
 
