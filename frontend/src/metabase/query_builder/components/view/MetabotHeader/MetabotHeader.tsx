@@ -1,6 +1,6 @@
 import React, { ChangeEvent, useCallback, useState } from "react";
 import { connect } from "react-redux";
-import { t } from "ttag";
+import { t, jt } from "ttag";
 import _ from "underscore";
 import Input from "metabase/core/components/Input";
 import { getUser } from "metabase/selectors/user";
@@ -16,11 +16,15 @@ import {
   getCard,
   getIsResultDirty,
   getIsRunning,
+  getOriginalQuestion,
 } from "metabase/query_builder/selectors";
 import { Card, Database, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Button from "metabase/core/components/Button";
+import Question from "metabase-lib/Question";
 import { DatabaseDataSelector } from "../../DataSelector";
 import {
+  EntityLink,
   GreetingMessage,
   GreetingMetabotLogo,
   GreetingSection,
@@ -32,6 +36,7 @@ import {
 
 interface OwnProps {
   databases: Database[];
+  mode: "database" | "model";
 }
 
 interface StateProps {
@@ -39,6 +44,7 @@ interface StateProps {
   isRunning: boolean;
   isResultDirty: boolean;
   card: Card;
+  model?: Question;
 }
 
 interface DispatchProps {
@@ -53,6 +59,7 @@ const mapStateToProps = (state: State): StateProps => ({
   user: getUser(state) ?? undefined,
   isRunning: getIsRunning(state),
   isResultDirty: getIsResultDirty(state),
+  model: getOriginalQuestion(state),
   card: getCard(state),
 });
 
@@ -62,16 +69,42 @@ const mapDispatchToProps = {
   onDatabaseChange: setQueryDatabase,
 };
 
+const getDatabaseModeMetabotReply = (
+  databases: Database[],
+  onDatabaseChange: (databaseId: number) => void,
+  queryDatabaseId?: number,
+  user?: User,
+) => {
+  const selectedDatabase = databases.find(db => db.id === queryDatabaseId);
+  if (queryDatabaseId == null || selectedDatabase == null) {
+    return t`First, let me know what database you want to ask me about.`;
+  }
+
+  return (
+    <div>{jt`What do you want to know about ${(
+      <DatabaseDataSelector
+        triggerClasses="inline"
+        triggerElement={<Button onlyText>{selectedDatabase.name}</Button>}
+        databases={databases}
+        selectedDatabaseId={queryDatabaseId}
+        setDatabaseFn={onDatabaseChange}
+      />
+    )}, ${user?.first_name}?`}</div>
+  );
+};
+
 const MetabotHeader = ({
   user,
+  card,
+  model,
+  databases,
   isRunning,
   isResultDirty,
-  card,
-  databases,
   onRun,
   onCancel,
   onDatabaseChange,
 }: MetabotHeaderProps) => {
+  const isDatabaseMode = model == null;
   const queryDatabaseId = card?.dataset_query.database;
   const hasDatabase = card != null && queryDatabaseId != null;
 
@@ -96,7 +129,20 @@ const MetabotHeader = ({
     <HeaderRoot>
       <GreetingSection>
         <GreetingMetabotLogo />
-        <GreetingMessage>{t`What can I answer for you?`}</GreetingMessage>
+        <GreetingMessage>
+          {isDatabaseMode
+            ? getDatabaseModeMetabotReply(
+                databases,
+                onDatabaseChange,
+                queryDatabaseId,
+                user,
+              )
+            : jt`What do you want to know about ${(
+                <EntityLink to={model.getUrl()}>
+                  {model.displayName()}
+                </EntityLink>
+              )}, ${user?.first_name}?`}
+        </GreetingMessage>
       </GreetingSection>
       {hasDatabase ? (
         <PromptSection>
