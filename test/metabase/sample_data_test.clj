@@ -21,7 +21,9 @@
 ;; These tools are pretty sophisticated for the amount of tests we have!
 
 (defn- sample-database-db []
-  {:details (#'sample-data/try-to-extract-sample-database!)
+  ;; Open the DB in read-only mode so we don't accidentally modify it during testing
+  {:details (update (#'sample-data/try-to-extract-sample-database!)
+                    :db #(str % ";ACCESS_MODE_DATA=r"))
    :engine  :h2
    :name    "Sample Database"})
 
