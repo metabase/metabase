@@ -27,4 +27,12 @@
      {:database     1
       :source-model 1036
       :question     "What is the total price of all purchases in the state of CA?"}))
+
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user*                 (delay (t2/select-one 'User :id 1))]
+    (mt/user-http-request
+     :rasta :post 200 "/metabot/model"
+     {:database     1
+      :source-model 1036
+      :question     "What is the average rating of items in the mountain west?"}))
   )

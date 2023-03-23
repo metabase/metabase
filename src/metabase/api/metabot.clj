@@ -14,6 +14,14 @@
 
 (set! *warn-on-reflection* true)
 
+(defsetting openai-api-key
+  (deferred-tru "The OpenAI API Key.")
+  :visibility :settings-manager)
+
+(defsetting openai-organization
+  (deferred-tru "The OpenAPI Organization ID.")
+  :visibility :settings-manager)
+
 (def bot-directions
   (str "You are a helpful assistant that writes SQL based on my input."
        "Don't explain your answer, just show me the SQL."))
@@ -147,15 +155,6 @@
         {:global {:distinct-count 4, :nil% 0.0},
          :type   {:type/Number {:min 4203.0, :q1 4302.5, :q3 5077.5, :max 5313.0, :sd 493.74284804946797, :avg 4690.0}}}}]},
      :insights         nil}})
-
-(defsetting openai-api-key
-  (deferred-tru "The OpenAI API Key.")
-  :visibility :settings-manager)
-
-(defsetting openai-organization
-  (deferred-tru "The OpenAPI Organization ID.")
-  :visibility :settings-manager)
-
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/model"
