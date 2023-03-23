@@ -20,6 +20,8 @@ const parameterTarget = [
   ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
 ];
 
+const dashboardDetails = { parameters: [parameter] };
+
 describe("issue 24235", () => {
   beforeEach(() => {
     restore();
@@ -28,9 +30,8 @@ describe("issue 24235", () => {
   });
 
   it("should remove filter when all exclude options are selected (metabase#24235)", () => {
-    cy.createQuestionAndDashboard({ questionDetails }).then(
+    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
-        cy.addFilterToDashboard({ filter: parameter, dashboard_id });
         mapParameterToDashboardCard({ id, card_id, dashboard_id });
         visitDashboard(dashboard_id);
       },
