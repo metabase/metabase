@@ -94,4 +94,10 @@
     (mt/user-http-request
      :rasta :post 200 (format "/metabot/model/%s" 1036)
      {:question     "In which states do Doohickeys sell the best?"}))
+
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user*                 (delay (t2/select-one 'User :id 1))]
+    (mt/user-http-request
+     :rasta :post 200 (format "/metabot/model/%s" 1036)
+     {:question     "How do I correlate source to high ratings?"}))
   )

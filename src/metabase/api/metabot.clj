@@ -185,8 +185,27 @@
                             :database_id             database_id
                             :id                      model-id
                             ;; Hard coded dataset result. Has nothing to do with any of the above.
-                            :suggested_visualization dataset-result}]
+                            :suggested_visualization dataset-result}
+          response {:dataset_query {:database 1
+                                    :type "native"
+                                    :native {:query "SELECT * FROM ORDERS"}}
+                    :display :table
+                    :visualization_settings {}}
+          ]
       (tap> response)
       response)))
+
+
+;{
+; dataset_query: {
+;                 database: 1,
+;                 type: "native",
+;                 native: {
+;                          query: "<generated query>"
+;                          }
+;                 },
+; display: "<suggested display type>",
+; visualization_settings: { ... }
+; }
 
 (api/define-routes)
