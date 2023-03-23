@@ -279,7 +279,6 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
               className="flex-full"
               hasValue={selectedNames.length > 0}
               disabled={disabled}
-              dataTestId={testId}
               {...buttonProps}
             >
               {this.props.buttonText
