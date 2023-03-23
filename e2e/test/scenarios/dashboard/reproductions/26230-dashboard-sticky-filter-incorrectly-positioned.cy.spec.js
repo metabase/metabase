@@ -12,11 +12,9 @@ describe("issue 26230", () => {
   it("should show dashboard header when navigate from the end of other long dashboard (metabase#26230)", () => {
     cy.findByRole("main").scrollTo("bottom");
     cy.button("Toggle sidebar").click();
-    cy.findByRole("main").within(() => {
-      cy.findByDisplayValue("dashboard with a tall card 2").should(
-        "not.be.visible",
-      );
-    });
+    cy.findByRole("main")
+      .findByDisplayValue("dashboard with a tall card 2")
+      .should("not.be.visible");
 
     cy.intercept("GET", "/api/dashboard/*").as("loadDashboard");
     cy.findByRole("listitem", { name: "dashboard with a tall card" }).click();
