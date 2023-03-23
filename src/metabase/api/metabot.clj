@@ -6,10 +6,8 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.field-values :refer [FieldValues]]
    [metabase.models.persisted-info :as persisted-info]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   ;[metabase.query-processor :as qp]
-   ;[metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.models.setting :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]
    [wkok.openai-clojure.api :as openai.api]
    ))
@@ -19,11 +17,6 @@
 (def bot-directions
   (str "You are a helpful assistant that writes SQL based on my input."
        "Don't explain your answer, just show me the SQL."))
-
-(defn model-description [model-id]
-  ;; TODO - Create natural language description of a model here using field_vals, etc.
-  (str "I have a table named FOO with columns created_at, user_id, and status and the column \"status\""
-       "has valid values of \"open\", \"closed\", \"blocked\""))
 
 (defn column-types [{:keys [result_metadata]}]
   (map (fn [{:keys [name display_name description]}]
