@@ -8,7 +8,7 @@ describe("issue 26230", () => {
     prepareAndVisitDashboards();
   });
 
-  it("should show dashboard header when navigate from the end of other long dashboard (metabase#26230)", () => {
+  it("should not preserve the sticky filter behavior when navigating to the second dashboard (metabase#26230)", () => {
     cy.findByRole("main").scrollTo("bottom"); // This line is essential for the reproduction!
 
     cy.button("Toggle sidebar").click();
