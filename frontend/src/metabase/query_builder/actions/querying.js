@@ -156,18 +156,22 @@ export const runMetabotQuery = query => async (dispatch, getState) => {
   const cancelQueryDeferred = defer();
   dispatch.action(RUN_QUERY, { cancelQueryDeferred });
 
-  const newCard = await MetabotApi.modelPrompt(
-    { modelId, question: query },
-    { cancelled: cancelQueryDeferred.promise },
-  );
-  const newQuestion = new Question(
-    newCard,
-    getMetadata(getState()),
-  ).lockDisplay();
+  try {
+    const newCard = await MetabotApi.modelPrompt(
+      { modelId, question: query },
+      { cancelled: cancelQueryDeferred.promise },
+    );
+    const newQuestion = new Question(
+      newCard,
+      getMetadata(getState()),
+    ).lockDisplay();
 
-  await dispatch(updateQuestion(newQuestion));
-  await dispatch(setIsNativeEditorOpen(false));
-  await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
+    await dispatch(updateQuestion(newQuestion));
+    await dispatch(setIsNativeEditorOpen(false));
+    await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
+  } catch (error) {
+    dispatch(queryErrored(0, error));
+  }
 };
 
 const loadStartUIControls = createThunkAction(
