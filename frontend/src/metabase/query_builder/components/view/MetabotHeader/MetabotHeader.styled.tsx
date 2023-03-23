@@ -2,7 +2,8 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import MetabotLogo from "metabase/core/components/MetabotLogo";
 import UserAvatar from "metabase/components/UserAvatar";
-import ViewSection from "../ViewSection";
+import RunButton from "metabase/query_builder/components/RunButton";
+import ViewSection from "metabase/query_builder/components/view/ViewSection";
 
 export const HeaderRoot = styled(ViewSection)`
   display: block;
@@ -32,8 +33,8 @@ export const GreetingMessage = styled.div`
 
 export const PromptSection = styled.div`
   display: flex;
+  gap: 1rem;
   padding: 1rem;
-  justify-content: space-between;
   align-items: center;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
@@ -41,13 +42,10 @@ export const PromptSection = styled.div`
 `;
 
 export const PromptUserAvatar = styled(UserAvatar)`
+  flex-shrink: 0;
   background-color: ${color("accent2")};
 `;
 
-export const PromptUserAvatarContainer = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
+export const PromptRunButton = styled(RunButton)`
   flex-shrink: 0;
-  margin-right: 1rem;
 `;
