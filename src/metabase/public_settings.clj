@@ -16,7 +16,7 @@
     :refer [available-locales-with-names deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
@@ -482,7 +482,7 @@
   "Whether this instance has a Sample Database database"
   :visibility :authenticated
   :setter     :none
-  :getter     (fn [] (db/exists? 'Database, :is_sample true))
+  :getter     (fn [] (t2/exists? 'Database, :is_sample true))
   :doc        false)
 
 (defsetting password-complexity
@@ -596,6 +596,6 @@
   :getter     (fn []
                 (let [v (setting/get-value-of-type :boolean :show-database-syncing-modal)]
                   (if (nil? v)
-                    (not (db/exists? 'Database :is_sample false, :initial_sync_status "complete"))
+                    (not (t2/exists? 'Database :is_sample false, :initial_sync_status "complete"))
                     ;; frontend should set this value to `true` after the modal has been shown once
                     v))))

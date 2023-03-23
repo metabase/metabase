@@ -409,7 +409,7 @@
   [id]
   {id ms/PositiveInt}
   (api/check-superuser)
-  (api/check-404 (db/exists? Database :id id))
+  (api/check-404 (t2/exists? Database :id id))
   (let [table-ids (t2/select-pks-set Table :db_id id)]
     (first (mdb.query/query
              {:select [:*]

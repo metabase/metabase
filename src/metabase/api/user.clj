@@ -175,7 +175,7 @@
                (or api/*is-superuser?*
                    api/*is-group-manager?*)
                (hydrate :group_ids))
-     :total  (db/count User (user-clauses status query group_id include_deactivated))
+     :total  (t2/count User (user-clauses status query group_id include_deactivated))
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
@@ -204,6 +204,7 @@
         perms-query {:where [:and
                              [:= :archived false]
                              coll-ids-filter]}]
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (assoc user :has_question_and_dashboard (and (db/exists? 'Card (perms-query user))
                                                  (db/exists? 'Dashboard (perms-query user))))))
 
@@ -253,7 +254,7 @@
    user_group_memberships (s/maybe [user/UserGroupMembership])
    login_attributes       (s/maybe user/LoginAttributes)}
   (api/check-superuser)
-  (api/checkp (not (db/exists? User :%lower.email (u/lower-case-en email)))
+  (api/checkp (not (t2/exists? User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))
   (db/transaction
     (let [new-user-id (u/the-id (user/create-and-invite-user!
@@ -328,7 +329,7 @@
       (api/checkp (valid-name-update? user-before-update :last_name last_name)
         "last_name" (tru "Editing last name is not allowed for SSO users.")))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-    (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
+    (api/checkp (not (t2/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
       "email" (tru "Email address already associated to another user."))
     (db/transaction
       ;; only superuser or self can update user info

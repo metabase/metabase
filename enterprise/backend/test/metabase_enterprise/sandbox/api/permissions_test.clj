@@ -138,7 +138,7 @@
                                       {:read :all, :query :segmented}}}})]
             (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')
             (testing "GTAP should not have been deleted"
-              (is (db/exists? GroupTableAccessPolicy :group_id (u/the-id (perms-group/all-users)), :table_id (mt/id :venues))))))))))
+              (is (t2/exists? GroupTableAccessPolicy :group_id (u/the-id (perms-group/all-users)), :table_id (mt/id :venues))))))))))
 
 (defn- fake-persist-card! [card]
   (let [persisted-info (persisted-info/turn-on-model! (mt/user->id :rasta) card)]
