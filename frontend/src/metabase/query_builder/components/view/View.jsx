@@ -36,6 +36,7 @@ import ViewFooter from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
 import NewQuestionView from "./View/NewQuestionView";
 import QueryViewNotebook from "./View/QueryViewNotebook";
+import MetabotHeader from "./MetabotHeader";
 
 import {
   BorderedViewTitleHeader,
@@ -268,7 +269,7 @@ class View extends React.Component {
       : this.getRightSidebarForNativeQuery();
   };
 
-  renderHeader = () => {
+  renderRegularHeader = () => {
     const { query } = this.props;
     const isStructured = query instanceof StructuredQuery;
 
@@ -293,6 +294,10 @@ class View extends React.Component {
         )}
       </Motion>
     );
+  };
+
+  renderMetabotHeader = () => {
+    return <MetabotHeader />;
   };
 
   renderNativeQueryEditor = () => {
@@ -482,7 +487,10 @@ class View extends React.Component {
     return (
       <div className="full-height">
         <QueryBuilderViewRoot className="QueryBuilder">
-          {isHeaderVisible && this.renderHeader()}
+          {isHeaderVisible &&
+            (queryBuilderMode === "metabot"
+              ? this.renderMetabotHeader()
+              : this.renderRegularHeader())}
           <QueryBuilderContentContainer>
             {isStructured && (
               <QueryViewNotebook
