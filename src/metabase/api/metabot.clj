@@ -138,6 +138,22 @@
       response)))
 
 
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/database/:database-id"
+  "Ask Metabot to generate a SQL query given a prompt about a given database."
+  [database-id :as {{:keys [question fake] :as body} :body}]
+  (tap> {:database-id database-id
+         :request  body})
+  (binding [persisted-info/*allow-persisted-substitution* false]
+    (let [response         {:dataset_query          {:database database-id
+                                                     :type     "native"
+                                                     :native   {:query "SELECT * FROM ORDERS; -- THIS IS FAKE"}}
+                            :display                :table
+                            :visualization_settings {}}
+          ]
+      (tap> response)
+      response)))
+
 ;{
 ; dataset_query: {
 ;                 database: 1,
