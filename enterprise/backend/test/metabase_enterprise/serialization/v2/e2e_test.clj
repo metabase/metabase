@@ -223,7 +223,7 @@
           (is (= 100 (count (t2/select-fn-set :email 'User))))
 
           (testing "extraction"
-            (reset! extraction (into [] (extract/extract-metabase {})))
+            (reset! extraction (serdes/with-cache (into [] (extract/extract-metabase {}))))
             (reset! entities   (reduce (fn [m entity]
                                          (update m (-> entity :serdes/meta last :model)
                                                  (fnil conj []) entity))
@@ -315,7 +315,7 @@
                          (set (ingest/ingest-list (ingest/ingest-yaml dump-dir)))))))
 
               (testing "doing ingestion"
-                (is (serdes.load/load-metabase (ingest/ingest-yaml dump-dir))
+                (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
                     "successful"))
 
               (testing "for Actions"
@@ -461,7 +461,7 @@
               (is (= 2 (db/count ParameterCard))))
 
             (testing "extract and store"
-              (let [extraction (into [] (extract/extract-metabase {}))]
+              (let [extraction (serdes/with-cache (into [] (extract/extract-metabase {})))]
                 (is (= [{:id                   "abc",
                          :name                 "CATEGORY",
                          :type                 :category,
@@ -488,7 +488,7 @@
               (ts/with-dest-db
                 ;; ingest
                 (testing "doing ingestion"
-                  (is (serdes.load/load-metabase (ingest/ingest-yaml dump-dir))
+                  (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
                       "successful"))
 
                 (let [dash1d (t2/select-one Dashboard :name (:name dash1s))
@@ -570,7 +570,7 @@
              DashboardCard _                         {:dashboard_id           dashboard-id
                                                       :visualization_settings (link-card-viz-setting "dataset" model-id)}]
             (testing "extract and store"
-              (let [extraction          (into [] (extract/extract-metabase {}))
+              (let [extraction          (serdes/with-cache (into [] (extract/extract-metabase {})))
                     extracted-dashboard (first (filter #(= (:name %) "Test Dashboard") (by-model extraction "Dashboard")))]
                 (is (= [{:model "collection" :id coll-eid}
                         {:model "database"   :id "Linked database"}
@@ -596,7 +596,7 @@
               ;; ingest
               (ts/with-dest-db
                 (testing "doing ingestion"
-                  (is (serdes.load/load-metabase (ingest/ingest-yaml dump-dir))
+                  (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
                       "successful"))
 
                 (doseq [[name model]
