@@ -14372,8 +14372,9 @@ databaseChangeLog:
                 remarks: 'Enable/disable JSON unfolding for a field'
                 name: json_unfolding
                 type: boolean
+                defaultValueBoolean: false
                 constraints:
-                  nullable: true
+                  nullable: false
             tableName: metabase_field
 
   - changeSet:
@@ -14432,7 +14433,9 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+                      
 
+# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
 #
