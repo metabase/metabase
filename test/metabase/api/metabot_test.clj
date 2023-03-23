@@ -135,11 +135,6 @@
   (metabot/extract-sql
    "The SQL query to find the total price of all purchases in the state of CA would be:\n\n```SQL\nSELECT SUM(PRICE) as total_price\nFROM \"My Model 2\"\nWHERE STATE = 'CA';\n```")
 
-  (let [[_pre sql _post] (str/split example-response #"```")]
-    (metabot/standardize-name
-     (t2/select-one Card :id 1036)
-     (mdb.query/format-sql sql)))
-
   (t2/select-one Card :id 1036)
 
   (t2/select-one Field :id 57)
@@ -153,11 +148,7 @@
                [_ field] fields
                :let [field-name (:name (t2/select-one [Field :name] :id field))]]
            [field-name (format "%s__%s" alias field-name)]))
-       (sort-by (comp - count first)))
-
-  (let [q "SELECT\n  RATING\nFROM\n  {{#1036}}\nWHERE\n  STATE = 'CA';"
-        model (t2/select-one Card :id 1036)]
-    (metabot/replace-fields model q)))
+       (sort-by (comp - count first))))
 
 (comment
   (def x "SELECT \"PUBLIC\".\"ORDERS\".\"ID\" AS \"ID\",\n       \"PUBLIC\".\"ORDERS\".\"TOTAL\" AS \"TOTAL\",\n       \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" AS \"CREATED_AT\",\n       \"People - User\".\"LONGITUDE\" AS \"People - User__LONGITUDE\",\n       \"People - User\".\"STATE\" AS \"People - User__STATE\",\n       \"People - User\".\"SOURCE\" AS \"People - User__SOURCE\",\n       \"People - User\".\"LATITUDE\" AS \"People - User__LATITUDE\",\n       \"Products\".\"CATEGORY\" AS \"Products__CATEGORY\",\n       \"Products\".\"PRICE\" AS \"Products__PRICE\",\n       \"Products\".\"RATING\" AS \"Products__RATING\"\nFROM \"PUBLIC\".\"ORDERS\"\n         LEFT JOIN \"PUBLIC\".\"PEOPLE\" AS \"People - User\" ON \"PUBLIC\".\"ORDERS\".\"USER_ID\" = \"People - User\".\"ID\" LEFT JOIN \"PUBLIC\".\"PRODUCTS\" AS \"Products\" ON \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\" = \"Products\".\"ID\"\nLIMIT 1048575")
@@ -173,4 +164,58 @@
                    query
                    #"AS \"([^_]+__([^\"]+))\""
                    (fn [[_ _ b]] (format "AS \"%s\"" b)))]
-    (println (mdb.query/format-sql new-query))))
+    (println (mdb.query/format-sql new-query)))
+
+  (let [{:keys [dataset_query name]} (t2/select-one Card :id 1036)
+        {:keys [query]} (qp/compile-and-splice-parameters dataset_query)
+        new-query (str/replace
+                   query
+                   #"AS \"([^_]+__([^\"]+))\""
+                   (fn [[_ _ b]] (format "AS \"%s\"" b)))]
+    (println (mdb.query/format-sql query)))
+
+  ;; The challenge...
+
+  ;; This is what we use to 'train' metabot
+  ;; Aside - Would it work to compute the aliases and provide that as column names?
+  (->> (t2/select-one Card :id 1036)
+       metabot/model-messages
+       (mapv :content))
+
+  ;; And this is the native query version of the model
+  ;; Note the aliases for all join tables
+  ;; e.g. "People - User"."LONGITUDE" AS "People - User__LONGITUDE"
+  ;; This leaks the table abstraction from below -- We really just want what
+  ;; looks like a denormalized table with "sensible" names
+  ;; i.e. We want to use the column names above
+  (let [{:keys [dataset_query name]} (t2/select-one Card :id 1036)
+        {:keys [query]} (qp/compile-and-splice-parameters dataset_query)]
+    (println (mdb.query/format-sql query)))
+
+  (let [{:keys [dataset_query name]} (t2/select-one Card :id 1036)]
+    ;(#'metabase.query-processor/preprocess* dataset_query)
+    dataset_query)
+
+  (t2/select-one [Card :dataset_query :result_metadata] :id 1036)
+
+  (let [{:keys [dataset_query result_metadata]} (t2/select-one [Card :dataset_query :result_metadata] :id 1036)
+        query dataset_query]
+    [(let [{:keys [query]} (let [driver (metabase.driver.util/database->driver (:database (qp/preprocess query)))]
+                             (let [qp (metabase.query-processor.reducible/combine-middleware
+                                       (vec metabase.query-processor/around-middleware)
+                                       (fn [query _rff _context]
+                                         (metabase.query-processor.util.add-alias-info/add-alias-info
+                                          (#'metabase.query-processor/preprocess* query))))]
+                               (qp query nil nil)))
+           {:keys [fields joins]} query]
+       (for [field fields
+             :let [[_ id m] field
+                   alias (:metabase.query-processor.util.add-alias-info/desired-alias m)]]
+         [alias id]))
+     (into {} (map (juxt :id :display_name) result_metadata))])
+
+  (metabot/aliases (t2/select-one [Card :dataset_query :result_metadata] :id 1036))
+
+  (println (metabot/inner-query (t2/select-one Card :id 1036)))
+
+  )
