@@ -54,7 +54,9 @@ function QuestionRowCount({
     content = (
       <PopoverWithTrigger
         triggerElement={
-          <span className="text-brand-hover text-bold">{message}</span>
+          <span className="text-brand-hover text-bold" data-testid="trigger">
+            {message}
+          </span>
         }
         triggerClasses={limit != null ? "text-brand" : ""}
       >

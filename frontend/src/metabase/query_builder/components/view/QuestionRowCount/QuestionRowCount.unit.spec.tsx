@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+import { fireEvent, render, screen, waitFor } from "__support__/ui";
 
 import type { Dataset } from "metabase-types/api";
 import { createMockDataset } from "metabase-types/api/mocks";
@@ -40,7 +41,13 @@ function setup({
 
   const rowCount = screen.getByLabelText("Row count");
 
-  return { rowCount };
+  function getNextQuery() {
+    const [lastCall] = onQueryChange.mock.calls.reverse();
+    const [nextQuery] = lastCall;
+    return nextQuery;
+  }
+
+  return { rowCount, getNextQuery };
 }
 
 describe("QuestionRowCount", () => {
@@ -88,6 +95,51 @@ describe("QuestionRowCount", () => {
           });
 
           expect(rowCount).toHaveTextContent("Showing 321 rows");
+        });
+
+        it("allows setting a limit", async () => {
+          const { getNextQuery } = setup({ question });
+
+          userEvent.click(screen.getByTestId("trigger"));
+          const input = await screen.findByPlaceholderText("Pick a limit");
+          fireEvent.change(input, { target: { value: "25" } });
+          fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
+
+          await waitFor(() => {
+            expect(getNextQuery().limit()).toBe(25);
+          });
+        });
+
+        it("allows updating a limit", async () => {
+          const query = question.query() as StructuredQuery;
+          const { getNextQuery } = setup({
+            question: query.updateLimit(25).question(),
+          });
+
+          userEvent.click(screen.getByTestId("trigger"));
+          const input = await screen.findByDisplayValue("25");
+          fireEvent.change(input, { target: { value: "400" } });
+          fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
+
+          await waitFor(() => {
+            expect(getNextQuery().limit()).toBe(400);
+          });
+        });
+
+        it("allows resetting a limit", async () => {
+          const query = question.query() as StructuredQuery;
+          const { getNextQuery } = setup({
+            question: query.updateLimit(25).question(),
+          });
+
+          userEvent.click(screen.getByTestId("trigger"));
+          userEvent.click(
+            await screen.findByRole("radio", { name: /Show maximum/i }),
+          );
+
+          await waitFor(() => {
+            expect(getNextQuery().limit()).toBeUndefined();
+          });
         });
       });
     });
