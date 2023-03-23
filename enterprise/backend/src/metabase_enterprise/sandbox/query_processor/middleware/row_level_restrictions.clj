@@ -249,13 +249,14 @@
   any linked tables referenced via fields in the attribute remappings. This is the set of tables which need to be
   excluded from subsequent permission checks in order to run the sandboxed query."
   [{table-id :table_id, attribute-remappings :attribute_remappings}]
-  (set
-   (conj
-    (for [target-field-clause (vals attribute-remappings)]
-      (mbql.u/match-one target-field-clause
-        [:field (field-id :guard integer?) _]
-        (t2/select-one-fn :table_id Field :id field-id)))
-    table-id)))
+  (->>
+   (for [target-field-clause (vals attribute-remappings)]
+     (mbql.u/match-one target-field-clause
+                       [:field (field-id :guard integer?) _]
+                       (t2/select-one-fn :table_id Field :id field-id)))
+   (cons table-id)
+   (remove nil?)
+   set))
 
 (s/defn ^:private sandbox->perms-set :- #{perms/PathSchema}
   "Calculate the set of permissions needed to run the query associated with a sandbox; this set of permissions is excluded
