@@ -10,7 +10,8 @@ describe("issue 26230", () => {
   });
 
   it("should show dashboard header when navigate from the end of other long dashboard (metabase#26230)", () => {
-    cy.findByRole("main").scrollTo("bottom");
+    cy.findByRole("main").scrollTo("bottom"); // This line is essential for the reproduction!
+
     cy.button("Toggle sidebar").click();
     cy.findByRole("main")
       .findByDisplayValue("dashboard with a tall card 2")
