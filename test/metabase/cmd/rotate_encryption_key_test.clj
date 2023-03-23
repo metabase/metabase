@@ -154,11 +154,11 @@
 
               (testing "full rollback when a database details looks encrypted with a different key than the current one"
                 (encryption-test/with-secret-key k3
-                  (let [db (db/insert! Database {:name "k3", :engine :mysql, :details "{\"db\":\"/tmp/k3.db\"}"})]
+                  (let [db (db/insert! Database {:name "k3", :engine :mysql, :details {:db "/tmp/k3.db"}})]
                     (is (=? {:name "k3"}
                             db))))
                 (encryption-test/with-secret-key k2
-                  (let [db (db/insert! Database {:name "k2", :engine :mysql, :details "{\"db\":\"/tmp/k2.db\"}"})]
+                  (let [db (db/insert! Database {:name "k2", :engine :mysql, :details {:db "/tmp/k2.db"}})]
                     (is (=? {:name "k2"}
                             db)))
                   (is (thrown-with-msg?
@@ -170,8 +170,8 @@
                   (is (= {:db "/tmp/k3.db"} (t2/select-one-fn :details Database :name "k3")))))
 
               (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
-                (t2/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
-                (db/update-where! Database {:name "k3"} :details "{\"db\":\"/tmp/test.db\"}")
+                (t2/update! Database 1 {:details {:db "/tmp/test.db"}})
+                (db/update-where! Database {:name "k3"} :details {:db "/tmp/test.db"})
                 (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
                   (rotate-encryption-key! nil))
                 (is (= "unencrypted value" (raw-value "nocrypt")))
