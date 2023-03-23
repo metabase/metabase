@@ -30,6 +30,8 @@ import {
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
+import { saveDashboardImage } from "metabase/visualizations/lib/save-chart-image";
+
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
 import {
@@ -351,6 +353,14 @@ class DashboardHeader extends Component {
         event: "Dashboard;Copy",
       });
 
+      extraButtons.push({
+        title: t`Export as PNG`,
+        icon: "png",
+        action: () => {
+          this.saveAsImage();
+        },
+      });
+
       if (canEdit) {
         extraButtons.push({
           title: t`Move`,
@@ -404,6 +414,13 @@ class DashboardHeader extends Component {
 
     return buttons;
   }
+
+  saveAsImage = async () => {
+    const { dashboard } = this.props;
+    const cardNodeSelector = `[data-testid="Dashboard-Cards-Container"]`;
+    const name = `${dashboard.name}.png`;
+    await saveDashboardImage(cardNodeSelector, name);
+  };
 
   render() {
     const {

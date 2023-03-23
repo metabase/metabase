@@ -314,6 +314,7 @@ class Dashboard extends Component {
 
                 <CardsContainer
                   addMarginTop={cardsContainerShouldHaveMarginTop}
+                  data-testId="Dashboard-Cards-Container"
                 >
                   {dashboardHasCards(dashboard) ? (
                     <DashboardGrid
