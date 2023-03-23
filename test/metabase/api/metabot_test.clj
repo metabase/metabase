@@ -106,24 +106,29 @@
      {:question     "How do I correlate source to high ratings?"}))
   )
 
-(def example-response
-  "To correlate 'SOURCE' to 'RATING', you can use the following SQL query:
+(comment
+  (def example-response
+    "To correlate 'SOURCE' to 'RATING', you can use the following SQL query:
 
- ```
- SELECT SOURCE, AVG(RATING) as AVERAGE_RATING
- FROM \"My Model 2\"
- GROUP BY SOURCE
- ORDER BY AVERAGE_RATING DESC
- ```
+   ```
+   SELECT SOURCE, AVG(RATING) as AVERAGE_RATING
+   FROM \"My Model 2\"
+   GROUP BY SOURCE
+   ORDER BY AVERAGE_RATING DESC
+   ```
 
- This will group the data by SOURCE and calculate the average rating for each one. The results will be ordered in descending order based on the average rating, which will help you identify which SOURCE has the highest rating.")
+   This will group the data by SOURCE and calculate the average rating for each one. The results will be ordered in descending order based on the average rating, which will help you identify which SOURCE has the highest rating.")
 
+  (metabot/extract-sql
+   "The SQL query to find the total price of all purchases in the state of CA would be:\n\n```sql\nSELECT SUM(PRICE) as total_price\nFROM \"My Model 2\"\nWHERE STATE = 'CA';\n```")
 
-(let [[_pre sql _post] (str/split example-response #"```")]
-  (metabot/standardize-name
-   (t2/select-one Card :id 1036)
-   (mdb.query/format-sql sql)))
+  (let [[_pre sql _post] (str/split example-response #"```")]
+    (metabot/standardize-name
+     (t2/select-one Card :id 1036)
+     (mdb.query/format-sql sql)))
 
-(t2/select-one Card :id 1036)
+  (t2/select-one Card :id 1036)
 
-(u/slugify (:name (t2/select-one Card :id 1036)))
+  (u/slugify (:name (t2/select-one Card :id 1036))))
+
+;My_Model_2
