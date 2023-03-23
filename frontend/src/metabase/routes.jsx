@@ -31,6 +31,7 @@ import SchemaBrowser from "metabase/browse/containers/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
+import Metabot from "metabase/query_builder/containers/Metabot";
 
 import MoveCollectionModal from "metabase/collections/containers/MoveCollectionModal";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
@@ -232,6 +233,11 @@ export const getRoutes = store => (
           <ModalRoute path="move" modal={DashboardMoveModal} />
           <ModalRoute path="copy" modal={DashboardCopyModal} />
           <ModalRoute path="archive" modal={ArchiveDashboardModal} />
+        </Route>
+
+        <Route path="/metabot">
+          <IndexRoute component={Metabot} />
+          <Route path=":modelId" component={Metabot} />
         </Route>
 
         <Route path="/question">
