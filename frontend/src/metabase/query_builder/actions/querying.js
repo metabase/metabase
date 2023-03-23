@@ -23,6 +23,7 @@ import {
   getQuestion,
   getTimeoutId,
   getIsResultDirty,
+  getCard,
 } from "../selectors";
 
 import { updateQuestion } from "./core";
@@ -150,17 +151,33 @@ export const runQuestionQuery = ({
   };
 };
 
+const queryMetabot = async (query, databaseId, modelId) => {
+  const cancelQueryDeferred = defer();
+
+  if (modelId) {
+    return await MetabotApi.modelPrompt(
+      { modelId, question: query },
+      { cancelled: cancelQueryDeferred.promise },
+    );
+  }
+
+  return await MetabotApi.databasePrompt(
+    { databaseId, question: query },
+    { cancelled: cancelQueryDeferred.promise },
+  );
+};
+
 export const runMetabotQuery = query => async (dispatch, getState) => {
+  const card = getCard(getState());
   const originalQuestion = getOriginalQuestion(getState());
-  const modelId = originalQuestion.id();
+  const modelId = originalQuestion?.id();
+  const databaseId = card?.dataset_query.database;
+
   const cancelQueryDeferred = defer();
   dispatch.action(RUN_QUERY, { cancelQueryDeferred });
 
   try {
-    const newCard = await MetabotApi.modelPrompt(
-      { modelId, question: query },
-      { cancelled: cancelQueryDeferred.promise },
-    );
+    const newCard = await queryMetabot(query, databaseId, modelId);
     const newQuestion = new Question(
       newCard,
       getMetadata(getState()),
