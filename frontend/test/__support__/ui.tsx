@@ -4,7 +4,7 @@ import type { ByRoleMatcher } from "@testing-library/react";
 import { merge } from "icepick";
 import _ from "underscore";
 import { createMemoryHistory, History } from "history";
-import { Router } from "react-router";
+import { Router, useRouterHistory } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "@emotion/react";
@@ -61,7 +61,8 @@ export function renderWithProviders(
   }
 
   const history = withRouter
-    ? createMemoryHistory({ entries: [initialRoute] })
+    ? // eslint-disable-next-line react-hooks/rules-of-hooks
+      useRouterHistory(createMemoryHistory)({ entries: [initialRoute] })
     : undefined;
 
   const reducers = mode === "default" ? mainReducers : publicReducers;
