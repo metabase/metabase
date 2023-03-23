@@ -297,7 +297,11 @@ class View extends React.Component {
   };
 
   renderMetabotHeader = () => {
-    return <MetabotHeader />;
+    return (
+      <QueryBuilderViewHeaderContainer>
+        <MetabotHeader />
+      </QueryBuilderViewHeaderContainer>
+    );
   };
 
   renderNativeQueryEditor = () => {

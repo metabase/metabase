@@ -1,18 +1,45 @@
 import React from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
+import { getUser } from "metabase/selectors/user";
+import { User } from "metabase-types/api";
+import { State } from "metabase-types/store";
 import {
+  HeaderRoot,
   GreetingSection,
-  MetabotIcon,
-  MetabotMessage,
+  GreetingMetabotLogo,
+  GreetingMessage,
+  PromptSection,
+  PromptUserAvatarContainer,
+  PromptUserAvatar,
 } from "./MetabotHeader.styled";
 
-const MetabotHeader = () => {
+interface StateProps {
+  user: User | null;
+}
+
+type MetabotHeaderProps = StateProps;
+
+const mapStateToProps = (state: State): StateProps => ({
+  user: getUser(state),
+});
+
+const MetabotHeader = ({ user }: MetabotHeaderProps) => {
   return (
-    <GreetingSection>
-      <MetabotIcon />
-      <MetabotMessage>{t`What can I answer for you?`}</MetabotMessage>
-    </GreetingSection>
+    <HeaderRoot>
+      <GreetingSection>
+        <GreetingMetabotLogo />
+        <GreetingMessage>{t`What can I answer for you?`}</GreetingMessage>
+      </GreetingSection>
+      <PromptSection>
+        {user && (
+          <PromptUserAvatarContainer>
+            <PromptUserAvatar user={user} />
+          </PromptUserAvatarContainer>
+        )}
+      </PromptSection>
+    </HeaderRoot>
   );
 };
 
-export default MetabotHeader;
+export default connect(mapStateToProps)(MetabotHeader);
