@@ -68,7 +68,7 @@ export default class LegendVertical extends Component {
         {items.map((title, index) => {
           const isMuted =
             hovered && hovered.index != null && index !== hovered.index;
-          title = Array.isArray(title) ? title[0] : title;
+          const legendItemTitle = Array.isArray(title) ? title[0] : title;
           return (
             <li
               key={index}
@@ -84,12 +84,12 @@ export default class LegendVertical extends Component {
                 })
               }
               onMouseLeave={e => onHoverChange && onHoverChange()}
-              data-testid={`legend-item-${title}`}
+              data-testid={`legend-item-${legendItemTitle}`}
               {...(hovered && { "aria-current": !isMuted })}
             >
               <LegendItem
                 ref={"legendItem" + index}
-                title={title}
+                title={legendItemTitle}
                 color={colors[index % colors.length]}
                 isMuted={isMuted}
                 showTooltip={false}
