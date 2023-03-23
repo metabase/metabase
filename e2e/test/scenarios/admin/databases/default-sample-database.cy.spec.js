@@ -1,6 +1,9 @@
 import { restore, popover, modal, describeEE } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > databases > sample database", () => {
   beforeEach(() => {
@@ -107,7 +110,29 @@ describe("scenarios > admin > databases > sample database", () => {
       `usage_info`,
     );
     cy.intercept("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
+    // model
     cy.request("PUT", "/api/card/1", { dataset: true });
+    // Create a segment through API
+    cy.request("POST", "/api/segment", {
+      name: "Small orders",
+      description: "All orders with a total under $100.",
+      table_id: ORDERS_ID,
+      definition: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+      },
+    });
+    // metric
+    cy.request("POST", "/api/metric", {
+      name: "Revenue",
+      description: "Sum of orders subtotal",
+      table_id: ORDERS_ID,
+      definition: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+      },
+    });
 
     cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`).as("loadDatabase");
     cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
@@ -150,11 +175,19 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.button("Delete this content and the DB connection")
         .as("deleteButton")
         .should("be.disabled");
-      cy.findByLabelText(/Delete [0-9]* saved questions/)
+      cy.findByLabelText(/Delete [0-9]* saved questions?/)
         .should("not.be.checked")
         .click()
         .should("be.checked");
       cy.findByLabelText(/Delete [0-9]* models?/)
+        .should("not.be.checked")
+        .click()
+        .should("be.checked");
+      cy.findByLabelText(/Delete [0-9]* metrics?/)
+        .should("not.be.checked")
+        .click()
+        .should("be.checked");
+      cy.findByLabelText(/Delete [0-9]* segments?/)
         .should("not.be.checked")
         .click()
         .should("be.checked");
@@ -167,12 +200,12 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByPlaceholderText("Are you completely sure?")
         .type("Sample Database")
         .blur();
+
       cy.get("@deleteButton").should("be.enabled").click();
       cy.wait("@delete");
     });
 
-    // FIXME why the trailing slash?
-    cy.location("pathname").should("eq", "/admin/databases/");
+    cy.location("pathname").should("eq", "/admin/databases/"); // FIXME why the trailing slash?
     cy.intercept("POST", "/api/database/sample_database").as("sample_database");
     cy.contains("Bring the sample database back", {
       timeout: 10000,
