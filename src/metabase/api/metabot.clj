@@ -4,10 +4,10 @@
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.db.query :as mdb.query]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.field-values :refer [FieldValues]]
+   [metabase.models :refer [Card Collection Database Field FieldValues Table]]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.setting :refer [defsetting]]
+   [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]
@@ -99,6 +99,47 @@
     ;(str/replace sql rgx (format "{{#%s-%s}}" id (str/replace (u/slugify name) #"_" "-")))
     ))
 
+(defn replacements [{:keys [dataset_query]}]
+  (->> (let [{:keys [query]} dataset_query
+             {:keys [joins]} query]
+         (for [{:keys [alias fields] :as _join} joins
+               [_ field] fields
+               :let [field-name (:name (t2/select-one [Field :name] :id field))]]
+           [field-name (format "%s__%s" alias field-name)]))
+       (sort-by (comp - count first))))
+
+(defn replace-fields [model sql]
+  (let [r (replacements model)]
+    (reduce
+     (fn [sql [o n]]
+       (str/replace sql o n)) sql r)))
+
+(defn bot-response->sql [resp]
+  (some->> resp
+           :choices
+           first
+           :message
+           :content
+           extract-sql
+           ;(standardize-name model)
+           ;(replace-fields model)
+           ))
+
+(defn get-sql [model {:keys [question fake]}]
+  (cond
+    fake "SELECT * FROM ORDERS; -- THIS IS FAKE"
+    (and (openai-api-key) (openai-organization)) (let [model-assertions (model-messages model)
+                                                       resp             (write-sql model-assertions question)]
+                                                   (tap> {:response resp})
+                                                   (bot-response->sql resp))
+    :else "Set MB_OPENAI_API_KEY and MB_OPENAI_ORGANIZATION env vars and relaunch!"))
+
+(defn fix-aliases [query]
+  (str/replace
+   query
+   #"AS \"([^_]+__([^\"]+))\""
+   (fn [[_ _ b]] (format "AS \"%s\"" b))))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/model/:model-id"
   "Ask Metabot to generate a SQL query given a prompt about a given model."
@@ -107,21 +148,16 @@
          :request  body})
   (binding [persisted-info/*allow-persisted-substitution* false]
     ;(qp.perms/check-current-user-has-adhoc-native-query-perms query)
-    (let [{:keys [database_id] :as model} (api/check-404 (t2/select-one Card :id model-id))
-          model-assertions (model-messages model)
+    (let [{model-name :name :keys [database_id dataset_query] :as model} (api/check-404 (t2/select-one Card :id model-id))
+          {inner-query :query} (qp/compile-and-splice-parameters dataset_query)
+          inner-query (fix-aliases inner-query)
+          bot-sql (get-sql model {:question question :fake fake})
+          final-sql (format "WITH \"%s\" AS (%s) %s" model-name inner-query bot-sql)
+          _ (tap> {:bot-sql bot-sql
+                   :final-sql final-sql})
           response-sql     (cond
                              fake "SELECT * FROM ORDERS; -- THIS IS FAKE"
-                             (and
-                              (openai-api-key)
-                              (openai-organization)) (let [resp (write-sql model-assertions question)]
-                                                       (tap> resp)
-                                                       (some->> resp
-                                                                :choices
-                                                                first
-                                                                :message
-                                                                :content
-                                                                extract-sql
-                                                                (standardize-name model)))
+                             (and (openai-api-key) (openai-organization)) final-sql
                              :else "Set MB_OPENAI_API_KEY and MB_OPENAI_ORGANIZATION env vars and relaunch!")
           ;response         {:original_question       question
           ;                  :assertions              (mapv :content model-assertions)
@@ -145,13 +181,13 @@
   "Ask Metabot to generate a SQL query given a prompt about a given database."
   [database-id :as {{:keys [question fake] :as body} :body}]
   (tap> {:database-id database-id
-         :request  body})
+         :request     body})
   (binding [persisted-info/*allow-persisted-substitution* false]
-    (let [response         {:dataset_query          {:database database-id
-                                                     :type     "native"
-                                                     :native   {:query "SELECT * FROM ORDERS; -- THIS IS FAKE"}}
-                            :display                :table
-                            :visualization_settings {}}
+    (let [response {:dataset_query          {:database database-id
+                                             :type     "native"
+                                             :native   {:query "SELECT * FROM ORDERS; -- THIS IS FAKE"}}
+                    :display                :table
+                    :visualization_settings {}}
           ]
       (tap> response)
       response)))

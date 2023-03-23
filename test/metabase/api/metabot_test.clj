@@ -6,6 +6,7 @@
             [metabase.api.metabot :as metabot]
             [metabase.db.query :as mdb.query]
             [metabase.models :refer [Card Collection Database Field Metric Table]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -79,31 +80,43 @@
             api/*current-user*                 (delay (t2/select-one 'User :id 1))]
     (mt/user-http-request
      :rasta :post 200 (format "/metabot/model/%s" 1036)
-     {:question     "What is the total price of all purchases in the state of CA?"}))
+     {:question "What is the total price of all purchases in the state of CA?"}))
 
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user*                 (delay (t2/select-one 'User :id 1))]
     (mt/user-http-request
      :rasta :post 200 (format "/metabot/model/%s" 1036)
-     {:question     "What is the average rating of items in the mountain west?"}))
+     {:question "What is the average rating of items in the mountain west?"}))
 
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user*                 (delay (t2/select-one 'User :id 1))]
     (mt/user-http-request
      :rasta :post 200 (format "/metabot/model/%s" 1036)
-     {:question     "What is the average rating of items in the mountain west?"}))
+     {:question "What is the average rating of items in the mountain west?"}))
 
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user*                 (delay (t2/select-one 'User :id 1))]
     (mt/user-http-request
      :rasta :post 200 (format "/metabot/model/%s" 1036)
-     {:question     "In which states do Doohickeys sell the best?"}))
+     {:question "In which states do Doohickeys sell the best?"}))
 
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user*                 (delay (t2/select-one 'User :id 1))]
     (mt/user-http-request
      :rasta :post 200 (format "/metabot/model/%s" 1036)
-     {:question     "How do I correlate source to high ratings?"}))
+     {:question "How do I correlate source to high ratings?"}))
+
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user*                 (delay (t2/select-one 'User :id 1))]
+    (mt/user-http-request
+     :rasta :post 200 (format "/metabot/model/%s" 1036)
+     {:question "Show me all of my data"}))
+
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user*                 (delay (t2/select-one 'User :id 1))]
+    (mt/user-http-request
+     :rasta :post 200 (format "/metabot/model/%s" 1036)
+     {:question "Show me all of my data in CA"}))
   )
 
 (comment
@@ -129,7 +142,35 @@
 
   (t2/select-one Card :id 1036)
 
-  (str/replace (u/slugify (:name (t2/select-one Card :id 1036))) #"_" "-")
-  )
+  (t2/select-one Field :id 57)
 
-;My_Model_2
+  (str/replace (u/slugify (:name (t2/select-one Card :id 1036))) #"_" "-")
+
+  (->> (let [{:keys [dataset_query]} (t2/select-one Card :id 1036)
+             {:keys [query]} dataset_query
+             {:keys [joins]} query]
+         (for [{:keys [alias fields] :as join} joins
+               [_ field] fields
+               :let [field-name (:name (t2/select-one [Field :name] :id field))]]
+           [field-name (format "%s__%s" alias field-name)]))
+       (sort-by (comp - count first)))
+
+  (let [q "SELECT\n  RATING\nFROM\n  {{#1036}}\nWHERE\n  STATE = 'CA';"
+        model (t2/select-one Card :id 1036)]
+    (metabot/replace-fields model q)))
+
+(comment
+  (def x "SELECT \"PUBLIC\".\"ORDERS\".\"ID\" AS \"ID\",\n       \"PUBLIC\".\"ORDERS\".\"TOTAL\" AS \"TOTAL\",\n       \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" AS \"CREATED_AT\",\n       \"People - User\".\"LONGITUDE\" AS \"People - User__LONGITUDE\",\n       \"People - User\".\"STATE\" AS \"People - User__STATE\",\n       \"People - User\".\"SOURCE\" AS \"People - User__SOURCE\",\n       \"People - User\".\"LATITUDE\" AS \"People - User__LATITUDE\",\n       \"Products\".\"CATEGORY\" AS \"Products__CATEGORY\",\n       \"Products\".\"PRICE\" AS \"Products__PRICE\",\n       \"Products\".\"RATING\" AS \"Products__RATING\"\nFROM \"PUBLIC\".\"ORDERS\"\n         LEFT JOIN \"PUBLIC\".\"PEOPLE\" AS \"People - User\" ON \"PUBLIC\".\"ORDERS\".\"USER_ID\" = \"People - User\".\"ID\" LEFT JOIN \"PUBLIC\".\"PRODUCTS\" AS \"Products\" ON \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\" = \"Products\".\"ID\"\nLIMIT 1048575")
+  (qp/process-query {:database 1
+                     :type     "native"
+                     :native   {:query (format "WITH X AS (%s) SELECT TOTAL FROM X" x)}})
+  ; "People - User__STATE"
+  ;My_Model_2
+
+  (let [{:keys [dataset_query name]} (t2/select-one Card :id 1036)
+        {:keys [query]} (qp/compile-and-splice-parameters dataset_query)
+        new-query (str/replace
+                   query
+                   #"AS \"([^_]+__([^\"]+))\""
+                   (fn [[_ _ b]] (format "AS \"%s\"" b)))]
+    (println (mdb.query/format-sql new-query))))
