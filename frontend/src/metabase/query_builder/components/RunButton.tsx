@@ -1,18 +1,19 @@
-/* eslint-disable react/prop-types */
-import React, { forwardRef } from "react";
-import PropTypes from "prop-types";
+import React, { forwardRef, Ref } from "react";
 import { t } from "ttag";
-
 import cx from "classnames";
 import Button from "metabase/core/components/Button";
 
-const propTypes = {
-  className: PropTypes.string,
-  isRunning: PropTypes.bool.isRequired,
-  isDirty: PropTypes.bool.isRequired,
-  onRun: PropTypes.func.isRequired,
-  onCancel: PropTypes.func,
-};
+interface RunButtonProps {
+  className?: string;
+  isRunning: boolean;
+  isDirty: boolean;
+  compact?: boolean;
+  circular?: boolean;
+  borderless?: boolean;
+  hidden?: boolean;
+  onRun: () => void;
+  onCancel?: () => void;
+}
 
 const RunButton = forwardRef(function RunButton(
   {
@@ -25,8 +26,8 @@ const RunButton = forwardRef(function RunButton(
     circular,
     hidden,
     ...props
-  },
-  ref,
+  }: RunButtonProps,
+  ref: Ref<HTMLButtonElement>,
 ) {
   let buttonText = null;
   let buttonIcon = null;
@@ -62,7 +63,5 @@ const RunButton = forwardRef(function RunButton(
     </Button>
   );
 });
-
-RunButton.propTypes = propTypes;
 
 export default RunButton;

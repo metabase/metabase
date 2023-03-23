@@ -341,7 +341,8 @@ async function handleQBInit(
     },
   });
 
-  if (uiControls.queryBuilderMode !== "notebook") {
+  const { queryBuilderMode } = uiControls;
+  if (queryBuilderMode !== "notebook" && queryBuilderMode !== "metabot") {
     if (question.canRun() && (question.isSaved() || question.isStructured())) {
       // Timeout to allow Parameters widget to set parameterValues
       setTimeout(

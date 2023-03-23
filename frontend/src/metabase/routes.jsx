@@ -31,7 +31,6 @@ import SchemaBrowser from "metabase/browse/containers/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
-import Metabot from "metabase/query_builder/containers/Metabot";
 
 import MoveCollectionModal from "metabase/collections/containers/MoveCollectionModal";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
@@ -235,16 +234,12 @@ export const getRoutes = store => (
           <ModalRoute path="archive" modal={ArchiveDashboardModal} />
         </Route>
 
-        <Route path="/metabot">
-          <IndexRoute component={Metabot} />
-          <Route path=":modelId" component={Metabot} />
-        </Route>
-
         <Route path="/question">
           <IndexRoute component={QueryBuilder} />
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":slug" component={QueryBuilder} />
           <Route path=":slug/notebook" component={QueryBuilder} />
+          <Route path=":slug/metabot" component={QueryBuilder} />
           <Route path=":slug/:objectId" component={QueryBuilder} />
         </Route>
 
@@ -275,9 +270,10 @@ export const getRoutes = store => (
           <Route path=":slug/notebook" component={QueryBuilder} />
           <Route path=":slug/query" component={QueryBuilder} />
           <Route path=":slug/metadata" component={QueryBuilder} />
+          <Route path=":slug/metabot" component={QueryBuilder} />
           <Route path=":slug/:objectId" component={QueryBuilder} />
           <Route path="query" component={QueryBuilder} />
-          <Route path="metadata" component={QueryBuilder} />
+          <Route path="metabot" component={QueryBuilder} />
         </Route>
 
         <Route path="browse" component={BrowseApp}>
