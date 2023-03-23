@@ -311,7 +311,8 @@
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
   `(load-insert! \"ModelName\" ingested-and-xformed)`
 
-  Defaults to a straightforward [[t2/insert!]], and you probably don't need to implement this.
+  Defaults to a straightforward [[(comp first t2/insert-returning-instances!)]] (returning the created object),
+  and you probably don't need to implement this.
 
   Note that any [[t2/insert!]] behavior we don't want to run (like generating an `:entity_id`!) should be skipped based
   on the [[mi/*deserializing?*]] dynamic var.

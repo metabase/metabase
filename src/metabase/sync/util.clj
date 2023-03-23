@@ -458,7 +458,9 @@
                   :task_details (when (seq task-details)
                                   task-details)))
          (cons (create-task-history operation database sync-md))
+         ;; can't do `(t2/insert-returning-instances!)` with a seq because of this bug https://github.com/camsaul/toucan2/issues/130
          (map #(t2/insert-returning-pks! TaskHistory %))
+         (map first)
          doall)
     (catch Throwable e
       (log/warn e (trs "Error saving task history")))))

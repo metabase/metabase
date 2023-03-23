@@ -52,7 +52,7 @@
       (log/info (u/colorize :green (trs "Creating new User {0} with email {1}"
                                         (pr-str (str (:first_name user) \space (:last_name user)))
                                         (pr-str (:email user)))))
-      (first (t2/insert-returning-instances! User user)))))
+      (t2/insert! User user))))
 
 (defmethod advanced-config.file.i/initialize-section! :users
   [_section-name users]

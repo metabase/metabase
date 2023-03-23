@@ -28,7 +28,7 @@
   4)
 
 (defn create-collection!
-  "Create a new collection."
+  "Create and return a new collection."
   [title color description parent-collection-id]
   (first (t2/insert-returning-instances!
            'Collection
