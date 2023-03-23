@@ -95,7 +95,7 @@
 
 (defn standardize-name [{:keys [id name] :as _model} sql]
   (let [rgx (re-pattern (format "\\Q\"%s\"\\E" name))]
-    (str/replace sql rgx (format "{{#%s-%s}}" id (u/slugify name)))))
+    (str/replace sql rgx (format "{{#%s-%s}}" id (str/replace (u/slugify name) #"_" "-")))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/model/:model-id"

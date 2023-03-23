@@ -129,6 +129,7 @@
 
   (t2/select-one Card :id 1036)
 
-  (u/slugify (:name (t2/select-one Card :id 1036))))
+  (str/replace (u/slugify (:name (t2/select-one Card :id 1036))) #"_" "-")
+  )
 
 ;My_Model_2
