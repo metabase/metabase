@@ -1,4 +1,9 @@
-import React, { ChangeEvent, useCallback, useState } from "react";
+import React, {
+  ChangeEvent,
+  KeyboardEvent,
+  useCallback,
+  useState,
+} from "react";
 import Input from "metabase/core/components/Input/Input";
 import { User } from "metabase-types/api";
 import {
@@ -33,6 +38,15 @@ const MetabotPrompt = ({
     onRun(questionText);
   }, [questionText, onRun]);
 
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        onRun(questionText);
+      }
+    },
+    [questionText, onRun],
+  );
+
   return (
     <PromptSection>
       {user && <PromptUserAvatar user={user} />}
@@ -41,6 +55,7 @@ const MetabotPrompt = ({
         placeholder={placeholder}
         fullWidth
         onChange={handleTextChange}
+        onKeyDown={handleKeyDown}
       />
       <PromptRunButton
         isRunning={isRunning}
