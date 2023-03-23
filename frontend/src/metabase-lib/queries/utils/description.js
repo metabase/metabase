@@ -129,7 +129,7 @@ export function formatQueryDescription(parts, options = {}) {
   }
 }
 
-export function joinList(list, joiner) {
+function joinList(list, joiner) {
   return _.flatten(
     list.map((l, i) => (i === list.length - 1 ? [l] : [l, joiner])),
     true,

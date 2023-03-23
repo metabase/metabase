@@ -1,7 +1,7 @@
 (ns metabase.domain-entities.queries.util
   "Utility functions used by the Queries in metabase-lib."
   (:require
-   [metabase.domain-entities.malli :as de]
+   [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.domain-entities.converters :as converters]))))
 
 (def Expression
@@ -24,7 +24,7 @@
   #?(:cljs (converters/outgoing ExpressionList)
      :clj  identity))
 
-(de/defn ^:export expressions-list :- ExpressionList
+(mu/defn ^:export expressions-list :- ExpressionList
   "Turns a map of expressions by name into a list of `{:name name :expression expression}` objects."
   [expressions :- ExpressionMap]
   (->> expressions
@@ -38,7 +38,7 @@
       (recur names original-name (inc index))
       indexed-name)))
 
-(de/defn ^:export unique-expression-name :- string?
+(mu/defn ^:export unique-expression-name :- string?
   "Generates an expression name that's unique in the given map of expressions."
   [expressions   :- ExpressionMap
    original-name :- string?]

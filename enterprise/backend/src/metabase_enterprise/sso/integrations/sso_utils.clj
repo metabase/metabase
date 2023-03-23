@@ -1,9 +1,9 @@
 (ns metabase-enterprise.sso.integrations.sso-utils
   "Functions shared by the various SSO implementations"
   (:require
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.email.messages :as messages]
+   [metabase.integrations.common :as integrations.common]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
@@ -36,7 +36,7 @@
   (u/prog1 (db/insert! User (merge user {:password (str (UUID/randomUUID))}))
     (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))
     ;; send an email to everyone including the site admin if that's set
-    (when (sso-settings/send-new-sso-user-admin-email?)
+    (when (integrations.common/send-new-sso-user-admin-email?)
       (messages/send-user-joined-admin-notification-email! <>, :google-auth? true))))
 
 (defn fetch-and-update-login-attributes!

@@ -13,9 +13,7 @@ const DatabaseHelpCard = ({
   className,
   isHosted,
 }: DatabaseHelpCardProps): JSX.Element => {
-  const docsUrl = Settings.docsUrl(
-    "administration-guide/01-managing-databases",
-  );
+  const docsUrl = Settings.docsUrl("databases/connecting");
 
   return (
     <HelpCard
