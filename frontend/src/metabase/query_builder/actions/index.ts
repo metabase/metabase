@@ -1,5 +1,4 @@
 export * from "./core";
-export * from "./metabot";
 export * from "./models";
 export * from "./native";
 export * from "./navigation";
