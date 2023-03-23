@@ -156,21 +156,20 @@
   "Returns a transducer for computing metatdata about the fields in `table`."
   [driver table]
   (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
-                 (let [base-type (database-type->base-type-or-warn driver database-type)
+                 (let [base-type      (database-type->base-type-or-warn driver database-type)
                        semantic-type  (calculated-semantic-type driver column-name database-type)
                        db             (table/database table)
-                       json-unfolding (when (and (isa? base-type :type/JSON)
-                                                 (driver/database-supports? driver :nested-field-columns db))
-                                        (database/json-unfolding-default db))]
+                       json-unfolding (boolean (and (isa? base-type :type/JSON)
+                                                    (driver/database-supports? driver :nested-field-columns db)
+                                                    (database/json-unfolding-default db)))]
                    (merge
                     (u/select-non-nil-keys col [:name :database-type :field-comment :database-required :database-is-auto-increment])
                     {:base-type         base-type
-                     :database-position i}
+                     :database-position i
+                     :json-unfolding    json-unfolding}
                     (when semantic-type
                       {:semantic-type semantic-type})
-                    (when (some? json-unfolding)
-                      {:json-unfolding json-unfolding})
-                    (when (true? json-unfolding)
+                    (when json-unfolding
                       {:visibility-type :details-only}))))))
 
 (defmulti describe-table-fields
