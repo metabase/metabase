@@ -1,12 +1,16 @@
 (ns metabase.api.metabot
   (:require
+   [clojure.string :as str]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.field-values :refer [FieldValues]]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.setting :as setting :refer [defsetting]]
    ;[metabase.query-processor :as qp]
    ;[metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [toucan2.core :as t2]
    [wkok.openai-clojure.api :as openai.api]
    ))
 
@@ -21,12 +25,58 @@
   (str "I have a table named FOO with columns created_at, user_id, and status and the column \"status\""
        "has valid values of \"open\", \"closed\", \"blocked\""))
 
+(defn column-types [{:keys [result_metadata]}]
+  (map (fn [{:keys [name display_name description]}]
+         (format "The column '%s' has a display name of '%s' and is described as '%s'"
+                 name
+                 display_name
+                 description))
+       result_metadata))
+
+(defn enumerated-values [{:keys [result_metadata]}]
+  (for [{column-name :name :keys [id]} result_metadata
+        :let [{:keys [values]} (t2/select-one FieldValues :field_id id)]
+        :when (seq values)]
+    (format "The column '%s' has these potential values: %s."
+            column-name
+            (str/join ", " (map (partial format "'%s'") values)))))
+
+(defn model-messages [model-id]
+  (let [{model-name :name :keys [result_metadata] :as model} (t2/select-one [Card :name :result_metadata] :id model-id)
+        col-names (str/join ", " (map (comp (partial format "'%s'") :name) result_metadata))]
+    (map
+     (fn [s] {:role "assistant" :content s})
+     (reduce
+      into
+      [(format "I have a table named '%s' with the following columns: %s." model-name col-names)]
+      [(column-types model)
+       (enumerated-values model)]))))
+
+(comment
+  (let [{model-name :name :keys [result_metadata] :as model} (t2/select-one [Card :name :result_metadata] :id 1036)
+        col-names (str/join ", " (map (comp (partial format "'%s'") :name) result_metadata))]
+    (reduce
+     into
+     [(format "I have a table named '%s' with the following columns: %s." model-name col-names)]
+     [(column-types model)
+      (enumerated-values model)])
+    )
+
+  (t2/select-one Card :id 1036)
+
+  (model-messages 1036)
+  )
+
 (defn write-sql [model-id prompt]
   (openai.api/create-chat-completion
    {:model    "gpt-3.5-turbo"
-    :messages [{:role "system" :content bot-directions}
-               {:role "assistant" :content (model-description model-id)}
-               {:role "user" :content prompt}]}))
+    :messages (conj
+               (into
+                [{:role "system" :content bot-directions}]
+                (model-messages model-id))
+               {:role "user" :content prompt})}
+   {:api-key (openai-api-key)
+    :organization (openai-organization)}))
 
 (def dataset-result
   '{:database_id            1,
@@ -125,7 +175,7 @@
                                                fake "SELECT * FROM THIS IS FAKE TO NOT BURN CREDITS"
                                                (and
                                                 (openai-api-key)
-                                                (openai-organization)) (->> (:choices (write-sql 0 question)) first :message :content)
+                                                (openai-organization)) (->> (:choices (write-sql source-model question)) first :message :content)
                                                :else "Set OPENAI_API_KEY and OPENAI_ORGANIZATION env vars and relaunch!")
                     :original_question       question
                     :database_id             database

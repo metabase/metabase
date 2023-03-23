@@ -2,9 +2,10 @@
   (:require [clojure.test :refer :all]
    ;[metabase.models.permissions :as perms]
    ;[metabase.models.permissions-group :as perms-group]
+            [metabase.api.common :as api]
             [metabase.test :as mt]
    ;[schema.core :as s]
-            ))
+            [toucan2.core :as t2]))
 
 (deftest simple-echo-test
   (testing "POST /api/metabot/model"
@@ -17,3 +18,13 @@
                                                      :question     q
                                                      :fake         true})]
         (is (= original_question q))))))
+
+(comment
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user*                 (delay (t2/select-one 'User :id 1))]
+    (mt/user-http-request
+     :rasta :post 200 "/metabot/model"
+     {:database     1
+      :source-model 1036
+      :question     "What is the total price of all purchases in the state of CA?"}))
+  )
