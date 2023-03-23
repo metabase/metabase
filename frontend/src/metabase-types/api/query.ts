@@ -5,6 +5,12 @@ import type { TableId } from "./table";
 
 export interface StructuredQuery {
   "source-table"?: TableId;
+  joins?: any[];
+  filter?: any[];
+  aggregation?: any[];
+  breakout?: any[];
+  "order-by"?: any[];
+  limit?: number;
 }
 
 export interface NativeQuery {
@@ -109,3 +115,10 @@ export type DimensionReferenceWithOptions =
 export type DimensionReference =
   | DimensionReferenceWithOptions
   | TemplateTagReference;
+
+export type Join = {
+  fields: any;
+  condition: any[];
+  alias: string;
+  "source-table": TableId;
+};
