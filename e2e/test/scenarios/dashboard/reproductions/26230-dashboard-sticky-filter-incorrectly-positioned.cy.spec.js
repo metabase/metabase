@@ -1,4 +1,3 @@
-import { merge } from "icepick";
 import { restore, visitDashboard } from "e2e/support/helpers";
 
 describe("issue 26230", () => {
@@ -48,19 +47,7 @@ function prepareAndVisitDashboards() {
       },
     ],
   }).then(({ body: { id } }) => {
-    cy.request(
-      "POST",
-      `/api/dashboard/${id}/cards`,
-      createTextDashcard({
-        col: 0,
-        row: 0,
-        size_x: 4,
-        size_y: 20,
-        visualization_settings: {
-          text: "I am a tall card",
-        },
-      }),
-    );
+    createTextDashcard(id);
     bookmarkDashboard(id);
   });
 
@@ -76,19 +63,7 @@ function prepareAndVisitDashboards() {
       },
     ],
   }).then(({ body: { id } }) => {
-    cy.request(
-      "POST",
-      `/api/dashboard/${id}/cards`,
-      createTextDashcard({
-        col: 0,
-        row: 0,
-        size_x: 4,
-        size_y: 20,
-        visualization_settings: {
-          text: "I am a tall card",
-        },
-      }),
-    );
+    createTextDashcard(id);
     bookmarkDashboard(id);
     visitDashboard(id);
   });
@@ -98,20 +73,13 @@ function bookmarkDashboard(dashboardId) {
   cy.request("POST", `/api/bookmark/dashboard/${dashboardId}`);
 }
 
-/**
- *
- * @param {Partial<import('metabase-types/api').DashboardOrderedCard>} dashcardDetails
- * @returns
- */
-function createTextDashcard(dashcardDetails) {
-  const defaultDashcardDetails = {
+function createTextDashcard(id) {
+  cy.request("POST", `/api/dashboard/${id}/cards`, {
     cardId: null,
     col: 0,
     row: 0,
     size_x: 4,
-    size_y: 3,
-    series: [],
-    parameter_mappings: [],
+    size_y: 20,
     visualization_settings: {
       virtual_card: {
         name: null,
@@ -120,9 +88,7 @@ function createTextDashcard(dashcardDetails) {
         dataset_query: {},
         archived: false,
       },
-      text: "Edit me",
+      text: "I am a tall card",
     },
-  };
-
-  return merge(defaultDashcardDetails, dashcardDetails);
+  });
 }
