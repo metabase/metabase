@@ -125,7 +125,7 @@ export function drillFilter(query, value, column) {
   return addOrUpdateFilter(query, filter);
 }
 
-export function addOrUpdateFilter(query, newFilter) {
+function addOrUpdateFilter(query, newFilter) {
   // replace existing filter, if it exists
   for (const filter of query.filters()) {
     const dimension = filter.dimension();
@@ -145,7 +145,7 @@ const getNextUnit = unit => {
   return UNITS[Math.max(0, UNITS.indexOf(unit) - 1)];
 };
 
-export function addOrUpdateBreakout(query, newBreakout) {
+function addOrUpdateBreakout(query, newBreakout) {
   // replace existing breakout, if it exists
   for (const breakout of query.breakouts()) {
     if (breakout.dimension().isSameBaseDimension(newBreakout)) {

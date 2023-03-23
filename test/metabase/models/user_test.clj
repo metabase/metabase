@@ -3,19 +3,12 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.integrations.google]
    [metabase.models
-    :refer [Collection
-            Database
-            PermissionsGroup
-            PermissionsGroupMembership
-            Pulse
-            PulseChannel
-            PulseChannelRecipient
-            Session
-            Table
-            User]]
+    :refer [Collection Database PermissionsGroup PermissionsGroupMembership
+            Pulse PulseChannel PulseChannelRecipient Session Table User]]
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.permissions :as perms]
@@ -23,6 +16,7 @@
    [metabase.models.permissions-test :as perms-test]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.integrations.ldap :as ldap.test]
@@ -185,11 +179,20 @@
                  (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
                      (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com" "cam2@metabase.com"]))))))
 
-      (testing "...unless they are inactive"
+      (testing "...unless they are inactive..."
         (mt/with-temp User [user {:is_superuser true, :is_active false}]
           (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
                  (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                     (select-keys ["crowberto@metabase.com" (:email user)]))))))))
+                     (select-keys ["crowberto@metabase.com" (:email user)])))))
+
+        (testing "...or if setting is disabled"
+          (premium-features-test/with-premium-features #{:sso}
+            (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "false"]
+              (mt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+                (is (= (if config/ee-available? {} {"crowberto@metabase.com" ["<New User> created a Metabase account"],
+                                                    "some_other_admin@metabase.com" ["<New User> created a Metabase account"]})
+                       (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                           (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))))))))
 
   (testing "if sso enabled and password login is disabled, email should send a link to sso login"
     (mt/with-temporary-setting-values [enable-password-login false]

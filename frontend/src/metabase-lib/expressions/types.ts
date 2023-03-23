@@ -17,7 +17,7 @@ export interface HelpTextConfig {
   docsPage?: string;
 }
 
-export interface HelpTextArg {
+interface HelpTextArg {
   name: string;
   description: string;
   example: string;

@@ -18,7 +18,7 @@ import NativeQuery from "metabase-lib/queries/NativeQuery";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
 import { isStructured } from "metabase-lib/queries/utils";
 
-export type FieldMetadata = {
+type FieldMetadata = {
   id?: number;
   name: string;
   display_name: string;
@@ -87,11 +87,11 @@ export function getDatasetMetadataCompletenessPercentage(
   return Math.round(percent * 100) / 100;
 }
 
-export function isSupportedTemplateTagForModel(tag: TemplateTag) {
+function isSupportedTemplateTagForModel(tag: TemplateTag) {
   return ["card", "snippet"].includes(tag.type);
 }
 
-export function checkDatabaseSupportsModels(database?: Database | null) {
+function checkDatabaseSupportsModels(database?: Database | null) {
   return database && database.hasFeature("nested-queries");
 }
 
@@ -115,7 +115,7 @@ export function checkCanBeModel(question: Question) {
     .every(isSupportedTemplateTagForModel);
 }
 
-export type Card = CardObject & {
+type Card = CardObject & {
   id?: CardId;
   dataset?: boolean;
 };
