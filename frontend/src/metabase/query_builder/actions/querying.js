@@ -178,10 +178,12 @@ export const runMetabotQuery = query => async (dispatch, getState) => {
 
   try {
     const newCard = await queryMetabot(query, databaseId, modelId);
-    const newQuestion = new Question(
-      newCard,
-      getMetadata(getState()),
-    ).lockDisplay();
+    let newQuestion = new Question(newCard, getMetadata(getState()));
+    newQuestion = newQuestion
+      .query()
+      .setQueryText(newQuestion.query().queryText())
+      .question()
+      .lockDisplay();
 
     await dispatch(updateQuestion(newQuestion));
     await dispatch(setIsNativeEditorOpen(false));
