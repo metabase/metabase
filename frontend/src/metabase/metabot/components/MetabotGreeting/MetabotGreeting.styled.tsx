@@ -14,9 +14,10 @@ export const GreetingMetabotLogo = styled(MetabotLogo)`
 `;
 
 export const GreetingMessage = styled.div`
-  border-radius: 0.5rem;
+  display: flex;
   padding: 0.75rem 1rem;
-  color: ${color("text-medium")};
+  border-radius: 0.5rem;
   background-color: ${color("bg-light")};
+  color: ${color("text-medium")};
   font-weight: bold;
 `;

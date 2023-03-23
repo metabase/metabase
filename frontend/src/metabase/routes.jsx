@@ -13,6 +13,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import App from "metabase/App.tsx";
 
 import ActivityApp from "metabase/home/containers/ActivityApp";
+import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 
 // auth containers
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
@@ -265,6 +266,7 @@ export const getRoutes = store => (
 
         <Route path="/metabot">
           <IndexRoute component={MetabotPage} />
+          <Route path="model/:slug" component={ModelMetabotApp} />
           <Route path=":databaseId" component={MetabotPage} />
         </Route>
 

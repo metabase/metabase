@@ -8,6 +8,7 @@ import ModelLink from "../ModelLink";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotGreeting from "../MetabotGreeting";
 import MetabotVisualization from "../MetabotVisualization";
+import { MetabotHeader } from "./ModelMetabot.styled";
 
 interface ModelMetabotProps {
   model: Question;
@@ -26,12 +27,14 @@ const ModelMetabot = ({ model, user }: ModelMetabotProps) => {
 
   return (
     <div>
-      <MetabotGreeting>{getGreetingMessage(model, user)}</MetabotGreeting>
-      <MetabotPrompt
-        placeholder={gePromptPlaceholder(model)}
-        isRunning={loading}
-        onRun={handleRun}
-      />
+      <MetabotHeader>
+        <MetabotGreeting>{getGreetingMessage(model, user)}</MetabotGreeting>
+        <MetabotPrompt
+          placeholder={gePromptPlaceholder(model)}
+          isRunning={loading}
+          onRun={handleRun}
+        />
+      </MetabotHeader>
       {value && (
         <MetabotVisualization
           question={value.question}

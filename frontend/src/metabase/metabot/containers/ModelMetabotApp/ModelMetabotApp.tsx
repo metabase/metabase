@@ -39,6 +39,6 @@ const mapStateToProps = (
 });
 
 export default _.compose(
-  Questions.load({ id: getModelId }),
+  Questions.load({ id: getModelId, entityAlias: "card" }),
   connect(mapStateToProps),
 )(ModelMetabot);
