@@ -21,7 +21,6 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -519,7 +518,7 @@
                (mt/summarize-multipart-email test-card-regex))) ;#"stop sending you alerts")))
         (testing "Pulse should be deleted"
           (is (= false
-                 (db/exists? Pulse :id pulse-id)))))}}
+                 (t2/exists? Pulse :id pulse-id)))))}}
 
     "first run alert with no data"
     {:card
@@ -533,7 +532,7 @@
                @mt/inbox))
         (testing "Pulse should still exist"
           (is (= true
-                 (db/exists? Pulse :id pulse-id)))))}}))
+                 (t2/exists? Pulse :id pulse-id)))))}}))
 
 (deftest above-goal-alert-test
   (testing "above goal alert"

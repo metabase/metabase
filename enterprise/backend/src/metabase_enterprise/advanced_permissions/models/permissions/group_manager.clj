@@ -51,7 +51,7 @@
      (when (seq to-add-group-ids)
        ;; do multiple single inserts because insert-many! does not call post-insert! hook
        (doseq [group-id to-add-group-ids]
-         (db/insert! PermissionsGroupMembership
+         (t2/insert! PermissionsGroupMembership
                      {:user_id          user-id
                       :group_id         group-id
                       :is_group_manager (:is_group_manager (new-group-id->membership-info group-id))}))))))

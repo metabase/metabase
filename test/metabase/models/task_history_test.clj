@@ -9,7 +9,6 @@
    [metabase.models.task-history :as task-history]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -86,7 +85,7 @@
 (defn- insert-then-pop!
   "Insert a task history then returns the last snowplow event."
   [task]
-  (db/insert! TaskHistory task)
+  (t2/insert! TaskHistory task)
   (last-snowplow-event))
 
 (deftest snowplow-tracking-test
@@ -139,7 +138,7 @@
                                             :task_details {:apple  40
                                                            :orange 2}))))))
         (testing "date-time properties should be correctly formatted"
-          (db/insert! TaskHistory (assoc (make-10-millis-task t) :task "a fake task"))
+          (t2/insert! TaskHistory (assoc (make-10-millis-task t) :task "a fake task"))
           (let [event (:data (first (snowplow-test/pop-event-data-and-user-id!)))]
             (is (snowplow-test/valid-datetime-for-snowplow? (get event "started_at")))
             (is (snowplow-test/valid-datetime-for-snowplow? (get event "ended_at")))))))))

@@ -409,7 +409,7 @@
   [id]
   {id ms/PositiveInt}
   (api/check-superuser)
-  (api/check-404 (db/exists? Database :id id))
+  (api/check-404 (t2/exists? Database :id id))
   (let [table-ids (t2/select-pks-set Table :db_id id)]
     (first (mdb.query/query
              {:select [:*]
@@ -752,21 +752,22 @@
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
-      (u/prog1 (api/check-500 (db/insert! Database
-                                (merge
-                                  {:name         name
-                                   :engine       engine
-                                   :details      details-or-error
-                                   :is_full_sync is-full-sync?
-                                   :is_on_demand (boolean is_on_demand)
-                                   :cache_ttl    cache_ttl
-                                   :creator_id   api/*current-user-id*}
-                                  (sync.schedules/schedule-map->cron-strings
-                                    (if (:let-user-control-scheduling details)
-                                      (sync.schedules/scheduling schedules)
-                                      (sync.schedules/default-randomized-schedule)))
-                                  (when (some? auto_run_queries)
-                                    {:auto_run_queries auto_run_queries}))))
+      (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
+                                       Database
+                                       (merge
+                                         {:name         name
+                                          :engine       engine
+                                          :details      details-or-error
+                                          :is_full_sync is-full-sync?
+                                          :is_on_demand (boolean is_on_demand)
+                                          :cache_ttl    cache_ttl
+                                          :creator_id   api/*current-user-id*}
+                                         (sync.schedules/schedule-map->cron-strings
+                                           (if (:let-user-control-scheduling details)
+                                             (sync.schedules/scheduling schedules)
+                                             (sync.schedules/default-randomized-schedule)))
+                                         (when (some? auto_run_queries)
+                                           {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :database-create <>)
         (snowplow/track-event! ::snowplow/database-connection-successful
                                api/*current-user-id*

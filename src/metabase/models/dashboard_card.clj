@@ -169,7 +169,7 @@
   (into {}
         (filter (fn [[k v]]
                   (not= v (get old k)))
-         new)))
+                new)))
 
 (s/defn update-dashboard-card!
   "Updates an existing DashboardCard including all DashboardCardSeries.
@@ -217,16 +217,17 @@
   (let [{:keys [dashboard_id card_id action_id parameter_mappings visualization_settings size_x size_y row col series]
          :or   {series []}} dashboard-card]
     (db/transaction
-     (let [dashboard-card (db/insert! DashboardCard
-                                      :dashboard_id           dashboard_id
-                                      :card_id                card_id
-                                      :action_id              action_id
-                                      :size_x                 size_x
-                                      :size_y                 size_y
-                                      :row                    row
-                                      :col                    col
-                                      :parameter_mappings     (or parameter_mappings [])
-                                      :visualization_settings (or visualization_settings {}))]
+      (let [dashboard-card (first (t2/insert-returning-instances!
+                                    DashboardCard
+                                    :dashboard_id           dashboard_id
+                                    :card_id                card_id
+                                    :action_id              action_id
+                                    :size_x                 size_x
+                                    :size_y                 size_y
+                                    :row                    row
+                                    :col                    col
+                                    :parameter_mappings     (or parameter_mappings [])
+                                    :visualization_settings (or visualization_settings {})))]
        ;; add series to the DashboardCard
        (update-dashboard-card-series! dashboard-card series)
        ;; return the full DashboardCard

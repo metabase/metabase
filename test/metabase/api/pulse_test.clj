@@ -594,8 +594,8 @@
                               {:archived true})
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:archived false})
-        (is (db/exists? PulseChannel :id (u/the-id pc)))
-        (is (db/exists? PulseChannelRecipient :id (u/the-id pcr)))))))
+        (is (t2/exists? PulseChannel :id (u/the-id pc)))
+        (is (t2/exists? PulseChannelRecipient :id (u/the-id pcr)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

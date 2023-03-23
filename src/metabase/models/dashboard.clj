@@ -328,12 +328,13 @@
 
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
-    (let [card (db/insert! 'Card
-                 (-> card
-                     (update :result_metadata #(or % (-> card
-                                                         :dataset_query
-                                                         result-metadata-for-query)))
-                     (dissoc :id)))]
+    (let [card (first (t2/insert-returning-instances!
+                        'Card
+                        (-> card
+                            (update :result_metadata #(or % (-> card
+                                                                :dataset_query
+                                                                result-metadata-for-query)))
+                            (dissoc :id))))]
       (events/publish-event! :card-create card)
       (hydrate card :creator :dashboard_count :can_write :collection))))
 
@@ -348,7 +349,7 @@
 
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
-  (let [c (db/count Collection
+  (let [c (t2/count Collection
             :name     [:like (format "%s%%" collection-name)]
             :location (collection/children-location (t2/select-one [Collection :location :id]
                                                       :id parent-collection-id)))]
@@ -366,15 +367,16 @@
                     (rand-nth (populate/colors))
                     "Automatically generated cards."
                     parent-collection-id)
-        dashboard  (db/insert! Dashboard
-                     (-> dashboard
-                         (dissoc :ordered_cards :rule :related :transient_name
-                                 :transient_filters :param_fields :more)
-                         (assoc :description         (->> dashboard
-                                                          :transient_filters
-                                                          applied-filters-blurb)
-                                :collection_id       (:id collection)
-                                :collection_position 1)))]
+        dashboard  (first (t2/insert-returning-instances!
+                            Dashboard
+                            (-> dashboard
+                                (dissoc :ordered_cards :rule :related :transient_name
+                                        :transient_filters :param_fields :more)
+                                (assoc :description         (->> dashboard
+                                                                 :transient_filters
+                                                                 applied-filters-blurb)
+                                       :collection_id       (:id collection)
+                                       :collection_position 1))))]
     (doseq [dashcard dashcards]
       (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
             series   (some->> dashcard :series (map (fn [card]

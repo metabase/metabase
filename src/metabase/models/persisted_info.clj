@@ -131,7 +131,7 @@
         existing-persisted-info (t2/select-one PersistedInfo :card_id card-id)
         persisted-info (cond
                          (not existing-persisted-info)
-                         (db/insert! PersistedInfo (create-row user-id card))
+                         (first (t2/insert-returning-instances! PersistedInfo (create-row user-id card)))
 
                          (contains? #{"deletable" "off"} (:state existing-persisted-info))
                          (do

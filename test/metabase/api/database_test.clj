@@ -27,7 +27,6 @@
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :as hydrate]
    [toucan2.core :as t2]))
 
@@ -287,7 +286,7 @@
     (testing "Check that a superuser can delete a Database"
       (mt/with-temp Database [db]
         (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
-        (is (false? (db/exists? Database :id (u/the-id db))))))
+        (is (false? (t2/exists? Database :id (u/the-id db))))))
 
     (testing "Check that a non-superuser cannot delete a Database"
       (mt/with-temp Database [db]
@@ -455,11 +454,11 @@
         (is (= expected (prefix-fn (mt/id) prefix))))
       (testing " handles large numbers of tables and fields sensibly with prefix"
         (mt/with-model-cleanup [Field Table Database]
-          (let [tmp-db (db/insert! Database {:name "Temp Autocomplete Pagination DB" :engine "h2" :details "{}"})]
+          (let [tmp-db (first (t2/insert-returning-instances! Database {:name "Temp Autocomplete Pagination DB" :engine "h2" :details "{}"}))]
             ;; insert more than 50 temporary tables and fields
             (doseq [i (range 60)]
-              (let [tmp-tbl (db/insert! Table {:name (format "My Table %d" i) :db_id (u/the-id tmp-db) :active true})]
-                (db/insert! Field {:name (format "My Field %d" i) :table_id (u/the-id tmp-tbl) :base_type "type/Text" :database_type "varchar"})))
+              (let [tmp-tbl (first (t2/insert-returning-instances! Table {:name (format "My Table %d" i) :db_id (u/the-id tmp-db) :active true}))]
+                (t2/insert! Field {:name (format "My Field %d" i) :table_id (u/the-id tmp-tbl) :base_type "type/Text" :database_type "varchar"})))
             ;; for each type-specific prefix, we should get 50 fields
             (is (= 50 (count (prefix-fn (u/the-id tmp-db) "My Field"))))
             (is (= 50 (count (prefix-fn (u/the-id tmp-db) "My Table"))))
@@ -886,10 +885,10 @@
              (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
       (testing "values-1 still exists?"
         (is (= false
-               (db/exists? FieldValues :id (u/the-id values-1)))))
+               (t2/exists? FieldValues :id (u/the-id values-1)))))
       (testing "values-2 still exists?"
         (is (= false
-               (db/exists? FieldValues :id (u/the-id values-2))))))))
+               (t2/exists? FieldValues :id (u/the-id values-2))))))))
 
 (deftest nonadmins-cant-discard-all-fieldvalues
   (testing "Non-admins should not be allowed to discard all FieldValues"

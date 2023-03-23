@@ -12,7 +12,6 @@
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -175,7 +174,7 @@
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
                    :semantic-type     semantic_type
-                   :fk-target-exists? (db/exists? Field :id fk_target_field_id)}))]
+                   :fk-target-exists? (t2/exists? Field :id fk_target_field_id)}))]
         (testing "before"
           (is (= {:step-info         {:total-fks 3, :updated-fks 0, :total-failed 0}
                   :task-details      {:total-fks 3, :updated-fks 0, :total-failed 0}
