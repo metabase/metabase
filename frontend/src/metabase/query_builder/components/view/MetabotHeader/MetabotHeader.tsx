@@ -4,7 +4,10 @@ import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import { getUser } from "metabase/selectors/user";
 import { cancelQuery, runQuestionQuery } from "metabase/query_builder/actions";
-import { getIsDirty, getIsRunning } from "metabase/query_builder/selectors";
+import {
+  getIsResultDirty,
+  getIsRunning,
+} from "metabase/query_builder/selectors";
 import { User } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import {
@@ -20,7 +23,7 @@ import {
 interface StateProps {
   user: User | undefined;
   isRunning: boolean;
-  isDirty: boolean;
+  isResultDirty: boolean;
 }
 
 interface DispatchProps {
@@ -37,7 +40,7 @@ type MetabotHeaderProps = StateProps & DispatchProps;
 const mapStateToProps = (state: State): StateProps => ({
   user: getUser(state) ?? undefined,
   isRunning: getIsRunning(state),
-  isDirty: getIsDirty(state),
+  isResultDirty: getIsResultDirty(state),
 });
 
 const mapDispatchToProps = {
@@ -48,7 +51,7 @@ const mapDispatchToProps = {
 const MetabotHeader = ({
   user,
   isRunning,
-  isDirty,
+  isResultDirty,
   onRun,
   onCancel,
 }: MetabotHeaderProps) => {
@@ -66,7 +69,7 @@ const MetabotHeader = ({
         <Input placeholder={t`Ask something`} fullWidth />
         <PromptRunButton
           isRunning={isRunning}
-          isDirty={isDirty}
+          isDirty={isResultDirty}
           compact
           onRun={handleRun}
           onCancel={handleCancel}
