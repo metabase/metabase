@@ -22,12 +22,15 @@ Once you've confirmed that you're looking at a non-cached view of your tables an
 2. Go to **Admin** > **Troubleshooting** > **Logs** to check the status of the sync.
 3. Run a query against your database from the Metabase SQL editor to check for database connection or database privilege errors that aren't listed in the logs:
 
-    ```sql
-    SELECT *
-    FROM "your_schema"."your_table_or_view"
-    LIMIT 1
-    ```
-5. [Manually re-sync](../databases/connecting.md#manually-syncing-tables-and-columns) the table or view if needed.
+   ```sql
+   SELECT
+      *
+   FROM
+       "your_schema"."your_table_or_view"
+   LIMIT 
+       1
+   ```
+4. [Manually re-sync](../databases/connecting.md#manually-syncing-tables-and-columns) the table or view if needed.
 
 ### Special cases
 
@@ -38,10 +41,14 @@ If you’ve just set up a new database in Metabase, the initial sync query needs
 A sync query should show up like this in your database's query execution table (using the privileges for the database user in the database connection details):
 
 ```sql
-SELECT TRUE
-FROM "your_schema"."your_table_or_view"
-WHERE 1 <> 1
-LIMIT 0
+SELECT
+    TRUE
+FROM 
+    "your_schema"."your_table_or_view"
+WHERE 
+    1 <> 1
+LIMIT 
+    0
 ```
 
 To run the sync query, Metabase must:
@@ -80,10 +87,14 @@ If you're waiting for the initial scan to run after connecting a database, make 
 Scan queries are run against your database to sample column values from the first 1,000 rows in a table or view:
 
 ```sql
-SELECT "your_table_or_view"."column" AS "column"
-FROM "your_schema"."your_table_or_view"
-GROUP BY "your_table_or_view"."column"
-ORDER BY "your_table_or_view"."column" ASC
+SELECT 
+    "your_table_or_view"."column" AS "column"
+FROM 
+    "your_schema"."your_table_or_view"
+GROUP BY 
+    "your_table_or_view"."column"
+ORDER BY 
+    "your_table_or_view"."column" ASC
 LIMIT 1000
 ```
 
@@ -118,8 +129,10 @@ If you're using MongoDB, Metabase fingerprints the first 10,000 documents per co
 The initial fingerprinting query looks at the first 10,000 rows from a given table or view in your database:
 
 ```sql
-SELECT *
-FROM "your_schema"."your_table_or_view"
+SELECT 
+    *
+FROM 
+    "your_schema"."your_table_or_view"
 LIMIT 10000
 ```
 

@@ -1,8 +1,5 @@
 ---
-title: Adding and managing databases
-redirect_from:
-  - /docs/latest/administration-guide/01-managing-databases
-  - /docs/latest/databases/connections/sql-server
+title: Syncing and scanning databases
 ---
 
 # Syncing and scanning databases
@@ -15,9 +12,9 @@ Metabase runs different types of queries to stay up to date with your database.
 
 ## Initial sync, scan, and fingerprinting
 
-When Metabase first connects to your database, it performs a [sync](#how-database-scans-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md). Once the sync is successful, Metabase runs [scans](#scheduling-database-scans) of each table to look for URLs, JSON, encoded strings, etc. The [fingerprinting](#how-database-fingerprinting-works) queries run once the syncs are complete.
+When Metabase first connects to your database, Metabase performs a [sync](#how-database-scans-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md). Once the sync is successful, Metabase runs [scans](#scheduling-database-scans) of each table to look for URLs, JSON, encoded strings, etc. The [fingerprinting](#how-database-fingerprinting-works) queries run once the syncs are complete.
 
-You can follow the progress of these queries from **Admin** > **Troubleshooting** > **Logs**. 
+You can follow the progress of these queries from **Admin** > **Troubleshooting** > **Logs**.
 
 Once the queries are done running, you can view and edit the synced metadata from **Admin settings** > **Data model**. For more info, see [editing metadata](../data-modeling/metadata-editing.md).
 
@@ -68,15 +65,15 @@ To scan values from a specific column:
 
 ## Periodically refingerprint tables
 
-By default, Metabase only runs [fingerprinting](#how-database-fingerprinting-works) queries when you first connect your database. 
+> Periodic refingerprinting will increase the load on your database.
+
+By default, Metabase only runs [fingerprinting](#how-database-fingerprinting-works) queries when you first connect your database.
 
 Turn this setting ON if you want Metabase to use larger samples of column values when making suggestions in the UI:
 
 1. Go to **Admin** > **Databases** > your database.
 2. Expand **Show advanced options**.
 3. Turn ON **Periodically refingerprint tables**.
-
-> Periodic fingerprinting will increase the load on your database.
 
 ## Clearing cached values
 
@@ -110,9 +107,13 @@ Metabase syncs and scans regularly, but if the database administrator has just c
 A Metabase **sync** is a query that gets a list of updated table and view names, column names, and column data types from your database:
 
 ```sql
-SELECT *
-FROM "your_schema"."your_table_or_view"
-LIMIT 1
+SELECT
+    TRUE
+FROM 
+    "your_schema"."your_table_or_view"
+WHERE 
+    1 <> 1
+LIMIT 0
 ```
 
 This query runs against your database during setup, and again every hour by default. This scanning query is fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers](../developers-guide/partner-and-community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
@@ -122,10 +123,14 @@ This query runs against your database during setup, and again every hour by defa
 A Metabase **scan** is a query that caches the column _values_ for filter dropdowns by looking at the first 1,000 distinct records from each table, in ascending order:
 
 ```sql
-SELECT "your_table_or_view"."column" AS "column"
-FROM "your_schema"."your_table_or_view"
-GROUP BY "your_table_or_view"."column"
-ORDER BY "your_table_or_view"."column" ASC
+SELECT
+    "your_table_or_view"."column" AS "column"
+FROM
+    "your_schema"."your_table_or_view"
+GROUP BY
+    "your_table_or_view"."column"
+ORDER BY
+    "your_table_or_view"."column" ASC
 LIMIT 1000
 ```
 
@@ -142,15 +147,17 @@ To reduce the number of tables and fields Metabase needs to scan in order to sta
 The fingerprinting query looks at the first 10,000 rows from a given table or view in your database:
 
 ```sql
-SELECT *
-FROM "your_schema"."your_table_or_view"
+SELECT
+    *
+FROM
+    "your_schema"."your_table_or_view"
 LIMIT 10000
 ```
 
 The result of this query is used to provide better suggestions in the Metabase UI (such as filter dropdowns and auto-binning).
 To avoid putting strain on your database, Metabase only runs fingerprinting queries the [first time](#initial-sync-scan-and-fingerprinting) you set up a database connection. To change this default, you can turn ON [Periodically refingerprint tables](#periodically-refingerprint-tables).
 
-## Troubleshooting
+## Further reading
 
 Metabase doesn't do any caching or rate limiting during the sync and scan process. If your data appears to be missing or out of date, check out:
 
