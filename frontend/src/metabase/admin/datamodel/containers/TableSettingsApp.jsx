@@ -98,10 +98,10 @@ class UpdateFieldValues extends Component {
         <ActionButton
           className="Button mr2"
           actionFn={this.props.rescanTableFieldValues}
-          normalText={t`Re-scan this table`}
+          normalText={t`Re-sync this table`}
           activeText={t`Starting…`}
-          failedText={t`Failed to start scan`}
-          successText={t`Scan triggered!`}
+          failedText={t`Failed to start sync`}
+          successText={t`Sync triggered!`}
         />
         <ActionButton
           className="Button Button--danger"

@@ -124,10 +124,10 @@ const DatabaseEditAppSidebar = ({
             <SidebarGroup.ListItem>
               <ActionButton
                 actionFn={handleReScanFieldValues}
-                normalText={t`Re-scan field values now`}
+                normalText={t`Re-sync field values now`}
                 activeText={t`Starting…`}
                 failedText={t`Failed to start scan`}
-                successText={t`Scan triggered!`}
+                successText={t`Sync triggered!`}
               />
             </SidebarGroup.ListItem>
             {!isSynced && (

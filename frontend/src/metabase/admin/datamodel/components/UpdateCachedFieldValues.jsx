@@ -12,10 +12,10 @@ export default class UpdateCachedFieldValues extends React.Component {
         <ActionButton
           className="Button mr2"
           actionFn={this.props.rescanFieldValues}
-          normalText={t`Re-scan this field`}
+          normalText={t`Re-sync this field`}
           activeText={t`Starting…`}
-          failedText={t`Failed to start scan`}
-          successText={t`Scan triggered!`}
+          failedText={t`Failed to start sync`}
+          successText={t`Sync triggered!`}
         />
         <ActionButton
           className="Button Button--danger"

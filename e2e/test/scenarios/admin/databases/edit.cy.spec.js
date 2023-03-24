@@ -222,7 +222,7 @@ describe("scenarios > admin > databases > edit", () => {
       );
 
       cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-      cy.findByText("Re-scan field values now").click();
+      cy.findByText("Re-sync field values now").click();
       cy.wait("@rescan_values");
       cy.findByText("Scan triggered!");
     });

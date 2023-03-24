@@ -71,9 +71,9 @@ describe("DatabaseEditApp/Sidebar", () => {
     expect(syncDatabaseSchema).toHaveBeenCalledWith(database.id);
   });
 
-  it("re-scans database field values", () => {
+  it("re-syncs database field values", () => {
     const { database, rescanDatabaseFields } = setup();
-    userEvent.click(screen.getByText(/Re-scan field values now/i));
+    userEvent.click(screen.getByText(/Re-sync field values now/i));
     expect(rescanDatabaseFields).toHaveBeenCalledWith(database.id);
   });
 
