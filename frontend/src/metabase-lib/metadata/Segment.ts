@@ -10,6 +10,8 @@ import Base from "./Base";
  */
 
 export default class Segment extends Base {
+  name: string;
+
   displayName() {
     return this.name;
   }

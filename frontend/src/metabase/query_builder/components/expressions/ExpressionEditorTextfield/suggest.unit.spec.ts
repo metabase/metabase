@@ -4,11 +4,14 @@ import {
   aggregationOpts,
   expressionOpts,
 } from "../../../../../../test/metabase/lib/expressions/__support__/expressions";
-import { suggest as suggest_ } from "./suggest";
+import { suggest as suggest_, Suggestion } from "./suggest";
 
+type Config = { text: string; type: string };
 // custom metadata defined in __support__/sample_database_fixture
-const SEGMENTS_ORDERS = [{ text: "[Expensive Things]", type: "segments" }];
-const FIELDS_ORDERS = [
+const SEGMENTS_ORDERS: Config[] = [
+  { text: "[Expensive Things]", type: "segments" },
+];
+const FIELDS_ORDERS: Config[] = [
   { text: "[Created At] ", type: "fields" },
   { text: "[ID] ", type: "fields" },
   { text: "[Product ID] ", type: "fields" },
@@ -60,11 +63,11 @@ const FIELDS_CUSTOM_NON_NUMERIC = [
 
 describe("metabase/lib/expression/suggest", () => {
   describe("suggest()", () => {
-    function suggest(...args) {
+    function suggest(...args: Parameters<typeof suggest_>) {
       return cleanSuggestions(suggest_(...args).suggestions);
     }
 
-    function helpText(...args) {
+    function helpText(...args: Parameters<typeof suggest_>) {
       return suggest_(...args).helpText;
     }
 
@@ -155,25 +158,31 @@ describe("metabase/lib/expression/suggest", () => {
       });
 
       it("should provide help text for the function", () => {
-        const { structure, example, args } = helpText({
-          source: "substring(",
-          query: ORDERS.query(),
-          startRule: "expression",
+        expect(
+          helpText({
+            source: "substring(",
+            query: ORDERS.query(),
+            startRule: "expression",
+          }),
+        ).toMatchObject({
+          structure: "substring",
+          example: "substring([Title], 1, 10)",
+          args: expect.objectContaining({ length: 3 }),
         });
-        expect(structure).toEqual("substring");
-        expect(example).toEqual("substring([Title], 1, 10)");
-        expect(args).toHaveLength(3);
       });
 
       it("should provide help text for the unique match", () => {
-        const { structure, example, args } = helpText({
-          source: "lower", // doesn't need to be "lower(" since it's a unique match
-          query: ORDERS.query(),
-          startRule: "expression",
+        expect(
+          helpText({
+            source: "lower", // doesn't need to be "lower(" since it's a unique match
+            query: ORDERS.query(),
+            startRule: "expression",
+          }),
+        ).toMatchObject({
+          structure: "lower",
+          example: "lower([Status])",
+          args: expect.objectContaining({ length: 1 }),
         });
-        expect(structure).toEqual("lower");
-        expect(example).toEqual("lower([Status])");
-        expect(args).toHaveLength(1);
       });
 
       it("should provide help text after first argument if there's only one argument", () => {
@@ -182,7 +191,7 @@ describe("metabase/lib/expression/suggest", () => {
             source: "trim(Total ",
             query: ORDERS.query(),
             startRule: "expression",
-          }).name,
+          })?.name,
         ).toEqual("trim");
       });
 
@@ -192,7 +201,7 @@ describe("metabase/lib/expression/suggest", () => {
             source: "coalesce(Total ",
             query: ORDERS.query(),
             startRule: "expression",
-          }).name,
+          })?.name,
         ).toEqual("coalesce");
       });
     });
@@ -269,13 +278,13 @@ describe("metabase/lib/expression/suggest", () => {
       });
 
       it("should show help text in an aggregation function", () => {
-        const { name, example } = helpText({
-          source: "Sum(",
-          query: ORDERS.query(),
-          startRule: "aggregation",
-        });
-        expect(name).toEqual("sum");
-        expect(example).toEqual("Sum([Subtotal])");
+        expect(
+          helpText({
+            source: "Sum(",
+            query: ORDERS.query(),
+            startRule: "aggregation",
+          }),
+        ).toMatchObject({ name: "sum", example: "Sum([Subtotal])" });
       });
     });
 
@@ -317,24 +326,27 @@ describe("metabase/lib/expression/suggest", () => {
       });
 
       it("should show help text in a filter function", () => {
-        const { name, example } = helpText({
-          source: "Contains(Total ",
-          query: ORDERS.query(),
-          startRule: "boolean",
+        expect(
+          helpText({
+            source: "Contains(Total ",
+            query: ORDERS.query(),
+            startRule: "boolean",
+          }),
+        ).toMatchObject({
+          name: "contains",
+          example: 'contains([Status], "Pass")',
         });
-        expect(name).toEqual("contains");
-        expect(example).toEqual('contains([Status], "Pass")');
       });
     });
   });
 });
 
-function cleanSuggestions(suggestions) {
+function cleanSuggestions(suggestions: Suggestion[] | undefined) {
   return _.chain(suggestions)
     .map(s => _.pick(s, "type", "text"))
     .sortBy("text")
     .value();
 }
 
-const suggestionSort = (a, b) =>
+const suggestionSort = (a: Config, b: Config) =>
   a.text < b.text ? -1 : a.text > b.text ? 1 : 0;

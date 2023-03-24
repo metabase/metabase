@@ -1,17 +1,20 @@
 import { t } from "ttag";
 import moment from "moment-timezone";
-
-import type { Database } from "metabase-types/api/database";
 import { HelpText, HelpTextConfig } from "metabase-lib/expressions/types";
+import type Database from "metabase-lib/metadata/Database";
 import {
   formatIdentifier,
   formatStringLiteral,
 } from "metabase-lib/expressions";
 
-const getDescriptionForNow = (database: Database, reportTimezone: string) => {
+const getDescriptionForNow: HelpTextConfig["description"] = (
+  database,
+  reportTimezone,
+) => {
   const hasTimezoneFeatureFlag = database.features.includes("set-timezone");
-  const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
-  const nowAtTimezone = getNowAtTimezone(timezone, reportTimezone);
+  const timezone =
+    hasTimezoneFeatureFlag && reportTimezone ? reportTimezone : "UTC";
+  const nowAtTimezone = getNowAtTimezone(timezone);
 
   // H2 is the only DBMS we support where:
   // · set-timezone isn't a feature, and
@@ -25,10 +28,10 @@ const getDescriptionForNow = (database: Database, reportTimezone: string) => {
   }
 };
 
-const getNowAtTimezone = (timezone: string, reportTimezone: string) =>
-  timezone ? moment().tz(reportTimezone).format("LT") : moment().format("LT");
+const getNowAtTimezone = (timezone: string) =>
+  timezone ? moment().tz(timezone).format("LT") : moment().format("LT");
 
-const helperTextStrings: HelpTextConfig[] = [
+const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "count",
     structure: "Count",
@@ -970,9 +973,9 @@ See the full list here: https://w.wiki/4Jx`,
 export const getHelpText = (
   name: string,
   database: Database,
-  reportTimezone: string,
+  reportTimezone?: string,
 ): HelpText | undefined => {
-  const helperTextConfig = helperTextStrings.find(h => h.name === name);
+  const helperTextConfig = HELPER_TEXT_STRINGS.find(h => h.name === name);
 
   if (!helperTextConfig) {
     return;

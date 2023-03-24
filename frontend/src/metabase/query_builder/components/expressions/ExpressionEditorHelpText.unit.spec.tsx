@@ -3,12 +3,13 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { getBrokenUpTextMatcher } from "__support__/ui";
 import { createMockDatabase } from "metabase-types/api/mocks";
+import Database from "metabase-lib/metadata/Database";
 import { getHelpText } from "./ExpressionEditorTextfield/helper-text-strings";
 import ExpressionEditorHelpText, {
   ExpressionEditorHelpTextProps,
 } from "./ExpressionEditorHelpText";
 
-const DATABASE = createMockDatabase();
+const DATABASE = new Database(createMockDatabase());
 
 describe("ExpressionEditorHelpText", () => {
   it("should render expression function info and example", async () => {
