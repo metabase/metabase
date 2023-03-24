@@ -174,22 +174,24 @@ describe("scenarios > question > summarize sidebar", () => {
     cy.findByText("318.7");
   });
 
-  it("should keep manually entered parenthesis intact (metabase#13306)", () => {
-    const FORMULA =
-      "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))";
-
+  it("should keep manually entered parenthesis intact if they affect the result (metabase#13306)", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
 
     popover().contains("Custom Expression").click();
     popover().within(() => {
-      enterCustomColumnDetails({ formula: FORMULA });
+      enterCustomColumnDetails({
+        formula:
+          "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
+      });
       cy.get("@formula").blur();
+    });
 
-      cy.wait(100); // waits for formula update after blur
-
-      // Implicit assertion
-      cy.get(".ace_text-layer").should("have.text", FORMULA);
+    popover().within(() => {
+      cy.get(".ace_text-layer").should(
+        "have.text",
+        "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))",
+      );
     });
   });
 
