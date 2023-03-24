@@ -135,12 +135,6 @@
   (metabot/extract-sql
    "The SQL query to find the total price of all purchases in the state of CA would be:\n\n```SQL\nSELECT SUM(PRICE) as total_price\nFROM \"My Model 2\"\nWHERE STATE = 'CA';\n```")
 
-  (t2/select-one Card :id 1036)
-
-  (t2/select-one Field :id 57)
-
-  (str/replace (u/slugify (:name (t2/select-one Card :id 1036))) #"_" "-")
-
   (->> (let [{:keys [dataset_query]} (t2/select-one Card :id 1036)
              {:keys [query]} dataset_query
              {:keys [joins]} query]
