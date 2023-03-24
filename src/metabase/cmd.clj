@@ -188,7 +188,7 @@
 
 (defn ^:command export
   "This command is in development. For now, use [[dump]].
-                                                
+                                             
    Serialize a Metabase into directory `path`.
 
    Options:
