@@ -23,8 +23,8 @@ const ModelMetabot = ({ model, user }: ModelMetabotProps) => {
   const [{ value, loading }, run] = useAsyncFn(getQuestionAndResults);
 
   const handleRun = useCallback(
-    (text: string) => {
-      run(model, text);
+    (query: string) => {
+      run(model, query);
     },
     [model, run],
   );
@@ -65,10 +65,10 @@ const gePromptPlaceholder = (model: Question) => {
   return t`Ask something like, how many ${model.displayName()} have we had over time?`;
 };
 
-const getQuestionAndResults = async (model: Question, questionText: string) => {
+const getQuestionAndResults = async (model: Question, query: string) => {
   const card = await MetabotApi.modelPrompt({
     modelId: model.id(),
-    question: questionText,
+    question: query,
   });
   const question = new Question(card, model.metadata());
   const results = await question.apiGetResults();

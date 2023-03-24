@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import { MetabotApi } from "metabase/services";
@@ -33,11 +33,17 @@ const DatabaseMetabot = ({
   const [{ value, loading }, run] = useAsyncFn(getQuestionAndResults);
 
   const handleRun = useCallback(
-    (text: string) => {
-      run(database, text);
+    (query: string) => {
+      run(database, query);
     },
     [database, run],
   );
+
+  useEffect(() => {
+    if (initialQuery) {
+      run(database, initialQuery);
+    }
+  }, [database, initialQuery, run]);
 
   return (
     <MetabotRoot>
@@ -99,13 +105,10 @@ const getGreetingMessage = (
     : jt`What do you want to know about ${databasePicker}?`;
 };
 
-const getQuestionAndResults = async (
-  database: Database,
-  questionText: string,
-) => {
+const getQuestionAndResults = async (database: Database, query: string) => {
   const card = await MetabotApi.databasePrompt({
     databaseId: database.id,
-    question: questionText,
+    question: query,
   });
   const question = new Question(card, database.metadata);
   const results = await question.apiGetResults();
