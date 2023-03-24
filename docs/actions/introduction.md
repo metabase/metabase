@@ -50,17 +50,19 @@ There are multiple ways to run actions:
 - From a [public form](./custom.md#make-public) of an action.
 - From a [button on dashboard](../dashboards/actions.md).
 
-## Actions change data in tables, not models
+## Actions change data in tables, which affect models
 
-A single action is associated with a single model. Each action will run as SQL code against the tables that underly the model (or even an unrelated table). Which means that anyone who has access to the underlying table(s), or to questions and models based on that data, will be able to see changes to that data made by an action. This also means that tools other than Metabase that are connected to that database will pick up the changes made by actions.
+Just something to clarify here: actions, even though they are added to models, make their changes to the underlying table that a model queries. Which means that anyone who has access to the underlying table, or to questions or other models based on that table, will be able to see the effects of an action. Tools other than Metabase that are connected to that database will also pick up these changes.
+
+In this sense, models are containers for actions; models are a way to organize actions. In fact, you could (in theory) add a [custom action](./custom.md) to a model that performs some update unrelated to its model's data. For example, you could write a custom action that updates the `Accounts` table, and add that action to a model that only queries an unrelated table (e.g., the `Orders` table). But, you know, maybe don't do that (unless you have a really good reason). [Basic actions](./basic.md), however, are only be available for models that wrap a single raw table.
 
 Before using actions in production, consider playing around with actions on some sample data (like the Sample Database included with Metabase) to get a feel for how they work.
 
 ## Action gotchas
 
-- If caching is on for the relevant table or model, you may not see the effects of an action in Metabase until Metabase refreshes the data (though you can always manually refresh the data).
-- When creating records on a table that lacks an automatically generated primary key, you'll need to input an available ID.
-- You can't "undo" actions. You can however, create and run an action to recreate a deleted record, or change an updated record back to its original values (provided you know the original values).
+- If caching is enabled for the relevant table or model, you may not see the effects of an action in Metabase until Metabase refreshes the data (though you can always manually refresh the data).
+- When creating records on a table that lacks an automatically generated primary key, you'll need to input an available ID (i.e., an ID not already in use by another record).
+- You can't "undo" actions. You can, however, create and run an action to recreate a deleted record, or change an updated record back to its original values (provided you know the original values).
 
 ## Further reading
 
