@@ -26,8 +26,7 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
-   [toucan2.core :as t2]
-   [metabase.models.serialization :as serdes])
+   [toucan2.core :as t2])
   (:refer-clojure :exclude [descendants]))
 
 (set! *warn-on-reflection* true)
