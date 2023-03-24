@@ -85,6 +85,8 @@ import {
 } from "metabase-lib/Alert";
 import { getBaseDimensionReference } from "metabase-lib/references";
 
+import { Query as MLQuery } from "./v2/types";
+
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
   dataset?: boolean;
@@ -1335,7 +1337,7 @@ class QuestionInner {
     return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
-  _getMLv2Query(metadata = this._metadata) {
+  _getMLv2Query(metadata = this._metadata): MLQuery {
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
       if (!this.__mlv2MetadataProvider) {
