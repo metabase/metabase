@@ -18,7 +18,7 @@ import {
   getExpressionName,
   formatStringLiteral,
   hasOptions,
-  EXPRESSION_OPERATOR_WITHOUT_EXECUTION_PRIORITY,
+  EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY,
 } from "./index";
 
 export { DISPLAY_QUOTES, EDITOR_QUOTES } from "./config";
@@ -137,7 +137,7 @@ function formatOperator([op, ...args], options) {
       index > 0 &&
       isOperator(arg) &&
       OPERATOR_PRECEDENCE[op] === OPERATOR_PRECEDENCE[argOp] &&
-      !EXPRESSION_OPERATOR_WITHOUT_EXECUTION_PRIORITY.has(op);
+      !EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY.has(op);
 
     return format(arg, {
       ...options,
