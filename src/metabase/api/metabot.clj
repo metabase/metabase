@@ -47,12 +47,13 @@
 (defn- column-types
   "Given a model, provide a set of statements about each column type and display name."
   [{model-name :name :keys [result_metadata]}]
-  (map (fn [{:keys [display_name description]}]
-         (format "The column '%s' in table '%s' is described as '%s'"
-                 display_name
-                 (normalize-name model-name)
-                 description))
-       result_metadata))
+  (for [{:keys [display_name description]} result_metadata
+        :when description]
+    ;; TODO - Actually add some type info.
+    (format "The column '%s' in table '%s' is described as '%s'"
+            display_name
+            (normalize-name model-name)
+            description)))
 
 (defn- enumerated-values
   "Given a model, provide a set of statements about which values a column may take on."
@@ -99,7 +100,9 @@
   (let [[_pre sql _post] (str/split bot-response #"```(sql|SQL)?")]
     (when sql (mdb.query/format-sql sql))))
 
-(defn bot-response->sql [resp]
+(defn bot-response->sql
+  "Given the raw response from the bot, extract just the sql."
+  [resp]
   (some->> resp
            :choices
            first
@@ -126,45 +129,52 @@
                 alias (::add/desired-alias m)]]
       [alias (alias-map id)])))
 
-(defn inner-query [{:keys [id] :as model}]
+(defn inner-query
+  "Produce a SELECT * over the parameterized model with columns aliased to normalized display names."
+  [{:keys [id] :as model}]
   (let [column-aliases (->> (aliases model)
                             (map (partial apply format "\"%s\" AS %s"))
                             (str/join ","))]
     (mdb.query/format-sql (format "SELECT %s FROM {{#%s}}" column-aliases id))))
 
 (defn get-sql [{:keys [database_id] :as model} {:keys [question fake]}]
-  (let [database (t2/select-one Database :id database_id)]
+  (let [database         (t2/select-one Database :id database_id)
+        model-assertions (model-messages model)]
+    (tap> {:model-assertions model-assertions})
     (cond
       fake "SELECT * FROM ORDERS; -- THIS IS FAKE"
-      (and (openai-api-key) (openai-organization)) (let [model-assertions (model-messages model)
-                                                         resp             (get-sql-from-bot database model-assertions question)]
+      (and (openai-api-key) (openai-organization)) (let [resp (get-sql-from-bot database model-assertions question)]
                                                      (tap> {:response resp})
                                                      (bot-response->sql resp))
       :else "Set MB_OPENAI_API_KEY and MB_OPENAI_ORGANIZATION env vars and relaunch!")))
 
-(defn fix-model-reference [sql]
+(defn fix-model-reference
+  "The formatter may expand the parameterized model (e.g. {{#123}} -> { { # 123 } }).
+  This function fixes that."
+  [sql]
   (str/replace
    sql
    #"\{\s*\{\s*#\s*\d+\s*\}\s*\}\s*"
    (fn [match] (str/replace match #"\s*" ""))))
 
 (defn generate-sql-from-prompt
+  "Given a model and prompt, attempt to generate a SQL query for over this model."
   ([{model-name :name :keys [database_id] :as model} prompt fake]
-   (let [inner-query (inner-query model)
-         bot-sql     (get-sql model {:question prompt :fake fake})
-         final-sql   (fix-model-reference (format "WITH %s AS (%s) %s"
-                                                  (normalize-name model-name)
-                                                  inner-query
-                                                  bot-sql))
-         _           (tap> {:bot-sql   bot-sql
-                            :final-sql final-sql})
-         response    {:dataset_query          {:database database_id
-                                               :type     "native"
-                                               :native   {:query final-sql}}
-                      :display                :table
-                      :visualization_settings {}}]
-     (tap> response)
-     response))
+   (when-some [bot-sql (get-sql model {:question prompt :fake fake})]
+     (let [inner-query (inner-query model)
+           final-sql   (fix-model-reference (format "WITH %s AS (%s) %s"
+                                                    (normalize-name model-name)
+                                                    inner-query
+                                                    bot-sql))
+           _           (tap> {:bot-sql   bot-sql
+                              :final-sql final-sql})
+           response    {:dataset_query          {:database database_id
+                                                 :type     "native"
+                                                 :native   {:query final-sql}}
+                        :display                :table
+                        :visualization_settings {}}]
+       (tap> response)
+       response)))
   ([model prompt] (generate-sql-from-prompt model prompt false)))
 
 (defn card->column-names [{model-name :name :keys [id result_metadata] :as _model}]
@@ -219,12 +229,17 @@
   (let [prompt "If I know the state, price, and rating of an item, can you show me the average price and max rating per state?"
         model  (find-best-model
                 (t2/select-one Database :id 1) prompt)]
-    (generate-sql-from-prompt model prompt))
+    (or (generate-sql-from-prompt model prompt)
+        ))
 
   (let [prompt "which of my people were born in September?"
         model  (find-best-model
                 (t2/select-one Database :id 1) prompt)]
     (generate-sql-from-prompt model prompt))
+
+  (find-best-model
+   (t2/select-one Database :id 1)
+   "What was the total payments of invoices made in September?")
   )
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -234,7 +249,13 @@
   (tap> {:model-id model-id
          :request  body})
   (let [model (api/check-404 (t2/select-one Card :id model-id :dataset true))]
-    (generate-sql-from-prompt model question fake)))
+    (or
+     (generate-sql-from-prompt model question fake)
+     (throw (ex-info
+             (format
+              "Query '%s' didn't produce any SQL. Perhaps try a more detailed query."
+              question)
+             {:status-code 400})))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/database/:database-id"
@@ -242,8 +263,16 @@
   [database-id :as {{:keys [question fake] :as body} :body}]
   (tap> {:database-id database-id
          :request     body})
-  (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
-        model (find-best-model database question)]
-    (generate-sql-from-prompt model question fake)))
+  (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))]
+    (if-some [model (find-best-model database question)]
+      (generate-sql-from-prompt model question fake)
+      (throw (ex-info
+              (format
+               (str/join
+                " "
+                ["Query '%s' didn't find a good match to your data."
+                 "Perhaps try a query that mentions the model name or columns more specificially."])
+               question)
+              {:status-code 400})))))
 
 (api/define-routes)
