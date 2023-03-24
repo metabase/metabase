@@ -87,7 +87,7 @@
     (fn [object]
       (try
         (let [parsed (assoc (obj->clj xform object) :lib/type lib-type-name)]
-          (log/infof "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
+          (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
           parsed)
         (catch js/Error e
           (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
@@ -304,7 +304,7 @@
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
   [database-id metadata]
   (let [metadata (parse-metadata metadata)]
-    (log/info "Created metadata provider for metadata")
+    (log/debug "Created metadata provider for metadata")
     (reify lib.metadata.protocols/MetadataProvider
       (database [_this]            (database metadata database-id))
       (table    [_this table-id]   (table    metadata table-id))

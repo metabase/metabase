@@ -22,4 +22,6 @@
                                          (meta/id :checkins :date)]]}]}
             query))
     (is (= "Checkins, Count, Grouped by Date (year)"
+           (lib/display-name query query)
+           (lib/describe-query query)
            (lib/suggested-name query)))))

@@ -7,7 +7,7 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-(defmethod lib.metadata.calculation/describe-top-level-key :limit
+(defmethod lib.metadata.calculation/describe-top-level-key-method :limit
   [query stage-number _k]
   (when-let [limit (:limit (lib.util/query-stage query stage-number))]
     (str limit \space (i18n/trun "row" "rows" limit))))

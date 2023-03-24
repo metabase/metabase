@@ -24,7 +24,7 @@
                        :stage-number stage-number})))
     (nth aggregations index)))
 
-(defmethod lib.metadata.calculation/describe-top-level-key :aggregation
+(defmethod lib.metadata.calculation/describe-top-level-key-method :aggregation
   [query stage-number _k]
   (when-let [aggregations (not-empty (:aggregation (lib.util/query-stage query stage-number)))]
     (lib.util/join-strings-with-conjunction

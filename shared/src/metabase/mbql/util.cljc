@@ -733,6 +733,18 @@
                                                                 (when (keyword? k)
                                                                   (namespace k)))))))
 
+(defn referenced-field-ids
+  "Find all the `:field` references with integer IDs in `coll`, which can be a full MBQL query, a snippet of MBQL, or a
+  sequence of those things; return a set of Field IDs. Includes Fields referenced indirectly via `:source-field`.
+  Returns `nil` if no IDs are found."
+  [coll]
+  (not-empty
+   (into #{}
+         (comp cat (filter some?))
+         (mbql.match/match coll
+           [:field (id :guard integer?) opts]
+           [id (:source-field opts)]))))
+
 #?(:clj
    (p/import-vars
     [mbql.match

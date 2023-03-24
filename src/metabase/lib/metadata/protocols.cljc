@@ -72,6 +72,8 @@
 
 ;;;; Graph provider and impl
 
+;;; TODO -- only used by tests, move this into tests.
+
 (defn- graph-database [metadata-graph]
   (dissoc metadata-graph :tables))
 
@@ -131,3 +133,16 @@
                ;; don't actually print the whole thing because it's going to make my eyes bleed to see all
                ;; of [[metabase.lib.test-metadata]] every single time a test fails
                `SimpleGraphMetadataProvider)]))
+
+;;; TODO -- do we need Database methods as well?
+(#?(:clj p/defprotocol+ :cljs defprotocol) WarmableMetadataProvider
+  (store-tables! [metadata-provider tables])
+  (store-fields! [metadata-provider fields])
+  (store-cards! [metadata-provider cards])
+  (store-metrics! [metadata-provider metrics])
+  (store-segments! [metadata-provider segment-ids])
+  (fetch-tables! [metadata-provider table-ids])
+  (fetch-fields! [metadata-provider field-ids])
+  (fetch-cards! [metadata-provider card-ids])
+  (fetch-metrics! [metadata-provider metric-ids])
+  (fetch-segments! [metadata-provider segment-ids]))

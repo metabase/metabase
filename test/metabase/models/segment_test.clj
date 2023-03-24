@@ -7,7 +7,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
 
@@ -115,3 +116,27 @@
         (is (= "be199b7c"
                (serdes/raw-hash ["big customers" (serdes/identity-hash table) now])
                (serdes/identity-hash segment)))))))
+
+(deftest definition-description-test
+  (testing "Do not hydrate definition description if definition is nil"
+    (t2.with-temp/with-temp [Segment segment {:name     "Segment"
+                                              :table_id (mt/id :users)}]
+      (is (=? {:definition_description nil}
+              (t2/hydrate segment :definition_description)))))
+  (t2.with-temp/with-temp [Segment segment {:name       "Expensive BBQ Spots"
+                                            :definition (:query (mt/mbql-query venues
+                                                                  {:filter
+                                                                   [:and
+                                                                    [:= $price 4]
+                                                                    [:= $category_id->categories.name "BBQ"]]}))}]
+    (is (= "Filtered by Price equals 4 and Name equals \"BBQ\""
+           (:definition_description (t2/hydrate segment :definition_description))))
+    (testing "Segments that reference other Segments (inception)"
+      (t2.with-temp/with-temp [Segment segment-2 {:name "Segment 2"
+                                                  :definition (:query (mt/mbql-query categories
+                                                                        {:filter
+                                                                         [:and
+                                                                          [:segment (:id segment)]
+                                                                          [:not-null $id]]}))}]
+        (is (= "Filtered by Expensive BBQ Spots and ID is not empty"
+               (:definition_description (t2/hydrate segment-2 :definition_description))))))))
