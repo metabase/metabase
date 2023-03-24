@@ -8,13 +8,17 @@ import MetabotPrompt from "../MetabotPrompt";
 import { MetabotHeader } from "./HomeMetabot.styled";
 
 interface HomeMetabotProps {
-  user: User;
-  database: Database;
-  model: Question;
+  model?: Question;
+  database?: Database;
+  user?: User;
   onRun: (query: string, databaseId: DatabaseId) => void;
 }
 
-const HomeMetabot = ({ user, database, model, onRun }: HomeMetabotProps) => {
+const HomeMetabot = ({ model, database, user, onRun }: HomeMetabotProps) => {
+  if (!model || !database) {
+    return null;
+  }
+
   const handleRun = (prompt: string) => {
     onRun(prompt, database.id);
   };
@@ -22,7 +26,7 @@ const HomeMetabot = ({ user, database, model, onRun }: HomeMetabotProps) => {
   return (
     <MetabotHeader>
       <MetabotGreeting>
-        {t`Hey there, ${user.first_name}! You can ask me things about your data. I’m thinking about the ${database.name} database right now. `}
+        {t`Hey there, ${user?.first_name}! You can ask me things about your data. I’m thinking about the ${database.name} database right now. `}
       </MetabotGreeting>
       <MetabotPrompt
         user={user}
