@@ -919,10 +919,12 @@ saved later when it is ready."
 (defn mapping->field-values
   "Get param values for the \"old style\" parameters. This mimic's the api/dashboard version except we don't have
   chain-filter issues or dashcards to worry about."
-  [card param query]
-  (when-let [field-clause (params/param-target->field-clause (:target param) card)]
-    (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
-      (api.field/field-id->values field-id query))))
+  ([card param query]
+   (mapping->field-values card param query false))
+  ([card param query skip-filter-view-perm?]
+   (when-let [field-clause (params/param-target->field-clause (:target param) card)]
+     (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
+       (api.field/field-id->values field-id query skip-filter-view-perm?)))))
 
 (mu/defn param-values
   "Fetch values for a parameter.
@@ -930,22 +932,24 @@ saved later when it is ready."
   The source of values could be:
   - static-list: user defined values list
   - card: values is result of running a card"
-  ([card param-key]
-   (param-values card param-key nil))
-
-  ([card      :- ms/Map
-    param-key :- ms/NonBlankString
-    query     :- [:maybe ms/NonBlankString]]
-   (let [param       (get (m/index-by :id (or (seq (:parameters card))
-                                              ;; some older cards or cards in e2e just use the template tags on native
-                                              ;; queries
-                                              (card/template-tag-parameters card)))
-                          param-key)
-         _source-type (:values_source_type param)]
+  ([card param-key] (param-values card param-key nil))
+  ([card param-key query] (param-values card param-key query true))
+  ([card                   :- ms/Map
+    param-key              :- ms/NonBlankString
+    query                  :- [:maybe ms/NonBlankString]
+    skip-filter-view-perm? :- [:maybe :boolean]]
+   (let [param (get (m/index-by :id (or (seq (:parameters card))
+                                        ;; some older cards or cards in e2e just use the template tags on native
+                                        ;; queries
+                                        (card/template-tag-parameters card)))
+                    param-key)]
      (when-not param
        (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
                        {:status-code 400})))
-     (custom-values/parameter->values param query (fn [] (mapping->field-values card param query))))))
+     (custom-values/parameter->values
+      param query
+      (fn mapping->field-values-backup []
+        (mapping->field-values card param query skip-filter-view-perm?))))))
 
 (api/defendpoint GET "/:card-id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`.
@@ -955,7 +959,7 @@ saved later when it is ready."
   [card-id param-key]
   {card-id   ms/PositiveInt
    param-key ms/NonBlankString}
-  (param-values (api/read-check Card card-id) param-key))
+  (param-values (api/read-check Card card-id) param-key nil true))
 
 (api/defendpoint GET "/:card-id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
@@ -968,6 +972,6 @@ saved later when it is ready."
   {card-id   ms/PositiveInt
    param-key ms/NonBlankString
    query     ms/NonBlankString}
-  (param-values (api/read-check Card card-id) param-key query))
+  (param-values (api/read-check Card card-id) param-key query true))
 
 (api/define-routes)

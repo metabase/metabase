@@ -227,18 +227,20 @@
 (defn check-perms-and-return-field-values
   "Impl for `GET /api/field/:id/values` endpoint; check whether current user has read perms for Field with `id`, and, if
   so, return its values."
-  [field-id]
-  (let [field (api/check-404 (t2/select-one Field :id field-id))]
-    (api/check-403 (params.field-values/current-user-can-fetch-field-values? field))
-    (field->values field)))
+  ([field-id] (check-perms-and-return-field-values field-id false))
+  ([field-id skip-filter-view-perm?]
+   (let [field (api/check-404 (t2/select-one Field :id field-id))]
+     (when-not skip-filter-view-perm?
+       (api/check-403 (params.field-values/current-user-can-fetch-field-values? field)))
+     (field->values field))))
 
 ;; todo: we need to unify and untangle this stuff
 (defn field-id->values
   "Fetch values for field id. If query is present, uses `api.field/search-values`, otherwise delegates to
   `api.field/check-parms-and-return-field-values`."
-  [field-id query]
+  [field-id query skip-filter-view-perm?]
   (if (str/blank? query)
-    (check-perms-and-return-field-values field-id)
+    (check-perms-and-return-field-values field-id skip-filter-view-perm?)
     (let [field (api/check-404 (t2/select-one Field :id field-id))]
       ;; matching the output of the other params. [["Foo" "Foo"] ["Bar" "Bar"]] -> [["Foo"] ["Bar"]]. This shape
       ;; is what the return-field-values returns above
