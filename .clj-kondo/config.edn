@@ -506,7 +506,8 @@
   potemkin/defprotocol+                                                                clojure.core/defprotocol
   potemkin/defrecord+                                                                  clojure.core/defrecord
   potemkin/deftype+                                                                    clojure.core/deftype
-  toucan.db/with-call-counting                                                         clojure.core/fn}
+  toucan.db/with-call-counting                                                         clojure.core/fn
+  toucan2.core/with-call-count                                                         clojure.core/fn}
 
  :hooks
  {:analyze-call
@@ -585,8 +586,7 @@
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
    toucan.util.test/with-temp                                                                                                hooks.toucan.util.test/with-temp
-   toucan.util.test/with-temp*                                                                                               hooks.toucan.util.test/with-temp*
-   toucan2.core/with-call-count                                                                                              hooks.common/with-one-binding}
+   toucan.util.test/with-temp*                                                                                               hooks.toucan.util.test/with-temp*}
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                            macros.quartz/build-job
