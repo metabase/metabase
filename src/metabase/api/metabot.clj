@@ -17,6 +17,11 @@
    [wkok.openai-clojure.api :as openai.api]
    ))
 
+(defn normalize-name [s]
+  (some-> s
+          str/upper-case
+          (str/replace #"\s+" "_")))
+
 (set! *warn-on-reflection* true)
 
 (defsetting is-metabot-enabled
@@ -45,7 +50,7 @@
   (map (fn [{:keys [display_name description]}]
          (format "The column '%s' in table '%s' is described as '%s'"
                  display_name
-                 model-name
+                 (normalize-name model-name)
                  description))
        result_metadata))
 
@@ -57,7 +62,7 @@
         :when (seq values)]
     (format "The column named '%s' in the table '%s' has these potential values: %s."
             display_name
-            model-name
+            (normalize-name model-name)
             (str/join ", " (map (partial format "'%s'") values)))))
 
 (defn model-messages
@@ -71,11 +76,11 @@
      (fn [s] {:role "assistant" :content s})
      (reduce
       into
-      [(format "I have a table named '%s' with the following columns: %s." model-name col-names)]
+      [(format "I have a table named '%s' with the following columns: %s." (normalize-name model-name) col-names)]
       [(column-types model)
        (enumerated-values model)]))))
 
-(defn write-sql [database model-assertions prompt]
+(defn get-sql-from-bot [database model-assertions prompt]
   (let [resp (openai.api/create-chat-completion
               {:model    "gpt-3.5-turbo"
                ;; Just produce a single result
@@ -105,9 +110,9 @@
 (defn aliases [{:keys [dataset_query result_metadata]}]
   (let [alias-map (update-vals
                    (into {} (map (juxt :id :display_name) result_metadata))
-                   (fn [v] (if (str/includes? v " ")
-                             (format "\"%s\"" v)
-                             v)))
+                   (fn [v] (cond-> v
+                             (str/includes? v " ")
+                             normalize-name)))
         {:keys [query]} (let [driver (driver.u/database->driver (:database (qp/preprocess dataset_query)))]
                           (let [qp (qp.reducible/combine-middleware
                                     (vec qp/around-middleware)
@@ -132,7 +137,7 @@
     (cond
       fake "SELECT * FROM ORDERS; -- THIS IS FAKE"
       (and (openai-api-key) (openai-organization)) (let [model-assertions (model-messages model)
-                                                         resp             (write-sql database model-assertions question)]
+                                                         resp             (get-sql-from-bot database model-assertions question)]
                                                      (tap> {:response resp})
                                                      (bot-response->sql resp))
       :else "Set MB_OPENAI_API_KEY and MB_OPENAI_ORGANIZATION env vars and relaunch!")))
@@ -147,7 +152,10 @@
   ([{model-name :name :keys [database_id] :as model} prompt fake]
    (let [inner-query (inner-query model)
          bot-sql     (get-sql model {:question prompt :fake fake})
-         final-sql   (fix-model-reference (format "WITH \"%s\" AS (%s) %s" model-name inner-query bot-sql))
+         final-sql   (fix-model-reference (format "WITH %s AS (%s) %s"
+                                                  (normalize-name model-name)
+                                                  inner-query
+                                                  bot-sql))
          _           (tap> {:bot-sql   bot-sql
                             :final-sql final-sql})
          response    {:dataset_query          {:database database_id
@@ -175,17 +183,19 @@
         model-options (str/join "," (map (fn [{:keys [id]}] (format "'%s'" id)) models))
         l1            (format "My table names are %s" model-options)
         descs         (map (fn [s] {:role "assistant" :content s}) (map card->column-names models))
+        model-input   (conj
+                       (into
+                        [{:role "system" :content "You are a helpful assistant. Tell me which table in my database is the best fit for my question."}
+                         {:role "assistant" :content l1}]
+                        descs)
+                       {:role "user" :content (format
+                                               "Which table would be most appropriate if I am trying to '%s'"
+                                               prompt)})
+        _             (tap> {:find-best-model-input model-input})
         response      (openai.api/create-chat-completion
                        {:model    "gpt-3.5-turbo"
                         :n        1
-                        :messages (conj
-                                   (into
-                                    [{:role "system" :content "You are a helpful assistant. Tell me which table in my database is the best fit for my question."}
-                                     {:role "assistant" :content l1}]
-                                    descs)
-                                   {:role "user" :content (format
-                                                           "Which table would be most appropriate if I am trying to '%s'"
-                                                           prompt)})}
+                        :messages model-input}
                        {:api-key      (openai-api-key)
                         :organization (openai-organization)})
         message       (->> response :choices first :message :content)]
@@ -202,7 +212,16 @@
    (t2/select-one Database :id 1)
    "Tell me the names of people born in July")
 
+  (find-best-model
+   (t2/select-one Database :id 1)
+   "Tell me the names of people born in the fall")
+
   (let [prompt "If I know the state, price, and rating of an item, can you show me the average price and max rating per state?"
+        model  (find-best-model
+                (t2/select-one Database :id 1) prompt)]
+    (generate-sql-from-prompt model prompt))
+
+  (let [prompt "which of my people were born in September?"
         model  (find-best-model
                 (t2/select-one Database :id 1) prompt)]
     (generate-sql-from-prompt model prompt))
