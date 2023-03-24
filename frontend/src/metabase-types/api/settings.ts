@@ -182,6 +182,7 @@ export interface Settings {
   "has-user-setup": boolean;
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
+  "is-metabot-enabled": boolean;
   "jwt-enabled"?: boolean;
   "jwt-configured"?: boolean;
   "ldap-configured?": boolean;

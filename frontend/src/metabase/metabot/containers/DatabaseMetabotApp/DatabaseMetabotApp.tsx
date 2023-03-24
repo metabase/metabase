@@ -8,6 +8,7 @@ import Databases from "metabase/entities/databases";
 import { Card, Database, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import DatabaseMetabot from "metabase/metabot/components/DatabaseMetabot";
+import { LocationDescriptor } from "metabase-types/types";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
 interface RouterParams {
@@ -17,12 +18,14 @@ interface RouterParams {
 interface CardLoaderProps {
   card: Card;
   params: RouterParams;
+  location: LocationDescriptor;
 }
 
 interface StateProps {
   metadata: Metadata;
   user?: User;
   database?: Database;
+  prompt?: string;
 }
 
 const getDatabaseId = (params: RouterParams) => {
@@ -31,13 +34,14 @@ const getDatabaseId = (params: RouterParams) => {
 
 const mapStateToProps = (
   state: State,
-  { params }: CardLoaderProps,
+  { params, location }: CardLoaderProps,
 ): StateProps => ({
   user: getUser(state) ?? undefined,
   metadata: getMetadata(state),
   database: Databases.selectors.getObject(state, {
     entityId: getDatabaseId(params),
   }),
+  prompt: location?.query?.prompt,
 });
 
 const mapDispatchToProps = {
