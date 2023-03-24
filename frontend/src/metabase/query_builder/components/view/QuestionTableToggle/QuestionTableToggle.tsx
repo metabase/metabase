@@ -8,23 +8,29 @@ import { Well, ToggleIcon } from "./QuestionTableToggle.styled";
 interface QuestionTableToggleProps {
   className?: string;
   question: Question;
-  isRawTable: boolean;
-  onToggleRawTable: (isRawTable: boolean) => void;
+  isShowingRawTable: boolean;
+  onToggleRawTable: (isShowingRawTable: boolean) => void;
 }
 
 const QuestionTableToggle = ({
   className,
   question,
-  isRawTable,
+  isShowingRawTable,
   onToggleRawTable,
 }: QuestionTableToggleProps) => {
   const vizIcon = getIconForVisualizationType(question.display());
   return (
-    <Well className={className} onClick={() => onToggleRawTable(!isRawTable)}>
-      <ToggleIcon active={isRawTable} aria-label={t`Switch to data`}>
+    <Well
+      className={className}
+      onClick={() => onToggleRawTable(!isShowingRawTable)}
+    >
+      <ToggleIcon active={isShowingRawTable} aria-label={t`Switch to data`}>
         <Icon name="table2" />
       </ToggleIcon>
-      <ToggleIcon active={!isRawTable} aria-label={t`Switch to visualization`}>
+      <ToggleIcon
+        active={!isShowingRawTable}
+        aria-label={t`Switch to visualization`}
+      >
         <Icon name={vizIcon} />
       </ToggleIcon>
     </Well>

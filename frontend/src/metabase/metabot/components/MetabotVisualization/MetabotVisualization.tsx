@@ -7,17 +7,17 @@ import { FullVisualization } from "./MetabotVisualization.styled";
 interface MetabotVisualizationProps {
   question: Question;
   results: [Dataset];
-  isRawTable: boolean;
+  isShowingRawTable: boolean;
 }
 
 const MetabotVisualization = ({
   question,
   results,
-  isRawTable,
+  isShowingRawTable,
 }: MetabotVisualizationProps) => {
   const rawSeries = useMemo(
-    () => getRawSeries(question, results, isRawTable),
-    [question, results, isRawTable],
+    () => getRawSeries(question, results, isShowingRawTable),
+    [question, results, isShowingRawTable],
   );
 
   return (
@@ -33,9 +33,9 @@ const MetabotVisualization = ({
 const getRawSeries = (
   question: Question,
   [result]: [Dataset],
-  isRawData: boolean,
+  isShowingRawTable: boolean,
 ) => {
-  const card = isRawData
+  const card = isShowingRawTable
     ? question.setDisplay("table").setSettings({ "table.pivot": false }).card()
     : question.card();
 

@@ -105,7 +105,7 @@ const ViewFooter = ({
               key="viz-table-toggle"
               className="mx1"
               question={question}
-              isRawTable={isShowingRawTable}
+              isShowingRawTable={isShowingRawTable}
               onToggleRawTable={isShowingRawTable => {
                 setUIControls({ isShowingRawTable });
               }}

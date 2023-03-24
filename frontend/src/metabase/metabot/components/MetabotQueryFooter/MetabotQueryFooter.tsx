@@ -8,13 +8,13 @@ import {
 
 export interface MetabotQueryFooterProps {
   question: Question;
-  isRawTable: boolean;
-  onToggleRawTable: (isRawTable: boolean) => void;
+  isShowingRawTable: boolean;
+  onToggleRawTable: (isShowingRawTable: boolean) => void;
 }
 
 const MetabotQueryFooter = ({
   question,
-  isRawTable,
+  isShowingRawTable,
   onToggleRawTable,
 }: MetabotQueryFooterProps) => {
   return (
@@ -23,7 +23,7 @@ const MetabotQueryFooter = ({
         center={
           <QuestionTableToggle
             question={question}
-            isRawTable={isRawTable}
+            isShowingRawTable={isShowingRawTable}
             onToggleRawTable={onToggleRawTable}
           />
         }

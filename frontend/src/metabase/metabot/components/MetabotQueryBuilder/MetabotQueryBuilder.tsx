@@ -18,7 +18,7 @@ const MetabotQueryBuilder = ({
   question,
   results,
 }: MetabotQueryBuilderProps) => {
-  const [isRawTable, setIsRawTable] = useState(false);
+  const [isShowingRawTable, setIsShowingRawTable] = useState(false);
 
   return (
     <MetabotQueryBuilderRoot>
@@ -27,13 +27,13 @@ const MetabotQueryBuilder = ({
         <MetabotVisualization
           question={question}
           results={results}
-          isRawTable={isRawTable}
+          isShowingRawTable={isShowingRawTable}
         />
       </MetabotQueryVisualizationContainer>
       <MetabotQueryFooter
         question={question}
-        isRawTable={isRawTable}
-        onToggleRawTable={setIsRawTable}
+        isShowingRawTable={isShowingRawTable}
+        onToggleRawTable={setIsShowingRawTable}
       />
     </MetabotQueryBuilderRoot>
   );
