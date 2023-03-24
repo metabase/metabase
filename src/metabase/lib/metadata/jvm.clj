@@ -20,13 +20,13 @@
 (defn- fetch-instance [metadata-type id]
   {:pre [(integer? id)]}
   (let [model (metadata-type->model metadata-type)]
-    (log/infof "Fetching %s %d" model id)
+    (log/debugf "Fetching %s %d" model id)
     (when-some [instance (t2/select-one model :id id)]
       (assoc instance :lib/type metadata-type))))
 
 (defn- bulk-instances [metadata-type ids]
   (let [model (metadata-type->model metadata-type)]
-    (log/infof "Fetching instance of %s with ID %s" model (pr-str ids))
+    (log/debugf "Fetching instances of %s with ID in %s" model (pr-str (sort ids)))
     (for [instance (t2/select model :id [:in ids])]
       (assoc instance :lib/type metadata-type))))
 
@@ -52,13 +52,13 @@
                               `lib.metadata.protocols/tables
                               `UncachedApplicationDatabaseMetadataProvider)
                       {})))
-    (log/infof "Fetching all Tables for Database %d" database-id)
+    (log/debugf "Fetching all Tables for Database %d" database-id)
     (into []
           (map #(assoc % :lib/type :metadata/table))
           (t2/reducible-select :metabase.models.table/Table :db_id database-id)))
 
   (fields [_this table-id]
-    (log/infof "Fetching all Fields for Table %d" table-id)
+    (log/debugf "Fetching all Fields for Table %d" table-id)
     (into []
           (map #(assoc % :lib/type :metadata/field))
           (t2/reducible-select :table_id table-id)))

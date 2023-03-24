@@ -23,12 +23,12 @@
 
 (defn- bulk-metadata [cache uncached-provider metadata-type ids]
   (when (seq ids)
-    (log/infof "Caching %s metadata with IDs..." metadata-type (pr-str (sort ids)))
+    (log/debugf "Getting %s metadata with IDs %s" metadata-type (pr-str (sort ids)))
     (let [existing-ids (set (keys (get @cache metadata-type)))
           missing-ids  (set/difference (set ids) existing-ids)]
-      (log/infof "Already fetched: %s" (pr-str (sort (set/union (set ids) existing-ids))))
+      (log/debugf "Already fetched %s: %s" metadata-type (pr-str (sort (set/intersection (set ids) existing-ids))))
       (when (seq missing-ids)
-        (log/infof "Need to fetch: %s" (pr-str (sort missing-ids)))
+        (log/debugf "Need to fetch %s: %s" metadata-type (pr-str (sort missing-ids)))
         ;; TODO -- we should probably store `::nil` markers for things we tried to fetch that didn't exist
         (doseq [instance (lib.metadata.protocols/bulk-metadata uncached-provider metadata-type missing-ids)]
           (store-in-cache! cache [metadata-type (:id instance)] instance))))

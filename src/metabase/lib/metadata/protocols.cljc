@@ -24,26 +24,26 @@
 
   For all of these methods: if no matching object can be found, you should generally return `nil` rather than throwing
   an Exception. Let [[metabase.lib.metadata]] worry about throwing exceptions."
-  (database [this]
+  (database [metadata-provider]
     "Metadata about the Database we're querying. Should match the [[metabase.lib.metadata/DatabaseMetadata]] schema.
   This includes important info such as the supported `:features` and the like.")
 
-  (table [this table-id]
+  (table [metadata-provider table-id]
     "Return metadata for a specific Table. Metadata should satisfy [[metabase.lib.metadata/TableMetadata]].")
 
-  (field [this field-id]
+  (field [metadata-provider field-id]
     "Return metadata for a specific Field. Metadata should satisfy [[metabase.lib.metadata/ColumnMetadata]].")
 
-  (card [this card-id]
+  (card [metadata-provider card-id]
     "Return information about a specific Saved Question, aka a Card. This should
     match [[metabase.lib.metadata/CardMetadata]. Currently just used for display name purposes if you have a Card as a
     source query.")
 
-  (metric [this metric-id]
+  (metric [metadata-provider metric-id]
     "Return metadata for a particular capital-M Metric, i.e. something from the `metric` table in the application
     database. Metadata should match [[metabase.lib.metadata/MetricMetadata]].")
 
-  (segment [this segment-id]
+  (segment [metadata-provider segment-id]
     "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
     database. Metadata should match [[metabase.lib.metadata/SegmentMetadata]]." )
 
@@ -52,14 +52,14 @@
   ;; I'm on the fence about maybe putting these in a different protocol. They're part of this protocol for now tho so
   ;; implement them anyway.
 
-  (tables [this]
+  (tables [metadata-provider]
     "Return a sequence of Tables in this Database. Tables should satisfy the [[metabase.lib.metadata/TableMetadata]]
   schema. This should also include things that serve as 'virtual' tables, e.g. Saved Questions or Models. But users of
   MLv2 should not need to know that! If we add support for Super Models or Quantum Questions in the future, they can
   just come back from this method in the same shape as everything else, the Query Builder can display them, and the
   internals can be tucked away here in MLv2.")
 
-  (fields [this table-id]
+  (fields [metadata-provider table-id]
     "Return a sequence of Fields associated with a Table with the given `table-id`. Fields should satisfy
   the [[metabase.lib.metadata/ColumnMetadata]] schema. If no such Table exists, this should error."))
 
