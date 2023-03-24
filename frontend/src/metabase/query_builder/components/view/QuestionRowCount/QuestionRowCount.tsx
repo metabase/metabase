@@ -19,9 +19,9 @@ import LimitPopover from "metabase/query_builder/components/LimitPopover";
 import type { Dataset } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import * as Lib from "metabase-lib/v2";
+import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
-import type { Limit } from "metabase-lib/v2/types";
+import type { Limit } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
 
 import { RowCountButton, RowCountStaticLabel } from "./QuestionRowCount.styled";
