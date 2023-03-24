@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.field :as api.field]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Field FieldValues Table]]
    [metabase.sync :as sync]
@@ -755,7 +756,7 @@
     (mt/dataset json
       (let [database (t2/select-one Database :id (mt/id))]
         ;; Create a new database with the same details as the json dataset, with json unfolding disabled by default
-        (mt/with-temp* [Database [database {:engine :postgres, :details (assoc (:details database) :json-unfolding false)}]]
+        (mt/with-temp* [Database [database {:engine driver/*driver*, :details (assoc (:details database) :json-unfolding false)}]]
           (mt/with-db database
             ;; Sync the new database
             (sync/sync-database! database)
