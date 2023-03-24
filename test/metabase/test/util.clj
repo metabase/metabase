@@ -358,7 +358,7 @@
   [original-value setting-k value]
   (if original-value
     (t2/update! Setting setting-k {:value value})
-    (db/insert! Setting :key setting-k :value value))
+    (t2/insert! Setting :key setting-k :value value))
   (setting.cache/restore-cache!))
 
 (defn- restore-raw-setting!
@@ -484,7 +484,7 @@
       (t2/update! model (u/the-id object-or-id) column->temp-value)
       (f)
       (finally
-        (db/execute!
+        (t2/query-one
          {:update (t2/table-name model)
           :set    original-column->value
           :where  [:= :id (u/the-id object-or-id)]})))))
@@ -633,7 +633,7 @@
                                                  0)
                        max-id-condition      [:> (models/primary-key model) old-max-id]
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
-          (db/execute!
+          (t2/query-one
            {:delete-from (t2/table-name model)
             :where       (if (seq additional-conditions)
                            [:and max-id-condition additional-conditions]
@@ -657,21 +657,21 @@
 (deftest with-model-cleanup-test
   (testing "Make sure the with-model-cleanup macro actually works as expected"
     (tt/with-temp Card [other-card]
-      (let [card-count-before (db/count Card)
+      (let [card-count-before (t2/count Card)
             card-name         (tu.random/random-name)]
         (with-model-cleanup [Card]
-          (db/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
+          (t2/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
           (testing "Card count should have increased by one"
             (is (= (inc card-count-before)
-                   (db/count Card))))
+                   (t2/count Card))))
           (testing "Card should exist"
-            (is (db/exists? Card :name card-name))))
+            (is (t2/exists? Card :name card-name))))
         (testing "Card should be deleted at end of with-model-cleanup form"
           (is (= card-count-before
-                 (db/count Card)))
-          (is (not (db/exists? Card :name card-name)))
+                 (t2/count Card)))
+          (is (not (t2/exists? Card :name card-name)))
           (testing "Shouldn't delete other Cards"
-            (is (pos? (db/count Card)))))))))
+            (is (pos? (t2/count Card)))))))))
 
 
 ;; TODO - not 100% sure I understand
@@ -762,7 +762,7 @@
       (when (and (:metabase.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
         (doseq [group-id (t2/select-pks-set PermissionsGroup :id [:not= (u/the-id (perms-group/admin))])]
-          (when-not (db/exists? Permissions :group_id group-id, :object "/collection/root/")
+          (when-not (t2/exists? Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
 (defmacro with-non-admin-groups-no-root-collection-perms

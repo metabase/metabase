@@ -97,7 +97,7 @@
              (do
                (create-card-revision card true :rasta)
                (create-card-revision (assoc card :name "something else") false :rasta)
-               (db/insert! Revision
+               (t2/insert! Revision
                  :model        "Card"
                  :model_id     id
                  :user_id      (test.users/user->id :rasta)
@@ -119,13 +119,13 @@
                     Card      [{card-id :id, :as card}]]
       (is (=? {:id id}
               (create-dashboard-revision! dash true :rasta)))
-      (let [dashcard (db/insert! DashboardCard
-                                 :dashboard_id id
-                                 :card_id (:id card)
-                                 :size_x 4
-                                 :size_y 4
-                                 :row    0
-                                 :col    0)]
+      (let [dashcard (first (t2/insert-returning-instances! DashboardCard
+                                                            :dashboard_id id
+                                                            :card_id (:id card)
+                                                            :size_x 4
+                                                            :size_y 4
+                                                            :row    0
+                                                            :col    0))]
         (is (=? {:id id}
                 (create-dashboard-revision! dash false :rasta)))
         (is (pos? (t2/delete! (t2/table-name DashboardCard) :id (:id dashcard)))))

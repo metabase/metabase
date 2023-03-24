@@ -169,7 +169,7 @@
   (into {}
         (filter (fn [[k v]]
                   (not= v (get old k)))
-         new)))
+                new)))
 
 (s/defn update-dashboard-card!
   "Updates an existing DashboardCard including all DashboardCardSeries.
@@ -177,7 +177,7 @@
    Returns nil."
   [{:keys [id action_id] :as dashboard-card} :- DashboardCardUpdates
    old-dashboard-card                        :- DashboardCardUpdates]
-  (db/transaction
+  (t2/with-transaction [_conn]
    (let [update-ks (cond-> [:action_id :row :col :size_x :size_y
                             :parameter_mappings :visualization_settings]
                     ;; Allow changing card_id for action dashcards, but not for card dashcards.
@@ -216,17 +216,18 @@
   [dashboard-card :- NewDashboardCard]
   (let [{:keys [dashboard_id card_id action_id parameter_mappings visualization_settings size_x size_y row col series]
          :or   {series []}} dashboard-card]
-    (db/transaction
-     (let [dashboard-card (db/insert! DashboardCard
-                                      :dashboard_id           dashboard_id
-                                      :card_id                card_id
-                                      :action_id              action_id
-                                      :size_x                 size_x
-                                      :size_y                 size_y
-                                      :row                    row
-                                      :col                    col
-                                      :parameter_mappings     (or parameter_mappings [])
-                                      :visualization_settings (or visualization_settings {}))]
+    (t2/with-transaction [_conn]
+      (let [dashboard-card (first (t2/insert-returning-instances!
+                                    DashboardCard
+                                    :dashboard_id           dashboard_id
+                                    :card_id                card_id
+                                    :action_id              action_id
+                                    :size_x                 size_x
+                                    :size_y                 size_y
+                                    :row                    row
+                                    :col                    col
+                                    :parameter_mappings     (or parameter_mappings [])
+                                    :visualization_settings (or visualization_settings {})))]
        ;; add series to the DashboardCard
        (update-dashboard-card-series! dashboard-card series)
        ;; return the full DashboardCard
@@ -238,7 +239,7 @@
   {:pre [(map? dashboard-card)
          (integer? user-id)]}
   (let [{:keys [id]} (dashboard dashboard-card)]
-    (db/transaction
+    (t2/with-transaction [_conn]
       (t2/delete! PulseCard :dashboard_card_id (:id dashboard-card))
       (t2/delete! DashboardCard :id (:id dashboard-card)))
     (events/publish-event! :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))

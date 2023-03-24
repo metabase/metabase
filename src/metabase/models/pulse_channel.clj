@@ -209,7 +209,7 @@
   to PulseChannels with User subscriptions; Slack PulseChannels and ones with email address subscriptions are not
   automatically deleted.)"
   [{channel-id :pulse_channel_id, pulse-channel-recipient-id :id}]
-  (let [other-recipients-count (db/count PulseChannelRecipient :pulse_channel_id channel-id, :id [:not= pulse-channel-recipient-id])
+  (let [other-recipients-count (t2/count PulseChannelRecipient :pulse_channel_id channel-id, :id [:not= pulse-channel-recipient-id])
         last-recipient?        (zero? other-recipients-count)]
     (when last-recipient?
       ;; make sure this channel doesn't have any email-address (non-User) recipients.
@@ -329,19 +329,20 @@
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))
-        {:keys [id]} (db/insert! PulseChannel
-                       :pulse_id       pulse_id
-                       :channel_type   channel_type
-                       :details        (cond-> details
-                                         (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
-                       :enabled        enabled
-                       :schedule_type  schedule_type
-                       :schedule_hour  (when (not= schedule_type :hourly)
-                                         schedule_hour)
-                       :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
-                                         schedule_day)
-                       :schedule_frame (when (= schedule_type :monthly)
-                                         schedule_frame))]
+        {:keys [id]}       (first (t2/insert-returning-instances!
+                                    PulseChannel
+                                    :pulse_id       pulse_id
+                                    :channel_type   channel_type
+                                    :details        (cond-> details
+                                                      (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
+                                    :enabled        enabled
+                                    :schedule_type  schedule_type
+                                    :schedule_hour  (when (not= schedule_type :hourly)
+                                                      schedule_hour)
+                                    :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
+                                                      schedule_day)
+                                    :schedule_frame (when (= schedule_type :monthly)
+                                                      schedule_frame)))]
     (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
       (update-recipients! id (get recipients-by-type true)))
     ;; return the id of our newly created channel

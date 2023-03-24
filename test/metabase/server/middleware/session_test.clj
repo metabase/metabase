@@ -232,7 +232,7 @@
     ;; for some reason Toucan seems to be busted with models with non-integer IDs and `with-temp` doesn't seem to work
     ;; the way we'd expect :/
     (try
-      (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :lucky)})
+      (t2/insert! Session {:id (str test-uuid), :user_id (mt/user->id :lucky)})
       (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
@@ -240,7 +240,7 @@
 
   (testing "superusers should come back as `:is-superuser?`"
     (try
-      (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :crowberto)})
+      (t2/insert! Session {:id (str test-uuid), :user_id (mt/user->id :crowberto)})
       (is (= {:metabase-user-id (mt/user->id :crowberto), :is-superuser? true, :is-group-manager? false, :user-locale nil}
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
@@ -253,7 +253,7 @@
                                user    [group-1 group-2]]
         (db/update-where! PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-2)}
           :is_group_manager true)
-        (db/insert! Session {:id      (str test-uuid)
+        (t2/insert! Session {:id      (str test-uuid)
                              :user_id (:id user)})
         (testing "is `false` if advanced-permisison is disabled"
           (premium-features-test/with-premium-features #{}
@@ -271,7 +271,7 @@
 
   (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
     (try
-      (db/insert! Session {:id              (str test-uuid)
+      (t2/insert! Session {:id              (str test-uuid)
                            :user_id         (mt/user->id :lucky)
                            :anti_csrf_token test-anti-csrf-token})
       (is (= nil
@@ -281,7 +281,7 @@
 
     (testing "...but if we do specifiy the token, they should come back"
       (try
-        (db/insert! Session {:id              (str test-uuid)
+        (t2/insert! Session {:id              (str test-uuid)
                              :user_id         (mt/user->id :lucky)
                              :anti_csrf_token test-anti-csrf-token})
         (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
@@ -291,7 +291,7 @@
 
       (testing "(unless the token is wrong)"
         (try
-          (db/insert! Session {:id              (str test-uuid)
+          (t2/insert! Session {:id              (str test-uuid)
                                :user_id         (mt/user->id :lucky)
                                :anti_csrf_token test-anti-csrf-token})
           (is (= nil
@@ -301,7 +301,7 @@
 
   (testing "if we specify an anti-csrf token we shouldn't get back a session without that token"
     (try
-      (db/insert! Session {:id      (str test-uuid)
+      (t2/insert! Session {:id      (str test-uuid)
                            :user_id (mt/user->id :lucky)})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token)))
@@ -310,10 +310,10 @@
 
   (testing "shouldn't fetch expired sessions"
     (try
-      (db/insert! Session {:id      (str test-uuid)
+      (t2/insert! Session {:id      (str test-uuid)
                            :user_id (mt/user->id :lucky)})
         ;; use low-level `execute!` because updating is normally disallowed for Sessions
-      (db/execute! {:update :core_session, :set {:created_at (t/instant 0)}, :where [:= :id (str test-uuid)]})
+      (t2/query-one {:update :core_session, :set {:created_at (t/instant 0)}, :where [:= :id (str test-uuid)]})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
@@ -321,7 +321,7 @@
 
   (testing "shouldn't fetch sessions for inactive users"
     (try
-      (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)})
+      (t2/insert! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
@@ -379,7 +379,7 @@
       (testing "for user with no `:locale`"
         (mt/with-temp User [{user-id :id}]
           (let [session-id (str (UUID/randomUUID))]
-            (db/insert! Session {:id session-id, :user_id user-id})
+            (t2/insert! Session {:id session-id, :user_id user-id})
             (is (= nil
                    (session-locale session-id)))
 
@@ -390,7 +390,7 @@
       (testing "for user *with* `:locale`"
         (mt/with-temp User [{user-id :id} {:locale "es-MX"}]
           (let [session-id (str (UUID/randomUUID))]
-            (db/insert! Session {:id session-id, :user_id user-id, :created_at :%now})
+            (t2/insert! Session {:id session-id, :user_id user-id, :created_at :%now})
             (is (= "es_MX"
                    (session-locale session-id)))
 

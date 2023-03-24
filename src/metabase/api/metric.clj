@@ -31,12 +31,12 @@
   ;; TODO - why can't set the other properties like `show_in_getting_started` when you create a Metric?
   (api/create-check Metric body)
   (let [metric (api/check-500
-                (db/insert! Metric
-                  :table_id    table_id
-                  :creator_id  api/*current-user-id*
-                  :name        name
-                  :description description
-                  :definition  definition))]
+                 (first (t2/insert-returning-instances! Metric
+                                                        :table_id    table_id
+                                                        :creator_id  api/*current-user-id*
+                                                        :name        name
+                                                        :description description
+                                                        :definition  definition)))]
     (-> (events/publish-event! :metric-create metric)
         (hydrate :creator))))
 

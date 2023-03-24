@@ -104,10 +104,10 @@
         (tx/create-db! driver database-definition)))
     ;; Add DB object to Metabase DB
     (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
-          db                 (db/insert! Database
-                               :name    database-name
-                               :engine  (u/qualified-name driver)
-                               :details connection-details)]
+          db                 (first (t2/insert-returning-instances! Database
+                                                                    :name    database-name
+                                                                    :engine  (u/qualified-name driver)
+                                                                    :details connection-details))]
       (try
         ;; sync newly added DB
         (u/with-timeout sync-timeout-ms
@@ -330,7 +330,7 @@
   [f]
   (let [{old-db-id :id, :as old-db} (*get-db*)
         original-db (-> old-db copy-secrets (select-keys [:details :engine :name]))
-        {new-db-id :id, :as new-db} (db/insert! Database original-db)]
+        {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! Database original-db))]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
       (binding [*db-is-temp-copy?* true]
@@ -363,7 +363,7 @@
                              (binding [db/*disable-db-logging* true]
                                (let [db (get-or-create-database! driver dbdef)]
                                  (assert db)
-                                 (assert (db/exists? Database :id (u/the-id db)))
+                                 (assert (t2/exists? Database :id (u/the-id db)))
                                  db))))]
     (binding [*get-db* (fn []
                          (locking do-with-dataset

@@ -108,17 +108,17 @@
             (ts/with-dest-db
               (testing "Create admin user"
                 (is (some? (ts/create! User, :is_superuser true)))
-                (is (db/exists? User :is_superuser true)))
+                (is (t2/exists? User :is_superuser true)))
               (is (nil? (cmd/load dump-dir "--on-error" :abort)))
               (testing "verify that things were loaded as expected"
-                (is (= 1 (db/count Dashboard)) "# Dashboards")
-                (is (= 2 (db/count Card)) "# Cards")
-                (is (= 2 (db/count DashboardCard)) "# DashboardCards")>)))
+                (is (= 1 (t2/count Dashboard)) "# Dashboards")
+                (is (= 2 (t2/count Card)) "# Cards")
+                (is (= 2 (t2/count DashboardCard)) "# DashboardCards")>)))
           (testing "remove one of the questions in the source's dashboard"
             (ts/with-source-db
               (t2/delete! Card :name "Card_2")
-              (is (= 1 (db/count Card)) "# Cards")
-              (is (= 1 (db/count DashboardCard)) "# DashboardCards")))
+              (is (= 1 (t2/count Card)) "# Cards")
+              (is (= 1 (t2/count DashboardCard)) "# DashboardCards")))
           (testing "dump again"
             (ts/with-source-db
               (cmd/dump dump-dir))
@@ -130,7 +130,7 @@
           (testing "load again, with --mode update, destination Dashboard should now only have one question."
             (ts/with-dest-db
               (is (nil? (cmd/load dump-dir "--mode" :update, "--on-error" :abort)))
-              (is (= 1 (db/count Dashboard)) "# Dashboards")
+              (is (= 1 (t2/count Dashboard)) "# Dashboards")
               (testing "Don't delete the Card even tho it was deleted. Just delete the DashboardCard"
-                (is (= 2 (db/count Card)) "# Cards"))
-              (is (= 1 (db/count DashboardCard)) "# DashboardCards"))))))))
+                (is (= 2 (t2/count Card)) "# Cards"))
+              (is (= 1 (t2/count DashboardCard)) "# DashboardCards"))))))))

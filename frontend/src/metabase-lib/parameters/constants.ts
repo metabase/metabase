@@ -127,27 +127,6 @@ export const ID_OPTION = {
   name: t`ID`,
 };
 
-export const CATEGORY_OPTION = { type: "category", name: t`Category` };
-
-export const LOCATION_OPTIONS = [
-  {
-    type: "location/city",
-    name: t`City`,
-  },
-  {
-    type: "location/state",
-    name: t`State`,
-  },
-  {
-    type: "location/zip_code",
-    name: t`ZIP or Postal Code`,
-  },
-  {
-    type: "location/country",
-    name: t`Country`,
-  },
-];
-
 export const TYPE_SUPPORTS_LINKED_FILTERS = [
   "string",
   "category",
