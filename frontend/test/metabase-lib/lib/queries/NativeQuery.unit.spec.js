@@ -7,8 +7,6 @@ import {
 } from "__support__/sample_database_fixture";
 
 import NativeQuery, {
-  recognizeTemplateTags,
-  cardIdFromTagName,
   updateCardTemplateTagNames,
 } from "metabase-lib/queries/NativeQuery";
 
@@ -177,7 +175,7 @@ describe("NativeQuery", () => {
         );
         const tagMaps = newQuery.templateTagsMap();
         expect(tagMaps["max_price"].name).toEqual("max_price");
-        expect(tagMaps["max_price"]["display-name"]).toEqual("Max price");
+        expect(tagMaps["max_price"]["display-name"]).toEqual("Max Price");
       });
     });
 
@@ -241,7 +239,7 @@ describe("NativeQuery", () => {
           { "snippet-name": snippetName, "display-name": displayName, type },
         ] = q.templateTags();
         expect(snippetName).toEqual("foo");
-        expect(displayName).toEqual("Snippet: foo ");
+        expect(displayName).toEqual("Snippet: Foo");
         expect(type).toEqual("snippet");
       });
       it("should update query text with new snippet names", () => {
@@ -376,59 +374,6 @@ describe("NativeQuery", () => {
       expect(fooTag["name"]).toEqual("#123-foo-new"); // foo's name is updated
       expect(barTag["card-id"]).toEqual(1234); // bar's card-id is the same
       expect(barTag["name"]).toEqual("#1234-bar"); // bar's name is the same
-    });
-  });
-
-  describe("recognizeTemplateTags", () => {
-    it("should handle standard variable names", () => {
-      expect(recognizeTemplateTags("SELECT * from {{products}}")).toEqual([
-        "products",
-      ]);
-    });
-
-    it("should allow duplicated variables", () => {
-      expect(
-        recognizeTemplateTags("SELECT {{col}} FROM {{t}} ORDER BY {{col}} "),
-      ).toEqual(["col", "t"]);
-    });
-
-    it("should ignore non-alphanumeric markers", () => {
-      expect(recognizeTemplateTags("SELECT * from X -- {{&universe}}")).toEqual(
-        [],
-      );
-    });
-
-    it("should handle snippets", () => {
-      expect(
-        recognizeTemplateTags(
-          "SELECT * from {{snippet: A snippet name}} cross join {{ snippet:     another-snippet with *&#) }}",
-        ),
-      ).toEqual([
-        "snippet: A snippet name",
-        "snippet:     another-snippet with *&#) ",
-      ]);
-    });
-
-    it("should handle card references", () => {
-      expect(
-        recognizeTemplateTags(
-          "SELECT * from {{#123}} cross join {{ #456-a-card-name }} cross join {{#not-this}} cross join {{#123or-this}}",
-        ),
-      ).toEqual(["#123", "#456-a-card-name"]);
-    });
-  });
-
-  describe("cardIdFromTagName", () => {
-    it("should get card Ids from a card tag name", () => {
-      expect(cardIdFromTagName("#123-foo")).toEqual(123);
-      expect(cardIdFromTagName("#123-foo-456")).toEqual(123);
-      expect(cardIdFromTagName("#123")).toEqual(123);
-    });
-
-    it("should return null for invalid card tag names", () => {
-      expect(cardIdFromTagName("123-foo")).toEqual(null);
-      expect(cardIdFromTagName("#123foo")).toEqual(null);
-      expect(cardIdFromTagName("123")).toEqual(null);
     });
   });
 });

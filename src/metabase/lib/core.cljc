@@ -14,6 +14,7 @@
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metric :as lib.metric]
+   [metabase.lib.native :as lib.native]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.stage :as lib.stage]
@@ -31,6 +32,7 @@
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metric/keep-me
+         lib.native/keep-me
          lib.order-by/keep-me
          lib.query/keep-me
          lib.stage/keep-me
@@ -147,6 +149,10 @@
    describe-query
    display-name
    suggested-name]
+  [lib.native
+   ->TemplateTags
+   recognize-template-tags
+   template-tags]
   [lib.order-by
    order-by
    order-by-clause
