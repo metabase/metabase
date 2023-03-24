@@ -983,7 +983,7 @@
          (reduce set/union))))
 
 (defmacro with-cache
-  "Runs body with all functions marked with ::cache re-bound to memoized versions for performance."
+  "Runs body with all functions marked with ::cache re-bound to memoized versions for performance."
   [& body]
   (let [ns* 'metabase.models.serialization]
     `(binding ~(reduce into []
