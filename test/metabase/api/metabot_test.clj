@@ -3,13 +3,12 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.api.common :as api]
-            [metabase.api.metabot :as metabot]
+            [metabase.metabot :as metabot]
             [metabase.db.query :as mdb.query]
             [metabase.models :refer [Card Collection Database Field Metric Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
             [metabase.test :as mt]
-            [metabase.util :as u]
             [toucan2.core :as t2]
             [wkok.openai-clojure.api :as openai.api]))
 
