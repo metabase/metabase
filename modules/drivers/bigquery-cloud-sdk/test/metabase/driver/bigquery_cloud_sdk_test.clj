@@ -335,7 +335,7 @@
         (try
           (let [synced-tables (t2/select Table :db_id (mt/id))]
             (is (= 2 (count synced-tables)))
-            (db/insert-many! Table (map #(dissoc % :id :schema) synced-tables))
+            (t2/insert! Table (map #(dissoc % :id :schema) synced-tables))
             (sync/sync-database! (mt/db) {:scan :schema})
             (let [synced-tables (t2/select Table :db_id (mt/id))]
               (is (partial= {true [{:name "messages"} {:name "users"}]

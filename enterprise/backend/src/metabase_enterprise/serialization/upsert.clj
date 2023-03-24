@@ -91,9 +91,9 @@
   (if (has-post-insert? model)
     (insert-many-individually! model on-error entities)
     (if (= :abort on-error)
-      (db/insert-many! model entities)
+      (t2/insert-returning-pks! model entities)
       (try
-        (db/insert-many! model entities)
+        (t2/insert-returning-pks! model entities)
         ;; Retry each individually so we can do as much as we can
         (catch Throwable _
           (insert-many-individually! model on-error entities))))))

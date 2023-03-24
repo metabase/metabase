@@ -133,8 +133,8 @@
     (when (seq fields-to-remove)
       (db/simple-delete! 'MetricImportantField {:metric_id id, :field_id [:in fields-to-remove]}))
     ;; add new fields as needed
-    (db/insert-many! 'MetricImportantField (for [field-id fields-to-add]
-                                             {:metric_id id, :field_id field-id}))
+    (t2/insert! 'MetricImportantField (for [field-id fields-to-add]
+                                        {:metric_id id, :field_id field-id}))
     {:success true}))
 
 

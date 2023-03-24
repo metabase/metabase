@@ -573,7 +573,7 @@
         (thunk)
         (finally
          (t2/update! Field field-id {:has_field_values has_field_values})
-         (db/insert-many! FieldValues fvs))))))
+         (t2/insert! FieldValues fvs))))))
 
 (defmacro ^:private with-clean-field-values-for-field
   "Run `body` with all FieldValues for `field-id` deleted.

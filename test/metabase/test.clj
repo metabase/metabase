@@ -323,7 +323,7 @@
         (t2/delete! User primary-key (primary-key temp-admin))
         (when (seq existing-admin-ids)
           (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser true))
-        (db/insert-many! PermissionsGroupMembership existing-admin-memberships)))))
+        (t2/insert! PermissionsGroupMembership existing-admin-memberships)))))
 
 (defmacro with-single-admin-user
   "Creates an admin user (with details described in the `options-map`) and (temporarily) removes the administrative

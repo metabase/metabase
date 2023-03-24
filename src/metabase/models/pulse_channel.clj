@@ -279,7 +279,7 @@
         recipients-    (set/difference recipients-old recipients-new)]
     (when (seq recipients+)
       (let [vs (map #(assoc {:pulse_channel_id id} :user_id %) recipients+)]
-        (db/insert-many! PulseChannelRecipient vs)))
+        (t2/insert! PulseChannelRecipient vs)))
     (when (seq recipients-)
       (db/simple-delete! PulseChannelRecipient
         :pulse_channel_id id
