@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import React, { Children } from "react";
+import React, { Children, HTMLAttributes, ReactNode } from "react";
 import {
   ButtonBarCenter,
   ButtonBarLeft,
@@ -7,10 +6,10 @@ import {
   ButtonBarRoot,
 } from "./ButtonBar.styled";
 
-function normalizeArray(array) {
+function normalizeArray(array?: ReactNode) {
   if (Array.isArray(array)) {
     array = array.filter(a => a);
-    if (array.length === 0) {
+    if (Array.isArray(array) && array.length === 0) {
       array = null;
     } else {
       array = Children.toArray(array);
@@ -19,13 +18,20 @@ function normalizeArray(array) {
   return array;
 }
 
+interface ButtonBarProps extends HTMLAttributes<HTMLDivElement> {
+  left?: ReactNode;
+  right?: ReactNode;
+  center?: ReactNode;
+  children?: ReactNode;
+}
+
 export default function ButtonBar({
   children,
   left = children,
   center,
   right,
   ...props
-}) {
+}: ButtonBarProps) {
   left = normalizeArray(left);
   center = normalizeArray(center);
   right = normalizeArray(right);

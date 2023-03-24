@@ -1,8 +1,9 @@
 import React from "react";
 import { Dataset } from "metabase-types/types/Dataset";
 import Question from "metabase-lib/Question";
+import MetabotQueryEditor from "../MetabotQueryEditor";
+import MetabotQueryFooter from "../MetabotQueryFooter";
 import MetabotVisualization from "../MetabotVisualization";
-import MetabotQueryEditor from "../MetabotQueryEditor/MetabotQueryEditor";
 import {
   MetabotQueryBuilderRoot,
   MetabotQueryVisualizationContainer,
@@ -23,6 +24,7 @@ const MetabotQueryBuilder = ({
       <MetabotQueryVisualizationContainer>
         <MetabotVisualization question={question} results={results} />
       </MetabotQueryVisualizationContainer>
+      <MetabotQueryFooter question={question} />
     </MetabotQueryBuilderRoot>
   );
 };

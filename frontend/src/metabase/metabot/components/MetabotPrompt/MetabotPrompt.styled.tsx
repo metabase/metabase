@@ -12,7 +12,7 @@ export const PromptSection = styled.div`
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
   box-shadow: 0 2px 2px ${color("shadow")};
-  background-color: ${color("white")};
+  background-color: ${color("bg-white")};
 `;
 
 export const PromptUserAvatar = styled(UserAvatar)`

@@ -9,7 +9,7 @@ interface RawTableToggleProps {
   className?: string;
   question: Question;
   isShowingRawTable: boolean;
-  onShowTable: (isRawTable: boolean) => void;
+  onShowTable?: (isRawTable: boolean) => void;
 }
 
 const RawTableToggle = ({
@@ -20,7 +20,10 @@ const RawTableToggle = ({
 }: RawTableToggleProps) => {
   const vizIcon = getIconForVisualizationType(question.display());
   return (
-    <Well className={className} onClick={() => onShowTable(!isShowingRawTable)}>
+    <Well
+      className={className}
+      onClick={() => onShowTable?.(!isShowingRawTable)}
+    >
       <ToggleIcon active={isShowingRawTable} aria-label={t`Switch to data`}>
         <Icon name="table2" />
       </ToggleIcon>
