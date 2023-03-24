@@ -10,7 +10,8 @@
             [metabase.query-processor.async :as qp.async]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [toucan2.core :as t2]))
+            [toucan2.core :as t2]
+            [wkok.openai-clojure.api :as openai.api]))
 
 (deftest metabot-only-works-on-models-test
   (testing "POST /api/metabot/model/:model-id"
@@ -117,7 +118,45 @@
     (mt/user-http-request
      :rasta :post 200 (format "/metabot/model/%s" 1036)
      {:question "Show me all of my data in CA"}))
+
+  ;; This almost always has aliasing issues
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user*                 (delay (t2/select-one 'User :id 1))]
+    (mt/user-http-request
+     :rasta :post 200 (format "/metabot/model/%s" 1036)
+     {:question "Show me all of my data in CA grouped by quarter"}))
+
+  ;; Database
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user*                 (delay (t2/select-one 'User :id 1))]
+    (mt/user-http-request
+     :rasta :post 200 (format "/metabot/database/%s" 1)
+     {:question "Show me all of my data in CA grouped by quarter"}))
   )
+
+(comment
+  {:model    "gpt-3.5-turbo"
+   :messages [{:role "system" :content "You are a helpful assistant."}
+              {:role "user" :content "Who won the world series in 2020?"}
+              {:role "assistant" :content "The Los Angeles Dodgers won the World Series in 2020."}
+              {:role "user" :content "Where was it played?"}]}
+
+  (let [response (openai.api/create-chat-completion
+                  {:model    "gpt-3.5-turbo"
+                   :n        1
+                   :messages [{:role "system" :content "You are a helpful assistant. Tell me which table in my database is the best fit for my question."}
+                              {:role "assistant" :content "My table names are '12', '57', and '1036'"}
+                              {:role "assistant" :content "table '12' has columns 'name', 'date of birth', and 'zip'"}
+                              {:role "assistant" :content "table '57' has columns 'name', 'size', and 'price'"}
+                              {:role "assistant" :content "table '1036' has columns 'category', 'total', and 'color'"}
+                              ;{:role "user" :content "Which table would be most appropriate if I was searching for sales data?"}
+                              {:role "user" :content "Which table would be most appropriate if I was trying group my data by color"}
+                              ]}
+                  {:api-key      (metabot/openai-api-key)
+                   :organization (metabot/openai-organization)})
+        message  (->> response :choices first :message :content)]
+    (when-some [[[_ m]] (and message (re-seq #"'(\d+)'" message))]
+      (parse-long m))))
 
 (comment
   (def example-response
@@ -168,4 +207,12 @@
                    (fn [[_ _ b]] (format "AS \"%s\"" b)))]
     (println (mdb.query/format-sql query)))
 
+  (t2/select Card :database_id 1)
   )
+
+(comment
+  (sort
+   (map :id
+        (:data (openai.api/list-models
+                {:api-key      (openai-api-key)
+                 :organization (openai-organization)})))))

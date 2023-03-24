@@ -21,9 +21,9 @@
 
 (defsetting is-metabot-enabled
   (deferred-tru "Is Metabot enabled?")
-  :type       :boolean
+  :type :boolean
   :visibility :authenticated
-  :default    true)
+  :default true)
 
 (defsetting openai-api-key
   (deferred-tru "The OpenAI API Key.")
@@ -33,27 +33,31 @@
   (deferred-tru "The OpenAPI Organization ID.")
   :visibility :settings-manager)
 
-(def bot-directions
-  (str "You are a helpful assistant that writes SQL based on my input."
-       "Don't explain your answer, just show me the SQL using Postgresql as the dialect."))
+(defn bot-directions [{:keys [engine]}]
+  (format
+   (str "You are a helpful assistant that writes SQL based on my input."
+        "Don't explain your answer, just show me the SQL using '%s' as the dialect.")
+   (name engine)))
 
 (defn- column-types
   "Given a model, provide a set of statements about each column type and display name."
-  [{:keys [result_metadata]}]
+  [{model-name :name :keys [result_metadata]}]
   (map (fn [{:keys [display_name description]}]
-         (format "The column '%s' is described as '%s'"
+         (format "The column '%s' in table '%s' is described as '%s'"
                  display_name
+                 model-name
                  description))
        result_metadata))
 
 (defn- enumerated-values
   "Given a model, provide a set of statements about which values a column may take on."
-  [{:keys [result_metadata]}]
+  [{model-name :name :keys [result_metadata]}]
   (for [{:keys [display_name id]} result_metadata
         :let [{:keys [values]} (t2/select-one FieldValues :field_id id)]
         :when (seq values)]
-    (format "The column '%s' has these potential values: %s."
+    (format "The column named '%s' in the table '%s' has these potential values: %s."
             display_name
+            model-name
             (str/join ", " (map (partial format "'%s'") values)))))
 
 (defn model-messages
@@ -71,31 +75,20 @@
       [(column-types model)
        (enumerated-values model)]))))
 
-(comment
-  (let [{model-name :name :keys [result_metadata] :as model} (t2/select-one [Card :name :result_metadata] :id 1036)
-        col-names (str/join ", " (map (comp (partial format "'%s'") :name) result_metadata))]
-    (reduce
-     into
-     [(format "I have a table named '%s' with the following columns: %s." model-name col-names)]
-     [(column-types model)
-      (enumerated-values model)])
-    )
-
-  (t2/select-one Card :id 1036)
-
-  (model-messages 1036)
-  )
-
-(defn write-sql [model-assertions prompt]
-  (openai.api/create-chat-completion
-   {:model    "gpt-3.5-turbo"
-    :messages (conj
-               (into
-                [{:role "system" :content bot-directions}]
-                model-assertions)
-               {:role "user" :content prompt})}
-   {:api-key      (openai-api-key)
-    :organization (openai-organization)}))
+(defn write-sql [database model-assertions prompt]
+  (let [resp (openai.api/create-chat-completion
+              {:model    "gpt-3.5-turbo"
+               ;; Just produce a single result
+               :n        1
+               :messages (conj
+                          (into
+                           [{:role "system" :content (bot-directions database)}]
+                           model-assertions)
+                          {:role "user" :content prompt})}
+              {:api-key      (openai-api-key)
+               :organization (openai-organization)})]
+    (tap> {:openai-response resp})
+    resp))
 
 (defn extract-sql [bot-response]
   (let [[_pre sql _post] (str/split bot-response #"```(sql|SQL)?")]
@@ -134,14 +127,15 @@
                             (str/join ","))]
     (mdb.query/format-sql (format "SELECT %s FROM {{#%s}}" column-aliases id))))
 
-(defn get-sql [model {:keys [question fake]}]
-  (cond
-    fake "SELECT * FROM ORDERS; -- THIS IS FAKE"
-    (and (openai-api-key) (openai-organization)) (let [model-assertions (model-messages model)
-                                                       resp             (write-sql model-assertions question)]
-                                                   (tap> {:response resp})
-                                                   (bot-response->sql resp))
-    :else "Set MB_OPENAI_API_KEY and MB_OPENAI_ORGANIZATION env vars and relaunch!"))
+(defn get-sql [{:keys [database_id] :as model} {:keys [question fake]}]
+  (let [database (t2/select-one Database :id database_id)]
+    (cond
+      fake "SELECT * FROM ORDERS; -- THIS IS FAKE"
+      (and (openai-api-key) (openai-organization)) (let [model-assertions (model-messages model)
+                                                         resp             (write-sql database model-assertions question)]
+                                                     (tap> {:response resp})
+                                                     (bot-response->sql resp))
+      :else "Set MB_OPENAI_API_KEY and MB_OPENAI_ORGANIZATION env vars and relaunch!")))
 
 (defn fix-model-reference [sql]
   (str/replace
@@ -155,25 +149,60 @@
   [model-id :as {{:keys [question fake] :as body} :body}]
   (tap> {:model-id model-id
          :request  body})
-  (binding [persisted-info/*allow-persisted-substitution* false]
-    (let [{model-name :name :keys [database_id dataset_query] :as model} (api/check-404 (t2/select-one Card :id model-id))
-          inner-query (inner-query model)
-          bot-sql (get-sql model {:question question :fake fake})
-          final-sql   (fix-model-reference (format "WITH \"%s\" AS (%s) %s" model-name inner-query bot-sql))
-          _ (tap> {:bot-sql bot-sql
-                   :final-sql final-sql})
-          response-sql     (cond
-                             fake "SELECT * FROM ORDERS; -- THIS IS FAKE"
-                             (and (openai-api-key) (openai-organization)) final-sql
-                             :else "Set MB_OPENAI_API_KEY and MB_OPENAI_ORGANIZATION env vars and relaunch!")
-          response         {:dataset_query          {:database database_id
-                                                     :type     "native"
-                                                     :native   {:query response-sql}}
-                            :display                :table
-                            :visualization_settings {}}]
-      (tap> response)
-      response)))
+  (let [{model-name :name :keys [database_id dataset_query] :as model} (api/check-404 (t2/select-one Card :id model-id :dataset true))
+        inner-query (inner-query model)
+        bot-sql     (get-sql model {:question question :fake fake})
+        final-sql   (fix-model-reference (format "WITH \"%s\" AS (%s) %s" model-name inner-query bot-sql))
+        _           (tap> {:bot-sql   bot-sql
+                           :final-sql final-sql})
+        response    {:dataset_query          {:database database_id
+                                              :type     "native"
+                                              :native   {:query final-sql}}
+                     :display                :table
+                     :visualization_settings {}}]
+    (tap> response)
+    response))
 
+
+(defn card->column-names [{model-name :name :keys [id result_metadata] :as _model}]
+  (format
+   "Table '%s' has name '%s' and columns %s."
+   id
+   model-name
+   (->> (map :display_name result_metadata)
+        (map (partial format "'%s'"))
+        (str/join ","))))
+
+(defn find-best-model
+  "Given a prompt, find the model in the db that might be the best fit "
+  [{database-id :id :as _database} prompt]
+  (let [models        (t2/select Card :database_id database-id :dataset true)
+        model-options (str/join "," (map (fn [{:keys [id]}] (format "'%s'" id)) models))
+        l1            (format "My table names are %s" model-options)
+        descs         (map (fn [s] {:role "assistant" :content s}) (map card->column-names models))
+        response      (openai.api/create-chat-completion
+                       {:model    "gpt-3.5-turbo"
+                        :n        1
+                        :messages (conj
+                                   (into
+                                    [{:role "system" :content "You are a helpful assistant. Tell me which table in my database is the best fit for my question."}
+                                     {:role "assistant" :content l1}]
+                                    descs)
+                                   {:role "user" :content (format
+                                                           "Which table would be most appropriate if I am trying to '%s'"
+                                                           prompt)})}
+                       {:api-key      (openai-api-key)
+                        :organization (openai-organization)})
+        message       (->> response :choices first :message :content)]
+    (when-some [[[_ m]] (and message (re-seq #"'(\d+)'" message))]
+      (let [best-model-id (parse-long m)]
+        (some (fn [{model-id :id :as model}] (when (= model-id best-model-id) model)) models)))))
+
+(comment
+  (find-best-model
+   (t2/select-one Database :id 1)
+   "people")
+  )
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/database/:database-id"
@@ -181,14 +210,19 @@
   [database-id :as {{:keys [question fake] :as body} :body}]
   (tap> {:database-id database-id
          :request     body})
-  (binding [persisted-info/*allow-persisted-substitution* false]
-    (let [response {:dataset_query          {:database database-id
-                                             :type     "native"
-                                             :native   {:query "SELECT * FROM ORDERS; -- THIS IS FAKE"}}
-                    :display                :table
-                    :visualization_settings {}}
-          ]
-      (tap> response)
-      response)))
+  (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
+        {model-name :name :keys [database_id dataset_query] :as model} (find-best-model database question)
+        inner-query (inner-query model)
+        bot-sql     (get-sql model {:question question :fake fake})
+        final-sql   (fix-model-reference (format "WITH \"%s\" AS (%s) %s" model-name inner-query bot-sql))
+        _           (tap> {:bot-sql   bot-sql
+                           :final-sql final-sql})
+        response    {:dataset_query          {:database database_id
+                                              :type     "native"
+                                              :native   {:query final-sql}}
+                     :display                :table
+                     :visualization_settings {}}]
+    (tap> response)
+    response))
 
 (api/define-routes)
