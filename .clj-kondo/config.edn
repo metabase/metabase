@@ -582,7 +582,8 @@
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
    toucan.util.test/with-temp                                                                                                hooks.toucan.util.test/with-temp
-   toucan.util.test/with-temp*                                                                                               hooks.toucan.util.test/with-temp*}
+   toucan.util.test/with-temp*                                                                                               hooks.toucan.util.test/with-temp*
+   toucan2.core/with-call-count                                                                                              hooks.common/with-one-binding}
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                            macros.quartz/build-job
