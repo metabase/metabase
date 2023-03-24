@@ -67,7 +67,7 @@ const DatabaseMetabot = ({
           results={value.results}
         />
       ) : (
-        <MetabotResultsSkeleton display="bar" isStatic />
+        <MetabotResultsSkeleton display="bar" isStatic={!loading} />
       )}
     </MetabotRoot>
   );
