@@ -57,7 +57,11 @@ const DatabaseMetabot = ({
             onRun={handleRun}
           />
         ) : (
-          <DatabasePicker databases={databases} onChange={onDatabaseChange} />
+          <DatabasePicker
+            databases={databases}
+            variant="button"
+            onChange={onDatabaseChange}
+          />
         )}
       </MetabotHeader>
       {value ? (
@@ -87,6 +91,7 @@ const getGreetingMessage = (
     <DatabasePicker
       databases={databases}
       selectedDatabaseId={database.id}
+      variant="link"
       onChange={onDatabaseChange}
     />
   );
