@@ -26,7 +26,7 @@ v0.46.3.1
 
 ### License
 
-- `0` for the free, open-source version (sometimes call OSS, for open-source software).
+- `0` for the free, open-source version (sometimes called OSS, for open-source software).
 - `1` for the paid, source-available version that has all the bells and whistles (sometimes called EE for "Enterprise Edition").
 
 ### Major
