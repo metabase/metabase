@@ -1,24 +1,22 @@
-import React, { HTMLAttributes } from "react";
+import React from "react";
 import SkeletonCaption from "../SkeletonCaption";
 import {
   SkeletonImage,
   SkeletonRoot,
 } from "../FunnelSkeleton/FunnelSkeleton.styled";
-
-export interface ProgressSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string | null;
-  description?: string | null;
-}
+import { SharedChartSkeletonProps } from "../ChartSkeleton/types";
 
 const ProgressSkeleton = ({
   name,
   description,
+  isStatic,
   ...props
-}: ProgressSkeletonProps): JSX.Element => {
+}: SharedChartSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
       <SkeletonCaption name={name} description={description} />
       <SkeletonImage
+        isStatic={isStatic}
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 404 57"
         preserveAspectRatio="xMidYMid"

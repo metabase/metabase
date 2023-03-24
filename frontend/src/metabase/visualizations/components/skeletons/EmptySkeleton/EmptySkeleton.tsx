@@ -1,17 +1,14 @@
-import React, { HTMLAttributes } from "react";
+import React from "react";
+import { SharedChartSkeletonProps } from "../ChartSkeleton/types";
 import SkeletonCaption from "../SkeletonCaption";
 import { SkeletonRoot } from "./EmptySkeleton.styled";
-
-export interface EmptySkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string | null;
-  description?: string | null;
-}
 
 const EmptySkeleton = ({
   name,
   description,
+  isStatic,
   ...props
-}: EmptySkeletonProps): JSX.Element => {
+}: SharedChartSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
       <SkeletonCaption name={name} description={description} />
