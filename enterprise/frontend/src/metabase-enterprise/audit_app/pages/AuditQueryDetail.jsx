@@ -2,9 +2,9 @@
 import React from "react";
 import { t } from "ttag";
 
+import QueryViewer from "metabase/query_builder/containers/QueryViewer";
 import { serializeCardForUrl } from "metabase/lib/card";
 
-import ReadOnlyNotebook from "metabase/query_builder/components/notebook/ReadOnlyNotebook";
 import * as QueryDetailCards from "../lib/cards/query_detail";
 import OpenInMetabase from "../components/OpenInMetabase";
 import AuditCustomView from "../containers/AuditCustomView";
@@ -29,7 +29,7 @@ const AuditQueryDetail = ({ params: { queryHash } }) => (
           title="Query"
           subtitle={<OpenInMetabase to={`/question#${serializedHash}`} />}
         >
-          <ReadOnlyNotebook datasetQuery={datasetQuery} />
+          <QueryViewer datasetQuery={datasetQuery} />
         </AuditContent>
       );
     }}
