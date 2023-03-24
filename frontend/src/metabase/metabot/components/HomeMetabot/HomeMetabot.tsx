@@ -11,7 +11,7 @@ interface HomeMetabotProps {
   model?: Question;
   database?: Database;
   user?: User;
-  onRun: (query: string, databaseId: DatabaseId) => void;
+  onRun: (databaseId: DatabaseId, query: string) => void;
 }
 
 const HomeMetabot = ({ model, database, user, onRun }: HomeMetabotProps) => {
@@ -19,8 +19,8 @@ const HomeMetabot = ({ model, database, user, onRun }: HomeMetabotProps) => {
     return null;
   }
 
-  const handleRun = (prompt: string) => {
-    onRun(prompt, database.id);
+  const handleRun = (query: string) => {
+    onRun(database.id, query);
   };
 
   return (

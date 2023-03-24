@@ -4,7 +4,7 @@ import _ from "underscore";
 import { push } from "react-router-redux";
 import { getUser } from "metabase/selectors/user";
 import Databases from "metabase/entities/databases";
-import { Card, Database, User } from "metabase-types/api";
+import { Card, Database, DatabaseId, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import DatabaseMetabot from "metabase/metabot/components/DatabaseMetabot";
 import { LocationDescriptor } from "metabase-types/types";
@@ -22,7 +22,7 @@ interface CardLoaderProps {
 interface StateProps {
   user?: User;
   database?: Database;
-  prompt?: string;
+  initialQuery?: string;
 }
 
 const getDatabaseId = (params: RouterParams) => {
@@ -37,11 +37,11 @@ const mapStateToProps = (
   database: Databases.selectors.getObject(state, {
     entityId: getDatabaseId(params),
   }),
-  prompt: location?.query?.prompt,
+  initialQuery: location?.query?.query,
 });
 
 const mapDispatchToProps = {
-  onDatabaseChange: (databaseId: number) =>
+  onDatabaseChange: (databaseId: DatabaseId) =>
     push(`/metabot/database/${databaseId}`),
 };
 

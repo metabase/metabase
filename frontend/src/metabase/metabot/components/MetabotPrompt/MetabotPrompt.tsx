@@ -2,7 +2,6 @@ import React, {
   ChangeEvent,
   KeyboardEvent,
   useCallback,
-  useEffect,
   useState,
 } from "react";
 import { User } from "metabase-types/api";
@@ -16,59 +15,51 @@ import {
 export interface MetabotPromptProps {
   user?: User;
   placeholder?: string;
+  initialQuery?: string;
   isRunning?: boolean;
   onRun: (questionText: string) => void;
-  initialPrompt?: string;
 }
 
 const MetabotPrompt = ({
-  initialPrompt,
   user,
   placeholder,
+  initialQuery = "",
   isRunning = false,
   onRun,
 }: MetabotPromptProps) => {
-  const [questionText, setQuestionText] = useState(initialPrompt ?? "");
+  const [query, setQuery] = useState(initialQuery);
 
   const handleTextChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      setQuestionText(event.target.value);
+      setQuery(event.target.value);
     },
     [],
   );
 
   const handleRunClick = useCallback(() => {
-    onRun(questionText);
-  }, [questionText, onRun]);
+    onRun(query);
+  }, [query, onRun]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
-        onRun(questionText);
+        onRun(query);
       }
     },
-    [questionText, onRun],
+    [query, onRun],
   );
-
-  useEffect(() => {
-    if (questionText.length > 0) {
-      onRun(questionText);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <PromptSection>
       {user && <PromptUserAvatar user={user} />}
       <PromptInput
-        defaultValue={initialPrompt}
-        value={questionText}
+        value={query}
         placeholder={placeholder}
         fullWidth
         onChange={handleTextChange}
         onKeyDown={handleKeyDown}
       />
-      {questionText.length > 0 ? (
+      {query.length > 0 ? (
         <PromptRunButton
           isRunning={isRunning}
           compact
