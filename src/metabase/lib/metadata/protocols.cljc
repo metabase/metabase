@@ -1,8 +1,6 @@
 (ns metabase.lib.metadata.protocols
   (:require
-   [medley.core :as m]
-   #?@(:clj ([potemkin :as p]
-             [pretty.core :as pretty]))))
+   #?@(:clj ([potemkin :as p]))))
 
 (#?(:clj p/defprotocol+ :cljs defprotocol) MetadataProvider
   "Protocol for something that we can get information about Tables and Fields from. This can be provided in various ways
@@ -70,79 +68,28 @@
   [x]
   (satisfies? MetadataProvider x))
 
-;;;; Graph provider and impl
+(#?(:clj p/defprotocol+ :cljs defprotocol) CachedMetadataProvider
+  "Optional. A protocol for a MetadataProvider that some sort of internal cache. This is mostly useful for MetadataProviders that
+  can hit some sort of relatively expensive external service,
+  e.g. [[metabase.lib.metadata.jvm/application-database-metadata-provider]].
 
-;;; TODO -- only used by tests, move this into tests.
+  See [[cached-metadata-provider]] below to wrap for a way to wrap an existing MetadataProvider to add caching on top
+  of it."
+  (cached-database [cached-metadata-provider]
+    "Get cached metadata for the query's Database.")
+  (cached-metadata [cached-metadata-provider metadata-type id]
+    "Get cached metadata of a specific type, e.g. `:metadata/table`.")
+  (store-database! [cached-metadata-provider database-metadata]
+    "Store metadata for the query's Database.")
+  (store-metadata! [cached-metadata-provider metadata-type id metadata]
+    "Store metadata of a specific type, e.g. `:metadata/table`."))
 
-(defn- graph-database [metadata-graph]
-  (dissoc metadata-graph :tables))
+(#?(:clj p/defprotocol+ :cljs defprotocol) BulkMetadataProvider
+  "A protocol for a MetadataProvider that can fetch several objects in a single batched operation. This is mostly
+  useful for MetadataProviders e.g. [[metabase.lib.metadata.jvm/application-database-metadata-provider]]."
+  (bulk-metadata [bulk-metadata-provider metadata-type ids]
+    "Fetch lots of metadata of a specific type, e.g. `:metadata/table`, in a single bulk operation."))
 
-(defn- graph-table [metadata-graph table-id]
-  (some (fn [table-metadata]
-          (when (= (:id table-metadata) table-id)
-            (dissoc table-metadata :fields :metrics :segments)))
-        (:tables metadata-graph)))
-
-(defn- graph-field [metadata-graph field-id]
-  (some (fn [table-metadata]
-          (m/find-first #(= (:id %) field-id)
-                        (:fields table-metadata)))
-        (:tables metadata-graph)))
-
-(defn- graph-metric [metadata-graph metric-id]
-  (some (fn [table-metadata]
-          (m/find-first #(= (:id %) metric-id)
-                        (:metrics table-metadata)))
-        (:tables metadata-graph)))
-
-(defn- graph-segment [metadata-graph segment-id]
-  (some (fn [table-metadata]
-          (m/find-first #(= (:id %) segment-id)
-                        (:segments table-metadata)))
-        (:tables metadata-graph)))
-
-(defn- graph-card [_metadata-graph _card-id]
-  ;; not implemented for the simple graph metadata provider.
-  nil)
-
-(defn- graph-tables [metadata-graph]
-  (for [table-metadata (:tables metadata-graph)]
-    (dissoc table-metadata :fields :metrics :segments)))
-
-(defn- graph-fields [metadata-graph table-id]
-  (some (fn [table-metadata]
-          (when (= (:id table-metadata) table-id)
-            (:fields table-metadata)))
-        (:tables metadata-graph)))
-
-(deftype ^{:doc "A simple implementation of [[MetadataProvider]] that returns data from a complete graph
-  e.g. the response provided by `GET /api/database/:id/metadata`."} SimpleGraphMetadataProvider [metadata-graph]
-  MetadataProvider
-  (database [_this]            (graph-database metadata-graph))
-  (table    [_this table-id]   (graph-table    metadata-graph table-id))
-  (field    [_this field-id]   (graph-field    metadata-graph field-id))
-  (metric   [_this metric-id]  (graph-metric   metadata-graph metric-id))
-  (segment  [_this segment-id] (graph-segment  metadata-graph segment-id))
-  (card     [_this card-id]    (graph-card     metadata-graph card-id))
-  (tables   [_this]            (graph-tables   metadata-graph))
-  (fields   [_this table-id]   (graph-fields   metadata-graph table-id))
-
-  #?@(:clj
-      [pretty/PrettyPrintable
-       (pretty [_this]
-               ;; don't actually print the whole thing because it's going to make my eyes bleed to see all
-               ;; of [[metabase.lib.test-metadata]] every single time a test fails
-               `SimpleGraphMetadataProvider)]))
-
-;;; TODO -- do we need Database methods as well?
-(#?(:clj p/defprotocol+ :cljs defprotocol) WarmableMetadataProvider
-  (store-tables! [metadata-provider tables])
-  (store-fields! [metadata-provider fields])
-  (store-cards! [metadata-provider cards])
-  (store-metrics! [metadata-provider metrics])
-  (store-segments! [metadata-provider segment-ids])
-  (fetch-tables! [metadata-provider table-ids])
-  (fetch-fields! [metadata-provider field-ids])
-  (fetch-cards! [metadata-provider card-ids])
-  (fetch-metrics! [metadata-provider metric-ids])
-  (fetch-segments! [metadata-provider segment-ids]))
+(defn store-metadatas! [cached-metadata-provider metadata-type metadatas]
+  (doseq [metadata metadatas]
+    (store-metadata! cached-metadata-provider metadata-type (:id metadata) metadata)))

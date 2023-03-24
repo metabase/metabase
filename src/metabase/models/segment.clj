@@ -4,9 +4,9 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.lib.jvm.metadata-provider :as lib.jvm.metadata-provider]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -54,19 +54,21 @@
   "Calculate a nice description of a Segment's definition."
   [metadata-provider :- lib.metadata/MetadataProvider
    {table-id :table_id, :keys [definition], :as _segment}]
-  (when-let [{database-id :db_id} (lib.metadata.protocols/table metadata-provider table-id)]
-    (let [query (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
-      (lib.metadata.calculation/describe-top-level-key query :filter))))
+  (when (seq definition)
+    (when-let [{database-id :db_id} (lib.metadata.protocols/table metadata-provider table-id)]
+      (let [query (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
+        (lib/describe-top-level-key query :filter)))))
 
 (defn- warmed-metadata-provider [segments]
-  (let [metadata-provider (doto (lib.jvm.metadata-provider/application-database-metadata-provider)
-                            (lib.metadata.protocols/store-segments! segments))
+  (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider)
+                            (lib.metadata.protocols/store-metadatas! :metadata/segment segments))
         field-ids         (mbql.u/referenced-field-ids (map :definition segments))
-        fields            (lib.metadata.protocols/fetch-fields! metadata-provider field-ids)
+        fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/field field-ids)
         table-ids         (into #{}
                                 (comp cat (map :table_id))
                                 [fields segments])]
-    (lib.metadata.protocols/fetch-tables! metadata-provider table-ids)
+    ;; this is done for side effects
+    (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/table table-ids)
     metadata-provider))
 
 (methodical/defmethod t2.hydrate/batched-hydrate [Segment :definition_description]

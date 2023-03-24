@@ -147,6 +147,7 @@
   [lib.metadata.calculation
    column-name
    describe-query
+   describe-top-level-key
    display-name
    suggested-name]
   [lib.order-by

@@ -5,9 +5,9 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.lib.jvm.metadata-provider :as lib.jvm.metadata-provider]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -57,23 +57,24 @@
   (when (seq definition)
     (when-let [{database-id :db_id} (lib.metadata.protocols/table metadata-provider table-id)]
       (let [query (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
-        (lib.metadata.calculation/describe-query query)))))
+        (lib/describe-query query)))))
 
 (defn- warmed-metadata-provider [metrics]
-  (let [metadata-provider (doto (lib.jvm.metadata-provider/application-database-metadata-provider)
-                            (lib.metadata.protocols/store-metrics! metrics))
+  (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider)
+                            (lib.metadata.protocols/store-metadatas! :metadata/metric metrics))
         segment-ids       (into #{} (mbql.u/match (map :definition metrics)
                                       [:segment (id :guard integer?) & _]
                                       id))
-        segments          (lib.metadata.protocols/fetch-segments! metadata-provider segment-ids)
+        segments          (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/segment segment-ids)
         field-ids         (mbql.u/referenced-field-ids (into []
                                                              (comp cat (map :definition))
                                                              [metrics segments]))
-        fields            (lib.metadata.protocols/fetch-fields! metadata-provider field-ids)
+        fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/field field-ids)
         table-ids         (into #{}
                                 (comp cat (map :table_id))
                                 [fields segments metrics])]
-    (lib.metadata.protocols/fetch-tables! metadata-provider table-ids)
+    ;; this is done for side-effects
+    (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/table table-ids)
     metadata-provider))
 
 (methodical/defmethod t2.hydrate/batched-hydrate [Metric :definition_description]
