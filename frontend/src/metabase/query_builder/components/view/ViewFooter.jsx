@@ -13,7 +13,7 @@ import QuestionEmbedWidget, {
 import ViewButton from "./ViewButton";
 import QuestionAlertWidget from "./QuestionAlertWidget";
 import QuestionTimelineWidget from "./QuestionTimelineWidget";
-import RawTableToggle from "./RawTableToggle";
+import QuestionTableToggle from "./QuestionTableToggle";
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionLastUpdated from "./QuestionLastUpdated";
 import { ViewFooterRoot, FooterButtonGroup } from "./ViewFooter.styled";
@@ -101,7 +101,7 @@ const ViewFooter = ({
         ]}
         center={
           isVisualized && (
-            <RawTableToggle
+            <QuestionTableToggle
               key="viz-table-toggle"
               className="mx1"
               question={question}

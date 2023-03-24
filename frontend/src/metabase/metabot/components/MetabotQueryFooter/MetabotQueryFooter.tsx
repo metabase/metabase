@@ -1,5 +1,5 @@
 import React from "react";
-import RawTableToggle from "metabase/query_builder/components/view/RawTableToggle";
+import QuestionTableToggle from "metabase/query_builder/components/view/QuestionTableToggle";
 import Question from "metabase-lib/Question";
 import {
   QueryFooterButtonbar,
@@ -24,7 +24,7 @@ const MetabotQueryFooter = ({
       <QueryFooterButtonbar
         center={
           isVisualized && (
-            <RawTableToggle
+            <QuestionTableToggle
               question={question}
               isRawTable={isRawTable}
               onToggleRawTable={onToggleRawTable}

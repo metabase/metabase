@@ -3,21 +3,21 @@ import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import Question from "metabase-lib/Question";
-import { Well, ToggleIcon } from "./RawTableToggle.styled";
+import { Well, ToggleIcon } from "./QuestionTableToggle.styled";
 
-interface RawTableToggleProps {
+interface QuestionTableToggleProps {
   className?: string;
   question: Question;
   isRawTable: boolean;
   onToggleRawTable: (isRawTable: boolean) => void;
 }
 
-const RawTableToggle = ({
+const QuestionTableToggle = ({
   className,
   question,
   isRawTable,
   onToggleRawTable,
-}: RawTableToggleProps) => {
+}: QuestionTableToggleProps) => {
   const vizIcon = getIconForVisualizationType(question.display());
   return (
     <Well className={className} onClick={() => onToggleRawTable(!isRawTable)}>
@@ -31,4 +31,4 @@ const RawTableToggle = ({
   );
 };
 
-export default RawTableToggle;
+export default QuestionTableToggle;
