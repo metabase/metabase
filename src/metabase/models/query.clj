@@ -7,7 +7,6 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
    [metabase.util.honey-sql-2 :as h2x]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 

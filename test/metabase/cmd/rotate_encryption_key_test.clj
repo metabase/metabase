@@ -20,7 +20,6 @@
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2])
   (:import

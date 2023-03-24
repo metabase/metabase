@@ -10,7 +10,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.util LinkedHashMap)))

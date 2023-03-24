@@ -20,7 +20,6 @@
    [ring.util.codec :as codec]
    [saml20-clj.core :as saml]
    [saml20-clj.encode-decode :as encode-decode]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.net URL)
