@@ -27,11 +27,11 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
-   [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -347,6 +347,14 @@
 
 ;;; ----------------------------------------- Tests for exotic column types ------------------------------------------
 
+(deftest ^:parallel json-query-support-test
+  (testing "JSON database support options behave as they're supposed to"
+    (are [details expected] (= expected
+                               (driver/database-supports? :postgres :nested-field-columns {:details details}))
+      {}                      true
+      {:json-unfolding true}  true
+      {:json-unfolding false} false)))
+
 (deftest ^:parallel json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
@@ -488,55 +496,53 @@
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [describe-json-table-sql]))
-        (mt/with-temp* [Database [database {:engine :postgres, :details details}]]
-          (mt/with-db database
-            (is (= [:type/JSON :type/SerializedJSON]
-                   (->> (sql-jdbc.sync/describe-table :postgres database {:name "describe_json_table"})
-                        (:fields)
-                        (:take 1)
-                        (first)
-                        ((juxt :base-type :semantic-type)))))
-            (sync-tables/sync-tables-and-database! database)
-            (is (= '#{{:name              "incoherent_json_val → b",
-                       :database-type     "text",
-                       :base-type         :type/Text,
-                       :database-position 0,
-                       :nfc-path          [:incoherent_json_val "b"]
-                       :visibility-type   :normal}
-                      {:name              "coherent_json_val → a",
-                       :database-type     "bigint",
-                       :base-type         :type/Integer,
-                       :database-position 0,
-                       :nfc-path          [:coherent_json_val "a"]
-                       :visibility-type   :normal}
-                      {:name              "coherent_json_val → b",
-                       :database-type     "bigint",
-                       :base-type         :type/Integer,
-                       :database-position 0,
-                       :nfc-path          [:coherent_json_val "b"]
-                       :visibility-type   :normal}
-                      {:name "coherent_json_val → c",
-                       :database-type     "timestamp",
-                       :base-type         :type/DateTime,
-                       :database-position 0,
-                       :visibility-type   :normal,
-                       :nfc-path          [:coherent_json_val "c"]}
-                      {:name              "incoherent_json_val → c",
-                       :database-type     "double precision",
-                       :base-type         :type/Number,
-                       :database-position 0,
-                       :visibility-type   :normal,
-                       :nfc-path          [:incoherent_json_val "c"]}
-                      {:name              "incoherent_json_val → d",
-                       :database-type     "bigint",
-                       :base-type         :type/Integer,
-                       :database-position 0,
-                       :visibility-type   :normal,
-                       :nfc-path          [:incoherent_json_val "d"]}}
-                   (sql-jdbc.sync/describe-nested-field-columns
-                    :postgres
-                    database
-                    {:name "describe_json_table" :id (mt/id "describe_json_table")})))))))))
+        (mt/with-temp Database [database {:engine :postgres, :details details}]
+          (is (= [:type/JSON :type/SerializedJSON]
+                 (->> (sql-jdbc.sync/describe-table :postgres database {:name "describe_json_table"})
+                      (:fields)
+                      (:take 1)
+                      (first)
+                      ((juxt :base-type :semantic-type)))))
+          (is (= '#{{:name              "incoherent_json_val → b",
+                     :database-type     "text",
+                     :base-type         :type/Text,
+                     :database-position 0,
+                     :nfc-path          [:incoherent_json_val "b"]
+                     :visibility-type   :normal}
+                    {:name              "coherent_json_val → a",
+                     :database-type     "bigint",
+                     :base-type         :type/Integer,
+                     :database-position 0,
+                     :nfc-path          [:coherent_json_val "a"]
+                     :visibility-type   :normal}
+                    {:name              "coherent_json_val → b",
+                     :database-type     "bigint",
+                     :base-type         :type/Integer,
+                     :database-position 0,
+                     :nfc-path          [:coherent_json_val "b"]
+                     :visibility-type   :normal}
+                    {:name "coherent_json_val → c",
+                     :database-type     "timestamp",
+                     :base-type         :type/DateTime,
+                     :database-position 0,
+                     :visibility-type   :normal,
+                     :nfc-path          [:coherent_json_val "c"]}
+                    {:name              "incoherent_json_val → c",
+                     :database-type     "double precision",
+                     :base-type         :type/Number,
+                     :database-position 0,
+                     :visibility-type   :normal,
+                     :nfc-path          [:incoherent_json_val "c"]}
+                    {:name              "incoherent_json_val → d",
+                     :database-type     "bigint",
+                     :base-type         :type/Integer,
+                     :database-position 0,
+                     :visibility-type   :normal,
+                     :nfc-path          [:incoherent_json_val "d"]}}
+                 (sql-jdbc.sync/describe-nested-field-columns
+                  :postgres
+                  database
+                  {:name "describe_json_table"}))))))))
 
 (deftest describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres
