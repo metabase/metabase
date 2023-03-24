@@ -24,6 +24,7 @@ const MetabotQueryEditor = ({ question, height }: MetabotQueryEditor) => {
       question={question.setId(-1)}
       query={question.query()}
       viewHeight={height}
+      readOnly
       isNativeEditorOpen={isNativeEditorOpen}
       setIsNativeEditorOpen={setIsNativeEditorOpen}
     />
