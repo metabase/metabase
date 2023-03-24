@@ -5,7 +5,8 @@ import { createEntitiesState } from "__support__/store";
 import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
 
-import type { StructuredDatasetQuery } from "metabase-types/api";
+import type { DatasetQuery } from "metabase-types/types/Card";
+
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -16,7 +17,14 @@ import Question from "metabase-lib/Question";
 
 import ReadOnlyNotebook from "./ReadOnlyNotebook";
 
-const setup = ({ query }: { query: StructuredDatasetQuery }) => {
+const makeQuery = (options: any) => {
+  // we have to cast this because we have 2 incompatible DatasetQuery types
+  return createMockStructuredDatasetQuery({
+    query: options,
+  }) as DatasetQuery;
+};
+
+const setup = ({ query }: { query: DatasetQuery }) => {
   const database = createSampleDatabase();
   const state = createMockState({
     entities: createEntitiesState({
@@ -43,11 +51,9 @@ const setup = ({ query }: { query: StructuredDatasetQuery }) => {
 describe("Notebook > ReadOnlyNotebook", () => {
   describe("Basic notebook functionality", () => {
     it("shows filters", async () => {
-      const query = createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 1,
-          filter: [">", ["field", 3, null], 10],
-        },
+      const query = makeQuery({
+        "source-table": 1,
+        filter: [">", ["field", 3, null], 10],
       });
       setup({ query });
       expect(await screen.findByText("Products")).toBeInTheDocument();
@@ -57,12 +63,10 @@ describe("Notebook > ReadOnlyNotebook", () => {
     });
 
     it("shows summaries", async () => {
-      const query = createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 1,
-          aggregation: [["avg", ["field", 7, null]]],
-          breakout: [["field", 3, null]],
-        },
+      const query = makeQuery({
+        "source-table": 1,
+        aggregation: [["avg", ["field", 7, null]]],
+        breakout: [["field", 3, null]],
       });
       setup({ query });
       expect(await screen.findByText("Products")).toBeInTheDocument();
@@ -72,11 +76,9 @@ describe("Notebook > ReadOnlyNotebook", () => {
     });
 
     it("shows order by", async () => {
-      const query = createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 1,
-          "order-by": [["asc", ["field", 2, null]]],
-        },
+      const query = makeQuery({
+        "source-table": 1,
+        "order-by": [["asc", ["field", 2, null]]],
       });
       setup({ query });
       expect(screen.getByTestId("read-only-notebook")).toBeInTheDocument();
@@ -90,11 +92,9 @@ describe("Notebook > ReadOnlyNotebook", () => {
     });
 
     it("shows limit clauses", async () => {
-      const query = createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 1,
-          limit: 120,
-        },
+      const query = makeQuery({
+        "source-table": 1,
+        limit: 120,
       });
       setup({ query });
 
@@ -108,18 +108,14 @@ describe("Notebook > ReadOnlyNotebook", () => {
 
   describe("Read only features", () => {
     it("shows the read-only notebook editor", async () => {
-      const query = createMockStructuredDatasetQuery({
-        query: { "source-table": 1 },
-      });
+      const query = makeQuery({ "source-table": 1 });
       setup({ query });
       expect(screen.getByTestId("read-only-notebook")).toBeInTheDocument();
       expect(await screen.findByText("Products")).toBeInTheDocument();
     });
 
     it("does not show the visualize button", async () => {
-      const query = createMockStructuredDatasetQuery({
-        query: { "source-table": 1 },
-      });
+      const query = makeQuery({ "source-table": 1 });
       setup({ query });
       expect(screen.getByTestId("read-only-notebook")).toBeInTheDocument();
       expect(await screen.findByText("Products")).toBeInTheDocument();
@@ -127,20 +123,16 @@ describe("Notebook > ReadOnlyNotebook", () => {
     });
 
     it("does not show preview buttons", async () => {
-      const query = createMockStructuredDatasetQuery({
-        query: { "source-table": 1 },
-      });
+      const query = makeQuery({ "source-table": 1 });
       setup({ query });
       expect(await screen.findByText("Products")).toBeInTheDocument();
       expect(screen.queryByLabelText("play icon")).not.toBeInTheDocument();
     });
 
     it("does not show remove buttons", async () => {
-      const query = createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 1,
-          filter: [">", ["field", 3, null], 10],
-        },
+      const query = makeQuery({
+        "source-table": 1,
+        filter: [">", ["field", 3, null], 10],
       });
       setup({ query });
       expect(await screen.findByText("Products")).toBeInTheDocument();
@@ -151,11 +143,9 @@ describe("Notebook > ReadOnlyNotebook", () => {
     });
 
     it("does not show add buttons", async () => {
-      const query = createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 1,
-          filter: [">", ["field", 3, null], 10],
-        },
+      const query = makeQuery({
+        "source-table": 1,
+        filter: [">", ["field", 3, null], 10],
       });
       setup({ query });
       expect(await screen.findByText("Products")).toBeInTheDocument();
@@ -166,11 +156,9 @@ describe("Notebook > ReadOnlyNotebook", () => {
     });
 
     it("does not show dropdowns to pick columns", async () => {
-      const query = createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 1,
-          filter: [">", ["field", 3, null], 10],
-        },
+      const query = makeQuery({
+        "source-table": 1,
+        filter: [">", ["field", 3, null], 10],
       });
       setup({ query });
       expect(await screen.findByText("Products")).toBeInTheDocument();
@@ -181,10 +169,8 @@ describe("Notebook > ReadOnlyNotebook", () => {
     });
 
     it("does not show sections without query clauses or section add buttons", async () => {
-      const query = createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 1,
-        },
+      const query = makeQuery({
+        "source-table": 1,
       });
       setup({ query });
       expect(await screen.findByText("Products")).toBeInTheDocument();

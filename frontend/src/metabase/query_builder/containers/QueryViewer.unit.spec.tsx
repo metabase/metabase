@@ -1,6 +1,5 @@
 import React from "react";
 import type { DatasetQuery } from "metabase-types/types/Card";
-import type { DatasetQuery as DatasetQueryAPI } from "metabase-types/api";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
@@ -17,7 +16,14 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import QueryViewer from "./QueryViewer";
 
-const setup = ({ query }: { query: DatasetQueryAPI }) => {
+const makeQuery = (options: any) => {
+  return createMockStructuredDatasetQuery({
+    query: options,
+    // we have to cast this because we have 2 incompatible DatasetQuery types
+  }) as DatasetQuery;
+};
+
+const setup = ({ query }: { query: DatasetQuery }) => {
   const database = createSampleDatabase();
   const state = createMockState({
     entities: createEntitiesState({
@@ -28,7 +34,6 @@ const setup = ({ query }: { query: DatasetQueryAPI }) => {
   setupDatabasesEndpoints([database]);
   setupSearchEndpoints([]);
 
-  // we have to cast this because we have 2 incompatible DatasetQuery types
   renderWithProviders(<QueryViewer datasetQuery={query as DatasetQuery} />, {
     storeInitialState: state,
   });
@@ -37,15 +42,13 @@ const setup = ({ query }: { query: DatasetQueryAPI }) => {
 describe("Query Builder > Query Viewer", () => {
   describe("structured queries", () => {
     it("shows a complex notebook query", async () => {
-      const query = createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 1,
-          filter: [">", ["field", 3, null], 10],
-          aggregation: [["avg", ["field", 7, null]]],
-          breakout: [["field", 3, null]],
-          "order-by": [["asc", ["field", 2, null]]],
-          limit: 120,
-        },
+      const query = makeQuery({
+        "source-table": 1,
+        filter: [">", ["field", 3, null], 10],
+        aggregation: [["avg", ["field", 7, null]]],
+        breakout: [["field", 3, null]],
+        "order-by": [["asc", ["field", 2, null]]],
+        limit: 120,
       });
       setup({ query });
       expect(screen.getByTestId("read-only-notebook")).toBeInTheDocument();
@@ -71,9 +74,7 @@ describe("Query Builder > Query Viewer", () => {
     });
 
     it("does not show the visualize button", async () => {
-      const query = createMockStructuredDatasetQuery({
-        query: { "source-table": 1 },
-      });
+      const query = makeQuery({ "source-table": 1 });
       setup({ query });
       expect(screen.getByTestId("read-only-notebook")).toBeInTheDocument();
       expect(await screen.findByText("Products")).toBeInTheDocument();
