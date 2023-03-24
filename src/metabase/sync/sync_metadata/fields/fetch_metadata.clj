@@ -33,6 +33,7 @@
           :semantic-type             (:semantic_type field)
           :pk?                       (isa? (:semantic_type field) :type/PK)
           :field-comment             (:description field)
+          :json-unfolding            (:json_unfolding field)
           :database-is-auto-increment (:database_is_auto_increment field)
           :database-position         (:database_position field)
           :database-required         (:database_required field)})
