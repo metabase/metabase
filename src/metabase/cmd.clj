@@ -164,8 +164,8 @@
     (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load path opts)))
 
 (defn ^:command import
-  "This command is in development. Prefer [[load]] for now."
-   
+  "This command is in development. For now, use [[load]].
+
    Load serialized Metabase instance as created by the [[export]] command from directory `path`."
   [path & options]
   (let [opts {:abort-on-error (boolean (some #{"--abort-on-error"} options))}]
@@ -187,12 +187,14 @@
     (map #(Integer/parseInt %) (str/split s #","))))
 
 (defn ^:command export
-  "Serialize a Metabase into directory `path`. Replaces the [[dump]] command..
+  "This command is in development. For now, use [[dump]].
+                                                
+   Serialize a Metabase into directory `path`.
 
-  Options:
+   Options:
 
-   --collections [collection-id-list] - a comma-separated list of IDs of collection to export
-   --include-field-values             - flag, default false, controls export of field values"
+    --collections [collection-id-list] - a comma-separated list of IDs of collection to export
+    --include-field-values             - flag, default false, controls export of field values"
   [path & options]
   (let [opts (-> options cmd-args->map (update :collections parse-int-list))]
     (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump path opts)))
