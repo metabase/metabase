@@ -6,7 +6,7 @@ title: Metabase release versioning
 
 We follow our own flavor of the [semantic versioning guidelines](https://semver.org/) in order to distinguish the [open-source version](https://www.metabase.com/product/starter) of Metabase from the paid, source-available version of Metabase (available in the [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans).
 
-Semantic versioning typically follows the format: Major.Minor.Point.Patch For example, version `3.15.2` or `3.15.2.1`.
+Semantic versioning typically follows the format: `Major.Minor.Point.Patch`. For example, version `3.15.2` or `3.15.2.1`.
 
 With Metabase releases, we prefix the version with a `0` or `1`, depending on the license.
 
@@ -27,7 +27,7 @@ v0.46.3.1
 ### License
 
 - `0` for the free, open-source version (sometimes call OSS, for open-source software).
-- `1.MM.mm.pp` for the paid, source-available version that has all the bells and whistles (sometimes
+- `1` for the paid, source-available version that has all the bells and whistles (sometimes
   called EE for "Enterprise Edition").
 
 ### Major
