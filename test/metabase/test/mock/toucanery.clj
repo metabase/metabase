@@ -112,18 +112,18 @@
   [(merge mock.util/table-defaults
           {:name         "employees"
            :fields       [(merge mock.util/field-defaults
-                                 {:name           "name"
-                                  :display_name   "Name"
-                                  :database_type  "VARCHAR"
-                                  :base_type      :type/Text
-                                  :semantic_type  :type/Name})
+                                 {:name          "name"
+                                  :display_name  "Name"
+                                  :database_type "VARCHAR"
+                                  :base_type     :type/Text
+                                  :semantic_type :type/Name})
                           (merge mock.util/field-defaults
-                                 {:name           "id"
-                                  :display_name   "ID"
-                                  :database_type  "SERIAL"
-                                  :base_type      :type/Integer
+                                 {:name          "id"
+                                  :display_name  "ID"
+                                  :database_type "SERIAL"
+                                  :base_type     :type/Integer
                                   :database_is_auto_increment true
-                                  :semantic_type  :type/PK})]
+                                  :semantic_type :type/PK})]
            :display_name "Employees"})
    (merge mock.util/table-defaults
           {:name         "transactions"
