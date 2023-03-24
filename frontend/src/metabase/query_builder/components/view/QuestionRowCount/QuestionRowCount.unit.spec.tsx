@@ -183,7 +183,7 @@ describe("QuestionRowCount", () => {
 
           userEvent.click(rowCount);
 
-          expect(screen.queryByTestId("limit-popover")).not.toBeInTheDocument();
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         });
       });
     });
@@ -235,7 +235,7 @@ describe("QuestionRowCount", () => {
 
           userEvent.click(rowCount);
 
-          expect(screen.queryByTestId("limit-popover")).not.toBeInTheDocument();
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         });
       });
     });

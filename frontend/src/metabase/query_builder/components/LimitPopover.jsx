@@ -33,10 +33,7 @@ const CustomRowLimit = ({ limit, onChangeLimit, onClose }) => {
 };
 
 const LimitPopover = ({ limit, onChangeLimit, onClose, className }) => (
-  <div
-    className={cx(className, "text-bold text-medium")}
-    data-testid="limit-popover"
-  >
+  <div className={cx(className, "text-bold text-medium")}>
     <Radio
       vertical
       value={limit == null ? "maximum" : "custom"}
