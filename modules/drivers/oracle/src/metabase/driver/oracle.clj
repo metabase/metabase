@@ -37,7 +37,8 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
+(driver/register! :oracle, :parent #{:sql-jdbc
+                                     ::sql.qp.empty-string-is-null/empty-string-is-null})
 
 (doseq [[feature supported?] {:datetime-diff    true
                               :now              true
