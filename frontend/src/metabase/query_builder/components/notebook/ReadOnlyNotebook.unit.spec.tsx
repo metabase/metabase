@@ -1,15 +1,18 @@
 import React from "react";
-import type { StructuredDatasetQuery } from "metabase-types/api";
 
+import { renderWithProviders, screen, getIcon } from "__support__/ui";
+import { createEntitiesState } from "__support__/store";
 import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
-import { renderWithProviders, screen, getIcon } from "__support__/ui";
+
+import type { StructuredDatasetQuery } from "metabase-types/api";
 import { createMockState } from "metabase-types/store/mocks";
-
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
-
-import { createEntitiesState } from "__support__/store";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import { getMetadata } from "metabase/selectors/metadata";
+
+import Question from "metabase-lib/Question";
 
 import ReadOnlyNotebook from "./ReadOnlyNotebook";
 
@@ -24,7 +27,15 @@ const setup = ({ query }: { query: StructuredDatasetQuery }) => {
   setupDatabasesEndpoints([database]);
   setupSearchEndpoints([]);
 
-  renderWithProviders(<ReadOnlyNotebook datasetQuery={query} />, {
+  const metadata = getMetadata(state);
+
+  const card = {
+    dataset_query: query,
+  };
+
+  const question = new Question(card, metadata);
+
+  renderWithProviders(<ReadOnlyNotebook question={question} />, {
     storeInitialState: state,
   });
 };
