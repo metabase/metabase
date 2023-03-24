@@ -16,7 +16,7 @@ import {
 export interface MetabotPromptProps {
   user?: User;
   placeholder?: string;
-  isRunning: boolean;
+  isRunning?: boolean;
   onRun: (questionText: string) => void;
   initialPrompt?: string;
 }
@@ -25,7 +25,7 @@ const MetabotPrompt = ({
   initialPrompt,
   user,
   placeholder,
-  isRunning,
+  isRunning = false,
   onRun,
 }: MetabotPromptProps) => {
   const [questionText, setQuestionText] = useState(initialPrompt ?? "");

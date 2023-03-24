@@ -1,7 +1,7 @@
 import React, { ReactNode } from "react";
+import HomeMetabotApp from "metabase/metabot/containers/HomeMetabotApp";
 import { Card } from "metabase-types/api";
 import HomeGreeting from "../../containers/HomeGreeting";
-import HomeMetabotWidget from "../../containers/HomeMetabotWidget/HomeMetabotWidget";
 import {
   LayoutBody,
   LayoutIllustration,
@@ -25,11 +25,7 @@ const HomeLayout = ({
   return (
     <LayoutRoot>
       {showIllustration && <LayoutIllustration />}
-      {isMetabotEnabled && hasModels ? (
-        <HomeMetabotWidget model={models[0]} />
-      ) : (
-        <HomeGreeting />
-      )}
+      {isMetabotEnabled && hasModels ? <HomeMetabotApp /> : <HomeGreeting />}
       <LayoutBody>{children}</LayoutBody>
     </LayoutRoot>
   );
