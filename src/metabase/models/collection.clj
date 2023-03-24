@@ -606,7 +606,7 @@
     ;; first move this Collection
     (log/info (trs "Moving Collection {0} and its descendants from {1} to {2}"
                    (u/the-id collection) (:location collection) new-location))
-    (db/transaction
+    (t2/with-transaction [_conn]
       (t2/update! Collection (u/the-id collection) {:location new-location})
       ;; we need to update all the descendant collections as well...
       (db/execute!
@@ -625,7 +625,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived false))]
-    (db/transaction
+    (t2/with-transaction [_conn]
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived false}
         :archived true)
@@ -639,7 +639,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived true))]
-    (db/transaction
+    (t2/with-transaction [_conn]
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived true}
         :archived false)
