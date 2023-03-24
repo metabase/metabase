@@ -49,8 +49,8 @@ import Dimension, {
 } from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
 
-import * as MLv2 from "../v2";
-import type { Limit, Query as MLv2Query } from "../v2/types";
+import * as MLv2 from "..";
+import type { Limit, Query } from "../types";
 
 import Segment from "../metadata/Segment";
 import Database from "../metadata/Database";
@@ -129,11 +129,11 @@ class StructuredQueryInner extends AtomicQuery {
     this._structuredDatasetQuery = datasetQuery as StructuredDatasetQuery;
   }
 
-  private getMLv2Query() {
+  private getMLv2Query(): Query {
     return this.question()._getMLv2Query();
   }
 
-  private updateWithMLv2(nextQuery: MLv2Query) {
+  private updateWithMLv2(nextQuery: Query) {
     const nextMLv1Query = MLv2.toLegacyQuery(nextQuery);
     return this.setDatasetQuery(nextMLv1Query);
   }
