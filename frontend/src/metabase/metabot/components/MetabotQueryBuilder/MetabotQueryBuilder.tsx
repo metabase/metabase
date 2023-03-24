@@ -11,13 +11,11 @@ import {
 type MetabotQueryBuilderProps = {
   question: Question;
   results: [Dataset];
-  height: number;
 };
 
 const MetabotQueryBuilder = ({
   question,
   results,
-  height,
 }: MetabotQueryBuilderProps) => {
   return (
     <MetabotQueryBuilderRoot>
