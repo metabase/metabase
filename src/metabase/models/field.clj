@@ -392,7 +392,6 @@
   (let [d (t2/select Dimension)
         dimensions (->> d
                         (group-by :field_id))]
-    (println "dimensions count =" (count d))
     (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
               (db/select-reducible Field))))
 
