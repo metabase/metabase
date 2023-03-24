@@ -27,7 +27,6 @@
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.after :as t2.after]))
 

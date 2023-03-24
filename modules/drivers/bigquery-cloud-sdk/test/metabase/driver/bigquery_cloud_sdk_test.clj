@@ -16,7 +16,6 @@
    [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (com.google.cloud.bigquery BigQuery)))

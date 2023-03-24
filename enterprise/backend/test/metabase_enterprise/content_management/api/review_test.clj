@@ -5,7 +5,6 @@
    [metabase.models.moderation-review :as moderation-review :refer [ModerationReview]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- normalized-response
