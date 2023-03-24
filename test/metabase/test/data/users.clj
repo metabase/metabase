@@ -15,7 +15,6 @@
    [metabase.util :as u]
    [metabase.util.password :as u.password]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.util.test :as tt]
    [toucan2.core :as t2])
   (:import
@@ -191,15 +190,15 @@
       (when-not user-email
         (throw (ex-info "User does not exist" {:user user})))
       (try
-        (db/execute! {:update :core_user
-                      :set    {:password      (u.password/hash-bcrypt user-email)
-                               :password_salt ""}
-                      :where  [:= :id user-id]})
+        (t2/query-one {:update :core_user
+                       :set    {:password      (u.password/hash-bcrypt user-email)
+                                :password_salt ""}
+                       :where  [:= :id user-id]})
         (apply client/client {:username user-email, :password user-email} args)
         (finally
-          (db/execute! {:update :core_user
-                        :set    old-password-info
-                        :where  [:= :id user-id]}))))))
+          (t2/query-one {:update :core_user
+                         :set    old-password-info
+                         :where  [:= :id user-id]}))))))
 
 (defn do-with-test-user [user-kwd thunk]
   (t/testing (format "with test user %s\n" user-kwd)
