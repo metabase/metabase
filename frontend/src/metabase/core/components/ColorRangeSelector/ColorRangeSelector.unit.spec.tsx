@@ -21,15 +21,24 @@ function TestColorRangeSelector({ onChange }: TestColorRangeSelectorProps) {
   );
 }
 
+function setup() {
+  const onChange = jest.fn();
+  render(<TestColorRangeSelector onChange={onChange} />);
+
+  return { onChange };
+}
+
 describe("ColorRangeSelector", () => {
   it("should call `onChange` upon clicking a color", async () => {
-    const onChange = jest.fn();
-    render(<TestColorRangeSelector onChange={onChange} />);
+    const { onChange } = setup();
 
     screen.getByRole("button").click();
     expect(await screen.findByRole("tooltip")).toBeInTheDocument();
 
     screen.getByLabelText(color("summarize")).click();
+    expect(onChange).toHaveBeenCalled();
+
+    screen.getByLabelText(color("filter")).click();
     expect(onChange).toHaveBeenCalled();
   });
 });
