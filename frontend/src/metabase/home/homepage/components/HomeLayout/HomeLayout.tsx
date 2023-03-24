@@ -11,7 +11,7 @@ import {
 export interface HomeLayoutProps {
   showIllustration?: boolean;
   isMetabotEnabled?: boolean;
-  models: [Card];
+  models: Card[];
   children?: ReactNode;
 }
 

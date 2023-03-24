@@ -1,8 +1,8 @@
 import React from "react";
 import { t } from "ttag";
-import { Database } from "metabase-types/api";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import Button from "metabase/core/components/Button";
+import Database from "metabase-lib/metadata/Database";
 
 type MetabotDatabasePickerProps = {
   databases: Database[];

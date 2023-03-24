@@ -2,9 +2,9 @@ import React, { useCallback } from "react";
 import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import { MetabotApi } from "metabase/services";
-import { Database, User } from "metabase-types/api";
+import { User } from "metabase-types/api";
 import Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
+import Database from "metabase-lib/metadata/Database";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotGreeting from "../MetabotGreeting";
 import MetabotDatabasePicker from "../MetabotDatabasePicker/MetabotDatabasePicker";
@@ -20,7 +20,6 @@ interface DatabaseMetabotProps {
   database: Database;
   databases: Database[];
   user?: User;
-  metadata: Metadata;
   onDatabaseChange: (databaseId: number) => void;
 }
 
@@ -29,16 +28,15 @@ const DatabaseMetabot = ({
   database,
   databases,
   user,
-  metadata,
   onDatabaseChange,
 }: DatabaseMetabotProps) => {
   const [{ value, loading }, run] = useAsyncFn(getQuestionAndResults);
 
   const handleRun = useCallback(
     (text: string) => {
-      run(database, metadata, text);
+      run(database, text);
     },
-    [database, metadata, run],
+    [database, run],
   );
 
   return (
@@ -103,14 +101,13 @@ const getGreetingMessage = (
 
 const getQuestionAndResults = async (
   database: Database,
-  metadata: Metadata,
   questionText: string,
 ) => {
   const card = await MetabotApi.databasePrompt({
     databaseId: database.id,
     question: questionText,
   });
-  const question = new Question(card, metadata);
+  const question = new Question(card, database.metadata);
   const results = await question.apiGetResults();
 
   return { question, results };
