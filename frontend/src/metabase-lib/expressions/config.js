@@ -482,7 +482,11 @@ export const EXPRESSION_FUNCTIONS = new Set([
 
 const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
 
-export const OPERATOR_WITH_EXECUTION_PRIORITY = new Set(["/", "-"]);
+// operators in which order of operands doesn't matter
+export const EXPRESSION_OPERATOR_WITHOUT_EXECUTION_PRIORITY = new Set([
+  "+",
+  "*",
+]);
 
 export const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
 
