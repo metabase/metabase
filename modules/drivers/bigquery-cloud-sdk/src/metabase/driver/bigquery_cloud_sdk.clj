@@ -419,13 +419,13 @@
     (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
                     db-id))
     (try
-      (db/execute! {:update (t2/table-name MetabaseTable)
-                    :set    {:schema dataset-id}
-                    :where  [:and
-                             [:= :db_id db-id]
-                             [:or
-                              [:= :schema nil]
-                              [:not= :schema dataset-id]]]})
+      (t2/query-one {:update (t2/table-name MetabaseTable)
+                     :set    {:schema dataset-id}
+                     :where  [:and
+                              [:= :db_id db-id]
+                              [:or
+                               [:= :schema nil]
+                               [:not= :schema dataset-id]]]})
       ;; if we are upgrading to the sdk driver after having downgraded back to the old driver we end up with
       ;; duplicated tables with nil schema. Happily only in the "dataset-id" schema and not all schemas. But just
       ;; leave them with nil schemas and they will get deactivated in sync.

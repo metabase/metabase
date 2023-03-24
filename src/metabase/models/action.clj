@@ -103,7 +103,7 @@
   (t2/with-transaction [_conn]
     (let [action (first (t2/insert-returning-instances! Action (select-keys action-data action-columns)))
           model  (type->model (:type action))]
-      (db/execute! {:insert-into (t2/table-name model)
+      (t2/query-one {:insert-into (t2/table-name model)
                     :values [(-> (apply dissoc action-data action-columns)
                                  (assoc :action_id (:id action))
                                  (cond->
