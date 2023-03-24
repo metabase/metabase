@@ -71,7 +71,7 @@
     :moderator_id            su/IntGreaterThanZero
     (s/optional-key :status) Statuses
     (s/optional-key :text)   (s/maybe s/Str)}]
-  (db/transaction
+  (t2/with-transaction [_conn]
    (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
    (db/update-where! ModerationReview {:moderated_item_id (:moderated_item_id params)
                                        :moderated_item_type (:moderated_item_type params)}

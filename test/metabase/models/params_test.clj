@@ -6,7 +6,6 @@
    [metabase.models :refer [Card Field]]
    [metabase.models.params :as params]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
@@ -39,7 +38,7 @@
 
   (testing "make sure it works for multiple fields efficiently. Should only require one DB call to hydrate many Fields"
     (let [venues-fields (t2/select Field :table_id (mt/id :venues))]
-      (db/with-call-counting [call-count]
+      (t2/with-call-count [call-count]
         (hydrate venues-fields :name_field)
         (is (= 1
                (call-count))))))

@@ -92,7 +92,7 @@
   (let [existing-tables (t2/select Table :id [:in ids])]
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
-    (let [updated-tables (db/transaction (mapv #(update-table!* % body) existing-tables))
+    (let [updated-tables (t2/with-transaction [_conn] (mapv #(update-table!* % body) existing-tables))
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync-unhidden-tables newly-unhidden)
