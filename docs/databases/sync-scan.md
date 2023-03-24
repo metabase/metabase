@@ -15,11 +15,11 @@ Metabase runs different types of queries to stay up to date with your database.
 
 ## Initial sync, scan, and fingerprinting
 
-When Metabase first connects to your database, it performs a [sync](#how-database-scans-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md). Once the sync is successful, Metabase runs [scans](#scheduling-database-scans) of each table to look for URLs, JSON, encoded strings, etc. The [fingerprinting](#how-database-fingerprinting-works) query runs once the sync is complete.
+When Metabase first connects to your database, it performs a [sync](#how-database-scans-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md). Once the sync is successful, Metabase runs [scans](#scheduling-database-scans) of each table to look for URLs, JSON, encoded strings, etc. The [fingerprinting](#how-database-fingerprinting-works) queries run once the syncs are complete.
 
 You can follow the progress of these queries from **Admin** > **Troubleshooting** > **Logs**. 
 
-Once the queries are done running, you can view and edit the synced table metadata from the **Admin settings** > **Data model**. Check out [editing metadata](../data-modeling/metadata-editing.md).
+Once the queries are done running, you can view and edit the synced metadata from **Admin settings** > **Data model**. For more info, see [editing metadata](../data-modeling/metadata-editing.md).
 
 ## Choose when Metabase syncs and scans
 
@@ -31,16 +31,14 @@ If you want to change the default schedule for [sync](#how-database-scans-work) 
 
 ## Scheduling database syncs
 
-If you've turned on [Choose when syncs and scans happen](#choose-when-metabase-syncs-and-scans), you'll see the following options under **Database syncing**:
+If you've turned on [Choose when syncs and scans happen](#choose-when-metabase-syncs-and-scans), you'll be able to set:
 
-- **Scan** sets the frequency of the [sync query](#how-database-syncs-work) to hourly (default) or daily.
-- **at** sets the time when your sync query will run against your database (in the timezone of the server where your Metabase app is running).
+- The frequency of the [sync](#how-database-syncs-work): hourly (default) or daily.
+- The time to run the sync, in the timezone of the server where your Metabase app is running.
 
 ## Scheduling database scans
 
-If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
-
-![Scanning options](./images/scanning-options.png)
+If you've turned ON [Choose when syncs and scans happen](#choose-when-metabase-syncs-and-scans), you'll see the following [scan](#how-database-scans-work) options:
 
 - **Regularly, on a schedule** allows you to run [scan queries](#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
@@ -49,7 +47,7 @@ If you've selected **Choose when syncs and scans happen** > **ON**, you'll see t
 ## Manually syncing tables and columns
 
 1. Go to **Admin settings** > **Databases** > your database.
-2. Click on **Sync database schema now**.
+2. Click **Sync database schema now**.
 
 ## Manually scanning column values
 
@@ -63,9 +61,10 @@ To scan values from all the columns in a table:
 To scan values from a specific column:
 
 1. Go to **Admin settings** > **Data model** > your database.
-2. Select the table and find the column you want bring up to date with your database.
-3. Click the **gear icon** in the panel for that column.
-4. Click **Re-scan this field**.
+2. Select the table.
+3. Find the column you want bring up to date with your database.
+4. Click the **gear icon** in the panel for that column.
+5. Click **Re-scan this field**.
 
 ## Periodically refingerprint tables
 
@@ -77,11 +76,11 @@ Turn this setting ON if you want Metabase to use larger samples of column values
 2. Expand **Show advanced options**.
 3. Turn ON **Periodically refingerprint tables**.
 
-> Fingerprinting will increase the load on your database.
+> Periodic fingerprinting will increase the load on your database.
 
 ## Clearing cached values
 
-To forget the data that Metabase has stored from previous [scans](#syncing-and-scanning-databases) and [fingerprinting](#how-database-fingerprinting-works):
+To ask Metabase to forget the data from previous [scans](#syncing-and-scanning-databases) and [fingerprinting](#how-database-fingerprinting-works):
 
 1. Go to **Admin settings** > **Data model** > your database.
 2. Select the table.
@@ -89,15 +88,13 @@ To forget the data that Metabase has stored from previous [scans](#syncing-and-s
 4. Click the **gear icon**.
 5. Click **Discard cached field values**.
 
-![Re-scan options](./images/re-scan-options.png)
-
 ## Disable syncing and scanning for a specific table
 
 To prevent Metabase from running syncs and scans against a specific table, change the [table visibility](../data-modeling/metadata-editing.md#table-visibility) to **Hidden**:
 
 1. Go to **Admin settings** > **Data model** > your database.
 2. Hover over the table name in the sidebar.
-3. Click the **eye** icon that appears to the right.
+3. Click the **eye** icon.
 
 > Hiding a table will also prevent it from showing up in the [query builder](../questions/query-builder/introduction.md) and [data reference](../exploration-and-organization/data-model-reference.md). People can still query hidden tables from the [SQL editor](../questions/native-editor/writing-sql.md).
 
