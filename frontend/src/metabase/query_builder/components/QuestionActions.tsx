@@ -2,6 +2,7 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
+import { push } from "react-router-redux";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
@@ -44,6 +45,7 @@ const mapStateToProps = (state: State, props: Props) => ({
 
 const mapDispatchToProps = {
   softReloadCard,
+  push,
 };
 
 interface Props {
@@ -61,6 +63,7 @@ interface Props {
   onModelPersistenceChange: () => void;
   isModerator: boolean;
   softReloadCard: () => void;
+  push: (url: string) => void;
 }
 
 const QuestionActions = ({
@@ -75,6 +78,7 @@ const QuestionActions = ({
   onModelPersistenceChange,
   isModerator,
   softReloadCard,
+  push,
 }: Props) => {
   const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
 
@@ -112,6 +116,10 @@ const QuestionActions = ({
     onOpenModal(modal);
   }, [onOpenModal, question]);
 
+  const handleAskMetabot = useCallback(() => {
+    push(`/metabot/model/${question.id()}`);
+  }, [push, question]);
+
   const extraButtons = [];
 
   extraButtons.push(
@@ -133,6 +141,11 @@ const QuestionActions = ({
         ),
         icon: "label",
         action: handleEditMetadata,
+      },
+      {
+        title: t`Ask Metabot`,
+        icon: "bolt",
+        action: handleAskMetabot,
       },
     );
   }

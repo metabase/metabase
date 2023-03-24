@@ -19,6 +19,12 @@
 
 (set! *warn-on-reflection* true)
 
+(defsetting is-metabot-enabled
+  (deferred-tru "Is Metabot enabled?")
+  :type       :boolean
+  :visibility :authenticated
+  :default    true)
+
 (defsetting openai-api-key
   (deferred-tru "The OpenAI API Key.")
   :visibility :settings-manager)

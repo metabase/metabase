@@ -1,4 +1,4 @@
-import React, { HTMLAttributes } from "react";
+import React from "react";
 import AreaSkeleton from "../AreaSkeleton";
 import BarSkeleton from "../BarSkeleton";
 import EmptySkeleton from "../EmptySkeleton";
@@ -15,11 +15,10 @@ import SkeletonCaption from "../SkeletonCaption";
 import SmartScalarSkeleton from "../SmartScalarSkeleton";
 import TableSkeleton from "../TableSkeleton";
 import WaterfallSkeleton from "../WaterfallSkeleton";
+import { SharedChartSkeletonProps } from "./types";
 
-export interface ChartSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string | null;
+export interface ChartSkeletonProps extends SharedChartSkeletonProps {
   display?: string | null;
-  description?: string | null;
 }
 
 const ChartSkeleton = ({

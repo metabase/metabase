@@ -1,5 +1,6 @@
 import { css, keyframes } from "@emotion/react";
 import { color } from "metabase/lib/colors";
+import { SharedChartSkeletonProps } from "../ChartSkeleton/types";
 
 export const fadingKeyframes = keyframes`
   0% {
@@ -21,7 +22,11 @@ export const containerStyles = css`
   height: 100%;
 `;
 
-export const animationStyles = css`
+export const animationStyles = ({ isStatic }: SharedChartSkeletonProps) => css`
   color: ${color("bg-medium")};
-  animation: ${fadingKeyframes} 1.5s infinite;
+  ${isStatic
+    ? null
+    : css`
+        animation: ${fadingKeyframes} 1.5s infinite;
+      `};
 `;

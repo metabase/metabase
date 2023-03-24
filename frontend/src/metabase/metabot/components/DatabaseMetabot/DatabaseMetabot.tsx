@@ -7,11 +7,16 @@ import Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotGreeting from "../MetabotGreeting";
-import MetabotVisualization from "../MetabotVisualization";
 import MetabotDatabasePicker from "../MetabotDatabasePicker/MetabotDatabasePicker";
-import { MetabotHeader, MetabotRoot } from "../MetabotLayout";
+import {
+  MetabotHeader,
+  MetabotResultsSkeleton,
+  MetabotRoot,
+} from "../MetabotLayout";
+import MetabotQueryBuilder from "../MetabotQueryBuilder";
 
 interface DatabaseMetabotProps {
+  prompt?: string;
   database: Database;
   databases: Database[];
   user?: User;
@@ -20,6 +25,7 @@ interface DatabaseMetabotProps {
 }
 
 const DatabaseMetabot = ({
+  prompt,
   database,
   databases,
   user,
@@ -43,6 +49,7 @@ const DatabaseMetabot = ({
         </MetabotGreeting>
         {database != null ? (
           <MetabotPrompt
+            initialPrompt={prompt}
             user={user}
             placeholder={t`Ask something...`}
             isRunning={loading}
@@ -56,11 +63,13 @@ const DatabaseMetabot = ({
           />
         )}
       </MetabotHeader>
-      {value && (
-        <MetabotVisualization
+      {value ? (
+        <MetabotQueryBuilder
           question={value.question}
           results={value.results}
         />
+      ) : (
+        <MetabotResultsSkeleton display="bar" isStatic />
       )}
     </MetabotRoot>
   );
