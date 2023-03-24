@@ -164,7 +164,9 @@
     (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load path opts)))
 
 (defn ^:command import
-  "Load serialized Metabase instance as created by the [[export]] command from directory `path`."
+  "This command is in development. Prefer [[load]] for now."
+   
+   Load serialized Metabase instance as created by the [[export]] command from directory `path`."
   [path & options]
   (let [opts {:abort-on-error (boolean (some #{"--abort-on-error"} options))}]
     (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path opts)))
