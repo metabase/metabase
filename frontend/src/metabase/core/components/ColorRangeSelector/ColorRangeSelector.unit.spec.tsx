@@ -7,23 +7,15 @@ import ColorRangeSelector from "./ColorRangeSelector";
 const DEFAULT_VALUE = [color("white"), color("brand")];
 const DEFAULT_COLORS = [color("brand"), color("summarize"), color("filter")];
 
-interface TestColorRangeSelectorProps {
-  onChange: (newValue: string[]) => void;
-}
-
-function TestColorRangeSelector({ onChange }: TestColorRangeSelectorProps) {
-  return (
+function setup() {
+  const onChange = jest.fn();
+  render(
     <ColorRangeSelector
       value={DEFAULT_VALUE}
       colors={DEFAULT_COLORS}
       onChange={onChange}
-    />
+    />,
   );
-}
-
-function setup() {
-  const onChange = jest.fn();
-  render(<TestColorRangeSelector onChange={onChange} />);
 
   return { onChange };
 }
