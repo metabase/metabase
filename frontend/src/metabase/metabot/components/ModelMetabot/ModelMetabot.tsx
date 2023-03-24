@@ -7,11 +7,7 @@ import Question from "metabase-lib/Question";
 import ModelLink from "../ModelLink";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotGreeting from "../MetabotGreeting";
-import {
-  MetabotHeader,
-  MetabotResultsSkeleton,
-  MetabotRoot,
-} from "../MetabotLayout";
+import { MetabotHeader, MetabotRoot } from "../MetabotLayout";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
 
 interface ModelMetabotProps {
@@ -40,13 +36,11 @@ const ModelMetabot = ({ model, user }: ModelMetabotProps) => {
           onRun={handleRun}
         />
       </MetabotHeader>
-      {value ? (
+      {value && (
         <MetabotQueryBuilder
           question={value.question}
           results={value.results}
         />
-      ) : (
-        <MetabotResultsSkeleton display="bar" isStatic={!loading} />
       )}
     </MetabotRoot>
   );
