@@ -40,10 +40,12 @@
                                                              :nested-fields              #{{:name                       "age"
                                                                                             :database-type              "INT"
                                                                                             :database-is-auto-increment false
+                                                                                            :json-unfolding             false
                                                                                             :base-type                  :type/Integer}
                                                                                            {:name                       "weight"
                                                                                             :database-type              "DECIMAL"
                                                                                             :database-is-auto-increment false
+                                                                                            :json-unfolding             false
                                                                                             :semantic-type              :type/Category
                                                                                             :base-type                  :type/Decimal}}}}}
                              {:name           "buyer"
@@ -51,26 +53,28 @@
                               :database-is-auto-increment false
                               :json-unfolding false
                               :base-type      :type/Dictionary
-                              :nested-fields  #{{:name          "name"
-                                                 :database-type "VARCHAR"
-                                                 :database-is-auto-increment false
-                                                 :base-type     :type/Text}
-                                                {:name          "cc"
-                                                 :database-type "VARCHAR"
-                                                 :database-is-auto-increment false
-                                                 :base-type     :type/Text}}}}}
+                              :nested-fields  #{{:name                       "name"
+                                                 :database-type              "VARCHAR"
+                                                 :json-unfolding             false
+                                                 :base-type                  :type/Text
+                                                 :database-is-auto-increment false}
+                                                {:name                       "cc"
+                                                 :database-type              "VARCHAR"
+                                                 :json-unfolding             false
+                                                 :base-type                  :type/Text
+                                                 :database-is-auto-increment false}}}}}
    "employees"    {:name   "employees"
                    :schema nil
-                   :fields #{{:name           "id"
-                              :database-type  "SERIAL"
-                              :json-unfolding false
+                   :fields #{{:name                       "id"
+                              :database-type              "SERIAL"
+                              :json-unfolding             false
                               :database-is-auto-increment true
-                              :base-type      :type/Integer}
-                             {:name           "name"
-                              :database-type  "VARCHAR"
-                              :json-unfolding false
+                              :base-type                  :type/Integer}
+                             {:name                       "name"
+                              :database-type              "VARCHAR"
+                              :json-unfolding             false
                               :database-is-auto-increment false
-                              :base-type      :type/Text}}}})
+                              :base-type                  :type/Text}}}})
 
 (driver/register! ::toucanery, :abstract? true)
 
