@@ -8,13 +8,11 @@ import Database from "metabase-lib/metadata/Database";
 type DatabasePickerProps = {
   databases: Database[];
   selectedDatabaseId?: DatabaseId;
-  variant?: "link" | "button";
   onChange: (databaseId: DatabaseId) => void;
 };
 
 const DatabasePicker = ({
   databases,
-  variant,
   selectedDatabaseId,
   onChange,
 }: DatabasePickerProps) => {
@@ -23,8 +21,8 @@ const DatabasePicker = ({
 
   return (
     <DatabaseDataSelector
-      triggerClasses={variant === "link" ? "inline" : ""}
-      triggerElement={<Button onlyText={variant === "link"}>{label}</Button>}
+      triggerClasses="inline"
+      triggerElement={<Button onlyText>{label}</Button>}
       databases={databases}
       selectedDatabaseId={selectedDatabase?.id}
       setDatabaseFn={onChange}

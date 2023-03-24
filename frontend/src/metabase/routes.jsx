@@ -265,8 +265,6 @@ export const getRoutes = store => (
         </Route>
 
         <Route path="/metabot">
-          <IndexRoute component={DatabaseMetabotApp} />
-          <Route path="database" component={DatabaseMetabotApp} />
           <Route path="database/:databaseId" component={DatabaseMetabotApp} />
           <Route path="model/:slug" component={ModelMetabotApp} />
         </Route>

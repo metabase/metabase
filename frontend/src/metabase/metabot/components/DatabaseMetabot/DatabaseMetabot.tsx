@@ -49,21 +49,13 @@ const DatabaseMetabot = ({
         <MetabotGreeting>
           {getGreetingMessage(databases, onDatabaseChange, database, user)}
         </MetabotGreeting>
-        {database != null ? (
-          <MetabotPrompt
-            user={user}
-            placeholder={t`Ask something...`}
-            initialQuery={initialQuery}
-            isRunning={loading}
-            onRun={handleRun}
-          />
-        ) : (
-          <DatabasePicker
-            databases={databases}
-            variant="button"
-            onChange={onDatabaseChange}
-          />
-        )}
+        <MetabotPrompt
+          user={user}
+          placeholder={t`Ask something...`}
+          initialQuery={initialQuery}
+          isRunning={loading}
+          onRun={handleRun}
+        />
       </MetabotHeader>
       {value ? (
         <MetabotQueryBuilder
@@ -80,19 +72,14 @@ const DatabaseMetabot = ({
 const getGreetingMessage = (
   databases: Database[],
   onDatabaseChange: (databaseId: number) => void,
-  database?: Database,
+  database: Database,
   user?: User,
 ) => {
-  if (database == null) {
-    return t`First, let me know what database you want to ask me about.`;
-  }
-
   const name = user?.first_name;
   const databasePicker = (
     <DatabasePicker
       databases={databases}
       selectedDatabaseId={database.id}
-      variant="link"
       onChange={onDatabaseChange}
     />
   );

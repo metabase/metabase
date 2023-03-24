@@ -36,7 +36,6 @@ const HomeMetabot = ({ databases, model, user, onRun }: HomeMetabotProps) => {
               key="picker"
               databases={databases}
               selectedDatabaseId={databaseId}
-              variant="link"
               onChange={setDatabaseId}
             />
           )} database right now.`}
