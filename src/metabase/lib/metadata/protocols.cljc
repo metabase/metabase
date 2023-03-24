@@ -90,6 +90,8 @@
   (bulk-metadata [bulk-metadata-provider metadata-type ids]
     "Fetch lots of metadata of a specific type, e.g. `:metadata/table`, in a single bulk operation."))
 
-(defn store-metadatas! [cached-metadata-provider metadata-type metadatas]
+(defn store-metadatas!
+  "Convenience. Store several metadata maps at once."
+  [cached-metadata-provider metadata-type metadatas]
   (doseq [metadata metadatas]
     (store-metadata! cached-metadata-provider metadata-type (:id metadata) metadata)))

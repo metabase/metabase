@@ -62,5 +62,10 @@
        (pretty [_this]
                (list `->CachedProxyMetadataProvider cache metadata-provider))]))
 
-(defn cached-metadata-provider ^CachedProxyMetadataProvider [metadata-provider]
+(defn cached-metadata-provider
+  "Wrap `metadata-provider` with an implementation that automatically caches results.
+
+  If the metadata provider implements [[lib.metadata.protocols/BulkMetadataProvider]],
+  then [[lib.metadata.protocols/bulk-metadata]] will work as expected; it can be done for side-effects as well."
+  ^CachedProxyMetadataProvider [metadata-provider]
   (->CachedProxyMetadataProvider (atom {}) metadata-provider))

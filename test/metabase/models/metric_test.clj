@@ -1,10 +1,10 @@
 (ns metabase.models.metric-test
   (:require
    [clojure.test :refer :all]
+   [metabase.models :refer [Database Segment Table]]
    [metabase.models.metric :as metric :refer [Metric]]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
-   [metabase.models :refer [Segment Database Table]]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
