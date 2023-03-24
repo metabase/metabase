@@ -27,14 +27,14 @@
                  :advanced-math-expressions
                  :percentile-aggregations
                  :regex]]
-  (defmethod driver/supports? [:sql feature] [_ _] true))
+  (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 (doseq [join-feature [:left-join
                       :right-join
                       :inner-join
                       :full-join]]
-  (defmethod driver/supports? [:sql join-feature]
-    [driver _]
+  (defmethod driver/database-supports? [:sql join-feature]
+    [driver _feature _db]
     (driver/supports? driver :foreign-keys)))
 
 (defmethod driver/mbql->native :sql

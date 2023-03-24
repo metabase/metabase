@@ -46,43 +46,33 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
+(doseq [[feature supported?] {:datetime-diff true
+                              :persist-models true
+                              :convert-timezone true
+                              :now true}]
+  (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
+
 (defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ database]
   (let [json-setting (get-in database [:details :json-unfolding])
         ;; If not set at all, default to true, actually
         setting-nil? (nil? json-setting)]
     (or json-setting setting-nil?)))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             metabase.driver impls                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod driver/display-name :postgres [_] "PostgreSQL")
-
-(defmethod driver/database-supports? [:postgres :datetime-diff]
-  [_driver _feat _db]
-  true)
-
-(defmethod driver/database-supports? [:postgres :persist-models]
-  [_driver _feat _db]
-  true)
-
 (defmethod driver/database-supports? [:postgres :persist-models-enabled]
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
-
-(defmethod driver/database-supports? [:postgres :convert-timezone]
-  [_driver _feat _db]
-  true)
-
-(defmethod driver/database-supports? [:postgres :now]
-  [_driver _feat _db]
-  true)
 
 (doseq [feature [:actions :actions/custom]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
     (= driver :postgres)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             metabase.driver impls                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 (defmethod driver/humanize-connection-error-message :postgres
   [_ message]

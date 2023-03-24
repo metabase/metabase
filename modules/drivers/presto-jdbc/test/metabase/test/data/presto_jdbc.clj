@@ -27,7 +27,7 @@
 (defmethod tx/sorts-nil-first? :presto-jdbc [_ _] false)
 
 ;; during unit tests don't treat presto as having FK support
-(defmethod driver/supports? [:presto-jdbc :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/database-supports? [:presto-jdbc :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 (defmethod tx/aggregate-column-info :presto-jdbc
   ([driver ag-type]

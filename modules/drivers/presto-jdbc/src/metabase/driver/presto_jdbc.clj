@@ -52,7 +52,19 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod driver/database-supports? [:presto-jdbc :now] [_driver _feat _db] true)
+(driver/register! :presto-jdbc, :parent #{:sql-jdbc
+                                          ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(doseq [[feature supported?] {:set-timezone                    true
+                              :basic-aggregations              true
+                              :standard-deviation-aggregations true
+                              :expressions                     true
+                              :native-parameters               true
+                              :expression-aggregations         true
+                              :binning                         true
+                              :foreign-keys                    true
+                              :now                             true}]
+  (defmethod driver/database-supports? [:presto-jdbc feature] [_driver _feature _db] supported?))
 
 ;;; Presto API helpers
 
@@ -258,22 +270,6 @@
 (defmethod driver/current-db-time :presto-jdbc
   [& args]
   (apply driver.common/current-db-time args))
-
-(doseq [[feature supported?] {:set-timezone                    true
-                              :basic-aggregations              true
-                              :standard-deviation-aggregations true
-                              :expressions                     true
-                              :native-parameters               true
-                              :expression-aggregations         true
-                              :binning                         true
-                              :foreign-keys                    true
-                              :now                             true}]
-  (defmethod driver/supports? [:presto-jdbc feature] [_ _] supported?))
-
-;; presto-jdbc
-
-(driver/register! :presto-jdbc, :parent #{:sql-jdbc
-                                          ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Custom HoneySQL Clause Impls                                          |

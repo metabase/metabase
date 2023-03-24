@@ -41,13 +41,10 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(defmethod driver/database-supports? [:snowflake :datetime-diff] [_ _ _] true)
-
-(defmethod driver/database-supports? [:snowflake :now] [_driver _feat _db] true)
-
-(defmethod driver/supports? [:snowflake :convert-timezone]
-  [_driver _feature]
-  true)
+(doseq [[feature supported?] {:datetime-diff    true
+                              :now              true
+                              :convert-timezone true}]
+  (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ message]
