@@ -6,7 +6,7 @@ import { User } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
 import MetabaseEmptyState from "../MetabotEmptyState";
-import MetabotDatabasePicker from "../MetabotDatabasePicker/MetabotDatabasePicker";
+import DatabasePicker from "../DatabasePicker/DatabasePicker";
 import MetabotGreeting from "../MetabotGreeting";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
@@ -57,11 +57,7 @@ const DatabaseMetabot = ({
             onRun={handleRun}
           />
         ) : (
-          <MetabotDatabasePicker
-            databases={databases}
-            selectedDatabase={database}
-            onChange={onDatabaseChange}
-          />
+          <DatabasePicker databases={databases} onChange={onDatabaseChange} />
         )}
       </MetabotHeader>
       {value ? (
@@ -88,11 +84,9 @@ const getGreetingMessage = (
 
   const name = user?.first_name;
   const databasePicker = (
-    <MetabotDatabasePicker
-      inline
-      variant="link"
+    <DatabasePicker
       databases={databases}
-      selectedDatabase={database}
+      selectedDatabaseId={database.id}
       onChange={onDatabaseChange}
     />
   );

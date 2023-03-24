@@ -58,8 +58,6 @@ export default _.compose(
     id: (state: State, { models }: SearchLoaderProps) => models[0]?.id,
     entityAlias: "card",
   }),
+  Databases.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
-  Databases.load({
-    id: (state: State, { model }: StateProps) => model?.databaseId(),
-  }),
 )(HomeMetabot);

@@ -1,41 +1,68 @@
-import React from "react";
-import { t } from "ttag";
+import React, { useCallback, useState } from "react";
+import { jt, t } from "ttag";
 import { DatabaseId, User } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
+import DatabasePicker from "../DatabasePicker";
 import MetabotGreeting from "../MetabotGreeting";
 import MetabotPrompt from "../MetabotPrompt";
 import { MetabotHeader } from "./HomeMetabot.styled";
 
 interface HomeMetabotProps {
+  databases: Database[];
   model?: Question;
-  database?: Database;
   user?: User;
   onRun: (databaseId: DatabaseId, query: string) => void;
 }
 
-const HomeMetabot = ({ model, database, user, onRun }: HomeMetabotProps) => {
-  if (!model || !database) {
-    return null;
-  }
+const HomeMetabot = ({ databases, model, user, onRun }: HomeMetabotProps) => {
+  const initialDatabaseId = model?.databaseId() ?? databases[0]?.id;
+  const [databaseId, setDatabaseId] = useState(initialDatabaseId);
 
-  const handleRun = (query: string) => {
-    onRun(database.id, query);
-  };
+  const handleRun = useCallback(
+    (query: string) => {
+      onRun(databaseId, query);
+    },
+    [databaseId, onRun],
+  );
 
   return (
     <MetabotHeader>
       <MetabotGreeting>
-        {t`Hey there, ${user?.first_name}! You can ask me things about your data. I’m thinking about the ${database.name} database right now. `}
+        {getGreetingMessage(user)} {t`You can ask me things about your data.`}{" "}
+        {databases.length > 1 &&
+          jt`I’m thinking about the ${(
+            <DatabasePicker
+              key="picker"
+              databases={databases}
+              selectedDatabaseId={databaseId}
+              onChange={setDatabaseId}
+            />
+          )} database right now.`}
       </MetabotGreeting>
       <MetabotPrompt
         user={user}
-        placeholder={t`Ask something like, how many ${model?.displayName()} have we had over time?`}
-        isRunning={false}
+        placeholder={getPromptPlaceholder(model)}
         onRun={handleRun}
       />
     </MetabotHeader>
   );
+};
+
+const getGreetingMessage = (user?: User) => {
+  if (user?.first_name) {
+    return t`Hey there, ${user?.first_name}!`;
+  } else {
+    return t`Hey there!`;
+  }
+};
+
+const getPromptPlaceholder = (model?: Question) => {
+  if (model) {
+    return t`Ask something like, how many ${model?.displayName()} have we had over time?`;
+  } else {
+    return t`Ask something…`;
+  }
 };
 
 export default HomeMetabot;
