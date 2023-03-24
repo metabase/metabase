@@ -152,10 +152,8 @@
                               e))))]
     (apply f args)))
 
-(defn ^:command ^:deprecated load
-  "Deprecated: prefer [[import]] instead.
-
-  Load serialized metabase instance as created by [[dump]] command from directory `path`.
+(defn ^:command load
+  "Load serialized metabase instance as created by [[dump]] command from directory `path`.
 
   `--mode` can be one of `:update` or `:skip` (default). `--on-error` can be `:abort` or `:continue` (default)."
   [path & options]
@@ -171,10 +169,8 @@
   (let [opts {:abort-on-error (boolean (some #{"--abort-on-error"} options))}]
     (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path opts)))
 
-(defn ^:command ^:deprecated dump
-  "Deprecated: prefer [[export]] instead.
-
-  Serialized metabase instance into directory `path`. `args` options may contain --state option with one of
+(defn ^:command dump
+  "Serialized metabase instance into directory `path`. `args` options may contain --state option with one of
   `active` (default), `all`. With `active` option, do not dump archived entities."
   [path & options]
   (log/warn (u/colorize :red (trs "''dump'' is deprecated and will be removed in a future release. Please migrate to ''export''.")))
