@@ -32,7 +32,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.util UUID)))
@@ -137,7 +136,7 @@
    auto_run_queries   (s/maybe s/Bool)}
   (letfn [(create! []
             (try
-              (db/transaction
+              (t2/with-transaction [_conn]
                (let [user-info (setup-create-user!
                                 {:email email, :first-name first_name, :last-name last_name, :password password})
                      db        (setup-create-database! {:name name

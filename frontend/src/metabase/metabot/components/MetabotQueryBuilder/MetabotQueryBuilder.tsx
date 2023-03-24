@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Dataset } from "metabase-types/types/Dataset";
 import Question from "metabase-lib/Question";
 import MetabotQueryEditor from "../MetabotQueryEditor";
@@ -15,36 +15,28 @@ type MetabotQueryBuilderProps = {
 };
 
 const MetabotQueryBuilder = ({
-  question: initialQuestion,
+  question,
   results,
 }: MetabotQueryBuilderProps) => {
-  const [isRawTable, setIsRawTable] = useState(false);
-  const question = useMemo(
-    () => getQuestion(initialQuestion, isRawTable),
-    [initialQuestion, isRawTable],
-  );
+  const [isShowingRawTable, setIsShowingRawTable] = useState(false);
 
   return (
     <MetabotQueryBuilderRoot>
       <MetabotQueryEditor question={question} />
       <MetabotQueryVisualizationContainer>
-        <MetabotVisualization question={question} results={results} />
+        <MetabotVisualization
+          question={question}
+          results={results}
+          isShowingRawTable={isShowingRawTable}
+        />
       </MetabotQueryVisualizationContainer>
       <MetabotQueryFooter
         question={question}
-        isRawTable={isRawTable}
-        onToggleRawTable={setIsRawTable}
+        isShowingRawTable={isShowingRawTable}
+        onToggleRawTable={setIsShowingRawTable}
       />
     </MetabotQueryBuilderRoot>
   );
-};
-
-const getQuestion = (question: Question, isRawData: boolean) => {
-  if (isRawData) {
-    return question.setDisplay("table").setSettings({ "table.pivot": false });
-  } else {
-    return question;
-  }
 };
 
 export default MetabotQueryBuilder;

@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 
-export const HomeMetabotWidgetRoot = styled.section`
+export const MetabotHeader = styled.section`
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 1rem;

@@ -1,45 +1,46 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import { MetabotApi } from "metabase/services";
-import { Database, User } from "metabase-types/api";
+import { User } from "metabase-types/api";
 import Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import MetabotPrompt from "../MetabotPrompt";
-import MetabotGreeting from "../MetabotGreeting";
+import Database from "metabase-lib/metadata/Database";
+import MetabaseEmptyState from "../MetabotEmptyState";
 import MetabotDatabasePicker from "../MetabotDatabasePicker/MetabotDatabasePicker";
-import {
-  MetabotHeader,
-  MetabotResultsSkeleton,
-  MetabotRoot,
-} from "../MetabotLayout";
+import MetabotGreeting from "../MetabotGreeting";
+import MetabotPrompt from "../MetabotPrompt";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
+import { MetabotHeader, MetabotRoot } from "../MetabotLayout";
 
 interface DatabaseMetabotProps {
-  prompt?: string;
   database: Database;
   databases: Database[];
   user?: User;
-  metadata: Metadata;
+  initialQuery?: string;
   onDatabaseChange: (databaseId: number) => void;
 }
 
 const DatabaseMetabot = ({
-  prompt,
   database,
   databases,
   user,
-  metadata,
+  initialQuery,
   onDatabaseChange,
 }: DatabaseMetabotProps) => {
   const [{ value, loading }, run] = useAsyncFn(getQuestionAndResults);
 
   const handleRun = useCallback(
-    (text: string) => {
-      run(database, metadata, text);
+    (query: string) => {
+      run(database, query);
     },
-    [database, metadata, run],
+    [database, run],
   );
+
+  useEffect(() => {
+    if (initialQuery) {
+      run(database, initialQuery);
+    }
+  }, [database, initialQuery, run]);
 
   return (
     <MetabotRoot>
@@ -49,9 +50,9 @@ const DatabaseMetabot = ({
         </MetabotGreeting>
         {database != null ? (
           <MetabotPrompt
-            initialPrompt={prompt}
             user={user}
             placeholder={t`Ask something...`}
+            initialQuery={initialQuery}
             isRunning={loading}
             onRun={handleRun}
           />
@@ -69,7 +70,7 @@ const DatabaseMetabot = ({
           results={value.results}
         />
       ) : (
-        <MetabotResultsSkeleton display="bar" isStatic />
+        <MetabaseEmptyState />
       )}
     </MetabotRoot>
   );
@@ -101,16 +102,12 @@ const getGreetingMessage = (
     : jt`What do you want to know about ${databasePicker}?`;
 };
 
-const getQuestionAndResults = async (
-  database: Database,
-  metadata: Metadata,
-  questionText: string,
-) => {
+const getQuestionAndResults = async (database: Database, query: string) => {
   const card = await MetabotApi.databasePrompt({
     databaseId: database.id,
-    question: questionText,
+    question: query,
   });
-  const question = new Question(card, metadata);
+  const question = new Question(card, database.metadata);
   const results = await question.apiGetResults();
 
   return { question, results };

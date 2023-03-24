@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 
 export const MetabotRoot = styled.main`
   display: flex;
@@ -15,8 +14,4 @@ export const MetabotHeader = styled.header`
   padding: 1.5rem 2rem;
   border-bottom: 1px solid ${color("border")};
   background-color: ${color("bg-white")};
-`;
-
-export const MetabotResultsSkeleton = styled(ChartSkeleton)`
-  padding: 4rem 1rem 1rem 1rem;
 `;

@@ -16,6 +16,7 @@ describe("HomeLayout", () => {
 });
 
 const getProps = (opts?: Partial<HomeLayoutProps>): HomeLayoutProps => ({
+  models: [],
   showIllustration: false,
   ...opts,
 });
