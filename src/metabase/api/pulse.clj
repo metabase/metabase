@@ -29,7 +29,6 @@
    [metabase.util.schema :as su]
    [metabase.util.urls :as urls]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
@@ -136,7 +135,7 @@
                     :collection_position collection_position
                     :dashboard_id        dashboard_id
                     :parameters          parameters}]
-    (db/transaction
+    (t2/with-transaction [_conn]
      ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
      ;; check that and fix it if needed
      (api/maybe-reconcile-collection-position! pulse-data)
@@ -213,7 +212,7 @@
                    [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")])))
 
     (let [pulse-updates (maybe-add-recipients-for-sandboxed-users pulse-updates pulse-before-update)]
-      (db/transaction
+      (t2/with-transaction [_conn]
        ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
        ;; depending on what changed.
        (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)

@@ -313,7 +313,7 @@
       (t2/insert! Session {:id      (str test-uuid)
                            :user_id (mt/user->id :lucky)})
         ;; use low-level `execute!` because updating is normally disallowed for Sessions
-      (db/execute! {:update :core_session, :set {:created_at (t/instant 0)}, :where [:= :id (str test-uuid)]})
+      (t2/query-one {:update :core_session, :set {:created_at (t/instant 0)}, :where [:= :id (str test-uuid)]})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
