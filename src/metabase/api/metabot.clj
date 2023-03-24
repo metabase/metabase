@@ -20,7 +20,7 @@
          :request  body})
   (let [model (api/check-404 (t2/select-one Card :id model-id :dataset true))]
     (or
-     (metabot/generate-sql-from-prompt model question fake)
+     (metabot/generate-dataset-from-prompt model question fake)
      (throw
       (let [message (format
                      "Query '%s' didn't produce any SQL. Perhaps try a more detailed query."
@@ -40,7 +40,7 @@
          :request     body})
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))]
     (if-some [model (metabot/find-best-model database question)]
-      (metabot/generate-sql-from-prompt model question fake)
+      (metabot/generate-dataset-from-prompt model question fake)
       (throw
        (let [message (format
                       (str/join
