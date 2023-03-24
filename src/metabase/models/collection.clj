@@ -966,14 +966,14 @@
 
 (defmethod serdes/load-xform "Collection" [{:keys [parent_id] :as contents}]
   (let [loc        (if parent_id
-                     (let [{:keys [id location]} (serdes/lookup-by-id Collection parent_id)]
+                     (let [{:keys [id location]} (serdes/*lookup-by-id* Collection parent_id)]
                        (str location id "/"))
                      "/")]
     (-> contents
         serdes/load-xform-basics
         (dissoc :parent_id)
         (assoc :location loc)
-        (update :personal_owner_id serdes/import-user))))
+        (update :personal_owner_id serdes/*import-user*))))
 
 (defmethod serdes/dependencies "Collection"
   [{:keys [parent_id]}]
