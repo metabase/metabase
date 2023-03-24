@@ -51,7 +51,9 @@ To export the contents of a Metabase instance, use the following command in your
 java -jar metabase.jar export [export_name] --user [example@example.com]
 ```
 
-The optional `--user` flag is used to specify a default administrator account for cases when this export is loaded into a blank Metabase instance. This user will also be marked as the creator of all artifacts that are copied over to the instance. This user's personal collection and its contents will also be included in the export. If this flag isn't specified, Metabase will assume that the instance into which you're loading already has an admin user (but the load will fail if there isn't an admin user).
+Exporting will fail if your target Metabase instance doesn't have an admin account. 
+
+Use the optional `--user` flag  to specify a default administrator account for cases when this export is loaded into a blank Metabase instance. This user will also be marked as the creator of all artifacts that are copied over to the instance. This user's personal collection and its contents will also be included in the export.
 
 ## Importing
 
