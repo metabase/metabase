@@ -46,28 +46,31 @@
                                                                                             :database-is-auto-increment false
                                                                                             :semantic-type              :type/Category
                                                                                             :base-type                  :type/Decimal}}}}}
-                             {:name          "buyer"
-                              :database-type "OBJECT"
+                             {:name           "buyer"
+                              :database-type  "OBJECT"
                               :database-is-auto-increment false
-                              :base-type     :type/Dictionary
-                              :nested-fields #{{:name          "name"
-                                                :database-type "VARCHAR"
-                                                :database-is-auto-increment false
-                                                :base-type     :type/Text}
-                                               {:name          "cc"
-                                                :database-type "VARCHAR"
-                                                :database-is-auto-increment false
-                                                :base-type     :type/Text}}}}}
+                              :json-unfolding false
+                              :base-type      :type/Dictionary
+                              :nested-fields  #{{:name          "name"
+                                                 :database-type "VARCHAR"
+                                                 :database-is-auto-increment false
+                                                 :base-type     :type/Text}
+                                                {:name          "cc"
+                                                 :database-type "VARCHAR"
+                                                 :database-is-auto-increment false
+                                                 :base-type     :type/Text}}}}}
    "employees"    {:name   "employees"
                    :schema nil
-                   :fields #{{:name          "id"
-                              :database-type "SERIAL"
+                   :fields #{{:name           "id"
+                              :database-type  "SERIAL"
+                              :json-unfolding false
                               :database-is-auto-increment true
-                              :base-type     :type/Integer}
-                             {:name          "name"
-                              :database-type "VARCHAR"
+                              :base-type      :type/Integer}
+                             {:name           "name"
+                              :database-type  "VARCHAR"
+                              :json-unfolding false
                               :database-is-auto-increment false
-                              :base-type     :type/Text}}}})
+                              :base-type      :type/Text}}}})
 
 (driver/register! ::toucanery, :abstract? true)
 

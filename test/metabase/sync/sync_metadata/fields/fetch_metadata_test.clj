@@ -39,6 +39,7 @@
                                     :effective-type    :type/Text
                                     :pk?               false
                                     :database-required false
+                                    :json-unfolding    false
                                     :database-is-auto-increment false}
                                    {:name              "cc"
                                     :database-type     "VARCHAR"
@@ -46,6 +47,7 @@
                                     :effective-type    :type/Text
                                     :pk?               false
                                     :database-required false
+                                    :json-unfolding    false
                                     :database-is-auto-increment false}}}
              {:name              "ts"
               :database-type     "BIGINT"
@@ -106,3 +108,170 @@
                                                                    ;; order in the set implementation
                                                                    (m/filter-vals some? (dissoc % :id :database-position))))]
              (remove-ids-and-nil-vals (#'fetch-metadata/our-metadata (t2/select-one Table :id transactions-table-id))))))))
+
+(clojure.data/diff
+  ;; expected
+ (sort-by :name #{{:database-is-auto-increment false,
+     :base-type :type/Dictionary,
+     :database-required false,
+     :name "buyer",
+     :nested-fields
+     #{{:name "name",
+        :database-type "VARCHAR",
+        :base-type :type/Text,
+        :effective-type :type/Text,
+        :pk? false,
+        :database-required false,
+        :json-unfolding false,
+        :database-is-auto-increment false}
+       {:name "cc",
+        :database-type "VARCHAR",
+        :base-type :type/Text,
+        :effective-type :type/Text,
+        :pk? false,
+        :database-required false,
+        :json-unfolding false,
+        :database-is-auto-increment false}},
+     :database-type "OBJECT",
+     :effective-type :type/Dictionary,
+     :pk? false,
+     :json-unfolding false}
+    {:database-is-auto-increment true,
+     :base-type :type/Integer,
+     :semantic-type :type/PK,
+     :database-required false,
+     :name "id",
+     :database-type "SERIAL",
+     :effective-type :type/Integer,
+     :pk? true,
+     :json-unfolding false}
+    {:database-is-auto-increment false,
+     :base-type :type/BigInteger,
+     :database-required false,
+     :name "ts",
+     :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime,
+     :database-type "BIGINT",
+     :effective-type :type/DateTime,
+     :pk? false,
+     :json-unfolding false}
+    {:database-is-auto-increment false,
+     :base-type :type/Dictionary,
+     :database-required false,
+     :name "toucan",
+     :nested-fields
+     #{{:name "name",
+        :database-type "VARCHAR",
+        :base-type :type/Text,
+        :effective-type :type/Text,
+        :pk? false,
+        :database-required false,
+        :json-unfolding false,
+        :database-is-auto-increment false}
+       {:database-is-auto-increment false,
+        :base-type :type/Dictionary,
+        :database-required false,
+        :name "details",
+        :nested-fields
+        #{{:name "age",
+           :database-type "INT",
+           :base-type :type/Integer,
+           :effective-type :type/Integer,
+           :pk? false,
+           :database-required false,
+           :json-unfolding false,
+           :database-is-auto-increment false}
+          {:database-is-auto-increment false,
+           :base-type :type/Decimal,
+           :semantic-type :type/Category,
+           :database-required false,
+           :name "weight",
+           :database-type "DECIMAL",
+           :effective-type :type/Decimal,
+           :pk? false,
+           :json-unfolding false}},
+        :database-type "OBJECT",
+        :effective-type :type/Dictionary,
+        :pk? false,
+        :json-unfolding false}},
+     :database-type "OBJECT",
+     :effective-type :type/Dictionary,
+     :pk? false,
+     :json-unfolding false}})
+   ;; Actual
+   (sort-by :name
+            #{{:database-is-auto-increment false,
+               :base-type :type/Dictionary,
+               :database-required false,
+               :name "toucan",
+               :nested-fields
+               #{{:database-is-auto-increment false,
+                  :base-type :type/Dictionary,
+                  :database-required false,
+                  :name "details",
+                  :nested-fields
+                  #{{:database-is-auto-increment false,
+                     :base-type :type/Integer,
+                     :database-required false,
+                     :name "age",
+                     :database-type "INT",
+                     :effective-type :type/Integer,
+                     :pk? false}
+                    {:database-is-auto-increment false,
+                     :base-type :type/Decimal,
+                     :semantic-type :type/Category,
+                     :database-required false,
+                     :name "weight",
+                     :database-type "DECIMAL",
+                     :effective-type :type/Decimal,
+                     :pk? false}},
+                  :database-type "OBJECT",
+                  :effective-type :type/Dictionary,
+                  :pk? false}
+                 {:database-is-auto-increment false,
+                  :base-type :type/Text,
+                  :database-required false,
+                  :name "name",
+                  :database-type "VARCHAR",
+                  :effective-type :type/Text,
+                  :pk? false}},
+               :database-type "OBJECT",
+               :effective-type :type/Dictionary,
+               :pk? false}
+              {:database-is-auto-increment true,
+               :base-type :type/Integer,
+               :semantic-type :type/PK,
+               :database-required false,
+               :name "id",
+               :database-type "SERIAL",
+               :effective-type :type/Integer,
+               :pk? true}
+              {:database-is-auto-increment false,
+               :base-type :type/BigInteger,
+               :database-required false,
+               :name "ts",
+               :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime,
+               :database-type "BIGINT",
+               :effective-type :type/DateTime,
+               :pk? false}
+              {:database-is-auto-increment false,
+               :base-type :type/Dictionary,
+               :database-required false,
+               :name "buyer",
+               :nested-fields
+               #{{:database-is-auto-increment false,
+                  :base-type :type/Text,
+                  :database-required false,
+                  :name "cc",
+                  :database-type "VARCHAR",
+                  :effective-type :type/Text,
+                  :pk? false}
+                 {:database-is-auto-increment false,
+                  :base-type :type/Text,
+                  :database-required false,
+                  :name "name",
+                  :database-type "VARCHAR",
+                  :effective-type :type/Text,
+                  :pk? false}},
+               :database-type "OBJECT",
+               :effective-type :type/Dictionary,
+               :pk? false}}) )
