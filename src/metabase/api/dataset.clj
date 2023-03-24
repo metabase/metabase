@@ -182,7 +182,7 @@
     (throw (ex-info (tru "Missing field-ids for parameter")
                     {:status-code 400})))
   (-> (reduce (fn [resp id]
-                (let [{values :values more? :has_more_values} (api.field/field-id->values id query)]
+                (let [{values :values more? :has_more_values} (api.field/field-id->values id query false)]
                   (-> resp
                       (update :values concat values)
                       (update :has_more_values #(or % more?)))))
