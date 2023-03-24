@@ -993,6 +993,7 @@
         (testing "Rollback restores the original state"
           (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*]
             (db.setup/migrate! db-type data-source :down 46)
+            (Thread/sleep 1000) ;; sleep because sometimes this flakes on MySQL
             (let [new-base-types (t2/select-pk->fn :base_type Field)]
               (are [field-id expected] (= expected (get new-base-types field-id))
                 pg-field-1-id :type/Structured
