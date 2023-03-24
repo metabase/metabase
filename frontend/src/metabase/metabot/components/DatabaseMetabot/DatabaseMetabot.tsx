@@ -5,11 +5,12 @@ import { MetabotApi } from "metabase/services";
 import { User } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
-import MetabotPrompt from "../MetabotPrompt";
-import MetabotGreeting from "../MetabotGreeting";
+import MetabaseEmptyState from "../MetabotEmptyState";
 import MetabotDatabasePicker from "../MetabotDatabasePicker/MetabotDatabasePicker";
-import { MetabotHeader, MetabotRoot } from "../MetabotLayout";
+import MetabotGreeting from "../MetabotGreeting";
+import MetabotPrompt from "../MetabotPrompt";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
+import { MetabotHeader, MetabotRoot } from "../MetabotLayout";
 
 interface DatabaseMetabotProps {
   database: Database;
@@ -63,11 +64,13 @@ const DatabaseMetabot = ({
           />
         )}
       </MetabotHeader>
-      {value && (
+      {value ? (
         <MetabotQueryBuilder
           question={value.question}
           results={value.results}
         />
+      ) : (
+        <MetabaseEmptyState />
       )}
     </MetabotRoot>
   );

@@ -4,11 +4,12 @@ import { jt, t } from "ttag";
 import { MetabotApi } from "metabase/services";
 import { User } from "metabase-types/api";
 import Question from "metabase-lib/Question";
-import ModelLink from "../ModelLink";
-import MetabotPrompt from "../MetabotPrompt";
+import MetabotEmptyState from "../MetabotEmptyState";
 import MetabotGreeting from "../MetabotGreeting";
-import { MetabotHeader, MetabotRoot } from "../MetabotLayout";
+import MetabotPrompt from "../MetabotPrompt";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
+import ModelLink from "../ModelLink";
+import { MetabotHeader, MetabotRoot } from "../MetabotLayout";
 
 interface ModelMetabotProps {
   model: Question;
@@ -36,11 +37,13 @@ const ModelMetabot = ({ model, user }: ModelMetabotProps) => {
           onRun={handleRun}
         />
       </MetabotHeader>
-      {value && (
+      {value ? (
         <MetabotQueryBuilder
           question={value.question}
           results={value.results}
         />
+      ) : (
+        <MetabotEmptyState />
       )}
     </MetabotRoot>
   );
