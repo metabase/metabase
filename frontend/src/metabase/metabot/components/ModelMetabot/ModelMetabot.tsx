@@ -3,6 +3,7 @@ import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import { MetabotApi } from "metabase/services";
 import { User } from "metabase-types/api";
+import { fillQuestionTemplateTags } from "metabase/metabot/utils/question";
 import Question from "metabase-lib/Question";
 import MetabotEmptyState from "../MetabotEmptyState";
 import MetabotGreeting from "../MetabotGreeting";
@@ -67,7 +68,9 @@ const getQuestionAndResults = async (model: Question, query: string) => {
     modelId: model.id(),
     question: query,
   });
-  const question = new Question(card, model.metadata());
+  const question = fillQuestionTemplateTags(
+    new Question(card, model.metadata()),
+  );
   const results = await question.apiGetResults();
 
   return { question, results };

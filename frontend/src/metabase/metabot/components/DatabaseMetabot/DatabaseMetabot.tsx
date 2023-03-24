@@ -3,6 +3,7 @@ import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import { MetabotApi } from "metabase/services";
 import { User } from "metabase-types/api";
+import { fillQuestionTemplateTags } from "metabase/metabot/utils/question";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
 import MetabaseEmptyState from "../MetabotEmptyState";
@@ -106,10 +107,13 @@ const getQuestionAndResults = async (database: Database, query: string) => {
     databaseId: database.id,
     question: query,
   });
-  const question = new Question(card, database.metadata);
+  const question = fillQuestionTemplateTags(
+    new Question(card, database.metadata),
+  );
+
   const results = await question.apiGetResults();
 
-  return { question, results };
+  return { question: question, results };
 };
 
 export default DatabaseMetabot;
