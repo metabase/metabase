@@ -85,7 +85,7 @@ To ask Metabase to forget the data from previous [scans](#syncing-and-scanning-d
 4. Click the **gear icon**.
 5. Click **Discard cached field values**.
 
-## Disable syncing and scanning for a specific table
+## Disabling syncing and scanning for specific tables
 
 To prevent Metabase from running syncs and scans against a specific table, change the [table visibility](../data-modeling/metadata-editing.md#table-visibility) to **Hidden**:
 

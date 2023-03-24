@@ -121,8 +121,8 @@ The **Manage database** permission grants access to the settings page for a give
 On the database settings page, you can:
 
 - Edit any of the [connection options](../databases/connecting.md) for the data source,
-- [sync schemas](../databases/connecting.md#manually-syncing-tables-and-columns), and
-- [scan field values](../databases/connecting.md#manually-scanning-column-values).
+- [sync schemas](../databases/sync-scan.md#manually-syncing-tables-and-columns), and
+- [scan field values](../databases/sync-scan.md#manually-scanning-column-values).
 
 Note that only admins can delete database connections in your Metabase, so people with **Manage database** permissions won't see the **Remove database** button.
 

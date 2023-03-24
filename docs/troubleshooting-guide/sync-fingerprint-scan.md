@@ -27,10 +27,9 @@ Once you've confirmed that you're looking at a non-cached view of your tables an
       *
    FROM
        "your_schema"."your_table_or_view"
-   LIMIT 
-       1
+   LIMIT 1
    ```
-4. [Manually re-sync](../databases/connecting.md#manually-syncing-tables-and-columns) the table or view if needed.
+4. [Manually re-sync](../databases/sync-scan.md#manually-syncing-tables-and-columns) the table or view if needed.
 
 ### Special cases
 
@@ -47,8 +46,7 @@ FROM
     "your_schema"."your_table_or_view"
 WHERE 
     1 <> 1
-LIMIT 
-    0
+LIMIT 0
 ```
 
 To run the sync query, Metabase must:
@@ -147,10 +145,10 @@ Metabase doesn't have a built-in option to trigger manual fingerprinting queries
 
 To speed up **syncs**:
    - Restrict the privileges used to connect to the database so that Metabase only syncs a limited subset of schemas or tables.
-   - [Reduce the frequency of sync queries](../databases/connecting.md#scheduling-database-scans).
+   - [Reduce the frequency of sync queries](../databases/sync-scan.md#scheduling-database-syncs).
 
 To speed up **scans**:
-   - [Reduce the frequency of scans, or disable scans entirely](../databases/connecting.md#scheduling-database-scans).
+   - [Reduce the frequency of scans, or disable scans entirely](../databases/sync-scan.md#scheduling-database-scans).
    - Reduce the number of columns being scanned by going to **Admin** > **Data Model** and setting **Filtering on this field** to **Search box** or **Plain input box**.
 
 **Explanation**
@@ -161,7 +159,7 @@ Syncs and scans are ultimately just two kinds of queries that are run against yo
 
 - [Troubleshooting database connections](./db-connection.md).
 - [Troubleshooting filters](./filters.md).
-- [How syncs and scans work](../databases/connecting.md#syncing-and-scanning-databases).
+- [How syncs and scans work](../databases/sync-scan.md#how-database-syncs-work).
 
 ## Are you still stuck?
 
