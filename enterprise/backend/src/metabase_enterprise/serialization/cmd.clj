@@ -18,6 +18,7 @@
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
+   [metabase.models.serialization :as serdes]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
    [metabase.plugins :as plugins]
@@ -26,8 +27,7 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2]
-   [metabase.models.serialization :as serdes]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
