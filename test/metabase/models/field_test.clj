@@ -8,7 +8,6 @@
    [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest unknown-types-test
@@ -27,8 +26,8 @@
     (testing (format "Field with unknown %s in DB should fall back to %s" column fallback-type)
       (mt/with-temp Field [field]
         (t2/query-one {:update :metabase_field
-                      :set    {column (u/qualified-name unknown-type)}
-                      :where  [:= :id (u/the-id field)]})
+                       :set    {column (u/qualified-name unknown-type)}
+                       :where  [:= :id (u/the-id field)]})
         (is (= fallback-type
                (t2/select-one-fn column Field :id (u/the-id field))))))
     (testing (format "Should throw an Exception if you attempt to save a Field with an invalid %s" column)

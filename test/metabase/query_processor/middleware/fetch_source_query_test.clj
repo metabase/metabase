@@ -10,7 +10,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- resolve-card-id-source-tables [query]
   (:pre (mt/test-qp-middleware fetch-source-query/resolve-card-id-source-tables query)))
@@ -251,8 +251,8 @@
             save-error            (try
                                     ;; `t2/update!` will fail because it will try to validate the query when it saves
                                     (t2/query-one {:update :report_card
-                                                  :set    {:dataset_query (json/generate-string circular-source-query)}
-                                                  :where  [:= :id card-id]})
+                                                   :set    {:dataset_query (json/generate-string circular-source-query)}
+                                                   :where  [:= :id card-id]})
                                     nil
                                     (catch Throwable e
                                       (str "Failed to save Card:" e)))]
@@ -275,8 +275,8 @@
         (let [save-error (try
                            ;; `t2/update!` will fail because it will try to validate the query when it saves,
                            (t2/query-one {:update :report_card
-                                         :set    {:dataset_query (json/generate-string (circular-source-query card-2-id))}
-                                         :where  [:= :id card-1-id]})
+                                          :set    {:dataset_query (json/generate-string (circular-source-query card-2-id))}
+                                          :where  [:= :id card-1-id]})
                            nil
                            (catch Throwable e
                              (str "Failed to save Card:" e)))]
