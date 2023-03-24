@@ -668,7 +668,7 @@ describe("data_grid", () => {
           cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }, M],
         };
 
-        it("should still show single rows even when collapsed", () => {
+        it("should convert single rows to subtotal rows when collapsed", () => {
           // Collapsing the "source" column
           const { getRowSection, leftHeaderItems, rowCount } =
             multiLevelPivotForIndexes(data, [3], [0, 1, 2], [4], {
@@ -676,11 +676,11 @@ describe("data_grid", () => {
             });
           expect(rowCount).toEqual(6);
           expect(leftHeaderItems[1]).toMatchObject({
-            value: "Affiliate",
-            hasSubtotal: false,
+            value: "Totals for Affiliate",
+            isSubtotal: true,
           });
           expect(leftHeaderItems[5]).toMatchObject({
-            value: "Totals for Google",
+            value: "Totals for Twitter",
             isSubtotal: true,
           });
           expect(getRowSection(1, 0)).toMatchObject([
