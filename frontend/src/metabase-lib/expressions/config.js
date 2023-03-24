@@ -481,6 +481,9 @@ export const EXPRESSION_FUNCTIONS = new Set([
 ]);
 
 const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
+
+export const OPERATOR_WITH_EXECUTION_PRIORITY = new Set(["/", "-"]);
+
 export const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
 
 const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);

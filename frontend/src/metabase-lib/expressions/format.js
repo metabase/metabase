@@ -18,6 +18,7 @@ import {
   getExpressionName,
   formatStringLiteral,
   hasOptions,
+  OPERATOR_WITH_EXECUTION_PRIORITY,
 } from "./index";
 
 export { DISPLAY_QUOTES, EDITOR_QUOTES } from "./config";
@@ -130,13 +131,13 @@ function formatOperator([op, ...args], options) {
 
     // "*","/" always have two arguments. If the second argument of "/" is an expression, we have to calculate it first.
     // Hence, adding parenthesis.
-    // "a / b * c" vs "a / (b * c)"
-    // "a / b / c" vs "a / (b / c)"
+    // "a / b * c" vs "a / (b * c)", "a / b / c" vs "a / (b / c)"
+    // "a - b + c" vs "a - (b + c)", "a - b - c" vs "a - (b - c)"
     const isSamePrecedenceWithExecutionPriority =
       index > 0 &&
       isOperator(arg) &&
       OPERATOR_PRECEDENCE[op] === OPERATOR_PRECEDENCE[argOp] &&
-      op === "/";
+      OPERATOR_WITH_EXECUTION_PRIORITY.has(op);
 
     return format(arg, {
       ...options,
