@@ -199,8 +199,9 @@ describe("scenarios > admin > databases > sample database", () => {
         .type("Sample Database")
         .blur();
 
+      cy.intercept("GET", "/api/database").as("fetchDatabases");
       cy.get("@deleteButton").should("be.enabled").click();
-      cy.wait("@delete");
+      cy.wait(["@delete", "@fetchDatabases"]);
     });
 
     cy.location("pathname").should("eq", "/admin/databases/"); // FIXME why the trailing slash?
