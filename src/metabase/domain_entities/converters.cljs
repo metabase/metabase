@@ -5,25 +5,27 @@
     [malli.transform :as mtx]))
 
 (defn- decode-map [schema _]
-  (let [by-prop (into {} (for [[map-key props] (mc/children schema)]
-                           [(or (get props :js/prop)
-                                (csk/->snake_case_string map-key))
-                            {:map-key map-key}]))]
+  (let [drop-nil? (set (for [[map-key props val-schema] (mc/children schema)
+                             :when (and (:optional props)
+                                        (not (#{'nil? :nil} (mc/type val-schema))))]
+                         map-key))]
     {:enter (fn [x]
               (cond
-                (map? x) x
-                (object? x)
-                (into {} (for [prop (js/Object.keys x)
-                               :let [js-val  (unchecked-get x prop)
-                                     map-key (or (get-in by-prop [prop :map-key])
-                                                 (csk/->kebab-case-keyword prop))]]
-                           [map-key js-val]))))
+                (map? x)    x
+                (object? x) (into {} (for [prop (js/Object.keys x)
+                                           :let [js-val  (unchecked-get x prop)
+                                                 map-key (csk/->kebab-case-keyword prop)]
+                                           ;; If the value is nil, and it's both :optional and not a :maybe,
+                                           ;; we just discard the value.
+                                           :when (not (and (nil? js-val)
+                                                           (drop-nil? map-key)))]
+                                       [map-key js-val]))))
      :leave (fn [x]
-              (if (object? x)
+              (if (map? x)
+                x
                 (throw (ex-info "decode-map leaving with a JS object not a CLJS map"
                                 {:value  x
-                                 :schema (mc/form schema)}))
-                x))}))
+                                 :schema schema}))))}))
 
 (defn- decode-map-of [keydec x]
   (cond
@@ -39,20 +41,6 @@
                           obj)
                         #js {}
                         x)))
-
-(defn- infer-child-decoder [schema _]
-  (let [mapping (into {} (for [c (mc/children schema)]
-                           (if (keyword? c)
-                             [(name c) c]
-                             [c c])))]
-    {:enter #(mapping % %)}))
-
-(defn- infer-child-encoder [schema _]
-  (let [mapping (into {} (for [c (mc/children schema)]
-                           (if (keyword? c)
-                             [c (name c)]
-                             [c c])))]
-    {:enter #(mapping % %)}))
 
 (def js-transformer
   "Malli transformer for converting JavaScript data to and from CLJS data.
@@ -87,13 +75,9 @@
      :decoders {:keyword           keyword
                 'keyword?          keyword
                 :qualified-keyword keyword
-                :vector            {:enter #(and % (vec %))}
-                :sequential        {:enter #(and % (vec %))}
-                :tuple             {:enter #(and % (vec %))}
-                :cat               {:enter #(and % (vec %))}
-                :catn              {:enter #(and % (vec %))}
-                :enum              {:compile infer-child-decoder}
-                :=                 {:compile infer-child-decoder}
+                :vector            {:enter vec}
+                :sequential        {:enter vec}
+                :tuple             {:enter vec}
                 :map               {:compile decode-map}
                 :map-of            {:compile (fn [schema _]
                                                (let [[key-schema] (mc/children schema)
@@ -105,8 +89,6 @@
                 :vector            {:leave clj->js}
                 :sequential        {:leave clj->js}
                 :tuple             {:leave clj->js}
-                :enum              {:compile infer-child-encoder}
-                :=                 {:compile infer-child-encoder}
                 :map               {:compile
                                     (fn [schema _]
                                       (let [js-props (into {} (for [[k props] (mc/children schema)

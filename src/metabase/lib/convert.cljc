@@ -1,6 +1,5 @@
 (ns metabase.lib.convert
   (:require
-   [clojure.set :as set]
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.options :as lib.options]
@@ -177,7 +176,4 @@
                (dissoc :stages)
                (update-vals ->legacy-MBQL))
            {:type      query-type
-            ;; This is here rather than in :mbql.stage/native, because the correct naming for a native query is:
-            ;; {:type :native :native {:query "SQL string"}} but for a nested query it's
-            ;; {:source-query {:native "SQL string"}} facepalm.png
-            query-type (set/rename-keys inner-query {:native :query})})))
+            query-type inner-query})))

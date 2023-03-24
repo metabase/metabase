@@ -13,7 +13,7 @@
 ;;; this is mostly to ensure all the relevant namespaces with multimethods impls get loaded.
 (comment lib.core/keep-me)
 
-(defn ^:export suggested-name
+(defn ^:export suggestedName
   "Return a nice description of a query."
   [query]
   (lib.metadata.calculation/suggested-name query))
@@ -27,7 +27,7 @@
     (mbql.normalize/normalize <>)
     (convert/->pMBQL <>)))
 
-(defn ^:export ->metadata-provider
+(defn ^:export metadataProvider
   "Convert metadata to a metadata provider if it is not one already."
   [database-id metadata]
   (if (lib.metadata.protocols/metadata-provider? metadata)
@@ -36,13 +36,10 @@
 
 (defn ^:export query
   "Coerce a plain map `query` to an actual query object that you can use with MLv2."
-  ([metadata-provider query-map]
-   (let [query-map (pMBQL query-map)]
-     (log/debugf "query map: %s" (pr-str query-map))
-     (lib.query/query metadata-provider query-map)))
-
-  ([database-id metadata query-map]
-   (query (->metadata-provider database-id metadata) query-map)))
+  [database-id metadata query-map]
+  (let [query-map (pMBQL query-map)]
+    (log/debugf "query map: %s" (pr-str query-map))
+    (lib.query/query (metadataProvider database-id metadata) query-map)))
 
 (defn ^:export legacy-query
   "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."
