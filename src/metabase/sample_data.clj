@@ -9,7 +9,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [ring.util.codec :as codec]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.net URL)))
@@ -69,7 +68,7 @@
 (defn add-sample-database!
   "Add the sample database as a Metabase DB if it doesn't already exist."
   []
-  (when-not (db/exists? Database :is_sample true)
+  (when-not (t2/exists? Database :is_sample true)
     (try
       (log/info (trs "Loading sample database"))
       (let [details (try-to-extract-sample-database!)]

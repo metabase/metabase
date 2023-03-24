@@ -153,7 +153,7 @@
    ;; of IDs
    (let [ids (location-path->ids location-path)]
      (= (count ids)
-        (db/count Collection :id [:in ids])))))
+        (t2/count Collection :id [:in ids])))))
 
 (defn- assert-valid-location
   "Assert that the `location` property of a `collection`, if specified, is valid. This checks that it is valid both from
@@ -557,7 +557,7 @@
   (when (collection.root/is-root-collection? collection)
     (throw (Exception. (tru "You cannot archive the Root Collection."))))
   ;; also make sure we're not trying to archive a PERSONAL Collection
-  (when (db/exists? Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
+  (when (t2/exists? Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
     (throw (Exception. (tru "You cannot archive a Personal Collection."))))
   (set
    (for [collection-or-id (cons
@@ -606,10 +606,10 @@
     ;; first move this Collection
     (log/info (trs "Moving Collection {0} and its descendants from {1} to {2}"
                    (u/the-id collection) (:location collection) new-location))
-    (db/transaction
+    (t2/with-transaction [_conn]
       (t2/update! Collection (u/the-id collection) {:location new-location})
       ;; we need to update all the descendant collections as well...
-      (db/execute!
+      (t2/query-one
        {:update :collection
         :set    {:location [:replace :location orig-children-location new-children-location]}
         :where  [:like :location (str orig-children-location "%")]}))))
@@ -625,7 +625,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived false))]
-    (db/transaction
+    (t2/with-transaction [_conn]
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived false}
         :archived true)
@@ -639,7 +639,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived true))]
-    (db/transaction
+    (t2/with-transaction [_conn]
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived true}
         :archived false)
@@ -670,7 +670,7 @@
     ;; Otherwise try to get the ID of its highest-level ancestor, e.g. if `location` is `/1/2/3/` we would get `1`.
     ;; Then see if the root-level ancestor is a Personal Collection (Personal Collections can only got in the Root
     ;; Collection.)
-    (db/exists? Collection
+    (t2/exists? Collection
       :id                (first (location-path->ids (:location collection)))
       :personal_owner_id [:not= nil]))))
 
@@ -797,7 +797,7 @@
 
   This needs to be done recursively for all descendants as well."
   [collection :- (mi/InstanceOf Collection)]
-  (db/execute! {:delete-from :permissions
+  (t2/query-one {:delete-from :permissions
                 :where       [:in :object (for [collection (cons collection (descendants collection))
                                                 path-fn    [perms/collection-read-path
                                                             perms/collection-readwrite-path]]
@@ -886,7 +886,7 @@
     (when (:personal_owner_id collection)
       (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
   ;; Delete permissions records for this Collection
-  (db/execute! {:delete-from :permissions
+  (t2/query-one {:delete-from :permissions
                 :where       [:or
                               [:= :object (perms/collection-readwrite-path collection)]
                               [:= :object (perms/collection-read-path collection)]]}))

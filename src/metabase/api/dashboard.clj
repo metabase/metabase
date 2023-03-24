@@ -42,7 +42,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
@@ -96,7 +95,7 @@
                         :cache_ttl           cache_ttl
                         :collection_id       collection_id
                         :collection_position collection_position}
-        dash           (db/transaction
+        dash           (t2/with-transaction [_conn]
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
                         ;; position, check that and fix up if needed
                         (api/maybe-reconcile-collection-position! dashboard-data)
@@ -335,7 +334,7 @@
                         :collection_id       collection_id
                         :collection_position collection_position}
         new-cards      (atom nil)
-        dashboard      (db/transaction
+        dashboard      (t2/with-transaction [_conn]
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                         ;; collection to change position, check that and fix up if needed
                         (api/maybe-reconcile-collection-position! dashboard-data)
@@ -407,7 +406,7 @@
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
     (check-allowed-to-change-embedding dash-before-update dash-updates)
-    (db/transaction
+    (t2/with-transaction [_conn]
       ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
       ;; adjust the collection position of other dashboards in the collection
       (api/maybe-reconcile-collection-position! dash-before-update dash-updates)

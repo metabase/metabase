@@ -32,7 +32,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.util UUID)))
@@ -137,7 +136,7 @@
    auto_run_queries   (s/maybe s/Bool)}
   (letfn [(create! []
             (try
-              (db/transaction
+              (t2/with-transaction [_conn]
                (let [user-info (setup-create-user!
                                 {:email email, :first-name first_name, :last-name last_name, :password password})
                      db        (setup-create-database! {:name name
@@ -199,7 +198,7 @@
    :group       (tru "Get connected")
    :description (tru "Connect to your data so your whole team can start to explore.")
    :link        "/admin/databases/create"
-   :completed   (db/exists? Database, :is_sample false)
+   :completed   (t2/exists? Database, :is_sample false)
    :triggered   :always})
 
 (defmethod admin-checklist-entry :set-up-email
@@ -226,10 +225,10 @@
    :group       (tru "Get connected")
    :description (tru "Share answers and data with the rest of your team.")
    :link        "/admin/people/"
-   :completed   (> (db/count User) 1)
-   :triggered   (or (db/exists? Dashboard)
-                    (db/exists? Pulse)
-                    (>= (db/count Card) 5))})
+   :completed   (> (t2/count User) 1)
+   :triggered   (or (t2/exists? Dashboard)
+                    (t2/exists? Pulse)
+                    (>= (t2/count Card) 5))})
 
 (defmethod admin-checklist-entry :hide-irrelevant-tables
   [_]
@@ -237,8 +236,8 @@
    :group       (tru "Curate your data")
    :description (tru "If your data contains technical or irrelevant info you can hide it.")
    :link        "/admin/datamodel/database"
-   :completed   (db/exists? Table, :visibility_type [:not= nil])
-   :triggered   (>= (db/count Table) 20)})
+   :completed   (t2/exists? Table, :visibility_type [:not= nil])
+   :triggered   (>= (t2/count Table) 20)})
 
 (defmethod admin-checklist-entry :organize-questions
   [_]
@@ -246,8 +245,8 @@
    :group       (tru "Curate your data")
    :description (tru "Have a lot of saved questions in {0}? Create collections to help manage them and add context." (tru "Metabase"))
    :link        "/collection/root"
-   :completed   (db/exists? Collection)
-   :triggered   (>= (db/count Card) 30)})
+   :completed   (t2/exists? Collection)
+   :triggered   (>= (t2/count Card) 30)})
 
 
 (defmethod admin-checklist-entry :create-metrics
@@ -256,8 +255,8 @@
    :group       (tru "Curate your data")
    :description (tru "Define canonical metrics to make it easier for the rest of your team to get the right answers.")
    :link        "/admin/datamodel/metrics"
-   :completed   (db/exists? Metric)
-   :triggered   (>= (db/count Card) 30)})
+   :completed   (t2/exists? Metric)
+   :triggered   (>= (t2/count Card) 30)})
 
 (defmethod admin-checklist-entry :create-segments
   [_]
@@ -265,8 +264,8 @@
    :group       (tru "Curate your data")
    :description (tru "Keep everyone on the same page by creating canonical sets of filters anyone can use while asking questions.")
    :link        "/admin/datamodel/segments"
-   :completed   (db/exists? Segment)
-   :triggered   (>= (db/count Card) 30)})
+   :completed   (t2/exists? Segment)
+   :triggered   (>= (t2/count Card) 30)})
 
 (defn- admin-checklist-values []
   (map

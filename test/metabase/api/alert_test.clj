@@ -15,7 +15,6 @@
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -76,7 +75,7 @@
 
 (defn- do-with-alert-in-collection [f]
   (pulse-test/with-pulse-in-collection [db collection alert card]
-    (assert (db/exists? PulseCard :card_id (u/the-id card), :pulse_id (u/the-id alert)))
+    (assert (t2/exists? PulseCard :card_id (u/the-id card), :pulse_id (u/the-id alert)))
     ;; Make this Alert actually be an alert
     (t2/update! Pulse (u/the-id alert) {:alert_condition "rows"})
     (let [alert (t2/select-one Pulse :id (u/the-id alert))]
