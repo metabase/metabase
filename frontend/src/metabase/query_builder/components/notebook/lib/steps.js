@@ -17,9 +17,6 @@ const STEPS = [
   {
     type: "join",
     valid: query => query.hasData() && query.database().hasFeature("join"),
-    // active: query => query.hasJoins(),
-    // revert: query => query.clearJoins(),
-    // clean: query => query.cleanJoins(),
     subSteps: query => query.joins().length,
     active: (query, index) => query.joins().length > index,
     revert: (query, index) => query.removeJoin(index),
@@ -49,20 +46,6 @@ const STEPS = [
     revert: query => query.clearFilters(),
     clean: query => query.cleanFilters(),
   },
-  // {
-  //   type: "aggregate",
-  //   valid: query => query.hasData(),
-  //   active: query => query.hasAggregations,
-  //   revert: query => query.clearAggregations(),
-  //   clean: query => query.cleanAggregations(),
-  // },
-  // {
-  //   type: "breakout",
-  //   valid: query => query.hasData() && query.hasAggregations() ,
-  //   active: query => query.hasBreakouts(),
-  //   revert: query => query.clearBreakouts(),
-  //   clean: query => query.cleanBreakouts(),
-  // },
   {
     // NOTE: summarize is a combination of aggregate and breakout
     type: "summarize",
