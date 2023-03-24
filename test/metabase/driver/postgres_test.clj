@@ -598,19 +598,21 @@
         (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [sql]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= sql-jdbc.describe-table/max-nested-field-columns
-                 (count
-                  (sql-jdbc.sync/describe-nested-field-columns
-                   :postgres
-                   database
-                   {:name "big_json_table"}))))
-          (is (str/includes?
-                (get-in (mt/with-log-messages-for-level :warn
-                              (sql-jdbc.sync/describe-nested-field-columns
-                                :postgres
-                                database
-                                {:name "big_json_table"})) [0 2])
-                "More nested field columns detected than maximum.")))))))
+          (mt/with-db database
+            (sync-tables/sync-tables-and-database! database)
+            (is (= sql-jdbc.describe-table/max-nested-field-columns
+                   (count
+                    (sql-jdbc.sync/describe-nested-field-columns
+                     :postgres
+                     database
+                     {:name "big_json_table" :id (mt/id "big_json_table")}))))
+            (is (str/includes?
+                 (get-in (mt/with-log-messages-for-level :warn
+                           (sql-jdbc.sync/describe-nested-field-columns
+                            :postgres
+                            database
+                            {:name "big_json_table" :id (mt/id "big_json_table")})) [0 2])
+                 "More nested field columns detected than maximum."))))))))
 
 (mt/defdataset with-uuid
   [["users"
