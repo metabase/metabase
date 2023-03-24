@@ -251,11 +251,14 @@
   (let [model (api/check-404 (t2/select-one Card :id model-id :dataset true))]
     (or
      (generate-sql-from-prompt model question fake)
-     (throw (ex-info
-             (format
-              "Query '%s' didn't produce any SQL. Perhaps try a more detailed query."
-              question)
-             {:status-code 400})))))
+     (throw
+      (let [message (format
+                     "Query '%s' didn't produce any SQL. Perhaps try a more detailed query."
+                     question)]
+        (ex-info
+         message
+         {:status-code 400
+          :message     message}))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/database/:database-id"
@@ -266,13 +269,16 @@
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))]
     (if-some [model (find-best-model database question)]
       (generate-sql-from-prompt model question fake)
-      (throw (ex-info
-              (format
-               (str/join
-                " "
-                ["Query '%s' didn't find a good match to your data."
-                 "Perhaps try a query that mentions the model name or columns more specificially."])
-               question)
-              {:status-code 400})))))
+      (throw
+       (let [message (format
+                      (str/join
+                       " "
+                       ["Query '%s' didn't find a good match to your data."
+                        "Perhaps try a query that mentions the model name or columns more specificially."])
+                      question)]
+         (ex-info
+          message
+          {:status-code 400
+           :message     message}))))))
 
 (api/define-routes)
