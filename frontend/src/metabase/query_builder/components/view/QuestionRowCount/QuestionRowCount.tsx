@@ -19,7 +19,7 @@ import LimitPopover from "metabase/query_builder/components/LimitPopover";
 import type { Dataset } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import * as MetabaseLib from "metabase-lib/v2";
+import * as Lib from "metabase-lib/v2";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 import type { Limit } from "metabase-lib/v2/types";
 import type Question from "metabase-lib/Question";
@@ -91,7 +91,7 @@ function QuestionRowCount({
     question.isStructured() && question.query().isEditable();
 
   const limit = canChangeLimit
-    ? MetabaseLib.currentLimit(question._getMLv2Query())
+    ? Lib.currentLimit(question._getMLv2Query())
     : null;
 
   if (loading) {
@@ -153,7 +153,7 @@ const formatRowCount = (count: number) => {
 };
 
 function getLimitMessage(question: Question, result: Dataset): string {
-  const limit = MetabaseLib.currentLimit(question._getMLv2Query());
+  const limit = Lib.currentLimit(question._getMLv2Query());
   const isValidLimit =
     typeof limit === "number" && limit > 0 && limit < HARD_ROW_LIMIT;
 
