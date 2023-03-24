@@ -23,6 +23,7 @@ export interface SelectButtonProps
   highlighted?: boolean;
   onClick?: () => void;
   onClear?: () => void;
+  dataTestId?: string;
 }
 
 const SelectButton = forwardRef(function SelectButton(
@@ -37,6 +38,7 @@ const SelectButton = forwardRef(function SelectButton(
     highlighted = false,
     onClick,
     onClear,
+    dataTestId,
     ...rest
   }: SelectButtonProps,
   ref: Ref<HTMLButtonElement>,
@@ -62,7 +64,7 @@ const SelectButton = forwardRef(function SelectButton(
   return (
     <SelectButtonRoot
       type="button"
-      data-testid={"select-button"}
+      data-testid={`${dataTestId ? `${dataTestId}-` : ""}select-button`}
       ref={ref}
       className={className}
       style={style}
