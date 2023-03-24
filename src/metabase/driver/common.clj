@@ -179,7 +179,7 @@
    :visible-if   {"advanced-options" true}
    :description  (deferred-tru
                    (str "This enables unfolding JSON columns into component fields by default. "
-                        "You can turn this off if performance is slow, and you can override this setting on each field."))
+                        "Disable unfolding if performance is slow. You can override this default in each field's Data Model settings."))
    :default      true})
 
 (def refingerprint
