@@ -45,18 +45,17 @@
       (for [{:keys [database-type database-is-auto-increment database-required base-type effective-type coercion-strategy
                     field-comment database-position nfc-path visibility-type json-unfolding], field-name :name :as field} new-field-metadatas]
         (do
-         (when (and effective-type
-                    base-type
-                    (not= effective-type base-type)
-                    (nil? coercion-strategy))
-           (log/warn (u/format-color 'red
-                                     (str
-                                      "WARNING: Field `%s`: effective type `%s` provided but no coercion strategy provided."
-                                      " Using base-type: `%s`")
-                                     field-name
-                                     effective-type
-                                     base-type)))
-         (merge
+          (when (and effective-type
+                     base-type
+                     (not= effective-type base-type)
+                     (nil? coercion-strategy))
+            (log/warn (u/format-color 'red
+                                      (str
+                                       "WARNING: Field `%s`: effective type `%s` provided but no coercion strategy provided."
+                                       " Using base-type: `%s`")
+                                      field-name
+                                      effective-type
+                                      base-type)))
           {:table_id                  (u/the-id table)
            :name                      field-name
            :display_name              (humanization/name->human-readable-name field-name)
@@ -74,7 +73,7 @@
            :json_unfolding            (or json-unfolding false)
            :database_is_auto_increment (or database-is-auto-increment false)
            :database_required         (or database-required false)
-           :visibility_type           (or visibility-type :normal)}))))))
+           :visibility_type           (or visibility-type :normal)})))))
 
 (s/defn ^:private create-or-reactivate-fields! :- (s/maybe [i/FieldInstance])
   "Create (or reactivate) Metabase Field object(s) for any Fields in `new-field-metadatas`. Does *NOT* recursively
