@@ -168,48 +168,4 @@
                    (fn [[_ _ b]] (format "AS \"%s\"" b)))]
     (println (mdb.query/format-sql query)))
 
-  ;; The challenge...
-
-  ;; This is what we use to 'train' metabot
-  ;; Aside - Would it work to compute the aliases and provide that as column names?
-  (->> (t2/select-one Card :id 1036)
-       metabot/model-messages
-       (mapv :content))
-
-  ;; And this is the native query version of the model
-  ;; Note the aliases for all join tables
-  ;; e.g. "People - User"."LONGITUDE" AS "People - User__LONGITUDE"
-  ;; This leaks the table abstraction from below -- We really just want what
-  ;; looks like a denormalized table with "sensible" names
-  ;; i.e. We want to use the column names above
-  (let [{:keys [dataset_query name]} (t2/select-one Card :id 1036)
-        {:keys [query]} (qp/compile-and-splice-parameters dataset_query)]
-    (println (mdb.query/format-sql query)))
-
-  (let [{:keys [dataset_query name]} (t2/select-one Card :id 1036)]
-    ;(#'metabase.query-processor/preprocess* dataset_query)
-    dataset_query)
-
-  (t2/select-one [Card :dataset_query :result_metadata] :id 1036)
-
-  (let [{:keys [dataset_query result_metadata]} (t2/select-one [Card :dataset_query :result_metadata] :id 1036)
-        query dataset_query]
-    [(let [{:keys [query]} (let [driver (metabase.driver.util/database->driver (:database (qp/preprocess query)))]
-                             (let [qp (metabase.query-processor.reducible/combine-middleware
-                                       (vec metabase.query-processor/around-middleware)
-                                       (fn [query _rff _context]
-                                         (metabase.query-processor.util.add-alias-info/add-alias-info
-                                          (#'metabase.query-processor/preprocess* query))))]
-                               (qp query nil nil)))
-           {:keys [fields joins]} query]
-       (for [field fields
-             :let [[_ id m] field
-                   alias (:metabase.query-processor.util.add-alias-info/desired-alias m)]]
-         [alias id]))
-     (into {} (map (juxt :id :display_name) result_metadata))])
-
-  (metabot/aliases (t2/select-one [Card :dataset_query :result_metadata] :id 1036))
-
-  (println (metabot/inner-query (t2/select-one Card :id 1036)))
-
   )
