@@ -144,7 +144,7 @@ const QuestionActions = ({
       },
       {
         title: t`Ask Metabot`,
-        icon: "bolt",
+        icon: "insight",
         action: handleAskMetabot,
       },
     );

@@ -5,12 +5,12 @@ import { MetabotApi } from "metabase/services";
 import { User } from "metabase-types/api";
 import { fillQuestionTemplateTags } from "metabase/metabot/utils/question";
 import Question from "metabase-lib/Question";
-import MetabotEmptyState from "../MetabotEmptyState";
 import MetabotGreeting from "../MetabotGreeting";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
 import ModelLink from "../ModelLink";
 import { MetabotHeader, MetabotRoot } from "../MetabotLayout";
+import MetabotResultsWrapper from "../MetabotResultsWrapper";
 
 interface ModelMetabotProps {
   model: Question;
@@ -18,7 +18,7 @@ interface ModelMetabotProps {
 }
 
 const ModelMetabot = ({ model, user }: ModelMetabotProps) => {
-  const [{ value, loading }, run] = useAsyncFn(getQuestionAndResults);
+  const [{ value, loading, error }, run] = useAsyncFn(getQuestionAndResults);
 
   const handleRun = useCallback(
     (query: string) => {
@@ -38,14 +38,11 @@ const ModelMetabot = ({ model, user }: ModelMetabotProps) => {
           onRun={handleRun}
         />
       </MetabotHeader>
-      {value ? (
-        <MetabotQueryBuilder
-          question={value.question}
-          results={value.results}
-        />
-      ) : (
-        <MetabotEmptyState />
-      )}
+      <MetabotResultsWrapper loading={loading} error={error} data={value}>
+        {({ question, results }) => (
+          <MetabotQueryBuilder question={question} results={results} />
+        )}
+      </MetabotResultsWrapper>
     </MetabotRoot>
   );
 };
