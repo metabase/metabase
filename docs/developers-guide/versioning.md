@@ -56,8 +56,8 @@ We usually publish release candidates to kick the tires on new features before r
 
 E.g.,
 
-- `v1.46.0-RC1` the first release candidate for the EE version)
-- `v0.46.0-RC3` the third release candidate for the OSS version)
+- `v1.46.0-RC1` (the first release candidate for the EE version)
+- `v0.46.0-RC3` (the third release candidate for the OSS version)
 
 ## Further reading
 
