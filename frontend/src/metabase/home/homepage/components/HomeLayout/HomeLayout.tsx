@@ -1,6 +1,6 @@
 import React, { ReactNode } from "react";
 import HomeMetabotApp from "metabase/metabot/containers/HomeMetabotApp";
-import { Card } from "metabase-types/api";
+import { CollectionItem } from "metabase-types/api";
 import HomeGreeting from "../../containers/HomeGreeting";
 import {
   LayoutBody,
@@ -9,17 +9,17 @@ import {
 } from "./HomeLayout.styled";
 
 export interface HomeLayoutProps {
+  models: CollectionItem[];
   showIllustration?: boolean;
   isMetabotEnabled?: boolean;
-  models: Card[];
   children?: ReactNode;
 }
 
 const HomeLayout = ({
-  showIllustration,
-  children,
-  isMetabotEnabled = true,
   models,
+  showIllustration,
+  isMetabotEnabled = true,
+  children,
 }: HomeLayoutProps): JSX.Element => {
   const hasModels = models.length > 0;
   return (
