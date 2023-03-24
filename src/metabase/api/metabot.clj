@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.metabot :as metabot]
    [metabase.models :refer [Card Collection Database Field FieldValues Table]]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -13,6 +14,8 @@
 (api/defendpoint-schema POST "/model/:model-id"
   "Ask Metabot to generate a SQL query given a prompt about a given model."
   [model-id :as {{:keys [question fake] :as body} :body}]
+  ;{model-id ms/PositiveInt
+  ; question string?}
   (tap> {:model-id model-id
          :request  body})
   (let [model (api/check-404 (t2/select-one Card :id model-id :dataset true))]
@@ -31,6 +34,8 @@
 (api/defendpoint-schema POST "/database/:database-id"
   "Ask Metabot to generate a SQL query given a prompt about a given database."
   [database-id :as {{:keys [question fake] :as body} :body}]
+  ;{database-id ms/PositiveInt
+  ; question string?}
   (tap> {:database-id database-id
          :request     body})
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))]

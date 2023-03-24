@@ -190,10 +190,15 @@
                        prompt)]
     (conj
      (into
-      [{:role "system" :content "You are a helpful assistant. Tell me which table in my database is the best fit for my question."}
+      [{:role "system" :content "You are a helpful assistant. Tell me which table name is the best fit for my question."}
        {:role "assistant" :content (format "My table names are %s" model-options)}]
       descs)
      {:role "user" :content user-prompt})))
+
+(defn find-table-id [message candidates]
+  (when message
+    (let [discovered (map parse-long (re-seq #"\d+" message))]
+      (first (filter candidates discovered)))))
 
 (defn find-best-model
   "Find the model in the db that best matches the prompt. Return nil if no good model found."
@@ -209,9 +214,8 @@
         message     (->> response :choices first :message :content)]
     (tap> {:find-best-model-input    model-input
            :find-best-model-response response})
-    (when-some [[[_ m]] (and message (re-seq #"'(\d+)'" message))]
-      (let [best-model-id (parse-long m)]
-        (some (fn [{model-id :id :as model}] (when (= model-id best-model-id) model)) models)))))
+    (let [best-model-id (find-table-id message (set (map :id models)))]
+      (some (fn [{model-id :id :as model}] (when (= model-id best-model-id) model)) models))))
 
 
 (comment
