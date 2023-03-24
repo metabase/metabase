@@ -26,6 +26,8 @@ import type Question from "metabase-lib/Question";
 
 import { RowCountButton, RowCountStaticLabel } from "./QuestionRowCount.styled";
 
+const POPOVER_ID = "limit-popover";
+
 interface OwnProps {
   className?: string;
 }
@@ -82,11 +84,7 @@ function QuestionRowCount({
   }, [question, result, isResultDirty]);
 
   const handleLimitChange = (limit: number) => {
-    if (limit > 0) {
-      onChangeLimit(limit);
-    } else {
-      onChangeLimit(null);
-    }
+    onChangeLimit(limit > 0 ? limit : null);
   };
 
   const canChangeLimit =
@@ -111,6 +109,8 @@ function QuestionRowCount({
           {message}
         </RowCountLabel>
       }
+      id={POPOVER_ID}
+      aria-role="dialog"
       disabled={!canChangeLimit}
     >
       {({ onClose }: { onClose: () => void }) => (
@@ -138,7 +138,12 @@ function RowCountLabel({
   return disabled ? (
     <RowCountStaticLabel {...props} aria-label={label} />
   ) : (
-    <RowCountButton {...props} aria-label={label} />
+    <RowCountButton
+      {...props}
+      aria-label={label}
+      aria-haspopup="dialog"
+      aria-controls={POPOVER_ID}
+    />
   );
 }
 
@@ -149,9 +154,6 @@ const formatRowCount = (count: number) => {
 
 function getLimitMessage(question: Question, result: Dataset): string {
   const limit = MetabaseLib.currentLimit(question._getMLv2Query());
-  const hasRowCount =
-    typeof result.row_count === "number" && result.row_count > 0;
-
   const isValidLimit =
     typeof limit === "number" && limit > 0 && limit < HARD_ROW_LIMIT;
 
@@ -159,7 +161,10 @@ function getLimitMessage(question: Question, result: Dataset): string {
     return t`Show ${formatRowCount(limit)}`;
   }
 
-  if (hasRowCount) {
+  const hasValidRowCount =
+    typeof result.row_count === "number" && result.row_count > 0;
+
+  if (hasValidRowCount) {
     // The query has been altered but we might still have the old result set,
     // so show that instead of a generic HARD_ROW_LIMIT
     return t`Showing ${formatRowCount(result.row_count)}`;
@@ -199,9 +204,7 @@ function shouldRender({
   result?: Dataset;
   isObjectDetail: boolean;
 }) {
-  return (
-    result && result.data && !isObjectDetail && question.display() === "table"
-  );
+  return result?.data && !isObjectDetail && question.display() === "table";
 }
 
 export default Object.assign(ConnectedQuestionRowCount, { shouldRender });
