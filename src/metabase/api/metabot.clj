@@ -143,26 +143,21 @@
    #"\{\s*\{\s*#\s*\d+\s*\}\s*\}\s*"
    (fn [match] (str/replace match #"\s*" ""))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/model/:model-id"
-  "Ask Metabot to generate a SQL query given a prompt about a given model."
-  [model-id :as {{:keys [question fake] :as body} :body}]
-  (tap> {:model-id model-id
-         :request  body})
-  (let [{model-name :name :keys [database_id dataset_query] :as model} (api/check-404 (t2/select-one Card :id model-id :dataset true))
-        inner-query (inner-query model)
-        bot-sql     (get-sql model {:question question :fake fake})
-        final-sql   (fix-model-reference (format "WITH \"%s\" AS (%s) %s" model-name inner-query bot-sql))
-        _           (tap> {:bot-sql   bot-sql
-                           :final-sql final-sql})
-        response    {:dataset_query          {:database database_id
-                                              :type     "native"
-                                              :native   {:query final-sql}}
-                     :display                :table
-                     :visualization_settings {}}]
-    (tap> response)
-    response))
-
+(defn generate-sql-from-prompt
+  ([{model-name :name :keys [database_id] :as model} prompt fake]
+   (let [inner-query (inner-query model)
+         bot-sql     (get-sql model {:question prompt :fake fake})
+         final-sql   (fix-model-reference (format "WITH \"%s\" AS (%s) %s" model-name inner-query bot-sql))
+         _           (tap> {:bot-sql   bot-sql
+                            :final-sql final-sql})
+         response    {:dataset_query          {:database database_id
+                                               :type     "native"
+                                               :native   {:query final-sql}}
+                      :display                :table
+                      :visualization_settings {}}]
+     (tap> response)
+     response))
+  ([model prompt] (generate-sql-from-prompt model prompt false)))
 
 (defn card->column-names [{model-name :name :keys [id result_metadata] :as _model}]
   (format
@@ -202,7 +197,25 @@
   (find-best-model
    (t2/select-one Database :id 1)
    "people")
+
+  (find-best-model
+   (t2/select-one Database :id 1)
+   "Tell me the names of people born in July")
+
+  (let [prompt "If I know the state, price, and rating of an item, can you show me the average price and max rating per state?"
+        model  (find-best-model
+                (t2/select-one Database :id 1) prompt)]
+    (generate-sql-from-prompt model prompt))
   )
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/model/:model-id"
+  "Ask Metabot to generate a SQL query given a prompt about a given model."
+  [model-id :as {{:keys [question fake] :as body} :body}]
+  (tap> {:model-id model-id
+         :request  body})
+  (let [model (api/check-404 (t2/select-one Card :id model-id :dataset true))]
+    (generate-sql-from-prompt model question fake)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/database/:database-id"
@@ -211,18 +224,7 @@
   (tap> {:database-id database-id
          :request     body})
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
-        {model-name :name :keys [database_id dataset_query] :as model} (find-best-model database question)
-        inner-query (inner-query model)
-        bot-sql     (get-sql model {:question question :fake fake})
-        final-sql   (fix-model-reference (format "WITH \"%s\" AS (%s) %s" model-name inner-query bot-sql))
-        _           (tap> {:bot-sql   bot-sql
-                           :final-sql final-sql})
-        response    {:dataset_query          {:database database_id
-                                              :type     "native"
-                                              :native   {:query final-sql}}
-                     :display                :table
-                     :visualization_settings {}}]
-    (tap> response)
-    response))
+        model (find-best-model database question)]
+    (generate-sql-from-prompt model question fake)))
 
 (api/define-routes)
