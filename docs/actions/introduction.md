@@ -20,7 +20,7 @@ Here are a few ideas for what you can do with actions:
 - Let team members remove redundant data.
 - Create a customer feedback form and embed it on your website.
 
-Actions are associated with [models](../data-modeling/models.md), but actions operate on the raw tables that back those models (so actions indirectly affect models based on the affected tables).
+Actions must be added to a [model](../data-modeling/models.md), but actions only run on the raw tables that back those models (so actions will never edit your [model definition](../data-modeling/models.md#edit-a-models-query).
 
 ## Enabling actions
 
@@ -52,7 +52,7 @@ There are multiple ways to run actions:
 
 ## Actions change data in tables, not models
 
-While actions are associated with models, they run their SQL code against the tables that underly the model (or even an unrelated table). Which means that anyone who has access to the underlying table(s), or to questions and models based on that data, will be able to see changes to that data made by an action. This also means that tools other than Metabase that are connected to that database will pick up the changes made by actions.
+A single action is associated with a single model. Each action will run as SQL code against the tables that underly the model (or even an unrelated table). Which means that anyone who has access to the underlying table(s), or to questions and models based on that data, will be able to see changes to that data made by an action. This also means that tools other than Metabase that are connected to that database will pick up the changes made by actions.
 
 Before using actions in production, consider playing around with actions on some sample data (like the Sample Database included with Metabase) to get a feel for how they work.
 
