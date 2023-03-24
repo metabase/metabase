@@ -153,13 +153,23 @@
       [:aggregation-options inner options]
       inner)))
 
+(defmethod ->legacy-MBQL :count [x] (aggregation->legacy-MBQL x))
+(defmethod ->legacy-MBQL :avg [x] (aggregation->legacy-MBQL x))
+(defmethod ->legacy-MBQL :count-where [x] (aggregation->legacy-MBQL x))
+(defmethod ->legacy-MBQL :distinct [x] (aggregation->legacy-MBQL x))
+(defmethod ->legacy-MBQL :max [x] (aggregation->legacy-MBQL x))
+(defmethod ->legacy-MBQL :median [x] (aggregation->legacy-MBQL x))
+(defmethod ->legacy-MBQL :min [x] (aggregation->legacy-MBQL x))
+(defmethod ->legacy-MBQL :percentile [x] (aggregation->legacy-MBQL x))
+(defmethod ->legacy-MBQL :share [x] (aggregation->legacy-MBQL x))
+(defmethod ->legacy-MBQL :stddev [x] (aggregation->legacy-MBQL x))
+(defmethod ->legacy-MBQL :sum [x] (aggregation->legacy-MBQL x))
+(defmethod ->legacy-MBQL :sum-where [x] (aggregation->legacy-MBQL x))
+
 (defmethod ->legacy-MBQL :mbql.stage/mbql [stage]
-  (let [stage (-> stage
-                  disqualify
-                  (m/update-existing :aggregation #(map aggregation->legacy-MBQL %)))]
-    (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
-            stage
-            (remove #{:aggregation} stage-keys))))
+  (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
+          (disqualify stage)
+          stage-keys))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
