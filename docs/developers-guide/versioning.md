@@ -26,7 +26,7 @@ v0.46.3.1
 
 ### License
 
-- `0` for the free, open-source version (sometimes call OSS, for open-source software).
+- `0` for the free, open-source version (sometimes called OSS, for open-source software).
 - `1.MM.mm.pp` for the paid, source-available version that has all the bells and whistles (sometimes
   called EE for "Enterprise Edition").
 
@@ -46,7 +46,7 @@ Sometimes called a patch release, we issue these releases to fix security issues
 
 ### The Gold Release
 
-The gold release is the first release of a new major version of metabase. So for metabase version 46, the gold releases would be:
+The gold release is the first release of a new major version of Metabase. So for Metabase version 46, the gold releases would be:
 
 - `v0.46.0` (the OSS version)
 - `v1.46.0` (the EE version)
