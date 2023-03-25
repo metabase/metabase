@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { color as c } from "metabase/lib/colors";
+import { useToggle } from "metabase/hooks/use-toggle";
 
 import Icon from "metabase/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
@@ -9,7 +10,10 @@ import ExpandingContent from "metabase/components/ExpandingContent";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import { NotebookStep as INotebookStep } from "../lib/steps.types";
+import {
+  NotebookStep as INotebookStep,
+  NotebookStepAction,
+} from "../lib/steps.types";
 import NotebookStepPreview from "../NotebookStepPreview";
 
 import { STEP_UI } from "./steps";
@@ -22,6 +26,10 @@ import {
   StepButtonContainer,
   StepRoot,
 } from "./NotebookStep.styled";
+
+function hasLargeButton(action: NotebookStepAction) {
+  return !STEP_UI[action.type].compact;
+}
 
 function getTestId(step: INotebookStep) {
   const { type, stageIndex, itemIndex } = step;
@@ -38,30 +46,36 @@ interface NotebookStepProps {
   updateQuery: (query: StructuredQuery) => Promise<void>;
 }
 
-class NotebookStep extends React.Component<NotebookStepProps> {
-  state = {
-    showPreview: false,
-  };
+function NotebookStep({
+  step,
+  sourceQuestion,
+  isLastStep,
+  isLastOpened,
+  reportTimezone,
+  openStep,
+  updateQuery,
+}: NotebookStepProps) {
+  const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
+    useToggle(false);
 
-  getActionButtons = (largeActionButtons: boolean) => {
-    const { step, isLastStep, openStep } = this.props;
-
+  const actionButtons = useMemo(() => {
     const actions = [];
+    const hasLargeActionButtons =
+      isLastStep && step.actions.some(hasLargeButton);
 
     actions.push(
       ...step.actions.map(action => {
         const stepUi = STEP_UI[action.type];
-
         return {
           priority: stepUi.priority,
           button: (
             <ActionButton
+              key={`actionButton_${stepUi.title}`}
               mr={isLastStep ? 2 : 1}
               mt={isLastStep ? 2 : undefined}
               color={stepUi.getColor()}
-              large={largeActionButtons}
+              large={hasLargeActionButtons}
               {...stepUi}
-              key={`actionButton_${stepUi.title}`}
               onClick={() => action.action({ query: step.query, openStep })}
             />
           ),
@@ -72,112 +86,83 @@ class NotebookStep extends React.Component<NotebookStepProps> {
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
     return actions.map(action => action.button);
-  };
+  }, [step.query, step.actions, isLastStep, openStep]);
 
-  handleShowPreview = () => {
-    this.setState({ showPreview: true });
-  };
-
-  handleClosePreview = () => {
-    this.setState({ showPreview: false });
-  };
-
-  handleClickRevert = () => {
-    const { step, updateQuery } = this.props;
+  const handleClickRevert = useCallback(() => {
     const reverted = step.revert?.(step.query);
     if (reverted) {
       updateQuery(reverted);
     }
-  };
+  }, [step, updateQuery]);
 
-  render() {
-    const {
-      step,
-      sourceQuestion,
-      isLastStep,
-      isLastOpened,
-      reportTimezone,
-      updateQuery,
-    } = this.props;
-    const { showPreview } = this.state;
+  const {
+    title,
+    getColor,
+    component: NotebookStepComponent,
+  } = STEP_UI[step.type] || {};
 
-    const {
-      title,
-      getColor,
-      component: NotebookStepComponent,
-    } = STEP_UI[step.type] || {};
+  const color = getColor();
+  const canPreview = step?.previewQuery?.isValid?.();
+  const hasPreviewButton = !isPreviewOpen && canPreview;
 
-    const color = getColor();
-    const canPreview = step?.previewQuery?.isValid?.();
-    const showPreviewButton = !showPreview && canPreview;
+  return (
+    <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
+      <StepRoot
+        className="hover-parent hover--visibility"
+        data-testid={getTestId(step)}
+      >
+        <StepHeader color={color}>
+          {title}
+          <Icon
+            name="close"
+            className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
+            tooltip={t`Remove`}
+            onClick={handleClickRevert}
+            data-testid="remove-step"
+          />
+        </StepHeader>
 
-    const largeActionButtons =
-      isLastStep && step.actions.some(action => !STEP_UI[action.type].compact);
+        {NotebookStepComponent && (
+          <StepBody>
+            <StepContent>
+              <NotebookStepComponent
+                color={color}
+                step={step}
+                query={step.query}
+                sourceQuestion={sourceQuestion}
+                updateQuery={updateQuery}
+                isLastOpened={isLastOpened}
+                reportTimezone={reportTimezone}
+              />
+            </StepContent>
+            <StepButtonContainer>
+              <ActionButton
+                ml={[1, 2]}
+                className={
+                  !hasPreviewButton ? "hidden disabled" : "text-brand-hover"
+                }
+                icon="play"
+                title={t`Preview`}
+                color={c("text-light")}
+                transparent
+                onClick={openPreview}
+              />
+            </StepButtonContainer>
+          </StepBody>
+        )}
 
-    const actionButtons = this.getActionButtons(largeActionButtons);
+        {canPreview && isPreviewOpen && (
+          <NotebookStepPreview step={step} onClose={closePreview} />
+        )}
 
-    return (
-      <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
-        <StepRoot
-          className="hover-parent hover--visibility"
-          data-testid={getTestId(step)}
-        >
-          <StepHeader color={color}>
-            {title}
-            <Icon
-              name="close"
-              className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
-              tooltip={t`Remove`}
-              onClick={this.handleClickRevert}
-              data-testid="remove-step"
-            />
-          </StepHeader>
-
-          {NotebookStepComponent && (
-            <StepBody>
-              <StepContent>
-                <NotebookStepComponent
-                  color={color}
-                  step={step}
-                  query={step.query}
-                  sourceQuestion={sourceQuestion}
-                  updateQuery={updateQuery}
-                  isLastOpened={isLastOpened}
-                  reportTimezone={reportTimezone}
-                />
-              </StepContent>
-              <StepButtonContainer>
-                <ActionButton
-                  ml={[1, 2]}
-                  className={
-                    !showPreviewButton ? "hidden disabled" : "text-brand-hover"
-                  }
-                  icon="play"
-                  title={t`Preview`}
-                  color={c("text-light")}
-                  transparent
-                  onClick={this.handleShowPreview}
-                />
-              </StepButtonContainer>
-            </StepBody>
-          )}
-
-          {showPreview && canPreview && (
-            <NotebookStepPreview
-              step={step}
-              onClose={this.handleClosePreview}
-            />
-          )}
-
-          {actionButtons.length > 0 && (
-            <StepActionsContainer data-testid="action-buttons">
-              {actionButtons}
-            </StepActionsContainer>
-          )}
-        </StepRoot>
-      </ExpandingContent>
-    );
-  }
+        {actionButtons.length > 0 && (
+          <StepActionsContainer data-testid="action-buttons">
+            {actionButtons}
+          </StepActionsContainer>
+        )}
+      </StepRoot>
+    </ExpandingContent>
+  );
 }
 
 export default NotebookStep;

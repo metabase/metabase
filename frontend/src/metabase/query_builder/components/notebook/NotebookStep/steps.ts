@@ -13,7 +13,7 @@ import SummarizeStep from "../steps/SummarizeStep";
 import SortStep from "../steps/SortStep";
 import LimitStep from "../steps/LimitStep";
 
-type StepUIItem = {
+export type StepUIItem = {
   title: string;
   icon?: string;
   priority?: number;
