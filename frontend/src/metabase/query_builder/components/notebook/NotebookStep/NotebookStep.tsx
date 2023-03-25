@@ -14,9 +14,10 @@ import ExpandingContent from "metabase/components/ExpandingContent";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
+import { NotebookStep as INotebookStep } from "../lib/steps.types";
 import NotebookStepPreview from "../NotebookStepPreview";
 
-import { NotebookStep as INotebookStep } from "../lib/steps.types";
+import { STEP_UI } from "./steps";
 import {
   StepActionsContainer,
   StepBody,
@@ -24,9 +25,7 @@ import {
   StepHeader,
   StepButtonContainer,
   StepRoot,
-} from "../NotebookStep.styled";
-
-import { STEP_UI } from "./steps";
+} from "./NotebookStep.styled";
 
 function getTestId(step: INotebookStep) {
   const { type, stageIndex, itemIndex } = step;
