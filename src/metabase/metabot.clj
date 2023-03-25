@@ -1,6 +1,7 @@
 (ns metabase.metabot
   (:require
    [clojure.string :as str]
+   [honey.sql :as hsql]
    [metabase.db.query :as mdb.query]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Card Collection Database Field FieldValues Table]]
@@ -98,6 +99,62 @@
       model-assertions)
      {:role "user" :content prompt})))
 
+;;;;;;;;;;;;;;;;;;;;;; Another approach -- Can we feed in the create table DDL as training data? ;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- create-enum-ddl
+  "Create the postgres enum for any item in result_metadata that has enumerated/low cardinality values."
+  [{:keys [result_metadata]}]
+  (into {}
+        (for [{:keys [display_name id base_type]} result_metadata
+              :when (not= :type/Boolean base_type)
+              :let [{:keys [values]} (t2/select-one FieldValues :field_id id)]
+              :when (seq values)
+              :let [k (normalize-name display_name)]]
+          [k
+           (format "create type %s_t as enum %s;"
+                   (normalize-name display_name)
+                   (str/join ", " (map (partial format "'%s'") values)))])))
+
+(defn- create-table-ddl
+  "Create an equivalent DDL for this model"
+  [{table-name :name :keys [result_metadata] :as model}]
+  (let [enums (create-enum-ddl model)
+        [ddl] (hsql/format
+               {:create-table (normalize-name table-name)
+                :with-columns (for [{:keys [display_name base_type]} result_metadata
+                                    :let [k (normalize-name display_name)]]
+                                [k (if (enums k)
+                                     (format "%s_t" k)
+                                     base_type)])}
+               {:dialect :ansi})]
+    (str/join "\n\n"
+              (conj (vec (vals enums)) (mdb.query/format-sql ddl)))))
+
+(defn- prepare-ddl-based-sql-generator-input
+  "Given a model, prepare a set of statements to prompt the bot for the SQL response."
+  [{model-name :name :as model} prompt]
+  (let [table-name (normalize-name model-name)
+        system-prompt (format
+                       "You are a helpful assistant that writes SQL to query the table '%s' using SELECT statements based on user input."
+                       table-name)
+        ddl           (create-table-ddl model)]
+    [{:role "system" :content system-prompt}
+     {:role "assistant" :content (format "This is the SQL used to create the table '%s'" table-name)}
+     {:role "assistant" :content ddl}
+     {:role "assistant" :content (format "The table '%s' has data in it." table-name)}
+     {:role "assistant" :content (format "Use this DDL to write a SELECT statement about the table '%s'" table-name)}
+     {:role "user" :content prompt}]))
+
+(comment
+  (create-enum-ddl (t2/select-one Card :id 1151))
+  (create-table-ddl (t2/select-one Card :id 1150))
+  (create-table-ddl (t2/select-one Card :id 1151))
+  (prepare-ddl-based-sql-generator-input (t2/select-one Card :id 1151) "show all of my data")
+
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn get-sql-generation-response-from-bot
   "Call the bot and return the reponse.
   This will contain the raw response, which may or may not contain useful SQL."
@@ -106,7 +163,9 @@
               {:model    "gpt-3.5-turbo"
                ;; Just produce a single result
                :n        1
-               :messages (prepare-sql-generator-input model prompt)}
+               ;:messages (prepare-ddl-based-sql-generator-input model prompt)
+               :messages (prepare-sql-generator-input model prompt)
+               }
               {:api-key      (openai-api-key)
                :organization (openai-organization)})]
     (tap> {:openai-response resp})
@@ -187,12 +246,12 @@
   "Given a model and prompt, attempt to generate a native dataset."
   ([{:keys [database_id] :as model} prompt fake]
    (when-some [bot-sql (get-sql model {:question prompt :fake fake})]
-     (let [final-sql   (bot-sql->final-sql model bot-sql)
-           response    {:dataset_query          {:database database_id
-                                                 :type     "native"
-                                                 :native   {:query final-sql}}
-                        :display                :table
-                        :visualization_settings {}}]
+     (let [final-sql (bot-sql->final-sql model bot-sql)
+           response  {:dataset_query          {:database database_id
+                                               :type     "native"
+                                               :native   {:query final-sql}}
+                      :display                :table
+                      :visualization_settings {}}]
        (tap> {:bot-sql   bot-sql
               :final-sql final-sql
               :response  response})
