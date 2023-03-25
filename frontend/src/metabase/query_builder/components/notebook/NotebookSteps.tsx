@@ -5,6 +5,7 @@ import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { getQuestionSteps } from "./lib/steps";
+import { NotebookStep as INotebookStep } from "./lib/steps.types";
 import NotebookStep from "./NotebookStep";
 
 interface NotebookStepsProps {
@@ -12,7 +13,7 @@ interface NotebookStepsProps {
   question: Question;
   sourceQuestion?: Question;
   reportTimezone?: string;
-  updateQuestion: (question: Question) => void;
+  updateQuestion: (question: Question) => Promise<void>;
 }
 
 type OpenSteps = { [key: string]: boolean };
@@ -58,6 +59,19 @@ function NotebookSteps({
     );
   }, []);
 
+  const handleQueryChange = useCallback(
+    async (step: INotebookStep, query: StructuredQuery) => {
+      const datasetQuery = query.datasetQuery();
+      const updatedQuery = step.update(datasetQuery);
+      await updateQuestion(updatedQuery.question());
+
+      // mark the step as "closed" since we can assume
+      // it's been added or removed by the updateQuery
+      handleStepClose(step.id);
+    },
+    [updateQuestion, handleStepClose],
+  );
+
   if (!question) {
     return null;
   }
@@ -65,19 +79,10 @@ function NotebookSteps({
   return (
     <div className={cx(className, "pt3")}>
       {steps.map((step, index) => {
-        // pass a version of updateQuery that cleans subsequent steps etc
-        const updateQuery = async (query: StructuredQuery) => {
-          const datasetQuery = query.datasetQuery();
-          const updatedQuery = step.update(datasetQuery);
-          await updateQuestion(updatedQuery.question());
-
-          // mark the step as "closed" since we can assume
-          // it's been added or removed by the updateQuery
-          handleStepClose(step.id);
-        };
-
         const isLast = index === steps.length - 1;
         const isLastOpened = lastOpenedStep === step.id;
+        const onChange = (query: StructuredQuery) =>
+          handleQueryChange(step, query);
 
         return (
           <NotebookStep
@@ -87,7 +92,7 @@ function NotebookSteps({
             isLastStep={isLast}
             isLastOpened={isLastOpened}
             reportTimezone={reportTimezone}
-            updateQuery={updateQuery}
+            updateQuery={onChange}
             openStep={handleStepOpen}
             closeStep={handleStepClose}
           />
