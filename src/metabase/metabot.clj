@@ -314,9 +314,10 @@
 
 (comment
   ;; Show how to feed data into the sql generator bot
-  (prepare-sql-generator-input
-   (t2/select-one Card :id 1)
-   "test")
+  ;; This is the original input generator. It is no longer the default.
+  (prepare-sql-generator-input (t2/select-one Card :id 1) "test")
+  ;; This is the newer version that feeds in the create table statements. It is the default.
+  (prepare-ddl-based-sql-generator-input (t2/select-one Card :id 1) "test")
 
   ;; If you know your model id, try this
   (generate-dataset-from-prompt
