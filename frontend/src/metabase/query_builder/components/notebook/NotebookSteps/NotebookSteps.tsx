@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo, useState } from "react";
-import cx from "classnames";
 
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -7,6 +6,7 @@ import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { getQuestionSteps } from "../lib/steps";
 import { NotebookStep as INotebookStep } from "../lib/steps.types";
 import NotebookStep from "../NotebookStep";
+import { Container } from "./NotebookSteps.styled";
 
 interface NotebookStepsProps {
   className?: string;
@@ -77,7 +77,7 @@ function NotebookSteps({
   }
 
   return (
-    <div className={cx(className, "pt3")}>
+    <Container className={className}>
       {steps.map((step, index) => {
         const isLast = index === steps.length - 1;
         const isLastOpened = lastOpenedStep === step.id;
@@ -98,7 +98,7 @@ function NotebookSteps({
           />
         );
       })}
-    </div>
+    </Container>
   );
 }
 
