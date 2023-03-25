@@ -37,7 +37,7 @@
   [s]
   (some-> s
           str/upper-case
-          (str/replace #"\s+" "_")))
+          (str/replace #"[^\p{Alnum}]+" "_")))
 
 
 (defn- bot-directions
