@@ -1,9 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
 import _ from "underscore";
-
 import styled from "@emotion/styled";
 
 import { color as c, lighten, darken, alpha } from "metabase/lib/colors";
@@ -13,8 +11,12 @@ import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
 import ExpandingContent from "metabase/components/ExpandingContent";
 
+import type Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
 import NotebookStepPreview from "../NotebookStepPreview";
 
+import { NotebookStep as INotebookStep } from "../lib/steps.types";
 import DataStep from "../steps/DataStep";
 import JoinStep from "../steps/JoinStep";
 import ExpressionStep from "../steps/ExpressionStep";
@@ -33,8 +35,20 @@ import {
   StepRoot,
 } from "../NotebookStep.styled";
 
+type StepUIItem = {
+  title: string;
+  icon?: string;
+  priority?: number;
+  transparent?: boolean;
+  compact?: boolean;
+  getColor: () => string;
+
+  // Remove any once all step components are typed
+  component: React.ComponentType<any>;
+};
+
 // TODO
-const STEP_UI = {
+const STEP_UI: Record<string, StepUIItem> = {
   data: {
     title: t`Data`,
     component: DataStep,
@@ -100,12 +114,22 @@ const STEP_UI = {
   },
 };
 
-function getTestId(step) {
+function getTestId(step: INotebookStep) {
   const { type, stageIndex, itemIndex } = step;
   return `step-${type}-${stageIndex || 0}-${itemIndex || 0}`;
 }
 
-export default class NotebookStep extends React.Component {
+interface NotebookStepProps {
+  step: INotebookStep;
+  sourceQuestion?: Question;
+  isLastStep: boolean;
+  isLastOpened: boolean;
+  reportTimezone?: string;
+  openStep: (id: string) => void;
+  updateQuery: (query: StructuredQuery) => Promise<void>;
+}
+
+class NotebookStep extends React.Component<NotebookStepProps> {
   state = {
     showPreview: false,
   };
@@ -146,7 +170,7 @@ export default class NotebookStep extends React.Component {
           button: (
             <ActionButton
               mr={isLastStep ? 2 : 1}
-              mt={isLastStep ? 2 : null}
+              mt={isLastStep ? 2 : undefined}
               color={stepUi.getColor()}
               large={largeActionButtons}
               {...stepUi}
@@ -173,7 +197,12 @@ export default class NotebookStep extends React.Component {
               name="close"
               className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
               tooltip={t`Remove`}
-              onClick={() => updateQuery(step.revert(step.query))}
+              onClick={() => {
+                const reverted = step.revert?.(step.query);
+                if (reverted) {
+                  updateQuery(reverted);
+                }
+              }}
               data-testid="remove-step"
             />
           </StepHeader>
@@ -225,7 +254,12 @@ export default class NotebookStep extends React.Component {
   }
 }
 
-const ColorButton = styled(Button)`
+interface ColorButtonProps {
+  color: string;
+  transparent?: boolean;
+}
+
+const ColorButton = styled(Button)<ColorButtonProps>`
   border: none;
   color: ${({ color }) => color};
   background-color: ${({ color, transparent }) =>
@@ -238,6 +272,22 @@ const ColorButton = styled(Button)`
   transition: background 300ms;
 `;
 
+interface ActionButtonProps {
+  className?: string;
+
+  icon?: string;
+  title: string;
+  color: string;
+  transparent?: boolean;
+  large?: boolean;
+  onClick: () => void;
+
+  // styled-system props
+  mt?: number | number[];
+  mr?: number | number[];
+  ml?: number | number[];
+}
+
 const ActionButton = ({
   icon,
   title,
@@ -246,8 +296,9 @@ const ActionButton = ({
   large,
   onClick,
   ...props
-}) => {
-  const label = large ? title : null;
+}: ActionButtonProps) => {
+  const label = large ? title : undefined;
+
   const button = (
     <ColorButton
       icon={icon}
@@ -266,3 +317,5 @@ const ActionButton = ({
 
   return large ? button : <Tooltip tooltip={title}>{button}</Tooltip>;
 };
+
+export default NotebookStep;

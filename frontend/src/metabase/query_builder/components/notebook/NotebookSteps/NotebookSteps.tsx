@@ -94,7 +94,6 @@ function NotebookSteps({
             reportTimezone={reportTimezone}
             updateQuery={onChange}
             openStep={handleStepOpen}
-            closeStep={handleStepClose}
           />
         );
       })}
