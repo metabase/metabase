@@ -13,17 +13,17 @@ import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
 import ExpandingContent from "metabase/components/ExpandingContent";
 
-import NotebookStepPreview from "./NotebookStepPreview";
+import NotebookStepPreview from "../NotebookStepPreview";
 
-import DataStep from "./steps/DataStep";
-import JoinStep from "./steps/JoinStep";
-import ExpressionStep from "./steps/ExpressionStep";
-import FilterStep from "./steps/FilterStep";
-import AggregateStep from "./steps/AggregateStep";
-import BreakoutStep from "./steps/BreakoutStep";
-import SummarizeStep from "./steps/SummarizeStep";
-import SortStep from "./steps/SortStep";
-import LimitStep from "./steps/LimitStep";
+import DataStep from "../steps/DataStep";
+import JoinStep from "../steps/JoinStep";
+import ExpressionStep from "../steps/ExpressionStep";
+import FilterStep from "../steps/FilterStep";
+import AggregateStep from "../steps/AggregateStep";
+import BreakoutStep from "../steps/BreakoutStep";
+import SummarizeStep from "../steps/SummarizeStep";
+import SortStep from "../steps/SortStep";
+import LimitStep from "../steps/LimitStep";
 import {
   StepActionsContainer,
   StepBody,
@@ -31,7 +31,7 @@ import {
   StepHeader,
   StepButtonContainer,
   StepRoot,
-} from "./NotebookStep.styled";
+} from "../NotebookStep.styled";
 
 // TODO
 const STEP_UI = {
