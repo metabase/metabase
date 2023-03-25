@@ -88,7 +88,7 @@
        (enumerated-values model)]))))
 
 (defn- prepare-sql-generator-input
-  "Given a model, prepare "
+  "Given a model, prepare a set of statements to prompt the bot for the SQL response."
   [model prompt]
   (let [system-prompt    (bot-directions model)
         model-assertions (model-messages model)]
