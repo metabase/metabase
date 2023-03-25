@@ -4,9 +4,9 @@ import cx from "classnames";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import { getQuestionSteps } from "./lib/steps";
-import { NotebookStep as INotebookStep } from "./lib/steps.types";
-import NotebookStep from "./NotebookStep";
+import { getQuestionSteps } from "../lib/steps";
+import { NotebookStep as INotebookStep } from "../lib/steps.types";
+import NotebookStep from "../NotebookStep";
 
 interface NotebookStepsProps {
   className?: string;
