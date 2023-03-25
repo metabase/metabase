@@ -1,13 +1,27 @@
-/* eslint-disable react/prop-types */
 import React from "react";
-
 import cx from "classnames";
-import NotebookStep from "./NotebookStep";
+
+import type Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { getQuestionSteps } from "./lib/steps";
+import NotebookStep from "./NotebookStep";
 
-export default class NotebookSteps extends React.Component {
-  constructor(props) {
+interface NotebookStepsProps {
+  className?: string;
+  question: Question;
+  sourceQuestion?: Question;
+  reportTimezone?: string;
+  updateQuestion: (question: Question) => void;
+}
+
+interface State {
+  openSteps: { [key: string]: boolean };
+  lastOpenedStep: string | null;
+}
+
+class NotebookSteps extends React.Component<NotebookStepsProps, State> {
+  constructor(props: NotebookStepsProps) {
     super(props);
     const isNew = !props.question.table();
     this.state = {
@@ -22,14 +36,14 @@ export default class NotebookSteps extends React.Component {
     };
   }
 
-  openStep = id => {
+  openStep = (id: string) => {
     this.setState({
       openSteps: { ...this.state.openSteps, [id]: true },
       lastOpenedStep: id,
     });
   };
 
-  closeStep = id => {
+  closeStep = (id: string) => {
     this.setState({
       openSteps: { ...this.state.openSteps, [id]: false },
       lastOpenedStep:
@@ -57,7 +71,7 @@ export default class NotebookSteps extends React.Component {
       <div className={cx(className, "pt3")}>
         {steps.map((step, index) => {
           // pass a version of updateQuery that cleans subsequent steps etc
-          const updateQuery = async query => {
+          const updateQuery = async (query: StructuredQuery) => {
             const datasetQuery = query.datasetQuery();
             const updatedQuery = step.update(datasetQuery);
             await updateQuestion(updatedQuery.question());
@@ -82,3 +96,5 @@ export default class NotebookSteps extends React.Component {
     );
   }
 }
+
+export default NotebookSteps;

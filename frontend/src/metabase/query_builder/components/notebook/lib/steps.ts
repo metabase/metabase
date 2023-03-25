@@ -148,7 +148,7 @@ export function getQuestionSteps(question: Question, openSteps = {}) {
 export function getStageSteps(
   stageQuery: StructuredQuery,
   stageIndex: number,
-  openSteps: Record<NotebookStep["id"], NotebookStep>,
+  openSteps: Record<NotebookStep["id"], boolean>,
 ) {
   const getId = (step: NotebookStepDef, itemIndex: number | null) => {
     const isValidItemIndex = itemIndex != null && itemIndex > 0;
