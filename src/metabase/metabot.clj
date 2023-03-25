@@ -163,8 +163,8 @@
               {:model    "gpt-3.5-turbo"
                ;; Just produce a single result
                :n        1
-               ;:messages (prepare-ddl-based-sql-generator-input model prompt)
-               :messages (prepare-sql-generator-input model prompt)
+               :messages (prepare-ddl-based-sql-generator-input model prompt)
+               ;:messages (prepare-sql-generator-input model prompt)
                }
               {:api-key      (openai-api-key)
                :organization (openai-organization)})]
