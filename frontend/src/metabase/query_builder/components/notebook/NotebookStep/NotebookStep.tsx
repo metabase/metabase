@@ -2,13 +2,10 @@
 import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import styled from "@emotion/styled";
 
-import { color as c, lighten, darken, alpha } from "metabase/lib/colors";
+import { color as c } from "metabase/lib/colors";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import Icon from "metabase/components/Icon";
-import Button from "metabase/core/components/Button";
 import ExpandingContent from "metabase/components/ExpandingContent";
 
 import type Question from "metabase-lib/Question";
@@ -18,6 +15,7 @@ import { NotebookStep as INotebookStep } from "../lib/steps.types";
 import NotebookStepPreview from "../NotebookStepPreview";
 
 import { STEP_UI } from "./steps";
+import ActionButton from "./ActionButton";
 import {
   StepActionsContainer,
   StepBody,
@@ -166,69 +164,5 @@ class NotebookStep extends React.Component<NotebookStepProps> {
     );
   }
 }
-
-interface ColorButtonProps {
-  color: string;
-  transparent?: boolean;
-}
-
-const ColorButton = styled(Button)<ColorButtonProps>`
-  border: none;
-  color: ${({ color }) => color};
-  background-color: ${({ color, transparent }) =>
-    transparent ? null : alpha(color, 0.2)};
-  &:hover {
-    color: ${({ color }) => darken(color, 0.115)};
-    background-color: ${({ color, transparent }) =>
-      transparent ? lighten(color, 0.5) : alpha(color, 0.35)};
-  }
-  transition: background 300ms;
-`;
-
-interface ActionButtonProps {
-  className?: string;
-
-  icon?: string;
-  title: string;
-  color: string;
-  transparent?: boolean;
-  large?: boolean;
-  onClick: () => void;
-
-  // styled-system props
-  mt?: number | number[];
-  mr?: number | number[];
-  ml?: number | number[];
-}
-
-const ActionButton = ({
-  icon,
-  title,
-  color,
-  transparent,
-  large,
-  onClick,
-  ...props
-}: ActionButtonProps) => {
-  const label = large ? title : undefined;
-
-  const button = (
-    <ColorButton
-      icon={icon}
-      small={!large}
-      color={color}
-      transparent={transparent}
-      iconVertical={large}
-      iconSize={large ? 18 : 14}
-      onClick={onClick}
-      aria-label={label}
-      {...props}
-    >
-      {label}
-    </ColorButton>
-  );
-
-  return large ? button : <Tooltip tooltip={title}>{button}</Tooltip>;
-};
 
 export default NotebookStep;
