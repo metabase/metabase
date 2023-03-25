@@ -1,7 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { color as c } from "metabase/lib/colors";
 
@@ -45,33 +43,11 @@ class NotebookStep extends React.Component<NotebookStepProps> {
     showPreview: false,
   };
 
-  render() {
-    const {
-      step,
-      openStep,
-      isLastStep,
-      isLastOpened,
-      updateQuery,
-      reportTimezone,
-      sourceQuestion,
-    } = this.props;
-    const { showPreview } = this.state;
-
-    const {
-      title,
-      getColor,
-      component: NotebookStepComponent,
-    } = STEP_UI[step.type] || {};
-
-    const color = getColor();
-    const canPreview = step.previewQuery && step.previewQuery.isValid();
-    const showPreviewButton = !showPreview && canPreview;
-
-    const largeActionButtons =
-      isLastStep &&
-      _.any(step.actions, action => !STEP_UI[action.type].compact);
+  getActionButtons = (largeActionButtons: boolean) => {
+    const { step, isLastStep, openStep } = this.props;
 
     const actions = [];
+
     actions.push(
       ...step.actions.map(action => {
         const stepUi = STEP_UI[action.type];
@@ -94,7 +70,51 @@ class NotebookStep extends React.Component<NotebookStepProps> {
     );
 
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
-    const actionButtons = actions.map(action => action.button);
+
+    return actions.map(action => action.button);
+  };
+
+  handleShowPreview = () => {
+    this.setState({ showPreview: true });
+  };
+
+  handleClosePreview = () => {
+    this.setState({ showPreview: false });
+  };
+
+  handleClickRevert = () => {
+    const { step, updateQuery } = this.props;
+    const reverted = step.revert?.(step.query);
+    if (reverted) {
+      updateQuery(reverted);
+    }
+  };
+
+  render() {
+    const {
+      step,
+      sourceQuestion,
+      isLastStep,
+      isLastOpened,
+      reportTimezone,
+      updateQuery,
+    } = this.props;
+    const { showPreview } = this.state;
+
+    const {
+      title,
+      getColor,
+      component: NotebookStepComponent,
+    } = STEP_UI[step.type] || {};
+
+    const color = getColor();
+    const canPreview = step?.previewQuery?.isValid?.();
+    const showPreviewButton = !showPreview && canPreview;
+
+    const largeActionButtons =
+      isLastStep && step.actions.some(action => !STEP_UI[action.type].compact);
+
+    const actionButtons = this.getActionButtons(largeActionButtons);
 
     return (
       <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
@@ -108,12 +128,7 @@ class NotebookStep extends React.Component<NotebookStepProps> {
               name="close"
               className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
               tooltip={t`Remove`}
-              onClick={() => {
-                const reverted = step.revert?.(step.query);
-                if (reverted) {
-                  updateQuery(reverted);
-                }
-              }}
+              onClick={this.handleClickRevert}
               data-testid="remove-step"
             />
           </StepHeader>
@@ -141,7 +156,7 @@ class NotebookStep extends React.Component<NotebookStepProps> {
                   title={t`Preview`}
                   color={c("text-light")}
                   transparent
-                  onClick={() => this.setState({ showPreview: true })}
+                  onClick={this.handleShowPreview}
                 />
               </StepButtonContainer>
             </StepBody>
@@ -150,7 +165,7 @@ class NotebookStep extends React.Component<NotebookStepProps> {
           {showPreview && canPreview && (
             <NotebookStepPreview
               step={step}
-              onClose={() => this.setState({ showPreview: false })}
+              onClose={this.handleClosePreview}
             />
           )}
 
