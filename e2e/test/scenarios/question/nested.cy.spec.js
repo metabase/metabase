@@ -601,5 +601,10 @@ function visitNestedQueryAdHoc(id) {
 }
 
 function openHeaderCellContextMenu(cell) {
-  cy.findAllByTestId("header-cell").should("be.visible").contains(cell).click();
+  cy.findByTestId("TableInteractive-root").within(() => {
+    cy.findAllByTestId("header-cell")
+      .should("be.visible")
+      .contains(cell)
+      .click();
+  });
 }

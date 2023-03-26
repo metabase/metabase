@@ -264,6 +264,7 @@ function assertSearchResultBadge(itemName, opts) {
   const { expectBadge } = opts;
   cy.findByText(itemName, opts)
     .parentsUntil("[data-testid=search-result-item]")
+    .last()
     .within(() => {
       cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
     });

@@ -22,7 +22,6 @@
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util :as u]
    [metabase.util.password :as u.password]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -273,7 +272,7 @@
                     _ {:name "Group 2"} #{:lucky}
                     _ {:name "Group 3"} #{}]
         (let [lucky-id (mt/user->id :lucky)]
-          (db/with-call-counting [call-count]
+          (t2/with-call-count [call-count]
             (user/group-ids lucky-id)
             (is (= 1
                    (call-count)))))))
@@ -316,7 +315,7 @@
                     _ {:name "Group 2"} #{:lucky}
                     _ {:name "Group 3"} #{}]
         (let [users (mapv test.users/fetch-user [:lucky :rasta])]
-          (db/with-call-counting [call-count]
+          (t2/with-call-count [call-count]
             (dorun (user/add-group-ids users))
             (is (= 1
                    (call-count)))))))
