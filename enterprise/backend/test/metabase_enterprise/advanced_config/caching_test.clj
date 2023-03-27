@@ -13,7 +13,7 @@
   (premium-features-test/with-premium-features #{:advanced-config}
     (mt/discard-setting-changes [enable-query-caching]
       (public-settings/enable-query-caching! true)
-      (testing "multiple ttl, db ttl wins"
+      (testing "database TTL takes effect when no dashboard or card TTLs are set"
         ;; corresponding OSS tests in metabase-enterprise.advanced-config.caching-test
         (mt/with-temp* [Database [db {:cache_ttl 1337}]
                         Dashboard [dash]
