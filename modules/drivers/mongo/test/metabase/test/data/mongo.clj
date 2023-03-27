@@ -58,8 +58,8 @@
                    {:pass password}))))
 
 (defn- destroy-db! [driver dbdef]
-  (with-mongo-connection [mongo-connection (tx/dbdef->connection-details driver :server dbdef)]
-    (mg/drop-db (.getMongo ^com.mongodb.DB mongo-connection) (tx/escaped-database-name dbdef))))
+  (with-mongo-connection [^com.mongodb.DB mongo-connection (tx/dbdef->connection-details driver :server dbdef)]
+    (mg/drop-db (.getMongo mongo-connection) (tx/escaped-database-name dbdef))))
 
 (def ^:dynamic *remove-nil?*
   "When creating a dataset, omit any nil-valued fields from the documents."
