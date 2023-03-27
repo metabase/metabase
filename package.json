@@ -74,6 +74,7 @@
     "react-dnd-html5-backend": "3",
     "react-dom": "~16.14.0",
     "react-draggable": "^3.3.2",
+    "react-dropzone": "^14.2.3",
     "react-element-to-jsx-string": "^13.1.0",
     "react-grid-layout": "^1.2.5",
     "react-is": "^17.0.2",
