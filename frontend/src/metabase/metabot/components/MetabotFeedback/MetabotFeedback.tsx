@@ -1,19 +1,30 @@
-import React from "react";
+import React, { ChangeEvent, useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
+import Input from "metabase/core/components/Input";
 import { MetabotFeedbackType } from "metabase-types/api";
 import MetabotMessage from "../MetabotMessage";
-import { FeedbackSelectionRoot } from "./MetabotFeedback.styled";
+import {
+  FeedbackSelectionRoot,
+  WrongDataFormRoot,
+} from "./MetabotFeedback.styled";
 
 export interface MetabotFeedbackProps {
-  type?: MetabotFeedbackType;
+  type: MetabotFeedbackType | undefined;
   onTypeChange: (newType: MetabotFeedbackType) => void;
+  onSubmit: (newMessage: string) => void;
 }
 
-const MetabotFeedback = ({ type, onTypeChange }: MetabotFeedbackProps) => {
+const MetabotFeedback = ({
+  type,
+  onTypeChange,
+  onSubmit,
+}: MetabotFeedbackProps) => {
   switch (type) {
     case "great":
       return <GreatFeedbackMessage />;
+    case "wrong-data":
+      return <WrongDataForm onSubmit={onSubmit} />;
     default:
       return <FeedbackSelection onTypeChange={onTypeChange} />;
   }
@@ -48,6 +59,44 @@ const FeedbackSelection = ({ onTypeChange }: FeedbackSelectionProps) => {
 
 const GreatFeedbackMessage = () => {
   return <MetabotMessage>{t`Glad to hear it!`}</MetabotMessage>;
+};
+
+// Type the name of the data it should have used.
+
+interface WrongDataFormProps {
+  onSubmit: (message: string) => void;
+}
+
+const WrongDataForm = ({ onSubmit }: WrongDataFormProps) => {
+  return (
+    <WrongDataFormRoot>
+      <MetabotMessage>{t`What data should it have used?`}</MetabotMessage>
+      <FeedbackInput
+        placeholder={t`Type the name of the data it should have used.`}
+        onSubmit={onSubmit}
+      />
+    </WrongDataFormRoot>
+  );
+};
+
+interface FeedbackInputProps {
+  placeholder: string;
+  onSubmit: (message: string) => void;
+}
+
+const FeedbackInput = ({ placeholder }: FeedbackInputProps) => {
+  const [message, setMessage] = useState("");
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) =>
+    setMessage(e.target.value);
+
+  return (
+    <Input
+      value={message}
+      placeholder={placeholder}
+      fullWidth
+      onChange={handleChange}
+    />
+  );
 };
 
 export default MetabotFeedback;
