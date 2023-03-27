@@ -14383,10 +14383,10 @@ databaseChangeLog:
       comment: Added 0.47.0 - Populate metabase_field.json_unfolding based on database details
       changes:
         - sql:
-            dbms: postgres
+            dbms: postgresql
             sql: >-
               UPDATE metabase_field f
-              SET json_unfolding = coalesce((d.details::jsonb->'json-unfolding')::boolean, true)
+              SET json_unfolding = coalesce((d.details::jsonb->'json-unfolding') in ('true', 'null'), true)
               FROM metabase_database d
               JOIN metabase_table t ON t.db_id = d.id
               WHERE f.table_id = t.id AND f.base_type = 'type/JSON'
