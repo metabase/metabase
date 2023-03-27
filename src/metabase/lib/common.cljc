@@ -10,13 +10,7 @@
    [metabase.util.malli.registry :as mr])
   #?(:cljs (:require-macros [metabase.lib.common])))
 
-(mr/def ::external-op
-  [:map
-   [:operator [:or :string :keyword]]
-   [:options {:optional true} ::schema.common/options]
-   [:args [:sequential :any]]])
-
-(mu/defn external-op :- [:maybe ::external-op]
+(mu/defn external-op :- [:maybe ::schema.common/external-op]
   "Convert the internal operator `clause` to the external format."
   [[operator options :as clause]]
   (when clause
@@ -57,7 +51,7 @@
             (every? #(not-any? #{'query 'stage-number} %) argvecs)]}
      (let [fn-rename #(name (get {'/ 'div} % %))]
        `(do
-          (mu/defn ~(symbol (str (fn-rename op-name) "-clause")) :- :metabase.lib.common/external-op
+          (mu/defn ~(symbol (str (fn-rename op-name) "-clause")) :- :metabase.lib.schema.common/external-op
             ~(format "Create a standalone clause of type `%s`." (name op-name))
             ~@(for [argvec argvecs
                     :let [arglist-expr (if (contains? (set argvec) '&)

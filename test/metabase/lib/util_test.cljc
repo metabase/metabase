@@ -220,7 +220,7 @@
 
 (deftest ^:parallel replace-clause-test
   (checking "can be called with anything"
-    [x gen/any]
+    [x gen/any-equatable]
     (is (identical? x (lib.util/replace-clause x
                                                (str (random-uuid))
                                                (random-uuid)))))

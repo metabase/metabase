@@ -20,11 +20,16 @@
    stage-number    :- :int
    expression-name :- ::lib.schema.common/non-blank-string]
   (let [stage (lib.util/query-stage query stage-number)]
-    (or (get-in stage [:expressions expression-name])
+    (or (some-> (get-in stage [:expressions expression-name])
+                lib.common/external-op)
         (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                         {:expression-name expression-name
                          :query           query
                          :stage-number    stage-number})))))
+
+(defmethod lib.schema.expression/type-of* :lib/external-op
+  [{:keys [operator options args] :or {options {}}}]
+  (lib.schema.expression/type-of* (into [(keyword operator) options] args)))
 
 (defmethod lib.metadata.calculation/metadata :expression
   [query stage-number [_expression opts expression-name, :as expression-ref]]

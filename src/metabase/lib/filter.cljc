@@ -6,6 +6,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema]
+   [metabase.lib.schema.common :as schema.common]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -204,7 +205,7 @@
   (clojure.core/and (vector? clause)
                     (clojure.core/= (first clause) :and)))
 
-(mu/defn current-filter :- [:maybe ::lib.common/external-op]
+(mu/defn current-filter :- [:maybe ::schema.common/external-op]
   "Returns the current filter in stage with `stage-number` of `query`.
   If `stage-number` is omitted, the last stage is used.
   See also [[metabase.lib.util/query-stage]]."
@@ -215,7 +216,7 @@
        :filter
        lib.common/external-op)))
 
-(mu/defn current-filters :- [:sequential ::lib.common/external-op]
+(mu/defn current-filters :- [:sequential ::schema.common/external-op]
   "Returns the current filters in stage with `stage-number` of `query`.
   If `stage-number` is omitted, the last stage is used. Logicaly, the
   filter attached to the query is the conjunction of the expressions
