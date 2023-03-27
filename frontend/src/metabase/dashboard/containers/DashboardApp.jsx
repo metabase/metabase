@@ -58,6 +58,7 @@ import {
   getIsHeaderVisible,
   getIsAdditionalInfoVisible,
 } from "../selectors";
+import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 
 function getDashboardId({ dashboardId, params }) {
   if (dashboardId) {
@@ -126,7 +127,7 @@ const DashboardApp = props => {
   }, []);
 
   useLoadingTimer(isRunning, {
-    timer: 15000,
+    timer: DASHBOARD_SLOW_TIMEOUT,
     onTimeout,
   });
 
