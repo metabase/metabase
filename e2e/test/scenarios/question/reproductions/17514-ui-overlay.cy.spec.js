@@ -172,7 +172,7 @@ function removeJoinedTable() {
   cy.findAllByText("Join data")
     .first()
     .parent()
-    .findByTestId("remove-step")
+    .findByLabelText("Remove step")
     .click({ force: true });
 }
 
