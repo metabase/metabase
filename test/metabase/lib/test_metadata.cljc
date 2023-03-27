@@ -808,7 +808,7 @@
                :semantic_type  :type/PK
                :fingerprint    nil}
               {:lib/type       :metadata/field
-               :display_name   "NAME"
+               :display_name   "NAME" ; TODO -- these display names are icky
                :field_ref      [:field "NAME" {:base-type :type/Text}]
                :name           "NAME"
                :base_type      :type/Text

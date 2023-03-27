@@ -99,8 +99,6 @@
    rtrim
    upper
    lower]
-  [lib.field
-   with-join-alias]
   [lib.filter
    filter
    add-filter
@@ -138,7 +136,9 @@
   [lib.join
    join
    join-clause
-   joins]
+   joins
+   with-join-alias
+   with-join-fields]
   [lib.limit
    current-limit
    limit]
