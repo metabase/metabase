@@ -57,10 +57,10 @@ export class Api extends EventEmitter {
         ...methodOptions,
       };
 
-      return async (data, invocationOptions = {}) => {
+      return async (rawData, invocationOptions = {}) => {
         const options = { ...defaultOptions, ...invocationOptions };
         let url = urlTemplate;
-        data = { ...data };
+        const data = { ...rawData };
         for (const tag of url.match(/:\w+/g) || []) {
           const paramName = tag.slice(1);
           let value = data[paramName];
@@ -85,6 +85,10 @@ export class Api extends EventEmitter {
           ? { Accept: "application/json", "Content-Type": "application/json" }
           : {};
 
+        if (options.formData && options.fetch) {
+          delete headers["Content-Type"];
+        }
+
         if (isWithinIframe()) {
           headers["X-Metabase-Embedded"] = "true";
         }
@@ -95,9 +99,13 @@ export class Api extends EventEmitter {
 
         let body;
         if (options.hasBody) {
-          body = JSON.stringify(
-            options.bodyParamName != null ? data[options.bodyParamName] : data,
-          );
+          body = options.formData
+            ? rawData
+            : JSON.stringify(
+                options.bodyParamName != null
+                  ? data[options.bodyParamName]
+                  : data,
+              );
         } else {
           const qs = querystring.stringify(data);
           if (qs) {
@@ -154,9 +162,10 @@ export class Api extends EventEmitter {
   }
 
   _makeRequest(...args) {
+    const options = args[5];
     // this is temporary to not deal with failed cypress tests
     // we should switch to using fetch in all cases (metabase#28489)
-    if (isTest) {
+    if (isTest || options.fetch) {
       return this._makeRequestWithFetch(...args);
     } else {
       return this._makeRequestWithXhr(...args);
