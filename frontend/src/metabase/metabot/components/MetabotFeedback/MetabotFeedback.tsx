@@ -27,7 +27,7 @@ const MetabotFeedback = ({
       return <MetabotMessage>{t`Glad to hear it!`}</MetabotMessage>;
     case "wrong-data":
       return (
-        <FeedbackForm
+        <FeedbackMessageForm
           title={t`What data should it have used?`}
           placeholder={t`Type the name of the data it should have used.`}
           onSubmit={onSubmit}
@@ -35,22 +35,22 @@ const MetabotFeedback = ({
       );
     case "incorrect-result":
       return (
-        <FeedbackForm
+        <FeedbackMessageForm
           title={t`Sorry about that.`}
           placeholder={t`Describe what’s wrong`}
           onSubmit={onSubmit}
         />
       );
     default:
-      return <FeedbackSelection onTypeChange={onTypeChange} />;
+      return <FeedbackTypeForm onTypeChange={onTypeChange} />;
   }
 };
 
-interface FeedbackSelectionProps {
+interface FeedbackTypeFormProps {
   onTypeChange: (type: MetabotFeedbackType) => void;
 }
 
-const FeedbackSelection = ({ onTypeChange }: FeedbackSelectionProps) => {
+const FeedbackTypeForm = ({ onTypeChange }: FeedbackTypeFormProps) => {
   const handleGreatChange = () => onTypeChange("great");
   const handleWrongDataChange = () => onTypeChange("wrong-data");
   const handleIncorrectResultChange = () => onTypeChange("incorrect-result");
@@ -73,17 +73,21 @@ const FeedbackSelection = ({ onTypeChange }: FeedbackSelectionProps) => {
   );
 };
 
-interface FeedbackFormProps {
+interface FeedbackFormValues {
+  message: string;
+}
+
+interface FeedbackMessageFormProps {
   title: string;
   placeholder: string;
   onSubmit: (message: string) => void;
 }
 
-interface FeedbackFormValues {
-  message: string;
-}
-
-const FeedbackForm = ({ title, placeholder, onSubmit }: FeedbackFormProps) => {
+const FeedbackMessageForm = ({
+  title,
+  placeholder,
+  onSubmit,
+}: FeedbackMessageFormProps) => {
   const initialValues = { message: "" };
   const handleSubmit = ({ message }: FeedbackFormValues) => onSubmit(message);
 
