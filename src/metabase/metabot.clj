@@ -1,5 +1,6 @@
 (ns metabase.metabot
   (:require
+   [cheshire.core :as json]
    [clojure.string :as str]
    [honey.sql :as hsql]
    [metabase.db.query :as mdb.query]
@@ -16,6 +17,37 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- normalize-name
+  "Normalize model and column names to SLUG_CASE.
+  The current bot responses do a terrible job of creating all kinds of SQL from a table or column name.
+  Example: 'Created At', CREATED_AT, \"created at\" might all come back in the response.
+  Standardization of names produces dramatically better results."
+  [s]
+  (some-> s
+          str/upper-case
+          (str/replace #"[^\p{Alnum}]+" "_")))
+
+(defn denormalize-field [{:keys [display_name id base_type] :as field}]
+  (let [field-vals (when (not= :type/Boolean base_type)
+                     (t2/select-one-fn :values FieldValues :field_id id))]
+    (-> (cond-> field
+          (seq field-vals)
+          (assoc :possible_values (vec field-vals)))
+        (assoc :sql_name (normalize-name display_name))
+        (dissoc :field_ref :id))))
+
+(defn denormalize-model [{model-name :name :as model}]
+  (-> model
+      (update :result_metadata #(mapv denormalize-field %))
+      (assoc :sql_name (normalize-name model-name))
+      (dissoc :database_id :creator_id :dataset_query :table_id :collection_position)))
+
+(defn denormalize-database [{database-name :name db_id :id :as database}]
+  (let [models (t2/select Card :database_id db_id :dataset true)]
+    (-> database
+        (assoc :sql_name (normalize-name database-name))
+        (assoc :models (mapv denormalize-model models)))))
+
 (def num-choices 3)
 
 (defsetting is-metabot-enabled
@@ -31,17 +63,6 @@
 (defsetting openai-organization
   (deferred-tru "The OpenAPI Organization ID.")
   :visibility :settings-manager)
-
-(defn- normalize-name
-  "Normalize model and column names to SLUG_CASE.
-  The current bot responses do a terrible job of creating all kinds of SQL from a table or column name.
-  Example: 'Created At', CREATED_AT, \"created at\" might all come back in the response.
-  Standardization of names produces dramatically better results."
-  [s]
-  (some-> s
-          str/upper-case
-          (str/replace #"[^\p{Alnum}]+" "_")))
-
 
 (defn- bot-directions
   "Prepare directions for the bot. The model is used to indirectly determine the
@@ -164,12 +185,12 @@
   This will contain the raw response, which may or may not contain useful SQL."
   [model prompt]
   (let [resp (openai.api/create-chat-completion
-              {:model       "gpt-3.5-turbo"
+              {:model    "gpt-3.5-turbo"
                ;; Just produce a single result
-               :n           num-choices
+               :n        num-choices
                ; Note - temperature of 0 is deterministic, so n > 1 will return n identical items
                ; :temperature 0
-               :messages    (prepare-ddl-based-sql-generator-input model prompt)
+               :messages (prepare-ddl-based-sql-generator-input model prompt)
                ;:messages (prepare-sql-generator-input model prompt)
                }
               {:api-key      (openai-api-key)
@@ -186,13 +207,13 @@
 
 (defn extract-sql
   "Search a provided string for a SQL block"
- [s]
+  [s]
   (if (str/starts-with? (u/upper-case-en (str/trim s)) "SELECT")
     ;; This is just a raw SQL statement
     s
     ;; It looks like markdown
     (let [[_pre sql _post] (str/split s #"```(sql|SQL)?")]
-      (sql (mdb.query/format-sql sql)))))
+      (mdb.query/format-sql sql))))
 
 (defn aliases
   "Create a seq of aliases to be used to make model columns more human friendly"
@@ -313,11 +334,11 @@
   (let [models      (t2/select Card :database_id database-id :dataset true)
         model-input (prepare-model-finder-input models prompt)
         response    (openai.api/create-chat-completion
-                     {:model       "gpt-3.5-turbo"
-                      :n           num-choices
+                     {:model    "gpt-3.5-turbo"
+                      :n        num-choices
                       ; Note - temperature of 0 is deterministic, so n > 1 will return n identical items
                       ; :temperature 0
-                      :messages    model-input}
+                      :messages model-input}
                      {:api-key      (openai-api-key)
                       :organization (openai-organization)})]
     (tap> {:find-best-model-input    model-input
@@ -326,7 +347,6 @@
                          response
                          #(find-table-id % (set (map :id models))))]
       (some (fn [{model-id :id :as model}] (when (= model-id best-model-id) model)) models))))
-
 
 (comment
   ;; Show how to feed data into the sql generator bot
@@ -347,4 +367,27 @@
 
   ;; Example of searching for the best model
   (find-best-model {:id 1} "how many accounts have we had over time?")
+
+
+  (t2/select-one-fn :database_id Card :id 1151)
+
+  (let [{:keys [engine id] :as db} (t2/select-one Database :id 1)
+        models (t2/select Card :database_id id :dataset true)
+        {:keys [result_metadata] :as model} (first models)]
+    (denormalize-model model))
+
+  (let [db (t2/select-one Database :id 1)]
+    (denormalize-database db))
+
+  (let [db (t2/select-one Database :id 1)]
+    (println
+     (json/generate-string
+      (denormalize-database db)
+      {:pretty true})))
+
+  (let [db (t2/select-one Database :id 1)]
+    (spit "sample.json"
+          (json/generate-string
+           (denormalize-database db)
+           {:pretty true})))
   )
