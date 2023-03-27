@@ -1,7 +1,7 @@
 import {
   restore,
   visitQuestion,
-  sidebar,
+  rightSidebar,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -99,7 +99,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       cy.icon("calendar").click();
       cy.findByText("Releases").should("be.visible");
-      sidebar().within(() => cy.icon("ellipsis").click());
+      rightSidebar().within(() => cy.icon("ellipsis").click());
       cy.findByText("Edit event").click();
 
       cy.findByLabelText("Event name").clear().type("RC2");
@@ -125,7 +125,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       cy.icon("calendar").click();
       cy.findByText("Builds").should("be.visible");
-      sidebar().within(() => cy.icon("ellipsis").click());
+      rightSidebar().within(() => cy.icon("ellipsis").click());
       cy.findByText("Move event").click();
       cy.findByText("Releases").click();
       cy.button("Move").click();
@@ -147,7 +147,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       cy.icon("calendar").click();
       cy.findByText("Releases").should("be.visible");
-      sidebar().within(() => cy.icon("ellipsis").click());
+      rightSidebar().within(() => cy.icon("ellipsis").click());
       cy.findByText("Archive event").click();
       cy.wait("@updateEvent");
       cy.findByText("RC1").should("not.exist");
@@ -385,7 +385,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.icon("calendar").click();
       cy.findByText("Releases").should("be.visible");
       cy.findByText("Add an event").should("not.exist");
-      sidebar().within(() => cy.icon("ellipsis").should("not.exist"));
+      rightSidebar().within(() => cy.icon("ellipsis").should("not.exist"));
     });
   });
 });

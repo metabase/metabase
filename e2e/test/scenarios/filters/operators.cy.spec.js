@@ -75,7 +75,7 @@ describe("operators in questions", () => {
         cy.findByText("Is").click();
       });
 
-      popover().within(() => {
+      cy.findByTestId("operator-select-list").within(() => {
         expected.text.expected.map(e => cy.contains(e).should("exist"));
         expected.text.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
@@ -92,7 +92,7 @@ describe("operators in questions", () => {
         cy.findByText("Equal to").click();
       });
 
-      popover().within(() => {
+      cy.findByTestId("operator-select-list").within(() => {
         expected.number.expected.map(e => cy.contains(e).should("exist"));
         expected.number.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
@@ -190,7 +190,7 @@ describe("operators in questions", () => {
         cy.findByText("Is").click();
       });
 
-      popover().within(() => {
+      cy.findByTestId("operator-select-list").within(() => {
         expected.id.expected.map(e => cy.contains(e).should("exist"));
         expected.id.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
@@ -207,7 +207,7 @@ describe("operators in questions", () => {
         cy.findByText("Is").click();
       });
 
-      popover().within(() => {
+      cy.findByTestId("operator-select-list").within(() => {
         expected.geo.expected.map(e => cy.contains(e).should("exist"));
         expected.geo.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
