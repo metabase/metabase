@@ -170,8 +170,10 @@
                                                 {:table_id      [:t    10]
                                                  :collection_id [:coll 10]
                                                  :creator_id    [:u    10]}))
-               :dashboard               (many-random-fks 100 {} {:collection_id [:coll 100]
-                                                                 :creator_id    [:u    10]})
+               :dashboard               (concat (many-random-fks 100 {} {:collection_id [:coll 100]
+                                                                         :creator_id    [:u    10]})
+                                                ;; create some root collection dashboards
+                                                (many-random-fks 50 {} {:creator_id    [:u 10]}))
                :dashboard-card          (many-random-fks 300 {} {:card_id      [:c 100]
                                                                  :dashboard_id [:d 100]})
                :dimension               (vec (concat
@@ -270,7 +272,7 @@
                               (reduce +)))))
 
             (testing "for dashboards"
-              (is (= 100 (->> (io/file dump-dir "collections")
+              (is (= 150 (->> (io/file dump-dir "collections")
                               collections
                               (map (comp count dir->file-set #(io/file % "dashboards")))
                               (reduce +)))))
