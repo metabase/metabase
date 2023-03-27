@@ -1,5 +1,6 @@
 import L from "leaflet/dist/leaflet-src.js";
 import d3 from "d3";
+import { COUNTRY_NAME_TO_CODE, STATE_CODES } from "./mapping_codes";
 
 export function computeMinimalBounds(features) {
   const points = getAllFeaturesPoints(features);
@@ -35,68 +36,6 @@ export function getAllFeaturesPoints(features) {
   return points;
 }
 
-const STATE_CODES = [
-  ["AL", "Alabama"],
-  ["AK", "Alaska"],
-  ["AS", "American Samoa"],
-  ["AZ", "Arizona"],
-  ["AR", "Arkansas"],
-  ["CA", "California"],
-  ["CO", "Colorado"],
-  ["CT", "Connecticut"],
-  ["DE", "Delaware"],
-  ["DC", "District Of Columbia"],
-  ["FM", "Federated States Of Micronesia"],
-  ["FL", "Florida"],
-  ["GA", "Georgia"],
-  ["GU", "Guam"],
-  ["HI", "Hawaii"],
-  ["ID", "Idaho"],
-  ["IL", "Illinois"],
-  ["IN", "Indiana"],
-  ["IA", "Iowa"],
-  ["KS", "Kansas"],
-  ["KY", "Kentucky"],
-  ["LA", "Louisiana"],
-  ["ME", "Maine"],
-  ["MH", "Marshall Islands"],
-  ["MD", "Maryland"],
-  ["MA", "Massachusetts"],
-  ["MI", "Michigan"],
-  ["MN", "Minnesota"],
-  ["MS", "Mississippi"],
-  ["MO", "Missouri"],
-  ["MT", "Montana"],
-  ["NE", "Nebraska"],
-  ["NV", "Nevada"],
-  ["NH", "New Hampshire"],
-  ["NJ", "New Jersey"],
-  ["NM", "New Mexico"],
-  ["NY", "New York"],
-  ["NC", "North Carolina"],
-  ["ND", "North Dakota"],
-  ["MP", "Northern Mariana Islands"],
-  ["OH", "Ohio"],
-  ["OK", "Oklahoma"],
-  ["OR", "Oregon"],
-  ["PW", "Palau"],
-  ["PA", "Pennsylvania"],
-  ["PR", "Puerto Rico"],
-  ["RI", "Rhode Island"],
-  ["SC", "South Carolina"],
-  ["SD", "South Dakota"],
-  ["TN", "Tennessee"],
-  ["TX", "Texas"],
-  ["UT", "Utah"],
-  ["VT", "Vermont"],
-  ["VI", "Virgin Islands"],
-  ["VA", "Virginia"],
-  ["WA", "Washington"],
-  ["WV", "West Virginia"],
-  ["WI", "Wisconsin"],
-  ["WY", "Wyoming"],
-];
-
 const stateNamesMap = new Map(
   STATE_CODES.map(([key, name]) => [name.toLowerCase(), key.toLowerCase()]),
 );
@@ -112,6 +51,8 @@ export function getCanonicalRowKey(key, region) {
   // This should be ok because we know there's no overlap between state names and codes, and we know the "us_states" region map expects codes
   if (region === "us_states" && stateNamesMap.has(key)) {
     return stateNamesMap.get(key);
+  } else if (region === "world_countries" && key in COUNTRY_NAME_TO_CODE) {
+    return COUNTRY_NAME_TO_CODE[key];
   } else {
     return key;
   }
