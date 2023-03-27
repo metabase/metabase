@@ -23,7 +23,7 @@ interface NotebookOwnProps {
   isRunnable: boolean;
   isResultDirty: boolean;
   hasVisualizeButton?: boolean;
-  updateQuestion: (question: Question) => void;
+  updateQuestion: (question: Question) => Promise<void>;
   runQuestionQuery: () => void;
   setQueryBuilderMode: (mode: string) => void;
 }
