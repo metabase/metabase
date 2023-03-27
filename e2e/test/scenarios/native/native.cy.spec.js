@@ -4,7 +4,7 @@ import {
   openNativeEditor,
   visitQuestionAdhoc,
   summarize,
-  sidebar,
+  rightSidebar,
   filter,
   filterField,
 } from "e2e/support/helpers";
@@ -152,7 +152,7 @@ describe("scenarios > question > native", () => {
         cy.icon("close").click();
       });
       summarize();
-      sidebar().within(() => {
+      rightSidebar().within(() => {
         cy.icon("close").click();
       });
       cy.findByText("Done").click();

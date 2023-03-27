@@ -491,7 +491,7 @@
                  (sql-jdbc.sync/describe-nested-field-columns
                    :mysql
                    (mt/db)
-                   {:name "json"}))))))))
+                   {:name "json" :id (mt/id "json")}))))))))
 
 (deftest big-nested-field-column-test
   (mt/test-driver :mysql
@@ -502,7 +502,7 @@
                  (count (sql-jdbc.sync/describe-nested-field-columns
                          :mysql
                          (mt/db)
-                         {:name "big_json"})))))))))
+                         {:name "big_json" :id (mt/id "big_json")})))))))))
 
 (deftest json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]

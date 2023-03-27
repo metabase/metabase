@@ -10,9 +10,9 @@ import { getUser } from "metabase/selectors/user";
 import { deleteAlert, unsubscribeFromAlert } from "metabase/alert/alert";
 import {
   AM_PM_OPTIONS,
-  DAY_OF_WEEK_OPTIONS,
+  getDayOfWeekOptions,
   HOUR_OPTIONS,
-} from "metabase/containers/SchedulePicker";
+} from "metabase/lib/date-time";
 import Icon from "metabase/components/Icon";
 import Modal from "metabase/components/Modal";
 import {
@@ -274,8 +274,10 @@ export class AlertScheduleText extends Component {
       return `${verbose ? "daily at " : "Daily, "} ${hour} ${amPm}`;
     } else if (scheduleType === "weekly") {
       const hourOfDay = schedule.schedule_hour;
+      const dayOfWeekOptions = getDayOfWeekOptions();
+
       const day = _.find(
-        DAY_OF_WEEK_OPTIONS,
+        dayOfWeekOptions,
         o => o.value === schedule.schedule_day,
       ).name;
       const hour = _.find(

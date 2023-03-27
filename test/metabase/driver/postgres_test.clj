@@ -32,6 +32,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -550,16 +551,18 @@
                                     "CREATE TABLE bobdobbs.describe_json_table (trivial_json JSONB NOT NULL);"
                                     "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= #{{:name              "trivial_json → a",
-                    :database-type     "bigint",
-                    :base-type         :type/Integer,
-                    :database-position 0,
-                    :visibility-type   :normal,
-                    :nfc-path          [:trivial_json "a"]}}
-                 (sql-jdbc.sync/describe-nested-field-columns
-                  :postgres
-                  database
-                  {:schema "bobdobbs" :name "describe_json_table"}))))))))
+          (mt/with-db database
+            (sync-tables/sync-tables-and-database! database)
+            (is (= #{{:name              "trivial_json → a",
+                      :database-type     "bigint",
+                      :base-type         :type/Integer,
+                      :database-position 0,
+                      :visibility-type   :normal,
+                      :nfc-path          [:trivial_json "a"]}}
+                   (sql-jdbc.sync/describe-nested-field-columns
+                    :postgres
+                    database
+                    {:schema "bobdobbs" :name "describe_json_table" :id (mt/id "describe_json_table")})))))))))
 
 (deftest describe-funky-name-table-nested-field-columns-test
   (mt/test-driver :postgres
@@ -573,16 +576,18 @@
                                     "CREATE TABLE \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json JSONB NOT NULL);"
                                     "INSERT INTO \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json) VALUES ('{\"a\": 1}');")]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= #{{:name              "trivial_json → a",
-                    :database-type     "bigint",
-                    :base-type         :type/Integer,
-                    :database-position 0,
-                    :visibility-type   :normal,
-                    :nfc-path          [:trivial_json "a"]}}
-                 (sql-jdbc.sync/describe-nested-field-columns
-                  :postgres
-                  database
-                  {:schema "AAAH_#" :name "dESCribe_json_table_%"}))))))))
+          (mt/with-db database
+            (sync-tables/sync-tables-and-database! database)
+            (is (= #{{:name              "trivial_json → a",
+                      :database-type     "bigint",
+                      :base-type         :type/Integer,
+                      :database-position 0,
+                      :visibility-type   :normal,
+                      :nfc-path          [:trivial_json "a"]}}
+                   (sql-jdbc.sync/describe-nested-field-columns
+                    :postgres
+                    database
+                    {:schema "AAAH_#" :name "dESCribe_json_table_%" :id (mt/id "dESCribe_json_table_%")})))))))))
 
 (deftest describe-big-nested-field-columns-test
   (mt/test-driver :postgres
@@ -803,25 +808,28 @@
 
         (testing "check that describe-table properly describes the database & base types of the enum fields"
           (is (= {:name   "birds"
-                  :fields #{{:name                      "name"
-                             :database-type             "varchar"
-                             :base-type                 :type/Text
-                             :pk?                       true
-                             :database-position         0
-                             :database-required         true
-                             :database-is-auto-increment false}
-                            {:name                      "status"
-                             :database-type             "bird_status"
-                             :base-type                 :type/PostgresEnum
-                             :database-position         1
-                             :database-required         true
-                             :database-is-auto-increment false}
-                            {:name                      "type"
-                             :database-type             "bird type"
-                             :base-type                 :type/PostgresEnum
-                             :database-position         2
-                             :database-required         true
-                             :database-is-auto-increment false}}}
+                  :fields #{{:name                       "name"
+                             :database-type              "varchar"
+                             :base-type                  :type/Text
+                             :pk?                        true
+                             :database-position          0
+                             :database-required          true
+                             :database-is-auto-increment false
+                             :json-unfolding             false}
+                            {:name                       "status"
+                             :database-type              "bird_status"
+                             :base-type                  :type/PostgresEnum
+                             :database-position          1
+                             :database-required          true
+                             :database-is-auto-increment false
+                             :json-unfolding             false}
+                            {:name                       "type"
+                             :database-type              "bird type"
+                             :base-type                  :type/PostgresEnum
+                             :database-position          2
+                             :database-required          true
+                             :database-is-auto-increment false
+                             :json-unfolding             false}}}
                  (driver/describe-table :postgres db {:name "birds"}))))
 
         (testing "check that when syncing the DB the enum types get recorded appropriately"

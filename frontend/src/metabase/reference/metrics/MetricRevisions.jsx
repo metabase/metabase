@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import { getIn } from "icepick";
 
-import S from "metabase/components/List.css";
+import S from "metabase/components/List/List.css";
 import R from "metabase/reference/Reference.css";
 
 import * as metadataActions from "metabase/redux/metadata";

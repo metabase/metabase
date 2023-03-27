@@ -3,7 +3,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import Q from "metabase/components/QueryButton.css";
+import Q from "metabase/components/QueryButton/QueryButton.css";
 
 import Icon from "metabase/components/Icon";
 import S from "./FieldToGroupBy.css";
