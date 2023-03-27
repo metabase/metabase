@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import { MetabotFeedbackType } from "metabase-types/api";
@@ -19,25 +19,10 @@ interface FeedbackSelectionProps {
 }
 
 const FeedbackSelection = ({ onTypeChange }: FeedbackSelectionProps) => {
-  const handleGreatChange = useCallback(
-    () => onTypeChange("great"),
-    [onTypeChange],
-  );
-
-  const handleWrongDataChange = useCallback(
-    () => onTypeChange("wrong-data"),
-    [onTypeChange],
-  );
-
-  const handleIncorrectResultChange = useCallback(
-    () => onTypeChange("incorrect-result"),
-    [onTypeChange],
-  );
-
-  const handleInvalidSqlChange = useCallback(
-    () => onTypeChange("invalid-sql"),
-    [onTypeChange],
-  );
+  const handleGreatChange = () => onTypeChange("great");
+  const handleWrongDataChange = () => onTypeChange("wrong-data");
+  const handleIncorrectResultChange = () => onTypeChange("incorrect-result");
+  const handleInvalidSqlChange = () => onTypeChange("invalid-sql");
 
   return (
     <FeedbackSelectionRoot>
