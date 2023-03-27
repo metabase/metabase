@@ -208,7 +208,19 @@
                        (lib.metadata.calculation/describe-top-level-key query stage-number k))]
     (str/join ", " (remove str/blank? descriptions))))
 
-(defn- implicitly-joinable-columns [query column-metadatas]
+(defn- implicitly-joinable-columns
+  "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to
+  have appropriate FK metadata, i.e. have an `:fk_target_field_id` pointing to another Field. (I think we only include
+  this information for Databases that support FKs and joins, so I don't think we need to do an additional DB feature
+  check here.)
+
+  This does not include columns from any Tables that are already explicitly joined, and does not include multiple
+  versions of a column when there are multiple pathways to it (i.e. if there is more than one FK to a Table). This
+  behavior matches how things currently work in MLv1, at least for order by; we can adjust as needed in the future if
+  it turns out we do need that stuff.
+
+  Does not include columns that would be implicitly joinable via multiple hops."
+  [query column-metadatas]
   (let [existing-table-ids (into #{} (map :table_id) column-metadatas)]
     (into []
           (comp (filter :fk_target_field_id)
@@ -228,7 +240,8 @@
           column-metadatas)))
 
 (mu/defn visible-columns :- [:sequential lib.metadata/ColumnMetadata]
-  "Columns that are visible inside a given stage of a query. Ignores `:fields`, `:breakout`, and `:aggregation`."
+  "Columns that are visible inside a given stage of a query. Ignores `:fields`, `:breakout`, and `:aggregation`.
+  Includes columns that are implicitly joinable from other Tables."
   [query stage-number]
   (let [query   (lib.util/update-query-stage query stage-number dissoc :fields :breakout :aggregation)
         columns (default-columns query stage-number)]
