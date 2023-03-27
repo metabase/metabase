@@ -53,13 +53,13 @@ For both **Dropdown** and **Inline select**, you can specify a list of options t
 
 ## Appearance
 
-The appearance tab in the action editor modal will display a preview of the variable's form element. In the image below, we've clicked on the variable'  **gears** and set the variable to use a text > dropdown list. The appearance section gives a preview for what the form element would look like:
+The appearance tab in the action editor modal will display a preview of the variable's form element. In the image below, we've clicked on the variable's **gear** and set the variable to use a text > dropdown list. The appearance section gives a preview for what the form element would look like:
 
 ![Appearance gives a preview of the form element](./images/appearance.png)
 
 ## Action settings
 
-From the model detail page, click on the **...** next to the action. Once in the action editor, click on the **gear** icon to bring up the action settings.
+From the model detail page, click on the **three dot menu** (...) next to the action. Once in the action editor, click on the **gear** icon to bring up the action settings.
 
 ### Make public
 
