@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import { MetabotFeedbackType } from "metabase-types/api";
@@ -19,17 +19,37 @@ interface FeedbackSelectionProps {
 }
 
 const FeedbackSelection = ({ onTypeChange }: FeedbackSelectionProps) => {
+  const handleGreatChange = useCallback(
+    () => onTypeChange("great"),
+    [onTypeChange],
+  );
+
+  const handleWrongDataChange = useCallback(
+    () => onTypeChange("wrong-data"),
+    [onTypeChange],
+  );
+
+  const handleIncorrectResultChange = useCallback(
+    () => onTypeChange("incorrect-result"),
+    [onTypeChange],
+  );
+
+  const handleInvalidSqlChange = useCallback(
+    () => onTypeChange("invalid-sql"),
+    [onTypeChange],
+  );
+
   return (
     <FeedbackSelectionRoot>
       <MetabotMessage>{t`How did I do?`}</MetabotMessage>
-      <Button onClick={() => onTypeChange("great")}>{t`This is great!`}</Button>
-      <Button onClick={() => onTypeChange("wrong-data")}>
+      <Button onClick={handleGreatChange}>{t`This is great!`}</Button>
+      <Button onClick={handleWrongDataChange}>
         {t`This used the wrong data.`}
       </Button>
-      <Button onClick={() => onTypeChange("incorrect-result")}>
+      <Button onClick={handleIncorrectResultChange}>
         {t`This result isn’t correct.`}
       </Button>
-      <Button onClick={() => onTypeChange("invalid-sql")}>
+      <Button onClick={handleInvalidSqlChange}>
         {t`This isn’t valid SQL.`}
       </Button>
     </FeedbackSelectionRoot>
