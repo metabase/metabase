@@ -12,10 +12,10 @@ import {
 } from "./MetabotFeedback.styled";
 
 export interface MetabotFeedbackProps {
-  type?: MetabotFeedbackType;
-  isSubmitted?: boolean;
-  onTypeChange?: (type: MetabotFeedbackType) => void;
-  onSubmit?: (message: string) => void;
+  type: MetabotFeedbackType | undefined;
+  isSubmitted: boolean;
+  onTypeChange: (type: MetabotFeedbackType) => void;
+  onSubmit: (message: string) => void;
 }
 
 const MetabotFeedback = ({
@@ -53,14 +53,14 @@ const MetabotFeedback = ({
 };
 
 interface FeedbackTypeSelectProps {
-  onTypeChange?: (type: MetabotFeedbackType) => void;
+  onTypeChange: (type: MetabotFeedbackType) => void;
 }
 
 const FeedbackTypeSelect = ({ onTypeChange }: FeedbackTypeSelectProps) => {
-  const handleGreatChange = () => onTypeChange?.("great");
-  const handleWrongDataChange = () => onTypeChange?.("wrong-data");
-  const handleIncorrectResultChange = () => onTypeChange?.("incorrect-result");
-  const handleInvalidSqlChange = () => onTypeChange?.("invalid-sql");
+  const handleGreatChange = () => onTypeChange("great");
+  const handleWrongDataChange = () => onTypeChange("wrong-data");
+  const handleIncorrectResultChange = () => onTypeChange("incorrect-result");
+  const handleInvalidSqlChange = () => onTypeChange("invalid-sql");
 
   return (
     <FeedbackSection>
@@ -86,7 +86,7 @@ interface FeedbackFormValues {
 interface FeedbackMessageFormProps {
   title: string;
   placeholder: string;
-  onSubmit?: (message: string) => void;
+  onSubmit: (message: string) => void;
 }
 
 const FeedbackMessageForm = ({
@@ -95,7 +95,7 @@ const FeedbackMessageForm = ({
   onSubmit,
 }: FeedbackMessageFormProps) => {
   const initialValues = { message: "" };
-  const handleSubmit = ({ message }: FeedbackFormValues) => onSubmit?.(message);
+  const handleSubmit = ({ message }: FeedbackFormValues) => onSubmit(message);
 
   return (
     <FeedbackSection>
