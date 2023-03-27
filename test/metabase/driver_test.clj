@@ -10,8 +10,8 @@
 
 (driver/register! ::test-driver, :abstract? true)
 
-(defmethod driver/supports? [::test-driver :foreign-keys] [_ _] true)
-(defmethod driver/database-supports? [::test-driver :foreign-keys] [_ _ db] (= db "dummy"))
+(defmethod driver/database-supports? [::test-driver :foreign-keys] [_driver _feature _db] true)
+(defmethod driver/database-supports? [::test-driver :foreign-keys] [_driver _feature db] (= db "dummy"))
 
 (deftest ^:parallel driver-supports?-test
   (is (driver/supports? ::test-driver :foreign-keys))

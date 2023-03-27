@@ -60,17 +60,17 @@
       (let [table  (mi/instance Table {:id 1234})
             fields [(mi/instance Field {:id 4321 :base_type :type/Text})]]
         (testing "uses substrings if driver supports expressions"
-          (with-redefs [driver/supports? (constantly true)]
+          (with-redefs [driver/database-supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (seq (get-in query [:query :expressions]))))))
         (testing "doesnt' use substrings if driver doesn't support expressions"
-          (with-redefs [driver/supports? (constantly false)]
+          (with-redefs [driver/database-supports? (constantly false)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions])))))))
       (testing "pre-existing json fields are still marked as `:type/Text`"
         (let [table (mi/instance Table {:id 1234})
               fields [(mi/instance Field {:id 4321, :base_type :type/Text, :semantic_type :type/SerializedJSON})]]
-          (with-redefs [driver/supports? (constantly true)]
+          (with-redefs [driver/database-supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions]))))))))))
 
