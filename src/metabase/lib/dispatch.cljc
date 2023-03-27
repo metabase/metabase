@@ -20,7 +20,7 @@
   ;; TODO -- for Clj, we should probably handle Toucan instances as well, and dispatch off
   ;; of [[toucan2.core/model]]?
   (or (mbql-clause-type x)
-      (if (map? x)
+      (when (map? x)
         (if (and (keyword? (:operator x))
                  (vector? (:args x))
                  (map? (:options x {})))
