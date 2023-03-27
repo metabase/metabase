@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Dataset } from "metabase-types/types/Dataset";
+import { Dataset } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import MetabotQueryEditor from "../MetabotQueryEditor";
 import MetabotQueryFooter from "../MetabotQueryFooter";

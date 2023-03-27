@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import MetabotMode from "metabase/modes/components/modes/MetabotMode";
-import { Dataset } from "metabase-types/types/Dataset";
+import { Dataset } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import { FullVisualization } from "./MetabotVisualization.styled";
 

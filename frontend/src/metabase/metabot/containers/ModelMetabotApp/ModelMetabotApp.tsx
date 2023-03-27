@@ -1,13 +1,52 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+import { jt, t } from "ttag";
+import React, { useCallback } from "react";
 import { extractEntityId } from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser } from "metabase/selectors/user";
 import Questions from "metabase/entities/questions";
 import { Card, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Metabot from "metabase/metabot/components/Metabot";
+import { MetabotApi } from "metabase/services";
+import { getMetabotQuestionResults } from "metabase/metabot/utils/question";
+import ModelLink from "metabase/metabot/components/ModelLink";
 import Question from "metabase-lib/Question";
-import ModelMetabot from "../../components/ModelMetabot";
+
+type ModelMetabotAppProps = StateProps;
+
+const ModelMetabotApp = ({ model, user }: ModelMetabotAppProps) => {
+  const handleFetchResults = useCallback(
+    async (query: string) => {
+      const card = await MetabotApi.modelPrompt({
+        modelId: model.id(),
+        question: query,
+      });
+
+      return getMetabotQuestionResults(card, model.metadata());
+    },
+    [model],
+  );
+
+  return (
+    <Metabot
+      user={user}
+      initialGreeting={getInitialGreeting(model, user)}
+      placeholder={t`Ask something like, how many ${model.displayName()} have we had over time?`}
+      onFetchResults={handleFetchResults}
+    />
+  );
+};
+
+const getInitialGreeting = (model: Question, user?: User) => {
+  const link = <ModelLink model={model} />;
+  const name = user?.first_name;
+
+  return name
+    ? jt`What do you want to know about ${link}, ${name}?`
+    : jt`What do you want to know about ${link}?`;
+};
 
 interface RouterParams {
   slug: string;
@@ -41,4 +80,4 @@ const mapStateToProps = (
 export default _.compose(
   Questions.load({ id: getModelId, entityAlias: "card" }),
   connect(mapStateToProps),
-)(ModelMetabot);
+)(ModelMetabotApp);

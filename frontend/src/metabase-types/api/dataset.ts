@@ -44,6 +44,7 @@ export interface Dataset {
   row_count: number;
   running_time: number;
   json_query?: JsonQuery;
+  error?: string;
 }
 
 export interface NativeQueryForm {

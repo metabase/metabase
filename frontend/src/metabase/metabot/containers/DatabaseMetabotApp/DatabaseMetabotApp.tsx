@@ -2,12 +2,83 @@ import { connect } from "react-redux";
 import _ from "underscore";
 
 import { push } from "react-router-redux";
+import { jt, t } from "ttag";
+import React, { useCallback } from "react";
 import { getUser } from "metabase/selectors/user";
 import Databases from "metabase/entities/databases";
-import { Card, Database, DatabaseId, User } from "metabase-types/api";
+import { Card, DatabaseId, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import DatabaseMetabot from "metabase/metabot/components/DatabaseMetabot";
 import { LocationDescriptor } from "metabase-types/types";
+import Metabot, { MetabotProps } from "metabase/metabot/components/Metabot";
+import DatabasePicker from "metabase/metabot/components/DatabasePicker";
+import { MetabotApi } from "metabase/services";
+import { getMetabotQuestionResults } from "metabase/metabot/utils/question";
+import Database from "metabase-lib/metadata/Database";
+
+interface DatabaseMetabotProps {
+  database: Database;
+  databases: Database[];
+  user?: User;
+  initialQuery?: string;
+  onDatabaseChange: (databaseId: number) => void;
+}
+
+const DatabaseMetabotApp = ({
+  database,
+  databases,
+  user,
+  initialQuery,
+  onDatabaseChange,
+}: DatabaseMetabotProps) => {
+  const initialGreeting = getInitialGreeting(
+    databases,
+    onDatabaseChange,
+    database,
+    user,
+  );
+
+  const handleFetchResults: MetabotProps["onFetchResults"] = useCallback(
+    async (query: string) => {
+      const card = await MetabotApi.databasePrompt({
+        databaseId: database.id,
+        question: query,
+      });
+
+      return getMetabotQuestionResults(card, database.metadata);
+    },
+    [database],
+  );
+
+  return (
+    <Metabot
+      user={user}
+      initialGreeting={initialGreeting}
+      placeholder={t`Ask something...`}
+      initialQuery={initialQuery}
+      onFetchResults={handleFetchResults}
+    />
+  );
+};
+
+const getInitialGreeting = (
+  databases: Database[],
+  onDatabaseChange: (databaseId: number) => void,
+  database: Database,
+  user?: User,
+) => {
+  const name = user?.first_name;
+  const databasePicker = (
+    <DatabasePicker
+      databases={databases}
+      selectedDatabaseId={database.id}
+      onChange={onDatabaseChange}
+    />
+  );
+
+  return name
+    ? jt`What do you want to know about ${databasePicker}, ${name}?`
+    : jt`What do you want to know about ${databasePicker}?`;
+};
 
 interface RouterParams {
   databaseId?: string;
@@ -48,4 +119,4 @@ const mapDispatchToProps = {
 export default _.compose(
   Databases.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
-)(DatabaseMetabot);
+)(DatabaseMetabotApp);
