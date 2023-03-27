@@ -36,6 +36,7 @@ import type {
 } from "metabase-types/types/Parameter";
 import type { Series } from "metabase-types/types/Visualization";
 
+import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 
 import type Mode from "metabase-lib/Mode";
@@ -49,8 +50,6 @@ import {
 import DashCardActionButtons from "./DashCardActionButtons";
 import DashCardVisualization from "./DashCardVisualization";
 import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
-
-const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
@@ -187,7 +186,7 @@ function DashCard({
       isSlow: slowCards[card.id],
       isUsuallyFast:
         card.query_average_duration &&
-        card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD,
+        card.query_average_duration < DASHBOARD_SLOW_TIMEOUT,
     }));
   }, [cards, dashcard.id, dashcardData, slowCards]);
 

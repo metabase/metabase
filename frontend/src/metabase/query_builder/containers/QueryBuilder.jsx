@@ -92,6 +92,7 @@ import {
   getCardAutocompleteResultsFn,
 } from "../selectors";
 import * as actions from "../actions";
+import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 
 const timelineProps = {
   query: { include: "events" },
@@ -359,7 +360,7 @@ function QueryBuilder(props) {
   }, []);
 
   useLoadingTimer(isRunning, {
-    timer: 15000,
+    timer: VISUALIZATION_SLOW_TIMEOUT,
     onTimeout,
   });
 
