@@ -37,7 +37,7 @@
          (openai-api-key)
          (openai-organization))
     (let [resp (openai.api/create-chat-completion
-                {:model    "gpt-3.5-turbo"
+                {:model    "gpt-4"
                  ;; Just produce a single result
                  :n        num-choices
                  ; Note - temperature of 0 is deterministic, so n > 1 will return n identical items
