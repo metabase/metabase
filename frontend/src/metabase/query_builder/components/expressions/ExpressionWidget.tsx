@@ -13,7 +13,6 @@ import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 import {
   ActionButtonsWrapper,
   Container,
-  Divider,
   ExpressionFieldWrapper,
   FieldTitle,
   FieldWrapper,
@@ -132,7 +131,6 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
         </FieldWrapper>
       )}
 
-      <Divider />
       <Footer>
         <ActionButtonsWrapper>
           {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}

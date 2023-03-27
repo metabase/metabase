@@ -42,15 +42,8 @@ export const StyledFieldTitleIcon = styled(Icon)`
   height: 10px;
 `;
 
-export const Divider = styled.div`
-  width: 100%;
-  height: 1px;
-  background-color: ${color("border")};
-  margin-top: 0.5rem;
-`;
-
 export const Footer = styled.div`
-  padding: 1.5rem;
+  padding: 0.5rem 1.5rem 1.5rem;
 
   display: flex;
   flex-direction: row;
