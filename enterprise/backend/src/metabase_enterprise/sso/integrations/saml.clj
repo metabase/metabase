@@ -114,9 +114,12 @@
   ;; and redirect them back to us
   [req]
   (check-saml-enabled)
-  (let [redirect-url (or (get-in req [:params :redirect])
-                         (log/warn (trs "Warning: expected `redirect` param, but none is present"))
-                         (public-settings/site-url))]
+  (let [redirect (get-in req [:params :redirect])
+        redirect-url (if (nil? redirect)
+                       (do
+                         (log/warn (trs "TEST Warning: expected `redirect` param, but none is present"))
+                         (public-settings/site-url))
+                       (str (public-settings/site-url) redirect))]
     (sso-utils/check-sso-redirect redirect-url)
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)

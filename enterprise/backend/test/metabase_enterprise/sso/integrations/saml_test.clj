@@ -10,6 +10,7 @@
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
+   [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
@@ -33,6 +34,7 @@
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- disable-other-sso-types [thunk]
+  (classloader/require 'metabase.api.ldap)
   (mt/with-temporary-setting-values [ldap-enabled false
                                      jwt-enabled  false]
     (thunk)))
