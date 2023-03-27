@@ -8,6 +8,7 @@ import CollectionCaption from "./CollectionCaption";
 import CollectionBookmark from "./CollectionBookmark";
 import CollectionMenu from "./CollectionMenu";
 import CollectionTimeline from "./CollectionTimeline";
+import CollectionUpload from "./CollectionUpload";
 
 import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 
@@ -32,6 +33,8 @@ const CollectionHeader = ({
   onCreateBookmark,
   onDeleteBookmark,
 }: CollectionHeaderProps): JSX.Element => {
+  const canUpload = true; // TODO: check settings for upload permissions
+
   return (
     <HeaderRoot>
       <CollectionCaption
@@ -46,6 +49,7 @@ const CollectionHeader = ({
           onCreateBookmark={onCreateBookmark}
           onDeleteBookmark={onDeleteBookmark}
         />
+        {canUpload && <CollectionUpload collection={collection} />}
         <CollectionMenu
           collection={collection}
           isAdmin={isAdmin}
