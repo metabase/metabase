@@ -6,8 +6,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as schema.common]
    #_{:clj-kondo/ignore [:unused-namespace]}
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli :as mu])
   #?(:cljs (:require-macros [metabase.lib.common])))
 
 (mu/defn external-op :- [:maybe ::schema.common/external-op]
