@@ -969,6 +969,8 @@
     (impl/test-migrations ["v47.00-001"] [_]
       (let [{:keys [db-type ^javax.sql.DataSource
                     data-source]} mdb.connection/*application-db*
+            ;; Use db.setup/migrate! instead of the impl/test-migrations migrate! binding, otherwise the rollback
+            ;; will sometimes fail to work in CI (metabase#29515)
             migrate! (partial db.setup/migrate! db-type data-source)
             [pg-db-id
              mysql-db-id] (t2/insert-returning-pks! Database [{:name "PG Database"    :engine "postgres"}
