@@ -5,6 +5,8 @@ import Input from "metabase/core/components/Input";
 import { MetabotFeedbackType } from "metabase-types/api";
 import MetabotMessage from "../MetabotMessage";
 import {
+  FeedbackButton,
+  FeedbackInputRoot,
   FeedbackSelectionRoot,
   WrongDataFormRoot,
 } from "./MetabotFeedback.styled";
@@ -90,12 +92,15 @@ const FeedbackInput = ({ placeholder }: FeedbackInputProps) => {
     setMessage(e.target.value);
 
   return (
-    <Input
-      value={message}
-      placeholder={placeholder}
-      fullWidth
-      onChange={handleChange}
-    />
+    <FeedbackInputRoot>
+      <Input
+        value={message}
+        placeholder={placeholder}
+        fullWidth
+        onChange={handleChange}
+      />
+      <FeedbackButton icon="check" primary />
+    </FeedbackInputRoot>
   );
 };
 
