@@ -15,21 +15,19 @@ runs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: driver-${{ inputs.junit-name }}
-    - name: Setup upterm session
-      uses: lhotari/action-upterm@v1
-    # - name: Build static viz frontend
-      # run: yarn build-static-viz
-      # shell: bash
-    # - name: Test database driver
-      # run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
-      # shell: bash
-    # - name: Publish Test Report (JUnit)
-    #   uses: dorny/test-reporter@v1
-    #   if: failure()
-    #   with:
-    #     path: 'target/junit/**/*_test.xml'
-    #     name: JUnit Test Report ${{ inputs.junit-name }}
-    #     reporter: java-junit
-    #     list-suites: failed
-    #     list-tests: failed
-    #     fail-on-error: false
+    - name: Build static viz frontend
+      run: yarn build-static-viz
+      shell: bash
+    - name: Test database driver
+      run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
+      shell: bash
+    - name: Publish Test Report (JUnit)
+      uses: dorny/test-reporter@v1
+      if: failure()
+      with:
+        path: 'target/junit/**/*_test.xml'
+        name: JUnit Test Report ${{ inputs.junit-name }}
+        reporter: java-junit
+        list-suites: failed
+        list-tests: failed
+        fail-on-error: false
