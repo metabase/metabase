@@ -103,7 +103,7 @@
   [entity]
   (cond-> (dissoc entity :id :creator_id :created_at :updated_at :db_id :location
                   :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id
-                  :pulse_id :result_metadata :entity_id)
+                  :pulse_id :result_metadata :entity_id :action_id)
     (some #(instance? % entity) (map type [Metric Field Segment])) (dissoc :table_id)))
 
 (defmulti ^:private serialize-one
