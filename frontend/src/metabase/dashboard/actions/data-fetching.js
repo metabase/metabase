@@ -40,9 +40,8 @@ import {
   fetchDataOrError,
   getDatasetQueryParams,
 } from "../utils";
+import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 import { loadMetadataForDashboard } from "./metadata";
-
-const DATASET_SLOW_TIMEOUT = 15 * 1000;
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -274,7 +273,7 @@ export const fetchCardData = createThunkAction(
         if (result === null) {
           dispatch(markCardAsSlow(card, datasetQuery));
         }
-      }, DATASET_SLOW_TIMEOUT);
+      }, DASHBOARD_SLOW_TIMEOUT);
 
       const deferred = defer();
       setFetchCardDataCancel(card.id, dashcard.id, deferred);
