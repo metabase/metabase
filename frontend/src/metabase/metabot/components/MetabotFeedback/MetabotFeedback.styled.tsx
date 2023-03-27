@@ -1,5 +1,8 @@
 import styled from "@emotion/styled";
-import Button from "metabase/core/components/Button";
+import Input from "metabase/core/components/Input";
+import Form from "metabase/core/components/Form";
+import FormField from "metabase/core/components/FormField";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 
 export const FeedbackSelectionRoot = styled.div`
   display: flex;
@@ -13,12 +16,22 @@ export const WrongDataFormRoot = styled.div`
   gap: 0.5rem;
 `;
 
-export const FeedbackInputRoot = styled.div`
+export const InlineForm = styled(Form)`
+  display: flex;
+  gap: 0.5rem;
   position: relative;
+
+  ${FormField.Root} {
+    margin-bottom: 0;
+  }
+
+  ${Input.Field} {
+    padding-right: 2.5rem;
+  }
 `;
 
-export const FeedbackButton = styled(Button)`
+export const InlineSubmitButton = styled(FormSubmitButton)`
   position: absolute;
-  top: 0.25rem;
-  right: 0.25rem;
+  top: 0.375rem;
+  right: 0.375rem;
 `;

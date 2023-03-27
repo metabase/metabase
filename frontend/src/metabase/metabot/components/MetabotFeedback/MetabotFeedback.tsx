@@ -1,13 +1,14 @@
-import React, { ChangeEvent, useState } from "react";
+import React from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
-import Input from "metabase/core/components/Input";
+import FormProvider from "metabase/core/components/FormProvider";
+import FormInput from "metabase/core/components/FormInput";
 import { MetabotFeedbackType } from "metabase-types/api";
 import MetabotMessage from "../MetabotMessage";
 import {
-  FeedbackButton,
-  FeedbackInputRoot,
   FeedbackSelectionRoot,
+  InlineForm,
+  InlineSubmitButton,
   WrongDataFormRoot,
 } from "./MetabotFeedback.styled";
 
@@ -63,8 +64,6 @@ const GreatFeedbackMessage = () => {
   return <MetabotMessage>{t`Glad to hear it!`}</MetabotMessage>;
 };
 
-// Type the name of the data it should have used.
-
 interface WrongDataFormProps {
   onSubmit: (message: string) => void;
 }
@@ -73,7 +72,7 @@ const WrongDataForm = ({ onSubmit }: WrongDataFormProps) => {
   return (
     <WrongDataFormRoot>
       <MetabotMessage>{t`What data should it have used?`}</MetabotMessage>
-      <FeedbackInput
+      <FeedbackForm
         placeholder={t`Type the name of the data it should have used.`}
         onSubmit={onSubmit}
       />
@@ -81,26 +80,26 @@ const WrongDataForm = ({ onSubmit }: WrongDataFormProps) => {
   );
 };
 
-interface FeedbackInputProps {
+interface FeedbackFormProps {
   placeholder: string;
   onSubmit: (message: string) => void;
 }
 
-const FeedbackInput = ({ placeholder }: FeedbackInputProps) => {
-  const [message, setMessage] = useState("");
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) =>
-    setMessage(e.target.value);
+interface FeedbackFormValues {
+  message: string;
+}
+
+const FeedbackForm = ({ placeholder, onSubmit }: FeedbackFormProps) => {
+  const initialValues = { message: "" };
+  const handleSubmit = ({ message }: FeedbackFormValues) => onSubmit(message);
 
   return (
-    <FeedbackInputRoot>
-      <Input
-        value={message}
-        placeholder={placeholder}
-        fullWidth
-        onChange={handleChange}
-      />
-      <FeedbackButton icon="check" primary />
-    </FeedbackInputRoot>
+    <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
+      <InlineForm>
+        <FormInput name="message" placeholder={placeholder} />
+        <InlineSubmitButton icon="check" primary title="" />
+      </InlineForm>
+    </FormProvider>
   );
 };
 
