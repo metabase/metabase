@@ -126,15 +126,15 @@
 (deftest ^:parallel describe-order-by-expression-reference-test
     ;;   it("should work with expressions", () => {
   ;;     const query = {
-  ;;       "source-table": PRODUCTS.id
+  ;;       "source-table": PRODUCTS.id,
   ;;       expressions: {
-  ;;         Foo: ["concat", "Foo ", ["field", 4, null]]
-  ;;       }
-  ;;       "order-by": [["asc", ["expression", "Foo", null]]]
+  ;;         Foo: ["concat", "Foo ", ["field", 4, null]],
+  ;;       },
+  ;;       "order-by": [["asc", ["expression", "Foo", null]]],
   ;;     };
   ;;     expect(base_question._getOrderByDescription(PRODUCTS, query)).toEqual([
-  ;;       "Sorted by "
-  ;;       ["Foo ascending"]
+  ;;       "Sorted by ",
+  ;;       ["Foo ascending"],
   ;;     ]);
   ;;   });
   ;; });
