@@ -1,49 +1,69 @@
-import React, { ChangeEvent, useState } from "react";
+import React from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
-import Input from "metabase/core/components/Input";
+import FormProvider from "metabase/core/components/FormProvider";
 import { MetabotFeedbackType } from "metabase-types/api";
 import MetabotMessage from "../MetabotMessage";
 import {
-  FeedbackButton,
-  FeedbackInputRoot,
-  FeedbackSelectionRoot,
-  WrongDataFormRoot,
+  FeedbackSection,
+  InlineForm,
+  InlineFormInput,
+  InlineFormSubmitButton,
 } from "./MetabotFeedback.styled";
 
 export interface MetabotFeedbackProps {
-  type: MetabotFeedbackType | undefined;
-  onTypeChange: (newType: MetabotFeedbackType) => void;
-  onSubmit: (newMessage: string) => void;
+  type?: MetabotFeedbackType;
+  isSubmitted?: boolean;
+  onTypeChange?: (type: MetabotFeedbackType) => void;
+  onSubmit?: (message: string) => void;
 }
 
 const MetabotFeedback = ({
   type,
+  isSubmitted,
   onTypeChange,
   onSubmit,
 }: MetabotFeedbackProps) => {
+  if (isSubmitted) {
+    return <MetabotMessage>{t`Thanks for the feedback!`}</MetabotMessage>;
+  }
+
   switch (type) {
     case "great":
-      return <GreatFeedbackMessage />;
+      return <MetabotMessage>{t`Glad to hear it!`}</MetabotMessage>;
     case "wrong-data":
-      return <WrongDataForm onSubmit={onSubmit} />;
+      return (
+        <FeedbackMessageForm
+          title={t`What data should it have used?`}
+          placeholder={t`Type the name of the data it should have used.`}
+          onSubmit={onSubmit}
+        />
+      );
+    case "incorrect-result":
+      return (
+        <FeedbackMessageForm
+          title={t`Sorry about that.`}
+          placeholder={t`Describe what’s wrong`}
+          onSubmit={onSubmit}
+        />
+      );
     default:
-      return <FeedbackSelection onTypeChange={onTypeChange} />;
+      return <FeedbackTypeSelect onTypeChange={onTypeChange} />;
   }
 };
 
-interface FeedbackSelectionProps {
-  onTypeChange: (newType: MetabotFeedbackType) => void;
+interface FeedbackTypeSelectProps {
+  onTypeChange?: (type: MetabotFeedbackType) => void;
 }
 
-const FeedbackSelection = ({ onTypeChange }: FeedbackSelectionProps) => {
-  const handleGreatChange = () => onTypeChange("great");
-  const handleWrongDataChange = () => onTypeChange("wrong-data");
-  const handleIncorrectResultChange = () => onTypeChange("incorrect-result");
-  const handleInvalidSqlChange = () => onTypeChange("invalid-sql");
+const FeedbackTypeSelect = ({ onTypeChange }: FeedbackTypeSelectProps) => {
+  const handleGreatChange = () => onTypeChange?.("great");
+  const handleWrongDataChange = () => onTypeChange?.("wrong-data");
+  const handleIncorrectResultChange = () => onTypeChange?.("incorrect-result");
+  const handleInvalidSqlChange = () => onTypeChange?.("invalid-sql");
 
   return (
-    <FeedbackSelectionRoot>
+    <FeedbackSection>
       <MetabotMessage>{t`How did I do?`}</MetabotMessage>
       <Button onClick={handleGreatChange}>{t`This is great!`}</Button>
       <Button onClick={handleWrongDataChange}>
@@ -55,52 +75,40 @@ const FeedbackSelection = ({ onTypeChange }: FeedbackSelectionProps) => {
       <Button onClick={handleInvalidSqlChange}>
         {t`This isn’t valid SQL.`}
       </Button>
-    </FeedbackSelectionRoot>
+    </FeedbackSection>
   );
 };
 
-const GreatFeedbackMessage = () => {
-  return <MetabotMessage>{t`Glad to hear it!`}</MetabotMessage>;
-};
-
-// Type the name of the data it should have used.
-
-interface WrongDataFormProps {
-  onSubmit: (message: string) => void;
+interface FeedbackFormValues {
+  message: string;
 }
 
-const WrongDataForm = ({ onSubmit }: WrongDataFormProps) => {
-  return (
-    <WrongDataFormRoot>
-      <MetabotMessage>{t`What data should it have used?`}</MetabotMessage>
-      <FeedbackInput
-        placeholder={t`Type the name of the data it should have used.`}
-        onSubmit={onSubmit}
-      />
-    </WrongDataFormRoot>
-  );
-};
-
-interface FeedbackInputProps {
+interface FeedbackMessageFormProps {
+  title: string;
   placeholder: string;
-  onSubmit: (message: string) => void;
+  onSubmit?: (message: string) => void;
 }
 
-const FeedbackInput = ({ placeholder }: FeedbackInputProps) => {
-  const [message, setMessage] = useState("");
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) =>
-    setMessage(e.target.value);
+const FeedbackMessageForm = ({
+  title,
+  placeholder,
+  onSubmit,
+}: FeedbackMessageFormProps) => {
+  const initialValues = { message: "" };
+  const handleSubmit = ({ message }: FeedbackFormValues) => onSubmit?.(message);
 
   return (
-    <FeedbackInputRoot>
-      <Input
-        value={message}
-        placeholder={placeholder}
-        fullWidth
-        onChange={handleChange}
-      />
-      <FeedbackButton icon="check" primary />
-    </FeedbackInputRoot>
+    <FeedbackSection>
+      <MetabotMessage>{title}</MetabotMessage>
+      <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
+        {({ dirty }) => (
+          <InlineForm disabled={!dirty}>
+            <InlineFormInput name="message" placeholder={placeholder} />
+            <InlineFormSubmitButton title="" icon="check" primary />
+          </InlineForm>
+        )}
+      </FormProvider>
+    </FeedbackSection>
   );
 };
 
