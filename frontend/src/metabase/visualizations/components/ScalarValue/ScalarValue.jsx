@@ -6,6 +6,7 @@ import React, { useMemo } from "react";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
+import Markdown from "metabase/core/components/Markdown";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import {
   ScalarRoot,
@@ -73,9 +74,9 @@ export const ScalarTitle = ({ title, description, onClick }) => (
         {title}
       </Ellipsified>
     </ScalarTitleContent>
-    {description && description.length > 0 && (
+    {description && (
       <ScalarDescriptionContainer className="hover-child">
-        <Tooltip tooltip={description} maxWidth="22em">
+        <Tooltip tooltip={<Markdown>{description}</Markdown>} maxWidth="22em">
           <Icon name="info_outline" />
         </Tooltip>
       </ScalarDescriptionContainer>

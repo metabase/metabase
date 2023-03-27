@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import _LoadingSpinner from "metabase/components/LoadingSpinner";
+import Markdown from "metabase/core/components/Markdown";
 
 const TRANSITION_DURATION = () => (isReducedMotionPreferred() ? "0" : "0.25s");
 
@@ -30,7 +31,7 @@ export const InfoContainer = styled(Container)`
   padding: 1.1em;
 `;
 
-export const Description = styled.div`
+export const Description = styled(Markdown)`
   white-space: pre-line;
   max-height: 200px;
   overflow: auto;

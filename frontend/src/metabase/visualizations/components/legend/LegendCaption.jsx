@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import Ellipsified from "metabase/core/components/Ellipsified";
+import Markdown from "metabase/core/components/Markdown";
 import LegendActions from "./LegendActions";
 import {
   LegendCaptionRoot,
@@ -40,7 +41,7 @@ const LegendCaption = ({
       </LegendLabel>
       <LegendRightContent>
         {description && (
-          <Tooltip tooltip={description} maxWidth="22em">
+          <Tooltip tooltip={<Markdown>{description}</Markdown>} maxWidth="22em">
             <LegendDescriptionIcon className="hover-child hover-child--smooth" />
           </Tooltip>
         )}
