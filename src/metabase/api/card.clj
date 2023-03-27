@@ -960,7 +960,7 @@ saved later when it is ready."
   [card-id param-key]
   {card-id   ms/PositiveInt
    param-key ms/NonBlankString}
-  (let [db-id (db/select-one-field :database_id Card :id card-id)
+  (let [db-id (t2/select-one-fn :database_id Card :id card-id)
         block-check (try (check-block-permissions {:database db-id})
                          nil
                          (catch clojure.lang.ExceptionInfo e {:status 403 :body (ex-message e)}))]
@@ -978,7 +978,7 @@ saved later when it is ready."
   {card-id   ms/PositiveInt
    param-key ms/NonBlankString
    query     ms/NonBlankString}
-  (let [db-id (db/select-one-field :database_id Card :id card-id)
+  (let [db-id (t2/select-one-fn :database_id Card :id card-id)
         block-check (try (check-block-permissions {:database db-id})
                          nil
                          (catch clojure.lang.ExceptionInfo e {:status 403 :body (ex-message e)}))]
