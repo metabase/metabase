@@ -2368,19 +2368,13 @@
                                                                   :value_field (mt/$ids $venues.name)}}]
                           :table_id      (mt/id :venues)}
                          card-values)]]
-     (let [all-permissions (t2/select perms/Permissions)
-           non-admin-perms (remove #(= "/" (:object %)) all-permissions)]
-       (try (f {:source-card       source-card
-                :card              card
-                :field-filter-card field-filter-card
-                :param-keys        {:static-list       "_STATIC_CATEGORY_"
-                                    :static-list-label "_STATIC_CATEGORY_LABEL_"
-                                    :card              "_CARD_"
-                                    :field-values      "name_param_id"}})
-            (finally
-              (doseq [{:keys [id]} (remove #(= "/" (:object %)) (t2/select perms/Permissions))]
-                (t2/delete! perms/Permissions id))
-              (t2/insert! perms/Permissions non-admin-perms)))))))
+     (f {:source-card       source-card
+         :card              card
+         :field-filter-card field-filter-card
+         :param-keys        {:static-list       "_STATIC_CATEGORY_"
+                             :static-list-label "_STATIC_CATEGORY_LABEL_"
+                             :card              "_CARD_"
+                             :field-values      "name_param_id"}}))))
 
 (defmacro with-card-param-values-fixtures
   "Execute `body` with all needed setup to tests param values on card."
