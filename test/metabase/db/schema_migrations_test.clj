@@ -1019,6 +1019,7 @@
                                                                  {:name    "disabled"
                                                                   :engine  "postgres"
                                                                   :details {:json-unfolding false}}])
+            ;; create a table for each database
             [enabled-table-id
              enabled-by-default-table-1-id
              enabled-by-default-table-2-id
@@ -1027,6 +1028,7 @@
                                                                              enabled-by-default-db-2-id
                                                                              disabled-db-id]]
                                                                   {:db_id db-id :name "Table" :active true}))
+            ;; create a JSON field for each table
             [enabled-field-id
              enabled-by-default-field-1-id
              enabled-by-default-field-2-id
@@ -1039,10 +1041,10 @@
                                                                    :active        true
                                                                    :base_type     :type/JSON
                                                                    :database_type "json"}))
-            _              (migrate!)
-            new-base-types (t2/select-pk->fn :json_unfolding Field)]
-        (are [field-id expected] (= expected (get new-base-types field-id))
-          enabled-field-id true
-          enabled-by-default-field-1-id true
-          enabled-by-default-field-2-id true
-          disabled-field-id false)))))
+            _                  (migrate!)
+            id->json-unfolding (t2/select-pk->fn :json_unfolding Field)]
+        (are [field-id expected] (= expected (get id->json-unfolding field-id))
+          enabled-field-id              true       ; {:json-unfolding true}
+          enabled-by-default-field-1-id true       ; {}
+          enabled-by-default-field-2-id true       ; {:json-unfolding nil}
+          disabled-field-id             false))))) ; {:json-unfolding false}
