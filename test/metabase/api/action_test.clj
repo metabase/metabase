@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.action :as api.action]
-   [metabase.models :refer [Action :m/card Database]]
+   [metabase.models :refer [Action Database]]
    [metabase.models.user :as user]
    [metabase.test :as mt]
    [metabase.util :as u]

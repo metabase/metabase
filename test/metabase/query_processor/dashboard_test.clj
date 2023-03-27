@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.models
-    :refer [:m/card Dashboard DashboardCard DashboardCardSeries]]
+    :refer [Dashboard DashboardCard DashboardCardSeries]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -122,21 +122,21 @@
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
     (mt/dataset sample-dataset
       (mt/with-temp* [:m/card [{card-id :id} {:dataset_query {:database (mt/id)
-                                                           :type     :native
-                                                           :native   {:query (str "SELECT distinct category "
-                                                                                  "FROM products "
-                                                                                  "WHERE {{filter}} "
-                                                                                  "ORDER BY category ASC")
-                                                                      :template-tags
-                                                                      {"filter"
-                                                                       {:id           "xyz456"
-                                                                        :name         "filter"
-                                                                        :display-name "Filter"
-                                                                        :type         :dimension
-                                                                        :dimension    [:field (mt/id :products :category) nil]
-                                                                        :widget-type  :category
-                                                                        :default      ["Gizmo" "Gadget"]
-                                                                        :required     true}}}}}]
+                                                              :type     :native
+                                                              :native   {:query (str "SELECT distinct category "
+                                                                                     "FROM products "
+                                                                                     "WHERE {{filter}} "
+                                                                                     "ORDER BY category ASC")
+                                                                         :template-tags
+                                                                         {"filter"
+                                                                          {:id           "xyz456"
+                                                                           :name         "filter"
+                                                                           :display-name "Filter"
+                                                                           :type         :dimension
+                                                                           :dimension    [:field (mt/id :products :category) nil]
+                                                                           :widget-type  :category
+                                                                           :default      ["Gizmo" "Gadget"]
+                                                                           :required     true}}}}}]
                       Dashboard [{dashboard-id :id} {:parameters [{:name    "category"
                                                                    :slug    "category"
                                                                    :id      "abc123"
@@ -164,16 +164,16 @@
   (testing "If both Dashboard and Card have default values for a raw value parameter, Card defaults should take precedence\n"
     (mt/dataset sample-dataset
       (mt/with-temp* [:m/card [{card-id :id} {:dataset_query {:database (mt/id)
-                                                           :type     :native
-                                                           :native   {:query "SELECT {{filter}}"
-                                                                      :template-tags
-                                                                      {"filter"
-                                                                       {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
-                                                                        :name         "filter"
-                                                                        :display-name "Filter"
-                                                                        :type         "text"
-                                                                        :required     true
-                                                                        :default      "Foo"}}}}}]
+                                                              :type     :native
+                                                              :native   {:query "SELECT {{filter}}"
+                                                                         :template-tags
+                                                                         {"filter"
+                                                                          {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
+                                                                           :name         "filter"
+                                                                           :display-name "Filter"
+                                                                           :type         "text"
+                                                                           :required     true
+                                                                           :default      "Foo"}}}}}]
                       Dashboard [{dashboard-id :id} {:parameters [{:name    "Text"
                                                                    :slug    "text"
                                                                    :id      "5791ff38"
@@ -275,10 +275,10 @@
   (testing "Parameters passed in from the request with only default values (but no actual values) should get ignored (#20516)"
     (mt/dataset sample-dataset
       (mt/with-temp* [:m/card [{card-id :id} {:name          "Orders"
-                                           :dataset_query (mt/mbql-query products
-                                                            {:fields   [$id $title $category]
-                                                             :order-by [[:asc $id]]
-                                                             :limit    2})}]
+                                              :dataset_query (mt/mbql-query products
+                                                               {:fields   [$id $title $category]
+                                                                :order-by [[:asc $id]]
+                                                                :limit    2})}]
                       Dashboard [{dashboard-id :id} {:name       "20516 Dashboard"
                                                      :parameters [{:name    "Category"
                                                                    :slug    "category"

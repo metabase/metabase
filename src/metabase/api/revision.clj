@@ -3,7 +3,6 @@
    [compojure.core :refer [GET POST]]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.revision :as revision :refer [Revision]]
    [schema.core :as s]

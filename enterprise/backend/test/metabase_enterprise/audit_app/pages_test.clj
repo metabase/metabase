@@ -7,7 +7,7 @@
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.reader :as tools.reader]
    [metabase-enterprise.audit-app.interface :as audit.i]
-   [metabase.models :refer [:m/card Dashboard DashboardCard Database Table User]]
+   [metabase.models :refer [Dashboard DashboardCard Database Table User]]
    [metabase.models.permissions :as perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features-test :as premium-features-test]

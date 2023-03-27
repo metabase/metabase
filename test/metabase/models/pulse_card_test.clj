@@ -1,7 +1,6 @@
 (ns metabase.models.pulse-card-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]

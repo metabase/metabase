@@ -7,7 +7,7 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.models
-    :refer [Action :m/card Collection Dashboard DashboardCard Database Field
+    :refer [Action Collection Dashboard DashboardCard Database Field
             FieldValues Metric NativeQuerySnippet Segment Table Timeline
             TimelineEvent User]]
    [metabase.models.action :as action]

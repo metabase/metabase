@@ -9,7 +9,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models :refer [:m/card Database Field FieldValues Table]]
+   [metabase.models :refer [Database Field FieldValues Table]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.table :as table]
@@ -507,10 +507,10 @@
   (testing "GET /api/table/:id/query_metadata"
     (testing "Make sure metadata for 'virtual' tables comes back as expected"
       (mt/with-temp :m/card [card {:name          "Go Dubs!"
-                                :database_id   (mt/id)
-                                :dataset_query {:database (mt/id)
-                                                :type     :native
-                                                :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]
+                                   :database_id   (mt/id)
+                                   :dataset_query {:database (mt/id)
+                                                   :type     :native
+                                                   :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]
         ;; run the Card which will populate its result_metadata column
         (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
         ;; Now fetch the metadata for this "table"
@@ -565,10 +565,10 @@
   (testing "GET /api/table/:id/query_metadata"
     (testing "Test date dimensions being included with a nested query"
       (mt/with-temp :m/card [card {:name          "Users"
-                                :database_id   (mt/id)
-                                :dataset_query {:database (mt/id)
-                                                :type     :native
-                                                :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
+                                   :database_id   (mt/id)
+                                   :dataset_query {:database (mt/id)
+                                                   :type     :native
+                                                   :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
         (let [card-virtual-table-id (str "card__" (u/the-id card))]
           ;; run the Card which will populate its result_metadata column
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
@@ -790,9 +790,9 @@
     (testing "binning options for nested queries"
       (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
         (mt/with-temp :m/card [card {:database_id   (mt/id)
-                                  :dataset_query {:database (mt/id)
-                                                  :type    :query
-                                                  :query    {:source-query {:source-table (mt/id :venues)}}}}]
+                                     :dataset_query {:database (mt/id)
+                                                     :type    :query
+                                                     :query    {:source-query {:source-table (mt/id :venues)}}}}]
           (letfn [(dimension-options []
                     (let [response (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" (u/the-id card)))]
                       (map #(dimension-options-for-field response %) ["latitude" "longitude"])))]

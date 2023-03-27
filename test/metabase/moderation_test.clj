@@ -1,7 +1,6 @@
 (ns metabase.moderation-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:m/card]]
    [metabase.moderation]
    [metabase.util :as u]
    [toucan2.core :as t2]

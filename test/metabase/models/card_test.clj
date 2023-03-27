@@ -3,7 +3,7 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.models
-    :refer [:m/card Collection Dashboard DashboardCard ParameterCard NativeQuerySnippet]]
+    :refer [Collection Dashboard DashboardCard ParameterCard NativeQuerySnippet]]
    [metabase.models.card :as card]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]

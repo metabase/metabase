@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.email :as email]
    [metabase.email-test :as et]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :refer [PulseChannel]]

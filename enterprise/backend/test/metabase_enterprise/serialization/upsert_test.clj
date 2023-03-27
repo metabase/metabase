@@ -3,13 +3,8 @@
    [clojure.data :as data]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.upsert :as upsert]
-<<<<<<< HEAD
    [metabase.db.util :as mdb.u]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet
-=======
-   [metabase.models :refer [:m/card Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet
->>>>>>> 9359134504 (replace Card symbols)
-                            Pulse Segment Table User]]
+   [metabase.models :refer [Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]

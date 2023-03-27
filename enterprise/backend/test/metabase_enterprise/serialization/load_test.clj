@@ -7,8 +7,7 @@
    [metabase-enterprise.serialization.cmd :refer [v1-dump v1-load]]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase.models
-    :refer [:m/card
-            Collection
+    :refer [Collection
             Dashboard
             DashboardCard
             DashboardCardSeries

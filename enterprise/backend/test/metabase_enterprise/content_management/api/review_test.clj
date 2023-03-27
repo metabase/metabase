@@ -1,7 +1,6 @@
 (ns metabase-enterprise.content-management.api.review-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.moderation-review :as moderation-review :refer [ModerationReview]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]

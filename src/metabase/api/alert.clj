@@ -9,7 +9,6 @@
    [metabase.api.common.validation :as validation]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-channel :refer [PulseChannel]]

@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.pivots :as api.pivots]
-   [metabase.models :refer [:m/card Collection]]
+   [metabase.models :refer [Collection]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]

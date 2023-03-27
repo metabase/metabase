@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.driver :as driver]
-   [metabase.models :refer [:m/card Field]]
+   [metabase.models :refer [Field]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
@@ -282,12 +282,12 @@
              (#'nest-query/joined-fields query))))
     (mt/dataset sample-dataset
       (mt/with-temp* [:m/card [base {:dataset_query
-                                  (mt/mbql-query
-                                   reviews
-                                   {:breakout [$product_id],
-                                    :aggregation [[:count]],
-                                    ;; filter on an implicit join
-                                    :filter [:= $product_id->products.category "Doohickey"]})}]]
+                                     (mt/mbql-query
+                                      reviews
+                                      {:breakout [$product_id],
+                                       :aggregation [[:count]],
+                                       ;; filter on an implicit join
+                                       :filter [:= $product_id->products.category "Doohickey"]})}]]
         ;; the result returned is not important, just important that the query is valid and completes
         (is (vector?
              (mt/rows

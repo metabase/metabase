@@ -18,7 +18,7 @@
    [metabase.db.util :as mdb.u]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.action :as action]
-   [metabase.models.card :as card :refer [:m/card]]
+   [metabase.models.card :as card]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]

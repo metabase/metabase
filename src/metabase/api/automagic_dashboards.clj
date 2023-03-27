@@ -8,7 +8,6 @@
    [metabase.automagic-dashboards.core
     :refer [automagic-analysis candidate-tables]]
    [metabase.automagic-dashboards.rules :as rules]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]

@@ -5,7 +5,6 @@
    [java-time :as t]
    [metabase.api.activity :as api.activity]
    [metabase.models.activity :refer [Activity]]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.query-execution :refer [QueryExecution]]
@@ -115,14 +114,14 @@
 
 (deftest recent-views-test
   (mt/with-temp* [:m/card      [card1 {:name                   "rand-name"
-                                    :creator_id             (mt/user->id :crowberto)
-                                    :display                "table"
-                                    :visualization_settings {}}]
+                                       :creator_id             (mt/user->id :crowberto)
+                                       :display                "table"
+                                       :visualization_settings {}}]
                   :m/card      [archived  {:name                   "archived-card"
-                                        :creator_id             (mt/user->id :crowberto)
-                                        :display                "table"
-                                        :archived               true
-                                        :visualization_settings {}}]
+                                           :creator_id             (mt/user->id :crowberto)
+                                           :display                "table"
+                                           :archived               true
+                                           :visualization_settings {}}]
                   Dashboard [dash {:name        "rand-name2"
                                    :description "rand-name2"
                                    :creator_id  (mt/user->id :crowberto)}]
@@ -130,10 +129,10 @@
                   Table     [hidden-table {:name            "hidden table"
                                            :visibility_type "hidden"}]
                   :m/card      [dataset {:name                   "rand-name"
-                                      :dataset                true
-                                      :creator_id             (mt/user->id :crowberto)
-                                      :display                "table"
-                                      :visualization_settings {}}]]
+                                         :dataset                true
+                                         :creator_id             (mt/user->id :crowberto)
+                                         :display                "table"
+                                         :visualization_settings {}}]]
     (mt/with-model-cleanup [ViewLog QueryExecution]
       (create-views! [[(mt/user->id :crowberto) "card"      (:id dataset)]
                       [(mt/user->id :crowberto) "card"      (:id card1)]
@@ -153,14 +152,14 @@
 
 (deftest popular-items-test
   (mt/with-temp* [:m/card      [card1 {:name                   "rand-name"
-                                    :creator_id             (mt/user->id :crowberto)
-                                    :display                "table"
-                                    :visualization_settings {}}]
+                                       :creator_id             (mt/user->id :crowberto)
+                                       :display                "table"
+                                       :visualization_settings {}}]
                   :m/card      [_archived  {:name                   "archived-card"
-                                         :creator_id             (mt/user->id :crowberto)
-                                         :display                "table"
-                                         :archived               true
-                                         :visualization_settings {}}]
+                                            :creator_id             (mt/user->id :crowberto)
+                                            :display                "table"
+                                            :archived               true
+                                            :visualization_settings {}}]
                   Dashboard [dash1 {:name        "rand-name"
                                     :description "rand-name"
                                     :creator_id  (mt/user->id :crowberto)}]
@@ -171,10 +170,10 @@
                   Table     [_hidden-table {:name            "hidden table"
                                             :visibility_type "hidden"}]
                   :m/card      [dataset {:name                   "rand-name"
-                                      :dataset                true
-                                      :creator_id             (mt/user->id :crowberto)
-                                      :display                "table"
-                                      :visualization_settings {}}]]
+                                         :dataset                true
+                                         :creator_id             (mt/user->id :crowberto)
+                                         :display                "table"
+                                         :visualization_settings {}}]]
     (testing "Items viewed by multiple users are not duplicated in the popular items list."
       (mt/with-model-cleanup [ViewLog QueryExecution]
         (create-views! [[(mt/user->id :rasta)     "dashboard" (:id dash1)]

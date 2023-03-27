@@ -9,7 +9,7 @@
    [metabase.api.alert :as api.alert]
    [metabase.email.messages :as messages]
    [metabase.models
-    :refer [:m/card Pulse PulseCard PulseChannel PulseChannelRecipient]]
+    :refer [Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.pulse :as pulse]
    [metabase.pulse]
    [metabase.pulse.test-util :as pulse.tu]

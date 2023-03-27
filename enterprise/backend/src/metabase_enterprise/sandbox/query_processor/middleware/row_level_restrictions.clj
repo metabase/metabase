@@ -13,7 +13,6 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.field :refer [Field]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group-membership

@@ -4,7 +4,6 @@
    [metabase.api.embed-test :as embed-test]
    [metabase.api.pivots :as api.pivots]
    [metabase.api.preview-embed :as api.preview-embed]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.test :as mt]
@@ -331,13 +330,13 @@
   (testing "Make sure that editable params do not result in \"Invalid Parameter\" exceptions (#7212)"
     (embed-test/with-embedding-enabled-and-new-secret-key
       (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
-                                                :type     :native
-                                                :native   {:query         "SELECT {{num}} AS num"
-                                                           :template-tags {:num {:name         "num"
-                                                                                 :display_name "Num"
-                                                                                 :type         "number"
-                                                                                 :required     true
-                                                                                 :default      "1"}}}}}]
+                                                   :type     :native
+                                                   :native   {:query         "SELECT {{num}} AS num"
+                                                              :template-tags {:num {:name         "num"
+                                                                                    :display_name "Num"
+                                                                                    :type         "number"
+                                                                                    :required     true
+                                                                                    :default      "1"}}}}}]
         (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters [{:name "Num"
                                                                            :slug "num"
                                                                            :id   "_NUM_"
@@ -357,9 +356,9 @@
     (testing "Make sure that ID params correctly get converted to numbers as needed (Postgres-specific)..."
       (embed-test/with-embedding-enabled-and-new-secret-key
         (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
-                                                  :type     :query
-                                                  :query    {:source-table (mt/id :venues)
-                                                             :aggregation  [:count]}}}]
+                                                     :type     :query
+                                                     :query    {:source-table (mt/id :venues)
+                                                                :aggregation  [:count]}}}]
           (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters [{:name "Venue ID"
                                                                              :slug "venue_id"
                                                                              :id   "_VENUE_ID_"
@@ -457,16 +456,16 @@
     (mt/dataset sample-dataset
       (embed-test/with-embedding-enabled-and-new-secret-key
         (mt/with-temp :m/card [{card-id :id, :as card} {:dataset_query    (mt/native-query
-                                                                         {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
-                                                                          :template-tags {"NAME"
-                                                                                          {:name         "NAME"
-                                                                                           :display-name "Name"
-                                                                                           :type         :dimension
-                                                                                           :dimension    [:field (mt/id :people :name) nil]
-                                                                                           :widget-type  :string/=
-                                                                                           :default      nil}}})
-                                                     :enable_embedding true
-                                                     :embedding_params {"NAME" "enabled"}}]
+                                                                           {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                                                                            :template-tags {"NAME"
+                                                                                            {:name         "NAME"
+                                                                                             :display-name "Name"
+                                                                                             :type         :dimension
+                                                                                             :dimension    [:field (mt/id :people :name) nil]
+                                                                                             :widget-type  :string/=
+                                                                                             :default      nil}}})
+                                                        :enable_embedding true
+                                                        :embedding_params {"NAME" "enabled"}}]
           (testing "Card"
             (let [url (card-query-url card {:_embedding_params {:NAME "enabled"}})]
               (is (= [[1]]

@@ -6,7 +6,6 @@
    [metabase.api.table :as api.table]
    [metabase.db.query :as mdb.query]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.table :as table :refer [Table]]

@@ -4,7 +4,6 @@
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.card :as card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -163,8 +162,8 @@
 (deftest nested-query-test
   (testing "if source card is *not* in a Collection, we require Root Collection read perms"
     (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
-                                              :type     :query
-                                              :query    {:source-table (mt/id :venues)}}}]
+                                                 :type     :query
+                                                 :query    {:source-table (mt/id :venues)}}}]
       (is (= #{"/collection/root/read/"}
              (query-perms/perms-set
               (query-with-source-card card))))))
@@ -172,9 +171,9 @@
   (testing "if source Card *is* in a Collection, we require read perms for that Collection"
     (mt/with-temp* [Collection [collection {}]
                     :m/card [card {:collection_id (u/the-id collection)
-                                :dataset_query {:database (mt/id)
-                                                :type     :query
-                                                :query    {:source-table (mt/id :venues)}}}]]
+                                   :dataset_query {:database (mt/id)
+                                                   :type     :query
+                                                   :query    {:source-table (mt/id :venues)}}}]]
       (is (= #{(perms/collection-read-path collection)}
              (query-perms/perms-set
               (query-with-source-card card)))))))
@@ -186,10 +185,10 @@
   (testing (str "If you run a query that uses a Card as its source query, and the source query has a JOIN, then you "
                 "should still only need Permissions for the Collection that Card is in.")
     (mt/with-temp :m/card [card {:dataset_query
-                              {:database (mt/id)
-                               :type     :query
-                               :query    {:source-table (mt/id :checkins)
-                                          :order-by     [[:asc [:field (mt/id :users :id) {:source-field (mt/id :checkins :user_id)}]]]}}}]
+                                 {:database (mt/id)
+                                  :type     :query
+                                  :query    {:source-table (mt/id :checkins)
+                                             :order-by     [[:asc [:field (mt/id :users :id) {:source-field (mt/id :checkins :user_id)}]]]}}}]
       (is (= #{"/collection/root/read/"}
              (query-perms/perms-set
               (query-with-source-card card)))))))
@@ -201,8 +200,8 @@
   (testing (str "doesn't matter if it's a NATIVE query as the source; you should still just need read perms for the "
                 "Card's collection")
     (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
-                                              :type     :native
-                                              :native   {:query "SELECT * FROM CHECKINS"}}}]
+                                                 :type     :native
+                                                 :native   {:query "SELECT * FROM CHECKINS"}}}]
       (is (= #{"/collection/root/read/"}
              (query-perms/perms-set
               (query-with-source-card card))))))
@@ -234,9 +233,9 @@
 (deftest joins-test
   (testing "Are permissions calculated correctly for JOINs?"
     (mt/with-temp :m/card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                       (mt/mbql-query checkins
-                                         {:aggregation [[:sum $id]]
-                                          :breakout    [$user_id]}))]
+                                          (mt/mbql-query checkins
+                                            {:aggregation [[:sum $id]]
+                                             :breakout    [$user_id]}))]
       (is (= #{(perms/table-query-path (mt/id) "PUBLIC" (mt/id :checkins))
                (perms/table-query-path (mt/id) "PUBLIC" (mt/id :users))}
              (query-perms/perms-set

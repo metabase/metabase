@@ -12,7 +12,6 @@
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.persisted-info :refer [PersistedInfo]]
    [metabase.query-processor :as qp]

@@ -16,7 +16,6 @@
    [metabase.events :as events]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.database
     :as database

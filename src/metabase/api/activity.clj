@@ -8,7 +8,6 @@
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.activity :refer [Activity]]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.query-execution :refer [QueryExecution]]

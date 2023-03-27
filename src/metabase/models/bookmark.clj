@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.util.honey-sql-2 :as h2x]

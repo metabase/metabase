@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.mbql.util :as mbql.u]
    [metabase.models
-    :refer [:m/card Dashboard DashboardCard DashboardCardSeries]]
+    :refer [Dashboard DashboardCard DashboardCardSeries]]
    [metabase.pulse :as pulse]
    [metabase.pulse.render :as render]
    [metabase.query-processor :as qp]
@@ -21,7 +21,7 @@
 
 (defn- render-results [query]
   (mt/with-temp :m/card [card {:dataset_query query
-                            :display       :line}]
+                               :display       :line}]
     (render-pulse-card card)))
 
 (deftest render-test

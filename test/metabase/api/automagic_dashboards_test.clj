@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.automagic-dashboards.core :as magic]
-   [metabase.models :refer [:m/card Collection Dashboard Metric Segment]]
+   [metabase.models :refer [Collection Dashboard Metric Segment]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -113,9 +113,9 @@
                                         #(revoke-collection-permissions! collection-id))))))]]
         (tt/with-temp* [Collection [{collection-id :id}]
                         :m/card       [{card-id :id} {:table_id      (mt/id :venues)
-                                                   :collection_id collection-id
-                                                   :dataset_query (mt/mbql-query venues
-                                                                    {:filter [:> $price 10]})}]]
+                                                      :collection_id collection-id
+                                                      :dataset_query (mt/mbql-query venues
+                                                                       {:filter [:> $price 10]})}]]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-fn collection-id card-id))))))
 
@@ -171,9 +171,9 @@
             result-metadata (get-in (qp/process-query card-query) [:data :results_metadata :columns])]
         (mt/with-temp* [Collection [{collection-id :id}]
                         :m/card       [{card-id :id} {:name            "15655_Q1"
-                                                   :collection_id   collection-id
-                                                   :dataset_query   card-query
-                                                   :result_metadata result-metadata}]]
+                                                      :collection_id   collection-id
+                                                      :dataset_query   card-query
+                                                      :result_metadata result-metadata}]]
           (let [query      {:database (mt/id)
                             :type     :query
                             :query    {:source-table (format "card__%d" card-id)

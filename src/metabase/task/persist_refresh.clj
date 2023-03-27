@@ -12,7 +12,6 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.email.messages :as messages]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.persisted-info
     :as persisted-info

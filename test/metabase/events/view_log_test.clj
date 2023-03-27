@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.events.view-log :as view-log]
-   [metabase.models :refer [:m/card Dashboard Table User ViewLog]]
+   [metabase.models :refer [Dashboard Table User ViewLog]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

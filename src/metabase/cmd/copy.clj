@@ -12,7 +12,6 @@
             Activity
             ApplicationPermissionsRevision
             BookmarkOrdering
-            :m/card
             CardBookmark
             Collection
             CollectionBookmark

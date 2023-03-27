@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.api.card-test :as api.card-test]
-   [metabase.models :refer [:m/card Collection Database PermissionsGroup PermissionsGroupMembership Table]]
+   [metabase.models :refer [Collection Database PermissionsGroup PermissionsGroupMembership Table]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -36,7 +36,7 @@
                         PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta)
                                                        :group_id (u/the-id group)}]
                         :m/card                       [card {:name "Some Name"
-                                                          :collection_id (u/the-id collection)}]]
+                                                             :collection_id (u/the-id collection)}]]
           (mt/with-db db
             (perms/revoke-data-perms! (perms-group/all-users) db)
             (perms/grant-permissions! group (perms/table-segmented-query-path table))
@@ -51,19 +51,19 @@
     (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (mt/with-temp*
         [:m/card [{source-card-id :id}
-               {:database_id   (mt/id)
-                :table_id      (mt/id :categories)
-                :dataset_query (mt/mbql-query categories)}]
+                  {:database_id   (mt/id)
+                   :table_id      (mt/id :categories)
+                   :dataset_query (mt/mbql-query categories)}]
          :m/card [{card-id         :id}
-               {:database_id     (mt/id)
-                :dataset_query   (mt/mbql-query categories)
-                :parameters      [{:id                   "abc"
-                                   :type                 "category"
-                                   :name                 "CATEGORY"
-                                   :values_source_type   "card"
-                                   :values_source_config {:card_id     source-card-id
-                                                          :value_field (mt/$ids $categories.name)}}]
-                :table_id        (mt/id :venues)}]]
+                  {:database_id     (mt/id)
+                   :dataset_query   (mt/mbql-query categories)
+                   :parameters      [{:id                   "abc"
+                                      :type                 "category"
+                                      :name                 "CATEGORY"
+                                      :values_source_type   "card"
+                                      :values_source_config {:card_id     source-card-id
+                                                             :value_field (mt/$ids $categories.name)}}]
+                   :table_id        (mt/id :venues)}]]
 
         (testing "when getting values"
           (let [get-values (fn [user]

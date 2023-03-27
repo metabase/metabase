@@ -2,7 +2,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.metric :refer [Metric]]

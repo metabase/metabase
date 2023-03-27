@@ -1,7 +1,7 @@
 (ns metabase.transforms.materialize
   (:require
    [metabase.api.common :as api]
-   [metabase.models.card :as card :refer [:m/card]]
+   [metabase.models.card :as card]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.query-processor :as qp]
    [toucan2.core :as t2]))

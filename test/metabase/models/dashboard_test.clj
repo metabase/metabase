@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.core :as magic]
-   [metabase.models :refer [:m/card Collection Dashboard DashboardCard DashboardCardSeries
+   [metabase.models :refer [Collection Dashboard DashboardCard DashboardCardSeries
                             Database Field Pulse PulseCard Table]]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard :as dashboard]
@@ -264,8 +264,8 @@
                     Database      [db    {:engine :h2}]
                     Table         [table {:db_id (u/the-id db)}]
                     :m/card          [card  {:dataset_query {:database (u/the-id db)
-                                                          :type     :query
-                                                          :query    {:source-table (u/the-id table)}}}]
+                                                             :type     :query
+                                                             :query    {:source-table (u/the-id table)}}}]
                     DashboardCard [_ {:dashboard_id (u/the-id dash), :card_id (u/the-id card)}]]
       (f db collection dash))))
 

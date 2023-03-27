@@ -5,8 +5,7 @@
    [metabase.api.user :as api.user]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [:m/card
-            Collection
+    :refer [Collection
             Dashboard
             LoginHistory
             PermissionsGroup

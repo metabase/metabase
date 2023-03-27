@@ -2,7 +2,6 @@
   (:require
    [clojure.core.async :as a]
    [metabase.events :as events]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.metric :refer [Metric]]
    [metabase.models.revision :refer [push-revision!]]

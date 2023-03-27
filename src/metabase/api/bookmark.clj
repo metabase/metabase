@@ -10,7 +10,6 @@
    [metabase.models.bookmark
     :as bookmark
     :refer [CardBookmark CollectionBookmark DashboardBookmark]]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.util.schema :as su]

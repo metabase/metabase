@@ -1,7 +1,6 @@
 (ns metabase.models.revision-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision :refer [Revision]]
    [metabase.test :as mt]

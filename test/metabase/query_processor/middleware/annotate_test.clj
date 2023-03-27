@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.models :refer [:m/card Field]]
+   [metabase.models :refer [Field]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.store :as qp.store]
@@ -679,21 +679,21 @@
   (testing "Aggregated question with source is an aggregated models should infer display_name correctly (#23248)"
     (mt/dataset sample-dataset
      (mt/with-temp* [:m/card [{card-id :id}
-                           {:dataset true
-                            :dataset_query
-                            (mt/$ids :products
-                                     {:type     :query
-                                      :database (mt/id)
-                                      :query    {:source-table $$products
-                                                 :aggregation
-                                                 [[:aggregation-options
-                                                   [:sum $price]
-                                                   {:name "sum"}]
-                                                  [:aggregation-options
-                                                   [:max $rating]
-                                                   {:name "max"}]]
-                                                 :breakout     $category
-                                                 :order-by     [[:asc $category]]}})}]]
+                              {:dataset true
+                               :dataset_query
+                               (mt/$ids :products
+                                        {:type     :query
+                                         :database (mt/id)
+                                         :query    {:source-table $$products
+                                                    :aggregation
+                                                    [[:aggregation-options
+                                                      [:sum $price]
+                                                      {:name "sum"}]
+                                                     [:aggregation-options
+                                                      [:max $rating]
+                                                      {:name "max"}]]
+                                                    :breakout     $category
+                                                    :order-by     [[:asc $category]]}})}]]
        (let [query (qp/preprocess
                      (mt/mbql-query nil
                                     {:source-table (str "card__" card-id)
@@ -775,9 +775,9 @@
                              :native {:query query :template-tags {}}
                              :database (mt/id)})]
       (mt/with-temp* [:m/card [{card1-id :id} {:dataset_query
-                                            (native "select 'foo' as A_COLUMN")}]
+                                               (native "select 'foo' as A_COLUMN")}]
                       :m/card [{card2-id :id} {:dataset_query
-                                            (native "select 'foo' as B_COLUMN")}]]
+                                               (native "select 'foo' as B_COLUMN")}]]
         (doseq [card-id [card1-id card2-id]]
           ;; populate metadata
           (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))

@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.models :refer [:m/card Dashboard Database]]
+   [metabase.models :refer [Dashboard Database]]
    [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]

@@ -1,7 +1,7 @@
 (ns metabase-enterprise.audit-app.api.user-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:m/card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
+   [metabase.models :refer [Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [toucan2.core :as t2]))

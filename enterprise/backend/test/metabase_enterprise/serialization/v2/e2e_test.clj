@@ -8,8 +8,7 @@
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
-   [metabase.models :refer [:m/card
-                            Collection
+   [metabase.models :refer [Collection
                             Dashboard
                             DashboardCard
                             Database
@@ -435,16 +434,16 @@
                                   :table_id (:id table1s)}]
              :m/card       [card1s  {:name "Source card"}]
              :m/card       [card2s  {:name "Card with parameter"
-                                  :database_id (:id db1s)
-                                  :table_id (:id table1s)
-                                  :collection_id (:id coll1s)
-                                  :parameters [{:id                   "abc"
-                                                :type                 "category"
-                                                :name                 "CATEGORY"
-                                                :values_source_type   "card"
-                                                ;; card_id is in a different collection with dashboard's collection
-                                                :values_source_config {:card_id     (:id card1s)
-                                                                       :value_field [:field (:id field1s) nil]}}]}]
+                                     :database_id (:id db1s)
+                                     :table_id (:id table1s)
+                                     :collection_id (:id coll1s)
+                                     :parameters [{:id                   "abc"
+                                                   :type                 "category"
+                                                   :name                 "CATEGORY"
+                                                   :values_source_type   "card"
+                                                   ;; card_id is in a different collection with dashboard's collection
+                                                   :values_source_config {:card_id     (:id card1s)
+                                                                          :value_field [:field (:id field1s) nil]}}]}]
              Dashboard  [dash1s {:name "A dashboard"
                                  :collection_id (:id coll1s)
                                  :parameters [{:id                   "abc"
@@ -536,17 +535,17 @@
                                                       :name        "Linked table"
                                                       :description "Linked table desc"}
              :m/card          {card-id   :id
-                            card-name :name
-                            card-eid  :entity_id}    {:name          "Linked card"
-                                                      :description   "Linked card desc"
-                                                      :display       "bar"}
+                               card-name :name
+                               card-eid  :entity_id}    {:name          "Linked card"
+                                                         :description   "Linked card desc"
+                                                         :display       "bar"}
 
              :m/card          {model-id   :id
-                            model-name :name
-                            model-eid  :entity_id}   {:dataset       true
-                                                      :name          "Linked model"
-                                                      :description   "Linked model desc"
-                                                      :display       "table"}
+                               model-name :name
+                               model-eid  :entity_id}   {:dataset       true
+                                                         :name          "Linked model"
+                                                         :description   "Linked model desc"
+                                                         :display       "table"}
 
              Dashboard     {dash-id   :id
                             dash-name :name

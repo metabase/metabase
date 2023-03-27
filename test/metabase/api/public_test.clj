@@ -13,8 +13,7 @@
    [metabase.api.public :as api.public]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [:m/card
-            Collection
+    :refer [Collection
             Database
             Dashboard
             DashboardCard
@@ -492,13 +491,13 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (testing "with native queries and template tag params"
           (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
-                                                    :type     :native
-                                                    :native   {:query         "SELECT {{num}} AS num"
-                                                               :template-tags {:num {:name         "num"
-                                                                                     :display-name "Num"
-                                                                                     :type         "number"
-                                                                                     :required     true
-                                                                                     :default      "1"}}}}}]
+                                                       :type     :native
+                                                       :native   {:query         "SELECT {{num}} AS num"
+                                                                  :template-tags {:num {:name         "num"
+                                                                                        :display-name "Num"
+                                                                                        :type         "number"
+                                                                                        :required     true
+                                                                                        :default      "1"}}}}}]
             (with-temp-public-dashboard [dash {:parameters [{:name "Num"
                                                              :slug "num"
                                                              :id   "_NUM_"
@@ -523,9 +522,9 @@
         (testing "with MBQL queries"
           (testing "`:id` parameters"
             (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
-                                                      :type     :query
-                                                      :query    {:source-table (mt/id :venues)
-                                                                 :aggregation  [:count]}}}]
+                                                         :type     :query
+                                                         :query    {:source-table (mt/id :venues)
+                                                                    :aggregation  [:count]}}}]
               (with-temp-public-dashboard [dash {:parameters [{:name "venue_id"
                                                                :slug "venue_id"
                                                                :id   "_VENUE_ID_"
@@ -550,9 +549,9 @@
           (testing "temporal parameters"
             (mt/with-temporary-setting-values [enable-public-sharing true]
               (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
-                                                        :type     :query
-                                                        :query    {:source-table (mt/id :checkins)
-                                                                   :aggregation  [:count]}}}]
+                                                           :type     :query
+                                                           :query    {:source-table (mt/id :checkins)
+                                                                      :aggregation  [:count]}}}]
                 (with-temp-public-dashboard [dash {:parameters [{:name "Date Filter"
                                                                  :slug "date_filter"
                                                                  :id   "_DATE_"
@@ -582,15 +581,15 @@
                   "for some reason as part of the query (#7253)")
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
-                                                  :type     :native
-                                                  :native   {:query         "SELECT {{msg}} AS message"
-                                                             :template-tags {:msg {:id           "_MSG_
+                                                     :type     :native
+                                                     :native   {:query         "SELECT {{msg}} AS message"
+                                                                :template-tags {:msg {:id           "_MSG_
 "
-                                                                                   :name         "msg"
-                                                                                   :display-name "Message"
-                                                                                   :type         "text"
-                                                                                   :required     true
-                                                                                   :default      "Wow"}}}}}]
+                                                                                      :name         "msg"
+                                                                                      :display-name "Message"
+                                                                                      :type         "text"
+                                                                                      :required     true
+                                                                                      :default      "Wow"}}}}}]
           (with-temp-public-dashboard [dash {:parameters [{:name "Message"
                                                            :slug "msg"
                                                            :id   "_MSG_"

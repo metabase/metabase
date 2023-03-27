@@ -5,7 +5,7 @@
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase.cmd :as cmd]
-   [metabase.models :refer [:m/card Dashboard DashboardCard Database User]]
+   [metabase.models :refer [Dashboard DashboardCard Database User]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]

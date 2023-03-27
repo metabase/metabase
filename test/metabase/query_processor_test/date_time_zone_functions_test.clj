@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.driver :as driver]
-   [metabase.models :refer [:m/card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -682,16 +681,16 @@
 
         (testing "nested custom expression should works"
           (mt/with-temp :m/card [card
-                              {:dataset_query
-                               (mt/mbql-query
-                                 times
-                                 {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
-                                                "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Tokyo"
-                                                               "Asia/Saigon"]}
-                                  :filter      [:= $times.index 1]
-                                  :fields      [$times.dt
-                                                [:expression "to-07"]
-                                                [:expression "to-07-to-09"]]})}]
+                                 {:dataset_query
+                                  (mt/mbql-query
+                                    times
+                                    {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
+                                                   "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Tokyo"
+                                                                  "Asia/Saigon"]}
+                                     :filter      [:= $times.index 1]
+                                     :fields      [$times.dt
+                                                   [:expression "to-07"]
+                                                   [:expression "to-07-to-09"]]})}]
             (testing "mbql query"
               (is (= [["2004-03-19T09:19:09Z"
                        "2004-03-19T16:19:09+07:00"
@@ -814,10 +813,10 @@
     (testing "datetime-diff can compare `date`, `timestamp`, and `timestamp with time zone` args with Athena"
       (mt/with-temp*
         [:m/card [card (qp.test-util/card-with-source-metadata-for-query
-                     (mt/native-query {:query (str "select"
-                                                   " date '2022-01-01' as d,"
-                                                   " timestamp '2022-01-01 00:00:00.000' as dt,"
-                                                   " with_timezone(timestamp '2022-01-01 00:00:00.000', 'Africa/Lagos') as dt_tz")}))]]
+                        (mt/native-query {:query (str "select"
+                                                      " date '2022-01-01' as d,"
+                                                      " timestamp '2022-01-01 00:00:00.000' as dt,"
+                                                      " with_timezone(timestamp '2022-01-01 00:00:00.000', 'Africa/Lagos') as dt_tz")}))]]
         (let [d       [:field "d" {:base-type :type/Date}]
               dt      [:field "dt" {:base-type :type/DateTime}]
               dt_tz   [:field "dt_tz" {:base-type :type/DateTimeWithZoneID}]
@@ -1035,7 +1034,7 @@
   (mt/test-driver :athena
     (mt/dataset diff-time-zones-athena-cases
       (mt/with-temp* [:m/card [card (qp.test-util/card-with-source-metadata-for-query
-                                  (mt/native-query {:query diff-time-zones-athena-cases-query}))]]
+                                     (mt/native-query {:query diff-time-zones-athena-cases-query}))]]
         (let [diffs
               (fn [a-str b-str]
                 (let [units   [:second :minute :hour :day :week :month :quarter :year]

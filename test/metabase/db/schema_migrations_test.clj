@@ -21,7 +21,6 @@
    [metabase.driver :as driver]
    [metabase.models
     :refer [Action
-            :m/card
             Collection
             Dashboard
             Database
@@ -626,43 +625,26 @@
         (migrate!)
         (is (= #{"All Users"} (get-perms "/application/subscription/")))))))
 
+
 (deftest add-parameter-to-cards-test
   (testing "Migration v44.00-022: Add parameters to report_card"
     (impl/test-migrations ["v44.00-022" "v44.00-024"] [migrate!]
       (let [user-id
-<<<<<<< HEAD
             (first (t2/insert-returning-pks! (t2/table-name User) {:first_name  "Howard"
                                                                    :last_name   "Hughes"
                                                                    :email       "howard@aircraft.com"
                                                                    :password    "superstrong"
                                                                    :date_joined :%now}))
             database-id (first (t2/insert-returning-pks! (t2/table-name Database) {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now}))
-            card-id (first (t2/insert-returning-pks! (t2/table-name Card) {:name                   "My Saved Question"
-                                                                           :created_at             :%now
-                                                                           :updated_at             :%now
-                                                                           :creator_id             user-id
-                                                                           :display                "table"
-                                                                           :dataset_query          "{}"
-                                                                           :visualization_settings "{}"
-                                                                           :database_id            database-id
-                                                                           :collection_id          nil}))]
-=======
-            (db/simple-insert! User {:first_name  "Howard"
-                                     :last_name   "Hughes"
-                                     :email       "howard@aircraft.com"
-                                     :password    "superstrong"
-                                     :date_joined :%now})
-            database-id (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
-            card-id (db/simple-insert! :m/card {:name                   "My Saved Question"
-                                             :created_at             :%now
-                                             :updated_at             :%now
-                                             :creator_id             user-id
-                                             :display                "table"
-                                             :dataset_query          "{}"
-                                             :visualization_settings "{}"
-                                             :database_id            database-id
-                                             :collection_id          nil})]
->>>>>>> 9359134504 (replace Card symbols)
+            card-id (first (t2/insert-returning-pks! (t2/table-name :m/card) {:name                   "My Saved Question"
+                                                                              :created_at             :%now
+                                                                              :updated_at             :%now
+                                                                              :creator_id             user-id
+                                                                              :display                "table"
+                                                                              :dataset_query          "{}"
+                                                                              :visualization_settings "{}"
+                                                                              :database_id            database-id
+                                                                              :collection_id          nil}))]
        (migrate!)
        (is (= nil
               (:parameters (first (t2/select (t2/table-name :m/card) {:where [:= :id card-id]})))))))))
@@ -679,27 +661,15 @@
             database-id
             (first (t2/insert-returning-pks! (t2/table-name Database) {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now}))
             card-id
-<<<<<<< HEAD
-            (first (t2/insert-returning-pks! (t2/table-name Card) {:name                   "My Saved Question"
-                                                                   :created_at             :%now
-                                                                   :updated_at             :%now
-                                                                   :creator_id             user-id
-                                                                   :display                "table"
-                                                                   :dataset_query          "{}"
-                                                                   :visualization_settings "{}"
-                                                                   :database_id            database-id
-                                                                   :collection_id          nil}))]
-=======
-            (db/simple-insert! :m/card {:name                   "My Saved Question"
-                                     :created_at             :%now
-                                     :updated_at             :%now
-                                     :creator_id             user-id
-                                     :display                "table"
-                                     :dataset_query          "{}"
-                                     :visualization_settings "{}"
-                                     :database_id            database-id
-                                     :collection_id          nil})]
->>>>>>> 9359134504 (replace Card symbols)
+            (first (t2/insert-returning-pks! (t2/table-name :m/card) {:name                   "My Saved Question"
+                                                                      :created_at             :%now
+                                                                      :updated_at             :%now
+                                                                      :creator_id             user-id
+                                                                      :display                "table"
+                                                                      :dataset_query          "{}"
+                                                                      :visualization_settings "{}"
+                                                                      :database_id            database-id
+                                                                      :collection_id          nil}))]
         (migrate!)
         (is (= nil
                (:parameter_mappings (first (t2/select (t2/table-name :m/card) {:where [:= :id card-id]})))))))))
@@ -765,7 +735,6 @@
 (deftest populate-collection-created-at-test
   (testing "Migrations v45.00-048 thru v45.00-050: add Collection.created_at and populate it"
     (impl/test-migrations ["v45.00-048" "v45.00-050"] [migrate!]
-<<<<<<< HEAD
       (let [database-id              (first (t2/insert-returning-pks! (t2/table-name Database) {:details   "{}"
                                                                                                 :engine    "h2"
                                                                                                 :is_sample false
@@ -785,63 +754,24 @@
             empty-collection-id      (first (t2/insert-returning-pks! (t2/table-name Collection) {:name  "Empty Collection"
                                                                                                   :color "#ff0000"
                                                                                                   :slug  "empty_collection"}))
-            _                        (t2/insert! (t2/table-name Card) {:collection_id          impersonal-collection-id
-                                                                       :name                   "Card 1"
-                                                                       :display                "table"
-                                                                       :dataset_query          "{}"
-                                                                       :visualization_settings "{}"
-                                                                       :creator_id             user-id
-                                                                       :database_id            database-id
-                                                                       :created_at             #t "2022-10-20T02:09Z"
-                                                                       :updated_at             #t "2022-10-20T02:09Z"})
-            _                        (t2/insert! (t2/table-name Card) {:collection_id          impersonal-collection-id
-                                                                       :name                   "Card 2"
-                                                                       :display                "table"
-                                                                       :dataset_query          "{}"
-                                                                       :visualization_settings "{}"
-                                                                       :creator_id             user-id
-                                                                       :database_id            database-id
-                                                                       :created_at             #t "2021-10-20T02:09Z"
-                                                                       :updated_at             #t "2022-10-20T02:09Z"})]
-=======
-      (let [database-id              (db/simple-insert! Database {:details   "{}"
-                                                                  :engine    "h2"
-                                                                  :is_sample false
-                                                                  :name      "populate-collection-created-at-test-db"})
-            user-id                  (db/simple-insert! User {:first_name  "Cam"
-                                                              :last_name   "Era"
-                                                              :email       "cam@example.com"
-                                                              :password    "123456"
-                                                              :date_joined #t "2022-10-20T02:09Z"})
-            personal-collection-id   (db/simple-insert! Collection {:name              "Cam Era's Collection"
-                                                                    :personal_owner_id user-id
-                                                                    :color             "#ff0000"
-                                                                    :slug              "personal_collection"})
-            impersonal-collection-id (db/simple-insert! Collection {:name  "Regular Collection"
-                                                                    :color "#ff0000"
-                                                                    :slug  "regular_collection"})
-            empty-collection-id      (db/simple-insert! Collection {:name  "Empty Collection"
-                                                                    :color "#ff0000"
-                                                                    :slug  "empty_collection"})
-            _                        (db/simple-insert! :m/card {:collection_id          impersonal-collection-id
-                                                              :name                   "Card 1"
-                                                              :display                "table"
-                                                              :dataset_query          "{}"
-                                                              :visualization_settings "{}"
-                                                              :creator_id             user-id
-                                                              :database_id            database-id
-                                                              :created_at             #t "2022-10-20T02:09Z"
-                                                              :updated_at             #t "2022-10-20T02:09Z"})
-            _                        (db/simple-insert! :m/card {:collection_id          impersonal-collection-id
-                                                              :name                   "Card 2"
-                                                              :display                "table"
-                                                              :dataset_query          "{}"
-                                                              :visualization_settings "{}"
-                                                              :creator_id             user-id
-                                                              :database_id            database-id
-                                                              :created_at             #t "2021-10-20T02:09Z"
-                                                              :updated_at             #t "2022-10-20T02:09Z"})]
->>>>>>> 9359134504 (replace Card symbols)
+            _                        (t2/insert! (t2/table-name :m/card) {:collection_id          impersonal-collection-id
+                                                                          :name                   "Card 1"
+                                                                          :display                "table"
+                                                                          :dataset_query          "{}"
+                                                                          :visualization_settings "{}"
+                                                                          :creator_id             user-id
+                                                                          :database_id            database-id
+                                                                          :created_at             #t "2022-10-20T02:09Z"
+                                                                          :updated_at             #t "2022-10-20T02:09Z"})
+            _                        (t2/insert! (t2/table-name :m/card) {:collection_id          impersonal-collection-id
+                                                                          :name                   "Card 2"
+                                                                          :display                "table"
+                                                                          :dataset_query          "{}"
+                                                                          :visualization_settings "{}"
+                                                                          :creator_id             user-id
+                                                                          :database_id            database-id
+                                                                          :created_at             #t "2021-10-20T02:09Z"
+                                                                          :updated_at             #t "2022-10-20T02:09Z"})]
         (migrate!)
         (testing "A personal Collection should get created_at set by to the date_joined from its owner"
           (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
@@ -941,7 +871,6 @@
   (testing "Migrations v46.00-084 and v46.00-085 set delete CASCADE for action.model_id to
            fix the bug of unable to delete database with actions"
     (impl/test-migrations ["v46.00-084" "v46.00-085"] [migrate!]
-<<<<<<< HEAD
       (let [user-id  (first (t2/insert-returning-pks! (t2/table-name User) {:first_name  "Howard"
                                                                             :last_name   "Hughes"
                                                                             :email       "howard@aircraft.com"
@@ -958,16 +887,16 @@
                                                                               :created_at :%now
                                                                               :updated_at :%now
                                                                               :active     true}))
-            model-id (first (t2/insert-returning-pks! (t2/table-name Card) {:name                   "My Saved Question"
-                                                                             :created_at             :%now
-                                                                             :updated_at             :%now
-                                                                             :creator_id             user-id
-                                                                             :table_id               table-id
-                                                                             :display                "table"
-                                                                             :dataset_query          "{}"
-                                                                             :visualization_settings "{}"
-                                                                             :database_id            db-id
-                                                                             :collection_id          nil}))
+            model-id (first (t2/insert-returning-pks! (t2/table-name :m/card) {:name                   "My Saved Question"
+                                                                               :created_at             :%now
+                                                                               :updated_at             :%now
+                                                                               :creator_id             user-id
+                                                                               :table_id               table-id
+                                                                               :display                "table"
+                                                                               :dataset_query          "{}"
+                                                                               :visualization_settings "{}"
+                                                                               :database_id            db-id
+                                                                               :collection_id          nil}))
             _        (t2/insert! (t2/table-name Action) {:name       "Update user name"
                                                          :type       "implicit"
                                                          :model_id   model-id
@@ -978,44 +907,6 @@
                     (t2/delete! Database :id db-id)))
        (migrate!)
        (is (t2/delete! Database :id db-id))))))
-=======
-      (let [user-id  (db/simple-insert! User {:first_name  "Howard"
-                                              :last_name   "Hughes"
-                                              :email       "howard@aircraft.com"
-                                              :password    "superstrong"
-                                              :date_joined :%now})
-            db-id    (db/simple-insert! Database {:name       "db"
-                                                  :engine     "postgres"
-                                                  :created_at :%now
-                                                  :updated_at :%now
-                                                  :settings    "{\"database-enable-actions\":true}"
-                                                  :details    "{}"})
-            table-id (db/simple-insert! Table {:db_id      db-id
-                                               :name       "Table"
-                                               :created_at :%now
-                                               :updated_at :%now
-                                               :active     true})
-            model-id (db/simple-insert! :m/card {:name                   "My Saved Question"
-                                              :created_at             :%now
-                                              :updated_at             :%now
-                                              :creator_id             user-id
-                                              :table_id               table-id
-                                              :display                "table"
-                                              :dataset_query          "{}"
-                                              :visualization_settings "{}"
-                                              :database_id            db-id
-                                              :collection_id          nil})
-            _        (db/simple-insert! Action {:name       "Update user name"
-                                                :type       "implicit"
-                                                :model_id   model-id
-                                                :archived   false
-                                                :created_at :%now
-                                                :updated_at :%now})]
-        (is (thrown? clojure.lang.ExceptionInfo
-                     (t2/delete! Database :id db-id)))
-        (migrate!)
-        (is (t2/delete! Database :id db-id))))))
->>>>>>> 9359134504 (replace Card symbols)
 
 (deftest split-data-permission-test
   (testing "Migration v46.00-080: split existing v1 data permission paths into v2 data and query permission paths"

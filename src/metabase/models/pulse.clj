@@ -19,7 +19,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]

@@ -4,7 +4,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.models :refer [Action :m/card Dashboard DashboardCard]]
+   [metabase.models :refer [Action Dashboard DashboardCard]]
    [metabase.models.action :as action]
    [metabase.sync :as sync]
    [metabase.test :as mt]

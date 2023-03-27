@@ -14,7 +14,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models :refer [:m/card Collection Field Table]]
+   [metabase.models :refer [Collection Field Table]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -1042,11 +1042,11 @@
                                                nil]]}}}}
         (mt/with-persistence-enabled [persist-models!]
           (mt/with-temp* [:m/card [model {:dataset       true
-                                       :dataset_query (mt/mbql-query
-                                                          products
-                                                        ;; note does not include the field we have to filter on. No way
-                                                        ;; to use the sandbox filter on the cached table
-                                                          {:fields [$id $price]})}]]
+                                          :dataset_query (mt/mbql-query
+                                                             products
+                                                           ;; note does not include the field we have to filter on. No way
+                                                           ;; to use the sandbox filter on the cached table
+                                                             {:fields [$id $price]})}]]
             ;; persist model (as admin, so sandboxing is not applied to the persisted query)
             (mt/with-test-user :crowberto
               (persist-models!))

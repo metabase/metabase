@@ -4,7 +4,7 @@
    [metabase.events.activity-feed :as events.activity-feed]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models
-    :refer [Activity :m/card Dashboard DashboardCard Metric Pulse Segment]]
+    :refer [Activity Dashboard DashboardCard Metric Pulse Segment]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -38,13 +38,13 @@
 
     (testing "when I save a Card that uses a NESTED query, is the activity recorded? :D"
       (mt/with-temp* [:m/card [card-1 {:name          "My Cool Card"
-                                    :dataset_query {:database (mt/id)
-                                                    :type     :query
-                                                    :query    {:source-table (mt/id :venues)}}}]
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :query
+                                                       :query    {:source-table (mt/id :venues)}}}]
                       :m/card [card-2 {:name          "My Cool NESTED Card"
-                                    :dataset_query {:database mbql.s/saved-questions-virtual-database-id
-                                                    :type     :query
-                                                    :query    {:source-table (str "card__" (u/the-id card-1))}}}]]
+                                       :dataset_query {:database mbql.s/saved-questions-virtual-database-id
+                                                       :type     :query
+                                                       :query    {:source-table (str "card__" (u/the-id card-1))}}}]]
         (mt/with-model-cleanup [Activity]
           (events.activity-feed/process-activity-event! {:topic :card-create, :item card-2})
           (is (= {:topic       :card-create

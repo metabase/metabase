@@ -8,7 +8,6 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
-   [metabase.models.card :as card :refer [:m/card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard-card
     :as dashboard-card

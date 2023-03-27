@@ -10,7 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models
-    :refer [:m/card Collection Database Field FieldValues Metric Segment Table]]
+    :refer [Collection Database Field FieldValues Metric Segment Table]]
    [metabase.models.database :as database :refer [protected-password]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -163,16 +163,16 @@
      Table    [{table-id-2 :id} {:db_id db-id}]
      ;; question
      :m/card     [_                {:database_id db-id
-                                 :table_id    table-id-1
-                                 :dataset     false}]
+                                    :table_id    table-id-1
+                                    :dataset     false}]
      ;; dataset
      :m/card     [_                {:database_id db-id
-                                 :table_id    table-id-1
-                                 :dataset     true}]
+                                    :table_id    table-id-1
+                                    :dataset     true}]
      :m/card     [_                {:database_id db-id
-                                 :table_id    table-id-2
-                                 :dataset     true
-                                 :archived    true}]
+                                    :table_id    table-id-2
+                                    :dataset     true
+                                    :archived    true}]
 
      Metric   [_                {:table_id table-id-1}]
      Metric   [_                {:table_id table-id-1}]
@@ -685,11 +685,11 @@
         (testing "should remove Cards that belong to a driver that doesn't support nested queries"
           (mt/with-temp* [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
                           :m/card     [bad-card {:name            "Bad Card"
-                                              :dataset_query   {:database (u/the-id bad-db)
-                                                                :type     :native
-                                                                :native   {:query "[QUERY GOES HERE]"}}
-                                              :result_metadata [{:name "sparrows"}]
-                                              :database_id     (u/the-id bad-db)}]
+                                                 :dataset_query   {:database (u/the-id bad-db)
+                                                                   :type     :native
+                                                                   :native   {:query "[QUERY GOES HERE]"}}
+                                                 :result_metadata [{:name "sparrows"}]
+                                                 :database_id     (u/the-id bad-db)}]
                           :m/card     [ok-card  (assoc (card-with-native-query "OK Card")
                                                     :result_metadata [{:name "finches"}])]]
             (let [response (fetch-virtual-database)]
@@ -709,12 +709,12 @@
         (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
           (mt/with-temp* [:m/card [ok-card  (ok-mbql-card)]
                           :m/card [bad-card (merge
-                                          (mt/$ids checkins
-                                            (card-with-mbql-query "Cum Count Card"
-                                              :source-table $$checkins
-                                              :aggregation  [[:cum-count]]
-                                              :breakout     [!month.date]))
-                                          {:result_metadata [{:name "num_toucans"}]})]]
+                                             (mt/$ids checkins
+                                               (card-with-mbql-query "Cum Count Card"
+                                                 :source-table $$checkins
+                                                 :aggregation  [[:cum-count]]
+                                                 :breakout     [!month.date]))
+                                             {:result_metadata [{:name "num_toucans"}]})]]
             (let [response (fetch-virtual-database)]
               (is (schema= SavedQuestionsDB
                            response))

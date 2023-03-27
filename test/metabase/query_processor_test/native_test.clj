@@ -1,7 +1,6 @@
 (ns metabase.query-processor-test.native-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [:m/card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test :as qp.test]
    [metabase.test :as mt]
@@ -42,8 +41,8 @@
       (mt/dataset sample-dataset
         (mt/with-temp* [:m/card [card1 {:dataset_query (mt/mbql-query products)}]
                         :m/card [card2 {:dataset_query {:query {:source-table (str "card__" (u/the-id card1))}
-                                                     :database (u/the-id (mt/db))
-                                                     :type :query}}]]
+                                                        :database (u/the-id (mt/db))
+                                                        :type :query}}]]
           (let [card-tag (str "#" (u/the-id card2))
                 query    {:query         (format "SELECT CATEGORY, VENDOR FROM {{%s}} ORDER BY ID LIMIT 1" card-tag)
                           :template-tags {card-tag

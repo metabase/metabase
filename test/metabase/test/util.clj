@@ -117,13 +117,6 @@
             :display                :table
             :name                   (tu.random/random-name)
             :visualization_settings {}})
-   :m/card
-   (fn [_] {:creator_id             (rasta-id)
-            :database_id            (data/id)
-            :dataset_query          {}
-            :display                :table
-            :name                   (tu.random/random-name)
-            :visualization_settings {}})
 
    Collection
    (fn [_] {:name  (tu.random/random-name)

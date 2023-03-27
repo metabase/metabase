@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test :as qp.test]
@@ -222,8 +221,8 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
     (testing "Binning should be allowed on nested queries that have result metadata"
       (mt/with-temp :m/card [card (qp.test-util/card-with-source-metadata-for-query
-                                (mt/mbql-query nil
-                                  {:source-query {:source-table $$venues}}))]
+                                   (mt/mbql-query nil
+                                     {:source-query {:source-table $$venues}}))]
         (let [query (nested-venues-query card)]
           (mt/with-native-query-testing-context query
             (is (= [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]

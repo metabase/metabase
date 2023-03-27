@@ -4,8 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models
-    :refer [:m/card
-            Collection
+    :refer [Collection
             Dashboard
             DashboardCard
             Database
@@ -379,8 +378,8 @@
                     Database   [db    {:engine :h2}]
                     Table      [table {:db_id (u/the-id db)}]
                     :m/card       [card  {:dataset_query {:database (u/the-id db)
-                                                       :type     :query
-                                                       :query    {:source-table (u/the-id table)}}}]
+                                                          :type     :query
+                                                          :query    {:source-table (u/the-id table)}}}]
                     PulseCard  [_ {:pulse_id (u/the-id pulse), :card_id (u/the-id card)}]]
       (f db collection pulse card))))
 

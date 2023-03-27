@@ -4,7 +4,7 @@
    [metabase-enterprise.advanced-permissions.models.permissions.block-permissions :as block-perms]
    [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase.api.common :as api]
-   [metabase.models :refer [:m/card Collection Database Permissions PermissionsGroup PermissionsGroupMembership User]]
+   [metabase.models :refer [Collection Database Permissions PermissionsGroup PermissionsGroupMembership User]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings.premium-features-test :as premium-features-test]
@@ -181,7 +181,7 @@
                       PermissionsGroupMembership [_ {:group_id group-id, :user_id user-id}]
                       Collection                 [{collection-id :id}]
                       :m/card                       [{card-id :id} {:collection_id collection-id
-                                                                 :dataset_query query}]
+                                                                    :dataset_query query}]
                       Permissions                [_ {:group_id group-id, :object (perms/collection-read-path collection-id)}]]
         (premium-features-test/with-premium-features #{:advanced-permissions}
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))

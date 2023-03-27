@@ -7,8 +7,7 @@
     :as ee-params.field-values]
    [metabase-enterprise.test :as met]
    [metabase.models
-    :refer [:m/card
-            Field
+    :refer [Field
             FieldValues
             PermissionsGroup
             PermissionsGroupMembership
@@ -153,17 +152,17 @@
           (testing "gtap with native question"
             (mt/with-temp*
               [:m/card                       [{card-id :id} {:query_type :native
-                                                          :name "A native query"
-                                                          :dataset_query
-                                                          {:type :native
-                                                           :database (mt/id)
-                                                           :native
-                                                           {:query "SELECT * FROM People WHERE state = {{STATE}}"
-                                                            :template-tags
-                                                            {"STATE" {:id "72461b3b-3877-4538-a5a3-7a3041924517"
-                                                                      :name "STATE"
-                                                                      :display-name "STATE"
-                                                                      :type "text"}}}}}]
+                                                             :name "A native query"
+                                                             :dataset_query
+                                                             {:type :native
+                                                              :database (mt/id)
+                                                              :native
+                                                              {:query "SELECT * FROM People WHERE state = {{STATE}}"
+                                                               :template-tags
+                                                               {"STATE" {:id "72461b3b-3877-4538-a5a3-7a3041924517"
+                                                                         :name "STATE"
+                                                                         :display-name "STATE"
+                                                                         :type "text"}}}}}]
                PermissionsGroup           [{group-id :id}]
                User                       [{user-id :id}]
                PermissionsGroupMembership [_ {:group_id group-id

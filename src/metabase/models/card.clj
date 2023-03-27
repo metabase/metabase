@@ -33,8 +33,6 @@
 
 (methodical/defmethod t2/table-name :m/card [_model] :report_card)
 
-(models/defmodel :m/card :report_card)
-
 (methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
   [_original-model _k]
   :m/card)
@@ -50,7 +48,6 @@
    :parameter_mappings     mi/tf-parameters-list})
 
 ;;; You can read/write a Card if you can read/write its parent Collection
-(derive :m/card ::perms/use-parent-collection-perms)
 (derive :m/card ::perms/use-parent-collection-perms)
 (derive :m/card ::mi/timestamped?)
 (derive :m/card ::mi/entity-id)

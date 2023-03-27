@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.card-test :as card-test]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard] :as dashboard]

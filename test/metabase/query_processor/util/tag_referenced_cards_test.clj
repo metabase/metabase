@@ -1,7 +1,6 @@
 (ns metabase.query-processor.util.tag-referenced-cards-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [:m/card]]
    [metabase.query-processor.util.tag-referenced-cards :as qp.u.tag-referenced-cards]
    [metabase.test :as mt]))
 

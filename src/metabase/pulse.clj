@@ -7,7 +7,6 @@
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card
     :as dashboard-card

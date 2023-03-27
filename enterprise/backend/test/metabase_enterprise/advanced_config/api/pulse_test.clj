@@ -1,7 +1,6 @@
 (ns metabase-enterprise.advanced-config.api.pulse-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:m/card]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]))

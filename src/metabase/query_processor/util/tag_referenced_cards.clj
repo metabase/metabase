@@ -1,6 +1,5 @@
 (ns metabase.query-processor.util.tag-referenced-cards
   (:require
-   [metabase.models.card :refer [:m/card]]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 

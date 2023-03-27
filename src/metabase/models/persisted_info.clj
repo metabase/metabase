@@ -2,7 +2,6 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -114,11 +113,11 @@
   "Looks for all new models in database and creates a persisted-info ready to be synced."
   [database-id]
   (let [cards (t2/select :m/card {:where [:and
-                                       [:= :database_id database-id]
-                                       [:= :dataset true]
-                                       [:not [:exists {:select [1]
-                                                       :from [:persisted_info]
-                                                       :where [:= :persisted_info.card_id :report_card.id]}]]]})]
+                                          [:= :database_id database-id]
+                                          [:= :dataset true]
+                                          [:not [:exists {:select [1]
+                                                          :from [:persisted_info]
+                                                          :where [:= :persisted_info.card_id :report_card.id]}]]]})]
     (db/insert-many! PersistedInfo (map #(create-row nil %) cards))))
 
 (comment

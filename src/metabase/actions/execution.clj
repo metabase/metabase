@@ -6,7 +6,7 @@
    [metabase.actions.http-action :as http-action]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
-   [metabase.models :refer [:m/card DashboardCard Database Table]]
+   [metabase.models :refer [DashboardCard Database Table]]
    [metabase.models.action :as action]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]

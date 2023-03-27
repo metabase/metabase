@@ -4,7 +4,7 @@
    [clojurewerkz.quartzite.conversion :as qc]
    [java-time :as t]
    [medley.core :as m]
-   [metabase.models :refer [:m/card Database PersistedInfo TaskHistory]]
+   [metabase.models :refer [Database PersistedInfo TaskHistory]]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]

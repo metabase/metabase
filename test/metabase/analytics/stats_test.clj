@@ -4,7 +4,6 @@
    [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :refer [PulseChannel]]

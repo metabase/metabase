@@ -18,8 +18,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models
-    :refer [:m/card
-            CardBookmark
+    :refer [CardBookmark
             Collection
             Database
             PersistedInfo

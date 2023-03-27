@@ -7,7 +7,6 @@
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.models :refer [:m/card]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]

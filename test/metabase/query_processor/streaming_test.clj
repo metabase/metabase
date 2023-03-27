@@ -6,7 +6,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.embed-test :as embed-test]
-   [metabase.models.card :as card :refer [:m/card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -243,8 +242,8 @@
                                          enable-embedding      true]
         (embed-test/with-new-secret-key
           (mt/with-temp :m/card [card (if viz-settings
-                                     (assoc card-defaults :visualization_settings viz-settings)
-                                     card-defaults)]
+                                       (assoc card-defaults :visualization_settings viz-settings)
+                                       card-defaults)]
             (doseq [export-format (keys assertions)
                     endpoint      (or endpoints [:dataset :card :public :embed])]
               (testing endpoint

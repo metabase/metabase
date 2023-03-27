@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.events.revision :as revision]
    [metabase.models
-    :refer [:m/card Dashboard DashboardCard Database Metric Revision Segment Table]]
+    :refer [Dashboard DashboardCard Database Metric Revision Segment Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

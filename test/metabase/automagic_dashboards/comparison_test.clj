@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.automagic-dashboards.comparison :as c]
    [metabase.automagic-dashboards.core :as magic]
-   [metabase.models :refer [:m/card Segment Table]]
+   [metabase.models :refer [Segment Table]]
    [metabase.models.query :as query]
    [metabase.test :as mt]
    [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
@@ -51,10 +51,10 @@
 
 (deftest test-4
   (mt/with-temp :m/card [{card-id :id} {:table_id      (mt/id :venues)
-                                     :dataset_query {:query    {:filter       (-> @segment :definition :filter)
-                                                                :source-table (mt/id :venues)}
-                                                     :type     :query
-                                                     :database (mt/id)}}]
+                                        :dataset_query {:query    {:filter       (-> @segment :definition :filter)
+                                                                   :source-table (mt/id :venues)}
+                                                        :type     :query
+                                                        :database (mt/id)}}]
     (mt/with-test-user :rasta
       (with-dashboard-cleanup
         (is (some? (test-comparison (t2/select-one Table :id (mt/id :venues)) (t2/select-one :m/card :id card-id))))))))

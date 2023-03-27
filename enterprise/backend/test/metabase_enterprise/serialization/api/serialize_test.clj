@@ -1,7 +1,7 @@
 (ns metabase-enterprise.serialization.api.serialize-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:m/card Collection Dashboard DashboardCard]]
+   [metabase.models :refer [Collection Dashboard DashboardCard]]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.test :as mt]

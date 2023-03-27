@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.resolve-referenced
   (:require
-   [metabase.models.card :refer [:m/card]]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
    [metabase.query-processor.middleware.resolve-fields

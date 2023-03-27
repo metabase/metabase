@@ -14,7 +14,6 @@
    [metabase.driver :as driver]
    [metabase.http-client :as client]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.query-execution :refer [QueryExecution]]
@@ -191,8 +190,8 @@
 (deftest check-that-we-can-export-the-results-of-a-nested-query
   (mt/with-temp-copy-of-db
     (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
-                                              :type     :native
-                                              :native   {:query "SELECT * FROM USERS;"}}}]
+                                                 :type     :native
+                                                 :native   {:query "SELECT * FROM USERS;"}}}]
       (letfn [(do-test []
                 (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
                                                    :query (json/generate-string
@@ -423,7 +422,7 @@
                                               "dataset/parameter/search/fo"
                                               {:parameter parameter}))))))
     (mt/with-temp* [:m/card [{card-id :id} {:database_id (mt/id)
-                                         :dataset_query (mt/mbql-query products)}]]
+                                            :dataset_query (mt/mbql-query products)}]]
       (let [parameter {:values_query_type "list",
                        :values_source_type "card",
                        :values_source_config {:card_id card-id,

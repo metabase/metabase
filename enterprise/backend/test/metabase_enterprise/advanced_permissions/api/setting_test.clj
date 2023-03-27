@@ -5,7 +5,7 @@
    [metabase.api.geojson-test :as geojson-test]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models :refer [:m/card Dashboard]]
+   [metabase.models :refer [Dashboard]]
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
@@ -262,7 +262,7 @@
                 (delete-public-card [user status]
                   (testing (format "delete public card with %s user" (mt/user-descriptor user))
                     (mt/with-temp :m/card [{card-id :id} {:public_uuid       (str (UUID/randomUUID))
-                                                       :made_public_by_id (mt/user->id :crowberto)}]
+                                                          :made_public_by_id (mt/user->id :crowberto)}]
                       (mt/user-http-request user :delete status (format "card/%d/public_link" card-id)))))]
 
           (testing "if `advanced-permissions` is disabled, require admins,"

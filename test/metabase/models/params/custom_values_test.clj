@@ -1,7 +1,7 @@
 (ns metabase.models.params.custom-values-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [:m/card Collection]]
+   [metabase.models :refer [Collection]]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -14,10 +14,10 @@
       (binding [custom-values/*max-rows* 3]
         (testing "with simple mbql"
           (mt/with-temp* [:m/card [{card-id :id}
-                                (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
-                                       {:database_id     (mt/id)
-                                        :dataset         dataset?
-                                        :table_id        (mt/id :venues)})]]
+                                   (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
+                                          {:database_id     (mt/id)
+                                           :dataset         dataset?
+                                           :table_id        (mt/id :venues)})]]
             (testing "get values"
               (is (=? {:has_more_values true,
                        :values          ["20th Century Cafe" "25°" "33 Taps"]}
@@ -35,13 +35,13 @@
 
         (testing "has aggregation column"
           (mt/with-temp* [:m/card [{card-id :id}
-                                (merge (mt/card-with-source-metadata-for-query
-                                         (mt/mbql-query venues
-                                                        {:aggregation [[:sum $venues.price]]
-                                                         :breakout    [[:field %categories.name {:source-field %venues.category_id}]]}))
-                                       {:database_id     (mt/id)
-                                        :dataset         dataset?
-                                        :table_id        (mt/id :venues)})]]
+                                   (merge (mt/card-with-source-metadata-for-query
+                                            (mt/mbql-query venues
+                                                           {:aggregation [[:sum $venues.price]]
+                                                            :breakout    [[:field %categories.name {:source-field %venues.category_id}]]}))
+                                          {:database_id     (mt/id)
+                                           :dataset         dataset?
+                                           :table_id        (mt/id :venues)})]]
 
             (testing "get values from breakout columns"
               (is (=? {:has_more_values true,
@@ -76,12 +76,12 @@
         (testing "should disable remapping when getting fk columns"
           (mt/with-column-remappings [venues.category_id categories.name]
             (mt/with-temp* [:m/card [{card-id :id}
-                                  (merge (mt/card-with-source-metadata-for-query
-                                           (mt/mbql-query venues
-                                                          {:joins [{:source-table $$categories
-                                                                    :alias        "Categories"
-                                                                    :condition    [:= $venues.category_id &Categories.categories.id]}]}))
-                                         {:dataset dataset?})]]
+                                     (merge (mt/card-with-source-metadata-for-query
+                                              (mt/mbql-query venues
+                                                             {:joins [{:source-table $$categories
+                                                                       :alias        "Categories"
+                                                                       :condition    [:= $venues.category_id &Categories.categories.id]}]}))
+                                            {:dataset dataset?})]]
 
               (testing "get values returns the value, not remapped values"
                 (is (=? {:has_more_values true,
@@ -104,11 +104,11 @@
     (testing (format "source card is a %s with native question" (if dataset? "model" "question"))
       (binding [custom-values/*max-rows* 3]
         (mt/with-temp* [:m/card [{card-id :id}
-                              (merge (mt/card-with-source-metadata-for-query
-                                       (mt/native-query {:query "select * from venues where lower(name) like '%red%'"}))
-                                     {:database_id     (mt/id)
-                                      :dataset         dataset?
-                                      :table_id        (mt/id :venues)})]]
+                                 (merge (mt/card-with-source-metadata-for-query
+                                          (mt/native-query {:query "select * from venues where lower(name) like '%red%'"}))
+                                        {:database_id     (mt/id)
+                                         :dataset         dataset?
+                                         :table_id        (mt/id :venues)})]]
           (testing "get values from breakout columns"
             (is (=? {:has_more_values false,
                      :values          ["Fred 62" "Red Medicine"]}
@@ -130,8 +130,8 @@
     (testing "the values list should not contains duplicated and empty values"
       (testing "with native query"
         (mt/with-temp* [:m/card [{card-id :id}
-                              (mt/card-with-source-metadata-for-query
-                                (mt/native-query {:query "select * from people"}))]]
+                                 (mt/card-with-source-metadata-for-query
+                                   (mt/native-query {:query "select * from people"}))]]
           (testing "get values from breakout columns"
             (is (=? {:has_more_values false,
                      :values          ["Affiliate" "Facebook" "Google" "Organic" "Twitter"]}
@@ -150,8 +150,8 @@
 
       (testing "with mbql query"
         (mt/with-temp* [:m/card [{card-id :id}
-                              (mt/card-with-source-metadata-for-query
-                                (mt/mbql-query people))]]
+                                 (mt/card-with-source-metadata-for-query
+                                   (mt/mbql-query people))]]
           (testing "get values from breakout columns"
             (is (=? {:has_more_values false,
                      :values          ["Affiliate" "Facebook" "Google" "Organic" "Twitter"]}

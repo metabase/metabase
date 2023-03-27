@@ -15,8 +15,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [:m/card
-            CardBookmark
+    :refer [CardBookmark
             Collection
             Dashboard
             Database
@@ -122,8 +121,8 @@
   (mt/with-temp* [Database   [db    {:details (:details (mt/db)), :engine :h2}]
                   Table      [_     {:db_id (u/the-id db), :name "CATEGORIES"}]
                   :m/card       [card  {:dataset_query {:database (u/the-id db)
-                                                     :type     :native
-                                                     :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]]
+                                                        :type     :native
+                                                        :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]]
     (f db card)))
 
 (defmacro ^:private with-temp-native-card
@@ -163,14 +162,14 @@
     [Database   [db    {:details (:details (mt/db)), :engine :h2}]
      Table      [_     {:db_id (u/the-id db), :name "VENUES"}]
      :m/card       [card  {:dataset_query
-                        {:database (u/the-id db)
-                         :type     :native
-                         :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = {{category}};"
-                                    :template-tags {:category {:id           "_CATEGORY_ID_"
-                                                               :name         "category"
-                                                               :display_name "Category"
-                                                               :type         "number"
-                                                               :required     true}}}}}]]
+                           {:database (u/the-id db)
+                            :type     :native
+                            :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = {{category}};"
+                                       :template-tags {:category {:id           "_CATEGORY_ID_"
+                                                                  :name         "category"
+                                                                  :display_name "Category"
+                                                                  :type         "number"
+                                                                  :required     true}}}}}]]
     (f db card)))
 
 (defmacro ^:private with-temp-native-card-with-params {:style/indent 1} [[db-binding card-binding] & body]
@@ -325,65 +324,65 @@
 (deftest filter-by-using-model
   (testing "list cards using a model"
     (mt/with-temp* [:m/card [{model-id :id :as model} {:name "Model", :dataset true
-                                                    :dataset_query {:query {:source-table 1
-                                                                            :filter [:= [:field 1 nil] "1"]}}}]
+                                                       :dataset_query {:query {:source-table 1
+                                                                               :filter [:= [:field 1 nil] "1"]}}}]
                     ;; matching question
                     :m/card [card-1 {:name "Card 1"
-                                  :dataset_query {:query {:source-table (str "card__" model-id)}}}]
+                                     :dataset_query {:query {:source-table (str "card__" model-id)}}}]
                     :m/card [{other-card-id :id}]
                     ;; source-table doesn't match
                     :m/card [card-2 {:name "Card 2"
-                                  :dataset_query {:query {:source-table (str "card__" other-card-id)
-                                                          :filter [:= [:field 5 nil] (str "card__" model-id)]}}}]
+                                     :dataset_query {:query {:source-table (str "card__" other-card-id)
+                                                             :filter [:= [:field 5 nil] (str "card__" model-id)]}}}]
                     ;; matching join
                     :m/card [card-3 {:name "Card 3"
-                                  :dataset_query (let [alias (str "Question " model-id)]
-                                                   {:type :query
-                                                    :query {:joins [{:fields [[:field 35 {:join-alias alias}]]
-                                                                     :source-table (str "card__" model-id)
-                                                                     :condition [:=
-                                                                                 [:field 5 nil]
-                                                                                 [:field 33 {:join-alias alias}]]
-                                                                     :alias alias
-                                                                     :strategy :inner-join}]
-                                                            :fields [[:field 9 nil]]}
-                                                    :database 1})}]
+                                     :dataset_query (let [alias (str "Question " model-id)]
+                                                      {:type :query
+                                                       :query {:joins [{:fields [[:field 35 {:join-alias alias}]]
+                                                                        :source-table (str "card__" model-id)
+                                                                        :condition [:=
+                                                                                    [:field 5 nil]
+                                                                                    [:field 33 {:join-alias alias}]]
+                                                                        :alias alias
+                                                                        :strategy :inner-join}]
+                                                               :fields [[:field 9 nil]]}
+                                                       :database 1})}]
                     ;; matching native query
                     :m/card [card-4 {:name "Card 4"
-                                  :dataset_query {:type :native
-                                                  :native (let [model-ref (format "#%d-q1" model-id)]
-                                                            {:query (format "select o.id from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
-                                                                            model-ref)
-                                                             :template-tags {model-ref
-                                                                             {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
-                                                                              :name model-ref
-                                                                              :display-name model-ref
-                                                                              :type :card
-                                                                              :card-id model-id}}})
-                                                  :database 1}}]
+                                     :dataset_query {:type :native
+                                                     :native (let [model-ref (format "#%d-q1" model-id)]
+                                                               {:query (format "select o.id from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
+                                                                               model-ref)
+                                                                :template-tags {model-ref
+                                                                                {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
+                                                                                 :name model-ref
+                                                                                 :display-name model-ref
+                                                                                 :type :card
+                                                                                 :card-id model-id}}})
+                                                     :database 1}}]
                     ;; native query reference doesn't match
                     :m/card [card-5 {:name "Card 5"
-                                   :dataset_query {:type :native
-                                                   :native (let [model-ref (str "card__" model-id)
-                                                                 card-id other-card-id
-                                                                 card-ref (format "#%d-q1" card-id)]
-                                                             {:query (format "select o.id %s from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
-                                                                             model-ref card-ref)
-                                                              :template-tags {card-ref
-                                                                              {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
-                                                                               :name card-ref
-                                                                               :display-name card-ref
-                                                                               :type :card
-                                                                               :card-id card-id}}})
-                                                   :database 1}}]
+                                     :dataset_query {:type :native
+                                                     :native (let [model-ref (str "card__" model-id)
+                                                                   card-id other-card-id
+                                                                   card-ref (format "#%d-q1" card-id)]
+                                                               {:query (format "select o.id %s from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
+                                                                               model-ref card-ref)
+                                                                :template-tags {card-ref
+                                                                                {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
+                                                                                 :name card-ref
+                                                                                 :display-name card-ref
+                                                                                 :type :card
+                                                                                 :card-id card-id}}})
+                                                     :database 1}}]
                     Database [{other-database-id :id}]
                     ;; database doesn't quite match
                     :m/card [card-6 {:name "Card 6", :database_id other-database-id
-                                   :dataset_query {:query {:source-table (str "card__" model-id)}}}]
+                                     :dataset_query {:query {:source-table (str "card__" model-id)}}}]
                     ;; same as matching question, but archived
                     :m/card [card-7 {:name "Card 7"
-                                  :archived true
-                                  :dataset_query {:query {:source-table (str "card__" model-id)}}}]]
+                                     :archived true
+                                     :dataset_query {:query {:source-table (str "card__" model-id)}}}]]
       (with-cards-in-readable-collection [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
         (is (= #{"Card 1" "Card 3" "Card 4"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
@@ -775,7 +774,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp* [Collection [collection]
                       :m/card       [card {:collection_id (u/the-id collection)
-                                        :dataset_query (mt/mbql-query venues)}]]
+                                           :dataset_query (mt/mbql-query venues)}]]
         (testing "You have to have Collection perms to fetch a Card"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (str "card/" (u/the-id card))))))
@@ -909,7 +908,7 @@
                                                            :type "number"}]})))))
 
     (mt/with-temp :m/card [card {:parameters [{:id   "random-id"
-                                            :type "number"}]}]
+                                               :type "number"}]}]
       (testing "nil parameters will no-op"
         (is (partial= {:parameters [{:id   "random-id"
                                      :type "number"}]}
@@ -931,7 +930,7 @@
                                                                    :target ["dimension" ["template-tags" "category"]]}]})))))
 
     (mt/with-temp :m/card [card {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
-                                                    :target ["dimension" ["template-tags" "category"]]}]}]
+                                                       :target ["dimension" ["template-tags" "category"]]}]}]
       (testing "nil parameters will no-op"
         (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
                                              :target ["dimension" ["template-tags" "category"]]}]}
@@ -1389,7 +1388,7 @@
           :emails-2 {}
           :pulse-2  true}
          (mt/with-temp* [:m/card                  [card  {:display                :line
-                                                       :visualization_settings {:graph.goal_value 10}}]
+                                                          :visualization_settings {:graph.goal_value 10}}]
                          Pulse                 [pulse {:alert_condition  "goal"
                                                        :alert_first_only false
                                                        :creator_id       (mt/user->id :rasta)
@@ -1458,11 +1457,11 @@
                     Collection [coll-b {:name "Collection B"}]
                     Collection [coll-c {:name "Collection C"}]
                     :m/card [card-a {:name          "Card A"
-                                  :collection_id (u/the-id coll-a)}]
+                                     :collection_id (u/the-id coll-a)}]
                     :m/card [card-b {:name          "Card B"
-                                  :collection_id (u/the-id coll-b)}]
+                                     :collection_id (u/the-id coll-b)}]
                     :m/card [card-c {:name          "Card C"
-                                  :collection_id (u/the-id coll-c)}]
+                                     :collection_id (u/the-id coll-c)}]
                     Timeline [tl-a {:name          "Timeline A"
                                     :collection_id (u/the-id coll-a)}]
                     Timeline [tl-b {:name          "Timeline B"
@@ -1510,7 +1509,7 @@
   (testing "GET /api/card/:id/timelines?include=events&start=TIME&end=TIME"
     (mt/with-temp* [Collection [collection {:name "Collection"}]
                     :m/card [card {:name          "Card A"
-                                :collection_id (u/the-id collection)}]
+                                   :collection_id (u/the-id collection)}]
                     Timeline [tl-a {:name          "Timeline A"
                                     :collection_id (u/the-id collection)}]
                     ;; the temp defaults set {:time_matters true}
@@ -1615,10 +1614,10 @@
 
 (deftest download-default-constraints-test
   (mt/with-temp :m/card [card {:dataset_query {:database   (mt/id)
-                                            :type       :query
-                                            :query      {:source-table (mt/id :venues)}
-                                            :middleware {:add-default-userland-constraints? true
-                                                         :userland-query?                   true}}}]
+                                               :type       :query
+                                               :query      {:source-table (mt/id :venues)}
+                                               :middleware {:add-default-userland-constraints? true
+                                                            :userland-query?                   true}}}]
     (with-cards-in-readable-collection card
       (let [orig qp.card/run-query-for-card-async]
         (with-redefs [qp.card/run-query-for-card-async (fn [card-id export-format & options]
@@ -1797,7 +1796,7 @@
          `(mt/with-temp* ~(cond-> `[Collection [~'collection]
                                     Collection [~'collection2]
                                     :m/card       [~'card {:collection_id (u/the-id ~'collection)
-                                                        :dataset_query (mt/mbql-query ~'venues)}]]
+                                                           :dataset_query (mt/mbql-query ~'venues)}]]
                             (= verified :verified)
                             (into
                              `[ModerationReview
@@ -2108,7 +2107,7 @@
 (deftest dataset-card
   (testing "Setting a question to a dataset makes it viz type table"
     (mt/with-temp :m/card [card {:display       :bar
-                              :dataset_query (mbql-count-query)}]
+                                 :dataset_query (mbql-count-query)}]
       (is (= {:display "table" :dataset true}
              (-> (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                        (assoc card :dataset true))
@@ -2131,28 +2130,28 @@
                                              :base_type)
                                             cols)))]
       (mt/with-temp* [:m/card [mbql-ds {:dataset_query
-                                     {:database (mt/id)
-                                      :type     :query
-                                      :query    {:source-table (mt/id :venues)}}
-                                     :dataset true}]
+                                        {:database (mt/id)
+                                         :type     :query
+                                         :query    {:source-table (mt/id :venues)}}
+                                        :dataset true}]
                       :m/card [mbql-nested {:dataset_query
-                                         {:database (mt/id)
-                                          :type     :query
-                                          :query    {:source-table
-                                                     (str "card__" (u/the-id mbql-ds))}}}]
+                                            {:database (mt/id)
+                                             :type     :query
+                                             :query    {:source-table
+                                                        (str "card__" (u/the-id mbql-ds))}}}]
                       :m/card [native-ds {:dataset true
-                                       :dataset_query
-                                       {:database (mt/id)
-                                        :type :native
-                                        :native
-                                        {:query
-                                         "select * from venues"
-                                         :template-tags {}}}}]
+                                          :dataset_query
+                                          {:database (mt/id)
+                                           :type :native
+                                           :native
+                                           {:query
+                                            "select * from venues"
+                                            :template-tags {}}}}]
                       :m/card [native-nested {:dataset_query
-                                           {:database (mt/id)
-                                            :type :query
-                                            :query {:source-table
-                                                    (str "card__" (u/the-id native-ds))}}}]]
+                                              {:database (mt/id)
+                                               :type :query
+                                               :query {:source-table
+                                                       (str "card__" (u/the-id native-ds))}}}]]
         (doseq [[_query-type card-id nested-id] [[:mbql
                                                   (u/the-id mbql-ds) (u/the-id mbql-nested)]
                                                  [:native
@@ -2236,7 +2235,7 @@
     (mt/with-temp* [:m/card [model {:dataset_query (mt/mbql-query venues
                                                                {:fields [$id $name]
                                                                 :limit 2})
-                                 :dataset       true}]]
+                                    :dataset       true}]]
       (let [updated-metadata (-> model :result_metadata vec
                                  (assoc-in [1 :visibility_type]
                                            :details-only))
@@ -2326,48 +2325,48 @@
   ([card-values f]
    (mt/with-temp*
      [:m/card [source-card {:database_id   (mt/id)
-                         :table_id      (mt/id :venues)
-                         :dataset_query (mt/mbql-query venues {:limit 5})}]
+                            :table_id      (mt/id :venues)
+                            :dataset_query (mt/mbql-query venues {:limit 5})}]
       :m/card [field-filter-card  {:dataset_query
-                                {:database (mt/id)
-                                 :type     :native
-                                 :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
-                                            :template-tags {"NAME" {:id           "name_param_id"
-                                                                    :name         "NAME"
-                                                                    :display_name "Name"
-                                                                    :type         :dimension
-                                                                    :dimension    [:field (mt/id :venues :name) nil]
-                                                                    :required     true}}}}
-                                :name       "native card with field filter"
-                                :parameters [{:id     "name_param_id",
-                                              :type   :string/=,
-                                              :target [:dimension [:template-tag "NAME"]],
-                                              :name   "Name",
-                                              :slug   "NAME"}]}]
+                                   {:database (mt/id)
+                                    :type     :native
+                                    :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
+                                               :template-tags {"NAME" {:id           "name_param_id"
+                                                                       :name         "NAME"
+                                                                       :display_name "Name"
+                                                                       :type         :dimension
+                                                                       :dimension    [:field (mt/id :venues :name) nil]
+                                                                       :required     true}}}}
+                                   :name       "native card with field filter"
+                                   :parameters [{:id     "name_param_id",
+                                                 :type   :string/=,
+                                                 :target [:dimension [:template-tag "NAME"]],
+                                                 :name   "Name",
+                                                 :slug   "NAME"}]}]
       :m/card [card        (merge
-                         {:database_id   (mt/id)
-                          :dataset_query (mt/mbql-query venues)
-                          :parameters    [{:name                 "Static Category",
-                                           :slug                 "static_category"
-                                           :id                   "_STATIC_CATEGORY_",
-                                           :type                 "category",
-                                           :values_source_type   "static-list"
-                                           :values_source_config {:values ["African" "American" "Asian"]}}
-                                          {:name                 "Static Category label",
-                                           :slug                 "static_category_label"
-                                           :id                   "_STATIC_CATEGORY_LABEL_",
-                                           :type                 "category",
-                                           :values_source_type   "static-list"
-                                           :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}
-                                          {:name                 "Card as source"
-                                           :slug                 "card"
-                                           :id                   "_CARD_"
-                                           :type                 "category"
-                                           :values_source_type   "card"
-                                           :values_source_config {:card_id     (:id source-card)
-                                                                  :value_field (mt/$ids $venues.name)}}]
-                          :table_id      (mt/id :venues)}
-                         card-values)]]
+                            {:database_id   (mt/id)
+                             :dataset_query (mt/mbql-query venues)
+                             :parameters    [{:name                 "Static Category",
+                                              :slug                 "static_category"
+                                              :id                   "_STATIC_CATEGORY_",
+                                              :type                 "category",
+                                              :values_source_type   "static-list"
+                                              :values_source_config {:values ["African" "American" "Asian"]}}
+                                             {:name                 "Static Category label",
+                                              :slug                 "static_category_label"
+                                              :id                   "_STATIC_CATEGORY_LABEL_",
+                                              :type                 "category",
+                                              :values_source_type   "static-list"
+                                              :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}
+                                             {:name                 "Card as source"
+                                              :slug                 "card"
+                                              :id                   "_CARD_"
+                                              :type                 "category"
+                                              :values_source_type   "card"
+                                              :values_source_config {:card_id     (:id source-card)
+                                                                     :value_field (mt/$ids $venues.name)}}]
+                             :table_id      (mt/id :venues)}
+                            card-values)]]
      (f {:source-card       source-card
          :card              card
          :field-filter-card field-filter-card
@@ -2403,24 +2402,24 @@
       (testing "if value-field not found in source card"
         (mt/with-temp* [:m/card [{source-card-id :id}]
                         :m/card [card
-                              {:parameters [{:id                   "abc"
-                                             :type                 "category"
-                                             :name                 "CATEGORY"
-                                             :values_source_type   "card"
-                                             :values_source_config {:card_id     source-card-id
-                                                                    :value_field (mt/$ids $venues.name)}}]}]]
+                                 {:parameters [{:id                   "abc"
+                                                :type                 "category"
+                                                :name                 "CATEGORY"
+                                                :values_source_type   "card"
+                                                :values_source_config {:card_id     source-card-id
+                                                                       :value_field (mt/$ids $venues.name)}}]}]]
           (let [url (param-values-url card "abc")]
             (is (= "field-values" (mt/user-http-request :rasta :get 200 url))))))
 
       (testing "if card is archived"
         (mt/with-temp* [:m/card [{source-card-id :id} {:archived true}]
                         :m/card [card
-                              {:parameters [{:id                   "abc"
-                                             :type                 "category"
-                                             :name                 "CATEGORY"
-                                             :values_source_type   "card"
-                                             :values_source_config {:card_id     source-card-id
-                                                                    :value_field (mt/$ids $venues.name)}}]}]]
+                                 {:parameters [{:id                   "abc"
+                                                :type                 "category"
+                                                :name                 "CATEGORY"
+                                                :values_source_type   "card"
+                                                :values_source_config {:card_id     source-card-id
+                                                                       :value_field (mt/$ids $venues.name)}}]}]]
           (let [url (param-values-url card "abc")]
             (is (= "field-values" (mt/user-http-request :rasta :get 200 url))))))))
 
@@ -2429,22 +2428,22 @@
       (mt/with-temp*
         [Collection [coll1 {:name "Source card collection"}]
          :m/card       [{source-card-id :id}
-                     {:collection_id (:id coll1)
-                      :database_id   (mt/id)
-                      :table_id      (mt/id :venues)
-                      :dataset_query (mt/mbql-query venues {:limit 5})}]
+                        {:collection_id (:id coll1)
+                         :database_id   (mt/id)
+                         :table_id      (mt/id :venues)
+                         :dataset_query (mt/mbql-query venues {:limit 5})}]
          Collection [coll2 {:name "Card collections"}]
          :m/card       [{card-id         :id}
-                     {:collection_id  (:id coll2)
-                      :database_id    (mt/id)
-                      :dataset_query  (mt/mbql-query venues)
-                      :parameters     [{:id                   "abc"
-                                        :type                 "category"
-                                        :name                 "CATEGORY"
-                                        :values_source_type   "card"
-                                        :values_source_config {:card_id     source-card-id
-                                                               :value_field (mt/$ids $venues.name)}}]
-                      :table_id       (mt/id :venues)}]]
+                        {:collection_id  (:id coll2)
+                         :database_id    (mt/id)
+                         :dataset_query  (mt/mbql-query venues)
+                         :parameters     [{:id                   "abc"
+                                           :type                 "category"
+                                           :name                 "CATEGORY"
+                                           :values_source_type   "card"
+                                           :values_source_config {:card_id     source-card-id
+                                                                  :value_field (mt/$ids $venues.name)}}]
+                         :table_id       (mt/id :venues)}]]
         (testing "Fail because user doesn't have read permissions to coll1"
           (is (=? "You don't have permissions to do that."
                   (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc"))))

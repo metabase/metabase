@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.api.alert :as api.alert]
    [metabase.api.alert-test :as alert-test]
-   [metabase.models :refer [:m/card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models :refer [Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]

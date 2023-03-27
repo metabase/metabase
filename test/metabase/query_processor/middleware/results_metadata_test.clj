@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models :refer [:m/card Collection Dimension Field]]
+   [metabase.models :refer [Collection Dimension Field]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -95,7 +95,7 @@
 
   (testing "check that using a Card as your source doesn't overwrite the results metadata..."
     (mt/with-temp :m/card [card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
-                              :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
+                                 :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
       (let [result (qp/process-userland-query {:database mbql.s/saved-questions-virtual-database-id
                                                :type     :query
                                                :query    {:source-table (str "card__" (u/the-id card))}})]
@@ -107,8 +107,8 @@
   (testing "...even when running via the API endpoint"
     (mt/with-temp* [Collection [collection]
                     :m/card       [card {:collection_id   (u/the-id collection)
-                                      :dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
-                                      :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]]
+                                         :dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
+                                         :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (mt/user-http-request :rasta :post 202 "dataset" {:database mbql.s/saved-questions-virtual-database-id
                                                         :type     :query

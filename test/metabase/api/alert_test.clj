@@ -5,8 +5,7 @@
    [medley.core :as m]
    [metabase.email-test :as et]
    [metabase.http-client :as client]
-   [metabase.models
-    :refer [:m/card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models :refer [Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
@@ -358,8 +357,8 @@
          (mt/with-non-admin-groups-no-root-collection-perms
            (mt/with-temp* [Collection [collection]
                            :m/card       [card {:name          "My question"
-                                             :display       "line"
-                                             :collection_id (u/the-id collection)}]]
+                                                :display       "line"
+                                                :collection_id (u/the-id collection)}]]
              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
              (with-alert-setup
                (et/with-expected-messages 1
@@ -380,8 +379,8 @@
          (mt/with-non-admin-groups-no-root-collection-perms
            (mt/with-temp* [Collection [collection]
                            :m/card       [card {:name          "My question"
-                                             :display       "bar"
-                                             :collection_id (u/the-id collection)}]]
+                                                :display       "bar"
+                                                :collection_id (u/the-id collection)}]]
              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
              (with-alert-setup
                (et/with-expected-messages 1

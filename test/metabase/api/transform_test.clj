@@ -1,7 +1,6 @@
 (ns metabase.api.transform-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]

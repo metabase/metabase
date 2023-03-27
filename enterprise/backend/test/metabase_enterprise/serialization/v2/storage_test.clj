@@ -6,7 +6,7 @@
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.storage :as storage]
-   [metabase.models :refer [:m/card Collection Dashboard Database Field FieldValues NativeQuerySnippet Table]]
+   [metabase.models :refer [Collection Dashboard Database Field FieldValues NativeQuerySnippet Table]]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]

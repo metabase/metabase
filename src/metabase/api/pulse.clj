@@ -9,7 +9,6 @@
    [metabase.api.common.validation :as validation]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]

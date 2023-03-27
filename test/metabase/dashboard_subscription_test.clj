@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models
-    :refer [:m/card
-            Collection
+    :refer [Collection
             Dashboard
             DashboardCard
             Database
@@ -94,7 +93,7 @@
                                                              (merge {:name "Aviary KPIs"
                                                                      :description "How are the birds doing today?"}))]
                       :m/card          [{card-id :id} (merge {:name pulse.test-util/card-name
-                                                           :display (or display :line)} card)]]
+                                                              :display (or display :line)} card)]]
         (with-dashboard-sub-for-card [{pulse-id :id}
                                       {:card       card-id
                                        :creator_id (mt/user->id :rasta)
@@ -167,14 +166,14 @@
                                          :display_name "Linked table dname"
                                          :description "Linked table desc"}
        :m/card          {card-id :id}      {:name          "Linked card name"
-                                         :description   "Linked card desc"
-                                         :display       "bar"
-                                         :collection_id coll-id}
+                                            :description   "Linked card desc"
+                                            :display       "bar"
+                                            :collection_id coll-id}
        :m/card          {model-id :id}     {:dataset       true
-                                         :name          "Linked model name"
-                                         :description   "Linked model desc"
-                                         :display       "table"
-                                         :collection_id coll-id}
+                                            :name          "Linked model name"
+                                            :description   "Linked model desc"
+                                            :display       "table"
+                                            :collection_id coll-id}
        Dashboard     {dash-id :id}      {:name          "Linked Dashboard name"
                                          :description   "Linked Dashboard desc"
                                          :collection_id coll-id}
@@ -576,10 +575,10 @@
                                                                                 :default ["Gizmo"]}]}]
         (testing "MBQL query"
           (mt/with-temp* [:m/card [{mbql-card-id :id} {:name          "Orders"
-                                                    :dataset_query (mt/mbql-query products
-                                                                     {:fields   [$id $title $category]
-                                                                      :order-by [[:asc $id]]
-                                                                      :limit    2})}]
+                                                       :dataset_query (mt/mbql-query products
+                                                                        {:fields   [$id $title $category]
+                                                                         :order-by [[:asc $id]]
+                                                                         :limit    2})}]
                           DashboardCard [_ {:parameter_mappings [{:parameter_id "_MBQL_CATEGORY_"
                                                                   :card_id      mbql-card-id
                                                                   :target       [:dimension [:field (mt/id :products :category) nil]]}]
@@ -591,22 +590,22 @@
                      (mt/rows mbql-results))))))
         (testing "SQL Query"
           (mt/with-temp* [:m/card [{sql-card-id :id} {:name          "Products (SQL)"
-                                                   :dataset_query (mt/native-query
-                                                                    {:query
-                                                                     (str "SELECT id, title, category\n"
-                                                                          "FROM products\n"
-                                                                          "WHERE {{category}}\n"
-                                                                          "ORDER BY id ASC\n"
-                                                                          "LIMIT 2")
+                                                      :dataset_query (mt/native-query
+                                                                       {:query
+                                                                        (str "SELECT id, title, category\n"
+                                                                             "FROM products\n"
+                                                                             "WHERE {{category}}\n"
+                                                                             "ORDER BY id ASC\n"
+                                                                             "LIMIT 2")
 
-                                                                     :template-tags
-                                                                     {"category"
-                                                                      {:id           "_SQL_CATEGORY_TEMPLATE_TAG_"
-                                                                       :name         "category"
-                                                                       :display-name "Category"
-                                                                       :type         :dimension
-                                                                       :dimension    [:field (mt/id :products :category) nil]
-                                                                       :widget-type  :category}}})}]
+                                                                        :template-tags
+                                                                        {"category"
+                                                                         {:id           "_SQL_CATEGORY_TEMPLATE_TAG_"
+                                                                          :name         "category"
+                                                                          :display-name "Category"
+                                                                          :type         :dimension
+                                                                          :dimension    [:field (mt/id :products :category) nil]
+                                                                          :widget-type  :category}}})}]
                           DashboardCard [_ {:parameter_mappings [{:parameter_id "_SQL_CATEGORY_"
                                                                   :card_id      sql-card-id
                                                                   :target       [:dimension [:template-tag "category"]]}]
@@ -640,8 +639,8 @@
       (try
         (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:name "Dashboard"}]
                         :m/card      [{card-id :id} {:name          "Products (SQL)"
-                                                  :dataset_query (mt/native-query
-                                                                  {:query "SELECT * FROM venues LIMIT 1"})}]
+                                                     :dataset_query (mt/native-query
+                                                                     {:query "SELECT * FROM venues LIMIT 1"})}]
                         DashboardCard [_ {:dashboard_id dashboard-id
                                           :card_id      card-id}]]
           (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path :none))

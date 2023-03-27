@@ -9,7 +9,7 @@
    [metabase.automagic-dashboards.core :as magic]
    [metabase.automagic-dashboards.rules :as rules]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models :refer [:m/card Collection Database Field Metric Table]]
+   [metabase.models :refer [Collection Database Field Metric Table]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -124,11 +124,11 @@
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
                     :m/card [{card-id :id} {:table_id      (mt/id :venues)
-                                         :collection_id collection-id
-                                         :dataset_query {:query    {:filter [:> [:field (mt/id :venues :price) nil] 10]
-                                                                    :source-table (mt/id :venues)}
-                                                         :type     :query
-                                                         :database (mt/id)}}]]
+                                            :collection_id collection-id
+                                            :dataset_query {:query    {:filter [:> [:field (mt/id :venues :price) nil] 10]
+                                                                       :source-table (mt/id :venues)}
+                                                            :type     :query
+                                                            :database (mt/id)}}]]
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
@@ -138,12 +138,12 @@
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
                     :m/card [{card-id :id} {:table_id      (mt/id :venues)
-                                         :collection_id collection-id
-                                         :dataset_query {:query {:aggregation [[:count]]
-                                                                 :breakout [[:field (mt/id :venues :category_id) nil]]
-                                                                 :source-table (mt/id :venues)}
-                                                         :type :query
-                                                         :database (mt/id)}}]]
+                                            :collection_id collection-id
+                                            :dataset_query {:query {:aggregation [[:count]]
+                                                                    :breakout [[:field (mt/id :venues :category_id) nil]]
+                                                                    :source-table (mt/id :venues)}
+                                                            :type :query
+                                                            :database (mt/id)}}]]
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (test-automagic-analysis (t2/select-one :m/card :id card-id) 17))))))
@@ -152,10 +152,10 @@
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
                     :m/card [{card-id :id} {:table_id      nil
-                                         :collection_id collection-id
-                                         :dataset_query {:native {:query "select * from users"}
-                                                         :type :native
-                                                         :database (mt/id)}}]]
+                                            :collection_id collection-id
+                                            :dataset_query {:native {:query "select * from users"}
+                                                            :type :native
+                                                            :database (mt/id)}}]]
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
@@ -174,15 +174,15 @@
                         :database (mt/id)}]
       (mt/with-temp* [Collection [{collection-id :id}]
                       :m/card [{source-id :id} {:table_id        (mt/id :venues)
-                                             :collection_id   collection-id
-                                             :dataset_query   source-query
-                                             :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}]
+                                                :collection_id   collection-id
+                                                :dataset_query   source-query
+                                                :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}]
                       :m/card [{card-id :id} {:table_id      (mt/id :venues)
-                                           :collection_id collection-id
-                                           :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
-                                                                      :source-table (str "card__" source-id)}
-                                                           :type     :query
-                                                           :database mbql.s/saved-questions-virtual-database-id}}]]
+                                              :collection_id collection-id
+                                              :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
+                                                                         :source-table (str "card__" source-id)}
+                                                              :type     :query
+                                                              :database mbql.s/saved-questions-virtual-database-id}}]]
         (mt/with-test-user :rasta
           (automagic-dashboards.test/with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
@@ -195,15 +195,15 @@
                         :database (mt/id)}]
       (mt/with-temp* [Collection [{collection-id :id}]
                       :m/card [{source-id :id} {:table_id        nil
-                                             :collection_id   collection-id
-                                             :dataset_query   source-query
-                                             :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}]
+                                                :collection_id   collection-id
+                                                :dataset_query   source-query
+                                                :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}]
                       :m/card [{card-id :id} {:table_id      nil
-                                           :collection_id collection-id
-                                           :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
-                                                                      :source-table (str "card__" source-id)}
-                                                           :type     :query
-                                                           :database mbql.s/saved-questions-virtual-database-id}}]]
+                                              :collection_id collection-id
+                                              :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
+                                                                         :source-table (str "card__" source-id)}
+                                                              :type     :query
+                                                              :database mbql.s/saved-questions-virtual-database-id}}]]
         (mt/with-test-user :rasta
           (automagic-dashboards.test/with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
@@ -290,13 +290,13 @@
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           :m/card [card {:table_id        (mt/id :products)
-                                      :collection_id   collection-id
-                                      :dataset_query   source-query
-                                      :result_metadata (mt/with-test-user
-                                                         :rasta
-                                                         (result-metadata-for-query
-                                                          source-query))
-                                      :dataset         true}]]
+                                         :collection_id   collection-id
+                                         :dataset_query   source-query
+                                         :result_metadata (mt/with-test-user
+                                                            :rasta
+                                                            (result-metadata-for-query
+                                                             source-query))
+                                         :dataset         true}]]
             (let [root               (#'magic/->root card)
                   {:keys [dimensions] :as _rule} (rules/get-rule ["table" "GenericTable"])
                   base-context       (#'magic/make-base-context root)
@@ -323,13 +323,13 @@
                                         :fields       [$orders.created_at]})}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           :m/card [card {:table_id        (mt/id :products)
-                                      :collection_id   collection-id
-                                      :dataset_query   source-query
-                                      :result_metadata (mt/with-test-user
-                                                         :rasta
-                                                         (result-metadata-for-query
-                                                          source-query))
-                                      :dataset         true}]]
+                                         :collection_id   collection-id
+                                         :dataset_query   source-query
+                                         :result_metadata (mt/with-test-user
+                                                            :rasta
+                                                            (result-metadata-for-query
+                                                             source-query))
+                                         :dataset         true}]]
             (let [root               (#'magic/->root card)
                   {:keys [dimensions] :as _rule} (rules/get-rule ["table" "GenericTable"])
                   base-context       (#'magic/make-base-context root)
@@ -392,13 +392,13 @@
                                         :fields       [$orders.created_at]})}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           :m/card [card {:table_id        (mt/id :products)
-                                      :collection_id   collection-id
-                                      :dataset_query   source-query
-                                      :result_metadata (mt/with-test-user
-                                                         :rasta
-                                                         (result-metadata-for-query
-                                                          source-query))
-                                      :dataset         true}]]
+                                         :collection_id   collection-id
+                                         :dataset_query   source-query
+                                         :result_metadata (mt/with-test-user
+                                                            :rasta
+                                                            (result-metadata-for-query
+                                                             source-query))
+                                         :dataset         true}]]
             (let [base-context (#'magic/make-base-context (#'magic/->root card))
                   dimensions   {"GenericCategoryMedium" {:field_type [:entity/GenericTable :type/Category] :max_cardinality 10}
                                 "GenericNumber"         {:field_type [:entity/GenericTable :type/Number]}
@@ -474,13 +474,13 @@
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           :m/card [card {:table_id        (mt/id :products)
-                                      :collection_id   collection-id
-                                      :dataset_query   source-query
-                                      :result_metadata (mt/with-test-user
-                                                         :rasta
-                                                         (result-metadata-for-query
-                                                          source-query))
-                                      :dataset         true}]]
+                                         :collection_id   collection-id
+                                         :dataset_query   source-query
+                                         :result_metadata (mt/with-test-user
+                                                            :rasta
+                                                            (result-metadata-for-query
+                                                             source-query))
+                                         :dataset         true}]]
             (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
                   binned-field-id (mt/id :products :price)]
               (ensure-single-table-sourced (mt/id :products) dashboard)
@@ -514,13 +514,13 @@
                                  :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           :m/card [card {:table_id        (mt/id :products)
-                                      :collection_id   collection-id
-                                      :dataset_query   source-query
-                                      :result_metadata (mt/with-test-user
-                                                         :rasta
-                                                         (result-metadata-for-query
-                                                          source-query))
-                                      :dataset         true}]]
+                                         :collection_id   collection-id
+                                         :dataset_query   source-query
+                                         :result_metadata (mt/with-test-user
+                                                            :rasta
+                                                            (result-metadata-for-query
+                                                             source-query))
+                                         :dataset         true}]]
             (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
                   temporal-field-ids (for [card (:ordered_cards dashboard)
                                            :let [fields (get-in card [:card :dataset_query :query :breakout])]
@@ -544,13 +544,13 @@
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           :m/card [card {:table_id        (mt/id :people)
-                                      :collection_id   collection-id
-                                      :dataset_query   source-query
-                                      :result_metadata (mt/with-test-user
-                                                         :rasta
-                                                         (result-metadata-for-query
-                                                          source-query))
-                                      :dataset         true}]]
+                                         :collection_id   collection-id
+                                         :dataset_query   source-query
+                                         :result_metadata (mt/with-test-user
+                                                            :rasta
+                                                            (result-metadata-for-query
+                                                             source-query))
+                                         :dataset         true}]]
             (let [{:keys [ordered_cards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))]
               (ensure-single-table-sourced (mt/id :people) dashboard)
               (ensure-dashboard-sourcing card dashboard)
@@ -586,13 +586,13 @@
                                      :fields       [[:field (mt/id :orders :created_at) nil]]}}]
         (mt/with-temp* [Collection [{collection-id :id}]
                         :m/card [card {:table_id        (mt/id :orders)
-                                    :collection_id   collection-id
-                                    :dataset_query   source-query
-                                    :result_metadata (->> (mt/with-test-user :rasta (result-metadata-for-query source-query))
-                                                          (map (fn [m] (update m :display_name {"Created At"            "Created At"
-                                                                                                "People - User → State" "State Where Placed"
-                                                                                                "Products → Price"      "Ordered Item Price"}))))
-                                    :dataset         true}]]
+                                       :collection_id   collection-id
+                                       :dataset_query   source-query
+                                       :result_metadata (->> (mt/with-test-user :rasta (result-metadata-for-query source-query))
+                                                             (map (fn [m] (update m :display_name {"Created At"            "Created At"
+                                                                                                   "People - User → State" "State Where Placed"
+                                                                                                   "Products → Price"      "Ordered Item Price"}))))
+                                       :dataset         true}]]
           (let [{:keys [ordered_cards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))
                 card-names (set (filter identity (map (comp :name :card) ordered_cards)))
                 expected-oip-labels #{"Ordered Item Price over time"
@@ -620,12 +620,12 @@
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
                     :m/card [{card-id :id} {:table_id      (mt/id :venues)
-                                         :collection_id collection-id
-                                         :dataset_query {:query    {:aggregation  [[:count]]
-                                                                    :breakout     [[:field (mt/id :venues :category_id) nil]]
-                                                                    :source-table (mt/id :venues)}
-                                                         :type     :query
-                                                         :database (mt/id)}}]]
+                                            :collection_id collection-id
+                                            :dataset_query {:query    {:aggregation  [[:count]]
+                                                                       :breakout     [[:field (mt/id :venues :category_id) nil]]
+                                                                       :source-table (mt/id :venues)}
+                                                            :type     :query
+                                                            :database (mt/id)}}]]
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
@@ -635,10 +635,10 @@
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
                     :m/card [{card-id :id} {:table_id      nil
-                                         :collection_id collection-id
-                                         :dataset_query {:native   {:query "select * from users"}
-                                                         :type     :native
-                                                         :database (mt/id)}}]]
+                                            :collection_id collection-id
+                                            :dataset_query {:native   {:query "select * from users"}
+                                                            :type     :native
+                                                            :database (mt/id)}}]]
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
@@ -648,11 +648,11 @@
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
                     :m/card [{card-id :id} {:table_id      (mt/id :venues)
-                                         :collection_id collection-id
-                                         :dataset_query {:query    {:filter       [:> [:field (mt/id :venues :price) nil] 10]
-                                                                    :source-table (mt/id :venues)}
-                                                         :type     :query
-                                                         :database (mt/id)}}]]
+                                            :collection_id collection-id
+                                            :dataset_query {:query    {:filter       [:> [:field (mt/id :venues :price) nil] 10]
+                                                                       :source-table (mt/id :venues)}
+                                                            :type     :query
+                                                            :database (mt/id)}}]]
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
@@ -664,11 +664,11 @@
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
                     :m/card [{card-id :id} {:table_id      (mt/id :venues)
-                                         :collection_id collection-id
-                                         :dataset_query {:query    {:filter       [:> [:field (mt/id :venues :price) nil] 10]
-                                                                    :source-table (mt/id :venues)}
-                                                         :type     :query
-                                                         :database (mt/id)}}]]
+                                            :collection_id collection-id
+                                            :dataset_query {:query    {:filter       [:> [:field (mt/id :venues :price) nil] 10]
+                                                                       :source-table (mt/id :venues)}
+                                                            :type     :query
+                                                            :database (mt/id)}}]]
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)

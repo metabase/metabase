@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.test :as mt]
@@ -195,8 +194,8 @@
   (testing "recursive native queries, referenced in template tags, are correctly substituted"
     (mt/with-temp* [:m/card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
                     :m/card [card-2 {:dataset_query (mt/native-query
-                                                  {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
-                                                   :template-tags (card-template-tags [(:id card-1)])})}]]
+                                                     {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
+                                                      :template-tags (card-template-tags [(:id card-1)])})}]]
       (let [card-2-id (:id card-2)]
         (is (= (mt/native-query
                 {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2", :params []})
@@ -208,8 +207,8 @@
   (testing "recursive native/MBQL queries, referenced in template tags, are correctly substituted"
     (mt/with-temp* [:m/card [card-1 {:dataset_query (mt/mbql-query venues)}]
                     :m/card [card-2 {:dataset_query (mt/native-query
-                                                  {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
-                                                   :template-tags (card-template-tags [(:id card-1)])})}]]
+                                                     {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
+                                                      :template-tags (card-template-tags [(:id card-1)])})}]]
       (let [card-2-id       (:id card-2)
             card-1-subquery (str "SELECT "
                                  "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
@@ -230,10 +229,10 @@
 (deftest referencing-cards-with-parameters-test
   (testing "referencing card with parameter and default value substitutes correctly"
     (mt/with-temp :m/card [param-card {:dataset_query (mt/native-query
-                                                    {:query "SELECT {{x}}"
-                                                     :template-tags {"x"
-                                                                     {:id "x", :name "x", :display-name "Number x",
-                                                                      :type :number, :default "1", :required true}}})}]
+                                                       {:query "SELECT {{x}}"
+                                                        :template-tags {"x"
+                                                                        {:id "x", :name "x", :display-name "Number x",
+                                                                         :type :number, :default "1", :required true}}})}]
       (is (= (mt/native-query
               {:query "SELECT * FROM (SELECT 1) AS x", :params []})
              (substitute-params
@@ -243,10 +242,10 @@
 
   (testing "referencing card with parameter and NO default value, fails substitution"
     (mt/with-temp :m/card [param-card {:dataset_query (mt/native-query
-                                                    {:query "SELECT {{x}}"
-                                                     :template-tags {"x"
-                                                                     {:id "x", :name "x", :display-name "Number x",
-                                                                      :type :number, :required false}}})}]
+                                                       {:query "SELECT {{x}}"
+                                                        :template-tags {"x"
+                                                                        {:id "x", :name "x", :display-name "Number x",
+                                                                         :type :number, :required false}}})}]
       (is (thrown? ExceptionInfo
             (substitute-params
              (mt/native-query
@@ -272,13 +271,13 @@
                                                       :description "Meant for use in WHERE clause"
                                                       :name        "Filter: expensive venues"}]
                   :m/card [card {:dataset_query
-                              (mt/native-query
-                                {:query         (str "SELECT {{ Venue fields }} "
-                                                     "FROM venues "
-                                                     "WHERE {{ Filter: expensive venues }}")
-                                 :template-tags (snippet-template-tags
-                                                 {"Venue fields"             (:id select-snippet)
-                                                  "Filter: expensive venues" (:id where-snippet)})})}]]
+                                 (mt/native-query
+                                   {:query         (str "SELECT {{ Venue fields }} "
+                                                        "FROM venues "
+                                                        "WHERE {{ Filter: expensive venues }}")
+                                    :template-tags (snippet-template-tags
+                                                    {"Venue fields"             (:id select-snippet)
+                                                     "Filter: expensive venues" (:id where-snippet)})})}]]
     (testing "multiple snippets are correctly expanded in parent query"
       (is (= (mt/native-query
                {:query "SELECT name, price FROM venues WHERE price > 2", :params nil})
@@ -296,12 +295,12 @@
   (testing "Expanding a Card reference should include its parameters (#12236)"
     (mt/dataset sample-dataset
       (mt/with-temp :m/card [card {:dataset_query (mt/mbql-query orders
-                                                 {:filter      [:between $total 30 60]
-                                                  :aggregation [[:aggregation-options
-                                                                 [:count-where
-                                                                  [:starts-with $product_id->products.category "G"]]
-                                                                 {:name "G Monies", :display-name "G Monies"}]]
-                                                  :breakout    [!month.created_at]})}]
+                                                   {:filter      [:between $total 30 60]
+                                                    :aggregation [[:aggregation-options
+                                                                   [:count-where
+                                                                    [:starts-with $product_id->products.category "G"]]
+                                                                   {:name "G Monies", :display-name "G Monies"}]]
+                                                    :breakout    [!month.created_at]})}]
         (let [card-tag (str "#" (u/the-id card))
               query    (mt/native-query
                          {:query         (format "SELECT * FROM {{%s}}" card-tag)

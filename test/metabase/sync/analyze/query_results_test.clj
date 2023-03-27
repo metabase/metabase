@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -94,8 +93,8 @@
                 "as it's just an integer flowing through, similarly Price isn't found to be a category as we're inferring by name "
                 "only")
     (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
-                                              :type     :native
-                                              :native   {:query "select * from venues"}}}]
+                                                 :type     :native
+                                                 :native   {:query "select * from venues"}}}]
       (is (= (assoc venue-name->semantic-types :category_id nil :price nil)
              (name->semantic-type (query->result-metadata (query-for-card card))))))))
 

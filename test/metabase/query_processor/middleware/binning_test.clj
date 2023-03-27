@@ -2,7 +2,6 @@
   "There are more 'e2e' tests related to binning in [[metabase.query-processor-test.breakout-test]]."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
@@ -145,8 +144,8 @@
 
 (deftest binning-nested-questions-test
   (mt/with-temp :m/card [{card-id :id} {:dataset_query {:database (mt/id)
-                                                     :type     :query
-                                                     :query    {:source-table (mt/id :venues)}}}]
+                                                        :type     :query
+                                                        :query    {:source-table (mt/id :venues)}}}]
     (is (= [[1 22]
             [2 59]
             [3 13]

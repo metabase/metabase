@@ -26,7 +26,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
-   [metabase.models.card :as card :refer [:m/card]]
+   [metabase.models.card :as card]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.pulse.parameters :as params]
    [metabase.query-processor :as qp]

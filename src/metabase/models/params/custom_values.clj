@@ -7,7 +7,6 @@
   "
   (:require
    [clojure.string :as str]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]

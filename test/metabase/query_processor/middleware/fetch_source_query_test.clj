@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models :refer [:m/card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
@@ -92,7 +91,7 @@
 (deftest resolve-native-queries-test
   (testing "make sure that the `resolve-card-id-source-tables` middleware correctly resolves native queries"
     (mt/with-temp :m/card [card {:dataset_query (mt/native-query
-                                               {:query (format "SELECT * FROM %s" (mt/format-name "venues"))})}]
+                                                 {:query (format "SELECT * FROM %s" (mt/format-name "venues"))})}]
       (is (= (assoc (default-result-with-inner-query
                      {:aggregation    [[:count]]
                       :breakout       [[:field "price" {:base-type :type/Integer}]]
@@ -109,10 +108,10 @@
 (deftest nested-nested-queries-test
   (testing "make sure that nested nested queries work as expected"
     (mt/with-temp* [:m/card [card-1 {:dataset_query (mt/mbql-query venues
-                                                   {:limit 100})}]
+                                                     {:limit 100})}]
                     :m/card [card-2 {:dataset_query {:database mbql.s/saved-questions-virtual-database-id
-                                                  :type     :query
-                                                  :query    {:source-table (str "card__" (u/the-id card-1)), :limit 50}}}]]
+                                                     :type     :query
+                                                     :query    {:source-table (str "card__" (u/the-id card-1)), :limit 50}}}]]
       (is (= (-> (default-result-with-inner-query
                   {:limit          25
                    :source-query   {:limit           50
@@ -131,7 +130,7 @@
   (testing "Marks datasets as from a dataset"
     (testing "top level dataset queries are marked as such"
       (mt/with-temp* [:m/card [card {:dataset_query (mt/mbql-query venues {:limit 100})
-                                  :dataset       true}]]
+                                     :dataset       true}]]
         (let [results (qp/process-query {:type     :query
                                          :query    {:source-table (str "card__" (u/the-id card))
                                                     :limit        1}
@@ -140,10 +139,10 @@
                  (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))
     (testing "But not when the dataset is lower than top level"
       (mt/with-temp* [:m/card [dataset {:dataset_query (mt/mbql-query venues {:limit 100})
-                                     :dataset       true}]
+                                        :dataset       true}]
                       :m/card [card    {:dataset_query {:database mbql.s/saved-questions-virtual-database-id
-                                                     :type     :query
-                                                     :query    {:source-table (str "card__" (u/the-id dataset))}}}]]
+                                                        :type     :query
+                                                        :query    {:source-table (str "card__" (u/the-id dataset))}}}]]
         (let [results (qp/process-query {:type     :query
                                          :query    {:source-table (str "card__" (u/the-id card))
                                                     :limit        1}
@@ -177,7 +176,7 @@
                    :base_type    :type/Text
                    :field_ref    [:field (mt/id :categories :name) nil]}]]
     (mt/with-temp :m/card [{card-id :id} {:dataset_query   (mt/mbql-query categories {:limit 100})
-                                       :result_metadata metadata}]
+                                          :result_metadata metadata}]
       (testing "Are `card__id` source tables resolved in `:joins`?"
         (is (= (mt/mbql-query venues
                  {:joins [{:source-query    {:source-table $$categories, :limit 100}
@@ -223,8 +222,8 @@
 
       (testing "Can we recursively resolve multiple card ID `:source-table`s in Joins?"
         (mt/with-temp :m/card [{card-2-id :id} {:dataset_query
-                                             (mt/mbql-query nil
-                                               {:source-table (str "card__" card-id), :limit 200})}]
+                                                (mt/mbql-query nil
+                                                  {:source-table (str "card__" card-id), :limit 200})}]
           (is (= (mt/mbql-query venues
                    {:joins [{:alias           "c"
                              :condition       [:= $category_id &c.$categories.id]
@@ -298,7 +297,7 @@
   (testing "We should allow complex topologies"
     (mt/with-temp* [:m/card [{card-1-id :id} {:dataset_query (mt/mbql-query venues)}]
                     :m/card [{card-2-id :id} {:dataset_query (mt/mbql-query nil
-                                                            {:source-table (str "card__" card-1-id)})}]]
+                                                              {:source-table (str "card__" card-1-id)})}]]
       (is (some? (resolve-card-id-source-tables
                   (mt/mbql-query nil
                     {:source-table (str "card__" card-1-id)

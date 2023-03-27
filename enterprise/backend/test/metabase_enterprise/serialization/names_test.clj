@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.names :as names]
    [metabase-enterprise.serialization.test-util :as ts]
-   [metabase.models :refer [:m/card Collection Dashboard Database Field Metric NativeQuerySnippet Segment Table]]
+   [metabase.models :refer [Collection Dashboard Database Field Metric NativeQuerySnippet Segment Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -49,7 +49,7 @@
       (mt/with-temp* [Collection [{collection-id :id :as coll} {:name "A Collection" :location "/"}]
                       :m/card       [root-card {:name "Root Card"}]
                       :m/card       [collection-card {:name         "Collection Card"
-                                                   :collection_id collection-id}]
+                                                      :collection_id collection-id}]
                       Collection [{sub-collection-id :id :as coll2} {:name "Sub Collection"
                                                                      :location (format "/%d/" collection-id)}]
                       Collection [coll3 {:name "Deep Collection"

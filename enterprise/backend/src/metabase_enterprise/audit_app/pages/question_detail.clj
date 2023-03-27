@@ -4,7 +4,6 @@
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.card-and-dashboard-detail :as card-and-dash-detail]
-   [metabase.models.card :refer [:m/card]]
    [metabase.util.schema :as su]
    [schema.core :as s]))
 

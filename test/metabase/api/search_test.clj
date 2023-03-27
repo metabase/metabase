@@ -6,7 +6,7 @@
    [metabase.api.search :as api.search]
    [metabase.models
     :refer [Action
-            :m/card
+
             CardBookmark
             Collection
             Dashboard
@@ -139,11 +139,11 @@
                                  {:collection_id (u/the-id collection)})))]
     (mt/with-temp* [Collection  [coll           (data-map "collection %s collection")]
                     :m/card        [action-model   (if in-root-collection?
-                                                  action-model-params
-                                                  (assoc action-model-params :collection_id (u/the-id coll)))]
+                                                    action-model-params
+                                                    (assoc action-model-params :collection_id (u/the-id coll)))]
                     Action      [{action-id :id
                                   :as action}   (merge (data-map "action %s action")
-                                  {:type :query, :model_id (u/the-id action-model)})]
+                                                 {:type :query, :model_id (u/the-id action-model)})]
                     QueryAction [_qa (query-action action-id)]
                     :m/card        [card           (coll-data-map "card %s card" coll)]
                     :m/card        [dataset        (assoc (coll-data-map "dataset %s dataset" coll)
@@ -515,8 +515,8 @@
     (with-search-items-in-root-collection "test2"
       (mt/with-temp* [:m/card        [action-model action-model-params]
                       Action      [{action-id :id} (archived {:name     "action test action"
-                                                :type     :query
-                                                :model_id (u/the-id action-model)})]
+                                                              :type     :query
+                                                              :model_id (u/the-id action-model)})]
                       QueryAction [_ (query-action action-id)]
                       :m/card        [_ (archived {:name "card test card"})]
                       :m/card        [_ (archived {:name "dataset test dataset" :dataset true})]
@@ -657,8 +657,8 @@
                        :query_type    "native"
                        :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]
       (mt/with-temp* [:m/card [_mbql-card   {:name          "Venues Count"
-                                          :query_type    "query"
-                                          :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                                             :query_type    "query"
+                                             :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
                       :m/card [_native-card native-card]
                       :m/card [_dataset     (assoc native-card :name "Dataset" :dataset true)]]
         (is (= ["Another SQL query" "Dataset"]

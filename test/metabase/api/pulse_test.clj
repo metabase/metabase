@@ -8,8 +8,7 @@
    [metabase.http-client :as client]
    [metabase.integrations.slack :as slack]
    [metabase.models
-    :refer [:m/card
-            Collection
+    :refer [Collection
             Dashboard
             DashboardCard
             Pulse
@@ -264,8 +263,8 @@
     (testing "Create a pulse with a HybridPulseCard and a CardRef, PUT accepts this format, we should make sure POST does as well"
       (mt/with-temp* [:m/card [card-1]
                       :m/card [card-2 {:name        "The card"
-                                    :description "Info"
-                                    :display     :table}]]
+                                       :description "Info"
+                                       :display     :table}]]
         (api.card-test/with-cards-in-readable-collection [card-1 card-2]
           (mt/with-temp Collection [collection]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -463,11 +462,11 @@
       ;; (the new card)
       (mt/with-temp* [Pulse                 [pulse {:name "Original Pulse Name"}]
                       :m/card                  [card-1 {:name        "Test"
-                                                     :description "Just Testing"}]
+                                                        :description "Just Testing"}]
                       PulseCard             [_      {:card_id  (u/the-id card-1)
                                                      :pulse_id (u/the-id pulse)}]
                       :m/card                  [card-2 {:name        "Test2"
-                                                     :description "Just Testing2"}]]
+                                                        :description "Just Testing2"}]]
         (with-pulses-in-writeable-collection [pulse]
           (api.card-test/with-cards-in-readable-collection [card-1 card-2]
             ;; The FE will include the original HybridPulseCard, similar to how the API returns the card via GET
@@ -944,13 +943,13 @@
 (deftest send-test-pulse-native-query-default-parameters-test
   (testing "POST /api/pulse/test should work with a native query with default parameters"
     (mt/with-temp* [:m/card [{card-id :id} {:dataset_query {:database (mt/id)
-                                                         :type     :native
-                                                         :native   {:query         "SELECT {{x}}"
-                                                                    :template-tags {"x" {:id           "abc"
-                                                                                         :name         "x"
-                                                                                         :display-name "X"
-                                                                                         :type         :number
-                                                                                         :required     true}}}}}]
+                                                            :type     :native
+                                                            :native   {:query         "SELECT {{x}}"
+                                                                       :template-tags {"x" {:id           "abc"
+                                                                                            :name         "x"
+                                                                                            :display-name "X"
+                                                                                            :type         :number
+                                                                                            :required     true}}}}}]
                     Dashboard [{dashboard-id :id} {:parameters [{:name    "X"
                                                                  :slug    "x"
                                                                  :id      "__X__"
@@ -985,9 +984,9 @@
 ;; of the same format that the pulse GET returns
 (deftest update-flow-test
   (mt/with-temp* [:m/card [card-1 {:dataset_query
-                                {:database (mt/id), :type :query, :query {:source-table (mt/id :venues)}}}]
+                                   {:database (mt/id), :type :query, :query {:source-table (mt/id :venues)}}}]
                   :m/card [card-2 {:dataset_query
-                                {:database (mt/id), :type :query, :query {:source-table (mt/id :venues)}}}]]
+                                   {:database (mt/id), :type :query, :query {:source-table (mt/id :venues)}}}]]
 
     (api.card-test/with-cards-in-readable-collection [card-1 card-2]
       (mt/with-fake-inbox

@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase.domain-entities.specs :refer [domain-entity-specs MBQL]]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
    [metabase.util :as u]

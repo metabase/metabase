@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase.http-client :as client]
-   [metabase.models :refer [:m/card Field PermissionsGroup Table]]
+   [metabase.models :refer [Field PermissionsGroup Table]]
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test :as premium-features-test]
@@ -115,8 +115,8 @@
       (testing "Meaningful errors should be returned if you create an invalid GTAP"
         (mt/with-temp* [Field [_ {:name "My field", :table_id table-id, :base_type :type/Integer}]
                         :m/card  [{card-id :id} {:dataset_query (mt/mbql-query venues
-                                                               {:fields      [[:expression "My field"]]
-                                                                :expressions {"My field" [:ltrim "wow"]}})}]]
+                                                                 {:fields      [[:expression "My field"]]
+                                                                  :expressions {"My field" [:ltrim "wow"]}})}]]
           (with-gtap-cleanup
             (is (schema= {:message  (s/eq "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.")
                           :expected (s/eq "type/Integer")
@@ -151,8 +151,8 @@
       (testing "An invalid sandbox results in a 400 error being returned"
         (mt/with-temp* [Field [_ {:name "My field", :table_id table-id, :base_type :type/Integer}]
                         :m/card  [{card-id :id} {:dataset_query (mt/mbql-query venues
-                                                               {:fields      [[:expression "My field"]]
-                                                                :expressions {"My field" [:ltrim "wow"]}})}]]
+                                                                 {:fields      [[:expression "My field"]]
+                                                                  :expressions {"My field" [:ltrim "wow"]}})}]]
           (with-gtap-cleanup
             (is (schema= {:message  (s/eq "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.")
                           :expected (s/eq "type/Integer")

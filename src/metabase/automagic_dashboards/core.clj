@@ -21,7 +21,6 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :as card :refer [:m/card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
@@ -1013,13 +1012,13 @@
               :related  [sideways sideways]
               :compare  [compare]})
    :m/card    (let [down     [[:drilldown-fields]]
-                 sideways [[:metrics] [:similar-questions :dashboard-mates]]
-                 up       [[:table]]
-                 compare  [[:compare]]]
-             {:zoom-in  [down down]
-              :zoom-out [up]
-              :related  [sideways sideways sideways]
-              :compare  [compare compare]})
+                    sideways [[:metrics] [:similar-questions :dashboard-mates]]
+                    up       [[:table]]
+                    compare  [[:compare]]]
+               {:zoom-in  [down down]
+                :zoom-out [up]
+                :related  [sideways sideways sideways]
+                :compare  [compare compare]})
    Query   (let [down     [[:drilldown-fields]]
                  sideways [[:metrics] [:similar-questions]]
                  up       [[:table]]

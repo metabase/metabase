@@ -1,7 +1,6 @@
 (ns metabase.pulse.util
   "Utils for pulses."
   (:require
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard-card
     :as dashboard-card
     :refer [DashboardCard]]

@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.visualization-settings
   (:require
    [medley.core :as m]
-   [metabase.models.card :refer [:m/card]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.shared.models.visualization-settings :as mb.viz]

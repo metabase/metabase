@@ -2,7 +2,6 @@
   (:require
     [clojure.test :refer :all]
     [metabase-enterprise.test :as met]
-    [metabase.models :refer [:m/card]]
     [metabase.test :as mt]))
 
 (deftest dataset-parameter-test
@@ -11,9 +10,9 @@
       (testing "with values_source_type=card"
         (mt/with-temp*
           [:m/card [{source-card-id :id}
-                 {:database_id   (mt/id)
-                  :table_id      (mt/id :categories)
-                  :dataset_query (mt/mbql-query categories)}]]
+                    {:database_id   (mt/id)
+                     :table_id      (mt/id :categories)
+                     :dataset_query (mt/mbql-query categories)}]]
 
           (testing "when getting values"
             (let [get-values (fn [user]

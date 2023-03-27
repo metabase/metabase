@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.pages.alerts :as audit.alerts]
-   [metabase.models :refer [:m/card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models :refer [Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -30,7 +30,7 @@
                                                         :collection-name "Our analytics"}]]
         (testing (format "Collection = %d %s" collection-id collection-name)
           (mt/with-temp* [:m/card                  [{card-id :id}      {:name          card-name
-                                                                     :collection_id collection-id}]
+                                                                        :collection_id collection-id}]
                           Pulse                 [{pulse-id :id}     {:collection_id   collection-id
                                                                      :alert_condition "rows"}]
                           PulseCard             [_                  {:card_id  card-id

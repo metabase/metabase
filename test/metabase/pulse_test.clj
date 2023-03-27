@@ -7,7 +7,7 @@
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models
-    :refer [:m/card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+    :refer [Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
@@ -101,7 +101,7 @@
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
       (mt/with-temp* [:m/card          [{card-id :id} (merge {:name    pulse.test-util/card-name
-                                                           :display (or display :line)}
+                                                              :display (or display :line)}
                                                           card)]]
         (with-pulse-for-card [{pulse-id :id}
                               {:card       card-id
@@ -661,16 +661,16 @@
 (deftest native-query-with-user-specified-axes-test
   (testing "Native query with user-specified x and y axis"
     (mt/with-temp :m/card [{card-id :id} {:name                   "Test card"
-                                       :dataset_query          {:database (mt/id)
-                                                                :type     :native
-                                                                :native   {:query (str "select count(*) as total_per_day, date as the_day "
-                                                                                       "from checkins "
-                                                                                       "group by date")}}
-                                       :display                :line
-                                       :visualization_settings {:graph.show_goal  true
-                                                                :graph.goal_value 5.9
-                                                                :graph.dimensions ["the_day"]
-                                                                :graph.metrics    ["total_per_day"]}}]
+                                          :dataset_query          {:database (mt/id)
+                                                                   :type     :native
+                                                                   :native   {:query (str "select count(*) as total_per_day, date as the_day "
+                                                                                          "from checkins "
+                                                                                          "group by date")}}
+                                          :display                :line
+                                          :visualization_settings {:graph.show_goal  true
+                                                                   :graph.goal_value 5.9
+                                                                   :graph.dimensions ["the_day"]
+                                                                   :graph.metrics    ["total_per_day"]}}]
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:alert_condition  "goal"
                                                                    :alert_first_only false
                                                                    :alert_above_goal true}}]
@@ -800,9 +800,9 @@
 (deftest dont-run-async-test
   (testing "even if Card is saved as `:async?` we shouldn't run the query async"
     (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
-                                              :type     :query
-                                              :query    {:source-table (mt/id :venues)}
-                                              :async?   true}}]
+                                                 :type     :query
+                                                 :query    {:source-table (mt/id :venues)}
+                                                 :async?   true}}]
       (is (schema= {:card   (s/pred map?)
                     :result (s/pred map?)}
                    (pu/execute-card {:creator_id (mt/user->id :rasta)} card))))))
@@ -812,9 +812,9 @@
     (letfn [(send-pulse-created-by-user!* [user-kw]
               (mt/with-temp* [Collection [coll]
                               :m/card       [card {:dataset_query (mt/mbql-query checkins
-                                                                 {:order-by [[:asc $id]]
-                                                                  :limit    1})
-                                                :collection_id (:id coll)}]]
+                                                                   {:order-by [[:asc $id]]
+                                                                    :limit    1})
+                                                   :collection_id (:id coll)}]]
                 (perms/revoke-collection-permissions! (perms-group/all-users) coll)
                 (pulse.test-util/send-pulse-created-by-user! user-kw card)))]
       (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]

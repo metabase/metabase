@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.http-client :as client]
-   [metabase.models :refer [Action :m/card Database]]
+   [metabase.models :refer [Action Database]]
    [metabase.models.action :as action]
    [metabase.query-processor-test :as qp.test]
    [metabase.test.data :as data]

@@ -9,7 +9,6 @@
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models :refer [Dimension Field Metric Segment Table]]
-   [metabase.models.card :as card :refer [:m/card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -163,21 +162,21 @@
         (testing (format "Aggregations in both nested and outer query for %s have correct metadata (#19403) and (#23248)"
                          (if dataset? "questions" "models"))
           (mt/with-temp* [:m/card [{card-id :id :as card}
-                                {:dataset dataset?
-                                 :dataset_query
-                                 (mt/$ids :products
-                                          {:type     :query
-                                           :database (mt/id)
-                                           :query    {:source-table $$products
-                                                      :aggregation
-                                                      [[:aggregation-options
-                                                        [:sum $price]
-                                                        {:name "sum"}]
-                                                       [:aggregation-options
-                                                        [:max $rating]
-                                                        {:name "max"}]]
-                                                      :breakout     $category
-                                                      :order-by     [[:asc $category]]}})}]]
+                                   {:dataset dataset?
+                                    :dataset_query
+                                    (mt/$ids :products
+                                             {:type     :query
+                                              :database (mt/id)
+                                              :query    {:source-table $$products
+                                                         :aggregation
+                                                         [[:aggregation-options
+                                                           [:sum $price]
+                                                           {:name "sum"}]
+                                                          [:aggregation-options
+                                                           [:max $rating]
+                                                           {:name "max"}]]
+                                                         :breakout     $category
+                                                         :order-by     [[:asc $category]]}})}]]
             (is (partial= {:data {:cols [{:name "sum" :display_name "Sum of Sum of Price"}
                                          {:name "count" :display_name "Count"}]
                                   :rows [[11149 4]]}}
@@ -246,21 +245,21 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
       (mt/dataset sample-dataset
         (mt/with-temp* [:m/card [inner-card
-                              {:dataset_query
-                               (mt/mbql-query reviews
-                                 {:fields [$id]
-                                  :joins [{:source-table $$products
-                                           :alias "P"
-                                           :fields [&P.products.id &P.products.ean]
-                                           :condition [:= $product_id &P.products.id]}]})}]
+                                 {:dataset_query
+                                  (mt/mbql-query reviews
+                                    {:fields [$id]
+                                     :joins [{:source-table $$products
+                                              :alias "P"
+                                              :fields [&P.products.id &P.products.ean]
+                                              :condition [:= $product_id &P.products.id]}]})}]
                         :m/card [outer-card
-                              {:dataset_query
-                               (mt/mbql-query orders
-                                 {:fields [$id]
-                                  :joins [{:source-table (str "card__" (:id inner-card))
-                                           :alias "RP"
-                                           :fields [&RP.reviews.id &RP.products.id &RP.products.ean]
-                                           :condition [:= $product_id &RP.products.id]}]})}]]
+                                 {:dataset_query
+                                  (mt/mbql-query orders
+                                    {:fields [$id]
+                                     :joins [{:source-table (str "card__" (:id inner-card))
+                                              :alias "RP"
+                                              :fields [&RP.reviews.id &RP.products.id &RP.products.ean]
+                                              :condition [:= $product_id &RP.products.id]}]})}]]
           (is (= :completed
                  (-> (query-with-source-card outer-card :limit 1)
                      qp/process-query
@@ -286,11 +285,11 @@
     ;; TODO make this work for other drivers supporting :nested-queries :expressions :basic-aggregations
     (mt/test-drivers #{:h2 :postgres :mongo}
       (mt/with-temp :m/card [card {:dataset_query
-                                (mt/mbql-query venues
-                                               {:aggregation [[:count]]
-                                                :breakout [[:expression "Price level"]]
-                                                :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
-                                                :limit 2})}]
+                                   (mt/mbql-query venues
+                                                  {:aggregation [[:count]]
+                                                   :breakout [[:expression "Price level"]]
+                                                   :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
+                                                   :limit 2})}]
         (is (= [["budget"    81]
                 ["expensive" 19]]
                (mt/rows
@@ -464,13 +463,13 @@
     (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) AS \"source\" LIMIT 1048575"
             :params ["Widget"]}
            (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
-                                                     :type     :native
-                                                     :native   {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
-                                                                :template-tags {:category {:name         "category"
-                                                                                           :display_name "Category"
-                                                                                           :type         "text"
-                                                                                           :required     true
-                                                                                           :default      "Widget"}}}}}]
+                                                        :type     :native
+                                                        :native   {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
+                                                                   :template-tags {:category {:name         "category"
+                                                                                              :display_name "Category"
+                                                                                              :type         "text"
+                                                                                              :required     true
+                                                                                              :default      "Widget"}}}}}]
              (qp/compile
                {:database (mt/id)
                 :type     :query
@@ -508,8 +507,8 @@
             (qp.test/aggregate-col :count)]
            (mt/cols
             (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
-                                                      :type     :native
-                                                      :native   {:query "SELECT * FROM CHECKINS"}}}]
+                                                         :type     :native
+                                                         :native   {:query "SELECT * FROM CHECKINS"}}}]
               (qp/process-query
                (query-with-source-card card
                                        (mt/$ids checkins
@@ -588,8 +587,8 @@
       (mt/with-temp* [Segment [segment (mt/$ids {:table_id   $$venues
                                                  :definition {:filter [:= $venues.price 1]}})]
                       :m/card    [card (mbql-card-def
-                                      :source-table (mt/id :venues)
-                                      :filter       [:and [:segment (u/the-id segment)]])]]
+                                        :source-table (mt/id :venues)
+                                        :filter       [:and [:segment (u/the-id segment)]])]]
         (is (= [[22]]
                (mt/formatted-rows [int]
                  (qp/process-query
@@ -601,7 +600,7 @@
     (testing "reading should require that you have read permissions for the Card's Collection"
       (mt/with-temp* [Collection [collection]
                       :m/card       [card {:collection_id (u/the-id collection)
-                                        :dataset_query (mt/native-query {:query "SELECT * FROM VENUES"})}]]
+                                           :dataset_query (mt/native-query {:query "SELECT * FROM VENUES"})}]]
         (is (= #{(perms/collection-read-path collection)}
                (query-perms/perms-set (query-with-source-card card :aggregation [:count]))))))
 
@@ -617,10 +616,10 @@
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
           (mt/with-temp* [Collection [collection]
                           :m/card       [card-1 {:collection_id (u/the-id collection)
-                                              :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})}]
+                                                 :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})}]
                           :m/card       [card-2 {:collection_id (u/the-id collection)
-                                              :dataset_query (mt/mbql-query nil
-                                                               {:source-table (format "card__%d" (u/the-id card-1))})}]]
+                                                 :dataset_query (mt/mbql-query nil
+                                                                  {:source-table (format "card__%d" (u/the-id card-1))})}]]
             (testing "read perms for both Cards should be the same as reading the parent collection")
             (is (= (mi/perms-objects-set collection :read)
                    (mi/perms-objects-set card-1 :read)
@@ -660,9 +659,9 @@
   group."
   [expected-status-code db-or-id source-collection-or-id-or-nil dest-collection-or-id-or-nil]
   (mt/with-temp :m/card [card {:collection_id (some-> source-collection-or-id-or-nil u/the-id)
-                            :dataset_query {:database (u/the-id db-or-id)
-                                            :type     :native
-                                            :native   {:query "SELECT * FROM VENUES"}}}]
+                               :dataset_query {:database (u/the-id db-or-id)
+                                               :type     :native
+                                               :native   {:query "SELECT * FROM VENUES"}}}]
     (mt/user-http-request :rasta :post expected-status-code "card"
                           {:name                   (mt/random-name)
                            :collection_id          (some-> dest-collection-or-id-or-nil u/the-id)
@@ -880,7 +879,7 @@
             (testing (format "with Card with result metadata %s cols => %s"
                              description (pr-str (mapv :display_name result-metadata)))
               (mt/with-temp :m/card [{card-id :id} {:dataset_query   (mt/mbql-query orders)
-                                                 :result_metadata result-metadata}]
+                                                    :result_metadata result-metadata}]
                 ;; now try using this Card as a saved question,  should work
                 (is (= {:rows    [[1 1  14  37.65 2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
                                   [2 1 123 110.93  6.1 117.03 nil "2018-05-15T08:04:04.58Z"  3 "Mediocre Wooden Bench"]]
@@ -1104,7 +1103,7 @@
                        metadata (assoc-in [:query :source-metadata] metadata))))
                   (test-card-source-query [metadata]
                     (mt/with-temp :m/card [{card-id :id} {:dataset_query   query
-                                                       :result_metadata metadata}]
+                                                          :result_metadata metadata}]
                       (test-query
                        (mt/mbql-query nil
                          {:source-table (format "card__%d" card-id)}))))]
@@ -1288,12 +1287,12 @@
                       :foreign-keys)
       (mt/dataset sample-dataset
         (mt/with-temp :m/card [card {:dataset_query (mt/mbql-query orders
-                                                   {:filter      [:between $total 30 60]
-                                                    :aggregation [[:aggregation-options
-                                                                   [:count-where [:starts-with $product_id->products.category "G"]]
-                                                                   {:name "G Monies", :display-name "G Monies"}]]
-                                                    :breakout    [!month.created_at]
-                                                    :limit       2})}]
+                                                     {:filter      [:between $total 30 60]
+                                                      :aggregation [[:aggregation-options
+                                                                     [:count-where [:starts-with $product_id->products.category "G"]]
+                                                                     {:name "G Monies", :display-name "G Monies"}]]
+                                                      :breakout    [!month.created_at]
+                                                      :limit       2})}]
           (let [card-tag (str "#" (u/the-id card))
                 query    (mt/native-query
                            {:query         (format "SELECT * FROM {{%s}} x" card-tag)

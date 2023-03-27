@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.database :as database :refer [Database]]
