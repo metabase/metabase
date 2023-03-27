@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
+import { useDropzone } from "react-dropzone";
 
 import { usePrevious, useMount } from "react-use";
 import Bookmark from "metabase/entities/bookmarks";
@@ -19,6 +20,7 @@ import Header from "metabase/collections/containers/CollectionHeader";
 import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
+import { uploadCSV } from "metabase/collections/upload";
 
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -27,6 +29,9 @@ import { usePagination } from "metabase/hooks/use-pagination";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { isSmallScreen } from "metabase/lib/dom";
 import Databases from "metabase/entities/databases";
+
+import UploadOverlay from "../components/UploadOverlay";
+
 import {
   CollectionEmptyContent,
   CollectionMain,
@@ -110,6 +115,21 @@ function CollectionContent({
     setIsBookmarked(shouldBeBookmarked);
   }, [bookmarks, collectionId]);
 
+  const onDrop = useCallback(
+    acceptedFiles => {
+      uploadCSV({ file: acceptedFiles[0], collectionId });
+    },
+    [collectionId],
+  );
+
+  const { getRootProps, isDragActive } = useDropzone({
+    onDrop,
+    maxFiles: 1,
+    noClick: true,
+    noDragEventsBubbling: true,
+    accept: { "text/csv": [".csv"] },
+  });
+
   const handleBulkArchive = useCallback(async () => {
     try {
       await Promise.all(selected.map(item => item.setArchived(true)));
@@ -168,6 +188,9 @@ function CollectionContent({
     deleteBookmark(collectionId, "collection");
   };
 
+  const canUpload = true; // TODO: check permissions
+  const rootProps = canUpload ? getRootProps() : {};
+
   const unpinnedQuery = {
     collection: collectionId,
     models: ALL_MODELS,
@@ -195,7 +218,8 @@ function CollectionContent({
         const hasPinnedItems = pinnedItems.length > 0;
 
         return (
-          <CollectionRoot>
+          <CollectionRoot {...rootProps}>
+            <UploadOverlay isDragActive={isDragActive} />
             <CollectionMain>
               <Header
                 collection={collection}
