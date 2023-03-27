@@ -1,5 +1,4 @@
-import React from "react";
-import { useArgs } from "@storybook/client-api";
+import React, { useState } from "react";
 import type { ComponentStory } from "@storybook/react";
 import { MetabotFeedbackType } from "metabase-types/api";
 import MetabotFeedback from "./MetabotFeedback";
@@ -10,15 +9,9 @@ export default {
 };
 
 const Template: ComponentStory<typeof MetabotFeedback> = args => {
-  const [{ type }, updateArgs] = useArgs();
+  const [type, setType] = useState<MetabotFeedbackType>();
 
-  const handleTypeChange = (newType: MetabotFeedbackType) => {
-    updateArgs({ type: newType });
-  };
-
-  return (
-    <MetabotFeedback {...args} type={type} onTypeChange={handleTypeChange} />
-  );
+  return <MetabotFeedback {...args} type={type} onTypeChange={setType} />;
 };
 
 export const Default = Template.bind({});
