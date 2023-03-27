@@ -29,6 +29,7 @@ export interface Dashboard {
     last_name: string;
     timestamp: string;
   };
+  auto_apply_filters: boolean;
 }
 
 export type DashCardId = EntityId;
