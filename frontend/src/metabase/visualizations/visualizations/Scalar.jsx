@@ -13,7 +13,7 @@ import ScalarValue, {
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
 import { TYPE } from "metabase-lib/types/constants";
-import { ScalarContainer } from "./Scalar.styled";
+import { ScalarContainer, LabelIcon } from "./Scalar.styled";
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {
@@ -215,6 +215,11 @@ export default class Scalar extends Component {
     };
     const isClickable = visualizationIsClickable(clicked);
 
+    const hideTitle =
+      !!settings["card.title"] &&
+      isDashboard &&
+      (gridSize?.width < 2 || gridSize?.height < 2);
+
     return (
       <ScalarWrapper>
         <div className="Card-title absolute top right p1 px2">
@@ -244,7 +249,14 @@ export default class Scalar extends Component {
             />
           </span>
         </ScalarContainer>
-        {isDashboard && (
+
+        {hideTitle ? (
+          <LabelIcon
+            name="ellipsis"
+            tooltip={settings["card.title"]}
+            size={10}
+          />
+        ) : (
           <ScalarTitle
             title={settings["card.title"]}
             description={settings["card.description"]}
