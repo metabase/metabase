@@ -104,6 +104,7 @@ function NotebookStep({
   const color = getColor();
   const canPreview = step?.previewQuery?.isValid?.();
   const hasPreviewButton = !isPreviewOpen && canPreview;
+  const canRevert = typeof step.revert === "function";
 
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
@@ -113,14 +114,16 @@ function NotebookStep({
       >
         <StepHeader color={color}>
           {title}
-          <Icon
-            name="close"
-            className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
-            tooltip={t`Remove`}
-            onClick={handleClickRevert}
-            aria-label={t`Remove step`}
-            data-testid="remove-step"
-          />
+          {canRevert && (
+            <Icon
+              name="close"
+              className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
+              tooltip={t`Remove`}
+              onClick={handleClickRevert}
+              aria-label={t`Remove step`}
+              data-testid="remove-step"
+            />
+          )}
         </StepHeader>
 
         {NotebookStepComponent && (
