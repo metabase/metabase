@@ -8,7 +8,6 @@
    [metabase.moderation :as moderation]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
