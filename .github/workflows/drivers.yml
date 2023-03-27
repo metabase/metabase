@@ -156,6 +156,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mariadb-10-2-ee'
+    - name: Setup upterm session
+      uses: lhotari/action-upterm@v1
+
 
   be-tests-mariadb-latest-ee:
     needs: files-changed
