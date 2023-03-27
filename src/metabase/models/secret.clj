@@ -242,8 +242,8 @@
         latest-version (when existing-id (latest-for-id existing-id))]
     (if latest-version
       (if (= (select-keys latest-version bump-version-keys) [kind src value])
-        (t2/update! Secret {:id existing-id :version (:version latest-version)}
-                    {:name nm})
+        (pos? (t2/update! Secret {:id existing-id :version (:version latest-version)}
+                        {:name nm}))
         (insert-new (u/the-id latest-version) (inc (:version latest-version))))
       (insert-new nil 1))))
 

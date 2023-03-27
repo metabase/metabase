@@ -512,7 +512,7 @@
             (testing "Shouldn't use cached FieldValues if has_more_values=true"
               (t2/update! FieldValues {:field_id field-id
                                        :type     "linked-filter"}
-                            {:has_more_values true})
+                          {:has_more_values true})
               (is (= {:values          ["Steakhouse"]
                       :has_more_values false}
                      (chain-filter-search categories.name {venues.price 4} "o"))))))))))

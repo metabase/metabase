@@ -102,10 +102,10 @@
       (mt/dataset (basic-table "table_with_updated_desc" "table comment")
         (mt/with-temp-copy-of-db
           ;; change the description in metabase while the source table comment remains the same
-          (t2/update! Table {:id (mt/id "table_with_updated_desc")}, {:description "updated table description"})
+          (t2/update! Table {:id (mt/id "table_with_updated_desc")} {:description "updated table description"})
           ;; now sync the DB again, this should NOT overwrite the manually updated description
           (sync-tables/sync-tables-and-database! (mt/db))
-          (is (= #{{:name (mt/format-name "table_with_updated_desc"), :description "updated table description"}}
+          (is (= #{{:name (mt/format-name "table_with_updated_desc") :description "updated table description"}}
                  (db->tables (mt/db)))))))))
 
 (deftest sync-existing-table-comment-test

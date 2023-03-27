@@ -997,8 +997,8 @@
                  (mt/user-http-request id :delete 400 (format "user/%d" id)))))))
 
     (testing "Check that a non-superuser CANNOT deactivate themselves"
-     (is (= "You don't have permissions to do that."
-            (mt/user-http-request :rasta :delete 403 (format "user/%d" (mt/user->id :rasta)) {}))))))
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :delete 403 (format "user/%d" (mt/user->id :rasta)) {}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
