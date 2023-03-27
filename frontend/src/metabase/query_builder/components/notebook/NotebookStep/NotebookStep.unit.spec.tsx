@@ -92,13 +92,17 @@ describe("NotebookStep", () => {
     setup({ step });
 
     expect(screen.getByTestId(testId)).toBeInTheDocument();
-    expect(screen.getByLabelText("Remove step")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove step" }),
+    ).toBeInTheDocument();
   });
 
   it("doesn't render the remove button if step revert isn't implemented", () => {
     const step = createNotebookStep({ type: "data", revert: null });
     setup({ step });
 
-    expect(screen.queryByLabelText("Remove step")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Remove step" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -5,6 +5,7 @@ import { color as c } from "metabase/lib/colors";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import Icon from "metabase/components/Icon";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import ExpandingContent from "metabase/components/ExpandingContent";
 
 import type Question from "metabase-lib/Question";
@@ -115,13 +116,16 @@ function NotebookStep({
         <StepHeader color={color}>
           {title}
           {canRevert && (
-            <Icon
-              name="close"
-              className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
-              tooltip={t`Remove`}
-              aria-label={t`Remove step`}
+            <IconButtonWrapper
+              className="ml-auto text-light text-medium-hover hover-child"
               onClick={handleClickRevert}
-            />
+            >
+              <Icon
+                name="close"
+                tooltip={t`Remove`}
+                aria-label={t`Remove step`}
+              />
+            </IconButtonWrapper>
           )}
         </StepHeader>
 
