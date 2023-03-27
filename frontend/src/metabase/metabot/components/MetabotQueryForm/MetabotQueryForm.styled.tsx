@@ -1,7 +1,13 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-export const FormLabel = styled.div`
+export const FormRoot = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+`;
+
+export const FormSectionTitle = styled.div`
   color: ${color("text-dark")};
   font-weight: bold;
   padding: 1.5rem 2rem 1rem;

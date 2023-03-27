@@ -3,7 +3,11 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import Question from "metabase-lib/Question";
-import { FormFooter, FormLabel } from "./MetabotQueryForm.styled";
+import {
+  FormFooter,
+  FormRoot,
+  FormSectionTitle,
+} from "./MetabotQueryForm.styled";
 
 const NATIVE_EDITOR_OPTS = {
   viewHeight: "full",
@@ -31,14 +35,14 @@ export const MetabotQueryForm = ({
   const handleSubmit = () => onSubmit(updatedQuery.question());
 
   return (
-    <div>
-      <FormLabel>{t`Here’s the generated SQL`}</FormLabel>
+    <FormRoot>
+      <FormSectionTitle>{t`Here’s the generated SQL`}</FormSectionTitle>
       <NativeQueryEditor
         {...NATIVE_EDITOR_OPTS}
         query={initialQuery}
         readOnly
       />
-      <FormLabel>{t`What should the SQL have been?`}</FormLabel>
+      <FormSectionTitle>{t`What should the SQL have been?`}</FormSectionTitle>
       <NativeQueryEditor
         {...NATIVE_EDITOR_OPTS}
         query={updatedQuery}
@@ -48,7 +52,7 @@ export const MetabotQueryForm = ({
         <Button onClick={onCancel}>{t`Cancel`}</Button>
         <Button primary onClick={handleSubmit}>{t`Done`}</Button>
       </FormFooter>
-    </div>
+    </FormRoot>
   );
 };
 
