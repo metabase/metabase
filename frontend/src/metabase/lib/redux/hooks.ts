@@ -13,10 +13,19 @@ import type { State } from "metabase-types/store";
 // It is intentionally vague, we have middlewares that support more action types that are not covered here
 // (https://github.com/metabase/metabase/blob/06599e646c3e03462402474b5fc17cd2bf25cb79/frontend/src/metabase/store.js#L34).
 // Feel free to improve this if you run into issues.
-interface AppDispatch {
+export interface AppDispatch {
   (thunk: (dispatch: AppDispatch, getState: () => State) => void): void;
   (action: AnyAction): AnyAction;
+  action(type: string, payload: Record<string, any>): void;
 }
 
-export const useDispatch: () => AppDispatch = useDispatchOriginal;
+export const useDispatch: () => AppDispatch = () => {
+  const dispatch = useDispatchOriginal<AppDispatch>();
+  Object.assign(dispatch, {
+    action: (type: string, payload: Record<string, any>) =>
+      dispatch({ type, payload }),
+  });
+  return dispatch;
+};
+
 export const useSelector: TypedUseSelectorHook<State> = useSelectorOriginal;
