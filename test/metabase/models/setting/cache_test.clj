@@ -38,7 +38,7 @@
 (defn- simulate-another-instance-updating-setting! [setting-name new-value]
   (if new-value
     (db/update-where! Setting {:key (name setting-name)} :value new-value)
-    (db/simple-delete! Setting {:key (name setting-name)}))
+    (t2/delete! (t2/table-name Setting) {:key (name setting-name)}))
   (update-settings-last-updated-value-in-db!))
 
 (defn reset-last-update-check!

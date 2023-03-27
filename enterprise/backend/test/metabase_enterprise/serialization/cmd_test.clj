@@ -11,7 +11,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.util UUID)))
@@ -30,7 +29,7 @@
     ;; already does what we need)
     (mt/with-empty-h2-app-db
       ;; create a single dummy User to own a Card and a Database for it to reference
-      (let [user (db/simple-insert! User
+      (let [user (t2/insert! (t2/table-name User)
                    :email        "nobody@nowhere.com"
                    :first_name   (mt/random-name)
                    :last_name    (mt/random-name)
@@ -38,14 +37,14 @@
                    :date_joined  :%now
                    :is_active    true
                    :is_superuser true)
-            db   (db/simple-insert! Database
+            db   (t2/insert! (t2/table-name Database)
                    :name       "Test Database"
                    :engine     "h2"
                    :details    "{}"
                    :created_at :%now
                    :updated_at :%now)]
         ;; then the card itself
-        (db/simple-insert! Card
+        (t2/insert! (t2/table-name Card)
           :name                   "Single Card"
           :display                "Single Card"
           :database_id            (u/the-id db)
