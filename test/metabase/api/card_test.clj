@@ -2368,13 +2368,19 @@
                                                                   :value_field (mt/$ids $venues.name)}}]
                           :table_id      (mt/id :venues)}
                          card-values)]]
-     (f {:source-card       source-card
-         :card              card
-         :field-filter-card field-filter-card
-         :param-keys        {:static-list       "_STATIC_CATEGORY_"
-                             :static-list-label "_STATIC_CATEGORY_LABEL_"
-                             :card              "_CARD_"
-                             :field-values      "name_param_id"}}))))
+     (let [all-permissions (t2/select perms/Permissions)
+           non-admin-perms (remove #(= "/" (:object %)) all-permissions)]
+       (try (f {:source-card       source-card
+                :card              card
+                :field-filter-card field-filter-card
+                :param-keys        {:static-list       "_STATIC_CATEGORY_"
+                                    :static-list-label "_STATIC_CATEGORY_LABEL_"
+                                    :card              "_CARD_"
+                                    :field-values      "name_param_id"}})
+            (finally
+              (doseq [{:keys [id]} (remove #(= "/" (:object %)) (t2/select perms/Permissions))]
+                (t2/delete! perms/Permissions id))
+              (t2/insert! perms/Permissions non-admin-perms)))))))
 
 (defmacro with-card-param-values-fixtures
   "Execute `body` with all needed setup to tests param values on card."
@@ -2463,8 +2469,14 @@
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc"))))
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "search-query")))))))))
 
+(defn- kill-block-perms! [group db]
+  (t2/delete! 'Permissions :group_id (:id group) :object (perms/database-block-perms-path db)))
+
 (deftest paramters-using-old-style-field-values
   (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+    (perms/grant-full-data-permissions! (perms-group/all-users) (mt/db))
+    (perms/grant-full-download-permissions! (perms-group/all-users) (mt/db))
+    (kill-block-perms! (perms-group/all-users) (mt/db))
     (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
       (testing "without search query"
         (let [response (mt/user-http-request :rasta :get 200
@@ -2480,6 +2492,7 @@
           (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
                            (-> response :values set)))
           (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))
+
   (testing "Old style, inferred parameters from native template-tags"
     (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
       ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
@@ -2498,7 +2511,35 @@
                                                                  "bar"))]
             (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
                              (-> response :values set)))
-            (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
+            (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil"))))))))
+
+  (testing "Old style, inferred parameters from native template-tags with no-self-service"
+    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+      (perms/grant-full-data-permissions! (perms-group/all-users) (mt/db))
+      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user has no-self-service"
+        (testing "without search query"
+          (mt/user-http-request :rasta :get 200 (param-values-url field-filter-card (:field-values param-keys))))
+        (testing "with search query"
+          (mt/user-http-request :rasta :get 200 (param-values-url field-filter-card (:field-values param-keys) "bar"))))))
+
+  (testing "Old style, inferred parameters from native template-tags with no-self-service"
+    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+      (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
+      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user has no-self-service"
+        (testing "without search query"
+          (mt/user-http-request :rasta :get 200 (param-values-url field-filter-card (:field-values param-keys))))
+        (testing "with search query"
+          (mt/user-http-request :rasta :get 200 (param-values-url field-filter-card (:field-values param-keys) "bar"))))))
+
+  (testing "Old style, inferred parameters from native template-tags when blocked"
+    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+      (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
+      (perms/grant-permissions! (perms-group/all-users) (perms/database-block-perms-path (mt/db)))
+      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user is blocked is unauthorized"
+        (testing "without search query"
+          (mt/user-http-request :rasta :get 403 (param-values-url field-filter-card (:field-values param-keys))))
+        (testing "with search query"
+          (mt/user-http-request :rasta :get 403 (param-values-url field-filter-card (:field-values param-keys) "bar")))))))
 
 (deftest parameters-with-source-is-static-list-test
   (with-card-param-values-fixtures [{:keys [card param-keys]}]
