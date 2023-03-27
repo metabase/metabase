@@ -2,14 +2,13 @@ import React from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import FormProvider from "metabase/core/components/FormProvider";
-import FormInput from "metabase/core/components/FormInput";
 import { MetabotFeedbackType } from "metabase-types/api";
 import MetabotMessage from "../MetabotMessage";
 import {
-  FeedbackSelectionRoot,
+  FeedbackSection,
   InlineForm,
-  InlineSubmitButton,
-  WrongDataFormRoot,
+  InlineFormInput,
+  InlineFormSubmitButton,
 } from "./MetabotFeedback.styled";
 
 export interface MetabotFeedbackProps {
@@ -44,7 +43,7 @@ const FeedbackSelection = ({ onTypeChange }: FeedbackSelectionProps) => {
   const handleInvalidSqlChange = () => onTypeChange("invalid-sql");
 
   return (
-    <FeedbackSelectionRoot>
+    <FeedbackSection>
       <MetabotMessage>{t`How did I do?`}</MetabotMessage>
       <Button onClick={handleGreatChange}>{t`This is great!`}</Button>
       <Button onClick={handleWrongDataChange}>
@@ -56,7 +55,7 @@ const FeedbackSelection = ({ onTypeChange }: FeedbackSelectionProps) => {
       <Button onClick={handleInvalidSqlChange}>
         {t`This isn’t valid SQL.`}
       </Button>
-    </FeedbackSelectionRoot>
+    </FeedbackSection>
   );
 };
 
@@ -70,13 +69,13 @@ interface WrongDataFormProps {
 
 const WrongDataForm = ({ onSubmit }: WrongDataFormProps) => {
   return (
-    <WrongDataFormRoot>
+    <FeedbackSection>
       <MetabotMessage>{t`What data should it have used?`}</MetabotMessage>
       <FeedbackForm
         placeholder={t`Type the name of the data it should have used.`}
         onSubmit={onSubmit}
       />
-    </WrongDataFormRoot>
+    </FeedbackSection>
   );
 };
 
@@ -95,10 +94,12 @@ const FeedbackForm = ({ placeholder, onSubmit }: FeedbackFormProps) => {
 
   return (
     <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
-      <InlineForm>
-        <FormInput name="message" placeholder={placeholder} />
-        <InlineSubmitButton icon="check" primary title="" />
-      </InlineForm>
+      {({ dirty }) => (
+        <InlineForm disabled={!dirty}>
+          <InlineFormInput name="message" placeholder={placeholder} />
+          <InlineFormSubmitButton title="" icon="check" primary />
+        </InlineForm>
+      )}
     </FormProvider>
   );
 };
