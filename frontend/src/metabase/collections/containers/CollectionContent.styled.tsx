@@ -2,6 +2,8 @@ import styled from "@emotion/styled";
 
 export const CollectionRoot = styled.div`
   padding-top: 1rem;
+  min-height: 100%;
+  position: relative;
 `;
 
 export const CollectionMain = styled.div`

@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { t } from "ttag";
 
 import type { Collection } from "metabase-types/api";
 import { color } from "metabase/lib/colors";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { CardApi } from "metabase/services";
+import { uploadCSV } from "metabase/collections/upload";
 
 import { CollectionHeaderButton } from "./CollectionHeader.styled";
 import { UploadInput, LoadingStateContainer } from "./CollectionUpload.styled";
 
-const MAX_UPLOAD_SIZE = 200 * 1024 * 1024; // 200MB
 const CLEAR_ERROR_TIMEOUT = 3000;
 
 export default function ColllectionUpload({
@@ -19,39 +17,28 @@ export default function ColllectionUpload({
   collection: Collection;
 }) {
   const [isLoading, setIsLoading] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const [error, setError] = useState("");
 
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     setIsLoading(true);
 
-    const file = event.target.files?.[0];
+    await uploadCSV({
+      file: event.target.files?.[0],
+      collectionId: collection.id,
+      onError: setError,
+    });
 
-    if (file) {
-      if (file.size > MAX_UPLOAD_SIZE) {
-        alert(t`File is too large. Please upload a file smaller than 200MB.`);
-        setIsLoading(false);
-        setHasError(true);
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("collection_id", String(collection.id));
-
-      await CardApi.uploadCSV(formData).catch(() => setHasError(true));
-
-      setIsLoading(false);
-    }
+    setIsLoading(false);
   };
 
   useEffect(() => {
-    if (hasError) {
-      const timeout = setTimeout(() => setHasError(false), CLEAR_ERROR_TIMEOUT);
+    if (error) {
+      const timeout = setTimeout(() => setError(""), CLEAR_ERROR_TIMEOUT);
       return () => clearTimeout(timeout);
     }
-  }, [hasError]);
+  }, [error]);
 
   if (isLoading) {
     return (
@@ -61,14 +48,15 @@ export default function ColllectionUpload({
     );
   }
 
-  const buttonIcon = hasError ? "close" : "arrow_up";
-  const buttonColor = hasError ? color("error") : undefined;
+  const buttonIcon = error ? "close" : "arrow_up";
+  const buttonColor = error ? color("error") : undefined;
 
   return (
     <>
       <label htmlFor="upload-csv">
         <CollectionHeaderButton
           as="span"
+          to=""
           icon={buttonIcon}
           color={buttonColor}
         />
