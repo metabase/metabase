@@ -12,7 +12,7 @@
 
 (mr/def ::external-op
   [:map
-   [:operator :keyword]
+   [:operator [:or :string :keyword]]
    [:options {:optional true} ::schema.common/options]
    [:args [:sequential :any]]])
 
@@ -20,7 +20,8 @@
   "Convert the internal operator `clause` to the external format."
   [[operator options :as clause]]
   (when clause
-    {:operator operator
+    {:operator (cond-> operator
+                 (keyword? operator) name)
      :options options
      :args (subvec clause 2)}))
 
@@ -40,7 +41,7 @@
 
 (defmethod ->op-arg :lib/external-op
   [query stage-number {:keys [operator options args] :or {options {}}}]
-  (->op-arg query stage-number (lib.options/ensure-uuid (into [operator options] args))))
+  (->op-arg query stage-number (lib.options/ensure-uuid (into [(keyword operator) options] args))))
 
 (defmethod ->op-arg :dispatch-type/fn
   [query stage-number f]

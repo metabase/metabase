@@ -129,7 +129,7 @@
     (testing "setting a simple filter via the helper function"
       (let [result-query
             (lib/filter q1 (lib/between venues-category-id-metadata 42 100))
-            result-filter {:operator (first original-filter)
+            result-filter {:operator (-> original-filter first name)
                           :options (second original-filter)
                           :args (subvec original-filter 2)}]
        (is (=? simple-filtered-query
@@ -159,7 +159,7 @@
          42
          100]
         first-result-filter
-        {:operator (first first-filter)
+        {:operator (-> first-filter first name)
          :options (second first-filter)
          :args (subvec first-filter 2)}
         second-filter
@@ -168,7 +168,7 @@
          [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
          "prefix"]
         second-result-filter
-        {:operator (first second-filter)
+        {:operator (-> second-filter first name)
          :options (second second-filter)
          :args (subvec second-filter 2)}
         third-filter
@@ -177,7 +177,7 @@
          [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
          "part"]
         third-result-filter
-        {:operator (first third-filter)
+        {:operator (-> third-filter first name)
          :options (second third-filter)
          :args (subvec third-filter 2)}
         first-add
@@ -189,14 +189,15 @@
         filtered-query
         (assoc-in simple-query [:stages 0 :filter] first-filter)
         second-add
-        (lib/add-filter first-add {:operator :starts-with
+        (lib/add-filter first-add {:operator "starts-with"
                                    :args [(lib.field/field simple-query venues-name-metadata) "prefix"]})
         and-query
         (assoc-in filtered-query
                   [:stages 0 :filter]
                   [:and {:lib/uuid string?} first-filter second-filter])
         third-add
-        (lib/add-filter second-add (lib/contains venues-name-metadata "part"))
+        (lib/add-filter second-add {:operator :contains
+                                    :args [(lib.field/field simple-query venues-name-metadata) "part"]})
         extended-and-query
         (assoc-in filtered-query
                   [:stages 0 :filter]
@@ -249,7 +250,8 @@
       (is (=? result-query
               (lib/replace-filter simple-filtered-query
                                   between-uuid
-                                  (lib/starts-with venues-name-metadata "part")))))
+                                  {:operator "starts-with"
+                                   :args [(lib.field/field q1 venues-name-metadata) "part"]}))))
     (testing "setting a simple filter expression"
       (is (=? result-query
               (lib/replace-filter simple-filtered-query
