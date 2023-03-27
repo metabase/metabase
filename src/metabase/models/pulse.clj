@@ -482,7 +482,7 @@
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
   add the Notification to `channels`. Returns the `id` of the newly created Notification."
   [notification card-refs :- (s/maybe [CardRef]) channels]
-  (db/transaction
+  (t2/with-transaction [_conn]
     (let [notification (first (t2/insert-returning-instances! Pulse notification))]
       (update-notification-cards! notification card-refs)
       (update-notification-channels! notification channels)

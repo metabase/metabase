@@ -134,7 +134,7 @@
                                     :card_id           card-id
                                     :dashboard_card_id dashcard-id
                                     :position          position})]
-        (db/transaction
+        (t2/with-transaction [_conn]
           (binding [pulse/*allow-moving-dashboard-subscriptions* true]
             (db/update-where! Pulse {:dashboard_id dashboard-id}
               :name (:name dashboard)

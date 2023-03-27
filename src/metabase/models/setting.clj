@@ -1017,7 +1017,7 @@
   ;; if setting any of the settings fails, roll back the entire DB transaction and the restore the cache from the DB
   ;; to revert any changes in the cache
   (try
-    (db/transaction
+    (t2/with-transaction [_conn]
       (doseq [[k v] settings]
         (metabase.models.setting/set! k v)))
     settings

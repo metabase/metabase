@@ -387,7 +387,7 @@
         new-group-ids      (set (map u/the-id new-groups-or-ids))
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
-      (db/transaction
+      (t2/with-transaction [_conn]
        (when (seq to-remove)
          (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
        ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,

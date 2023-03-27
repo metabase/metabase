@@ -23,7 +23,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
@@ -137,7 +136,7 @@
         :fk_target_field_id "Invalid target field"))
     ;; everything checks out, now update the field
     (api/check-500
-     (db/transaction
+     (t2/with-transaction [_conn]
        (and
         (if removed-fk?
           (clear-dimension-on-fk-change! field)
