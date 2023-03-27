@@ -788,4 +788,4 @@
 ;;; |                                           Other Driver Method Impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(prefer-method driver/supports? [:presto-jdbc :set-timezone] [:sql-jdbc :set-timezone])
+(prefer-method driver/database-supports? [:presto-jdbc :set-timezone] [:sql-jdbc :set-timezone])
