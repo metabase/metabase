@@ -13,10 +13,12 @@ export const FeedbackSection = styled.div`
 export const InlineForm = styled(Form)`
   display: flex;
   gap: 0.5rem;
+  flex: 1 0 auto;
   position: relative;
 `;
 
 export const InlineFormInput = styled(FormInput)`
+  flex: 1 0 auto;
   margin-bottom: 0;
 
   ${Input.Field} {
