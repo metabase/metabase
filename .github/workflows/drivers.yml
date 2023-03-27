@@ -152,12 +152,12 @@ jobs:
           - "3306:3306"
     steps:
     - uses: actions/checkout@v3
-    - name: Setup upterm session
-      uses: lhotari/action-upterm@v1
     - name: Test MariaDB driver (10.2)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mariadb-10-2-ee'
+    - name: Setup upterm session
+      uses: lhotari/action-upterm@v1
 
 
   be-tests-mariadb-latest-ee:
