@@ -8,7 +8,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -16,7 +15,7 @@
 (deftest set-is-superuser-test
   (testing "when you create a PermissionsGroupMembership for a User in the admin group, it should set their `is_superuser` flag"
     (mt/with-temp User [user]
-      (db/insert! PermissionsGroupMembership {:user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))})
+      (t2/insert! PermissionsGroupMembership {:user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))})
       (is (= true
              (t2/select-one-fn :is_superuser User :id (u/the-id user)))))))
 

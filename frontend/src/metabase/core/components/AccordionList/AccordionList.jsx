@@ -95,6 +95,7 @@ export default class AccordionList extends Component {
     hasInitialFocus: PropTypes.bool,
 
     itemTestId: PropTypes.string,
+    "data-testid": PropTypes.string,
   };
 
   static defaultProps = {
@@ -546,7 +547,13 @@ export default class AccordionList extends Component {
   };
 
   render() {
-    const { id, style, className, sections } = this.props;
+    const {
+      id,
+      style,
+      className,
+      sections,
+      "data-testid": testId,
+    } = this.props;
     const { cursor, scrollToAlignment } = this.state;
 
     const rows = this.getRows();
@@ -567,6 +574,7 @@ export default class AccordionList extends Component {
             width: this.props.width,
             ...style,
           }}
+          data-testid={testId}
         >
           {rows.map((row, index) => (
             <AccordionListCell
@@ -627,6 +635,7 @@ export default class AccordionList extends Component {
         scrollToAlignment={scrollToAlignment}
         containerProps={{
           onKeyDown: this.handleKeyDown,
+          "data-testid": testId,
         }}
         rowRenderer={({ key, index, parent, style }) => {
           return (

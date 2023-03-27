@@ -23,7 +23,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
@@ -133,11 +132,11 @@
     ;; validate that fk_target_field_id is a valid Field
     ;; TODO - we should also check that the Field is within the same database as our field
     (when fk-target-field-id
-      (api/checkp (db/exists? Field :id fk-target-field-id)
+      (api/checkp (t2/exists? Field :id fk-target-field-id)
         :fk_target_field_id "Invalid target field"))
     ;; everything checks out, now update the field
     (api/check-500
-     (db/transaction
+     (t2/with-transaction [_conn]
        (and
         (if removed-fk?
           (clear-dimension-on-fk-change! field)
@@ -187,7 +186,7 @@
                 {:type                    dimension-type
                  :name                    dimension-name
                  :human_readable_field_id human_readable_field_id})
-    (db/insert! Dimension
+    (t2/insert! Dimension
                 {:field_id                id
                  :type                    dimension-type
                  :name                    dimension-name
@@ -287,12 +286,12 @@
 (defn- create-field-values!
   [field-or-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
-    (db/insert! FieldValues
-      :type :full
-      :field_id (u/the-id field-or-id)
-      :values (map first value-pairs)
-      :human_readable_values (when human-readable-values?
-                               (map second value-pairs)))))
+    (t2/insert! FieldValues
+                :type :full
+                :field_id (u/the-id field-or-id)
+                :values (map first value-pairs)
+                :human_readable_values (when human-readable-values?
+                                         (map second value-pairs)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/values"

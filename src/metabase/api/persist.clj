@@ -20,7 +20,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -73,7 +72,7 @@
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} mw.offset-paging/*limit* mw.offset-paging/*offset*)]
     {:data   persisted-infos
      :total  (if (seq writable-db-ids)
-               (db/count PersistedInfo :database_id [:in writable-db-ids])
+               (t2/count PersistedInfo :database_id [:in writable-db-ids])
                0)
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))

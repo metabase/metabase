@@ -31,7 +31,7 @@ describe("issue 21135", () => {
 
     // We should probably use data-testid or some better selector but it is crucial
     // to narrow the results to the preview area to avoid false positive result.
-    cy.get("[class*=TableInteractive]").within(() => {
+    cy.findByTestId("preview-root").within(() => {
       cy.findByText("Rustic Paper Wallet");
 
       cy.findAllByText("Price").should("have.length", 2);

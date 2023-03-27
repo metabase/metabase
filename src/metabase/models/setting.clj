@@ -583,9 +583,9 @@
 (defn- set-new-setting!
   "Insert a new row for a Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
   [setting-name new-value]
-  (try (db/insert! Setting
-         :key   setting-name
-         :value new-value)
+  (try (first (t2/insert-returning-instances! Setting
+                                              :key   setting-name
+                                              :value new-value))
        ;; if for some reason inserting the new value fails it almost certainly means the cache is out of date
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
@@ -1017,7 +1017,7 @@
   ;; if setting any of the settings fails, roll back the entire DB transaction and the restore the cache from the DB
   ;; to revert any changes in the cache
   (try
-    (db/transaction
+    (t2/with-transaction [_conn]
       (doseq [[k v] settings]
         (metabase.models.setting/set! k v)))
     settings

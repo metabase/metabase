@@ -422,9 +422,12 @@
 ;; Therefore, no JSON tests.
 (defn- version-query [db-id] {:type :native, :native {:query "SELECT VERSION();"}, :database db-id})
 
-(defn- is-mariadb? [db-id] (str/includes?
-                             (or (get-in (qp/process-userland-query (version-query db-id)) [:data :rows 0 0]) "")
-                             "Maria"))
+(defn is-mariadb?
+  "Returns true if the database is MariaDB, false otherwise."
+  [db-id]
+  (str/includes?
+   (or (get-in (qp/process-userland-query (version-query db-id)) [:data :rows 0 0]) "")
+   "Maria"))
 
 (deftest nested-field-column-test
   (mt/test-driver :mysql
@@ -577,7 +580,7 @@
         (sync/sync-database! (mt/db))
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
           (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
-                   {:name "jsoncol", :base_type :type/SerializedJSON, :semantic_type :type/SerializedJSON}
+                   {:name "jsoncol", :base_type :type/JSON, :semantic_type :type/SerializedJSON}
                    {:name "jsoncol → myint", :base_type :type/Number, :semantic_type :type/Category}
                    {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type :type/Category}}
                  (db->fields (mt/db)))))

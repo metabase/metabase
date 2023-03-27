@@ -22,7 +22,6 @@
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
    [reifyhealth.specmonstah.core :as rs]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
  (:import
@@ -458,7 +457,7 @@
 
             (testing "make sure we insert ParameterCard when insert Dashboard/Card"
               ;; one for parameter on card card2s, and one for parmeter on dashboard dash1s
-              (is (= 2 (db/count ParameterCard))))
+              (is (= 2 (t2/count ParameterCard))))
 
             (testing "extract and store"
               (let [extraction (into [] (extract/extract-metabase {}))]

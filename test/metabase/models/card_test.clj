@@ -10,7 +10,6 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.hydrate :as hydrate]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
@@ -24,7 +23,7 @@
                     Dashboard [dash-1]
                     Dashboard [dash-2]]
       (letfn [(add-card-to-dash! [dash]
-                (db/insert! DashboardCard
+                (t2/insert! DashboardCard
                   {:card_id      card-id
                    :dashboard_id (u/the-id dash)
                    :row          0
@@ -75,7 +74,7 @@
                     DashboardCard [_dashcard {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]]
       (t2/update! Card (u/the-id card) {:archived true})
       (is (= 0
-             (db/count DashboardCard :dashboard_id (u/the-id dashboard)))))))
+             (t2/count DashboardCard :dashboard_id (u/the-id dashboard)))))))
 
 (deftest public-sharing-test
   (testing "test that a Card's :public_uuid comes back if public sharing is enabled..."
@@ -219,7 +218,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Card can only go in Collections in the \"default\" namespace"
-               (db/insert! Card (assoc (tt/with-temp-defaults Card) :collection_id collection-id, :name card-name))))
+               (t2/insert! Card (assoc (tt/with-temp-defaults Card) :collection_id collection-id, :name card-name))))
           (finally
             (t2/delete! Card :name card-name)))))
 

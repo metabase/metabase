@@ -8,7 +8,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defsetting config-from-file-sync-databases
@@ -46,7 +45,7 @@
       (t2/update! Database existing-database-id database))
     (do
       (log/info (u/colorize :green (trs "Creating new {0} Database {1}" (:engine database) (pr-str (:name database)))))
-      (let [db (db/insert! Database database)]
+      (let [db (first (t2/insert-returning-instances! Database database))]
         (if (config-from-file-sync-databases)
           ((requiring-resolve 'metabase.sync/sync-database!) db)
           (log/info (trs "Sync on database creation when initializing from file is disabled. Skipping sync.")))))))
