@@ -14378,6 +14378,22 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v47.00-005
+      author: winlost
+      comment: Added 0.47.0 - Add auto_apply_filters to dashboard
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: auto_apply_filters
+                  type: boolean
+                  remarks: Whether or not to auto-apply filters on a dashboard
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
