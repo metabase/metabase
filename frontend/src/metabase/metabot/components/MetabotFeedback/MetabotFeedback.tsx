@@ -13,8 +13,8 @@ import {
 
 export interface MetabotFeedbackProps {
   type: MetabotFeedbackType | undefined;
-  onTypeChange: (newType: MetabotFeedbackType) => void;
-  onSubmit: (newMessage: string) => void;
+  onTypeChange: (type: MetabotFeedbackType) => void;
+  onSubmit: (message: string) => void;
 }
 
 const MetabotFeedback = ({
@@ -24,18 +24,30 @@ const MetabotFeedback = ({
 }: MetabotFeedbackProps) => {
   switch (type) {
     case "great":
-      return <GreatFeedbackMessage />;
+      return <MetabotMessage>{t`Glad to hear it!`}</MetabotMessage>;
     case "wrong-data":
-      return <WrongDataForm onSubmit={onSubmit} />;
+      return (
+        <FeedbackForm
+          title={t`What data should it have used?`}
+          placeholder={t`Type the name of the data it should have used.`}
+          onSubmit={onSubmit}
+        />
+      );
     case "incorrect-result":
-      return <IncorrectResultForm onSubmit={onSubmit} />;
+      return (
+        <FeedbackForm
+          title={t`Sorry about that.`}
+          placeholder={t`Describe what’s wrong`}
+          onSubmit={onSubmit}
+        />
+      );
     default:
       return <FeedbackSelection onTypeChange={onTypeChange} />;
   }
 };
 
 interface FeedbackSelectionProps {
-  onTypeChange: (newType: MetabotFeedbackType) => void;
+  onTypeChange: (type: MetabotFeedbackType) => void;
 }
 
 const FeedbackSelection = ({ onTypeChange }: FeedbackSelectionProps) => {
@@ -61,43 +73,8 @@ const FeedbackSelection = ({ onTypeChange }: FeedbackSelectionProps) => {
   );
 };
 
-const GreatFeedbackMessage = () => {
-  return <MetabotMessage>{t`Glad to hear it!`}</MetabotMessage>;
-};
-
-interface WrongDataFormProps {
-  onSubmit: (message: string) => void;
-}
-
-const WrongDataForm = ({ onSubmit }: WrongDataFormProps) => {
-  return (
-    <FeedbackSection>
-      <MetabotMessage>{t`What data should it have used?`}</MetabotMessage>
-      <FeedbackForm
-        placeholder={t`Type the name of the data it should have used.`}
-        onSubmit={onSubmit}
-      />
-    </FeedbackSection>
-  );
-};
-
-interface IncorrectResultFormProps {
-  onSubmit: (message: string) => void;
-}
-
-const IncorrectResultForm = ({ onSubmit }: IncorrectResultFormProps) => {
-  return (
-    <FeedbackSection>
-      <MetabotMessage>{t`Sorry about that.`}</MetabotMessage>
-      <FeedbackForm
-        placeholder={t`Describe what’s wrong`}
-        onSubmit={onSubmit}
-      />
-    </FeedbackSection>
-  );
-};
-
 interface FeedbackFormProps {
+  title: string;
   placeholder: string;
   onSubmit: (message: string) => void;
 }
@@ -106,19 +83,22 @@ interface FeedbackFormValues {
   message: string;
 }
 
-const FeedbackForm = ({ placeholder, onSubmit }: FeedbackFormProps) => {
+const FeedbackForm = ({ title, placeholder, onSubmit }: FeedbackFormProps) => {
   const initialValues = { message: "" };
   const handleSubmit = ({ message }: FeedbackFormValues) => onSubmit(message);
 
   return (
-    <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
-      {({ dirty }) => (
-        <InlineForm disabled={!dirty}>
-          <InlineFormInput name="message" placeholder={placeholder} />
-          <InlineFormSubmitButton title="" icon="check" primary />
-        </InlineForm>
-      )}
-    </FormProvider>
+    <FeedbackSection>
+      <MetabotMessage>{title}</MetabotMessage>
+      <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
+        {({ dirty }) => (
+          <InlineForm disabled={!dirty}>
+            <InlineFormInput name="message" placeholder={placeholder} />
+            <InlineFormSubmitButton title="" icon="check" primary />
+          </InlineForm>
+        )}
+      </FormProvider>
+    </FeedbackSection>
   );
 };
 
