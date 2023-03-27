@@ -24,15 +24,36 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [toucan.models :as models]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
+(methodical/defmethod t2/table-name :m/card [_model] :report_card)
+
 (models/defmodel Card :report_card)
+
+(methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
+  [_original-model _k]
+  :m/card)
+
+(t2/deftransforms :m/card
+  {:dataset_query          mi/tf-metabase-query
+   :display                mi/tf-keyword
+   :embedding_params       mi/tf-json
+   :query_type             mi/tf-keyword
+   :result_metadata        mi/tf-result-metadata
+   :visualization_settings mi/tf-visualization-settings
+   :parameters             mi/tf-parameters-list
+   :parameter_mappings     mi/tf-parameters-list})
 
 ;;; You can read/write a Card if you can read/write its parent Collection
 (derive Card ::perms/use-parent-collection-perms)
+(derive :m/card ::perms/use-parent-collection-perms)
+(derive :m/card ::mi/timestamped?)
+(derive :m/card ::mi/entity-id)
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -343,7 +364,7 @@
           old-card-info (when (or (contains? changes :dataset)
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
-                          (t2/select-one [Card :dataset_query :dataset] :id id))]
+                          (t2/select-one [:m/card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
       (when archived?
         (t2/delete! 'DashboardCard :card_id id))
@@ -419,16 +440,59 @@
                                ::mi/entity-id    true})
   ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
   ;; functions those fns call assume normalized queries
-  :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
+  :pre-update     (fn [card]
+                    (def old card)
+                    ((comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query) card))
   :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
   :post-insert    post-insert
   :pre-delete     pre-delete
   :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
+(t2/define-after-select :m/card
+  [card]
+  (public-settings/remove-public-uuid-if-public-sharing-is-disabled card))
+
+(t2/define-before-insert :m/card
+  [card]
+  (-> card
+      maybe-normalize-query
+      populate-result-metadata
+      pre-insert
+      populate-query-fields))
+
+(t2/define-after-insert :m/card
+  [card]
+  (u/prog1 card
+    (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
+      (log/info "Card references Fields in params:" field-ids)
+      (field-values/update-field-values-for-on-demand-dbs! field-ids))
+    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
+
+(t2/define-before-update :m/card
+  [card]
+  (-> (merge (t2/instance :m/card (t2/changes card))
+             (select-keys (t2/current card) [:id]))
+      maybe-normalize-query
+      populate-result-metadata
+      pre-update
+      populate-query-fields))
+
+(t2/define-before-delete :m/card
+  [{:keys [id] :as _card}]
+  ;; delete any ParameterCard that the parameters on this card linked to
+  (parameter-card/delete-all-for-parameterized-object! "card" id)
+  ;; delete any ParameterCard linked to this card
+  (t2/delete! ParameterCard :card_id id)
+  (t2/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
+  (t2/delete! 'Revision :model "Card", :model_id id))
+
 (defmethod serdes/hash-fields Card
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
+(defmethod serdes/hash-fields :m/card
+  [_card]
+  [:name (serdes/hydrated-hash :collection) :created_at])
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/extract-query "Card" [_ opts]
