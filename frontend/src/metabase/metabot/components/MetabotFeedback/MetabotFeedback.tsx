@@ -27,6 +27,8 @@ const MetabotFeedback = ({
       return <GreatFeedbackMessage />;
     case "wrong-data":
       return <WrongDataForm onSubmit={onSubmit} />;
+    case "incorrect-result":
+      return <IncorrectResultForm onSubmit={onSubmit} />;
     default:
       return <FeedbackSelection onTypeChange={onTypeChange} />;
   }
@@ -73,6 +75,22 @@ const WrongDataForm = ({ onSubmit }: WrongDataFormProps) => {
       <MetabotMessage>{t`What data should it have used?`}</MetabotMessage>
       <FeedbackForm
         placeholder={t`Type the name of the data it should have used.`}
+        onSubmit={onSubmit}
+      />
+    </FeedbackSection>
+  );
+};
+
+interface IncorrectResultFormProps {
+  onSubmit: (message: string) => void;
+}
+
+const IncorrectResultForm = ({ onSubmit }: IncorrectResultFormProps) => {
+  return (
+    <FeedbackSection>
+      <MetabotMessage>{t`Sorry about that.`}</MetabotMessage>
+      <FeedbackForm
+        placeholder={t`Describe what’s wrong`}
         onSubmit={onSubmit}
       />
     </FeedbackSection>
