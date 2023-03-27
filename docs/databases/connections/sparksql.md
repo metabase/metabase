@@ -50,9 +50,9 @@ Turn this option **ON** to manage the queries that Metabase uses to stay up to d
 
 #### Database syncing
 
-If you've turned on [Choose when syncs and scans happen](#choose-when-metabase-syncs-and-scans), you'll be able to set:
+If you've selected **Choose when syncs and scans happen** > **ON**, you'll be able to set:
 
-- The frequency of the [sync](#how-database-syncs-work): hourly (default) or daily.
+- The frequency of the [sync](../sync-scan.md#how-database-syncs-work): hourly (default) or daily.
 - The time to run the sync, in the timezone of the server where your Metabase app is running.
 
 #### Scanning for filter values
