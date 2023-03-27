@@ -134,7 +134,7 @@
                                     :card_id           card-id
                                     :dashboard_card_id dashcard-id
                                     :position          position})]
-        (db/transaction
+        (t2/with-transaction [_conn]
           (binding [pulse/*allow-moving-dashboard-subscriptions* true]
             (db/update-where! Pulse {:dashboard_id dashboard-id}
               :name (:name dashboard)
@@ -349,7 +349,7 @@
 
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
-  (let [c (db/count Collection
+  (let [c (t2/count Collection
             :name     [:like (format "%s%%" collection-name)]
             :location (collection/children-location (t2/select-one [Collection :location :id]
                                                       :id parent-collection-id)))]

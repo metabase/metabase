@@ -694,18 +694,18 @@
 #?(:clj (defn- regexp? [x]
           (instance? java.util.regex.Pattern x)))
 
-(derive :dispatch-type/nil      :dispatch-type/*)
-(derive :dispatch-type/boolean  :dispatch-type/*)
-(derive :dispatch-type/string   :dispatch-type/*)
-(derive :dispatch-type/keyword  :dispatch-type/*)
-(derive :dispatch-type/number   :dispatch-type/*)
-(derive :dispatch-type/integer  :dispatch-type/number)
-(derive :dispatch-type/map      :dispatch-type/*)
-(derive :dispatch-type/sequence :dispatch-type/*)
-(derive :dispatch-type/set      :dispatch-type/*)
-(derive :dispatch-type/symbol   :dispatch-type/*)
-(derive :dispatch-type/fn       :dispatch-type/*)
-(derive :dispatch-type/regex    :dispatch-type/*)
+(derive :dispatch-type/nil        :dispatch-type/*)
+(derive :dispatch-type/boolean    :dispatch-type/*)
+(derive :dispatch-type/string     :dispatch-type/*)
+(derive :dispatch-type/keyword    :dispatch-type/*)
+(derive :dispatch-type/number     :dispatch-type/*)
+(derive :dispatch-type/integer    :dispatch-type/number)
+(derive :dispatch-type/map        :dispatch-type/*)
+(derive :dispatch-type/sequential :dispatch-type/*)
+(derive :dispatch-type/set        :dispatch-type/*)
+(derive :dispatch-type/symbol     :dispatch-type/*)
+(derive :dispatch-type/fn         :dispatch-type/*)
+(derive :dispatch-type/regex      :dispatch-type/*)
 
 (defn dispatch-type-keyword
   "In Cljs `(type 1) is `js/Number`, but `(isa? 1 js/Number)` isn't truthy, so dispatching off of [[clojure.core/type]]

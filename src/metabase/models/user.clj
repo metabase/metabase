@@ -87,7 +87,7 @@
 (defn- pre-update
   [{reset-token :reset_token, superuser? :is_superuser, active? :is_active, :keys [email id locale], :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
-  (let [in-admin-group?  (db/exists? PermissionsGroupMembership
+  (let [in-admin-group?  (t2/exists? PermissionsGroupMembership
                            :group_id (:id (perms-group/admin))
                            :user_id  id)]
     ;; Do not let the last admin archive themselves
@@ -245,7 +245,7 @@
   the wording for this user on a homepage banner that prompts them to add their database."
   [users]
   (when (seq users)
-    (let [user-count (db/count User)]
+    (let [user-count (t2/count User)]
       (for [user users]
         (assoc user :has_invited_second_user (and (= (:id user) 1)
                                                   (> user-count 1)))))))
@@ -387,7 +387,7 @@
         new-group-ids      (set (map u/the-id new-groups-or-ids))
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
-      (db/transaction
+      (t2/with-transaction [_conn]
        (when (seq to-remove)
          (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
        ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,

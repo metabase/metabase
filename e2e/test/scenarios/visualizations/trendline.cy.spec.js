@@ -1,4 +1,4 @@
-import { restore, sidebar } from "e2e/support/helpers";
+import { restore, leftSidebar } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -35,7 +35,7 @@ describe("scenarios > question > trendline", () => {
     cy.get("rect");
 
     // Remove sum of total
-    sidebar().within(() => {
+    leftSidebar().within(() => {
       cy.findByText("Data").click();
       cy.icon("close").last().click();
       cy.findByText("Done").click();

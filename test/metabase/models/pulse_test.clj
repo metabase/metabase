@@ -23,7 +23,6 @@
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.util.test :as tt]
    [toucan2.core :as t2])
@@ -326,8 +325,8 @@
                (is (t2/update! User user-2-id {:is_active false}))
                (is (archived?))
                (testing "PulseChannel & PulseChannelRecipient rows should have been archived as well."
-                 (is (not (db/exists? PulseChannel :id pulse-channel-id)))
-                 (is (not (db/exists? PulseChannelRecipient :pulse_channel_id pulse-channel-id))))))))))
+                 (is (not (t2/exists? PulseChannel :id pulse-channel-id)))
+                 (is (not (t2/exists? PulseChannelRecipient :pulse_channel_id pulse-channel-id))))))))))
     (testing "Don't archive Pulse if it has still has recipients after deleting User subscription\n"
       (testing "another User subscription exists on a DIFFERENT channel\n"
         (do-with-objects
