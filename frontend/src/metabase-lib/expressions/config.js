@@ -505,6 +505,9 @@ export const EXPRESSION_FUNCTIONS = new Set([
 export const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
 export const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
 
+// operators in which order of operands doesn't matter
+export const EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY = new Set(["+", "*"]);
+
 export const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);
 export const LOGICAL_AND_OPERATOR = new Set(["and"]);
 export const LOGICAL_OR_OPERATOR = new Set(["or"]);
