@@ -54,7 +54,9 @@ This option turns determines whether or not you allow [anonymous data about your
 
 By default, Metabase attempts to make field and table names more readable by changing things like `somehorriblename` to `Some Horrible Name`. This does not work well for languages other than English, or for fields that have lots of abbreviations or codes in them. If you'd like to turn this setting off, you can do so from the Admin Panel under **Settings** > **Admin settings** > **General**.
 
-To manually label field or table names in Metabase, check out the [Data Model](../data-modeling/metadata-editing.md) section in your admin settings.
+If you re-enable this setting, Metabase will run a [scan](../databases/sync-scan.md#how-database-scans-work) against your database to review your table and column names again.
+
+To manually label field or table names in Metabase, check out the [Data Model](../data-modeling/metadata-editing.md) section in your admin settings. Metadata in the Data Model can be further curated in [models](../data-modeling/models.md).
 
 ## Enable nested queries
 

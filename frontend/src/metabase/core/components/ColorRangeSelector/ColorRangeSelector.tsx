@@ -38,6 +38,7 @@ const ColorRangeSelector = forwardRef(function ColorRangeSelector(
           colors={value}
           isQuantile={isQuantile}
           onClick={onClick}
+          role="button"
         />
       )}
       popoverContent={({ closePopover }) => (

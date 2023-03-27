@@ -2,7 +2,7 @@ import {
   restore,
   setupSMTP,
   visitQuestion,
-  sidebar,
+  leftSidebar,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -73,7 +73,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       visitQuestion(timeSeriesQuestionId);
 
       cy.findByText("Visualization").click();
-      sidebar().within(() => {
+      leftSidebar().within(() => {
         cy.icon("line").realHover();
         cy.icon("gear").click();
       });
