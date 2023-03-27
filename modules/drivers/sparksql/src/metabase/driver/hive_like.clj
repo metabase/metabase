@@ -26,7 +26,7 @@
 
 (doseq [[feature supported?] {:now           true
                               :datetime-diff true}]
-  (defmethod driver/datbase-supports? [:hive-like feature] [_driver _feature _db] supported?))
+  (defmethod driver/database-supports? [:hive-like feature] [_driver _feature _db] supported?))
 
 (defmethod driver/escape-alias :hive-like
   [driver s]
