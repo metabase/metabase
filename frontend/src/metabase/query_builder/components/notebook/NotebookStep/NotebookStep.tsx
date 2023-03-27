@@ -118,6 +118,7 @@ function NotebookStep({
             className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
             tooltip={t`Remove`}
             onClick={handleClickRevert}
+            aria-label={t`Remove step`}
             data-testid="remove-step"
           />
         </StepHeader>
