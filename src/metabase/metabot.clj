@@ -9,11 +9,14 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]
    [wkok.openai-clojure.api :as openai.api]))
 
 (set! *warn-on-reflection* true)
+
+(def num-choices 3)
 
 (defsetting is-metabot-enabled
   (deferred-tru "Is Metabot enabled?")
@@ -133,7 +136,7 @@
 (defn- prepare-ddl-based-sql-generator-input
   "Given a model, prepare a set of statements to prompt the bot for the SQL response."
   [{model-name :name :as model} prompt]
-  (let [table-name (normalize-name model-name)
+  (let [table-name    (normalize-name model-name)
         system-prompt (format
                        "You are a helpful assistant that writes SQL to query the table '%s' using SELECT statements based on user input."
                        table-name)
@@ -143,6 +146,7 @@
      {:role "assistant" :content ddl}
      {:role "assistant" :content (format "The table '%s' has data in it." table-name)}
      {:role "assistant" :content (format "Use this DDL to write a SELECT statement about the table '%s'" table-name)}
+     {:role "assistant" :content "Do not explain the SQL statement, just give me the raw SELECT statement."}
      {:role "user" :content prompt}]))
 
 (comment
@@ -160,10 +164,12 @@
   This will contain the raw response, which may or may not contain useful SQL."
   [model prompt]
   (let [resp (openai.api/create-chat-completion
-              {:model    "gpt-3.5-turbo"
+              {:model       "gpt-3.5-turbo"
                ;; Just produce a single result
-               :n        1
-               :messages (prepare-ddl-based-sql-generator-input model prompt)
+               :n           num-choices
+               ; Note - temperature of 0 is deterministic, so n > 1 will return n identical items
+               ; :temperature 0
+               :messages    (prepare-ddl-based-sql-generator-input model prompt)
                ;:messages (prepare-sql-generator-input model prompt)
                }
               {:api-key      (openai-api-key)
@@ -171,15 +177,22 @@
     (tap> {:openai-response resp})
     resp))
 
-(defn bot-response->sql
-  "Given the raw response from the bot, extract just the sql.
-  In the future, we may want to actually return the message content for debugging purposes."
-  [resp]
-  (letfn [(extract-sql
-            [bot-response]
-            (let [[_pre sql _post] (str/split bot-response #"```(sql|SQL)?")]
-              (when sql (mdb.query/format-sql sql))))]
-    (some->> resp :choices first :message :content extract-sql)))
+(defn find-result [{:keys [choices]} message-fn]
+  (some
+   (fn [{:keys [message]}]
+     (when-some [res (message-fn (:content message))]
+       res))
+   choices))
+
+(defn extract-sql
+  "Search a provided string for a SQL block"
+ [s]
+  (if (str/starts-with? (u/upper-case-en (str/trim s)) "SELECT")
+    ;; This is just a raw SQL statement
+    s
+    ;; It looks like markdown
+    (let [[_pre sql _post] (str/split s #"```(sql|SQL)?")]
+      (sql (mdb.query/format-sql sql)))))
 
 (defn aliases
   "Create a seq of aliases to be used to make model columns more human friendly"
@@ -218,7 +231,7 @@
   (cond
     fake "SELECT * FROM ORDERS; -- THIS IS FAKE"
     (and (openai-api-key) (openai-organization)) (let [resp (get-sql-generation-response-from-bot model question)]
-                                                   (bot-response->sql resp))
+                                                   (find-result resp extract-sql))
     :else "Set MB_OPENAI_API_KEY and MB_OPENAI_ORGANIZATION env vars and relaunch!"))
 
 (defn- fix-model-reference
@@ -300,15 +313,18 @@
   (let [models      (t2/select Card :database_id database-id :dataset true)
         model-input (prepare-model-finder-input models prompt)
         response    (openai.api/create-chat-completion
-                     {:model    "gpt-3.5-turbo"
-                      :n        1
-                      :messages model-input}
+                     {:model       "gpt-3.5-turbo"
+                      :n           num-choices
+                      ; Note - temperature of 0 is deterministic, so n > 1 will return n identical items
+                      ; :temperature 0
+                      :messages    model-input}
                      {:api-key      (openai-api-key)
-                      :organization (openai-organization)})
-        message     (->> response :choices first :message :content)]
+                      :organization (openai-organization)})]
     (tap> {:find-best-model-input    model-input
            :find-best-model-response response})
-    (let [best-model-id (find-table-id message (set (map :id models)))]
+    (let [best-model-id (find-result
+                         response
+                         #(find-table-id % (set (map :id models))))]
       (some (fn [{model-id :id :as model}] (when (= model-id best-model-id) model)) models))))
 
 
