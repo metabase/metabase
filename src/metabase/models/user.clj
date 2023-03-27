@@ -22,7 +22,6 @@
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as schema]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2])
   (:import

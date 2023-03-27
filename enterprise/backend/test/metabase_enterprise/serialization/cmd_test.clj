@@ -11,7 +11,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.util UUID)))

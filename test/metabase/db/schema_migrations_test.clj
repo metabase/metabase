@@ -39,7 +39,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
@@ -371,8 +370,8 @@
             (is (integer? admin-group-id))
             (when existing-entry?
               (t2/query-one {:insert-into :permissions
-                            :values      [{:object   "/"
-                                           :group_id admin-group-id}]}))
+                             :values      [{:object   "/"
+                                            :group_id admin-group-id}]}))
             (migrate!)
             (is (= [{:object "/"}]
                    (mdb.query/query {:select [:object]
@@ -385,15 +384,15 @@
       (testing (format "With existing data migration? %s" (pr-str with-existing-data-migration?))
         (impl/test-migrations "v43.00-007" [migrate!]
           (t2/query-one {:insert-into :metabase_database
-                        :values      [{:name       "My DB"
-                                       :engine     "h2"
-                                       :created_at :%now
-                                       :updated_at :%now
-                                       :details    "{}"}]})
+                         :values      [{:name       "My DB"
+                                        :engine     "h2"
+                                        :created_at :%now
+                                        :updated_at :%now
+                                        :details    "{}"}]})
           (when with-existing-data-migration?
             (t2/query-one {:insert-into :data_migrations
-                          :values      [{:id        "add-databases-to-magic-permissions-groups"
-                                         :timestamp :%now}]}))
+                           :values      [{:id        "add-databases-to-magic-permissions-groups"
+                                          :timestamp :%now}]}))
           (migrate!)
           (is (= (if with-existing-data-migration?
                    []
@@ -407,8 +406,8 @@
   (testing "Migration v43.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"
     (impl/test-migrations ["v43.00-008"] [migrate!]
       (t2/query-one {:insert-into :setting
-                    :values      [{:key   "-site-url"
-                                   :value "http://localhost:3000/"}]})
+                     :values      [{:key   "-site-url"
+                                    :value "http://localhost:3000/"}]})
       (migrate!)
       (is (= [{:key "site-url", :value "http://localhost:3000"}]
              (mdb.query/query {:select [:*], :from [:setting], :where [:= :key "site-url"]}))))))
@@ -417,16 +416,16 @@
   (testing "Migration v43.00-009: ensure `site-url` Setting starts with a protocol (#20403)"
     (impl/test-migrations ["v43.00-009"] [migrate!]
       (t2/query-one {:insert-into :setting
-                    :values      [{:key   "site-url"
-                                   :value "localhost:3000"}]})
+                     :values      [{:key   "site-url"
+                                    :value "localhost:3000"}]})
       (migrate!)
       (is (= [{:key "site-url", :value "http://localhost:3000"}]
              (mdb.query/query {:select [:*], :from [:setting], :where [:= :key "site-url"]}))))))
 
 (defn- add-legacy-data-migration-entry! [migration-name]
   (t2/query-one {:insert-into :data_migrations
-                :values      [{:id        migration-name
-                               :timestamp :%now}]}))
+                 :values      [{:id        migration-name
+                                :timestamp :%now}]}))
 
 (defn- add-migrated-collections-data-migration-entry! []
   (add-legacy-data-migration-entry! "add-migrated-collections"))
@@ -435,54 +434,54 @@
   (testing "Migrations v43.00-014 - v43.00-019"
     (letfn [(create-user! []
               (t2/query-one {:insert-into :core_user
-                            :values      [{:first_name  "Cam"
-                                           :last_name   "Era"
-                                           :email       "cam@era.com"
-                                           :password    "abc123"
-                                           :date_joined :%now}]}))]
+                             :values      [{:first_name  "Cam"
+                                            :last_name   "Era"
+                                            :email       "cam@era.com"
+                                            :password    "abc123"
+                                            :date_joined :%now}]}))]
       (doseq [{:keys [model collection-name create-instance!]}
               [{:model            Dashboard
                 :collection-name  "Migrated Dashboards"
                 :create-instance! (fn []
                                     (create-user!)
                                     (t2/query-one {:insert-into :report_dashboard
-                                                  :values      [{:name          "My Dashboard"
-                                                                 :created_at    :%now
-                                                                 :updated_at    :%now
-                                                                 :creator_id    1
-                                                                 :parameters    "[]"
-                                                                 :collection_id nil}]}))}
+                                                   :values      [{:name          "My Dashboard"
+                                                                  :created_at    :%now
+                                                                  :updated_at    :%now
+                                                                  :creator_id    1
+                                                                  :parameters    "[]"
+                                                                  :collection_id nil}]}))}
                {:model            Pulse
                 :collection-name  "Migrated Pulses"
                 :create-instance! (fn []
                                     (create-user!)
                                     (t2/query-one {:insert-into :pulse
-                                                  :values      [{:name          "My Pulse"
-                                                                 :created_at    :%now
-                                                                 :updated_at    :%now
-                                                                 :creator_id    1
-                                                                 :parameters    "[]"
-                                                                 :collection_id nil}]}))}
+                                                   :values      [{:name          "My Pulse"
+                                                                  :created_at    :%now
+                                                                  :updated_at    :%now
+                                                                  :creator_id    1
+                                                                  :parameters    "[]"
+                                                                  :collection_id nil}]}))}
                {:model            Card
                 :collection-name  "Migrated Questions"
                 :create-instance! (fn []
                                     (create-user!)
                                     (t2/query-one {:insert-into :metabase_database
-                                                  :values      [{:name       "My DB"
-                                                                 :engine     "h2"
-                                                                 :details    "{}"
-                                                                 :created_at :%now
-                                                                 :updated_at :%now}]})
+                                                   :values      [{:name       "My DB"
+                                                                  :engine     "h2"
+                                                                  :details    "{}"
+                                                                  :created_at :%now
+                                                                  :updated_at :%now}]})
                                     (t2/query-one {:insert-into :report_card
-                                                  :values      [{:name                   "My Saved Question"
-                                                                 :created_at             :%now
-                                                                 :updated_at             :%now
-                                                                 :creator_id             1
-                                                                 :display                "table"
-                                                                 :dataset_query          "{}"
-                                                                 :visualization_settings "{}"
-                                                                 :database_id            1
-                                                                 :collection_id          nil}]}))}]
+                                                   :values      [{:name                   "My Saved Question"
+                                                                  :created_at             :%now
+                                                                  :updated_at             :%now
+                                                                  :creator_id             1
+                                                                  :display                "table"
+                                                                  :dataset_query          "{}"
+                                                                  :visualization_settings "{}"
+                                                                  :database_id            1
+                                                                  :collection_id          nil}]}))}]
 
               :let [table-name-keyword (t2/table-name model)]]
         (testing (format "create %s Collection for %s in the Root Collection"
@@ -522,7 +521,7 @@
                 (impl/test-migrations ["v43.00-014" "v43.00-019"] [migrate!]
                   (create-instance!)
                   (t2/query-one {:insert-into :collection
-                                :values      [{:name collection-name, :slug "existing_collection", :color "#abc123"}]})
+                                 :values      [{:name collection-name, :slug "existing_collection", :color "#abc123"}]})
                   (migrate!)
                   (is (= [{:name collection-name, :slug "existing_collection"}]
                          (collections)))
@@ -559,8 +558,8 @@
       (testing "entry already exists: don't create an entry"
         (impl/test-migrations ["v43.00-020" "v43.00-021"] [migrate!]
           (t2/query-one {:insert-into :permissions
-                        :values      [{:object   "/collection/root/"
-                                       :group_id (all-users-group-id)}]})
+                         :values      [{:object   "/collection/root/"
+                                        :group_id (all-users-group-id)}]})
           (migrate!)
           (is (= [{:object "/collection/root/"}]
                  (all-user-perms))))))))
@@ -569,20 +568,20 @@
   (testing "Migration v43.00-029: clear password and password_salt for LDAP users"
     (impl/test-migrations ["v43.00-029"] [migrate!]
       (t2/query-one {:insert-into :core_user
-                    :values      [{:first_name    "Cam"
-                                   :last_name     "Era"
-                                   :email         "cam@era.com"
-                                   :date_joined   :%now
-                                   :password      "password"
-                                   :password_salt "and pepper"
-                                   :ldap_auth     false}
-                                  {:first_name    "LDAP Cam"
-                                   :last_name     "Era"
-                                   :email         "ldap_cam@era.com"
-                                   :date_joined   :%now
-                                   :password      "password"
-                                   :password_salt "and pepper"
-                                   :ldap_auth     true}]})
+                     :values      [{:first_name    "Cam"
+                                    :last_name     "Era"
+                                    :email         "cam@era.com"
+                                    :date_joined   :%now
+                                    :password      "password"
+                                    :password_salt "and pepper"
+                                    :ldap_auth     false}
+                                   {:first_name    "LDAP Cam"
+                                    :last_name     "Era"
+                                    :email         "ldap_cam@era.com"
+                                    :date_joined   :%now
+                                    :password      "password"
+                                    :password_salt "and pepper"
+                                    :ldap_auth     true}]})
       (migrate!)
       (is (= [{:first_name "Cam", :password "password", :password_salt "and pepper", :ldap_auth false}
               {:first_name "LDAP Cam", :password nil, :password_salt nil, :ldap_auth true}]
@@ -594,11 +593,11 @@
   (testing "Migration v43.00-042: grant download permissions to All Users permissions group"
     (impl/test-migrations ["v43.00-042" "v43.00-043"] [migrate!]
       (t2/query-one {:insert-into :metabase_database
-                    :values      [{:name       "My DB"
-                                   :engine     "h2"
-                                   :created_at :%now
-                                   :updated_at :%now
-                                   :details    "{}"}]})
+                     :values      [{:name       "My DB"
+                                    :engine     "h2"
+                                    :created_at :%now
+                                    :updated_at :%now
+                                    :details    "{}"}]})
       (migrate!)
       (is (= [{:object "/collection/root/"} {:object "/download/db/1/"}]
              (mdb.query/query {:select    [:p.object]
@@ -717,8 +716,8 @@
       (testing "Should not fail if permissions already exist"
         (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
           (t2/query-one {:insert-into :permissions
-                        :values      [{:object   (perms-path)
-                                       :group_id (all-users-group-id)}]})
+                         :values      [{:object   (perms-path)
+                                        :group_id (all-users-group-id)}]})
           (migrate!)
           (is (= ["All Users"] (get-perms))))))))
 

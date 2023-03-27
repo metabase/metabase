@@ -12,7 +12,6 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- venues-price-field-values []
