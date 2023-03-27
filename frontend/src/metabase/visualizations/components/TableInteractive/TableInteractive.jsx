@@ -988,6 +988,7 @@ class TableInteractive extends Component {
               })}
               onMouseEnter={this.handleOnMouseEnter}
               onMouseLeave={this.handleOnMouseLeave}
+              data-testid="TableInteractive-root"
             >
               <canvas
                 className="spread"

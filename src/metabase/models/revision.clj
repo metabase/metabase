@@ -157,7 +157,7 @@
          (t2/exists? User :id user-id)
          (integer? revision-id)]}
   (let [serialized-instance (t2/select-one-fn :object Revision, :model (name entity), :model_id id, :id revision-id)]
-    (db/transaction
+    (t2/with-transaction [_conn]
       ;; Do the reversion of the object
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change

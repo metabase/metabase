@@ -7,6 +7,7 @@ import {
   visitDashboard,
   visitIframe,
   dragField,
+  leftSidebar,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -213,6 +214,57 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("Totals for Doohickey").parent().find(".Icon-add").click();
     cy.findByText("215"); // value in doohickey is visible
     cy.findByText("294").should("not.exist"); // the other one is still hidden
+  });
+
+  it("should show standalone values when collapsed to the sub-level grouping (metabase#25250)", () => {
+    const questionDetails = {
+      name: "25250",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2016-06-01"],
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ["field", ORDERS.USER_ID, null],
+            ["field", ORDERS.PRODUCT_ID, null],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ["field", ORDERS.USER_ID, null],
+            ["field", ORDERS.PRODUCT_ID, null],
+          ],
+          columns: [],
+          values: [["aggregation", 0]],
+        },
+        "pivot_table.collapsed_rows": {
+          value: [],
+          rows: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ["field", ORDERS.USER_ID, null],
+            ["field", ORDERS.PRODUCT_ID, null],
+          ],
+        },
+      },
+    };
+
+    visitQuestionAdhoc(questionDetails);
+    cy.findByText("1162").should("be.visible");
+    // Collapse "User ID" column
+    cy.findByText("User ID").parent().find(".Icon-dash").click();
+    cy.findByText("Totals for 1162").should("be.visible");
+
+    //Expanding the grouped column should still work
+    cy.findByText("Totals for 1162").parent().find(".Icon-add").click();
+    cy.findByText("1162").should("be.visible");
+    cy.findByText("34").should("be.visible");
   });
 
   it("should allow hiding subtotals", () => {
@@ -668,7 +720,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
 
     cy.findByText("Visualization").click();
-    sidebar().within(() => {
+    leftSidebar().within(() => {
       // This part is still failing. Uncomment when fixed.
       // cy.findByText("Pivot Table")
       //   .parent()
