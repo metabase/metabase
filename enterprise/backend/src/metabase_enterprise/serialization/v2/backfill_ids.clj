@@ -6,11 +6,11 @@
   so this should produce identical IDs on all platforms and JVM implementations."
   (:require
    [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase.db.util :as mdb.u]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -35,6 +35,6 @@
   row."
   []
   (doseq [model-name (concat serdes.models/exported-models serdes.models/inlined-models)
-          :let [model (db/resolve-model (symbol model-name))]
+          :let [model (mdb.u/resolve-model (symbol model-name))]
           :when (has-entity-id? model)]
     (backfill-ids-for model)))

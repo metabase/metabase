@@ -13,6 +13,7 @@
    [hawk.parallel]
    [java-time :as t]
    [metabase.db.query :as mdb.query]
+   [metabase.db.util :as mdb.u]
    [metabase.models
     :refer [Card
             Collection
@@ -59,7 +60,6 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
@@ -474,7 +474,7 @@
   (hawk.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
-  (let [model                    (db/resolve-model model)
+  (let [model                    (mdb.u/resolve-model model)
         [original-column->value] (mdb.query/query {:select (keys column->temp-value)
                                                    :from   [(t2/table-name model)]
                                                    :where  [:= :id (u/the-id object-or-id)]})]

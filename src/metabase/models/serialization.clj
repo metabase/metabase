@@ -15,6 +15,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.db.util :as mdb.u]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
@@ -92,7 +93,7 @@
 (defn infer-self-path
   "Returns `{:model \"ModelName\" :id \"id-string\"}`"
   [model-name entity]
-  (let [model (db/resolve-model (symbol model-name))
+  (let [model (mdb.u/resolve-model (symbol model-name))
         pk    (models/primary-key model)]
     {:model model-name
      :id    (or (entity-id model-name entity)
@@ -197,7 +198,7 @@
 
   Returns the Clojure map."
   [model-name entity]
-  (let [model (db/resolve-model (symbol model-name))
+  (let [model (mdb.u/resolve-model (symbol model-name))
         pk    (models/primary-key model)]
     (-> (into {} entity)
         (assoc :serdes/meta (generate-path model-name entity))
@@ -246,7 +247,7 @@
 
 (defmethod load-find-local :default [path]
   (let [{id :id model-name :model} (last path)
-        model                      (db/resolve-model (symbol model-name))]
+        model                      (mdb.u/resolve-model (symbol model-name))]
     (when model
       (lookup-by-id model id))))
 
@@ -300,7 +301,7 @@
   (fn [model _ _] model))
 
 (defmethod load-update! :default [model-name ingested local]
-  (let [model    (db/resolve-model (symbol model-name))
+  (let [model    (mdb.u/resolve-model (symbol model-name))
         pk       (models/primary-key model)
         id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
@@ -445,7 +446,7 @@
   [id model]
   (when id
     (let [model-name (name model)
-          model      (db/resolve-model (symbol model-name))
+          model      (mdb.u/resolve-model (symbol model-name))
           entity     (t2/select-one model (models/primary-key model) id)
           path       (mapv :id (generate-path model-name entity))]
       (if (= (count path) 1)
@@ -466,7 +467,7 @@
   [eid model]
   (when eid
     (let [model-name (name model)
-          model      (db/resolve-model (symbol model-name))
+          model      (mdb.u/resolve-model (symbol model-name))
           eid        (if (vector? eid)
                        (last eid)
                        eid)

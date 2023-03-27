@@ -15,6 +15,7 @@
    [medley.core :as m]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
+   [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -420,7 +421,7 @@
    (fn [toucan-model]
      (hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
      (initialize/initialize-if-needed! :db)
-     (db/resolve-model toucan-model))))
+     (mdb.u/resolve-model toucan-model))))
 
 (defmacro disable-flaky-test-when-running-driver-tests-in-ci
   "Only run `body` when we're not running driver tests in CI (i.e., `DRIVERS` and `CI` are both not set). Perfect for
