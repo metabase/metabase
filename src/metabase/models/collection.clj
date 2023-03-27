@@ -606,10 +606,10 @@
     ;; first move this Collection
     (log/info (trs "Moving Collection {0} and its descendants from {1} to {2}"
                    (u/the-id collection) (:location collection) new-location))
-    (db/transaction
+    (t2/with-transaction [_conn]
       (t2/update! Collection (u/the-id collection) {:location new-location})
       ;; we need to update all the descendant collections as well...
-      (db/execute!
+      (t2/query-one
        {:update :collection
         :set    {:location [:replace :location orig-children-location new-children-location]}
         :where  [:like :location (str orig-children-location "%")]}))))
@@ -625,14 +625,13 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived false))]
-    (db/transaction
-      ;; call with table-name to avoid trigger pre-update hooks which will make this run into a ∞ loop
+    (t2/with-transaction [_conn]
       (t2/update! (t2/table-name Collection)
                   {:id       [:in affected-collection-ids]
                    :archived false}
                   {:archived true})
-      (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
-        (t2/update! model {:collection_id [:in affected-collection-ids]
+     (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
+       (t2/update! model {:collection_id [:in affected-collection-ids]
                            :archived      false}
                     {:archived true})))))
 
@@ -641,15 +640,14 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived true))]
-    (db/transaction
-      ;; call with table-name to avoid trigger pre-update hooks which will make this run into a ∞ loop
+    (t2/with-transaction [_conn]
       (t2/update! (t2/table-name Collection)
                {:id       [:in affected-collection-ids]
                 :archived true}
                {:archived false})
-     (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
-       (t2/update! model {:collection_id [:in affected-collection-ids]
-                          :archived      true}
+      (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
+        (t2/update! model {:collection_id [:in affected-collection-ids]
+                           :archived      true}
                    {:archived false})))))
 
 
@@ -801,11 +799,11 @@
 
   This needs to be done recursively for all descendants as well."
   [collection :- (mi/InstanceOf Collection)]
-  (db/execute! {:delete-from :permissions
-                :where       [:in :object (for [collection (cons collection (descendants collection))
-                                                path-fn    [perms/collection-read-path
-                                                            perms/collection-readwrite-path]]
-                                            (path-fn collection))]}))
+  (t2/query-one {:delete-from :permissions
+                 :where       [:in :object (for [collection (cons collection (descendants collection))
+                                                 path-fn    [perms/collection-read-path
+                                                             perms/collection-readwrite-path]]
+                                             (path-fn collection))]}))
 
 (defn- update-perms-when-moving-across-personal-boundry!
   "If a Collection is moving 'across the boundry' and will become a descendant of a Personal Collection, or will cease
@@ -890,10 +888,10 @@
     (when (:personal_owner_id collection)
       (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
   ;; Delete permissions records for this Collection
-  (db/execute! {:delete-from :permissions
-                :where       [:or
-                              [:= :object (perms/collection-readwrite-path collection)]
-                              [:= :object (perms/collection-read-path collection)]]}))
+  (t2/query-one {:delete-from :permissions
+                 :where       [:or
+                               [:= :object (perms/collection-readwrite-path collection)]
+                               [:= :object (perms/collection-read-path collection)]]}))
 
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------

@@ -16,7 +16,6 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest field-should-have-field-values?-test
@@ -142,11 +141,11 @@
           (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))))
 
       (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
-        (db/execute! {:update :metabase_fieldvalues
-                      :where [:and
-                              [:= :field_id (mt/id :categories :name)]
-                              [:= :type "full"]]
-                      :set {:last_used_at (t/offset-date-time 2001 12)}})
+        (t2/query-one {:update :metabase_fieldvalues
+                       :where [:and
+                               [:= :field_id (mt/id :categories :name)]
+                               [:= :type "full"]]
+                       :set {:last_used_at (t/offset-date-time 2001 12)}})
         (is (= (t/offset-date-time 2001 12)
                (:last_used_at (t2/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))
         (is (seq (:values (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))
@@ -157,9 +156,9 @@
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
     (mt/with-temp FieldValues [fv {:field_id (mt/id :venues :id)
                                    :values   (json/generate-string ["1" "2" "3"])}]
-      (is (db/execute! {:update :metabase_fieldvalues
-                        :set    {:human_readable_values (json/generate-string {"1" "a", "2" "b", "3" "c"})}
-                        :where  [:= :id (:id fv)]}))
+      (is (t2/query-one {:update :metabase_fieldvalues
+                         :set    {:human_readable_values (json/generate-string {"1" "a", "2" "b", "3" "c"})}
+                         :where  [:= :id (:id fv)]}))
       (is (= ["a" "b" "c"]
              (:human_readable_values (t2/select-one FieldValues :id (:id fv))))))))
 

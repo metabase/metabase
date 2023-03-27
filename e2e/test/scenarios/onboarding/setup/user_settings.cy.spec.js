@@ -84,7 +84,7 @@ describe("user > settings", () => {
     cy.visit("/account/password");
 
     // Validate common passwords
-    cy.findByLabelText("Create a password")
+    cy.findByLabelText(/Create a password/i)
       .as("passwordInput")
       .type("qwerty123")
       .blur();

@@ -251,7 +251,8 @@
       (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed (H2 version)"
         (let [h2-port (tu/find-free-port)
               server  (init-h2-tcp-server h2-port)
-              uri     (format "tcp://localhost:%d/./test_resources/ssh/tiny-db;USER=GUEST;PASSWORD=guest" h2-port)
+              ; Use ACCESS_MODE_DATA=r to avoid updating the DB file
+              uri     (format "tcp://localhost:%d/./test_resources/ssh/tiny-db;USER=GUEST;PASSWORD=guest;ACCESS_MODE_DATA=r" h2-port)
               h2-db   {:port               h2-port
                        :host               "localhost"
                        :db                 uri

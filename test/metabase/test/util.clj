@@ -484,7 +484,7 @@
       (t2/update! model (u/the-id object-or-id) column->temp-value)
       (f)
       (finally
-        (db/execute!
+        (t2/query-one
          {:update (t2/table-name model)
           :set    original-column->value
           :where  [:= :id (u/the-id object-or-id)]})))))
@@ -633,7 +633,7 @@
                                                  0)
                        max-id-condition      [:> (models/primary-key model) old-max-id]
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
-          (db/execute!
+          (t2/query-one
            {:delete-from (t2/table-name model)
             :where       (if (seq additional-conditions)
                            [:and max-id-condition additional-conditions]

@@ -623,7 +623,7 @@
                                             :user_id  user1-id
                                             :object   (revision/serialize-instance card2 card2-id card2)}]]
       ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
-      (db/execute! {:update :revision
+      (t2/query-one {:update :revision
                     ;; in the past
                     :set {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
                     :where [:= :id (:id _revision1)]})
@@ -717,13 +717,13 @@
                                    :user_id  failuser-id
                                    :object   (revision/serialize-instance dashboard dashboard-id dashboard)}]]
         (letfn [(at-year [year] (ZonedDateTime/of year 1 1 0 0 0 0 (ZoneId/of "UTC")))]
-          (db/execute! {:update :revision
+          (t2/query-one {:update :revision
                         ;; in the past
                         :set    {:timestamp (at-year 2015)}
                         :where  [:in :id (map :id [card-revision1 dash-revision1])]})
           ;; mark the later revisions with the user with name "pass". Note important that its the later revision by
           ;; id. Query assumes increasing timestamps with ids
-          (db/execute! {:update :revision
+          (t2/query-one {:update :revision
                         :set    {:timestamp (at-year 2021)
                                  :user_id   passuser-id}
                         :where  [:in :id (map :id [card-revision2 dash-revision2])]}))

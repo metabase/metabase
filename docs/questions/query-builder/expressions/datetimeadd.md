@@ -26,6 +26,7 @@ title: DatetimeAdd
 - "month"
 - "day"
 - "hour"
+- "minute"
 - "second"
 - "millisecond"
 

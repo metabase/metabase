@@ -1026,8 +1026,8 @@
 
 (defn- delete-all-field-values-for-database! [database-or-id]
   (when-let [field-values-ids (seq (database->field-values-ids database-or-id))]
-    (db/execute! {:delete-from :metabase_fieldvalues
-                  :where       [:in :id field-values-ids]})))
+    (t2/query-one {:delete-from :metabase_fieldvalues
+                   :where       [:in :id field-values-ids]})))
 
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
