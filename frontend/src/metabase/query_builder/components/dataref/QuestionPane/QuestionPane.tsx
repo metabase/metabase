@@ -59,7 +59,7 @@ const QuestionPane = ({
       <PaneContent>
         <QuestionPaneDescription>
           {question.description() ? (
-            <Description>{question.description()}</Description>
+            <Description>{question.description() ?? ""}</Description>
           ) : (
             <EmptyDescription>{t`No description`}</EmptyDescription>
           )}
