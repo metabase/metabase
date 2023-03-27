@@ -465,7 +465,7 @@
 
 (def partner-drivers
   "The set of other drivers in the partnership program"
-  #{"clickhouse" "exasol" "firebolt" "starburst"})
+  #{"clickhouse" "exasol" "firebolt" "ocient" "starburst"})
 
 (defn driver-source
   "Return the source type of the driver: official, partner, or community"
