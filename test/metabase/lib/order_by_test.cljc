@@ -6,7 +6,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -175,7 +174,7 @@
                   :display_name "Average of Price + 1"
                   :field_ref    [:aggregation {:lib/uuid string?, :base-type :type/Float} 1]
                   :source       :aggregation}]
-                (lib.order-by/orderable-columns query)))))))
+                (lib/orderable-columns query)))))))
 
 (deftest ^:parallel orderable-columns-breakouts-with-expression-test
   (testing "If query has aggregations and/or breakouts, you can only order by those (with an expression)"
@@ -189,7 +188,7 @@
                   :display_name "Category ID + 1"
                   :base_type    :type/Integer
                   :source       :breakout}]
-                (lib.order-by/orderable-columns query)))))))
+                (lib/orderable-columns query)))))))
 
 (deftest ^:parallel orderable-columns-test
   (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")]
@@ -253,7 +252,7 @@
                 :field_ref    [:field
                                {:lib/uuid string?, :base-type :type/Text, :source-field (meta/id :venues :category-id)}
                                (meta/id :categories :name)]}]
-              (lib.order-by/orderable-columns query))))))
+              (lib/orderable-columns query))))))
 
 (deftest ^:parallel orderable-expressions-test
   (testing "orderable-columns should include expressions"
@@ -276,7 +275,7 @@
                  {:id (meta/id :venues :price), :name "PRICE"}
                  {:id (meta/id :categories :id), :name "ID"}
                  {:id (meta/id :categories :name), :name "NAME"}]
-                (lib.order-by/orderable-columns query)))))))
+                (lib/orderable-columns query)))))))
 
 (defn- FIXME-is-empty
   "FIXME: Currently no way to add an `:is-empty` clause inline."
@@ -297,7 +296,7 @@
                  {:id (meta/id :venues :price), :name "PRICE"}
                  {:id (meta/id :categories :id), :name "ID"}
                  {:id (meta/id :categories :name), :name "NAME"}]
-                (lib.order-by/orderable-columns query)))))))
+                (lib/orderable-columns query)))))))
 
 (defn- FIXME-=
   "FIXME: [[metabase.lib.core]] doesn't have a test-friendly version of `:=` yet."
@@ -350,7 +349,7 @@
                   :field_ref    [:field
                                  {:lib/uuid string?, :base-type :type/Text, :join-alias "Cat"}
                                  (meta/id :categories :name)]}]
-                (lib.order-by/orderable-columns query)))))))
+                (lib/orderable-columns query)))))))
 
 (deftest ^:parallel orderable-columns-source-metadata-test
   (testing "orderable-columns should use metadata for source query."
@@ -374,7 +373,7 @@
                  {:name "PRICE"
                   :base_type :type/Integer
                   :field_ref [:field {:lib/uuid string?, :base-type :type/Integer} "PRICE"]}]
-                (lib.order-by/orderable-columns query)))))))
+                (lib/orderable-columns query)))))))
 
 (deftest ^:parallel orderable-columns-e2e-test
   (testing "Use the metadata returned by `orderable-columns` to add a new order-by to a query."
@@ -386,7 +385,7 @@
                            :lib/options  {:lib/uuid string?}}]}
               query))
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (let [orderable-columns (lib.order-by/orderable-columns query)
+        (let [orderable-columns (lib/orderable-columns query)
               col               (m/find-first #(= (:id %) (meta/id :venues :name)) orderable-columns)
               query'            (lib/order-by query col)]
           (is (=? {:lib/type :mbql/query

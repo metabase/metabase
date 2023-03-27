@@ -150,7 +150,8 @@
   [lib.order-by
    order-by
    order-by-clause
-   order-bys]
+   order-bys
+   orderable-columns]
   [lib.query
    native-query
    query
