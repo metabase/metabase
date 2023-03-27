@@ -12,7 +12,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.email.messages :as messages]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.persisted-info
     :as persisted-info
@@ -69,7 +69,7 @@
   ;; Since this could be long running, double check state just before refreshing
   (when (contains? refreshable-states (t2/select-one-fn :state PersistedInfo :id (:id persisted-info)))
     (log/info (trs "Attempting to refresh persisted model {0}." (:card_id persisted-info)))
-    (let [card (t2/select-one Card :id (:card_id persisted-info))
+    (let [card (t2/select-one :m/card :id (:card_id persisted-info))
           definition (persisted-info/metadata->definition (:result_metadata card)
                                                           (:table_name persisted-info))
           _ (t2/update! PersistedInfo (u/the-id persisted-info)
@@ -133,7 +133,7 @@
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
                                    (let [current-state (t2/select-one-fn :state PersistedInfo :id (:id persisted-info))
-                                         card-info     (t2/select-one [Card :archived :dataset]
+                                         card-info     (t2/select-one [:m/card :archived :dataset]
                                                                       :id (:card_id persisted-info))]
                                      (if (or (contains? prunable-states current-state)
                                              (:archived card-info)

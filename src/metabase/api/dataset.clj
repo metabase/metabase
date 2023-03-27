@@ -9,7 +9,7 @@
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
@@ -40,7 +40,7 @@
   [outer-query]
   (when-let [source-card-id (qp.util/query->source-card-id outer-query)]
     (log/info (trs "Source query for this query is Card {0}" source-card-id))
-    (api/read-check Card source-card-id)
+    (api/read-check :m/card source-card-id)
     source-card-id))
 
 (defn- run-query-async
@@ -62,7 +62,7 @@
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)
         source-card    (when source-card-id
-                         (t2/select-one [Card :result_metadata :dataset] :id source-card-id))
+                         (t2/select-one [:m/card :result_metadata :dataset] :id source-card-id))
         info           (cond-> {:executed-by api/*current-user-id*
                                 :context     context
                                 :card-id     source-card-id}

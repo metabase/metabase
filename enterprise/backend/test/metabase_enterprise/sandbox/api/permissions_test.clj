@@ -7,7 +7,7 @@
     :refer [GroupTableAccessPolicy]]
    [metabase-enterprise.test :as met]
    [metabase.models
-    :refer [Card Database PermissionsGroup PersistedInfo Table]]
+    :refer [:m/card Database PermissionsGroup PersistedInfo Table]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.query-processor :as qp]
@@ -155,7 +155,7 @@
     (testing "Queries from cache if not sandboxed"
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-temp*
-          [Card [card {:dataset_query (mt/mbql-query venues)
+          [:m/card [card {:dataset_query (mt/mbql-query venues)
                        :dataset true
                        :database_id (mt/id)}]]
           (fake-persist-card! card)
@@ -172,7 +172,7 @@
                           :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
          :attributes {"cat" 50}}
         (mt/with-temp*
-          [Card [card {:dataset_query (mt/mbql-query venues)
+          [:m/card [card {:dataset_query (mt/mbql-query venues)
                        :dataset true
                        :database_id (mt/id)}]]
           (fake-persist-card! card)

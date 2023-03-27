@@ -21,7 +21,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :as card :refer [:m/card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
@@ -226,7 +226,7 @@
 (defn- source-question
   [card-or-question]
   (when-let [source-card-id (qp.util/query->source-card-id (:dataset_query card-or-question))]
-    (t2/select-one Card :id source-card-id)))
+    (t2/select-one :m/card :id source-card-id)))
 
 (defn- table-like?
   [card-or-question]
@@ -255,7 +255,7 @@
     (native-query? card) (-> card (assoc :entity_type :entity/GenericTable))
     :else                (->> card table-id (t2/select-one Table :id))))
 
-(defmethod ->root Card
+(defmethod ->root :m/card
   [card]
   (let [source (source card)]
     {:entity       card
@@ -1012,7 +1012,7 @@
              {:zoom-out [up]
               :related  [sideways sideways]
               :compare  [compare]})
-   Card    (let [down     [[:drilldown-fields]]
+   :m/card    (let [down     [[:drilldown-fields]]
                  sideways [[:metrics] [:similar-questions :dashboard-mates]]
                  up       [[:table]]
                  compare  [[:compare]]]
@@ -1270,7 +1270,7 @@
     (update dashboard :ordered_cards #(map (partial splice-in join-statement) %))
     dashboard))
 
-(defmethod automagic-analysis Card
+(defmethod automagic-analysis :m/card
   [card {:keys [cell-query] :as opts}]
   (let [root     (->root card)
         cell-url (format "%squestion/%s/cell/%s" public-endpoint

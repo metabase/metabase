@@ -26,7 +26,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :as card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.pulse.parameters :as params]
    [metabase.query-processor :as qp]
@@ -180,7 +180,7 @@
 (defn- resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
   [card-or-id]
-  (-> (t2/select-one [Card :dataset_query :parameters], :id (u/the-id card-or-id))
+  (-> (t2/select-one [:m/card :dataset_query :parameters], :id (u/the-id card-or-id))
       api.public/combine-parameters-and-template-tags
       :parameters))
 
@@ -224,7 +224,7 @@
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
         (remove-locked-and-disabled-params (or embedding-params
-                                               (t2/select-one-fn :embedding_params Card :id card-id))))))
+                                               (t2/select-one-fn :embedding_params :m/card :id card-id))))))
 
 (defn run-query-for-card-with-params-async
   "Run the query associated with Card with `card-id` using JWT `token-params`, user-supplied URL `query-params`,
@@ -301,7 +301,7 @@
 
 (def ^:private ^{:arglists '([card-id])} check-embedding-enabled-for-card
   "Runs check-embedding-enabled-for-object for a given Card id"
-  (partial check-embedding-enabled-for-object Card))
+  (partial check-embedding-enabled-for-object :m/card))
 
 
 ;;; ------------------------------------------- /api/embed/card endpoints --------------------------------------------
@@ -330,7 +330,7 @@
       :export-format     export-format
       :card-id           card-id
       :token-params      (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-      :embedding-params  (t2/select-one-fn :embedding_params Card :id card-id)
+      :embedding-params  (t2/select-one-fn :embedding_params :m/card :id card-id)
       :query-params      query-params
       :qp-runner         qp-runner
       :constraints       constraints
@@ -633,7 +633,7 @@
   [token param-key]
   (let [unsigned (embed/unsign token)
         card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
-        card     (t2/select-one Card :id card-id)]
+        card     (t2/select-one :m/card :id card-id)]
     (check-embedding-enabled-for-card card-id)
     (card-param-values {:unsigned-token unsigned
                         :card           card
@@ -645,7 +645,7 @@
   [token param-key prefix]
   (let [unsigned (embed/unsign token)
         card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
-        card     (t2/select-one Card :id card-id)]
+        card     (t2/select-one :m/card :id card-id)]
     (check-embedding-enabled-for-card card-id)
     (card-param-values {:unsigned-token unsigned
                         :card           card

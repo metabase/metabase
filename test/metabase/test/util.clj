@@ -15,8 +15,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.models
-    :refer [Card
-            Collection
+    :refer [Collection
             Dashboard
             DashboardCard
             DashboardCardSeries
@@ -111,7 +110,7 @@
 (defn- rasta-id [] (user-id :rasta))
 
 (def ^:private with-temp-defaults-fns
-  {Card
+  {:m/card
    (fn [_] {:creator_id             (rasta-id)
             :database_id            (data/id)
             :dataset_query          {}
@@ -663,22 +662,22 @@
 
 (deftest with-model-cleanup-test
   (testing "Make sure the with-model-cleanup macro actually works as expected"
-    (tt/with-temp Card [other-card]
-      (let [card-count-before (t2/count Card)
+    (tt/with-temp :m/card [other-card]
+      (let [card-count-before (t2/count :m/card)
             card-name         (tu.random/random-name)]
-        (with-model-cleanup [Card]
-          (t2/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
+        (with-model-cleanup [:m/card]
+          (t2/insert! :m/card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
           (testing "Card count should have increased by one"
             (is (= (inc card-count-before)
-                   (t2/count Card))))
+                   (t2/count :m/card))))
           (testing "Card should exist"
-            (is (t2/exists? Card :name card-name))))
+            (is (t2/exists? :m/card :name card-name))))
         (testing "Card should be deleted at end of with-model-cleanup form"
           (is (= card-count-before
-                 (t2/count Card)))
-          (is (not (t2/exists? Card :name card-name)))
+                 (t2/count :m/card)))
+          (is (not (t2/exists? :m/card :name card-name)))
           (testing "Shouldn't delete other Cards"
-            (is (pos? (t2/count Card)))))))))
+            (is (pos? (t2/count :m/card)))))))))
 
 
 ;; TODO - not 100% sure I understand

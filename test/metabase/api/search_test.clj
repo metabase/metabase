@@ -6,7 +6,7 @@
    [metabase.api.search :as api.search]
    [metabase.models
     :refer [Action
-            Card
+            :m/card
             CardBookmark
             Collection
             Dashboard
@@ -138,15 +138,15 @@
                                (when-not in-root-collection?
                                  {:collection_id (u/the-id collection)})))]
     (mt/with-temp* [Collection  [coll           (data-map "collection %s collection")]
-                    Card        [action-model   (if in-root-collection?
+                    :m/card        [action-model   (if in-root-collection?
                                                   action-model-params
                                                   (assoc action-model-params :collection_id (u/the-id coll)))]
                     Action      [{action-id :id
                                   :as action}   (merge (data-map "action %s action")
                                   {:type :query, :model_id (u/the-id action-model)})]
                     QueryAction [_qa (query-action action-id)]
-                    Card        [card           (coll-data-map "card %s card" coll)]
-                    Card        [dataset        (assoc (coll-data-map "dataset %s dataset" coll)
+                    :m/card        [card           (coll-data-map "card %s card" coll)]
+                    :m/card        [dataset        (assoc (coll-data-map "dataset %s dataset" coll)
                                                        :dataset true)]
                     Dashboard   [dashboard      (coll-data-map "dashboard %s dashboard" coll)]
                     Metric      [metric         (data-map "metric %s metric")]
@@ -303,9 +303,9 @@
 
 (deftest dashboard-count-test
   (testing "It sorts by dashboard count"
-    (mt/with-temp* [Card          [{card-id-3 :id} {:name "dashboard-count 3"}]
-                    Card          [{card-id-5 :id} {:name "dashboard-count 5"}]
-                    Card          [_               {:name "dashboard-count 0"}]
+    (mt/with-temp* [:m/card          [{card-id-3 :id} {:name "dashboard-count 3"}]
+                    :m/card          [{card-id-5 :id} {:name "dashboard-count 5"}]
+                    :m/card          [_               {:name "dashboard-count 0"}]
                     Dashboard     [{dashboard-id :id}]
                     DashboardCard [_               {:card_id card-id-3, :dashboard_id dashboard-id}]
                     DashboardCard [_               {:card_id card-id-3, :dashboard_id dashboard-id}]
@@ -477,13 +477,13 @@
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
-      (mt/with-temp* [Card        [action-model {:dataset true}]
+      (mt/with-temp* [:m/card        [action-model {:dataset true}]
                       Action      [{action-id :id} (archived {:name     "action test action 2"
                                                               :type     :query
                                                               :model_id (u/the-id action-model)})]
                       QueryAction [_ (query-action action-id)]
-                      Card        [_ (archived {:name "card test card 2"})]
-                      Card        [_ (archived {:name "dataset test dataset" :dataset true})]
+                      :m/card        [_ (archived {:name "card test card 2"})]
+                      :m/card        [_ (archived {:name "dataset test dataset" :dataset true})]
                       Dashboard   [_ (archived {:name "dashboard test dashboard 2"})]
                       Collection  [_ (archived {:name "collection test collection 2"})]
                       Metric      [_ (archived {:name "metric test metric 2"})]
@@ -493,7 +493,7 @@
 
   (testing "Should return archived results when specified"
     (with-search-items-in-root-collection "test2"
-      (mt/with-temp* [Card        [action-model action-model-params]
+      (mt/with-temp* [:m/card        [action-model action-model-params]
                       Action      [{action-id :id} (archived {:name     "action test action"
                                                               :type     :query
                                                               :model_id (u/the-id action-model)})]
@@ -501,9 +501,9 @@
                       Action      [_ (archived {:name     "action that will not appear in results"
                                                 :type     :query
                                                 :model_id (u/the-id action-model)})]
-                      Card        [_ (archived {:name "card test card"})]
-                      Card        [_ (archived {:name "card that will not appear in results"})]
-                      Card        [_ (archived {:name "dataset test dataset" :dataset true})]
+                      :m/card        [_ (archived {:name "card test card"})]
+                      :m/card        [_ (archived {:name "card that will not appear in results"})]
+                      :m/card        [_ (archived {:name "dataset test dataset" :dataset true})]
                       Dashboard   [_ (archived {:name "dashboard test dashboard"})]
                       Collection  [_ (archived {:name "collection test collection"})]
                       Metric      [_ (archived {:name "metric test metric"})]
@@ -513,13 +513,13 @@
 
   (testing "Should return archived results when specified without a search query"
     (with-search-items-in-root-collection "test2"
-      (mt/with-temp* [Card        [action-model action-model-params]
+      (mt/with-temp* [:m/card        [action-model action-model-params]
                       Action      [{action-id :id} (archived {:name     "action test action"
                                                 :type     :query
                                                 :model_id (u/the-id action-model)})]
                       QueryAction [_ (query-action action-id)]
-                      Card        [_ (archived {:name "card test card"})]
-                      Card        [_ (archived {:name "dataset test dataset" :dataset true})]
+                      :m/card        [_ (archived {:name "card test card"})]
+                      :m/card        [_ (archived {:name "dataset test dataset" :dataset true})]
                       Dashboard   [_ (archived {:name "dashboard test dashboard"})]
                       Collection  [_ (archived {:name "collection test collection"})]
                       Metric      [_ (archived {:name "metric test metric"})]
@@ -639,9 +639,9 @@
       (mt/with-temp Pulse [pulse {:name "Electro-Magnetic Pulse"}]
         (testing "Pulses are not searchable"
           (is (= nil (search-for-pulses pulse))))
-        (mt/with-temp* [Card      [card-1]
+        (mt/with-temp* [:m/card      [card-1]
                         PulseCard [_ {:pulse_id (:id pulse), :card_id (:id card-1)}]
-                        Card      [card-2]
+                        :m/card      [card-2]
                         PulseCard [_ {:pulse_id (:id pulse), :card_id (:id card-2)}]]
           (testing "Create some Pulse Cards: we should not find them."
             (is (= nil (search-for-pulses pulse))))
@@ -656,20 +656,20 @@
     (let [native-card {:name          "Another SQL query"
                        :query_type    "native"
                        :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]
-      (mt/with-temp* [Card [_mbql-card   {:name          "Venues Count"
+      (mt/with-temp* [:m/card [_mbql-card   {:name          "Venues Count"
                                           :query_type    "query"
                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-                      Card [_native-card native-card]
-                      Card [_dataset     (assoc native-card :name "Dataset" :dataset true)]]
+                      :m/card [_native-card native-card]
+                      :m/card [_dataset     (assoc native-card :name "Dataset" :dataset true)]]
         (is (= ["Another SQL query" "Dataset"]
                (->> (search-request-data :rasta :q "aggregation")
                     (map :name))))))))
 
 (deftest search-db-call-count-test
   (t2.with-temp/with-temp
-    [Card      _              {:name "card db count test 1"}
-     Card      _              {:name "card db count test 2"}
-     Card      _              {:name "card db count test 3"}
+    [:m/card      _              {:name "card db count test 1"}
+     :m/card      _              {:name "card db count test 2"}
+     :m/card      _              {:name "card db count test 3"}
      Dashboard _              {:name "dash count test 1"}
      Dashboard _              {:name "dash count test 2"}
      Dashboard _              {:name "dash count test 3"}

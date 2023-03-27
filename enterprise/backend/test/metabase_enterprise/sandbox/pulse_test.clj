@@ -9,7 +9,7 @@
    [metabase.api.alert :as api.alert]
    [metabase.email.messages :as messages]
    [metabase.models
-    :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
+    :refer [:m/card Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.pulse :as pulse]
    [metabase.pulse]
    [metabase.pulse.test-util :as pulse.tu]
@@ -25,7 +25,7 @@
               (met/with-gtaps {:gtaps      {:venues {:query      (mt/mbql-query venues)
                                                      :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
                                :attributes {"cat" 50}}
-                (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                (mt/with-temp :m/card [card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
                   ;; `with-gtaps` binds the current test user; we don't want that falsely affecting results
                   (mt/with-test-user nil
                     (pulse.tu/send-pulse-created-by-user! user-kw card)))))]
@@ -37,7 +37,7 @@
 (defn- pulse-results
   "Results for creating and running a Pulse."
   [query]
-  (mt/with-temp* [Card                  [pulse-card {:dataset_query query}]
+  (mt/with-temp* [:m/card                  [pulse-card {:dataset_query query}]
                   Pulse                 [pulse {:name "Test Pulse"}]
                   PulseCard             [_ {:pulse_id (:id pulse), :card_id (:id pulse-card)}]
                   PulseChannel          [pc {:channel_type :email
@@ -90,7 +90,7 @@
                      :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
-          (mt/with-temp Card [card {:dataset_query query}]
+          (mt/with-temp :m/card [card {:dataset_query query}]
             (testing "Sanity check: make sure user is seeing sandboxed results outside of Pulses"
               (testing "ad-hoc query"
                 (is (= 22
@@ -110,7 +110,7 @@
                      :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
-          (mt/with-temp Card [card {:dataset_query query}]
+          (mt/with-temp :m/card [card {:dataset_query query}]
             (testing "GET /api/pulse/preview_card/:id"
               (is (= 22
                      (html->row-count (mt/user-http-request :rasta :get 200 (format "pulse/preview_card/%d" (u/the-id card)))))))
@@ -139,7 +139,7 @@
                      :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
-          (mt/with-temp* [Card                 [{card-id :id}  {:dataset_query query}]
+          (mt/with-temp* [:m/card                 [{card-id :id}  {:dataset_query query}]
                           Pulse                [{pulse-id :id} {:name          "Pulse Name"
                                                                 :skip_if_empty false}]
                           PulseCard             [_             {:pulse_id pulse-id

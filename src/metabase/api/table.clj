@@ -7,7 +7,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.interface :as mi]
@@ -418,7 +418,7 @@
 (api/defendpoint-schema GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [id]
-  (let [{:keys [database_id] :as card} (t2/select-one [Card :id :dataset_query :result_metadata :name :description
+  (let [{:keys [database_id] :as card} (t2/select-one [:m/card :id :dataset_query :result_metadata :name :description
                                                        :collection_id :database_id]
                                          :id id)
         moderated-status              (->> (mdb.query/query {:select   [:status]

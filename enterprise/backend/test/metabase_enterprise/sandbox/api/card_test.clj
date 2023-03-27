@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.api.card-test :as api.card-test]
-   [metabase.models :refer [Card Collection Database PermissionsGroup PermissionsGroupMembership Table]]
+   [metabase.models :refer [:m/card Collection Database PermissionsGroup PermissionsGroupMembership Table]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -12,7 +12,7 @@
 (deftest users-with-segmented-perms-test
   (testing "Users with segmented permissions should be able to save cards"
     (let [card-name (mt/random-name)]
-      (mt/with-model-cleanup [Card]
+      (mt/with-model-cleanup [:m/card]
         (mt/with-temp* [Database                   [db]
                         Collection                 [collection]
                         Table                      [table {:db_id (u/the-id db)}]
@@ -28,14 +28,14 @@
                                :collection_id (u/the-id collection)))))))))
 
     (testing "Users with segmented permissions should be able to update the query associated to a card"
-      (mt/with-model-cleanup [Card]
+      (mt/with-model-cleanup [:m/card]
         (mt/with-temp* [Database                   [db]
                         Collection                 [collection]
                         Table                      [table {:db_id (u/the-id db)}]
                         PermissionsGroup           [group]
                         PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta)
                                                        :group_id (u/the-id group)}]
-                        Card                       [card {:name "Some Name"
+                        :m/card                       [card {:name "Some Name"
                                                           :collection_id (u/the-id collection)}]]
           (mt/with-db db
             (perms/revoke-data-perms! (perms-group/all-users) db)
@@ -50,11 +50,11 @@
   (testing "a card with a parameter whose source is a card should respect sandboxing"
     (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (mt/with-temp*
-        [Card [{source-card-id :id}
+        [:m/card [{source-card-id :id}
                {:database_id   (mt/id)
                 :table_id      (mt/id :categories)
                 :dataset_query (mt/mbql-query categories)}]
-         Card [{card-id         :id}
+         :m/card [{card-id         :id}
                {:database_id     (mt/id)
                 :dataset_query   (mt/mbql-query categories)
                 :parameters      [{:id                   "abc"

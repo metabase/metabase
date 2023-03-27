@@ -5,7 +5,7 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.db.data-migrations :as migrations]
-   [metabase.models :refer [Card Dashboard DashboardCard Setting]]
+   [metabase.models :refer [:m/card Dashboard DashboardCard Setting]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
@@ -300,7 +300,7 @@
                          "graph.dimensions" ["CREATED_AT" "CATEGORY"],
                          "graph.metrics"    ["count"]})]
       (mt/with-temp* [Dashboard     [{dashboard-id :id}]
-                      Card          [{card-id :id} {:visualization_settings card-vis}]
+                      :m/card          [{card-id :id} {:visualization_settings card-vis}]
                       DashboardCard [{dashcard-id :id} {:dashboard_id           dashboard-id
                                                         :card_id                card-id
                                                         :visualization_settings dashcard-vis}]]

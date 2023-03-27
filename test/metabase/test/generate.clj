@@ -4,7 +4,7 @@
    [clojure.test.check.generators :as gen]
    [java-time :as t]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models :refer [Action Activity Card Collection Dashboard
+   [metabase.models :refer [Action Activity :m/card Collection Dashboard
                             DashboardCard DashboardCardSeries Database Dimension Field
                             HTTPAction ImplicitAction Metric NativeQuerySnippet PermissionsGroup
                             PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient QueryAction
@@ -233,7 +233,7 @@
                                               :collection_id [:collection :id]}}
    :card                         {:prefix    :c
                                   :spec      ::card
-                                  :insert!   {:model Card}
+                                  :insert!   {:model :m/card}
                                   :relations {:creator_id    [:core-user :id]
                                               :database_id   [:database :id]
                                               :table_id      [:table :id]
@@ -242,7 +242,7 @@
    ;; it's used primarily as model for actions
    :simple-model                  {:prefix    :sm
                                    :spec      ::card
-                                   :insert!   {:model Card}
+                                   :insert!   {:model :m/card}
                                    :relations {:creator_id    [:core-user :id]
                                                :database_id   [:database :id]
                                                :table_id      [:table :id]

@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.public-test :as public-test]
-   [metabase.models :refer [Card Field]]
+   [metabase.models :refer [:m/card Field]]
    [metabase.models.params :as params]
    [metabase.test :as mt]
    [toucan.hydrate :refer [hydrate]]
@@ -66,7 +66,7 @@
 
 (deftest hydrate-param-fields-for-card-test
   (testing "check that we can hydrate param_fields for a Card"
-    (tt/with-temp Card [card {:dataset_query
+    (tt/with-temp :m/card [card {:dataset_query
                               {:database (mt/id)
                                :type     :native
                                :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"

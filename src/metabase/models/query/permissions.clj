@@ -104,7 +104,7 @@
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
   [source-card-id :- su/IntGreaterThanZero]
-  (mi/perms-objects-set (or (t2/select-one ['Card :collection_id] :id source-card-id)
+  (mi/perms-objects-set (or (t2/select-one [:m/card :collection_id] :id source-card-id)
                            (throw (Exception. (tru "Card {0} does not exist." source-card-id))))
                        :read))
 

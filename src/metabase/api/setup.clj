@@ -11,7 +11,7 @@
    [metabase.email :as email]
    [metabase.events :as events]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.database :refer [Database]]
@@ -228,7 +228,7 @@
    :completed   (> (t2/count User) 1)
    :triggered   (or (t2/exists? Dashboard)
                     (t2/exists? Pulse)
-                    (>= (t2/count Card) 5))})
+                    (>= (t2/count :m/card) 5))})
 
 (defmethod admin-checklist-entry :hide-irrelevant-tables
   [_]
@@ -246,7 +246,7 @@
    :description (tru "Have a lot of saved questions in {0}? Create collections to help manage them and add context." (tru "Metabase"))
    :link        "/collection/root"
    :completed   (t2/exists? Collection)
-   :triggered   (>= (t2/count Card) 30)})
+   :triggered   (>= (t2/count :m/card) 30)})
 
 
 (defmethod admin-checklist-entry :create-metrics
@@ -256,7 +256,7 @@
    :description (tru "Define canonical metrics to make it easier for the rest of your team to get the right answers.")
    :link        "/admin/datamodel/metrics"
    :completed   (t2/exists? Metric)
-   :triggered   (>= (t2/count Card) 30)})
+   :triggered   (>= (t2/count :m/card) 30)})
 
 (defmethod admin-checklist-entry :create-segments
   [_]
@@ -265,7 +265,7 @@
    :description (tru "Keep everyone on the same page by creating canonical sets of filters anyone can use while asking questions.")
    :link        "/admin/datamodel/segments"
    :completed   (t2/exists? Segment)
-   :triggered   (>= (t2/count Card) 30)})
+   :triggered   (>= (t2/count :m/card) 30)})
 
 (defn- admin-checklist-values []
   (map

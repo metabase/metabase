@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.core :as magic]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
+   [metabase.models :refer [:m/card Collection Dashboard DashboardCard DashboardCardSeries
                             Database Field Pulse PulseCard Table]]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard :as dashboard]
@@ -28,9 +28,9 @@
 
 (deftest serialize-dashboard-test
   (tt/with-temp* [Dashboard           [{dashboard-id :id :as dashboard} {:name "Test Dashboard"}]
-                  Card                [{card-id :id}]
-                  Card                [{series-id-1 :id}]
-                  Card                [{series-id-2 :id}]
+                  :m/card                [{card-id :id}]
+                  :m/card                [{series-id-1 :id}]
+                  :m/card                [{series-id-2 :id}]
                   DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
@@ -120,9 +120,9 @@
 
 (deftest revert-dashboard!-test
   (tt/with-temp* [Dashboard           [{dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}]
-                  Card                [{card-id :id}]
-                  Card                [{series-id-1 :id}]
-                  Card                [{series-id-2 :id}]
+                  :m/card                [{card-id :id}]
+                  :m/card                [{series-id-1 :id}]
+                  :m/card                [{series-id-2 :id}]
                   DashboardCard       [{dashcard-id :id :as dashboard-card} {:dashboard_id dashboard-id, :card_id card-id}]
                   DashboardCardSeries [_                                    {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
                   DashboardCardSeries [_                                    {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
@@ -193,7 +193,7 @@
   (tt/with-temp* [Collection          [{collection-id-1 :id}]
                   Collection          [{collection-id-2 :id}]
                   Dashboard           [{dashboard-id :id} {:name "Lucky the Pigeon's Lucky Stuff", :collection_id collection-id-1}]
-                  Card                [{card-id :id}]
+                  :m/card                [{card-id :id}]
                   Pulse               [{pulse-id :id} {:dashboard_id dashboard-id, :collection_id collection-id-1}]
                   DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   PulseCard           [_ {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]]
@@ -204,7 +204,7 @@
       (is (= collection-id-2
              (t2/select-one-fn :collection_id Pulse :id pulse-id))))
     (testing "PulseCard syncing"
-      (tt/with-temp Card [{new-card-id :id}]
+      (tt/with-temp :m/card [{new-card-id :id}]
         (dashboard/add-dashcard! dashboard-id new-card-id {:row    0
                                                            :col    0
                                                            :size_x 4
@@ -218,7 +218,7 @@
                         :id         "_CATEGORY_NAME_"
                         :type       "category"}]
     (testing "A new dashboard creates a new ParameterCard"
-      (tt/with-temp* [Card      [{card-id :id}]
+      (tt/with-temp* [:m/card      [{card-id :id}]
                       Dashboard [{dashboard-id :id}
                                  {:parameters [(merge default-params
                                                       {:values_source_type    "card"
@@ -230,7 +230,7 @@
                 (t2/select-one 'ParameterCard :card_id card-id)))))
 
     (testing "Adding a card_id creates a new ParameterCard"
-      (tt/with-temp* [Card      [{card-id :id}]
+      (tt/with-temp* [:m/card      [{card-id :id}]
                       Dashboard [{dashboard-id :id}
                                  {:parameters [default-params]}]]
         (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))
@@ -244,7 +244,7 @@
                 (t2/select-one 'ParameterCard :card_id card-id)))))
 
     (testing "Removing a card_id deletes old ParameterCards"
-      (tt/with-temp* [Card      [{card-id :id}]
+      (tt/with-temp* [:m/card      [{card-id :id}]
                       Dashboard [{dashboard-id :id}
                                  {:parameters [(merge default-params
                                                       {:values_source_type    "card"
@@ -263,7 +263,7 @@
                     Dashboard     [dash  {:collection_id (u/the-id collection)}]
                     Database      [db    {:engine :h2}]
                     Table         [table {:db_id (u/the-id db)}]
-                    Card          [card  {:dataset_query {:database (u/the-id db)
+                    :m/card          [card  {:dataset_query {:database (u/the-id db)
                                                           :type     :query
                                                           :query    {:source-table (u/the-id table)}}}]
                     DashboardCard [_ {:dashboard_id (u/the-id dash), :card_id (u/the-id card)}]]
@@ -298,7 +298,7 @@
 
 (deftest transient-dashboards-test
   (testing "test that we save a transient dashboard"
-    (tu/with-model-cleanup [Card Dashboard DashboardCard Collection]
+    (tu/with-model-cleanup [:m/card Dashboard DashboardCard Collection]
       (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
         (binding [api/*current-user-id*              (test.users/user->id :rasta)
                   api/*current-user-permissions-set* (-> :rasta test.users/user->id user/permissions-set atom)]
@@ -345,7 +345,7 @@
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
       (testing (format "target = %s" (pr-str target))
-        (mt/with-temp* [Card      [{card-id :id}]
+        (mt/with-temp* [:m/card      [{card-id :id}]
                         Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
                                                                      :slug   "category_name"
                                                                      :id     "_CATEGORY_NAME_"
@@ -378,7 +378,7 @@
               (t2/select-one-fn :parameters Dashboard :id dashboard-id)))))
 
   (testing "shoudld not override if existsed "
-    (mt/with-temp* [Card      [{card-id :id}]
+    (mt/with-temp* [:m/card      [{card-id :id}]
                     Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
                                                                   :slug   "category_name"
                                                                   :id     "_CATEGORY_NAME_"
@@ -408,7 +408,7 @@
 (deftest descendants-test
   (testing "dashboard which have parameter's source is another card"
     (mt/with-temp* [Field     [field     {:name "A field"}]
-                    Card      [card      {:name "A card"}]
+                    :m/card      [card      {:name "A card"}]
                     Dashboard [dashboard {:name       "A dashboard"
                                           :parameters [{:id "abc"
                                                         :type "category"
@@ -428,8 +428,8 @@
                (serdes/descendants "Dashboard" (:id dashboard)))))))
 
   (testing "dashboard in which its dashcards has parameter_mappings to a card"
-    (mt/with-temp* [Card          [card1     {:name "Card attached to dashcard"}]
-                    Card          [card2     {:name "Card attached to parameters"}]
+    (mt/with-temp* [:m/card          [card1     {:name "Card attached to dashcard"}]
+                    :m/card          [card2     {:name "Card attached to parameters"}]
                     Dashboard     [dashboard {:parameters [{:name "Category Name"
                                                             :slug "category_name"
                                                             :id   "_CATEGORY_NAME_"

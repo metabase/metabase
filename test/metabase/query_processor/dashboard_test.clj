@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.models
-    :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+    :refer [:m/card Dashboard DashboardCard DashboardCardSeries]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -56,7 +56,7 @@
                                                      :display-name "quantity locked"
                                                      :type         :number
                                                      :default      nil}}})]
-        (mt/with-temp* [Card [{card-id :id} {:dataset_query query}]
+        (mt/with-temp* [:m/card [{card-id :id} {:dataset_query query}]
                         Dashboard [{dashboard-id :id} {:parameters [{:name "param"
                                                                      :slug "param"
                                                                      :id   "_dash_id_"
@@ -85,9 +85,9 @@
 
 (deftest card-and-dashcard-id-validation-test
   (mt/with-temp* [Dashboard     [{dashboard-id :id} {:parameters []}]
-                  Card          [{card-id-1 :id} {:dataset_query (mt/mbql-query venues)}]
-                  Card          [{card-id-2 :id} {:dataset_query (mt/mbql-query venues)}]
-                  Card          [{card-id-3 :id} {:dataset_query (mt/mbql-query venues)}]
+                  :m/card          [{card-id-1 :id} {:dataset_query (mt/mbql-query venues)}]
+                  :m/card          [{card-id-2 :id} {:dataset_query (mt/mbql-query venues)}]
+                  :m/card          [{card-id-3 :id} {:dataset_query (mt/mbql-query venues)}]
                   DashboardCard [{dashcard-id-1 :id} {:card_id card-id-1, :dashboard_id dashboard-id}]
                   DashboardCard [{dashcard-id-2 :id} {:card_id card-id-2, :dashboard_id dashboard-id}]
                   DashboardCard [{dashcard-id-3 :id} {:card_id card-id-3, :dashboard_id dashboard-id}]
@@ -121,7 +121,7 @@
 (deftest default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
     (mt/dataset sample-dataset
-      (mt/with-temp* [Card [{card-id :id} {:dataset_query {:database (mt/id)
+      (mt/with-temp* [:m/card [{card-id :id} {:dataset_query {:database (mt/id)
                                                            :type     :native
                                                            :native   {:query (str "SELECT distinct category "
                                                                                   "FROM products "
@@ -163,7 +163,7 @@
 (deftest default-value-precedence-test-raw-values
   (testing "If both Dashboard and Card have default values for a raw value parameter, Card defaults should take precedence\n"
     (mt/dataset sample-dataset
-      (mt/with-temp* [Card [{card-id :id} {:dataset_query {:database (mt/id)
+      (mt/with-temp* [:m/card [{card-id :id} {:dataset_query {:database (mt/id)
                                                            :type     :native
                                                            :native   {:query "SELECT {{filter}}"
                                                                       :template-tags
@@ -201,7 +201,7 @@
   (testing (str "If the same Card is added to a Dashboard multiple times but with different filters, only apply the "
                 "filters for the DashCard we're running a query for (#19494)")
     (mt/dataset sample-dataset
-      (mt/with-temp* [Card      [{card-id :id}      {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
+      (mt/with-temp* [:m/card      [{card-id :id}      {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
                       Dashboard [{dashboard-id :id} {:parameters [{:name "Category (DashCard 1)"
                                                                    :slug "category_1"
                                                                    :id   "CATEGORY_1"
@@ -255,7 +255,7 @@
         (mt/with-native-query-testing-context query
           (is (= [[200]]
                  (mt/rows (qp/process-query query)))))
-        (mt/with-temp* [Card          [{card-id :id} {:dataset_query query}]
+        (mt/with-temp* [:m/card          [{card-id :id} {:dataset_query query}]
                         Dashboard     [{dashboard-id :id} {:parameters [{:name      "Text"
                                                                          :slug      "text"
                                                                          :id        "_text_"
@@ -274,7 +274,7 @@
 (deftest ignore-default-values-in-request-parameters-test
   (testing "Parameters passed in from the request with only default values (but no actual values) should get ignored (#20516)"
     (mt/dataset sample-dataset
-      (mt/with-temp* [Card [{card-id :id} {:name          "Orders"
+      (mt/with-temp* [:m/card [{card-id :id} {:name          "Orders"
                                            :dataset_query (mt/mbql-query products
                                                             {:fields   [$id $title $category]
                                                              :order-by [[:asc $id]]

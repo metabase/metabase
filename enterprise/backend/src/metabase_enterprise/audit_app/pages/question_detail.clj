@@ -4,7 +4,7 @@
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.card-and-dashboard-detail :as card-and-dash-detail]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
@@ -21,7 +21,7 @@
 ;; Get the revision history for a Card.
 (s/defmethod audit.i/internal-query ::revision-history
   [_ card-id :- su/IntGreaterThanZero]
-  (card-and-dash-detail/revision-history Card card-id))
+  (card-and-dash-detail/revision-history :m/card card-id))
 
 ;; Get a view log for a Card.
 (s/defmethod audit.i/internal-query ::audit-log

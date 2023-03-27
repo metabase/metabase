@@ -635,7 +635,7 @@
                    (str/split #"__")
                    second
                    Integer/parseInt)
-               'Card)
+               :m/card)
     (export-table-fk source-table)))
 
 (defn- ids->fully-qualified-names
@@ -653,8 +653,8 @@
                                                           (if (= db-id mbql.s/saved-questions-virtual-database-id)
                                                             "database/__virtual"
                                                             (t2/select-one-fn :name 'Database :id db-id))))
-                    (m/update-existing entity :card_id #(export-fk % 'Card)) ; attibutes that refer to db fields use _
-                    (m/update-existing entity :card-id #(export-fk % 'Card)) ; template-tags use dash
+                    (m/update-existing entity :card_id #(export-fk % :m/card)) ; attibutes that refer to db fields use _
+                    (m/update-existing entity :card-id #(export-fk % :m/card)) ; template-tags use dash
                     (m/update-existing entity :source-table export-source-table)
                     (m/update-existing entity :source_table export-source-table)
                     (m/update-existing entity :breakout    (fn [breakout]
@@ -713,7 +713,7 @@
 
                   {:card-id (entity-id :guard portable-id?)}
                   (-> &match
-                      (assoc :card-id (import-fk entity-id 'Card))
+                      (assoc :card-id (import-fk entity-id :m/card))
                       mbql-fully-qualified-names->ids*) ; Process other keys
 
                   [(:or :metric "metric") (fully-qualified-name :guard portable-id?)]
@@ -734,12 +734,12 @@
 
                   (_ :guard (every-pred map? (comp portable-id? :source-table)))
                   (-> &match
-                      (assoc :source-table (str "card__" (import-fk (:source-table &match) 'Card)))
+                      (assoc :source-table (str "card__" (import-fk (:source-table &match) :m/card)))
                       mbql-fully-qualified-names->ids*)
 
                   (_ :guard (every-pred map? (comp portable-id? :source_table)))
                   (-> &match
-                      (assoc :source_table (str "card__" (import-fk (:source_table &match) 'Card)))
+                      (assoc :source_table (str "card__" (import-fk (:source_table &match) :m/card)))
                       mbql-fully-qualified-names->ids*) ;; process other keys
 
                   (_ :guard (every-pred map? (comp portable-id? :snippet-id)))
@@ -818,7 +818,7 @@
   [mappings]
   (->> mappings
        (map mbql-fully-qualified-names->ids)
-       (map #(m/update-existing % :card_id import-fk 'Card))))
+       (map #(m/update-existing % :card_id import-fk :m/card))))
 
 (defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
@@ -833,7 +833,7 @@
   (for [param parameters]
     (-> param
         mbql-fully-qualified-names->ids
-        (m/update-existing-in [:values_source_config :card_id] import-fk 'Card))))
+        (m/update-existing-in [:values_source_config :card_id] import-fk :m/card))))
 
 (defn parameters-deps
   "Given the :parameters (possibly nil) for an entity, return any embedded serdes-deps as a set.

@@ -2,7 +2,7 @@
   (:require
    [cheshire.core :as json]
    [medley.core :as m]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
@@ -36,7 +36,7 @@
 
 (defmethod mi/perms-objects-set Action
   [instance read-or-write]
-  (mi/perms-objects-set (t2/select-one Card :id (:model_id instance)) read-or-write))
+  (mi/perms-objects-set (t2/select-one :m/card :id (:model_id instance)) read-or-write))
 
 (models/add-type! ::json-with-nested-parameters
   :in  (comp mi/json-in
@@ -48,7 +48,7 @@
 
 (defn- check-model-is-not-a-saved-question
   [model-id]
-  (when-not (t2/select-one-fn :dataset Card :id model-id)
+  (when-not (t2/select-one-fn :dataset :m/card :id model-id)
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
@@ -235,7 +235,7 @@
                                              (filter #(contains? implicit-action-model-ids (:id %)))
                                              distinct)
                                         (when (seq implicit-action-model-ids)
-                                          (t2/select 'Card :id [:in implicit-action-model-ids])))
+                                          (t2/select :m/card :id [:in implicit-action-model-ids])))
         model-id->db-id               (into {} (for [card implicit-action-models]
                                                  [(:id card) (:database_id card)]))
         model-id->implicit-parameters (when (seq implicit-action-models)
@@ -294,7 +294,7 @@
 (defmethod serdes/extract-one "Action" [_model-name _opts action]
   (-> (serdes/extract-one-basics "Action" action)
       (update :creator_id serdes/export-user)
-      (update :model_id serdes/export-fk 'Card)
+      (update :model_id serdes/export-fk :m/card)
       (update :type name)
       (cond-> (= (:type action) :query)
         (update :database_id serdes/export-fk-keyed 'Database :name))))
@@ -303,7 +303,7 @@
   (-> action
       serdes/load-xform-basics
       (update :creator_id serdes/import-user)
-      (update :model_id serdes/import-fk 'Card)
+      (update :model_id serdes/import-fk :m/card)
       (update :type keyword)
       (cond-> (= (:type action) "query")
         (update :database_id serdes/import-fk-keyed 'Database :name))))

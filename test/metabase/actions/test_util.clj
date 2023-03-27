@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.http-client :as client]
-   [metabase.models :refer [Action Card Database]]
+   [metabase.models :refer [Action :m/card Database]]
    [metabase.models.action :as action]
    [metabase.query-processor-test :as qp.test]
    [metabase.test.data :as data]
@@ -226,7 +226,7 @@
            binding-forms-and-option-maps])]
     `(do
        (initialize/initialize-if-needed! :web-server)
-       (tt/with-temp Card ~[model model-def]
+       (tt/with-temp :m/card ~[model model-def]
          (tu/with-model-cleanup [Action]
            (let [~custom-binding ~model
                  ~@(mapcat (fn [[binding-form option-map]]

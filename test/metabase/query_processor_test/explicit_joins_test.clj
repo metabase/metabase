@@ -6,7 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.models :refer [Card]]
+   [metabase.models :refer [:m/card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -307,7 +307,7 @@
 
               :columns
               (mapv mt/format-name ["id" "name" "category_id" "latitude" "longitude" "price" "id_2" "name_2"])}
-             (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query (mt/mbql-query categories))]
+             (mt/with-temp :m/card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query (mt/mbql-query categories))]
                (mt/format-rows-by [int identity int 4.0 4.0 int int identity]
                  (mt/rows+column-names
                    (mt/run-mbql-query venues
@@ -327,7 +327,7 @@
               :columns [(mt/format-name "venue_id") "count" (mt/format-name "category_id") "count_2"]}
              (mt/format-rows-by [int int int int]
                (mt/rows+column-names
-                 (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                 (mt/with-temp :m/card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                                     (mt/mbql-query venues
                                                       {:aggregation [[:count]]
                                                        :breakout    [$category_id]}))]
@@ -349,7 +349,7 @@
 (deftest aggregate-join-results-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we aggregate on the results of a JOIN?"
-      (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
+      (mt/with-temp :m/card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                          (mt/mbql-query checkins
                                            {:aggregation [[:count]]
                                             :breakout    [$user_id]}))]
@@ -377,7 +377,7 @@
 (deftest get-all-columns-without-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "NEW! Can we still get all of our columns, even if we *DON'T* specify the metadata?"
-      (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
+      (mt/with-temp :m/card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                          (mt/mbql-query venues
                                            {:aggregation [[:count]]
                                             :breakout    [$category_id]}))]
@@ -462,7 +462,7 @@
 (deftest sql-question-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "we should be able to use a SQL question as a source query in a Join"
-      (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
+      (mt/with-temp :m/card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                          (mt/native-query (qp/compile (mt/mbql-query venues))))]
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
                 [2 "2014-09-18T00:00:00Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
@@ -706,9 +706,9 @@
                            (-> query qp/process-query :data :results_metadata :columns))
               query-card (fn [query]
                            {:dataset_query query, :result_metadata (metadata query)})]
-          (mt/with-temp* [Card [{card-1-id :id} (query-card q1)]
-                          Card [{card-2-id :id} (query-card q2)]
-                          Card [{card-3-id :id} (query-card q3)]]
+          (mt/with-temp* [:m/card [{card-1-id :id} (query-card q1)]
+                          :m/card [{card-2-id :id} (query-card q2)]
+                          :m/card [{card-3-id :id} (query-card q3)]]
             (let [query (mt/mbql-query products
                           {:source-table (format "card__%d" card-1-id)
                            :joins        [{:fields       :all

@@ -3,7 +3,7 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.models
-    :refer [Card Collection Dashboard DashboardCard ParameterCard NativeQuerySnippet]]
+    :refer [:m/card Collection Dashboard DashboardCard ParameterCard NativeQuerySnippet]]
    [metabase.models.card :as card]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]
@@ -218,7 +218,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Card can only go in Collections in the \"default\" namespace"
-               (t2/insert! :m/card (assoc (tt/with-temp-defaults Card) :collection_id collection-id, :name card-name))))
+               (t2/insert! :m/card (assoc (tt/with-temp-defaults :m/card) :collection_id collection-id, :name card-name))))
           (finally
             (t2/delete! :m/card :name card-name)))))
 
@@ -348,7 +348,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
-             (mt/with-temp Card [_ bad-card-data]))))
+             (mt/with-temp :m/card [_ bad-card-data]))))
       (testing "Should not be able to update a Card to have a filter with the wrong Database ID"
         (mt/with-temp :m/card [{card-id :id} good-card-data]
           (is (thrown-with-msg?
@@ -612,6 +612,6 @@
       (is (= {:version 2
               :pie.show_legend true
               :pie.percent_visibility "inside"}
-             (-> (t2/select-one (t2/table-name Card) {:where [:= :id card-id]})
+             (-> (t2/select-one (t2/table-name :m/card) {:where [:= :id card-id]})
                  :visualization_settings
                  (json/parse-string keyword)))))))

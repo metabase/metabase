@@ -5,7 +5,7 @@
    [java-time :as t]
    [metabase.api.activity :as api.activity]
    [metabase.models.activity :refer [Activity]]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.query-execution :refer [QueryExecution]]
@@ -114,11 +114,11 @@
     (db/insert-many! QueryExecution (:card views))))
 
 (deftest recent-views-test
-  (mt/with-temp* [Card      [card1 {:name                   "rand-name"
+  (mt/with-temp* [:m/card      [card1 {:name                   "rand-name"
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
                                     :visualization_settings {}}]
-                  Card      [archived  {:name                   "archived-card"
+                  :m/card      [archived  {:name                   "archived-card"
                                         :creator_id             (mt/user->id :crowberto)
                                         :display                "table"
                                         :archived               true
@@ -129,7 +129,7 @@
                   Table     [table1 {:name "rand-name"}]
                   Table     [hidden-table {:name            "hidden table"
                                            :visibility_type "hidden"}]
-                  Card      [dataset {:name                   "rand-name"
+                  :m/card      [dataset {:name                   "rand-name"
                                       :dataset                true
                                       :creator_id             (mt/user->id :crowberto)
                                       :display                "table"
@@ -152,11 +152,11 @@
                       recent-views))))))
 
 (deftest popular-items-test
-  (mt/with-temp* [Card      [card1 {:name                   "rand-name"
+  (mt/with-temp* [:m/card      [card1 {:name                   "rand-name"
                                     :creator_id             (mt/user->id :crowberto)
                                     :display                "table"
                                     :visualization_settings {}}]
-                  Card      [_archived  {:name                   "archived-card"
+                  :m/card      [_archived  {:name                   "archived-card"
                                          :creator_id             (mt/user->id :crowberto)
                                          :display                "table"
                                          :archived               true
@@ -170,7 +170,7 @@
                   Table     [table1 {:name "rand-name"}]
                   Table     [_hidden-table {:name            "hidden table"
                                             :visibility_type "hidden"}]
-                  Card      [dataset {:name                   "rand-name"
+                  :m/card      [dataset {:name                   "rand-name"
                                       :dataset                true
                                       :creator_id             (mt/user->id :crowberto)
                                       :display                "table"
@@ -246,8 +246,8 @@
                                                                  "card"      #{0}})))))
 (deftest add-model-exists-info-test
   (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                  Card      [{card-id :id}]
-                  Card      [{dataset-id :id} {:dataset true}]]
+                  :m/card      [{card-id :id}]
+                  :m/card      [{dataset-id :id} {:dataset true}]]
     (is (= [{:model "dashboard", :model_id dashboard-id, :model_exists true}
             {:model "card", :model_id 0, :model_exists false}
             {:model "dataset", :model_id dataset-id, :model_exists true}

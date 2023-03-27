@@ -5,7 +5,7 @@
    [metabase.api.user :as api.user]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card
+    :refer [:m/card
             Collection
             Dashboard
             LoginHistory
@@ -261,7 +261,7 @@
       (mt/with-temp* [LoginHistory [_ {:user_id   (mt/user->id :rasta)
                                        :device_id (str (java.util.UUID/randomUUID))
                                        :timestamp #t "2021-03-18T19:52:41.808482Z"}]
-                      Card [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+                      :m/card [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -280,7 +280,7 @@
                    (dissoc :is_qbnewb :last_login))))))
     (testing "check that `has_question_and_dashboard` is `true`."
       (mt/with-temp* [Dashboard [_ {:name "dash1" :creator_id (mt/user->id :rasta)}]
-                      Card      [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+                      :m/card      [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"

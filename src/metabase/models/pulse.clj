@@ -19,7 +19,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -222,7 +222,7 @@
 (s/defn ^:private cards* :- [HybridPulseCard]
   [notification-or-id]
   (t2/select
-   Card
+   :m/card
    {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls
                 :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings]] ;; :dc.parameter_mappings - how do you select this?
     :from      [[:pulse :p]]

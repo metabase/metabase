@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.models :refer [Card]]
+   [metabase.models :refer [:m/card]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
@@ -32,7 +32,7 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
         (mt/dataset daily-bird-counts
           (mt/with-persistence-enabled [persist-models!]
-            (mt/with-temp* [Card [model {:dataset       true
+            (mt/with-temp* [:m/card [model {:dataset       true
                                          :database_id   (mt/id)
                                          :query_type    :query
                                          :dataset_query {:database (mt/id)
@@ -58,7 +58,7 @@
 (defn- populate-metadata [{query :dataset_query id :id :as _model}]
   (let [updater (a/thread
                   (let [metadata (a/<!! (qp.async/result-metadata-for-query-async query))]
-                    (t2/update! 'Card id {:result_metadata metadata})))]
+                    (t2/update! :m/card id {:result_metadata metadata})))]
     ;; 4 seconds is long but redshift can be a little slow
     (when (= ::timed-out (mt/wait-for-result updater 4000 ::timed-out))
       (throw (ex-info "Query metadata not set in time for querying against model"
@@ -73,7 +73,7 @@
                                               (mt/compile
                                                (mt/mbql-query products)))]]]
           (mt/with-persistence-enabled [persist-models!]
-            (mt/with-temp* [Card [model {:dataset true
+            (mt/with-temp* [:m/card [model {:dataset true
                                          :database_id (mt/id)
                                          :query_type query-type
                                          :dataset_query query}]]
@@ -114,7 +114,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
       (mt/dataset sample-dataset
         (mt/with-persistence-enabled [persist-models!]
-          (mt/with-temp* [Card [model {:dataset true
+          (mt/with-temp* [:m/card [model {:dataset true
                                        :database_id (mt/id)
                                        :query_type :query
                                        :dataset_query

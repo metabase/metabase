@@ -14,7 +14,7 @@
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models
-    :refer [Card
+    :refer [:m/card
             Collection
             Dashboard
             DashboardCard
@@ -165,7 +165,7 @@
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
-  (let [cards (t2/select [Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query])]
+  (let [cards (t2/select [:m/card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query])]
     {:questions (merge-count-maps (for [card cards]
                                     (let [native? (= (keyword (:query_type card)) :native)]
                                       {:total       1
@@ -285,7 +285,7 @@
   "Get metrics on Collection usage."
   []
   (let [collections (t2/select Collection)
-        cards       (t2/select [Card :collection_id])]
+        cards       (t2/select [:m/card :collection_id])]
     {:collections              (count collections)
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))

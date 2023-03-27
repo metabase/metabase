@@ -7,7 +7,7 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.models
-    :refer [Action Card Collection Dashboard DashboardCard Database Field
+    :refer [Action :m/card Collection Dashboard DashboardCard Database Field
             FieldValues Metric NativeQuerySnippet Segment Table Timeline
             TimelineEvent User]]
    [metabase.models.action :as action]
@@ -200,7 +200,7 @@
             (reset! table1s (ts/create! Table :name "customers" :db_id (:id @db1s)))
             (reset! field1s (ts/create! Field :name "age"    :table_id (:id @table1s)))
             (reset! user1s  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-            (reset! card1s  (ts/create! Card
+            (reset! card1s  (ts/create! :m/card
                                         :database_id   (:id @db1s)
                                         :table_id      (:id @table1s)
                                         :collection_id (:id @coll1s)
@@ -240,7 +240,7 @@
             (reset! db1d    (t2/select-one Database :name "my-db"))
             (reset! table1d (t2/select-one Table :name "customers"))
             (reset! field1d (t2/select-one Field :table_id (:id @table1d) :name "age"))
-            (reset! card1d  (t2/select-one Card  :name "Example Card"))
+            (reset! card1d  (t2/select-one :m/card  :name "Example Card"))
 
             (testing "the main Database, Table, and Field have different IDs now"
               (is (not= (:id @db1s) (:id @db1d)))
@@ -447,7 +447,7 @@
             (reset! field2s  (ts/create! Field :name "invoice" :table_id (:id @table1s)))
             (reset! user1s   (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! dash1s   (ts/create! Dashboard :name "My Dashboard" :collection_id (:id @coll1s) :creator_id (:id @user1s)))
-            (reset! card1s   (ts/create! Card :name "The Card" :database_id (:id @db1s) :table_id (:id @table1s)
+            (reset! card1s   (ts/create! :m/card :name "The Card" :database_id (:id @db1s) :table_id (:id @table1s)
                                          :collection_id (:id @coll1s) :creator_id (:id @user1s)
                                          :visualization_settings
                                          {:table.pivot_column "SOURCE"
@@ -550,7 +550,7 @@
             (reset! field1d    (t2/select-one Field :table_id (:id @table1d) :name "subtotal"))
             (reset! field2d    (t2/select-one Field :table_id (:id @table1d) :name "invoice"))
             (reset! dash1d     (t2/select-one Dashboard :name "My Dashboard"))
-            (reset! card1d     (t2/select-one Card :name "The Card"))
+            (reset! card1d     (t2/select-one :m/card :name "The Card"))
             (reset! dashcard1d (t2/select-one DashboardCard :card_id (:id @card1d) :dashboard_id (:id @dash1d)))
 
             (testing "the main Database, Table, and Field have different IDs now"
@@ -902,7 +902,7 @@
         (reset! db1s      (ts/create! Database :name "my-db"))
         (reset! table1s   (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
         (reset! snippet1s (ts/create! NativeQuerySnippet :name "some snippet"))
-        (reset! card1s    (ts/create! Card
+        (reset! card1s    (ts/create! :m/card
                                       :name "the query"
                                       :dataset_query {:database (:id @db1s)
                                                       :native {:template-tags {"snippet: things"
@@ -924,7 +924,7 @@
                 ingestion (ingestion-in-memory [(assoc @extracted :entity_id new-eid)])]
             (is (some? (serdes.load/load-metabase ingestion)))
             (is (= (:id @snippet1s)
-                   (-> (t2/select-one Card :entity_id new-eid)
+                   (-> (t2/select-one :m/card :entity_id new-eid)
                        :dataset_query
                        :native
                        :template-tags
@@ -938,7 +938,7 @@
       (testing "extraction succeeds"
         (ts/with-source-db
           (let [db       (ts/create! Database :name "my-db")
-                card     (ts/create! Card
+                card     (ts/create! :m/card
                                      :name "the query"
                                      :query_type :native
                                      :dataset true

@@ -12,7 +12,7 @@
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.persisted-info :refer [PersistedInfo]]
    [metabase.query-processor :as qp]
@@ -145,7 +145,7 @@
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
-  (let [card           (t2/select-one Card :id card-id)
+  (let [card           (t2/select-one :m/card :id card-id)
         persisted-info (when (:dataset card)
                          (t2/select-one PersistedInfo :card_id card-id))
         query          (or (:dataset_query card)

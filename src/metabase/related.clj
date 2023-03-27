@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
@@ -45,7 +45,7 @@
   {:arglists '([instance])}
   mi/model)
 
-(defmethod definition Card
+(defmethod definition :m/card
   [card]
   (-> card
       :dataset_query
@@ -147,14 +147,14 @@
     (->> (t2/select-fn-set :card_id DashboardCard
                            :dashboard_id [:in dashboards]
                            :card_id      [:not= (:id card)])
-         (map (partial t2/select-one Card :id))
+         (map (partial t2/select-one :m/card :id))
          filter-visible
          (take max-matches))
     []))
 
 (defn- similar-questions
   [card]
-  (->> (t2/select Card
+  (->> (t2/select :m/card
          :table_id (:table_id card)
          :archived false)
        filter-visible
@@ -215,7 +215,7 @@
   {:arglists '([entity])}
   mi/model)
 
-(defmethod related Card
+(defmethod related :m/card
   [card]
   (let [table             (t2/select-one Table :id (:table_id card))
         similar-questions (similar-questions card)]
@@ -236,7 +236,7 @@
 
 (defmethod related Query
   [query]
-  (related (mi/instance Card query)))
+  (related (mi/instance :m/card query)))
 
 (defmethod related Metric
   [metric]
@@ -306,7 +306,7 @@
 
 (defmethod related Dashboard
   [dashboard]
-  (let [cards (map (partial t2/select-one Card :id) (t2/select-fn-set :card_id DashboardCard
+  (let [cards (map (partial t2/select-one :m/card :id) (t2/select-fn-set :card_id DashboardCard
                                                                       :dashboard_id (:id dashboard)))]
     {:cards (->> cards
                  (mapcat (comp similar-questions))

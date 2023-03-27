@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase.domain-entities.core :as de]
    [metabase.domain-entities.specs :as de.specs]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :as card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
@@ -18,7 +18,7 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
-                      (mt/with-model-cleanup [Card Collection]
+                      (mt/with-model-cleanup [:m/card Collection]
                         (thunk))))
 
 (def ^:private test-bindings
@@ -54,9 +54,9 @@
              (#'tf/->source-table-reference (t2/select-one Table :id (mt/id :venues))))))
 
     (testing "for a Card"
-      (mt/with-temp Card [{card-id :id}]
+      (mt/with-temp :m/card [{card-id :id}]
         (is (= (str "card__" card-id)
-               (#'tf/->source-table-reference (t2/select-one Card :id card-id))))))))
+               (#'tf/->source-table-reference (t2/select-one :m/card :id card-id))))))))
 
 (deftest tableset-test
   (testing "Can we get a tableset for a given schema?"
@@ -102,7 +102,7 @@
     (with-test-transform-specs
       (testing "Is the validation of results working?"
         (is (#'tf/validate-results {"VenuesEnhanced" {:entity     (mi/instance
-                                                                   Card
+                                                                   :m/card
                                                                    {:result_metadata [{:name "AvgPrice"}
                                                                                       {:name "MaxPrice"}
                                                                                       {:name "MinPrice"}]})

@@ -18,7 +18,7 @@
    [metabase.db.util :as mdb.u]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.action :as action]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :as card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
@@ -76,7 +76,7 @@
   "Remove everyting from public `card` that shouldn't be visible to the general public."
   [card]
   (mi/instance
-   Card
+   :m/card
    (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
                                [:dataset_query :type [:native :template-tags]]])))
 
@@ -84,7 +84,7 @@
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
    public. Throws a 404 if the Card doesn't exist."
   [& conditions]
-  (-> (api/check-404 (apply t2/select-one [Card :id :dataset_query :description :display :name :parameters :visualization_settings]
+  (-> (api/check-404 (apply t2/select-one [:m/card :id :dataset_query :description :display :name :parameters :visualization_settings]
                             :archived false, conditions))
       remove-card-non-public-columns
       combine-parameters-and-template-tags
@@ -169,7 +169,7 @@
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
   (validation/check-public-sharing-enabled)
-  (let [card-id (api/check-404 (t2/select-one-pk Card :public_uuid uuid, :archived false))]
+  (let [card-id (api/check-404 (t2/select-one-pk :m/card :public_uuid uuid, :archived false))]
     (apply run-query-for-card-with-id-async card-id export-format parameters options)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -372,7 +372,7 @@
   "Check to make sure the query for Card with `card-id` references Field with `field-id`. Otherwise, or if the Card
   cannot be found, throw an Exception."
   [field-id card-id]
-  (let [card                 (api/check-404 (t2/select-one [Card :dataset_query] :id card-id))
+  (let [card                 (api/check-404 (t2/select-one [:m/card :dataset_query] :id card-id))
         referenced-field-ids (card->referenced-field-ids card)]
     (api/check-404 (contains? referenced-field-ids field-id))))
 
@@ -417,7 +417,7 @@
   "Fetch FieldValues for a Field that is referenced by a public Card."
   [uuid field-id]
   (validation/check-public-sharing-enabled)
-  (let [card-id (t2/select-one-pk Card :public_uuid uuid, :archived false)]
+  (let [card-id (t2/select-one-pk :m/card :public_uuid uuid, :archived false)]
     (card-and-field-id->values card-id field-id)))
 
 (defn dashboard-and-field-id->values
@@ -461,7 +461,7 @@
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
   (validation/check-public-sharing-enabled)
-  (let [card-id (t2/select-one-pk Card :public_uuid uuid, :archived false)]
+  (let [card-id (t2/select-one-pk :m/card :public_uuid uuid, :archived false)]
     (search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -504,7 +504,7 @@
   [uuid field-id remapped-id value]
   {value su/NonBlankString}
   (validation/check-public-sharing-enabled)
-  (let [card-id (api/check-404 (t2/select-one-pk Card :public_uuid uuid, :archived false))]
+  (let [card-id (api/check-404 (t2/select-one-pk :m/card :public_uuid uuid, :archived false))]
     (card-field-remapped-values card-id field-id remapped-id value)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -524,7 +524,7 @@
   "Fetch values for a parameter on a public card."
   [uuid param-key]
   (validation/check-public-sharing-enabled)
-  (let [card (t2/select-one Card :public_uuid uuid, :archived false)]
+  (let [card (t2/select-one :m/card :public_uuid uuid, :archived false)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (api.card/param-values card param-key))))
 
@@ -533,7 +533,7 @@
   "Fetch values for a parameter on a public card containing `query`."
   [uuid param-key query]
   (validation/check-public-sharing-enabled)
-  (let [card (t2/select-one Card :public_uuid uuid, :archived false)]
+  (let [card (t2/select-one :m/card :public_uuid uuid, :archived false)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (api.card/param-values card param-key query))))
 

@@ -17,7 +17,7 @@
    [metabase.api.public-test :as public-test]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+    :refer [:m/card Dashboard DashboardCard DashboardCardSeries]]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filer-test]
    [metabase.models.permissions :as perms]
@@ -59,7 +59,7 @@
   (let [m (merge (when-not (:dataset_query m)
                    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
                  m)]
-    (mt/with-temp Card [card m]
+    (mt/with-temp :m/card [card m]
       (f card))))
 
 (defmacro with-temp-card {:style/indent 1} [[binding & [card]] & body]
@@ -412,13 +412,13 @@
 (deftest csv-reports-count
   (testing "make sure CSV (etc.) downloads take editable params into account (#6407)"
     (with-embedding-enabled-and-new-secret-key
-      (mt/with-temp Card [card (card-with-date-field-filter)]
+      (mt/with-temp :m/card [card (card-with-date-field-filter)]
         (is (= "count\n107\n"
                (client/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
   (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp Card [card (card-with-date-field-filter)]
+    (mt/with-temp :m/card [card (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
       (binding [client/*url-prefix* (str/replace client/*url-prefix* #"/api/$" "/")]
         (mt/with-temporary-setting-values [site-url client/*url-prefix*]
@@ -620,7 +620,7 @@
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
   (testing "make sure that multiline series word as expected (#4768)"
     (with-embedding-enabled-and-new-secret-key
-      (mt/with-temp Card [series-card {:dataset_query {:database (mt/id)
+      (mt/with-temp :m/card [series-card {:dataset_query {:database (mt/id)
                                                        :type     :query
                                                        :query    {:source-table (mt/id :venues)}}}]
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
@@ -636,7 +636,7 @@
   (str
    "embed/"
    (condp mi/instance-of? card-or-dashboard
-     Card      (str "card/"      (card-token card-or-dashboard))
+     :m/card      (str "card/"      (card-token card-or-dashboard))
      Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
    "/field/"
    (u/the-id field-or-id)
@@ -644,7 +644,7 @@
 
 (defn- do-with-embedding-enabled-and-temp-card-referencing {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp Card [card (assoc (public-test/mbql-card-referencing table-kw field-kw)
+    (mt/with-temp :m/card [card (assoc (public-test/mbql-card-referencing table-kw field-kw)
                                :enable_embedding true)]
       (f card))))
 
@@ -684,7 +684,7 @@
 (deftest embedding-not-enabled-message
   (is (= "Embedding is not enabled for this object."
          (with-embedding-enabled-and-temp-card-referencing :venues :name [card]
-           (t2/update! Card (u/the-id card) {:enable_embedding false})
+           (t2/update! :m/card (u/the-id card) {:enable_embedding false})
            (client/client :get 400 (field-values-url card (mt/id :venues :name)))))))
 
 (deftest card-param-values
@@ -697,11 +697,11 @@
     (mt/with-temporary-setting-values [enable-embedding true]
       (with-new-secret-key
         (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
-          (t2/update! Card (:id field-filter-card)
+          (t2/update! :m/card (:id field-filter-card)
                       {:enable_embedding true
                        :embedding_params (zipmap (map :slug (:parameters field-filter-card))
                                                  (repeat "enabled"))})
-          (t2/update! Card (:id card)
+          (t2/update! :m/card (:id card)
                       {:enable_embedding true
                        :embedding_params (zipmap (map :slug (:parameters card))
                                                  (repeat "enabled"))})
@@ -739,7 +739,7 @@
 (defn- do-with-embedding-enabled-and-temp-dashcard-referencing {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key
     (mt/with-temp* [Dashboard     [dashboard {:enable_embedding true}]
-                    Card          [card      (public-test/mbql-card-referencing table-kw field-kw)]
+                    :m/card          [card      (public-test/mbql-card-referencing table-kw field-kw)]
                     DashboardCard [dashcard  {:dashboard_id       (u/the-id dashboard)
                                               :card_id            (u/the-id card)
                                               :parameter_mappings [{:card_id (u/the-id card)
@@ -796,7 +796,7 @@
 (defn- field-search-url [card-or-dashboard field-or-id search-field-or-id]
   (str "embed/"
        (condp mi/instance-of? card-or-dashboard
-         Card      (str "card/"      (card-token card-or-dashboard))
+         :m/card      (str "card/"      (card-token card-or-dashboard))
          Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
        "/field/" (u/the-id field-or-id)
        "/search/" (u/the-id search-field-or-id)))
@@ -827,7 +827,7 @@
       (testing "GET /api/embed/card/:token/field/:field/search/:search-field-id nil"
         (testing "Search for Field values for a Card"
           (with-embedding-enabled-and-temp-card-referencing :venues :id [card]
-            (tests Card card))))
+            (tests :m/card card))))
       (testing "GET /api/embed/dashboard/:token/field/:field/search/:search-field-id nil"
         (testing "Search for Field values for a Dashboard"
           (with-embedding-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
@@ -839,7 +839,7 @@
 (defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
   (str "embed/"
        (condp mi/instance-of? card-or-dashboard
-         Card      (str "card/"      (card-token card-or-dashboard))
+         :m/card      (str "card/"      (card-token card-or-dashboard))
          Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
        "/field/" (u/the-id field-or-id)
        "/remapping/" (u/the-id remapped-field-or-id)))
@@ -871,7 +871,7 @@
     (testing "GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil"
       (testing "Get remapped Field values for a Card"
         (with-embedding-enabled-and-temp-card-referencing :venues :id [card]
-          (tests Card card)))
+          (tests :m/card card)))
       (testing "Shouldn't work if Card doesn't reference the Field in question"
         (with-embedding-enabled-and-temp-card-referencing :venues :price [card]
           (is (= "Not found."
@@ -1256,7 +1256,7 @@
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
     (mt/dataset sample-dataset
       (with-embedding-enabled-and-new-secret-key
-        (mt/with-temp Card [{card-id :id, :as card} {:dataset_query    (mt/native-query
+        (mt/with-temp :m/card [{card-id :id, :as card} {:dataset_query    (mt/native-query
                                                                          {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
                                                                           :template-tags {"NAME"
                                                                                           {:id           "9ddca4ca-3906-83fd-bc6b-8480ae9ab05e"
@@ -1294,7 +1294,7 @@
   (testing "Embedded numeric params should work with numeric (as opposed to string) values in the JWT (#20845)"
     (mt/dataset sample-dataset
       (with-embedding-enabled-and-new-secret-key
-        (mt/with-temp Card [card {:dataset_query    (mt/native-query
+        (mt/with-temp :m/card [card {:dataset_query    (mt/native-query
                                                       {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
                                                        :template-tags {"qty_locked" {:name         "qty_locked"
                                                                                      :display-name "Quantity (Locked)"

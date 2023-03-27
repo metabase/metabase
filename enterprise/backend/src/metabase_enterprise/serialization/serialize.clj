@@ -7,7 +7,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
@@ -77,12 +77,12 @@
                                             (if (= db-id mbql.s/saved-questions-virtual-database-id)
                                               "database/__virtual"
                                               (fully-qualified-name Database db-id))))
-      (m/update-existing entity :card_id (partial fully-qualified-name Card)) ; attibutes that refer to db fields use _
-      (m/update-existing entity :card-id (partial fully-qualified-name Card)) ; template-tags use dash
+      (m/update-existing entity :card_id (partial fully-qualified-name :m/card)) ; attibutes that refer to db fields use _
+      (m/update-existing entity :card-id (partial fully-qualified-name :m/card)) ; template-tags use dash
       (m/update-existing entity :source-table (fn [source-table]
                                                 (if (and (string? source-table)
                                                          (str/starts-with? source-table "card__"))
-                                                  (fully-qualified-name Card (-> source-table
+                                                  (fully-qualified-name :m/card (-> source-table
                                                                                  (str/split #"__")
                                                                                  second
                                                                                  Integer/parseInt))
@@ -165,7 +165,7 @@
 
 (defn- convert-click-behavior [{:keys [::mb.viz/link-type ::mb.viz/link-target-id] :as click}]
   (-> (if-let [new-target-id (case link-type
-                               ::mb.viz/card      (-> (t2/select-one Card :id link-target-id)
+                               ::mb.viz/card      (-> (t2/select-one :m/card :id link-target-id)
                                                       fully-qualified-name)
                                ::mb.viz/dashboard (-> (t2/select-one Dashboard :id link-target-id)
                                                       fully-qualified-name)
@@ -199,7 +199,7 @@
           (assoc :series (for [series series
                                :when (= (:dashboardcard_id series) (u/the-id dashboard-card))]
                            (-> series
-                               (update :card_id (partial fully-qualified-name Card))
+                               (update :card_id (partial fully-qualified-name :m/card))
                                (dissoc :id :dashboardcard_id))))
           (assoc :visualization_settings (convert-viz-settings (:visualization_settings dashboard-card)))
           strip-crud))))
@@ -208,7 +208,7 @@
   [dashboard]
   (assoc dashboard :dashboard_cards (dashboard-cards-for-dashboard dashboard)))
 
-(defmethod serialize-one Card
+(defmethod serialize-one :m/card
   [card]
   (-> card
       (m/update-existing :table_id (partial fully-qualified-name Table))
@@ -221,7 +221,7 @@
     :cards    (for [card (t2/select PulseCard :pulse_id (u/the-id pulse))]
                 (-> card
                     (dissoc :id :pulse_id)
-                    (update :card_id (partial fully-qualified-name Card))))
+                    (update :card_id (partial fully-qualified-name :m/card))))
     :channels (for [channel (t2/select PulseChannel :pulse_id (u/the-id pulse))]
                 (strip-crud channel))))
 

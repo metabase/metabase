@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [metabase.api.collection :as api.collection]
    [metabase.models
-    :refer [Card
+    :refer [:m/card
             Collection
             Dashboard
             DashboardCard
@@ -435,7 +435,7 @@
   (mt/with-non-admin-groups-no-root-collection-perms
     (let [collection-id-or-nil (when collection-or-id-or-nil
                                  (u/the-id collection-or-id-or-nil))]
-      (mt/with-temp* [Card       [{card-id :id}
+      (mt/with-temp* [:m/card       [{card-id :id}
                                   {:name               "Birthday Card"
                                    :collection_preview false
                                    :collection_id      collection-id-or-nil}]
@@ -513,7 +513,7 @@
     (testing "check that cards are returned with the collection/items endpoint"
       (mt/with-temp* [Collection       [collection]
                       User             [{user-id :id} {:first_name "x" :last_name "x" :email "zzzz@example.com"}]
-                      Card             [{card-id :id :as card} {:collection_id (u/the-id collection)}]
+                      :m/card             [{card-id :id :as card} {:collection_id (u/the-id collection)}]
                       ModerationReview [_ {:moderated_item_type "card"
                                            :moderated_item_id   card-id
                                            :status              "verified"
@@ -535,22 +535,22 @@
                                               (str "collection/" (u/the-id collection) "/items"))))))))
     (testing "check that limit and offset work and total comes back"
       (mt/with-temp* [Collection [collection]
-                      Card       [_ {:collection_id (u/the-id collection)}]
-                      Card       [_ {:collection_id (u/the-id collection)}]
-                      Card       [_ {:collection_id (u/the-id collection)}]]
+                      :m/card       [_ {:collection_id (u/the-id collection)}]
+                      :m/card       [_ {:collection_id (u/the-id collection)}]
+                      :m/card       [_ {:collection_id (u/the-id collection)}]]
         (is (= 2 (count (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "1")))))
         (is (= 1 (count (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "2")))))
         (is (= 3 (:total (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "1"))))))
 
     (testing "check that pinning filtering exists"
       (mt/with-temp* [Collection [collection]
-                      Card       [_ {:collection_id (u/the-id collection)
+                      :m/card       [_ {:collection_id (u/the-id collection)
                                      :collection_position 1
                                      :name "pinned-1"}]
-                      Card       [_ {:collection_id (u/the-id collection)
+                      :m/card       [_ {:collection_id (u/the-id collection)
                                      :collection_position 1
                                      :name "pinned-2"}]
-                      Card       [_ {:collection_id (u/the-id collection)
+                      :m/card       [_ {:collection_id (u/the-id collection)
                                      :name "unpinned-card"}]
                       Timeline   [_ {:collection_id (u/the-id collection)
                                      :name "timeline"}]]
@@ -607,12 +607,12 @@
     (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
                     User       [{user1-id :id} {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}]
                     User       [{user2-id :id} {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}]
-                    Card       [{card1-id :id :as card1}
+                    :m/card       [{card1-id :id :as card1}
                                 {:name "Card with history 1" :collection_id collection-id}]
-                    Card       [{card2-id :id :as card2}
+                    :m/card       [{card2-id :id :as card2}
                                 {:name "Card with history 2" :collection_id collection-id}]
-                    Card       [_ {:name "ZZ" :collection_id collection-id}]
-                    Card       [_ {:name "AA" :collection_id collection-id}]
+                    :m/card       [_ {:name "ZZ" :collection_id collection-id}]
+                    :m/card       [_ {:name "AA" :collection_id collection-id}]
                     Revision   [_revision1 {:model    "Card"
                                             :model_id card1-id
                                             :user_id  user2-id
@@ -672,8 +672,8 @@
                       (map :name))))))
       (testing "Results can be ordered by model"
         (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
-                        Card       [_ {:name "ZZ" :collection_id collection-id}]
-                        Card       [_ {:name "AA" :collection_id collection-id}]
+                        :m/card       [_ {:name "ZZ" :collection_id collection-id}]
+                        :m/card       [_ {:name "AA" :collection_id collection-id}]
                         Dashboard  [_ {:name "ZZ" :collection_id collection-id}]
                         Dashboard  [_ {:name "AA" :collection_id collection-id}]
                         Pulse      [_ {:name "ZZ" :collection_id collection-id}]
@@ -692,7 +692,7 @@
       (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
                       User       [{failuser-id :id} {:first_name "failure" :last_name "failure" :email "failure@example.com"}]
                       User       [{passuser-id :id} {:first_name "pass" :last_name "pass" :email "pass@example.com"}]
-                      Card       [{card-id :id :as card}
+                      :m/card       [{card-id :id :as card}
                                   {:name "card" :collection_id collection-id}]
                       Dashboard  [{dashboard-id :id :as dashboard} {:name "dashboard" :collection_id collection-id}]
                       Revision   [card-revision1
@@ -735,7 +735,7 @@
                       Collection [_ {:name "subcollection"
                                      :location (format "/%d/" collection-id)
                                      :authority_level "official"}]
-                      Card       [_ {:name "card" :collection_id collection-id}]
+                      :m/card       [_ {:name "card" :collection_id collection-id}]
                       Dashboard  [_ {:name "dash" :collection_id collection-id}]]
         (let [items (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?models=dashboard&models=card&models=collection"))
                          :data)]
@@ -749,8 +749,8 @@
                       Collection [_ {:name "subcollection"
                                      :location (format "/%d/" collection-id)
                                      :authority_level "official"}]
-                      Card       [_ {:name "card" :collection_id collection-id}]
-                      Card       [_ {:name "dataset" :dataset true :collection_id collection-id}]
+                      :m/card       [_ {:name "card" :collection_id collection-id}]
+                      :m/card       [_ {:name "dataset" :dataset true :collection_id collection-id}]
                       Dashboard  [_ {:name "dash" :collection_id collection-id}]]
         (let [items (->> "/items?models=dashboard&models=card&models=collection"
                          (str "collection/" collection-id)
@@ -1138,7 +1138,7 @@
                       (filter #(str/includes? (:name %) "Personal Collection")))))))
 
       (testing "Can we look for `archived` stuff with this endpoint?"
-        (mt/with-temp Card [card {:name "Business Card", :archived true}]
+        (mt/with-temp :m/card [card {:name "Business Card", :archived true}]
           (is (partial=
                [{:name                "Business Card"
                  :description         nil
@@ -1156,7 +1156,7 @@
 
     (testing "fully_parametrized of a card"
       (testing "can be false"
-        (mt/with-temp Card [card {:name          "Business Card"
+        (mt/with-temp :m/card [card {:name          "Business Card"
                                   :dataset_query {:native {:template-tags {:param0 {:default 0}
                                                                            :param1 {:required false}
                                                                            :param2 {:required false}}
@@ -1170,7 +1170,7 @@
                             (results-matching {:name "Business Card", :model "card"}))))))
 
       (testing "is false even if a required field-filter parameter has no default"
-        (mt/with-temp Card [card {:name          "Business Card"
+        (mt/with-temp :m/card [card {:name          "Business Card"
                                   :dataset_query {:native {:template-tags {:param0 {:default 0}
                                                                            :param1 {:type "dimension", :required true}}
                                                            :query         "select {{param0}}, {{param1}}"}}}]
@@ -1183,7 +1183,7 @@
                             (results-matching {:name "Business Card", :model "card"}))))))
 
       (testing "is false even if an optional required parameter has no default"
-        (mt/with-temp Card [card {:name          "Business Card"
+        (mt/with-temp :m/card [card {:name          "Business Card"
                                   :dataset_query {:native {:template-tags {:param0 {:default 0}
                                                                            :param1 {:required true}}
                                                            :query         "select {{param0}}, [[ , {{param1}} ]]"}}}]
@@ -1196,7 +1196,7 @@
                             (results-matching {:name "Business Card", :model "card"}))))))
 
       (testing "is true if invalid parameter syntax causes a parsing exception to be thrown"
-        (mt/with-temp Card [card {:name          "Business Card"
+        (mt/with-temp :m/card [card {:name          "Business Card"
                                   :dataset_query {:native {:query "select [[]]"}}}]
           (is (partial= [{:name                "Business Card"
                           :entity_id           (:entity_id card)
@@ -1207,7 +1207,7 @@
                             (results-matching {:name "Business Card", :model "card"}))))))
 
       (testing "is true if all obligatory parameters have defaults"
-        (mt/with-temp Card [card {:name          "Business Card"
+        (mt/with-temp :m/card [card {:name          "Business Card"
                                   :dataset_query {:native {:template-tags {:param0 {:required false, :default 0}
                                                                            :param1 {:required true, :default 1}
                                                                            :param2 {}
@@ -1225,7 +1225,7 @@
         (mt/with-temp* [NativeQuerySnippet [snippet {:content    "table"
                                                      :creator_id (mt/user->id :crowberto)
                                                      :name       "snippet"}]
-                        Card [card {:name          "Business Card"
+                        :m/card [card {:name          "Business Card"
                                     :dataset_query {:native {:template-tags {:param0  {:required false
                                                                                        :default  0}
                                                                              :snippet {:name         "snippet"
@@ -1506,7 +1506,7 @@
   (testing "PUT /api/collection/:id"
     (testing "Archiving a collection should delete any alerts associated with questions in the collection"
       (mt/with-temp* [Collection            [{collection-id :id}]
-                      Card                  [{card-id :id} {:collection_id collection-id}]
+                      :m/card                  [{card-id :id} {:collection_id collection-id}]
                       Pulse                 [{pulse-id :id} {:alert_condition  "rows"
                                                              :alert_first_only false
                                                              :creator_id       (mt/user->id :rasta)

@@ -13,7 +13,7 @@
    [metabase.api.public :as api.public]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card
+    :refer [:m/card
             Collection
             Database
             Dashboard
@@ -66,7 +66,7 @@
                                   :values_source_config {:values ["African" "American" "Asian"]}}]})
                  (shared-obj)
                  m)]
-    (mt/with-temp Card [card m]
+    (mt/with-temp :m/card [card m]
       ;; add :public_uuid back in to the value that gets bound because it might not come back from post-select if
       ;; public sharing is disabled; but we still want to test it
       (f (assoc card :public_uuid (:public_uuid m))))))
@@ -145,7 +145,7 @@
                    (client/client :get 400 (str "public/card/" uuid))))))
 
         (testing "Check that we cannot fetch a public Card that has been archived"
-          (mt/with-temp-vals-in-db Card card-id {:archived true}
+          (mt/with-temp-vals-in-db :m/card card-id {:archived true}
             (is (= "Not found."
                    (client/client :get 404 (str "public/card/" uuid))))))))))
 
@@ -300,7 +300,7 @@
 
 (deftest make-sure-csv--etc---downloads-take-editable-params-into-account---6407----
   (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-temp Card [{uuid :public_uuid} (card-with-date-field-filter)]
+    (mt/with-temp :m/card [{uuid :public_uuid} (card-with-date-field-filter)]
       (is (= "count\n107\n"
              (client/client :get 200 (str "public/card/" uuid "/query/csv")
                             :parameters (json/encode [{:id     "_DATE_"
@@ -311,7 +311,7 @@
 
 (deftest make-sure-it-also-works-with-the-forwarded-url
   (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-temp Card [{uuid :public_uuid} (card-with-date-field-filter)]
+    (mt/with-temp :m/card [{uuid :public_uuid} (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
       (binding [client/*url-prefix* (str/replace client/*url-prefix* #"/api/$" "/")]
         (mt/with-temporary-setting-values [site-url client/*url-prefix*]
@@ -332,7 +332,7 @@
 
 (deftest make-sure-we-include-all-the-relevant-fields-like-insights
   (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-temp Card [{uuid :public_uuid} (card-with-trendline)]
+    (mt/with-temp :m/card [{uuid :public_uuid} (card-with-trendline)]
       (is (= #{:cols :rows :insights :results_timezone}
              (-> (client/client :get 202 (str "public/card/" uuid "/query"))
                  :data
@@ -369,7 +369,7 @@
                (fetch-public-dashboard dash)))
 
         (testing "We shouldn't see Cards that have been archived"
-          (t2/update! Card (u/the-id card) {:archived true})
+          (t2/update! :m/card (u/the-id card) {:archived true})
           (is (= {:name true, :ordered_cards 0}
                  (fetch-public-dashboard dash))))))))
 
@@ -401,12 +401,12 @@
                    (client/client :get 404 (dashcard-url dash Integer/MAX_VALUE dashcard)))))
 
           (testing "if the Card exists, but it's not part of this Dashboard"
-            (mt/with-temp Card [card]
+            (mt/with-temp :m/card [card]
               (is (= "Not found."
                      (client/client :get 404 (dashcard-url dash card dashcard))))))
 
           (testing "if the Card has been archived."
-            (t2/update! Card (u/the-id card) {:archived true})
+            (t2/update! :m/card (u/the-id card) {:archived true})
             (is (= "Not found."
                    (client/client :get 404 (dashcard-url dash card dashcard))))))))))
 
@@ -442,7 +442,7 @@
         (mt/with-temp Collection [{collection-id :id}]
           (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
           (with-temp-public-dashboard-and-card [dash {card-id :id, :as card} dashcard]
-            (t2/update! Card card-id {:collection_id collection-id})
+            (t2/update! :m/card card-id {:collection_id collection-id})
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :post 403 (format "card/%d/query" card-id)))
                 "Sanity check: shouldn't be allowed to run the query normally")
@@ -491,7 +491,7 @@
     (testing "Make sure parameters work correctly (#7212)"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (testing "with native queries and template tag params"
-          (mt/with-temp Card [card {:dataset_query {:database (mt/id)
+          (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
                                                     :type     :native
                                                     :native   {:query         "SELECT {{num}} AS num"
                                                                :template-tags {:num {:name         "num"
@@ -522,7 +522,7 @@
 
         (testing "with MBQL queries"
           (testing "`:id` parameters"
-            (mt/with-temp Card [card {:dataset_query {:database (mt/id)
+            (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
                                                       :type     :query
                                                       :query    {:source-table (mt/id :venues)
                                                                  :aggregation  [:count]}}}]
@@ -549,7 +549,7 @@
 
           (testing "temporal parameters"
             (mt/with-temporary-setting-values [enable-public-sharing true]
-              (mt/with-temp Card [card {:dataset_query {:database (mt/id)
+              (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
                                                         :type     :query
                                                         :query    {:source-table (mt/id :checkins)
                                                                    :aggregation  [:count]}}}]
@@ -581,7 +581,7 @@
     (testing (str "make sure DimensionValue params also work if they have a default value, even if some is passed in "
                   "for some reason as part of the query (#7253)")
       (mt/with-temporary-setting-values [enable-public-sharing true]
-        (mt/with-temp Card [card {:dataset_query {:database (mt/id)
+        (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
                                                   :type     :native
                                                   :native   {:query         "SELECT {{msg}} AS message"
                                                              :template-tags {:msg {:id           "_MSG_
@@ -651,17 +651,17 @@
 ;;; ------------------------------------------- card->referenced-field-ids -------------------------------------------
 
 (deftest card-referencing-nothing
-  (mt/with-temp Card [card (mbql-card-referencing-nothing)]
+  (mt/with-temp :m/card [card (mbql-card-referencing-nothing)]
     (is (= #{}
            (#'api.public/card->referenced-field-ids card)))))
 
 (deftest it-should-pick-up-on-fields-referenced-in-the-mbql-query-itself
-  (mt/with-temp Card [card (mbql-card-referencing-venue-name)]
+  (mt/with-temp :m/card [card (mbql-card-referencing-venue-name)]
     (is (= #{(mt/id :venues :name)}
            (#'api.public/card->referenced-field-ids card)))))
 
 (deftest ---as-well-as-template-tag--implict--params-for-sql-queries
-  (mt/with-temp Card [card (sql-card-referencing-venue-name)]
+  (mt/with-temp :m/card [card (sql-card-referencing-venue-name)]
     (is (= #{(mt/id :venues :name)}
            (#'api.public/card->referenced-field-ids card)))))
 
@@ -669,13 +669,13 @@
 
 
 (deftest check-that-the-check-succeeds-when-field-is-referenced
-  (mt/with-temp Card [card (mbql-card-referencing-venue-name)]
+  (mt/with-temp :m/card [card (mbql-card-referencing-venue-name)]
     (#'api.public/check-field-is-referenced-by-card (mt/id :venues :name) (u/the-id card))))
 
 (deftest check-that-exception-is-thrown-if-the-field-isn-t-referenced
   (is (thrown?
        Exception
-       (mt/with-temp Card [card (mbql-card-referencing-venue-name)]
+       (mt/with-temp :m/card [card (mbql-card-referencing-venue-name)]
          (#'api.public/check-field-is-referenced-by-card (mt/id :venues :category_id) (u/the-id card))))))
 
 
@@ -722,7 +722,7 @@
 
 (deftest field-is--referenced--by-dashboard-if-it-s-one-of-the-dashboard-s-params---
   (is (mt/with-temp* [Dashboard     [dashboard]
-                      Card          [card]
+                      :m/card          [card]
                       DashboardCard [_ (dashcard-with-param-mapping-to-venue-id dashboard card)]]
         (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :id) (u/the-id dashboard)))))
 
@@ -730,27 +730,27 @@
 (deftest TODO-name-this-exception
   (is (thrown? Exception
                (mt/with-temp* [Dashboard     [dashboard]
-                               Card          [card]
+                               :m/card          [card]
                                DashboardCard [_ (dashcard-with-param-mapping-to-venue-id dashboard card)]]
                  (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :name) (u/the-id dashboard))))))
 
 ;; ...*or* if it's a so-called "implicit" param (a Field Filter Template Tag (FFTT) in a SQL Card)
 (deftest implicit-param
   (is (mt/with-temp* [Dashboard     [dashboard]
-                      Card          [card (sql-card-referencing-venue-name)]
+                      :m/card          [card (sql-card-referencing-venue-name)]
                       DashboardCard [_ {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]]
         (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :name) (u/the-id dashboard))))
 
   (is (thrown? Exception
                (mt/with-temp* [Dashboard     [dashboard]
-                               Card          [card (sql-card-referencing-venue-name)]
+                               :m/card          [card (sql-card-referencing-venue-name)]
                                DashboardCard [_ {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]]
                  (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :id) (u/the-id dashboard))))))
 
 ;;; ------------------------------------------- card-and-field-id->values --------------------------------------------
 
 (deftest we-should-be-able-to-get-values-for-a-field-referenced-by-a-card
-  (mt/with-temp Card [card (mbql-card-referencing :venues :name)]
+  (mt/with-temp :m/card [card (mbql-card-referencing :venues :name)]
     (is (= {:values          [["20th Century Cafe"]
                               ["25°"]
                               ["33 Taps"]
@@ -762,7 +762,7 @@
                                (update :values (partial take 5))))))))
 
 (deftest sql-param-field-references-should-work-just-as-well-as-mbql-field-referenced
-  (mt/with-temp Card [card (sql-card-referencing-venue-name)]
+  (mt/with-temp :m/card [card (sql-card-referencing-venue-name)]
     (is (= {:values          [["20th Century Cafe"]
                               ["25°"]
                               ["33 Taps"]
@@ -774,7 +774,7 @@
                                (update :values (partial take 5))))))))
 
 (deftest but-if-the-field-is-not-referenced-we-should-get-an-exception
-  (mt/with-temp Card [card (mbql-card-referencing :venues :price)]
+  (mt/with-temp :m/card [card (mbql-card-referencing :venues :price)]
     (is (thrown?
          Exception
          (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))))))
@@ -816,7 +816,7 @@
 (defn- field-values-url [card-or-dashboard field-or-id]
   (str "public/"
        (condp mi/instance-of? card-or-dashboard
-         Card      "card"
+         :m/card      "card"
          Dashboard "dashboard")
        "/" (or (:public_uuid card-or-dashboard)
                (throw (Exception. (str "Missing public UUID: " card-or-dashboard))))
@@ -825,7 +825,7 @@
 
 (defn- do-with-sharing-enabled-and-temp-card-referencing {:style/indent 2} [table-kw field-kw f]
   (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-temp Card [card (merge (shared-obj) (mbql-card-referencing table-kw field-kw))]
+    (mt/with-temp :m/card [card (merge (shared-obj) (mbql-card-referencing table-kw field-kw))]
       (f card))))
 
 (defmacro ^:private with-sharing-enabled-and-temp-card-referencing
@@ -863,7 +863,7 @@
 (defn do-with-sharing-enabled-and-temp-dashcard-referencing {:style/indent 2} [table-kw field-kw f]
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (mt/with-temp* [Dashboard     [dashboard (shared-obj)]
-                    Card          [card      (mbql-card-referencing table-kw field-kw)]
+                    :m/card          [card      (mbql-card-referencing table-kw field-kw)]
                     DashboardCard [dashcard  {:dashboard_id       (u/the-id dashboard)
                                               :card_id            (u/the-id card)
                                               :parameter_mappings [{:card_id (u/the-id card)
@@ -928,7 +928,7 @@
 (defn- field-search-url [card-or-dashboard field-or-id search-field-or-id]
   (str "public/"
        (condp mi/instance-of? card-or-dashboard
-         Card      "card"
+         :m/card      "card"
          Dashboard "dashboard")
        "/" (:public_uuid card-or-dashboard)
        "/field/" (u/the-id field-or-id)
@@ -994,7 +994,7 @@
 (defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
   (str "public/"
        (condp mi/instance-of? card-or-dashboard
-         Card      "card"
+         :m/card      "card"
          Dashboard "dashboard")
        "/" (:public_uuid card-or-dashboard)
        "/field/" (u/the-id field-or-id)
@@ -1115,10 +1115,10 @@
         (let [card-uuid (str (random-uuid))
               field-filter-uuid (str (random-uuid))]
           (is (= 1
-                 (t2/update! Card (u/the-id card) {:public_uuid card-uuid}))
+                 (t2/update! :m/card (u/the-id card) {:public_uuid card-uuid}))
               "Enabled public setting on card")
           (is (= 1
-                 (t2/update! Card (u/the-id field-filter-card) {:public_uuid field-filter-uuid}))
+                 (t2/update! :m/card (u/the-id field-filter-card) {:public_uuid field-filter-uuid}))
               "Enabled public setting on field-filter-card")
           (testing "GET /api/public/card/:uuid/params/:param-key/values"
             (testing "parameter with source is a static list"
@@ -1192,7 +1192,7 @@
           (api.card-test/with-card-param-values-fixtures [{:keys [card param-keys]}]
             (let [uuid (str (UUID/randomUUID))]
              (is (= 1
-                    (t2/update! Card (u/the-id card) {:public_uuid uuid})))
+                    (t2/update! :m/card (u/the-id card) {:public_uuid uuid})))
              (testing "GET /api/public/card/:uuid/params/:param-key/values"
                (is (= {:values          ["African" "American" "Asian"]
                        :has_more_values false}

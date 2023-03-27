@@ -1,7 +1,7 @@
 (ns metabase.transforms.materialize
   (:require
    [metabase.api.common :as api]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :as card :refer [:m/card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.query-processor :as qp]
    [toucan2.core :as t2]))
@@ -47,7 +47,7 @@
    exists."
   [{:keys [name description]}]
   (if-let [collection-id (get-collection name)]
-    (t2/delete! Card :collection_id collection-id)
+    (t2/delete! :m/card :collection_id collection-id)
     (create-collection! name "#509EE3" description)))
 
 (defn make-card-for-step!
@@ -62,5 +62,5 @@
         :visualization_settings {}
         :display                :table}
        card/populate-query-fields
-       (t2/insert-returning-instances! Card)
+       (t2/insert-returning-instances! :m/card)
        first))

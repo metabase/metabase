@@ -14,7 +14,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models :refer [Card Collection Field Table]]
+   [metabase.models :refer [:m/card Collection Field Table]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -343,7 +343,7 @@
     (testing "Users with view access to the related collection should bypass segmented permissions"
       (mt/with-temp-copy-of-db
         (mt/with-temp* [Collection [collection]
-                        Card       [card        {:collection_id (u/the-id collection)}]]
+                        :m/card       [card        {:collection_id (u/the-id collection)}]]
           (mt/with-group [group]
             (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
             (perms/grant-collection-read-permissions! group collection)
@@ -362,7 +362,7 @@
                   "querying of a card as a nested query. Part of the row level perms check is looking at the table (or "
                   "card) to see if row level permissions apply. This was broken when it wasn't expecting a card and "
                   "only expecting resolved source-tables")
-      (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
+      (mt/with-temp :m/card [card {:dataset_query (mt/mbql-query venues)}]
         (let [query {:database (mt/id)
                      :type     :query
                      :query    {:source-table (format "card__%s" (u/the-id card))
@@ -596,7 +596,7 @@
           (is (integer? venues-gtap-card-id))
           (testing "GTAP Card should not yet current have result_metadata"
             (is (= nil
-                   (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id))))
+                   (t2/select-one-fn :result_metadata :m/card :id venues-gtap-card-id))))
           (testing "Should be able to run the query"
             (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
                    (mt/rows
@@ -619,7 +619,7 @@
                                   :display_name (s/eq "Name")
                                   s/Keyword     s/Any}
                                  "NAME col")]
-                         (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id)))))))))
+                         (t2/select-one-fn :result_metadata :m/card :id venues-gtap-card-id)))))))))
 
 (deftest run-queries-to-infer-columns-error-on-column-type-changes-test
   (testing "If we have to run a query to infer columns (see above) we should validate column constraints (#14099)\n"
@@ -640,7 +640,7 @@
                   (is (integer? venues-gtap-card-id))
                   (testing "GTAP Card should not yet current have result_metadata"
                     (is (= nil
-                           (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id))))
+                           (t2/select-one-fn :result_metadata :m/card :id venues-gtap-card-id))))
                   (f {:run-query (fn []
                                    (mt/run-mbql-query venues
                                      {:fields   [$id $name]
@@ -795,7 +795,7 @@
                          (qp/process-query query))))
           (testing "should be able to save the query as a Card and run it"
             (mt/with-temp* [Collection [{collection-id :id}]
-                            Card       [{card-id :id} {:dataset_query query, :collection_id collection-id}]]
+                            :m/card       [{card-id :id} {:dataset_query query, :collection_id collection-id}]]
               (perms/grant-collection-read-permissions! &group collection-id)
               (is (schema= {:data      {:rows     (s/eq [[nil 5] ["Widget" 6]])
                                         s/Keyword s/Any}
@@ -904,14 +904,14 @@
   when running the query."
   [group table-name param-name param-value]
   (let [card-id (t2/select-one-fn :card_id GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))
-        query   (t2/select-one-fn :dataset_query Card :id (u/the-id card-id))
+        query   (t2/select-one-fn :dataset_query :m/card :id (u/the-id card-id))
         results (mt/with-test-user :crowberto
                   (qp/process-query (assoc query :parameters [{:type   :category
                                                                :target [:variable [:template-tag param-name]]
                                                                :value  param-value}])))
         metadata (get-in results [:data :results_metadata :columns])]
     (is (seq metadata))
-    (t2/update! Card card-id {:result_metadata metadata})))
+    (t2/update! :m/card card-id {:result_metadata metadata})))
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
@@ -1007,7 +1007,7 @@
     (met/with-gtaps {:gtaps {:venues {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})}}}
       (let [card-id   (t2/select-one-fn :card_id GroupTableAccessPolicy :group_id (u/the-id &group))
             _         (is (integer? card-id))
-            query     (t2/select-one-fn :dataset_query Card :id card-id)
+            query     (t2/select-one-fn :dataset_query :m/card :id card-id)
             run-query (fn []
                         (let [results (qp/process-query (assoc query :cache-ttl 100))]
                           {:cached?  (boolean (:cached results))
@@ -1041,7 +1041,7 @@
                                               [:field (mt/id :products :category)
                                                nil]]}}}}
         (mt/with-persistence-enabled [persist-models!]
-          (mt/with-temp* [Card [model {:dataset       true
+          (mt/with-temp* [:m/card [model {:dataset       true
                                        :dataset_query (mt/mbql-query
                                                           products
                                                         ;; note does not include the field we have to filter on. No way

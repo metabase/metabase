@@ -1,7 +1,7 @@
 (ns metabase-enterprise.audit-app.api.user-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
+   [metabase.models :refer [:m/card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -19,7 +19,7 @@
     (premium-features-test/with-premium-features #{:audit-app}
       (doseq [run-type [:admin :non-admin]]
         (mt/with-temp* [User                  [{user-id :id}]
-                        Card                  [{card-id :id}]
+                        :m/card                  [{card-id :id}]
                         ;; Alert, created by a different User
                         Pulse                 [{alert-id :id}         {:alert_condition  "rows"
                                                                        :alert_first_only false

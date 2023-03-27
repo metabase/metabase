@@ -7,7 +7,7 @@
   "
   (:require
    [clojure.string :as str]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
@@ -87,7 +87,7 @@
   ([card value-field]
    (values-from-card card value-field nil))
 
-  ([card            :- (ms/InstanceOf Card)
+  ([card            :- (ms/InstanceOf :m/card)
     value-field     :- ms/Field
     query           :- [:any]]
    (let [mbql-query   (values-from-card-query card value-field query)
@@ -102,7 +102,7 @@
   "Given a param and query returns the values."
   [{config :values_source_config :as _param} query]
   (let [card-id (:card_id config)
-        card    (t2/select-one Card :id card-id)]
+        card    (t2/select-one :m/card :id card-id)]
     (values-from-card card (:value_field config) query)))
 
 (defn- can-get-card-values?
@@ -122,7 +122,7 @@
   [parameter query default-case-thunk]
   (case (:values_source_type parameter)
     "static-list" (static-list-values parameter query)
-    "card"        (let [card (t2/select-one Card :id (get-in parameter [:values_source_config :card_id]))]
+    "card"        (let [card (t2/select-one :m/card :id (get-in parameter [:values_source_config :card_id]))]
                     (when-not (mi/can-read? card)
                       (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
                     (if (can-get-card-values? card (get-in parameter [:values_source_config :value_field]))

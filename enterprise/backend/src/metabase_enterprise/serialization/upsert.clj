@@ -5,7 +5,7 @@
    [clojure.data :as data]
    [medley.core :as m]
    [metabase-enterprise.serialization.names :refer [name-for-logging]]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
@@ -47,7 +47,7 @@
    Pulse               [:name :collection_id]
    PulseCard           [:pulse_id :card_id]
    PulseChannel        [:pulse_id :channel_type :details]
-   Card                [:name :collection_id]
+   :m/card                [:name :collection_id]
    User                [:email]
    NativeQuerySnippet  [:name :collection_id]})
 

@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.models :refer [Card Collection Database Table]]
+   [metabase.models :refer [:m/card Collection Database Table]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -132,7 +132,7 @@
          (mt/with-temp* [Database [db]
                          Table    [_       {:db_id (u/the-id db)}]
                          Table    [table-2 {:db_id (u/the-id db)}]
-                         Card     [card    {:dataset_query {:database (u/the-id db), :type :query,
+                         :m/card     [card    {:dataset_query {:database (u/the-id db), :type :query,
                                                             :query {:source-table (u/the-id table-2)}}}]]
            ;; All users get perms for all new DBs by default
            (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db) nil (u/the-id table-2))
@@ -150,7 +150,7 @@
     (mt/with-temp* [Database [db]
                     Table    [_       {:db_id (u/the-id db)}]
                     Table    [table-2 {:db_id (u/the-id db)}]
-                    Card     [card    {:dataset_query {:database (u/the-id db), :type :query,
+                    :m/card     [card    {:dataset_query {:database (u/the-id db), :type :query,
                                                        :query {:source-table (u/the-id table-2)}}}]]
       (let [card-id   (:id card)
             tag-name  (str "#" card-id)
@@ -174,7 +174,7 @@
          ExceptionInfo
          perms-error-msg
          (mt/with-temp* [Database [db]
-                         Card     [card {:dataset_query
+                         :m/card     [card {:dataset_query
                                          {:database (u/the-id db), :type :native,
                                           :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]]
            ;; All users get perms for all new DBs by default
@@ -191,7 +191,7 @@
 
   (testing "...but it should work if user has perms [template tag referenced query]"
     (mt/with-temp* [Database [db]
-                    Card     [card {:dataset_query
+                    :m/card     [card {:dataset_query
                                     {:database (u/the-id db), :type :native,
                                      :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]]
       (let [card-id  (:id card)
@@ -219,7 +219,7 @@
         (let [query  (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})
               check! qp.perms/check-query-action-permissions*]
           (mt/with-temp Collection [collection]
-            (mt/with-temp Card [{model-id :id} {:collection_id (u/the-id collection)
+            (mt/with-temp :m/card [{model-id :id} {:collection_id (u/the-id collection)
                                                 :dataset_query query}]
               (testing "are granted by default"
                 (check! query))
@@ -271,7 +271,7 @@
                                                                             "ORDER BY id ASC "
                                                                             "LIMIT 2")})}]
             (testing (format "\nCard 1 is a %s query" card-1-query-type)
-              (mt/with-temp Card [{card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
+              (mt/with-temp :m/card [{card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
                                                                :dataset_query card-1-query}]
                 (doseq [[card-2-query-type card-2-query] {"MBQL"   (mt/mbql-query nil
                                                                      {:source-table (format "card__%d" card-1-id)})
@@ -282,7 +282,7 @@
                                                                                               :type         :card
                                                                                               :card-id      card-1-id}}})}]
                   (testing (format "\nCard 2 is a %s query" card-2-query-type)
-                    (mt/with-temp Card [card-2 {:collection_id (u/the-id collection)
+                    (mt/with-temp :m/card [card-2 {:collection_id (u/the-id collection)
                                                 :dataset_query card-2-query}]
                       (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
                         (mt/with-test-user :rasta
@@ -317,7 +317,7 @@
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
       (mt/with-temp* [Collection [collection]
-                      Card       [card {:collection_id (u/the-id collection)
+                      :m/card       [card {:collection_id (u/the-id collection)
                                         :dataset_query (mt/mbql-query venues {:fields [$id], :order-by [[:asc $id]], :limit 2})}]]
         ;; Since the collection derives from the root collection this grant shouldn't really be needed, but better to
         ;; be extra-sure in this case that the user is getting rejected for data perms and not card/collection perms

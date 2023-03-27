@@ -22,7 +22,6 @@
    [toucan2.tools.before-update :as t2.before-update]
    [toucan2.util :as t2.util]))
 
-
 (def changes*
   "An atom to store all the changes of models that we currently track."
   (atom {}))
@@ -98,7 +97,7 @@
 (defn track!
   "Start tracking a list of models.
 
-  (track! 'Card 'Dashboard)"
+  (track! :m/card 'Dashboard)"
   [& models]
   (doseq [model (map t2.model/resolve-model models)]
     (track-one! model)
@@ -113,7 +112,7 @@
 (defn untrack!
   "Remove tracking for a list of models.
 
-  (untrack! 'Card 'Dashboard)"
+  (untrack! :m/card 'Dashboard)"
   [& models]
   (doseq [model (map t2.model/resolve-model models)]
     (untrack-one! model)))

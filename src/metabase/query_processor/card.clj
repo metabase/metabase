@@ -7,7 +7,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :as card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.database :refer [Database]]
    [metabase.models.query :as query]
@@ -99,7 +99,7 @@
   parameters to the API request must be allowed for this type (i.e. `:string/=` is allowed for a `:string` parameter,
   but `:number/=` is not)."
   [card-id]
-  (let [query (api/check-404 (t2/select-one-fn :dataset_query Card :id card-id))]
+  (let [query (api/check-404 (t2/select-one-fn :dataset_query :m/card :id card-id))]
     (into
      {}
      (comp
@@ -196,7 +196,7 @@
                   (^:once fn* [query info]
                    (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
                                                     (qp-runner query info context))))
-        card  (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id
+        card  (api/read-check (t2/select-one [:m/card :id :name :dataset_query :database_id
                                               :cache_ttl :collection_id :dataset :result_metadata]
                                              :id card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)

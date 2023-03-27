@@ -8,7 +8,7 @@
    [metabase.automagic-dashboards.core
     :refer [automagic-analysis candidate-tables]]
    [metabase.automagic-dashboards.rules :as rules]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -103,13 +103,13 @@
 
 (defmethod ->entity :model
   [_entity-type card-id-str]
-  (api/read-check (t2/select-one Card
+  (api/read-check (t2/select-one :m/card
                     :id (ensure-int card-id-str)
                     :dataset true)))
 
 (defmethod ->entity :question
   [_entity-type card-id-str]
-  (api/read-check (t2/select-one Card :id (ensure-int card-id-str))))
+  (api/read-check (t2/select-one :m/card :id (ensure-int card-id-str))))
 
 (defmethod ->entity :adhoc
   [_entity-type encoded-query]

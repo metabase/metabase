@@ -97,7 +97,7 @@
  [bookmark DashboardBookmark]
  [bookmark CollectionBookmark]
  [bookmark BookmarkOrdering]
- [card Card]
+ [card :m/card]
  [collection Collection]
  [c-perm-revision CollectionPermissionGraphRevision]
  [dashboard Dashboard]

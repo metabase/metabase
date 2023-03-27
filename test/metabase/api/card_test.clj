@@ -15,7 +15,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card
+    :refer [:m/card
             CardBookmark
             Collection
             Dashboard
@@ -121,7 +121,7 @@
   [f]
   (mt/with-temp* [Database   [db    {:details (:details (mt/db)), :engine :h2}]
                   Table      [_     {:db_id (u/the-id db), :name "CATEGORIES"}]
-                  Card       [card  {:dataset_query {:database (u/the-id db)
+                  :m/card       [card  {:dataset_query {:database (u/the-id db)
                                                      :type     :native
                                                      :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]]
     (f db card)))
@@ -139,7 +139,7 @@
       (doseq [card-or-id (if (sequential? card-or-cards-or-ids)
                            card-or-cards-or-ids
                            [card-or-cards-or-ids])]
-        (t2/update! Card (u/the-id card-or-id) {:collection_id (u/the-id collection)}))
+        (t2/update! :m/card (u/the-id card-or-id) {:collection_id (u/the-id collection)}))
       ;; now use `grant-perms-fn!` to grant appropriate perms
       (grant-perms-fn! (perms-group/all-users) collection)
       ;; call (f)
@@ -162,7 +162,7 @@
   (mt/with-temp*
     [Database   [db    {:details (:details (mt/db)), :engine :h2}]
      Table      [_     {:db_id (u/the-id db), :name "VENUES"}]
-     Card       [card  {:dataset_query
+     :m/card       [card  {:dataset_query
                         {:database (u/the-id db)
                          :type     :native
                          :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = {{category}};"
@@ -203,8 +203,8 @@
 
 (deftest filter-cards-by-db-test
   (mt/with-temp* [Database [db]
-                  Card     [card-1 {:database_id (mt/id)}]
-                  Card     [card-2 {:database_id (u/the-id db)}]]
+                  :m/card     [card-1 {:database_id (mt/id)}]
+                  :m/card     [card-2 {:database_id (u/the-id db)}]]
     (with-cards-in-readable-collection [card-1 card-2]
       (is (= true
              (card-returned? :database (mt/id) card-1)))
@@ -227,8 +227,8 @@
     (mt/with-temp* [Database [db]
                     Table    [table-1  {:db_id (u/the-id db)}]
                     Table    [table-2  {:db_id (u/the-id db)}]
-                    Card     [card-1   {:table_id (u/the-id table-1)}]
-                    Card     [card-2   {:table_id (u/the-id table-2)}]]
+                    :m/card     [card-1   {:table_id (u/the-id table-1)}]
+                    :m/card     [card-2   {:table_id (u/the-id table-2)}]]
       (with-cards-in-readable-collection [card-1 card-2]
         (is (= true
                (card-returned? :table (u/the-id table-1) (u/the-id card-1))))
@@ -247,7 +247,7 @@
              (fn [[f timestamp] [card-or-id username]]
                [(fn []
                   (let [card-id   (u/the-id card-or-id)
-                        card-name (t2/select-one-fn :name Card :id card-id)]
+                        card-name (t2/select-one-fn :name :m/card :id card-id)]
                     (testing (format "\nCard %d %s viewed by %s on %s" card-id (pr-str card-name) username timestamp)
                       (mt/with-temp ViewLog [_ {:model     "card"
                                                 :model_id  card-id
@@ -264,10 +264,10 @@
 
 (deftest filter-by-recent-test
   (testing "GET /api/card?f=recent"
-    (mt/with-temp* [Card [card-1 {:name "Card 1"}]
-                    Card [card-2 {:name "Card 2"}]
-                    Card [card-3 {:name "Card 3"}]
-                    Card [card-4 {:name "Card 4"}]]
+    (mt/with-temp* [:m/card [card-1 {:name "Card 1"}]
+                    :m/card [card-2 {:name "Card 2"}]
+                    :m/card [card-3 {:name "Card 3"}]
+                    :m/card [card-4 {:name "Card 4"}]]
       ;; 3 was viewed most recently, followed by 4, then 1. Card 2 was viewed by a different user so shouldn't be
       ;; returned
       (with-card-views [card-1 :rasta
@@ -284,9 +284,9 @@
 
 (deftest filter-by-popular-test
   (testing "GET /api/card?f=popular"
-    (mt/with-temp* [Card [card-1 {:name "Card 1"}]
-                    Card [card-2 {:name "Card 2"}]
-                    Card [card-3 {:name "Card 3"}]]
+    (mt/with-temp* [:m/card [card-1 {:name "Card 1"}]
+                    :m/card [card-2 {:name "Card 2"}]
+                    :m/card [card-3 {:name "Card 3"}]]
       ;; 3 entries for card 3, 2 for card 2, none for card 1,
       (with-card-views [card-3 :rasta
                         card-2 :trashbird
@@ -302,9 +302,9 @@
 
 (deftest filter-by-archived-test
   (testing "GET /api/card?f=archived"
-    (mt/with-temp* [Card [card-1 {:name "Card 1"}]
-                    Card [card-2 {:name "Card 2", :archived true}]
-                    Card [card-3 {:name "Card 3", :archived true}]]
+    (mt/with-temp* [:m/card [card-1 {:name "Card 1"}]
+                    :m/card [card-2 {:name "Card 2", :archived true}]
+                    :m/card [card-3 {:name "Card 3", :archived true}]]
       (with-cards-in-readable-collection [card-1 card-2 card-3]
         (is (= #{"Card 2" "Card 3"}
                (set (map :name (mt/user-http-request :rasta :get 200 "card", :f :archived))))
@@ -312,9 +312,9 @@
 
 (deftest filter-by-bookmarked-test
   (testing "Filter by `bookmarked`"
-    (mt/with-temp* [Card         [card-1 {:name "Card 1"}]
-                    Card         [card-2 {:name "Card 2"}]
-                    Card         [card-3 {:name "Card 3"}]
+    (mt/with-temp* [:m/card         [card-1 {:name "Card 1"}]
+                    :m/card         [card-2 {:name "Card 2"}]
+                    :m/card         [card-3 {:name "Card 3"}]
                     CardBookmark [_ {:card_id (u/the-id card-1), :user_id (mt/user->id :rasta)}]
                     CardBookmark [_ {:card_id (u/the-id card-2), :user_id (mt/user->id :crowberto)}]]
       (with-cards-in-readable-collection [card-1 card-2 card-3]
@@ -324,19 +324,19 @@
 
 (deftest filter-by-using-model
   (testing "list cards using a model"
-    (mt/with-temp* [Card [{model-id :id :as model} {:name "Model", :dataset true
+    (mt/with-temp* [:m/card [{model-id :id :as model} {:name "Model", :dataset true
                                                     :dataset_query {:query {:source-table 1
                                                                             :filter [:= [:field 1 nil] "1"]}}}]
                     ;; matching question
-                    Card [card-1 {:name "Card 1"
+                    :m/card [card-1 {:name "Card 1"
                                   :dataset_query {:query {:source-table (str "card__" model-id)}}}]
-                    Card [{other-card-id :id}]
+                    :m/card [{other-card-id :id}]
                     ;; source-table doesn't match
-                    Card [card-2 {:name "Card 2"
+                    :m/card [card-2 {:name "Card 2"
                                   :dataset_query {:query {:source-table (str "card__" other-card-id)
                                                           :filter [:= [:field 5 nil] (str "card__" model-id)]}}}]
                     ;; matching join
-                    Card [card-3 {:name "Card 3"
+                    :m/card [card-3 {:name "Card 3"
                                   :dataset_query (let [alias (str "Question " model-id)]
                                                    {:type :query
                                                     :query {:joins [{:fields [[:field 35 {:join-alias alias}]]
@@ -349,7 +349,7 @@
                                                             :fields [[:field 9 nil]]}
                                                     :database 1})}]
                     ;; matching native query
-                    Card [card-4 {:name "Card 4"
+                    :m/card [card-4 {:name "Card 4"
                                   :dataset_query {:type :native
                                                   :native (let [model-ref (format "#%d-q1" model-id)]
                                                             {:query (format "select o.id from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
@@ -362,7 +362,7 @@
                                                                               :card-id model-id}}})
                                                   :database 1}}]
                     ;; native query reference doesn't match
-                    Card [card-5 {:name "Card 5"
+                    :m/card [card-5 {:name "Card 5"
                                    :dataset_query {:type :native
                                                    :native (let [model-ref (str "card__" model-id)
                                                                  card-id other-card-id
@@ -378,10 +378,10 @@
                                                    :database 1}}]
                     Database [{other-database-id :id}]
                     ;; database doesn't quite match
-                    Card [card-6 {:name "Card 6", :database_id other-database-id
+                    :m/card [card-6 {:name "Card 6", :database_id other-database-id
                                    :dataset_query {:query {:source-table (str "card__" model-id)}}}]
                     ;; same as matching question, but archived
-                    Card [card-7 {:name "Card 7"
+                    :m/card [card-7 {:name "Card 7"
                                   :archived true
                                   :dataset_query {:query {:source-table (str "card__" model-id)}}}]]
       (with-cards-in-readable-collection [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
@@ -399,7 +399,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-          (mt/with-model-cleanup [Card]
+          (mt/with-model-cleanup [:m/card]
             (let [card (assoc (card-with-name-and-query (mt/random-name)
                                                         (mbql-count-query (mt/id) (mt/id :venues)))
                               :collection_id      (u/the-id collection)
@@ -462,7 +462,7 @@
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
                (mt/user-http-request :rasta :post 400 "card"
                                      (merge
-                                      (mt/with-temp-defaults Card)
+                                      (mt/with-temp-defaults :m/card)
                                       {:dataset       true
                                        :query_type    "native"
                                        :dataset_query (:dataset_query card)})))))
@@ -470,7 +470,7 @@
         (let [card-tag-name (str "#" (u/the-id card))]
           (mt/user-http-request :rasta :post 200 "card"
                                 (merge
-                                 (mt/with-temp-defaults Card)
+                                 (mt/with-temp-defaults :m/card)
                                  {:dataset_query {:database (u/the-id db)
                                                   :type     :native
                                                   :native   {:query         (format "SELECT * FROM {{%s}};" card-tag-name)
@@ -486,7 +486,7 @@
       ;; should be ignored regardless of the value of the `enable-embedding` Setting.
       (doseq [enable-embedding? [true false]]
         (mt/with-temporary-setting-values [enable-embedding enable-embedding?]
-          (mt/with-model-cleanup [Card]
+          (mt/with-model-cleanup [:m/card]
             (is (schema= {:enable_embedding (s/eq false)
                           s/Keyword         s/Any}
                          (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
@@ -504,12 +504,12 @@
                                          "MBQL query"
                                          (mt/mbql-query venues {:filter [:= $id 0]})}]
         (testing query-description
-          (mt/with-model-cleanup [Card]
+          (mt/with-model-cleanup [:m/card]
             (testing "without result metadata"
               (is (schema= {:id       su/IntGreaterThanZero
                             s/Keyword s/Any}
                            (mt/user-http-request :rasta :post 200 "card"
-                                                 (merge (mt/with-temp-defaults Card)
+                                                 (merge (mt/with-temp-defaults :m/card)
                                                         {:dataset_query query})))))
             (let [metadata (-> (qp/process-query query)
                                :data
@@ -520,13 +520,13 @@
                 (is (schema= {:id       su/IntGreaterThanZero
                               s/Keyword s/Any}
                              (mt/user-http-request :rasta :post 200 "card"
-                                                   (merge (mt/with-temp-defaults Card)
+                                                   (merge (mt/with-temp-defaults :m/card)
                                                           {:dataset_query   query
                                                            :result_metadata metadata}))))))))))))
 
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
-    (mt/with-model-cleanup [Card]
+    (mt/with-model-cleanup [:m/card]
       (let [card        (card-with-name-and-query)]
         (is (schema= {:id su/IntGreaterThanZero, s/Keyword s/Any}
                      (mt/user-http-request :rasta
@@ -538,7 +538,7 @@
 (deftest cache-ttl-save
   (testing "POST /api/card/:id"
     (testing "saving cache ttl by post actually saves it"
-      (mt/with-model-cleanup [Card]
+      (mt/with-model-cleanup [:m/card]
         (let [card        (card-with-name-and-query)]
           (is (= 1234
                  (:cache_ttl (mt/user-http-request :rasta
@@ -548,7 +548,7 @@
                                                    (assoc card :cache_ttl 1234)))))))))
   (testing "PUT /api/card/:id"
     (testing "saving cache ttl by put actually saves it"
-      (mt/with-temp Card [card]
+      (mt/with-temp :m/card [card]
         (is (= 1234
                (:cache_ttl (mt/user-http-request :rasta
                                      :put
@@ -556,7 +556,7 @@
                                      (str "card/" (u/the-id card))
                                      {:cache_ttl 1234}))))))
     (testing "nilling out cache ttl works"
-      (mt/with-temp Card [card]
+      (mt/with-temp :m/card [card]
         (is (= nil
                (do
                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:cache_ttl 1234})
@@ -569,7 +569,7 @@
       (let [card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-          (mt/with-model-cleanup [Card]
+          (mt/with-model-cleanup [:m/card]
             (mt/user-http-request :rasta :post 200 "card"
                                   (assoc (card-with-name-and-query card-name)
                                          :collection_id      (u/the-id collection)))
@@ -580,7 +580,7 @@
                        :semantic_type :type/Quantity
                        :source        :aggregation
                        :field_ref     [:aggregation 0]}]
-                     (t2/select-one-fn :result_metadata Card :name card-name))))))))))
+                     (t2/select-one-fn :result_metadata :m/card :name card-name))))))))))
 
 (deftest updating-card-updates-metadata
   (let [query          (mt/mbql-query venues {:fields [$id $name]})
@@ -594,7 +594,7 @@
       (doseq [[query-type query modified-query] [["mbql"   query modified-query]
                                                  ["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)
-          (mt/with-model-cleanup [Card]
+          (mt/with-model-cleanup [:m/card]
             (let [{metadata :result_metadata
                    card-id  :id :as card} (mt/user-http-request
                                            :rasta :post 200
@@ -607,14 +607,14 @@
                :rasta :put 200 (str "card/" card-id)
                (assoc card :dataset_query modified-query))
               (is (= ["ID" "NAME" "PRICE"]
-                     (map norm (t2/select-one-fn :result_metadata Card :id card-id)))))))))
+                     (map norm (t2/select-one-fn :result_metadata :m/card :id card-id)))))))))
     (testing "Updating other parts but not query does not update the metadata"
       (let [orig   qp.async/result-metadata-for-query-async
             called (atom 0)]
         (with-redefs [qp.async/result-metadata-for-query-async (fn [q]
                                                                  (swap! called inc)
                                                                  (orig q))]
-          (mt/with-model-cleanup [Card]
+          (mt/with-model-cleanup [:m/card]
             (let [card (mt/user-http-request :rasta :post 200 "card"
                                              (card-with-name-and-query "card-name"
                                                                        query))]
@@ -631,7 +631,7 @@
               (is (= @called 1)))))))
     (testing "Patching the card _without_ the query does not clear the metadata"
       ;; in practice the application does not do this. But cypress does and it poisons the state of the frontend
-      (mt/with-model-cleanup [Card]
+      (mt/with-model-cleanup [:m/card]
         (let [card (mt/user-http-request :rasta :post 200 "card"
                                          (card-with-name-and-query "card-name"
                                                                    query))]
@@ -641,7 +641,7 @@
                                                :dataset true})]
             (is (= ["ID" "NAME"] (map norm (:result_metadata updated))))))))
     (testing "You can update just the metadata"
-      (mt/with-model-cleanup [Card]
+      (mt/with-model-cleanup [:m/card]
         (let [card (mt/user-http-request :rasta :post 200 "card"
                                          (card-with-name-and-query "card-name"
                                                                    query))]
@@ -658,7 +658,7 @@
       (let [card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-          (mt/with-model-cleanup [Card]
+          (mt/with-model-cleanup [:m/card]
             ;; Rebind the `execute-statement!` function so that we can capture the generated SQL and inspect it
             (let [orig       (var-get #'sql-jdbc.execute/execute-statement!)
                   sql-result (atom nil)]
@@ -681,7 +681,7 @@
                                                   :nil%           0.0},
                                          :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
                          :field_ref     [:field "count" {:base-type (count-base-type)}]}]
-                       (t2/select-one-fn :result_metadata Card :name card-name))))
+                       (t2/select-one-fn :result_metadata :m/card :name card-name))))
               (testing "Was the user id found in the generated SQL?"
                 (is (= true
                        (boolean
@@ -695,7 +695,7 @@
       (let [card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-          (mt/with-model-cleanup [Card]
+          (mt/with-model-cleanup [:m/card]
             (is (schema= {:collection_id       (s/eq (u/the-id collection))
                           :collection_position (s/eq 1)
                           :name                (s/eq card-name)
@@ -706,19 +706,19 @@
             (is (schema= {:collection_id       (s/eq (u/the-id collection))
                           :collection_position (s/eq 1)
                           s/Keyword            s/Any}
-                         (t2/select-one Card :name card-name)))))))))
+                         (t2/select-one :m/card :name card-name)))))))))
 
 (deftest need-permission-for-collection
   (testing "You need to have Collection permissions to create a Card in a Collection"
     (mt/with-non-admin-groups-no-root-collection-perms
       (let [card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
-          (mt/with-model-cleanup [Card]
+          (mt/with-model-cleanup [:m/card]
             (mt/user-http-request :rasta :post 403 "card"
                                   (assoc (card-with-name-and-query card-name)
                                          :collection_id (u/the-id collection)
                                          :collection_position 1))
-            (is (nil? (some-> (t2/select-one [Card :collection_id :collection_position] :name card-name)
+            (is (nil? (some-> (t2/select-one [:m/card :collection_id :collection_position] :name card-name)
                               (update :collection_id (partial = (u/the-id collection))))))))))))
 
 (deftest create-card-check-adhoc-query-permissions-test
@@ -730,9 +730,9 @@
       (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
       (let [query        (mt/mbql-query venues)
             create-card! (fn [test-user expected-status-code]
-                           (mt/with-model-cleanup [Card]
+                           (mt/with-model-cleanup [:m/card]
                              (mt/user-http-request test-user :post expected-status-code "card"
-                                                   (merge (mt/with-temp-defaults Card) {:dataset_query query}))))]
+                                                   (merge (mt/with-temp-defaults :m/card) {:dataset_query query}))))]
         (testing "admin should be able to save a Card if All Users doesn't have ad-hoc data perms"
           (is (some? (create-card! :crowberto 200))))
         (testing "non-admin should get an error"
@@ -755,7 +755,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-          (mt/with-model-cleanup [Card]
+          (mt/with-model-cleanup [:m/card]
             (let [card    (assoc (card-with-name-and-query (mt/random-name)
                                                            (mbql-count-query (mt/id) (mt/id :venues)))
                                  :collection_id (u/the-id collection))
@@ -774,7 +774,7 @@
   (testing "GET /api/card/:id"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp* [Collection [collection]
-                      Card       [card {:collection_id (u/the-id collection)
+                      :m/card       [card {:collection_id (u/the-id collection)
                                         :dataset_query (mt/mbql-query venues)}]]
         (testing "You have to have Collection perms to fetch a Card"
           (is (= "You don't have permissions to do that."
@@ -843,21 +843,21 @@
          (mt/user-http-request :crowberto :put 404 "card/12345"))))
 
 (deftest test-that-we-can-edit-a-card
-  (mt/with-temp Card [card {:name "Original Name"}]
+  (mt/with-temp :m/card [card {:name "Original Name"}]
     (with-cards-in-writeable-collection card
       (is (= "Original Name"
-             (t2/select-one-fn :name Card, :id (u/the-id card))))
+             (t2/select-one-fn :name :m/card, :id (u/the-id card))))
       (is (= {:timestamp true, :first_name "Rasta", :last_name "Toucan", :email "rasta@metabase.com", :id true}
              (-> (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:name "Updated Name"})
                  mt/boolean-ids-and-timestamps
                  :last-edit-info)))
       (is (= "Updated Name"
-             (t2/select-one-fn :name Card, :id (u/the-id card)))))))
+             (t2/select-one-fn :name :m/card, :id (u/the-id card)))))))
 
 (deftest can-we-update-a-card-s-archived-status-
-  (mt/with-temp Card [card]
+  (mt/with-temp :m/card [card]
     (with-cards-in-writeable-collection card
-      (let [archived?     (fn [] (:archived (t2/select-one Card :id (u/the-id card))))
+      (let [archived?     (fn [] (:archived (t2/select-one :m/card :id (u/the-id card))))
             set-archived! (fn [archived]
                             (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived archived})
                             (archived?))]
@@ -871,7 +871,7 @@
 (deftest we-shouldn-t-be-able-to-archive-cards-if-we-don-t-have-collection--write--perms
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [collection]
-                    Card       [card {:collection_id (u/the-id collection)}]]
+                    :m/card       [card {:collection_id (u/the-id collection)}]]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:archived true}))))))
@@ -879,28 +879,28 @@
 (deftest we-shouldn-t-be-able-to-unarchive-cards-if-we-don-t-have-collection--write--perms
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [collection]
-                    Card       [card {:collection_id (u/the-id collection) :archived true}]]
+                    :m/card       [card {:collection_id (u/the-id collection) :archived true}]]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (is (= "You don't have permissions to do that."
               (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:archived false}))))))
 
 (deftest clear-description-test
   (testing "Can we clear the description of a Card? (#4738)"
-    (mt/with-temp Card [card {:description "What a nice Card"}]
+    (mt/with-temp :m/card [card {:description "What a nice Card"}]
       (with-cards-in-writeable-collection card
         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description nil})
-        (is (nil? (t2/select-one-fn :description Card :id (u/the-id card))))))))
+        (is (nil? (t2/select-one-fn :description :m/card :id (u/the-id card))))))))
 
 (deftest description-should-be-blankable-as-well
-  (mt/with-temp Card [card {:description "What a nice Card"}]
+  (mt/with-temp :m/card [card {:description "What a nice Card"}]
     (with-cards-in-writeable-collection card
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description ""})
       (is (= ""
-             (t2/select-one-fn :description Card :id (u/the-id card)))))))
+             (t2/select-one-fn :description :m/card :id (u/the-id card)))))))
 
 (deftest update-card-parameters-test
   (testing "PUT /api/card/:id"
-    (mt/with-temp Card [card]
+    (mt/with-temp :m/card [card]
       (testing "successfully update with valid parameters"
         (is (partial= {:parameters [{:id   "random-id"
                                      :type "number"}]}
@@ -908,7 +908,7 @@
                                             {:parameters [{:id   "random-id"
                                                            :type "number"}]})))))
 
-    (mt/with-temp Card [card {:parameters [{:id   "random-id"
+    (mt/with-temp :m/card [card {:parameters [{:id   "random-id"
                                             :type "number"}]}]
       (testing "nil parameters will no-op"
         (is (partial= {:parameters [{:id   "random-id"
@@ -922,7 +922,7 @@
 
 (deftest update-card-parameter-mappings-test
   (testing "PUT /api/card/:id"
-    (mt/with-temp Card [card]
+    (mt/with-temp :m/card [card]
       (testing "successfully update with valid parameter_mappings"
         (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
                                              :target ["dimension" ["template-tags" "category"]]}]}
@@ -930,7 +930,7 @@
                                             {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
                                                                    :target ["dimension" ["template-tags" "category"]]}]})))))
 
-    (mt/with-temp Card [card {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
+    (mt/with-temp :m/card [card {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
                                                     :target ["dimension" ["template-tags" "category"]]}]}]
       (testing "nil parameters will no-op"
         (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
@@ -944,7 +944,7 @@
 
 (deftest update-embedding-params-test
   (testing "PUT /api/card/:id"
-    (mt/with-temp Card [card]
+    (mt/with-temp :m/card [card]
       (testing "If embedding is disabled, even an admin should not be allowed to update embedding params"
         (mt/with-temporary-setting-values [enable-embedding false]
           (is (= "Embedding is not enabled."
@@ -961,49 +961,49 @@
           (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                 {:embedding_params {:abc "enabled"}})
           (is (= {:abc "enabled"}
-                 (t2/select-one-fn :embedding_params Card :id (u/the-id card)))))))))
+                 (t2/select-one-fn :embedding_params :m/card :id (u/the-id card)))))))))
 
 (deftest can-we-change-the-collection-position-of-a-card-
-  (mt/with-temp Card [card]
+  (mt/with-temp :m/card [card]
     (with-cards-in-writeable-collection card
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                             {:collection_position 1})
       (is (= 1
-             (t2/select-one-fn :collection_position Card :id (u/the-id card)))))))
+             (t2/select-one-fn :collection_position :m/card :id (u/the-id card)))))))
 
 (deftest can-we-change-the-collection-preview-flag-of-a-card-
-  (mt/with-temp Card [card]
+  (mt/with-temp :m/card [card]
     (with-cards-in-writeable-collection card
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                             {:collection_preview false})
       (is (= false
-             (t2/select-one-fn :collection_preview Card :id (u/the-id card)))))))
+             (t2/select-one-fn :collection_preview :m/card :id (u/the-id card)))))))
 
 (deftest ---and-unset--unpin--it-as-well-
-  (mt/with-temp Card [card {:collection_position 1}]
+  (mt/with-temp :m/card [card {:collection_position 1}]
     (with-cards-in-writeable-collection card
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                             {:collection_position nil})
       (is (= nil
-             (t2/select-one-fn :collection_position Card :id (u/the-id card)))))))
+             (t2/select-one-fn :collection_position :m/card :id (u/the-id card)))))))
 
 (deftest ---we-shouldn-t-be-able-to-if-we-don-t-have-permissions-for-the-collection
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [collection]
-                    Card       [card {:collection_id (u/the-id collection)}]]
+                    :m/card       [card {:collection_id (u/the-id collection)}]]
       (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
                             {:collection_position 1})
       (is (= nil
-             (t2/select-one-fn :collection_position Card :id (u/the-id card)))))))
+             (t2/select-one-fn :collection_position :m/card :id (u/the-id card)))))))
 
 (deftest gets-a-card
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [collection]
-                    Card       [card {:collection_id (u/the-id collection), :collection_position 1}]]
+                    :m/card       [card {:collection_id (u/the-id collection), :collection_position 1}]]
       (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
                             {:collection_position nil})
       (is (= 1
-             (t2/select-one-fn :collection_position Card :id (u/the-id card)))))))
+             (t2/select-one-fn :collection_position :m/card :id (u/the-id card)))))))
 
 (deftest update-card-validation-test
   (testing "PUT /api/card"
@@ -1047,10 +1047,10 @@
 (deftest check-to-make-sure-we-can-move-a-card-in-a-collection-of-just-cards
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp Collection [collection]
-      (with-ordered-items collection [Card a
-                                      Card b
-                                      Card c
-                                      Card d]
+      (with-ordered-items collection [:m/card a
+                                      :m/card b
+                                      :m/card c
+                                      :m/card d]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id c))
                               {:collection_position 1})
@@ -1095,13 +1095,13 @@
           (testing (str "\n" message)
             (with-ordered-items collection [Dashboard a
                                             Pulse     b
-                                            Card      c]
+                                            :m/card      c]
               (testing "Original collection, before adding the new card"
                 (is (= {"a" 1
                         "b" 2
                         "c" 3}
                        (get-name->collection-position :rasta collection))))
-              (mt/with-model-cleanup [Card]
+              (mt/with-model-cleanup [:m/card]
                 (mt/user-http-request :rasta :post 200 "card"
                                       (merge (card-with-name-and-query "d")
                                              {:collection_id       (u/the-id collection)
@@ -1143,8 +1143,8 @@
           (testing (str "\n" message)
             (with-ordered-items collection [Dashboard a
                                             Dashboard b
-                                            Card      c
-                                            Card      d
+                                            :m/card      c
+                                            :m/card      d
                                             Pulse     e
                                             Pulse     f]
               (testing "Original collection, before moving the Card"
@@ -1164,11 +1164,11 @@
   (testing "Give an existing Card without a `:collection_position` a position, and things should be adjusted accordingly"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp* [Collection [{coll-id :id :as collection}]
-                      Card       [_ {:name "a", :collection_id coll-id, :collection_position 1}]
+                      :m/card       [_ {:name "a", :collection_id coll-id, :collection_position 1}]
                       ;; Card b does not start with a collection_position
-                      Card       [b {:name "b", :collection_id coll-id}]
+                      :m/card       [b {:name "b", :collection_id coll-id}]
                       Dashboard  [_ {:name "c", :collection_id coll-id, :collection_position 2}]
-                      Card       [_ {:name "d", :collection_id coll-id, :collection_position 3}]]
+                      :m/card       [_ {:name "d", :collection_id coll-id, :collection_position 3}]]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id b))
                               {:collection_position 2})
@@ -1185,12 +1185,12 @@
       (mt/with-temp* [Collection [collection-1]
                       Collection [collection-2]]
         (with-ordered-items collection-1 [Dashboard a
-                                          Card      b
+                                          :m/card      b
                                           Pulse     c
                                           Dashboard d]
           (with-ordered-items collection-2 [Pulse     e
-                                            Card      f
-                                            Card      g
+                                            :m/card      f
+                                            :m/card      g
                                             Dashboard h]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
@@ -1221,7 +1221,7 @@
           (with-ordered-items collection-2 [Dashboard e
                                             Dashboard f
                                             Pulse     g
-                                            Card      h]
+                                            :m/card      h]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
             (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id h))
@@ -1244,7 +1244,7 @@
     ;; able to ad-hoc query it now.
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (mt/with-temp :m/card [{card-id :id} {:dataset_query (mt/mbql-query venues)}]
         (let [update-card! (fn [test-user expected-status-code request-body]
                              (mt/user-http-request test-user :put expected-status-code (format "card/%d" card-id)
                                                    request-body))]
@@ -1273,7 +1273,7 @@
                              (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
               (testing "make sure query hasn't changed in the DB"
                 (is (= (mt/mbql-query checkins)
-                       (t2/select-one-fn :dataset_query Card :id card-id)))))
+                       (t2/select-one-fn :dataset_query :m/card :id card-id)))))
 
             (testing "should be allowed to update other fields if query is passed in but hasn't changed (##11719)"
               (is (schema= {:id            (s/eq card-id)
@@ -1353,7 +1353,7 @@
                                                                               [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
                                                                                                   [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
     (testing message
-      (mt/with-temp* [Card                  [card  card]
+      (mt/with-temp* [:m/card                  [card  card]
                       Pulse                 [pulse {:alert_condition  "rows"
                                                     :alert_first_only false
                                                     :creator_id       (mt/user->id :rasta)
@@ -1388,7 +1388,7 @@
           :pulse-1  true
           :emails-2 {}
           :pulse-2  true}
-         (mt/with-temp* [Card                  [card  {:display                :line
+         (mt/with-temp* [:m/card                  [card  {:display                :line
                                                        :visualization_settings {:graph.goal_value 10}}]
                          Pulse                 [pulse {:alert_condition  "goal"
                                                        :alert_first_only false
@@ -1418,10 +1418,10 @@
 ;; Deprecated because you're not supposed to delete cards anymore. Archive them instead
 
 (deftest check-that-we-can-delete-a-card
-  (is (nil? (mt/with-temp Card [card]
+  (is (nil? (mt/with-temp :m/card [card]
               (with-cards-in-writeable-collection card
                 (mt/user-http-request :rasta :delete 204 (str "card/" (u/the-id card)))
-                (t2/select-one Card :id (u/the-id card)))))))
+                (t2/select-one :m/card :id (u/the-id card)))))))
 
 ;; deleting a card that doesn't exist should return a 404 (#1957)
 (deftest deleting-a-card-that-doesnt-exist-should-return-a-404---1957-
@@ -1457,11 +1457,11 @@
     (mt/with-temp* [Collection [coll-a {:name "Collection A"}]
                     Collection [coll-b {:name "Collection B"}]
                     Collection [coll-c {:name "Collection C"}]
-                    Card [card-a {:name          "Card A"
+                    :m/card [card-a {:name          "Card A"
                                   :collection_id (u/the-id coll-a)}]
-                    Card [card-b {:name          "Card B"
+                    :m/card [card-b {:name          "Card B"
                                   :collection_id (u/the-id coll-b)}]
-                    Card [card-c {:name          "Card C"
+                    :m/card [card-c {:name          "Card C"
                                   :collection_id (u/the-id coll-c)}]
                     Timeline [tl-a {:name          "Timeline A"
                                     :collection_id (u/the-id coll-a)}]
@@ -1509,7 +1509,7 @@
 (deftest timelines-range-test
   (testing "GET /api/card/:id/timelines?include=events&start=TIME&end=TIME"
     (mt/with-temp* [Collection [collection {:name "Collection"}]
-                    Card [card {:name          "Card A"
+                    :m/card [card {:name          "Card A"
                                 :collection_id (u/the-id collection)}]
                     Timeline [tl-a {:name          "Timeline A"
                                     :collection_id (u/the-id collection)}]
@@ -1614,7 +1614,7 @@
                                       {:request-options {:as :byte-array}}))))))))
 
 (deftest download-default-constraints-test
-  (mt/with-temp Card [card {:dataset_query {:database   (mt/id)
+  (mt/with-temp :m/card [card {:dataset_query {:database   (mt/id)
                                             :type       :query
                                             :query      {:source-table (mt/id :venues)}
                                             :middleware {:add-default-userland-constraints? true
@@ -1653,7 +1653,7 @@
 
 (deftest download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
-    (mt/with-temp Card [card {:name "My Awesome Card"}]
+    (mt/with-temp :m/card [card {:name "My Awesome Card"}]
       (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
               "Content-Disposition" "attachment; filename=\"my_awesome_card_<timestamp>.csv\""
               "Content-Type"        "text/csv"
@@ -1682,11 +1682,11 @@
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp Collection [collection]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-      (mt/with-model-cleanup [Card]
+      (mt/with-model-cleanup [:m/card]
         (let [card (mt/user-http-request :rasta :post 200 "card"
                                          (assoc (card-with-name-and-query)
                                                 :collection_id (u/the-id collection)))]
-          (is (= (t2/select-one-fn :collection_id Card :id (u/the-id card))
+          (is (= (t2/select-one-fn :collection_id :m/card :id (u/the-id card))
                  (u/the-id collection))))))))
 
 (deftest make-sure-we-card-creation-fails-if-we-try-to-set-a--collection-id--we-don-t-have-permissions-for
@@ -1694,7 +1694,7 @@
     (testing "You must have permissions for the parent Collection to create a new Card in it"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
-          (mt/with-model-cleanup [Card]
+          (mt/with-model-cleanup [:m/card]
             (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
                           s/Keyword s/Any}
                          (mt/user-http-request :rasta :post 403 "card"
@@ -1702,17 +1702,17 @@
 
 (deftest set-card-collection-id-test
   (testing "Should be able to set the Collection ID of a Card in the Root Collection (i.e., `collection_id` is nil)"
-    (mt/with-temp* [Card       [card]
+    (mt/with-temp* [:m/card       [card]
                     Collection [collection]]
       (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:collection_id (u/the-id collection)})
-      (is (= (t2/select-one-fn :collection_id Card :id (u/the-id card))
+      (is (= (t2/select-one-fn :collection_id :m/card :id (u/the-id card))
              (u/the-id collection))))))
 
 (deftest update-card-require-parent-perms-test
   (testing "Should require perms for the parent collection to change a Card's properties"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp* [Collection [collection]
-                      Card       [card       {:collection_id (u/the-id collection)}]]
+                      :m/card       [card       {:collection_id (u/the-id collection)}]]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
                                      {:name "Number of Blueberries Consumed Per Month"})))))))
@@ -1723,7 +1723,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp* [Collection [original-collection]
                         Collection [new-collection]
-                        Card       [card                {:collection_id (u/the-id original-collection)}]]
+                        :m/card       [card                {:collection_id (u/the-id original-collection)}]]
           (letfn [(change-collection! [expected-status-code]
                     (mt/user-http-request :rasta :put expected-status-code (str "card/" (u/the-id card))
                                           {:collection_id (u/the-id new-collection)}))]
@@ -1739,7 +1739,7 @@
             (testing "Should be able to change it once you have perms for both collections"
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) original-collection)
               (change-collection! 200)
-              (is (= (t2/select-one-fn :collection_id Card :id (u/the-id card))
+              (is (= (t2/select-one-fn :collection_id :m/card :id (u/the-id card))
                      (u/the-id new-collection))))))))))
 
 
@@ -1750,7 +1750,7 @@
   in."
   [cards-or-card-ids]
   (when (seq cards-or-card-ids)
-    (let [cards               (t2/select [Card :collection_id] :id [:in (map u/the-id cards-or-card-ids)])
+    (let [cards               (t2/select [:m/card :collection_id] :id [:in (map u/the-id cards-or-card-ids)])
           collection-ids      (set (filter identity (map :collection_id cards)))
           collection-id->name (when (seq collection-ids)
                                 (t2/select-pk->fn :name Collection :id [:in collection-ids]))]
@@ -1796,7 +1796,7 @@
       [(with-card [verified & body]
          `(mt/with-temp* ~(cond-> `[Collection [~'collection]
                                     Collection [~'collection2]
-                                    Card       [~'card {:collection_id (u/the-id ~'collection)
+                                    :m/card       [~'card {:collection_id (u/the-id ~'collection)
                                                         :dataset_query (mt/mbql-query ~'venues)}]]
                             (= verified :verified)
                             (into
@@ -1877,8 +1877,8 @@
 
 (deftest test-that-we-can-bulk-move-some-cards-with-no-collection-into-a-collection
   (mt/with-temp* [Collection [collection {:name "Pog Collection"}]
-                  Card       [card-1]
-                  Card       [card-2]]
+                  :m/card       [card-1]
+                  :m/card       [card-2]]
     (is (= {:response    {:status "ok"}
             :collections ["Pog Collection"
                           "Pog Collection"]}
@@ -1887,16 +1887,16 @@
 (deftest test-that-we-can-bulk-move-some-cards-from-one-collection-to-another
   (mt/with-temp* [Collection [old-collection {:name "Old Collection"}]
                   Collection [new-collection {:name "New Collection"}]
-                  Card       [card-1         {:collection_id (u/the-id old-collection)}]
-                  Card       [card-2         {:collection_id (u/the-id old-collection)}]]
+                  :m/card       [card-1         {:collection_id (u/the-id old-collection)}]
+                  :m/card       [card-2         {:collection_id (u/the-id old-collection)}]]
     (is (= {:response    {:status "ok"}
             :collections ["New Collection" "New Collection"]}
            (POST-card-collections! :crowberto 200 new-collection [card-1 card-2])))))
 
 (deftest test-that-we-can-bulk-remove-some-cards-from-a-collection
   (mt/with-temp* [Collection [collection]
-                  Card       [card-1     {:collection_id (u/the-id collection)}]
-                  Card       [card-2     {:collection_id (u/the-id collection)}]]
+                  :m/card       [card-1     {:collection_id (u/the-id collection)}]
+                  :m/card       [card-2     {:collection_id (u/the-id collection)}]]
     (is (= {:response    {:status "ok"}
             :collections [nil nil]}
            (POST-card-collections! :crowberto 200 nil [card-1 card-2])))))
@@ -1904,8 +1904,8 @@
 (deftest check-that-we-aren-t-allowed-to-move-cards-if-we-don-t-have-permissions-for-destination-collection
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [collection]
-                    Card       [card-1]
-                    Card       [card-2]]
+                    :m/card       [card-1]
+                    :m/card       [card-2]]
       (is (= {:response    "You don't have permissions to do that."
               :collections [nil nil]}
              (POST-card-collections! :rasta 403 collection [card-1 card-2]))))))
@@ -1913,8 +1913,8 @@
 (deftest check-that-we-aren-t-allowed-to-move-cards-if-we-don-t-have-permissions-for-source-collection
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [collection {:name "Horseshoe Collection"}]
-                    Card       [card-1     {:collection_id (u/the-id collection)}]
-                    Card       [card-2     {:collection_id (u/the-id collection)}]]
+                    :m/card       [card-1     {:collection_id (u/the-id collection)}]
+                    :m/card       [card-2     {:collection_id (u/the-id collection)}]]
       (is (= {:response    "You don't have permissions to do that."
               :collections ["Horseshoe Collection" "Horseshoe Collection"]}
              (POST-card-collections! :rasta 403 nil [card-1 card-2]))))))
@@ -1924,8 +1924,8 @@
     (mt/with-temp* [Collection [collection]
                     Database   [database]
                     Table      [table      {:db_id (u/the-id database)}]
-                    Card       [card-1     {:dataset_query (mbql-count-query (u/the-id database) (u/the-id table))}]
-                    Card       [card-2     {:dataset_query (mbql-count-query (u/the-id database) (u/the-id table))}]]
+                    :m/card       [card-1     {:dataset_query (mbql-count-query (u/the-id database) (u/the-id table))}]
+                    :m/card       [card-2     {:dataset_query (mbql-count-query (u/the-id database) (u/the-id table))}]]
       (perms/revoke-data-perms! (perms-group/all-users) (u/the-id database))
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       (is (= {:response    "You don't have permissions to do that."
@@ -1938,12 +1938,12 @@
   (mt/with-temp* [Collection [{coll-id-1 :id}      {:name "Old Collection"}]
                   Collection [{coll-id-2 :id
                                :as new-collection} {:name "New Collection"}]
-                  Card       [card-a               {:name "a", :collection_id coll-id-1, :collection_position 1}]
-                  Card       [card-b               {:name "b", :collection_id coll-id-1, :collection_position 2}]
-                  Card       [_                    {:name "c", :collection_id coll-id-1, :collection_position 3}]
-                  Card       [_                    {:name "d", :collection_id coll-id-2, :collection_position 1}]
-                  Card       [_                    {:name "e", :collection_id coll-id-2, :collection_position 2}]
-                  Card       [_                    {:name "f", :collection_id coll-id-2, :collection_position 3}]]
+                  :m/card       [card-a               {:name "a", :collection_id coll-id-1, :collection_position 1}]
+                  :m/card       [card-b               {:name "b", :collection_id coll-id-1, :collection_position 2}]
+                  :m/card       [_                    {:name "c", :collection_id coll-id-1, :collection_position 3}]
+                  :m/card       [_                    {:name "d", :collection_id coll-id-2, :collection_position 1}]
+                  :m/card       [_                    {:name "e", :collection_id coll-id-2, :collection_position 2}]
+                  :m/card       [_                    {:name "f", :collection_id coll-id-2, :collection_position 3}]]
     (is (= {:response    {:status "ok"}
             :collections ["New Collection" "New Collection"]}
            (POST-card-collections! :crowberto 200 new-collection [card-a card-b])))
@@ -1962,9 +1962,9 @@
   (mt/with-temp* [Collection [{coll-id-1 :id}      {:name "Old Collection"}]
                   Collection [{coll-id-2 :id
                                :as new-collection} {:name "New Collection"}]
-                  Card       [card-a               {:name "a", :collection_id coll-id-1}]
-                  Card       [card-b               {:name "b", :collection_id coll-id-2, :collection_position 1}]
-                  Card       [_card-c              {:name "c", :collection_id coll-id-2, :collection_position 2}]]
+                  :m/card       [card-a               {:name "a", :collection_id coll-id-1}]
+                  :m/card       [card-b               {:name "b", :collection_id coll-id-2, :collection_position 1}]
+                  :m/card       [_card-c              {:name "c", :collection_id coll-id-2, :collection_position 2}]]
     (is (= {:response    {:status "ok"}
             :collections ["New Collection" "New Collection"]}
            (POST-card-collections! :crowberto 200 new-collection [card-a card-b])))
@@ -1987,27 +1987,27 @@
 (deftest share-card-test
   (testing "POST /api/card/:id/public_link"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (mt/with-temp Card [card]
+      (mt/with-temp :m/card [card]
         (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card)))]
           (is (= true
-                 (boolean (t2/exists? Card :id (u/the-id card), :public_uuid uuid)))))))))
+                 (boolean (t2/exists? :m/card :id (u/the-id card), :public_uuid uuid)))))))))
 
 (deftest share-card-preconditions-test
   (testing "POST /api/card/:id/public_link"
     (testing "Public sharing has to be enabled to share a Card"
       (mt/with-temporary-setting-values [enable-public-sharing false]
-        (mt/with-temp Card [card]
+        (mt/with-temp :m/card [card]
           (is (= "Public sharing is not enabled."
                  (mt/user-http-request :crowberto :post 400 (format "card/%d/public_link" (u/the-id card))))))))
 
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (testing "Have to be an admin to share a Card"
-        (mt/with-temp Card [card]
+        (mt/with-temp :m/card [card]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 (format "card/%d/public_link" (u/the-id card)))))))
 
       (testing "Cannot share an archived Card"
-        (mt/with-temp Card [card {:archived true}]
+        (mt/with-temp :m/card [card {:archived true}]
           (is (schema= {:message    (s/eq "The object has been archived.")
                         :error_code (s/eq "archived")
                         s/Keyword   s/Any}
@@ -2021,7 +2021,7 @@
   (testing "POST /api/card/:id/public_link"
     (testing "Attempting to share a Card that's already shared should return the existing public UUID"
       (mt/with-temporary-setting-values [enable-public-sharing true]
-        (mt/with-temp Card [card (shared-card)]
+        (mt/with-temp :m/card [card (shared-card)]
           (is (= (:public_uuid card)
                  (:uuid (mt/user-http-request :crowberto :post 200 (format
                                                                     "card/%d/public_link"
@@ -2030,25 +2030,25 @@
 (deftest unshare-card-test
   (testing "DELETE /api/card/:id/public_link"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (mt/with-temp Card [card (shared-card)]
+      (mt/with-temp :m/card [card (shared-card)]
         (testing "requires superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403 (format "card/%d/public_link" (u/the-id card))))))
 
         (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (u/the-id card)))
         (is (= false
-               (t2/exists? Card :id (u/the-id card), :public_uuid (:public_uuid card))))))))
+               (t2/exists? :m/card :id (u/the-id card), :public_uuid (:public_uuid card))))))))
 
 (deftest unshare-card-preconditions-test
   (testing "DELETE /api/card/:id/public_link\n"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (testing "Endpoint should return 404 if Card isn't shared"
-        (mt/with-temp Card [card]
+        (mt/with-temp :m/card [card]
           (is (= "Not found."
                  (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" (u/the-id card)))))))
 
       (testing "You have to be an admin to unshare a Card"
-        (mt/with-temp Card [card (shared-card)]
+        (mt/with-temp :m/card [card (shared-card)]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403 (format "card/%d/public_link" (u/the-id card)))))))
 
@@ -2059,7 +2059,7 @@
 (deftest test-that-we-can-fetch-a-list-of-publicly-accessible-cards
   (testing "GET /api/card/public"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (mt/with-temp Card [_ (shared-card)]
+      (mt/with-temp :m/card [_ (shared-card)]
         (testing "Test that it requires superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "card/public"))))
@@ -2072,13 +2072,13 @@
 (deftest test-that-we-can-fetch-a-list-of-embeddable-cards
   (testing "GET /api/card/embeddable"
     (mt/with-temporary-setting-values [enable-embedding true]
-      (mt/with-temp Card [_ {:enable_embedding true}]
+      (mt/with-temp :m/card [_ {:enable_embedding true}]
         (is (= [{:name true, :id true}]
                (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
                  (m/map-vals boolean (select-keys card [:name :id])))))))))
 
 (deftest test-related-recommended-entities
-  (mt/with-temp Card [card]
+  (mt/with-temp :m/card [card]
     (is (schema= {:table             s/Any
                   :metrics           s/Any
                   :segments          s/Any
@@ -2093,7 +2093,7 @@
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/card/pivot/:card-id/query"
-        (mt/with-temp Card [card (api.pivots/pivot-card)]
+        (mt/with-temp :m/card [card (api.pivots/pivot-card)]
           (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
                 rows   (mt/rows result)]
             (is (= 1144 (:row_count result)))
@@ -2107,7 +2107,7 @@
 
 (deftest dataset-card
   (testing "Setting a question to a dataset makes it viz type table"
-    (mt/with-temp Card [card {:display       :bar
+    (mt/with-temp :m/card [card {:display       :bar
                               :dataset_query (mbql-count-query)}]
       (is (= {:display "table" :dataset true}
              (-> (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
@@ -2130,17 +2130,17 @@
                                              refine-type
                                              :base_type)
                                             cols)))]
-      (mt/with-temp* [Card [mbql-ds {:dataset_query
+      (mt/with-temp* [:m/card [mbql-ds {:dataset_query
                                      {:database (mt/id)
                                       :type     :query
                                       :query    {:source-table (mt/id :venues)}}
                                      :dataset true}]
-                      Card [mbql-nested {:dataset_query
+                      :m/card [mbql-nested {:dataset_query
                                          {:database (mt/id)
                                           :type     :query
                                           :query    {:source-table
                                                      (str "card__" (u/the-id mbql-ds))}}}]
-                      Card [native-ds {:dataset true
+                      :m/card [native-ds {:dataset true
                                        :dataset_query
                                        {:database (mt/id)
                                         :type :native
@@ -2148,7 +2148,7 @@
                                         {:query
                                          "select * from venues"
                                          :template-tags {}}}}]
-                      Card [native-nested {:dataset_query
+                      :m/card [native-nested {:dataset_query
                                            {:database (mt/id)
                                             :type :query
                                             :query {:source-table
@@ -2158,13 +2158,13 @@
                                                  [:native
                                                   (u/the-id native-ds) (u/the-id native-nested)]]]
           (query! card-id) ;; populate metadata
-          (let [metadata (t2/select-one-fn :result_metadata Card :id card-id)
+          (let [metadata (t2/select-one-fn :result_metadata :m/card :id card-id)
                 ;; simulate updating metadat with user changed stuff
                 user-edited (add-preserved metadata)]
-            (t2/update! Card card-id {:result_metadata user-edited})
+            (t2/update! :m/card card-id {:result_metadata user-edited})
             (testing "Saved metadata preserves user edits"
               (is (= (map only-user-edits user-edited)
-                     (map only-user-edits (t2/select-one-fn :result_metadata Card :id card-id)))))
+                     (map only-user-edits (t2/select-one-fn :result_metadata :m/card :id card-id)))))
             (testing "API response includes user edits"
               (is (= (map only-user-edits user-edited)
                      (->> (query! card-id)
@@ -2191,7 +2191,7 @@
       (doseq [[query-type query modified-query] [["mbql"   query modified-query]
                                                  ["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)
-          (mt/with-model-cleanup [Card]
+          (mt/with-model-cleanup [:m/card]
             (let [{metadata :result_metadata
                    card-id  :id :as card} (mt/user-http-request
                                            :rasta :post 200
@@ -2215,7 +2215,7 @@
                           (map (comp u/upper-case-en :display_name)))))
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
                      (map (comp u/upper-case-en :display_name)
-                          (t2/select-one-fn :result_metadata Card :id card-id))))
+                          (t2/select-one-fn :result_metadata :m/card :id card-id))))
               (testing "Even if you only send the new query and not existing metadata"
                 (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
                      (->> (update-card! {:id (u/the-id card) :dataset_query query}) :result_metadata (map :display_name)))))
@@ -2233,7 +2233,7 @@
                             :result_metadata
                             (map :description)))))))))))
   (testing "Cards preserve edits to `visibility_type` (#22520)"
-    (mt/with-temp* [Card [model {:dataset_query (mt/mbql-query venues
+    (mt/with-temp* [:m/card [model {:dataset_query (mt/mbql-query venues
                                                                {:fields [$id $name]
                                                                 :limit 2})
                                  :dataset       true}]]
@@ -2286,9 +2286,9 @@
 (deftest refresh-persistence
   (testing "Can schedule refreshes for models"
     (with-persistence-setup db
-      (mt/with-temp* [Card          [unmodeled {:dataset false :database_id (u/the-id db)}]
-                      Card          [archived {:dataset true :archived true :database_id (u/the-id db)}]
-                      Card          [model {:dataset true :database_id (u/the-id db)}]
+      (mt/with-temp* [:m/card          [unmodeled {:dataset false :database_id (u/the-id db)}]
+                      :m/card          [archived {:dataset true :archived true :database_id (u/the-id db)}]
+                      :m/card          [model {:dataset true :database_id (u/the-id db)}]
                       PersistedInfo [pmodel  {:card_id (u/the-id model) :database_id (u/the-id db)}]
                       PersistedInfo [punmodeled  {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}]
                       PersistedInfo [parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}]]
@@ -2325,10 +2325,10 @@
 
   ([card-values f]
    (mt/with-temp*
-     [Card [source-card {:database_id   (mt/id)
+     [:m/card [source-card {:database_id   (mt/id)
                          :table_id      (mt/id :venues)
                          :dataset_query (mt/mbql-query venues {:limit 5})}]
-      Card [field-filter-card  {:dataset_query
+      :m/card [field-filter-card  {:dataset_query
                                 {:database (mt/id)
                                  :type     :native
                                  :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
@@ -2344,7 +2344,7 @@
                                               :target [:dimension [:template-tag "NAME"]],
                                               :name   "Name",
                                               :slug   "NAME"}]}]
-      Card [card        (merge
+      :m/card [card        (merge
                          {:database_id   (mt/id)
                           :dataset_query (mt/mbql-query venues)
                           :parameters    [{:name                 "Static Category",
@@ -2401,8 +2401,8 @@
   (testing "fallback to field-values"
     (with-redefs [api.card/mapping->field-values (constantly "field-values")]
       (testing "if value-field not found in source card"
-        (mt/with-temp* [Card [{source-card-id :id}]
-                        Card [card
+        (mt/with-temp* [:m/card [{source-card-id :id}]
+                        :m/card [card
                               {:parameters [{:id                   "abc"
                                              :type                 "category"
                                              :name                 "CATEGORY"
@@ -2413,8 +2413,8 @@
             (is (= "field-values" (mt/user-http-request :rasta :get 200 url))))))
 
       (testing "if card is archived"
-        (mt/with-temp* [Card [{source-card-id :id} {:archived true}]
-                        Card [card
+        (mt/with-temp* [:m/card [{source-card-id :id} {:archived true}]
+                        :m/card [card
                               {:parameters [{:id                   "abc"
                                              :type                 "category"
                                              :name                 "CATEGORY"
@@ -2428,13 +2428,13 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp*
         [Collection [coll1 {:name "Source card collection"}]
-         Card       [{source-card-id :id}
+         :m/card       [{source-card-id :id}
                      {:collection_id (:id coll1)
                       :database_id   (mt/id)
                       :table_id      (mt/id :venues)
                       :dataset_query (mt/mbql-query venues {:limit 5})}]
          Collection [coll2 {:name "Card collections"}]
-         Card       [{card-id         :id}
+         :m/card       [{card-id         :id}
                      {:collection_id  (:id coll2)
                       :database_id    (mt/id)
                       :dataset_query  (mt/mbql-query venues)
@@ -2483,7 +2483,7 @@
   (testing "Old style, inferred parameters from native template-tags"
     (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
       ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
-      (t2/update! Card (:id field-filter-card) {:parameters []})
+      (t2/update! :m/card (:id field-filter-card) {:parameters []})
       (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
         (testing "without search query"
           (let [response (mt/user-http-request :rasta :get 200

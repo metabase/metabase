@@ -3,7 +3,7 @@
    [compojure.core :refer [GET POST]]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.revision :as revision :refer [Revision]]
    [schema.core :as s]
@@ -18,7 +18,7 @@
 
 (defn- model-and-instance [entity-name id]
   (case entity-name
-    "card"      [Card (t2/select-one Card :id id)]
+    "card"      [:m/card (t2/select-one :m/card :id id)]
     "dashboard" [Dashboard (t2/select-one Dashboard :id id)]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -39,7 +39,7 @@
         _                (api/write-check instance)
         revision         (api/check-404 (t2/select-one Revision :model (name model), :model_id id, :id revision_id))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
-    (when (= model Card)
+    (when (= model :m/card)
       (api.card/check-data-permissions-for-query (get-in revision [:object :dataset_query])))
     ;; ok, we're g2g
     (revision/revert!

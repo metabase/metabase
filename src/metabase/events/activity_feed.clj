@@ -4,7 +4,7 @@
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.activity :as activity :refer [Activity]]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]
@@ -81,7 +81,7 @@
           ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
           (-> (t2/select-one [Dashboard :description :name], :id (events/object->model-id topic obj))
               (assoc :dashcards (for [{:keys [id card_id]} dashcards]
-                                  (-> (t2/select-one [Card :name :description], :id card_id)
+                                  (-> (t2/select-one [:m/card :name :description], :id card_id)
                                       (assoc :id id)
                                       (assoc :card_id card_id))))))]
     (activity/record-activity!

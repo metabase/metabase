@@ -9,7 +9,7 @@
    [metabase-enterprise.serialization.v2.seed-entity-ids :as v2.seed-entity-ids]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.db :as mdb]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.database :refer [Database]]
@@ -169,7 +169,7 @@
                (select-segments-in-tables tables state)
                collections
                (select-entities-in-collections NativeQuerySnippet collections state)
-               (select-entities-in-collections Card collections state)
+               (select-entities-in-collections :m/card collections state)
                (select-entities-in-collections Dashboard collections state)
                (select-entities-in-collections Pulse collections state)
                users))

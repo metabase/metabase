@@ -7,7 +7,7 @@
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.reader :as tools.reader]
    [metabase-enterprise.audit-app.interface :as audit.i]
-   [metabase.models :refer [Card Dashboard DashboardCard Database Table User]]
+   [metabase.models :refer [:m/card Dashboard DashboardCard Database Table User]]
    [metabase.models.permissions :as perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features-test :as premium-features-test]
@@ -174,7 +174,7 @@
 (defn- do-with-temp-objects [f]
   (mt/with-temp* [Database      [database]
                   Table         [table {:db_id (u/the-id database)}]
-                  Card          [card {:table_id (u/the-id table), :database_id (u/the-id database)}]
+                  :m/card          [card {:table_id (u/the-id table), :database_id (u/the-id database)}]
                   Dashboard     [dash]
                   DashboardCard [_ {:card_id (u/the-id card), :dashboard_id (u/the-id dash)}]]
     (f {:database database, :table table, :card card, :dash dash})))

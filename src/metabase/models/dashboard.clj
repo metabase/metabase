@@ -8,7 +8,7 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :as card :refer [:m/card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard-card
     :as dashboard-card
@@ -322,13 +322,13 @@
   [card]
   (cond
     ;; If this is a pre-existing card, just return it
-    (and (integer? (:id card)) (t2/select-one Card :id (:id card)))
+    (and (integer? (:id card)) (t2/select-one :m/card :id (:id card)))
     card
 
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
     (let [card (first (t2/insert-returning-instances!
-                        'Card
+                        :m/card
                         (-> card
                             (update :result_metadata #(or % (-> card
                                                                 :dataset_query
@@ -444,7 +444,7 @@
   [dashcard]
   (-> (into (sorted-map) dashcard)
       (dissoc :id :collection_authority_level :dashboard_id :updated_at)
-      (update :card_id                serdes/export-fk 'Card)
+      (update :card_id                serdes/export-fk :m/card)
       (update :action_id              serdes/export-fk 'Action)
       (update :parameter_mappings     serdes/export-parameter-mappings)
       (update :visualization_settings serdes/export-visualization-settings)))

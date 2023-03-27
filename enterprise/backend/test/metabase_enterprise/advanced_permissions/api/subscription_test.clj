@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.api.alert :as api.alert]
    [metabase.api.alert-test :as alert-test]
-   [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models :refer [:m/card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
@@ -29,7 +29,7 @@
     (with-subscription-disabled-for-all-users
       (mt/with-user-in-groups [group {:name "New Group"}
                                user  [group]]
-        (mt/with-temp* [Card  [card]
+        (mt/with-temp* [:m/card  [card]
                         Pulse [pulse {:creator_id (u/the-id user)}]]
           (let [pulse-default {:name     "A Pulse"
                                :cards    [{:id          (:id card)
@@ -78,7 +78,7 @@
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
-        (mt/with-temp* [Card [{card-id :id}]]
+        (mt/with-temp* [:m/card [{card-id :id}]]
           (letfn [(add-pulse-recipient [req-user status]
                     (pulse-test/with-pulse-for-card [the-pulse {:card    card-id
                                                                 :pulse   {:creator_id (u/the-id user)}
@@ -136,7 +136,7 @@
         [group {:name "New Group"}
          user  [group]]
         (mt/with-temp*
-          [Card       [card {:creator_id (:id user)}]
+          [:m/card       [card {:creator_id (:id user)}]
            Collection [_collection]]
           (let [alert-default {:card             {:id                (:id card)
                                                   :include_csv       true
@@ -186,10 +186,10 @@
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
-        (mt/with-temp Card [_]
+        (mt/with-temp :m/card [_]
           (letfn [(add-alert-recipient [req-user status]
                     (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
-                                    Card                  [card]
+                                    :m/card                  [card]
                                     PulseCard             [_     (alert-test/pulse-card alert card)]
                                     PulseChannel          [pc    (alert-test/pulse-channel alert)]]
                       (testing (format "- add alert's recipient with %s user" (mt/user-descriptor req-user))
@@ -198,7 +198,7 @@
 
                   (archive-alert-recipient [req-user status]
                     (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
-                                    Card                  [card]
+                                    :m/card                  [card]
                                     PulseCard             [_     (alert-test/pulse-card alert card)]
                                     PulseChannel          [pc    (alert-test/pulse-channel alert)]]
                       (testing (format "- archive alert with %s user" (mt/user-descriptor req-user))
@@ -209,7 +209,7 @@
 
                   (remove-alert-recipient [req-user status]
                     (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
-                                    Card                  [card]
+                                    :m/card                  [card]
                                     PulseCard             [_     (alert-test/pulse-card alert card)]
                                     PulseChannel          [pc    (alert-test/pulse-channel alert)]
                                     PulseChannelRecipient [_     (alert-test/recipient pc :rasta)]]

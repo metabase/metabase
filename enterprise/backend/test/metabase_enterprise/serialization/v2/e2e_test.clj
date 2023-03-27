@@ -8,7 +8,7 @@
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
-   [metabase.models :refer [Card
+   [metabase.models :refer [:m/card
                             Collection
                             Dashboard
                             DashboardCard
@@ -360,7 +360,7 @@
               (testing "for cards"
                 (doseq [{:keys [entity_id] :as card} (get @entities "Card")]
                   (is (= (clean-entity card)
-                         (->> (t2/select-one 'Card :entity_id entity_id)
+                         (->> (t2/select-one :m/card :entity_id entity_id)
                               (serdes/extract-one "Card" {})
                               clean-entity)))))
 
@@ -433,8 +433,8 @@
                                   :db_id (:id db1s)}]
              Field      [field1s {:name     "NAME"
                                   :table_id (:id table1s)}]
-             Card       [card1s  {:name "Source card"}]
-             Card       [card2s  {:name "Card with parameter"
+             :m/card       [card1s  {:name "Source card"}]
+             :m/card       [card2s  {:name "Card with parameter"
                                   :database_id (:id db1s)
                                   :table_id (:id table1s)
                                   :collection_id (:id coll1s)
@@ -491,8 +491,8 @@
                       "successful"))
 
                 (let [dash1d (t2/select-one Dashboard :name (:name dash1s))
-                      card1d (t2/select-one Card :name (:name card1s))
-                      card2d (t2/select-one Card :name (:name card2s))
+                      card1d (t2/select-one :m/card :name (:name card1s))
+                      card2d (t2/select-one :m/card :name (:name card2s))
                       field1d (t2/select-one Field :name (:name field1s))]
                   (testing "parameter on dashboard is loaded correctly"
                     (is (= {:card_id     (:id card1d),
@@ -535,13 +535,13 @@
                                                       :schema      "Public"
                                                       :name        "Linked table"
                                                       :description "Linked table desc"}
-             Card          {card-id   :id
+             :m/card          {card-id   :id
                             card-name :name
                             card-eid  :entity_id}    {:name          "Linked card"
                                                       :description   "Linked card desc"
                                                       :display       "bar"}
 
-             Card          {model-id   :id
+             :m/card          {model-id   :id
                             model-name :name
                             model-eid  :entity_id}   {:dataset       true
                                                       :name          "Linked model"
@@ -601,8 +601,8 @@
                 (doseq [[name model]
                         [[db-name    'Database]
                          [table-name 'Table]
-                         [card-name  'Card]
-                         [model-name 'Card]
+                         [card-name  :m/card]
+                         [model-name :m/card]
                          [dash-name  'Dashboard]]]
                   (testing (format "model %s from link cards are loaded properly" model)
                    (is (some? (t2/select model :name name)))))
@@ -610,8 +610,8 @@
                 (testing "linkcards are loaded with correct fk"
                   (let [new-db-id    (t2/select-one-pk Database :name db-name)
                         new-table-id (t2/select-one-pk Table :name table-name)
-                        new-card-id  (t2/select-one-pk Card :name card-name)
-                        new-model-id (t2/select-one-pk Card :name model-name)
+                        new-card-id  (t2/select-one-pk :m/card :name card-name)
+                        new-model-id (t2/select-one-pk :m/card :name model-name)
                         new-dash-id  (t2/select-one-pk Dashboard :name dash-name)
                         new-coll-id  (t2/select-one-pk Collection :name coll-name)]
                     (is (= [{:id new-coll-id  :model "collection"}

@@ -6,7 +6,7 @@
    [metabase.actions.http-action :as http-action]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
-   [metabase.models :refer [Card DashboardCard Database Table]]
+   [metabase.models :refer [:m/card DashboardCard Database Table]]
    [metabase.models.action :as action]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]
@@ -63,7 +63,7 @@
 
 (defn- implicit-action-table
   [card_id]
-  (let [card (t2/select-one Card :id card_id)
+  (let [card (t2/select-one :m/card :id card_id)
         {:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
     (hydrate (t2/select-one Table :id table-id) :fields)))
 
@@ -80,7 +80,7 @@
                          :parameters             request-parameters
                          :destination-parameters (:parameters action)}))))
     (actions/check-actions-enabled! action)
-    (let [model (t2/select-one Card :id (:model_id action))]
+    (let [model (t2/select-one :m/card :id (:model_id action))]
       (when (and (= action-type :query) (not= (:database_id model) (:database_id action)))
         ;; the above check checks the db of the model. We check the db of the query action here
         (actions/check-actions-enabled-for-database!
@@ -202,7 +202,7 @@
         info {:executed-by api/*current-user-id*
               :context :question
               :dashboard-id dashboard-id}
-        card (t2/select-one Card :id (:model_id action))
+        card (t2/select-one :m/card :id (:model_id action))
         ;; prefilling a form with day old data would be bad
         result (binding [persisted-info/*allow-persisted-substitution* false]
                  (qp/process-query-and-save-execution!

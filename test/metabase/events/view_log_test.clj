@@ -2,13 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase.events.view-log :as view-log]
-   [metabase.models :refer [Card Dashboard Table User ViewLog]]
+   [metabase.models :refer [:m/card Dashboard Table User ViewLog]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (deftest card-create-test
   (mt/with-temp* [User [user]
-                  Card [card {:creator_id (:id user)}]]
+                  :m/card [card {:creator_id (:id user)}]]
     (view-log/handle-view-event! {:topic :card-create
                                   :item  card})
     (is (= {:user_id  (:id user)
@@ -19,7 +19,7 @@
 
 (deftest card-read-test
   (mt/with-temp* [User [user]
-                  Card [card {:creator_id (:id user)}]]
+                  :m/card [card {:creator_id (:id user)}]]
 
     (view-log/handle-view-event! {:topic :card-read
                                   :item  card})
@@ -31,7 +31,7 @@
 
 (deftest card-query-test
   (mt/with-temp* [User [user]
-                  Card [card {:creator_id (:id user)}]]
+                  :m/card [card {:creator_id (:id user)}]]
 
     (view-log/handle-view-event! {:topic :card-query
                                   :item  (assoc card :cached false :ignore_cache true)})

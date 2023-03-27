@@ -4,7 +4,7 @@
    [metabase.events.activity-feed :as events.activity-feed]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models
-    :refer [Activity Card Dashboard DashboardCard Metric Pulse Segment]]
+    :refer [Activity :m/card Dashboard DashboardCard Metric Pulse Segment]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -24,7 +24,7 @@
 
 (deftest card-create-test
   (testing :card-create
-    (mt/with-temp Card [card {:name "My Cool Card"}]
+    (mt/with-temp :m/card [card {:name "My Cool Card"}]
       (mt/with-model-cleanup [Activity]
         (events.activity-feed/process-activity-event! {:topic :card-create, :item card})
         (is (= {:topic       :card-create
@@ -37,11 +37,11 @@
                (activity "card-create" (:id card))))))
 
     (testing "when I save a Card that uses a NESTED query, is the activity recorded? :D"
-      (mt/with-temp* [Card [card-1 {:name          "My Cool Card"
+      (mt/with-temp* [:m/card [card-1 {:name          "My Cool Card"
                                     :dataset_query {:database (mt/id)
                                                     :type     :query
                                                     :query    {:source-table (mt/id :venues)}}}]
-                      Card [card-2 {:name          "My Cool NESTED Card"
+                      :m/card [card-2 {:name          "My Cool NESTED Card"
                                     :dataset_query {:database mbql.s/saved-questions-virtual-database-id
                                                     :type     :query
                                                     :query    {:source-table (str "card__" (u/the-id card-1))}}}]]
@@ -60,7 +60,7 @@
   (testing :card-update
     (doseq [dataset? [false true]]
       (testing (if dataset? "Dataset" "Card")
-        (mt/with-temp Card [card {:name "My Cool Card" :dataset dataset?}]
+        (mt/with-temp :m/card [card {:name "My Cool Card" :dataset dataset?}]
           (mt/with-model-cleanup [Activity]
             (events.activity-feed/process-activity-event! {:topic :card-update, :item card})
             (is (= {:topic       :card-update
@@ -77,7 +77,7 @@
   (testing :card-delete
     (doseq [dataset? [false true]]
       (testing (if dataset? "Dataset" "Card")
-        (mt/with-temp Card [card {:name "My Cool Card", :dataset dataset?}]
+        (mt/with-temp :m/card [card {:name "My Cool Card", :dataset dataset?}]
           (mt/with-model-cleanup [Activity]
             (events.activity-feed/process-activity-event! {:topic :card-delete, :item card})
             (is (= {:topic       :card-delete
@@ -121,7 +121,7 @@
 (deftest dashboard-add-cards-event-test
   (testing :dashboard-add-cards
     (mt/with-temp* [Dashboard     [dashboard {:name "My Cool Dashboard"}]
-                    Card          [card]
+                    :m/card          [card]
                     DashboardCard [dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]]
       (mt/with-model-cleanup [Activity]
         (events.activity-feed/process-activity-event! {:topic :dashboard-add-cards
@@ -145,7 +145,7 @@
 (deftest dashboard-remove-cards-event-test
   (testing :dashboard-remove-cards
     (mt/with-temp* [Dashboard     [dashboard {:name "My Cool Dashboard"}]
-                    Card          [card]
+                    :m/card          [card]
                     DashboardCard [dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]]
       (mt/with-model-cleanup [Activity]
         (events.activity-feed/process-activity-event! {:topic :dashboard-remove-cards

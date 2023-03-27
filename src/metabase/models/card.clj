@@ -33,7 +33,7 @@
 
 (methodical/defmethod t2/table-name :m/card [_model] :report_card)
 
-(models/defmodel Card :report_card)
+(models/defmodel :m/card :report_card)
 
 (methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
   [_original-model _k]
@@ -50,7 +50,7 @@
    :parameter_mappings     mi/tf-parameters-list})
 
 ;;; You can read/write a Card if you can read/write its parent Collection
-(derive Card ::perms/use-parent-collection-perms)
+(derive :m/card ::perms/use-parent-collection-perms)
 (derive :m/card ::perms/use-parent-collection-perms)
 (derive :m/card ::mi/timestamped?)
 (derive :m/card ::mi/entity-id)
@@ -101,9 +101,9 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defmethod revision/serialize-instance Card
+(defmethod revision/serialize-instance :m/card
   ([instance]
-   (revision/serialize-instance Card nil instance))
+   (revision/serialize-instance :m/card nil instance))
   ([_model _id instance]
    (cond-> (dissoc instance :created_at :updated_at)
      ;; datasets should preserve edits to metadata
@@ -147,7 +147,7 @@
 
     ;; this is an update, and dataset_query hasn't changed => no-op
     (and existing-card-id
-         (= query (t2/select-one-fn :dataset_query Card :id existing-card-id)))
+         (= query (t2/select-one-fn :dataset_query :m/card :id existing-card-id)))
     (do
       (log/debugf "Not inferring result metadata for Card %s: query has not changed" existing-card-id)
       card)
@@ -189,7 +189,7 @@
                   {:status-code 400}))
 
         :else
-        (recur (or (t2/select-one-fn :dataset_query Card :id source-card-id)
+        (recur (or (t2/select-one-fn :dataset_query :m/card :id source-card-id)
                    (throw (ex-info (tru "Card {0} does not exist." source-card-id)
                                    {:status-code 404})))
                (conj ids-already-seen source-card-id))))))
@@ -273,7 +273,7 @@
       (assert-valid-model card)
       (params/assert-valid-parameters card)
       (params/assert-valid-parameter-mappings card)
-      (collection/check-collection-namespace Card (:collection_id card)))))
+      (collection/check-collection-namespace :m/card (:collection_id card)))))
 
 (defn- post-insert [card]
   ;; if this Card has any native template tag parameters we need to update FieldValues for any Fields that are
@@ -305,7 +305,7 @@
   (let [parameter-cards   (t2/select ParameterCard :card_id id)]
     (doseq [[[po-type po-id] param-cards]
             (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
-      (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
+      (let [model                  (case po-type :card :m/card :dashboard 'Dashboard)
             {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
             affected-param-ids-set (cond
                                      ;; update all parameters that use this card as source
@@ -397,7 +397,7 @@
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
-      (collection/check-collection-namespace Card (:collection_id changes))
+      (collection/check-collection-namespace :m/card (:collection_id changes))
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
       (update-parameters-using-card-as-values-source changes)
@@ -426,7 +426,7 @@
   :out result-metadata-out)
 
 (mi/define-methods
- Card
+ :m/card
  {:hydration-keys (constantly [:card])
   :types          (constantly {:dataset_query          :metabase-query
                                :display                :keyword
@@ -486,7 +486,7 @@
   (t2/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
   (t2/delete! 'Revision :model "Card", :model_id id))
 
-(defmethod serdes/hash-fields Card
+(defmethod serdes/hash-fields :m/card
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
@@ -496,7 +496,7 @@
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/extract-query "Card" [_ opts]
-  (serdes/extract-query-collections Card opts))
+  (serdes/extract-query-collections :m/card opts))
 
 (defn- export-result-metadata [metadata]
   (when metadata
@@ -573,7 +573,7 @@
        vec))
 
 (defmethod serdes/descendants "Card" [_model-name id]
-  (let [card               (t2/select-one Card :id id)
+  (let [card               (t2/select-one :m/card :id id)
         source-table       (some->  card :dataset_query :query :source-table)
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))

@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.names :as names]
    [metabase-enterprise.serialization.test-util :as ts]
-   [metabase.models :refer [Card Collection Dashboard Database Field Metric NativeQuerySnippet Segment Table]]
+   [metabase.models :refer [:m/card Collection Dashboard Database Field Metric NativeQuerySnippet Segment Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -25,9 +25,9 @@
 
 (deftest roundtrip-test
   (ts/with-world
-    (doseq [object [(t2/select-one Card :id card-id-root)
-                    (t2/select-one Card :id card-id)
-                    (t2/select-one Card :id card-id-nested)
+    (doseq [object [(t2/select-one :m/card :id card-id-root)
+                    (t2/select-one :m/card :id card-id)
+                    (t2/select-one :m/card :id card-id-nested)
                     (t2/select-one Table :id table-id)
                     (t2/select-one Field :id category-field-id)
                     (t2/select-one Metric :id metric-id)
@@ -47,8 +47,8 @@
   (testing "fully-qualified-name->context works as expected"
     (testing " with cards in root and in a collection"
       (mt/with-temp* [Collection [{collection-id :id :as coll} {:name "A Collection" :location "/"}]
-                      Card       [root-card {:name "Root Card"}]
-                      Card       [collection-card {:name         "Collection Card"
+                      :m/card       [root-card {:name "Root Card"}]
+                      :m/card       [collection-card {:name         "Collection Card"
                                                    :collection_id collection-id}]
                       Collection [{sub-collection-id :id :as coll2} {:name "Sub Collection"
                                                                      :location (format "/%d/" collection-id)}]

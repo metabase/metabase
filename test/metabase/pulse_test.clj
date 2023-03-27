@@ -7,7 +7,7 @@
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models
-    :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+    :refer [:m/card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
@@ -100,7 +100,7 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp* [Card          [{card-id :id} (merge {:name    pulse.test-util/card-name
+      (mt/with-temp* [:m/card          [{card-id :id} (merge {:name    pulse.test-util/card-name
                                                            :display (or display :line)}
                                                           card)]]
         (with-pulse-for-card [{pulse-id :id}
@@ -394,7 +394,7 @@
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
-        (mt/with-temp* [Card [{card-id-2 :id} (assoc (pulse.test-util/checkins-query-card {:breakout [!month.date]})
+        (mt/with-temp* [:m/card [{card-id-2 :id} (assoc (pulse.test-util/checkins-query-card {:breakout [!month.date]})
                                                      :name "card 2"
                                                      :display :line)]
                         PulseCard [_ {:pulse_id pulse-id
@@ -660,7 +660,7 @@
 
 (deftest native-query-with-user-specified-axes-test
   (testing "Native query with user-specified x and y axis"
-    (mt/with-temp Card [{card-id :id} {:name                   "Test card"
+    (mt/with-temp :m/card [{card-id :id} {:name                   "Test card"
                                        :dataset_query          {:database (mt/id)
                                                                 :type     :native
                                                                 :native   {:query (str "select count(*) as total_per_day, date as the_day "
@@ -682,8 +682,8 @@
 
 (deftest basic-slack-test-2
   (testing "Basic slack test, 2 cards, 1 recipient channel"
-    (mt/with-temp* [Card         [{card-id-1 :id} (pulse.test-util/checkins-query-card {:breakout [!day.date]})]
-                    Card         [{card-id-2 :id} (-> {:breakout [[:field (mt/id :checkins :date) {:temporal-unit :month}]]}
+    (mt/with-temp* [:m/card         [{card-id-1 :id} (pulse.test-util/checkins-query-card {:breakout [!day.date]})]
+                    :m/card         [{card-id-2 :id} (-> {:breakout [[:field (mt/id :checkins :date) {:temporal-unit :month}]]}
                                                       pulse.test-util/checkins-query-card
                                                       (assoc :name "Test card 2"))]
                     Pulse        [{pulse-id :id}  {:name          "Pulse Name"
@@ -765,7 +765,7 @@
 
 (deftest multi-channel-test
   (testing "Test with a slack channel and an email"
-    (mt/with-temp Card [{card-id :id} (pulse.test-util/checkins-query-card {:breakout [!day.date]})]
+    (mt/with-temp :m/card [{card-id :id} (pulse.test-util/checkins-query-card {:breakout [!day.date]})]
       ;; create a Pulse with an email channel
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:skip_if_empty false}}]
         ;; add additional Slack channel
@@ -799,7 +799,7 @@
 
 (deftest dont-run-async-test
   (testing "even if Card is saved as `:async?` we shouldn't run the query async"
-    (mt/with-temp Card [card {:dataset_query {:database (mt/id)
+    (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
                                               :type     :query
                                               :query    {:source-table (mt/id :venues)}
                                               :async?   true}}]
@@ -811,7 +811,7 @@
   (testing "Pulses should be sent with the Permissions of the user that created them."
     (letfn [(send-pulse-created-by-user!* [user-kw]
               (mt/with-temp* [Collection [coll]
-                              Card       [card {:dataset_query (mt/mbql-query checkins
+                              :m/card       [card {:dataset_query (mt/mbql-query checkins
                                                                  {:order-by [[:asc $id]]
                                                                   :limit    1})
                                                 :collection_id (:id coll)}]]

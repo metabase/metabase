@@ -13,7 +13,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
@@ -652,11 +652,11 @@
                             (vec resolved-cards))
         dummy-insert-cards (not-empty (::revisit grouped-cards))
         process-cards      (::process grouped-cards)]
-    (maybe-upsert-many! context Card process-cards)
+    (maybe-upsert-many! context :m/card process-cards)
     (when dummy-insert-cards
       (let [dummy-inserted-ids (maybe-upsert-many!
                                 context
-                                Card
+                                :m/card
                                 (map make-dummy-card dummy-insert-cards))
             id-and-cards       (map vector dummy-insert-cards dummy-inserted-ids)
             retry-info-fn      (fn [[card card-id]]

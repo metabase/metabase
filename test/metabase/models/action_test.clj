@@ -4,7 +4,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.models :refer [Action Card Dashboard DashboardCard]]
+   [metabase.models :refer [Action :m/card Dashboard DashboardCard]]
    [metabase.models.action :as action]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -57,7 +57,7 @@
                 (is (= model-columns (t2/select-one-fn (comp set
                                                              (partial map :name)
                                                              :result_metadata)
-                                                       Card :id model-id)))
+                                                       :m/card :id model-id)))
                 (is (= #{"id" "bloop"}
                        (->> (action/select-action :id action-id)
                             :parameters (map :id) set)))))))))))
@@ -129,16 +129,16 @@
         (doseq [type [:http :query]]
           (mt/with-actions [{:keys [action-id model-id]} {:type type}]
             (is (false? (t2/select-one-fn :archived Action action-id)))
-            (t2/update! Card model-id {:dataset false})
+            (t2/update! :m/card model-id {:dataset false})
             (is (true? (t2/select-one-fn :archived Action action-id))))))
       (testing "Implicit actions are deleted if their model is converted to a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (is (false? (t2/select-one-fn :archived Action action-id)))
-          (t2/update! Card model-id {:dataset false})
+          (t2/update! :m/card model-id {:dataset false})
           (is (false? (t2/exists? Action action-id)))))
       (testing "Actions can't be unarchived if their model is a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {}]
-          (t2/update! Card model-id {:dataset false})
+          (t2/update! :m/card model-id {:dataset false})
           (is (thrown-with-msg?
                Exception
                #"Actions must be made with models, not cards"
@@ -149,7 +149,7 @@
       (testing "Don't archive actions if updates a model dataset_query"
         (mt/with-actions [{:keys [action-id model-id]} {}]
           (is (false? (t2/select-one-fn :archived Action action-id)))
-          (t2/update! Card model-id {:dataset_query (mt/mbql-query users {:limit 1})})
+          (t2/update! :m/card model-id {:dataset_query (mt/mbql-query users {:limit 1})})
           (is (false? (t2/select-one-fn :archived Action action-id))))))))
 
 (deftest exclude-auto-increment-fields-for-create-implicit-actions-test

@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.test :as mt]
@@ -168,8 +168,8 @@
 
 (deftest expand-multiple-referenced-cards-in-template-tags
   (testing "multiple sub-queries, referenced in template tags, are correctly substituted"
-    (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
-                    Card [card-2 {:dataset_query (mt/native-query {:query "SELECT 2"})}]]
+    (mt/with-temp* [:m/card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
+                    :m/card [card-2 {:dataset_query (mt/native-query {:query "SELECT 2"})}]]
       (let [card-1-id (:id card-1)
             card-2-id (:id card-2)]
         (is (= (mt/native-query
@@ -180,8 +180,8 @@
                   :template-tags (card-template-tags [card-1-id card-2-id])})))))))
 
   (testing "multiple CTE queries, referenced in template tags, are correctly substituted"
-    (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
-                    Card [card-2 {:dataset_query (mt/native-query {:query "SELECT 2"})}]]
+    (mt/with-temp* [:m/card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
+                    :m/card [card-2 {:dataset_query (mt/native-query {:query "SELECT 2"})}]]
       (let [card-1-id (:id card-1)
             card-2-id (:id card-2)]
         (is (= (mt/native-query
@@ -193,8 +193,8 @@
                   :template-tags (card-template-tags [card-1-id card-2-id])})))))))
 
   (testing "recursive native queries, referenced in template tags, are correctly substituted"
-    (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
-                    Card [card-2 {:dataset_query (mt/native-query
+    (mt/with-temp* [:m/card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
+                    :m/card [card-2 {:dataset_query (mt/native-query
                                                   {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
                                                    :template-tags (card-template-tags [(:id card-1)])})}]]
       (let [card-2-id (:id card-2)]
@@ -206,8 +206,8 @@
                   :template-tags (card-template-tags [card-2-id])})))))))
 
   (testing "recursive native/MBQL queries, referenced in template tags, are correctly substituted"
-    (mt/with-temp* [Card [card-1 {:dataset_query (mt/mbql-query venues)}]
-                    Card [card-2 {:dataset_query (mt/native-query
+    (mt/with-temp* [:m/card [card-1 {:dataset_query (mt/mbql-query venues)}]
+                    :m/card [card-2 {:dataset_query (mt/native-query
                                                   {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
                                                    :template-tags (card-template-tags [(:id card-1)])})}]]
       (let [card-2-id       (:id card-2)
@@ -229,7 +229,7 @@
 
 (deftest referencing-cards-with-parameters-test
   (testing "referencing card with parameter and default value substitutes correctly"
-    (mt/with-temp Card [param-card {:dataset_query (mt/native-query
+    (mt/with-temp :m/card [param-card {:dataset_query (mt/native-query
                                                     {:query "SELECT {{x}}"
                                                      :template-tags {"x"
                                                                      {:id "x", :name "x", :display-name "Number x",
@@ -242,7 +242,7 @@
                 :template-tags (card-template-tags [(:id param-card)])}))))))
 
   (testing "referencing card with parameter and NO default value, fails substitution"
-    (mt/with-temp Card [param-card {:dataset_query (mt/native-query
+    (mt/with-temp :m/card [param-card {:dataset_query (mt/native-query
                                                     {:query "SELECT {{x}}"
                                                      :template-tags {"x"
                                                                      {:id "x", :name "x", :display-name "Number x",
@@ -271,7 +271,7 @@
                                                       :creator_id  (mt/user->id :rasta)
                                                       :description "Meant for use in WHERE clause"
                                                       :name        "Filter: expensive venues"}]
-                  Card [card {:dataset_query
+                  :m/card [card {:dataset_query
                               (mt/native-query
                                 {:query         (str "SELECT {{ Venue fields }} "
                                                      "FROM venues "
@@ -295,7 +295,7 @@
 (deftest include-card-parameters-test
   (testing "Expanding a Card reference should include its parameters (#12236)"
     (mt/dataset sample-dataset
-      (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
+      (mt/with-temp :m/card [card {:dataset_query (mt/mbql-query orders
                                                  {:filter      [:between $total 30 60]
                                                   :aggregation [[:aggregation-options
                                                                  [:count-where

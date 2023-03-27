@@ -3,8 +3,12 @@
    [clojure.data :as data]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.upsert :as upsert]
+<<<<<<< HEAD
    [metabase.db.util :as mdb.u]
    [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet
+=======
+   [metabase.models :refer [:m/card Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet
+>>>>>>> 9359134504 (replace Card symbols)
                             Pulse Segment Table User]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
@@ -43,34 +47,34 @@
 ;; TODO -- I'm not really clear on what these are testing, so I wasn't sure what to name them when I converted them to
 ;; the new style. Feel free to give them better names - Cam
 (deftest maybe-upsert-many!-skip-test
-  (mt/with-model-cleanup [Card]
-    (let [existing-ids (t2/insert-returning-pks! Card @cards)
-          inserted-ids (vec (upsert/maybe-upsert-many! {:mode :skip} Card @cards))]
+  (mt/with-model-cleanup [:m/card]
+    (let [existing-ids (t2/insert-returning-pks! :m/card @cards)
+          inserted-ids (vec (upsert/maybe-upsert-many! {:mode :skip} :m/card @cards))]
       (is (= existing-ids inserted-ids)))))
 
 (deftest maybe-upsert-many!-same-objects-test
-  (mt/with-model-cleanup [Card]
+  (mt/with-model-cleanup [:m/card]
     (letfn [(test-mode [mode]
               (testing (format "Mode = %s" mode)
                 (let [[e1 e2]   @cards
-                      [id1 id2] (upsert/maybe-upsert-many! {:mode mode} Card @cards)]
+                      [id1 id2] (upsert/maybe-upsert-many! {:mode mode} :m/card @cards)]
                   (is (every? (partial apply same?)
-                              [[(t2/select-one Card :id id1) e1] [(t2/select-one Card :id id2) e2]])))))]
+                              [[(t2/select-one :m/card :id id1) e1] [(t2/select-one :m/card :id id2) e2]])))))]
       (doseq [mode [:skip :update]]
         (test-mode mode)))))
 
 (deftest maybe-upsert-many!-update-test
-  (mt/with-model-cleanup [Card]
+  (mt/with-model-cleanup [:m/card]
     (let [[e1 e2]           @cards
-          id1               (first (t2/insert-returning-pks! Card e1))
-          e1-mutated        (mutate Card e1)
-          [id1-mutated id2] (upsert/maybe-upsert-many! {:mode :update} Card [e1-mutated e2])]
+          id1               (first (t2/insert-returning-pks! :m/card e1))
+          e1-mutated        (mutate :m/card e1)
+          [id1-mutated id2] (upsert/maybe-upsert-many! {:mode :update} :m/card [e1-mutated e2])]
       (testing "Card 1 ID"
         (is (= id1 id1-mutated)))
       (testing "Card 1"
-        (is (same? (t2/select-one Card :id id1-mutated) e1-mutated)))
+        (is (same? (t2/select-one :m/card :id id1-mutated) e1-mutated)))
       (testing "Card 2"
-        (is (same? (t2/select-one Card :id id2) e2))))))
+        (is (same? (t2/select-one :m/card :id id2) e2))))))
 
 (defn- dummy-entity [dummy-dashboard model entity instance-num]
   (cond
@@ -108,7 +112,7 @@
 
 (deftest identical-test
   (doseq [model [Collection
-                 Card
+                 :m/card
                  Table
                  Field
                  Metric

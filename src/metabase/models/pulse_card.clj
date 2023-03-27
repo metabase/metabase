@@ -61,13 +61,13 @@
 (defmethod serdes/extract-one "PulseCard"
   [_model-name _opts card]
   (cond-> (serdes/extract-one-basics "PulseCard" card)
-    true                      (update :card_id            serdes/export-fk 'Card)
+    true                      (update :card_id            serdes/export-fk :m/card)
     true                      (update :pulse_id           serdes/export-fk 'Pulse)
     (:dashboard_card_id card) (update :dashboard_card_id  serdes/export-fk 'DashboardCard)))
 
 (defmethod serdes/load-xform "PulseCard" [card]
   (cond-> (serdes/load-xform-basics card)
-    true                      (update :card_id            serdes/import-fk 'Card)
+    true                      (update :card_id            serdes/import-fk :m/card)
     true                      (update :pulse_id           serdes/import-fk 'Pulse)
     true                      (dissoc :dashboard_id)
     (:dashboard_card_id card) (update :dashboard_card_id  serdes/import-fk 'DashboardCard)))

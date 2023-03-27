@@ -16,7 +16,7 @@
    [metabase.events :as events]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.database
     :as database
@@ -144,7 +144,7 @@
   {:pre [(#{:card :dataset} question-type)]}
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
-     (comp (map (partial models/do-post-select Card))
+     (comp (map (partial models/do-post-select :m/card))
            (filter card-can-be-used-as-source-query?)
            xform)
      (completing conj #(hydrate % :collection))
@@ -504,7 +504,7 @@
                         second
                         (str/replace #"-" " ")
                         u/lower-case-en)]
-    (t2/select [Card :id :dataset :database_id :name :collection_id [:collection.name :collection_name]]
+    (t2/select [:m/card :id :dataset :database_id :name :collection_id [:collection.name :collection_name]]
                {:where    [:and
                            [:= :report_card.database_id database-id]
                            [:= :report_card.archived false]

@@ -9,7 +9,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models :refer [Card Database Field FieldValues Table]]
+   [metabase.models :refer [:m/card Database Field FieldValues Table]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.table :as table]
@@ -506,7 +506,7 @@
 (deftest virtual-table-metadata-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "Make sure metadata for 'virtual' tables comes back as expected"
-      (mt/with-temp Card [card {:name          "Go Dubs!"
+      (mt/with-temp :m/card [card {:name          "Go Dubs!"
                                 :database_id   (mt/id)
                                 :dataset_query {:database (mt/id)
                                                 :type     :native
@@ -564,7 +564,7 @@
 (deftest include-date-dimensions-in-nested-query-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "Test date dimensions being included with a nested query"
-      (mt/with-temp Card [card {:name          "Users"
+      (mt/with-temp :m/card [card {:name          "Users"
                                 :database_id   (mt/id)
                                 :dataset_query {:database (mt/id)
                                                 :type     :native
@@ -573,7 +573,7 @@
           ;; run the Card which will populate its result_metadata column
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
           ;; Now fetch the metadata for this "table" via the API
-          (let [[name-metadata last-login-metadata] (t2/select-one-fn :result_metadata Card :id (u/the-id card))]
+          (let [[name-metadata last-login-metadata] (t2/select-one-fn :result_metadata :m/card :id (u/the-id card))]
             (is (= {:display_name      "Users"
                     :schema            "Everything else"
                     :db_id             (:database_id card)
@@ -789,7 +789,7 @@
   (testing "GET /api/table/:id/query_metadata"
     (testing "binning options for nested queries"
       (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
-        (mt/with-temp Card [card {:database_id   (mt/id)
+        (mt/with-temp :m/card [card {:database_id   (mt/id)
                                   :dataset_query {:database (mt/id)
                                                   :type    :query
                                                   :query    {:source-query {:source-table (mt/id :venues)}}}}]
@@ -797,7 +797,7 @@
                     (let [response (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" (u/the-id card)))]
                       (map #(dimension-options-for-field response %) ["latitude" "longitude"])))]
             (testing "Nested queries missing a fingerprint/results metadata should not show binning-options"
-              (mt/with-temp-vals-in-db Card (:id card) {:result_metadata nil}
+              (mt/with-temp-vals-in-db :m/card (:id card) {:result_metadata nil}
                 ;; By default result_metadata will be nil (and no fingerprint). Just asking for query_metadata after the
                 ;; card was created but before it was ran should not allow binning
                 (is (= [nil nil]

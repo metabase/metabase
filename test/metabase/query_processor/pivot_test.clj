@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.pivots :as api.pivots]
-   [metabase.models :refer [Card Collection]]
+   [metabase.models :refer [:m/card Collection]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -295,7 +295,7 @@
             ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
             ;; Collection inherits Root Collection perms when created
             (mt/with-temp* [Collection [collection]
-                            Card       [card {:collection_id (u/the-id collection), :dataset_query query}]]
+                            :m/card       [card {:collection_id (u/the-id collection), :dataset_query query}]]
               (is (schema= {:status   (s/eq "completed")
                             s/Keyword s/Any}
                            (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))

@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.resolve-referenced-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.database :refer [Database]]
    [metabase.query-processor.middleware.parameters-test
     :refer [card-template-tags]]
@@ -17,7 +17,7 @@
 
 (deftest resolve-card-resources-test
   (testing "resolve stores source table from referenced card"
-    (mt/with-temp Card [mbql-card {:dataset_query (mt/mbql-query venues
+    (mt/with-temp :m/card [mbql-card {:dataset_query (mt/mbql-query venues
                                                     {:filter [:< $price 3]})}]
       (let [query {:database (mt/id)
                    :native   {:template-tags
@@ -40,7 +40,7 @@
 (deftest referenced-query-from-different-db-test
   (testing "fails on query that references a native query from a different database"
     (mt/with-temp* [Database [outer-query-db]
-                    Card     [card {:dataset_query
+                    :m/card     [card {:dataset_query
                                     {:database (mt/id)
                                      :type     :native
                                      :native   {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]]
@@ -72,7 +72,7 @@
 
   (testing "fails on query that references an MBQL query from a different database"
     (mt/with-temp* [Database [outer-query-db]
-                    Card     [card {:dataset_query (mt/mbql-query venues
+                    :m/card     [card {:dataset_query (mt/mbql-query venues
                                                      {:filter [:< $price 3]})}]]
       (let [card-id     (:id card)
             card-query  (:dataset_query card)
@@ -102,13 +102,13 @@
 
 (deftest circular-referencing-tags-test
   (testing "fails on query with circular referencing sub-queries"
-    (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
-                    Card [card-2 {:dataset_query (mt/native-query
+    (mt/with-temp* [:m/card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
+                    :m/card [card-2 {:dataset_query (mt/native-query
                                                   {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
                                                    :template-tags (card-template-tags [(:id card-1)])})}]]
       ;; Setup circular reference from card-1 to card-2 (card-2 already references card-1)
       (let [card-1-id  (:id card-1)]
-        (t2/update! Card (:id card-1) {:dataset_query (mt/native-query
+        (t2/update! :m/card (:id card-1) {:dataset_query (mt/native-query
                                                         {:query         (str "SELECT * FROM {{#" (:id card-2) "}} AS c2")
                                                          :template-tags (card-template-tags [(:id card-2)])})})
         (let [entrypoint-query (mt/native-query

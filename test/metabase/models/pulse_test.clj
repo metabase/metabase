@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models
-    :refer [Card
+    :refer [:m/card
             Collection
             Dashboard
             DashboardCard
@@ -76,7 +76,7 @@
                     PulseChannel [{channel-id :id} {:pulse_id pulse-id
                                                     :details  {:other  "stuff"
                                                                :emails ["foo@bar.com"]}}]
-                    Card         [{card-id :id}    {:name "Test Card"}]]
+                    :m/card         [{card-id :id}    {:name "Test Card"}]]
       (t2/insert! PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
       (t2/insert! PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (mt/user->id :rasta))
       (is (= (merge
@@ -114,9 +114,9 @@
 
 (deftest update-notification-cards!-test
   (mt/with-temp* [Pulse [pulse]
-                  Card  [card-1 {:name "card1"}]
-                  Card  [card-2 {:name "card2"}]
-                  Card  [card-3 {:name "card3"}]]
+                  :m/card  [card-1 {:name "card1"}]
+                  :m/card  [card-2 {:name "card2"}]
+                  :m/card  [card-3 {:name "card3"}]]
     (letfn [(update-cards! [card-nums]
               (let [cards (for [card-num card-nums]
                             (case (int card-num)
@@ -125,7 +125,7 @@
                               3 card-3))]
                 (pulse/update-notification-cards! pulse (map pulse/card->ref cards)))
               (when-let [card-ids (seq (t2/select-fn-set :card_id PulseCard, :pulse_id (u/the-id pulse)))]
-                (t2/select-fn-set :name Card, :id [:in card-ids])))]
+                (t2/select-fn-set :name :m/card, :id [:in card-ids])))]
       (doseq [[cards expected] {[]    nil
                                 [1]   #{"card1"}
                                 [2]   #{"card2"}
@@ -159,7 +159,7 @@
 ;; create-pulse!
 ;; simple example with a single card
 (deftest create-pulse-test
-  (mt/with-temp Card [card {:name "Test Card"}]
+  (mt/with-temp :m/card [card {:name "Test Card"}]
     (mt/with-model-cleanup [Pulse]
       (is (= (merge
               pulse-defaults
@@ -197,7 +197,7 @@
     (mt/with-model-cleanup [Pulse]
       (mt/with-temp* [Collection    [{collection-id :id}]
                       Dashboard     [{dashboard-id :id} {:collection_id collection-id}]
-                      Card          [{card-id :id, :as card}]
+                      :m/card          [{card-id :id, :as card}]
                       DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
         (is (schema= {:name          (s/eq "Abnormal Pulse")
                       :dashboard_id  (s/eq dashboard-id)
@@ -229,8 +229,8 @@
 ;;  6. ability to update cards and ensure proper ordering
 (deftest update-pulse-test
   (mt/with-temp* [Pulse [pulse]
-                  Card  [card-1 {:name "Test Card"}]
-                  Card  [card-2 {:name "Bar Card", :display :bar}]]
+                  :m/card  [card-1 {:name "Test Card"}]
+                  :m/card  [card-2 {:name "Bar Card", :display :bar}]]
     (is (= (merge pulse-defaults
                   {:creator_id (mt/user->id :rasta)
                    :name       "We like to party"
@@ -284,8 +284,8 @@
 (deftest no-archived-cards-test
   (testing "make sure fetching a Pulse doesn't return any archived cards"
     (mt/with-temp* [Pulse     [pulse]
-                    Card      [card-1 {:archived true}]
-                    Card      [card-2]
+                    :m/card      [card-1 {:archived true}]
+                    :m/card      [card-2]
                     PulseCard [_ {:pulse_id (u/the-id pulse), :card_id (u/the-id card-1), :position 0}]
                     PulseCard [_ {:pulse_id (u/the-id pulse), :card_id (u/the-id card-2), :position 1}]]
       (is (= 1
@@ -378,7 +378,7 @@
                     Pulse      [pulse {:collection_id (u/the-id collection)}]
                     Database   [db    {:engine :h2}]
                     Table      [table {:db_id (u/the-id db)}]
-                    Card       [card  {:dataset_query {:database (u/the-id db)
+                    :m/card       [card  {:dataset_query {:database (u/the-id db)
                                                        :type     :query
                                                        :query    {:source-table (u/the-id table)}}}]
                     PulseCard  [_ {:pulse_id (u/the-id pulse), :card_id (u/the-id card)}]]

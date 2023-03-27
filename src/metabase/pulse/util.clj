@@ -1,7 +1,7 @@
 (ns metabase.pulse.util
   "Utils for pulses."
   (:require
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard-card
     :as dashboard-card
     :refer [DashboardCard]]
@@ -21,7 +21,7 @@
   {:pre [(integer? pulse-creator-id)]}
   (let [card-id (u/the-id card-or-id)]
     (try
-      (when-let [{query :dataset_query, :as card} (t2/select-one Card :id card-id, :archived false)]
+      (when-let [{query :dataset_query, :as card} (t2/select-one :m/card :id card-id, :archived false)]
         (let [query         (assoc query :async? false)
               process-query (fn []
                               (binding [qp.perms/*card-id* card-id]
@@ -49,7 +49,7 @@
   [card-or-id dashcard-or-id]
   (let [card-id      (u/the-id card-or-id)
         dashcard-id  (u/the-id dashcard-or-id)
-        card         (t2/select-one Card :id card-id, :archived false)
+        card         (t2/select-one :m/card :id card-id, :archived false)
         dashcard     (t2/select-one DashboardCard :id dashcard-id)
         multi-cards  (dashboard-card/dashcard->multi-cards dashcard)]
     (for [multi-card multi-cards]

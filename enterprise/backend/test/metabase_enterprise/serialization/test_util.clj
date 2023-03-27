@@ -6,7 +6,7 @@
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
+   [metabase.models :refer [:m/card Collection Dashboard DashboardCard DashboardCardSeries Database
                             Field Metric NativeQuerySnippet Pulse PulseCard Segment Table User]]
    [metabase.models.collection :as collection]
    [metabase.query-processor.store :as qp.store]
@@ -173,7 +173,7 @@
                    Dashboard  [{~'dashboard-id :id} {:name "My Dashboard"
                                                      :collection_id ~'collection-id}]
                    Dashboard  [{~'root-dashboard-id :id} {:name "Root Dashboard"}]
-                   Card       [{~'card-id :id}
+                   :m/card       [{~'card-id :id}
                                {:table_id ~'table-id
                                 :name "My Card"
                                 :collection_id ~'collection-id
@@ -191,7 +191,7 @@
                                                                              [:field
                                                                               ~'category-pk-field-id
                                                                               {:join-alias "cat"}]]}]}}}]
-                   Card       [{~'card-arch-id :id}
+                   :m/card       [{~'card-arch-id :id}
                                {;:archived true
                                 :table_id ~'table-id
                                 :name "My Arch Card"
@@ -201,7 +201,7 @@
                                                 :query {:source-table ~'table-id
                                                         :aggregation [:sum [:field ~'numeric-field-id nil]]
                                                         :breakout [[:field ~'category-field-id nil]]}}}]
-                   Card       [{~'card-id-root :id}
+                   :m/card       [{~'card-id-root :id}
                                {:table_id ~'table-id
                                 ;; https://en.wikipedia.org/wiki/Filename#Reserved_characters_and_words
                                 :name root-card-name
@@ -209,7 +209,7 @@
                                                 :database ~'db-id
                                                 :query {:source-table ~'table-id}
                                                 :expressions {"Price Known" [:> [:field ~'numeric-field-id nil] 0]}}}]
-                   Card       [{~'card-id-nested :id}
+                   :m/card       [{~'card-id-nested :id}
                                {:table_id ~'table-id
                                 :name "My Nested Card"
                                 :collection_id ~'collection-id
@@ -225,7 +225,7 @@
                                                               ~'latitude-field-id))
                                                    {:show_mini_bar true
                                                     :column_title "Parallel"}}}}]
-                   Card       [{~'card-id-nested-query :id}
+                   :m/card       [{~'card-id-nested-query :id}
                                {:table_id ~'table-id
                                 :name "My Nested Query Card"
                                 :collection_id ~'collection-id
@@ -236,7 +236,7 @@
                                  {:source-query
                                   {:source-query
                                    {:source-table ~'table-id}}}}}]
-                   Card       [{~'card-id-native-query :id}
+                   :m/card       [{~'card-id-native-query :id}
                                {:query_type :native
                                 :name "My Native Nested Query Card"
                                 :collection_id ~'collection-id
@@ -298,13 +298,13 @@
                                          :card_id                nil
                                          :visualization_settings {:virtual_card virtual-card
                                                                   :text         "Textbox Card"}}]
-                   Card                [{~'card-id-root-to-collection :id}
+                   :m/card                [{~'card-id-root-to-collection :id}
                                         {:table_id ~'table-id
                                          :name "Root card based on one in collection"
                                          :dataset_query {:type :query
                                                          :database ~'db-id
                                                          :query {:source-table (str "card__" ~'card-id)}}}]
-                   Card                [{~'card-id-collection-to-root :id}
+                   :m/card                [{~'card-id-collection-to-root :id}
                                         {:table_id ~'table-id
                                          :name "Card in collection based on root one"
                                          :collection_id ~'collection-id
@@ -317,7 +317,7 @@
                                                                    :card_id  ~'card-id-root}]
                    PulseCard           [{~'pulsecard-collection-id :id} {:pulse_id ~'pulse-id
                                                                          :card_id  ~'card-id}]
-                   Card                [{~'card-id-template-tags :id}
+                   :m/card                [{~'card-id-template-tags :id}
                                         {:query_type    :native
                                          :name          "My Native Card With Template Tags"
                                          :collection_id ~'collection-id
@@ -334,7 +334,7 @@
                                                                    :widget-type  "id"
                                                                    :required     true
                                                                    :default      40}}}}}]
-                   Card       [{~'card-id-filter-agg :id}
+                   :m/card       [{~'card-id-filter-agg :id}
                                {:table_id ~'table-id
                                 :name "Card With Filter After Aggregation"
                                 :collection_id ~'collection-id
@@ -351,7 +351,7 @@
                                                            :filter [:>
                                                                     [:field-literal "num_per_type" :type/Integer]
                                                                     4]}}}]
-                   Card       [{~'card-id-temporal-unit :id}
+                   :m/card       [{~'card-id-temporal-unit :id}
                                {:table_id ~'table-id
                                 :name "Card With Temporal Unit in Field Clause"
                                 :collection_id ~'collection-id
@@ -382,7 +382,7 @@
                                         :description   "Predicate on venues table for name starting with A"
                                         :name          "A Venues"
                                         :collection_id ~'snippet-nested-collection-id}]
-                   Card               [{~'card-id-with-native-snippet :id}
+                   :m/card               [{~'card-id-with-native-snippet :id}
                                        {:query_type    :native
                                         :name          "Card with Native Query Snippet"
                                         :collection_id ~'collection-id
@@ -405,7 +405,7 @@
                                                                    :type         "snippet"
                                                                    :snippet-name "A Venues"
                                                                    :snippet-id   ~'nested-snippet-id}}}}}]
-                   Card               [{~'card-join-card-id :id}
+                   :m/card               [{~'card-join-card-id :id}
                                        {:table_id ~'table-id-checkins
                                         :name "Card Joining to Another Card"
                                         :collection_id ~'collection-id

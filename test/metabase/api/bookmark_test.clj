@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.models.bookmark
     :refer [BookmarkOrdering CardBookmark CollectionBookmark DashboardBookmark]]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
@@ -16,7 +16,7 @@
   (mt/initialize-if-needed! :db)
   (testing "POST /api/bookmark/:model/:model-id"
     (mt/with-temp* [Collection [{coll-id :id :as collection} {:name "Test Collection"}]
-                    Card       [card {:name "Test Card", :display "area", :collection_id coll-id}]
+                    :m/card       [card {:name "Test Card", :display "area", :collection_id coll-id}]
                     Dashboard  [dashboard {:name "Test Dashboard", :collection_id coll-id}]]
       (testing "check that we can bookmark a Collection"
         (is (= (u/the-id collection)
@@ -62,7 +62,7 @@
                   {:user_id user-id
                    :collection_id (u/the-id model)})
 
-      (mi/instance-of? Card model)
+      (mi/instance-of? :m/card model)
       (t2/insert! CardBookmark
                   {:user_id user-id
                    :card_id (u/the-id model)})
@@ -78,7 +78,7 @@
 (deftest bookmarks-on-archived-items-test
   (testing "POST /api/bookmark/:model/:model-id"
     (mt/with-temp* [Collection [archived-collection {:name "Test Collection" :archived true}]
-                    Card       [archived-card {:name "Test Card" :archived true}]
+                    :m/card       [archived-card {:name "Test Card" :archived true}]
                     Dashboard  [archived-dashboard {:name "Test Dashboard" :archived true}]]
       (bookmark-models (mt/user->id :rasta) archived-collection archived-card archived-dashboard)
       (testing "check that we don't receive bookmarks of archived items"
@@ -90,7 +90,7 @@
 (deftest bookmarks-ordering-test
   (testing "PUT /api/bookmark/ordering"
     (mt/with-temp* [Collection [collection {:name "Test Collection"}]
-                    Card       [card {:name "Test Card"}]
+                    :m/card       [card {:name "Test Card"}]
                     Dashboard  [dashboard {:name "Test Dashboard"}]]
       (mt/with-model-cleanup [BookmarkOrdering]
         (bookmark-models (mt/user->id :rasta) collection card dashboard)

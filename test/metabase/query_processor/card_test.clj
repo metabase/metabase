@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.models :refer [Card Dashboard Database]]
+   [metabase.models :refer [:m/card Dashboard Database]]
    [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
@@ -30,27 +30,27 @@
       (mt/with-temporary-setting-values [query-caching-ttl-ratio 2]
         ;; fake average execution time (in millis)
         (with-redefs [query/average-execution-time-ms (constantly 4000)]
-          (mt/with-temp Card [card]
+          (mt/with-temp :m/card [card]
             ;; the magic multiplier should be ttl-ratio times avg execution time
             (is (= (* 2 4) (:cache-ttl (#'qp.card/query-for-card card {} {} {}))))))))
     (testing "card ttl only"
-      (mt/with-temp* [Card [card {:cache_ttl 1337}]]
+      (mt/with-temp* [:m/card [card {:cache_ttl 1337}]]
         (is (= (* 3600 1337) (:cache-ttl (#'qp.card/query-for-card card {} {} {}))))))
     (testing "multiple ttl, dash wins"
       (mt/with-temp* [Database [db {:cache_ttl 1337}]
                       Dashboard [dash {:cache_ttl 1338}]
-                      Card [card {:database_id (u/the-id db)}]]
+                      :m/card [card {:database_id (u/the-id db)}]]
         (is (= (* 3600 1338) (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
     (testing "multiple ttl, db ttl does not take effect on OSS so nil result"
       ;; corresponding EE test in metabase-enterprise.advanced-config.caching-test
       (mt/with-temp* [Database [db {:cache_ttl 1337}]
                       Dashboard [dash]
-                      Card [card {:database_id (u/the-id db)}]]
+                      :m/card [card {:database_id (u/the-id db)}]]
         (is (= nil (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
     (testing "no ttl, nil result"
       (mt/with-temp* [Database [db]
                       Dashboard [dash]
-                      Card [card {:database_id (u/the-id db)}]]
+                      :m/card [card {:database_id (u/the-id db)}]]
         (is (= nil (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))))
 
 (defn- field-filter-query []
@@ -78,15 +78,15 @@
 
 (deftest card-template-tag-parameters-test
   (testing "Card with a Field filter parameter"
-    (mt/with-temp Card [{card-id :id} {:dataset_query (field-filter-query)}]
+    (mt/with-temp :m/card [{card-id :id} {:dataset_query (field-filter-query)}]
       (is (= {"date" :date/all-options}
              (#'qp.card/card-template-tag-parameters card-id)))))
   (testing "Card with a non-Field-filter parameter"
-    (mt/with-temp Card [{card-id :id} {:dataset_query (non-field-filter-query)}]
+    (mt/with-temp :m/card [{card-id :id} {:dataset_query (non-field-filter-query)}]
       (is (= {"id" :number}
              (#'qp.card/card-template-tag-parameters card-id)))))
   (testing "Should ignore native query snippets and source card IDs"
-    (mt/with-temp Card [{card-id :id} {:dataset_query (assoc (non-field-filter-query)
+    (mt/with-temp :m/card [{card-id :id} {:dataset_query (assoc (non-field-filter-query)
                                                              "abcdef"
                                                              {:id           "abcdef"
                                                               :name         "#1234"
@@ -113,7 +113,7 @@
          (#'qp.card/infer-parameter-name {:target [:field 1000 nil]}))))
 
 (deftest validate-card-parameters-test
-  (mt/with-temp Card [{card-id :id} {:dataset_query (field-filter-query)}]
+  (mt/with-temp :m/card [{card-id :id} {:dataset_query (field-filter-query)}]
     (testing "Should disallow parameters that aren't actually part of the Card"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo

@@ -2,7 +2,7 @@
   "Shared test utilities for sandbox tests."
   (:require
    [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.table :refer [Table]]
@@ -39,7 +39,7 @@
     (f)
     (let [do-with-card (fn [f]
                          (if query
-                           (tt/with-temp Card [{card-id :id} {:dataset_query query}]
+                           (tt/with-temp :m/card [{card-id :id} {:dataset_query query}]
                              (f card-id))
                            (f nil)))]
       (do-with-card

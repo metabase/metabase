@@ -12,7 +12,7 @@
             Activity
             ApplicationPermissionsRevision
             BookmarkOrdering
-            Card
+            :m/card
             CardBookmark
             Collection
             CollectionBookmark
@@ -102,7 +102,7 @@
    Collection
    CollectionPermissionGraphRevision
    Dashboard
-   Card
+   :m/card
    CardBookmark
    DashboardBookmark
    CollectionBookmark

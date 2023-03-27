@@ -12,8 +12,8 @@
 
 (def moderated-item-type->model
   "Maps DB name of the moderated item type to the model symbol (used for t2/select and such)"
-  {"card"      'Card
-   :card       'Card
+  {"card"      :m/card
+   :card       :m/card
    "dashboard" 'Dashboard
    :dashboard  'Dashboard})
 

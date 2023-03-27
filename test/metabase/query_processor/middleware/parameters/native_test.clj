@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -12,7 +12,7 @@
 (deftest include-card-parameters-test
   (testing "Expanding a Card reference in a native query should include its parameters (#12236)"
     (mt/dataset sample-dataset
-      (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
+      (mt/with-temp :m/card [card {:dataset_query (mt/mbql-query orders
                                                  {:filter      [:between $total 30 60]
                                                   :aggregation [[:aggregation-options
                                                                  [:count-where [:starts-with $product_id->products.category "G"]]

@@ -7,7 +7,7 @@
    [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models :refer [Card Collection NativeQuerySnippet]]
+   [metabase.models :refer [:m/card Collection NativeQuerySnippet]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings :as public-settings]
@@ -293,7 +293,7 @@
   (mt/with-test-user :rasta
     (testing "Card query template tag gets card's native query"
       (let [test-query "SELECT 1"]
-        (mt/with-temp Card [card {:dataset_query {:database (mt/id)
+        (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
                                                   :type     "native"
                                                   :native   {:query test-query}}}]
           (is (= {:card-id (u/the-id card), :query test-query, :params nil}
@@ -320,7 +320,7 @@
                                   "FROM \"PUBLIC\".\"VENUES\" "
                                   "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3 "
                                   "LIMIT 1048575")]
-            (mt/with-temp Card [card {:dataset_query mbql-query}]
+            (mt/with-temp :m/card [card {:dataset_query mbql-query}]
               (is (= {:card-id (u/the-id card), :query expected-sql, :params nil}
                      (value-for-tag
                       {:name         "card-template-tag-test"
@@ -334,7 +334,7 @@
         (mt/dataset test-data
           (mt/with-persistence-enabled [persist-models!]
             (let [mbql-query (mt/mbql-query categories)]
-              (mt/with-temp* [Card [model {:name "model"
+              (mt/with-temp* [:m/card [model {:name "model"
                                            :dataset true
                                            :dataset_query mbql-query
                                            :database_id (mt/id)}]]
@@ -380,7 +380,7 @@
                                                      :card-id (u/the-id model)}}}}))))))))))))))
 
     (testing "Card query template tag wraps error in tag details"
-      (mt/with-temp Card [param-card {:dataset_query
+      (mt/with-temp :m/card [param-card {:dataset_query
                                       (mt/native-query
                                         {:query "SELECT {{x}}"
                                          :template-tags
@@ -389,7 +389,7 @@
                                            :type :number, :required false}}})}]
         (let [param-card-id  (:id param-card)
               param-card-tag (str "#" param-card-id)]
-          (mt/with-temp Card [card {:dataset_query
+          (mt/with-temp :m/card [card {:dataset_query
                                     (mt/native-query
                                       {:query (str "SELECT * FROM {{#" param-card-id "}} AS y")
                                        :template-tags
@@ -423,10 +423,10 @@
       (mt/with-temp-copy-of-db
         (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
         (mt/with-temp* [Collection [collection]
-                        Card       [{card-1-id :id} {:collection_id (u/the-id collection)
+                        :m/card       [{card-1-id :id} {:collection_id (u/the-id collection)
                                                      :dataset_query (mt/mbql-query venues
                                                                       {:order-by [[:asc $id]], :limit 2})}]
-                        Card       [card-2 {:collection_id (u/the-id collection)
+                        :m/card       [card-2 {:collection_id (u/the-id collection)
                                             :dataset_query (mt/native-query
                                                              {:query         "SELECT * FROM {{card}}"
                                                               :template-tags {"card" {:name         "card"
@@ -524,7 +524,7 @@
 (deftest parse-card-include-parameters-test
   (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"
     (mt/dataset sample-dataset
-      (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
+      (mt/with-temp :m/card [card {:dataset_query (mt/mbql-query orders
                                                  {:filter      [:between $total 30 60]
                                                   :aggregation [[:aggregation-options
                                                                  [:count-where [:starts-with $product_id->products.category "G"]]
@@ -650,7 +650,7 @@
 (deftest handle-referenced-card-parameter-mixed-with-other-parameters-test
   (testing "Should be able to handle for Card ref params regardless of whether other params are passed in (#21246)\n"
     (mt/dataset sample-dataset
-      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query products)}]
+      (mt/with-temp :m/card [{card-id :id} {:dataset_query (mt/mbql-query products)}]
         (let [param-name    (format "#%d" card-id)
               template-tags {param-name {:type         :card
                                          :card-id      card-id

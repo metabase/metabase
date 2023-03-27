@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test :as qp.test]
@@ -221,7 +221,7 @@
 (deftest bin-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
     (testing "Binning should be allowed on nested queries that have result metadata"
-      (mt/with-temp Card [card (qp.test-util/card-with-source-metadata-for-query
+      (mt/with-temp :m/card [card (qp.test-util/card-with-source-metadata-for-query
                                 (mt/mbql-query nil
                                   {:source-query {:source-table $$venues}}))]
         (let [query (nested-venues-query card)]
@@ -246,8 +246,8 @@
       ;; metadata from the source query, so disable that for now so we can make sure the `update-binning-strategy`
       ;; middleware is doing the right thing
       (with-redefs [add-source-metadata/mbql-source-query->metadata (constantly nil)]
-        (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
-          (mt/with-temp-vals-in-db Card (:id card) {:result_metadata nil}
+        (mt/with-temp :m/card [card {:dataset_query (mt/mbql-query venues)}]
+          (mt/with-temp-vals-in-db :m/card (:id card) {:result_metadata nil}
             (is (thrown-with-msg?
                  Exception
                  #"Cannot update binned field: query is missing source-metadata"

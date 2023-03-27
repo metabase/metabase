@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.email :as email]
    [metabase.email-test :as et]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :refer [PulseChannel]]
@@ -13,7 +13,7 @@
    [metabase.test :as mt]))
 
 (deftest send-pulses-test
-  (mt/with-temp* [Card                 [{card-id :id}  (assoc (checkins-query-card {:breakout [[:field (mt/id :checkins :date) {:temporal-unit :day}]]})
+  (mt/with-temp* [:m/card                 [{card-id :id}  (assoc (checkins-query-card {:breakout [[:field (mt/id :checkins :date) {:temporal-unit :day}]]})
                                                               :name "My Question Name")]
                   Pulse                [{pulse-id :id} {:alert_condition  "rows"
                                                         :alert_first_only false}]
@@ -44,7 +44,7 @@
 (deftest dont-send-archived-pulses-test
   (testing (str "Test that when we attempt to send a pulse that is archived, it just skips the pulse and sends "
                 "nothing. Previously this failed schema validation (see metabase#8581)")
-    (mt/with-temp* [Card                 [{card-id :id}    (assoc (checkins-query-card {:breakout [[:field (mt/id :checkins :date) {:temporal-unit :day}]]})
+    (mt/with-temp* [:m/card                 [{card-id :id}    (assoc (checkins-query-card {:breakout [[:field (mt/id :checkins :date) {:temporal-unit :day}]]})
                                                                   :name "My Question Name")]
                     Pulse                [{pulse-id :id}   {:name "Test", :archived true}]
                     PulseCard             [_               {:pulse_id pulse-id

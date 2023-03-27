@@ -6,7 +6,7 @@
    [metabase.email-test :as et]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+    :refer [:m/card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
@@ -81,8 +81,8 @@
     (let [alert (t2/select-one Pulse :id (u/the-id alert))]
       (assert (pulse/is-alert? alert))
       ;; Since Alerts do not actually go in Collections, but rather their Cards do, put the Card in the Collection
-      (t2/update! Card (u/the-id card) {:collection_id (u/the-id collection)})
-      (let [card (t2/select-one Card :id (u/the-id card))]
+      (t2/update! :m/card (u/the-id card) {:collection_id (u/the-id collection)})
+      (let [card (t2/select-one :m/card :id (u/the-id card))]
         (f db collection alert card)))))
 
 (defmacro ^:private with-alert-in-collection
@@ -114,7 +114,7 @@
       (when (seq alerts-or-ids)
         (doseq [alert (t2/select Pulse :id [:in (set (map u/the-id alerts-or-ids))])
                 :let  [card (#'metabase.models.pulse/alert->card alert)]]
-          (t2/update! Card (u/the-id card) {:collection_id (u/the-id collection)})))
+          (t2/update! :m/card (u/the-id card) {:collection_id (u/the-id collection)})))
       (f))))
 
 (defmacro ^:private with-alerts-in-readable-collection [alerts-or-ids & body]
@@ -290,7 +290,7 @@
 
 ;; Check creation of a new rows alert with email notification
 (deftest new-rows-with-email-test
-  (mt/with-temp* [Card [card {:name "My question"}]]
+  (mt/with-temp* [:m/card [card {:name "My question"}]]
     (is (= [(-> (default-alert card)
                 (assoc-in [:card :include_csv] true)
                 (assoc-in [:card :collection_id] true)
@@ -298,7 +298,7 @@
             (new-alert-email :rasta {"has any results" true})]
            (mt/with-non-admin-groups-no-root-collection-perms
              (mt/with-temp Collection [collection]
-               (t2/update! Card (u/the-id card) {:collection_id (u/the-id collection)})
+               (t2/update! :m/card (u/the-id card) {:collection_id (u/the-id collection)})
                (with-alert-setup
                  (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
                  [(et/with-expected-messages 1
@@ -319,7 +319,7 @@
 
 ;; An admin created alert should notify others they've been subscribed
 (deftest notify-subscribed-test
-  (mt/with-temp* [Card [card {:name "My question"}]]
+  (mt/with-temp* [:m/card [card {:name "My question"}]]
     (is (= {:response (-> (default-alert card)
                           (assoc :creator (user-details :crowberto))
                           (assoc-in [:card :include_csv] true)
@@ -357,7 +357,7 @@
   (is (= (new-alert-email :rasta {"goes below its goal" true})
          (mt/with-non-admin-groups-no-root-collection-perms
            (mt/with-temp* [Collection [collection]
-                           Card       [card {:name          "My question"
+                           :m/card       [card {:name          "My question"
                                              :display       "line"
                                              :collection_id (u/the-id collection)}]]
              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
@@ -379,7 +379,7 @@
   (is (= (new-alert-email :rasta {"meets its goal" true})
          (mt/with-non-admin-groups-no-root-collection-perms
            (mt/with-temp* [Collection [collection]
-                           Card       [card {:name          "My question"
+                           :m/card       [card {:name          "My question"
                                              :display       "bar"
                                              :collection_id (u/the-id collection)}]]
              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
@@ -473,7 +473,7 @@
 (deftest update-alerts-admin-test
   (testing "Admin users can update any alert"
     (mt/with-temp* [Pulse                 [alert (basic-alert)]
-                    Card                  [card]
+                    :m/card                  [card]
                     PulseCard             [_     (pulse-card alert card)]
                     PulseChannel          [pc    (pulse-channel alert)]
                     PulseChannelRecipient [_     (recipient pc :rasta)]]
@@ -485,7 +485,7 @@
 
   (testing "Admin users can update any alert, changing the related alert attributes"
     (mt/with-temp* [Pulse                 [alert (basic-alert)]
-                    Card                  [card]
+                    :m/card                  [card]
                     PulseCard             [_     (pulse-card alert card)]
                     PulseChannel          [pc    (pulse-channel alert)]
                     PulseChannelRecipient [_     (recipient pc :rasta)]]
@@ -501,7 +501,7 @@
 
   (testing "Admin users can add a recipient, that recipient should be notified"
     (mt/with-temp* [Pulse                 [alert (basic-alert)]
-                    Card                  [card]
+                    :m/card                  [card]
                     PulseCard             [_     (pulse-card alert card)]
                     PulseChannel          [pc    (pulse-channel alert)]
                     PulseChannelRecipient [_     (recipient pc :crowberto)]]
@@ -522,7 +522,7 @@
 (deftest update-alerts-non-admin-test
   (testing "Non-admin users can update alerts they created"
     (mt/with-temp* [Pulse                 [alert (basic-alert)]
-                    Card                  [card]
+                    :m/card                  [card]
                     PulseCard             [_     (pulse-card alert card)]
                     PulseChannel          [pc    (pulse-channel alert)]
                     PulseChannelRecipient [_     (recipient pc :rasta)]]
@@ -536,7 +536,7 @@
 
   (testing "Non-admin users cannot change the recipients of an alert"
     (mt/with-temp* [Pulse                 [alert (basic-alert)]
-                    Card                  [card]
+                    :m/card                  [card]
                     PulseCard             [_     (pulse-card alert card)]
                     PulseChannel          [pc    (pulse-channel alert)]
                     PulseChannelRecipient [_     (recipient pc :rasta)]]
@@ -550,7 +550,7 @@
 (deftest admin-users-remove-recipient-test
   (testing "admin users can remove a recipieint, that recipient should be notified"
     (mt/with-temp* [Pulse                 [alert (basic-alert)]
-                    Card                  [card]
+                    :m/card                  [card]
                     PulseCard             [_     (pulse-card alert card)]
                     PulseChannel          [pc    (pulse-channel alert)]
                     PulseChannelRecipient [_     (recipient pc :crowberto)]
@@ -575,7 +575,7 @@
     (is (= "You don't have permissions to do that."
          (mt/with-non-admin-groups-no-root-collection-perms
            (mt/with-temp* [Pulse                 [alert (assoc (basic-alert) :creator_id (mt/user->id :crowberto))]
-                           Card                  [card]
+                           :m/card                  [card]
                            PulseCard             [_     (pulse-card alert card)]
                            PulseChannel          [pc    (pulse-channel alert)]
                            PulseChannelRecipient [_     (recipient pc :rasta)]]
@@ -588,7 +588,7 @@
     (is (= "You don't have permissions to do that."
            (mt/with-non-admin-groups-no-root-collection-perms
              (mt/with-temp* [Pulse                 [alert (basic-alert)]
-                             Card                  [card]
+                             :m/card                  [card]
                              PulseCard             [_     (pulse-card alert card)]
                              PulseChannel          [pc    (pulse-channel alert)]
                              PulseChannelRecipient [_     (recipient pc :crowberto)]]
@@ -630,7 +630,7 @@
   (count ((alert-client user-kw) :get 200 (alert-question-url card-or-id archived))))
 
 (deftest get-alert-question-test
-  (mt/with-temp* [Card                 [card  (basic-alert-query)]
+  (mt/with-temp* [:m/card                 [card  (basic-alert-query)]
                   Pulse                [alert {:alert_condition  "rows"
                                                :alert_first_only false
                                                :alert_above_goal nil
@@ -652,7 +652,7 @@
   (testing "Non-admin users shouldn't see alerts they created if they're no longer recipients"
     (is (= {:count-1 1
             :count-2 0}
-           (mt/with-temp* [Card                  [card  (basic-alert-query)]
+           (mt/with-temp* [:m/card                  [card  (basic-alert-query)]
                            Pulse                 [alert (assoc (basic-alert) :alert_above_goal true)]
                            PulseCard             [_     (pulse-card alert card)]
                            PulseChannel          [pc    (pulse-channel alert)]
@@ -669,7 +669,7 @@
   (testing "Non-admin users should not see others alerts, admins see all alerts"
     (is (= {:rasta     1
             :crowberto 2}
-           (mt/with-temp* [Card                  [card    (basic-alert-query)]
+           (mt/with-temp* [:m/card                  [card    (basic-alert-query)]
                            Pulse                 [alert-1 (assoc (basic-alert)
                                                                  :alert_above_goal false)]
                            PulseCard             [_       (pulse-card alert-1 card)]
@@ -690,7 +690,7 @@
                   :crowberto (api:alert-question-count :crowberto card))))))))
 
   (testing "Archived alerts are excluded by default, unless `archived` parameter is sent"
-    (mt/with-temp* [Card                  [card    (basic-alert-query)]
+    (mt/with-temp* [:m/card                  [card    (basic-alert-query)]
                     Pulse                 [alert-1 (assoc (basic-alert)
                                                           :alert_above_goal false
                                                           :archived         true)]
@@ -743,7 +743,7 @@
     (is (= {:recipients-1 #{"crowberto@metabase.com" "rasta@metabase.com"}
             :recipients-2 #{"crowberto@metabase.com"}
             :emails       (unsubscribe-email :rasta {"Foo" true})}
-           (mt/with-temp* [Card                  [card  (basic-alert-query)]
+           (mt/with-temp* [:m/card                  [card  (basic-alert-query)]
                            Pulse                 [alert (basic-alert)]
                            PulseCard             [_     (pulse-card alert card)]
                            PulseChannel          [pc    (pulse-channel alert)]
@@ -766,7 +766,7 @@
     (is (= {:recipients-1 #{"crowberto@metabase.com" "rasta@metabase.com"}
             :recipients-2 #{"rasta@metabase.com"}
             :emails       (unsubscribe-email :crowberto {"Foo" true})}
-           (mt/with-temp* [Card                  [card  (basic-alert-query)]
+           (mt/with-temp* [:m/card                  [card  (basic-alert-query)]
                            Pulse                 [alert (basic-alert)]
                            PulseCard             [_     (pulse-card alert card)]
                            PulseChannel          [pc    (pulse-channel alert)]
@@ -786,7 +786,7 @@
   (testing "Alert should be archived if the last recipient unsubscribes"
     (is (= {:archived? true
             :emails    (unsubscribe-email :rasta {"Foo" true})}
-           (mt/with-temp* [Card                  [card  (basic-alert-query)]
+           (mt/with-temp* [:m/card                  [card  (basic-alert-query)]
                            Pulse                 [alert (basic-alert)]
                            PulseCard             [_     (pulse-card alert card)]
                            PulseChannel          [pc    (pulse-channel alert)]
@@ -802,7 +802,7 @@
   (testing "Alert should not be archived if there is a slack channel"
     (is (= {:archived? false
             :emails    (unsubscribe-email :rasta {"Foo" true})}
-           (mt/with-temp* [Card                  [card  (basic-alert-query)]
+           (mt/with-temp* [:m/card                  [card  (basic-alert-query)]
                            Pulse                 [alert (basic-alert)]
                            PulseCard             [_     (pulse-card alert card)]
                            PulseChannel          [pc-1  (assoc (pulse-channel alert) :channel_type :email)]
@@ -821,7 +821,7 @@
             :emails    (et/email-to :rasta {:subject "You’ve been unsubscribed from an alert",
                                             :body    {"https://metabase.com/testmb"          true,
                                                       "letting you know that Crowberto Corv" true}})}
-           (mt/with-temp* [Card                  [card  (basic-alert-query)]
+           (mt/with-temp* [:m/card                  [card  (basic-alert-query)]
                            Pulse                 [alert (basic-alert)]
                            PulseCard             [_     (pulse-card alert card)]
                            PulseChannel          [pc-1  (assoc (pulse-channel alert) :channel_type :email)]
@@ -842,7 +842,7 @@
             :emails    (et/email-to :rasta {:subject "Crowberto Corv added you to an alert",
                                             :body    {"https://metabase.com/testmb"    true,
                                                       "now getting alerts about .*Foo" true}})}
-           (mt/with-temp* [Card                  [card  (basic-alert-query)]
+           (mt/with-temp* [:m/card                  [card  (basic-alert-query)]
                            Pulse                 [alert (basic-alert)]
                            PulseCard             [_     (pulse-card alert card)]
                            PulseChannel          [pc-1  (assoc (pulse-channel alert) :channel_type :email, :enabled false)]

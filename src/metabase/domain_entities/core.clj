@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase.domain-entities.specs :refer [domain-entity-specs MBQL]]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
    [metabase.util :as u]
@@ -26,7 +26,7 @@
 
 (def SourceEntity
   "A source for a card. Can be either a table or another card."
-  (s/cond-pre (mi/InstanceOf Table) (mi/InstanceOf Card)))
+  (s/cond-pre (mi/InstanceOf Table) (mi/InstanceOf :m/card)))
 
 (def Bindings
   "Top-level lexical context mapping source names to their corresponding entity and constituent dimensions. See also

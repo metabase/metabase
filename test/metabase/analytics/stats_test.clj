@@ -4,7 +4,7 @@
    [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :refer [PulseChannel]]
@@ -126,7 +126,7 @@
 ;;  alert_first_only boolean, -- True if the alert should be disabled after the first notification
 ;;  alert_above_goal boolean, -- For a goal condition, alert when above the goal
 (deftest pulses-and-alerts-test
-  (tt/with-temp* [Card         [c]
+  (tt/with-temp* [:m/card         [c]
                   ;; ---------- Pulses ----------
                   Pulse        [p1]
                   Pulse        [p2]

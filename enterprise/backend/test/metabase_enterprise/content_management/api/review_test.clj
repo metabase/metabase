@@ -1,7 +1,7 @@
 (ns metabase-enterprise.content-management.api.review-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.moderation-review :as moderation-review :refer [ModerationReview]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
@@ -25,7 +25,7 @@
                                       :moderated_item_type "card"})))))
 
     (premium-features-test/with-premium-features #{:content-management}
-      (mt/with-temp* [Card [{card-id :id} {:name "Test Card"}]]
+      (mt/with-temp* [:m/card [{card-id :id} {:name "Test Card"}]]
         (mt/with-model-cleanup [ModerationReview]
           (letfn [(moderate! [status text]
                     (normalized-response

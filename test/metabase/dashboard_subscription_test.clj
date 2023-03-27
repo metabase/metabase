@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models
-    :refer [Card
+    :refer [:m/card
             Collection
             Dashboard
             DashboardCard
@@ -93,7 +93,7 @@
       (mt/with-temp* [Dashboard     [{dashboard-id :id} (->> dashboard
                                                              (merge {:name "Aviary KPIs"
                                                                      :description "How are the birds doing today?"}))]
-                      Card          [{card-id :id} (merge {:name pulse.test-util/card-name
+                      :m/card          [{card-id :id} (merge {:name pulse.test-util/card-name
                                                            :display (or display :line)} card)]]
         (with-dashboard-sub-for-card [{pulse-id :id}
                                       {:card       card-id
@@ -166,11 +166,11 @@
                                          :name        "Linked table name"
                                          :display_name "Linked table dname"
                                          :description "Linked table desc"}
-       Card          {card-id :id}      {:name          "Linked card name"
+       :m/card          {card-id :id}      {:name          "Linked card name"
                                          :description   "Linked card desc"
                                          :display       "bar"
                                          :collection_id coll-id}
-       Card          {model-id :id}     {:dataset       true
+       :m/card          {model-id :id}     {:dataset       true
                                          :name          "Linked model name"
                                          :description   "Linked model desc"
                                          :display       "table"
@@ -223,8 +223,8 @@
 
 (deftest execute-dashboard-test
   (testing "it runs for each non-virtual card"
-    (mt/with-temp* [Card          [{card-id-1 :id}]
-                    Card          [{card-id-2 :id}]
+    (mt/with-temp* [:m/card          [{card-id-1 :id}]
+                    :m/card          [{card-id-2 :id}]
                     Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
                     DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-1}]
                     DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-2}]
@@ -236,9 +236,9 @@
                        :result   (s/pred map?)}]
                      result)))))
   (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
-    (mt/with-temp* [Card          [{card-id-1 :id}]
-                    Card          [{card-id-2 :id}]
-                    Card          [{card-id-3 :id}]
+    (mt/with-temp* [:m/card          [{card-id-1 :id}]
+                    :m/card          [{card-id-2 :id}]
+                    :m/card          [{card-id-3 :id}]
                     Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
                     DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}]
                     DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}]
@@ -248,8 +248,8 @@
         (is (= [card-id-3 card-id-2 card-id-1]
                (map #(-> % :card :id) result))))))
   (testing "virtual (text) cards are returned as a viz settings map"
-    (mt/with-temp* [Card          [_]
-                    Card          [_]
+    (mt/with-temp* [:m/card          [_]
+                    :m/card          [_]
                     Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
                     DashboardCard [_ {:dashboard_id dashboard-id
                                       :visualization_settings {:virtual_card {}, :text "test"}}]
@@ -575,7 +575,7 @@
                                                                                 :type    "category"
                                                                                 :default ["Gizmo"]}]}]
         (testing "MBQL query"
-          (mt/with-temp* [Card [{mbql-card-id :id} {:name          "Orders"
+          (mt/with-temp* [:m/card [{mbql-card-id :id} {:name          "Orders"
                                                     :dataset_query (mt/mbql-query products
                                                                      {:fields   [$id $title $category]
                                                                       :order-by [[:asc $id]]
@@ -590,7 +590,7 @@
                       [3 "Synergistic Granite Chair" "Doohickey"]]
                      (mt/rows mbql-results))))))
         (testing "SQL Query"
-          (mt/with-temp* [Card [{sql-card-id :id} {:name          "Products (SQL)"
+          (mt/with-temp* [:m/card [{sql-card-id :id} {:name          "Products (SQL)"
                                                    :dataset_query (mt/native-query
                                                                     {:query
                                                                      (str "SELECT id, title, category\n"
@@ -639,7 +639,7 @@
           original-native-perm (get-in (perms/data-perms-graph) native-perm-path)]
       (try
         (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:name "Dashboard"}]
-                        Card      [{card-id :id} {:name          "Products (SQL)"
+                        :m/card      [{card-id :id} {:name          "Products (SQL)"
                                                   :dataset_query (mt/native-query
                                                                   {:query "SELECT * FROM venues LIMIT 1"})}]
                         DashboardCard [_ {:dashboard_id dashboard-id
@@ -681,12 +681,12 @@
                                                                dashboard-id]}]
         (let [site-url (public-settings/site-url)]
           (testing "should returns all link cards and name are newly fetched"
-            (doseq [[model id] [[Card card-id]
+            (doseq [[model id] [[:m/card card-id]
                                 [Table table-id]
                                 [Database database-id]
                                 [Dashboard dashboard-id]
                                 [Collection collection-id]
-                                [Card model-id]]]
+                                [:m/card model-id]]]
               (t2/update! model id {:name (format "New %s name" (name model))}))
             (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
                      {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}

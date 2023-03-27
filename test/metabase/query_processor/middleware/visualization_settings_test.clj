@@ -2,7 +2,7 @@
   "Tests for visualization settings processing"
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Card Field]]
+   [metabase.models :refer [:m/card Field]]
    [metabase.query-processor.middleware.visualization-settings
     :as viz-settings]
    [metabase.shared.models.visualization-settings :as mb.viz]
@@ -72,7 +72,7 @@
     (mt/with-temp* [Field [{field-id-1 :id}]
                     Field [{field-id-2 :id}]]
       (testing "Viz settings for a saved card are fetched from the DB and normalized"
-        (mt/with-temp Card [{card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
+        (mt/with-temp :m/card [{card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
           (let [query    (test-query [field-id-1 field-id-2] card-id nil)
                 result   (update-viz-settings query)
                 expected (processed-viz-settings field-id-1 field-id-2)]
@@ -91,7 +91,7 @@
       (testing "Field settings in the DB are incorporated into visualization settings with a lower
                precedence than card settings"
         (testing "for a saved card"
-          (mt/with-temp Card [{card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
+          (mt/with-temp :m/card [{card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
             (let [query    (test-query [field-id-1 field-id-2 field-id-3] card-id nil)
                   result   (update-viz-settings query)
                   expected (-> (processed-viz-settings field-id-1 field-id-2)
@@ -124,7 +124,7 @@
   (testing "Viz settings include global viz settings, in a normalized form"
     (mt/with-temp* [Field [{field-id-1 :id}]
                     Field [{field-id-2 :id}]
-                    Card  [{card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]]
+                    :m/card  [{card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]]
       (let [global-viz-settings #:type{:Number   {:number_separators ".,"}
                                        :Currency {:currency "BIF"}}]
         (mt/with-temporary-setting-values [custom-formatting global-viz-settings]

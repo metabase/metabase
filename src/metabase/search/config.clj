@@ -2,7 +2,7 @@
   (:require
    [cheshire.core :as json]
    [metabase.models
-    :refer [Action Card Collection Dashboard Database Metric Segment Table]]
+    :refer [Action :m/card Collection Dashboard Database Metric Segment Table]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -40,11 +40,11 @@
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
   {"action"     Action
-   "card"       Card
+   "card"       :m/card
    "collection" Collection
    "dashboard"  Dashboard
    "database"   Database
-   "dataset"    Card
+   "dataset"    :m/card
    "metric"     Metric
    "segment"    Segment
    "table"      Table})

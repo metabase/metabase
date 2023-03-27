@@ -2,7 +2,6 @@
   "Common queries used by both Card (Question) and Dashboard detail pages."
   (:require
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.revision :as revision]
    [metabase.util.honey-sql-2 :as h2x]
@@ -77,7 +76,7 @@
 
 (s/defn revision-history
   "Get a revision history table for a Card or Dashboard."
-  [model    :- (s/enum Card Dashboard)
+  [model    :- (s/enum :m/card Dashboard)
    model-id :- su/IntGreaterThanZero]
   {:metadata [[:timestamp   {:display_name "Edited on",   :base_type :type/DateTime}]
               [:user_id     {:display_name "User ID",     :base_type :type/Integer, :remapped_to   :user_name}]

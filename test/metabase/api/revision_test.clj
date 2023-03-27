@@ -1,7 +1,7 @@
 (ns metabase.api.revision-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
@@ -26,7 +26,7 @@
 (defn- create-card-revision [card is-creation? user]
   (revision/push-revision!
     :object       card
-    :entity       Card
+    :entity       :m/card
     :id           (:id card)
     :user-id      (test.users/user->id user)
     :is-creation? is-creation?))
@@ -53,7 +53,7 @@
 (deftest no-revisions-test
   (testing "Loading revisions, where there are no revisions, should work"
     (is (= [{:user {}, :diff nil, :description nil}]
-           (tt/with-temp Card [{:keys [id]}]
+           (tt/with-temp :m/card [{:keys [id]}]
              (get-revisions :card id))))))
 
 ;; case with single creation revision
@@ -65,14 +65,14 @@
              :user         @rasta-revision-info
              :diff         nil
              :description  nil}]
-           (tt/with-temp Card [{:keys [id] :as card}]
+           (tt/with-temp :m/card [{:keys [id] :as card}]
              (create-card-revision card true :rasta)
              (get-revisions :card id))))))
 
 ;; case with multiple revisions, including reversion
 (deftest multiple-revisions-with-reversion-test
   (testing "Creating multiple revisions, with a reversion, works"
-    (tt/with-temp Card [{:keys [id name], :as card}]
+    (tt/with-temp :m/card [{:keys [id name], :as card}]
       (is (= [{:is_reversion true
                :is_creation  false
                :message      "because i wanted to"
@@ -100,7 +100,7 @@
                  :model        "Card"
                  :model_id     id
                  :user_id      (test.users/user->id :rasta)
-                 :object       (revision/serialize-instance Card (:id card) card)
+                 :object       (revision/serialize-instance :m/card (:id card) card)
                  :message      "because i wanted to"
                  :is_creation  false
                  :is_reversion true)
@@ -115,7 +115,7 @@
 (deftest revert-test
   (testing "Reverting through API works"
     (tt/with-temp* [Dashboard [{:keys [id] :as dash}]
-                    Card      [{card-id :id, :as card}]]
+                    :m/card      [{card-id :id, :as card}]]
       (is (=? {:id id}
               (create-dashboard-revision! dash true :rasta)))
       (let [dashcard (first (t2/insert-returning-instances! DashboardCard

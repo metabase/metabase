@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard]]
+   [metabase.models :refer [:m/card Collection Dashboard DashboardCard]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.schema :as su]
@@ -13,7 +13,7 @@
 (defmacro with-dashboard-cleanup
   "Execute body and cleanup all dashboard elements created."
   [& body]
-  `(mt/with-model-cleanup [Card Dashboard Collection DashboardCard]
+  `(mt/with-model-cleanup [:m/card Dashboard Collection DashboardCard]
      ~@body))
 
 (defn- collect-urls

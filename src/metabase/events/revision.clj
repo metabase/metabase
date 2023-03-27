@@ -2,7 +2,7 @@
   (:require
    [clojure.core.async :as a]
    [metabase.events :as events]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.metric :refer [Metric]]
    [metabase.models.revision :refer [push-revision!]]
@@ -46,9 +46,9 @@
             revision-message (:revision_message object)]
         ;; TODO: seems unnecessary to select each entity again, is there a reason we aren't using `object` directly?
         (case model
-          "card"      (push-revision! :entity       Card,
+          "card"      (push-revision! :entity       :m/card,
                                       :id           id,
-                                      :object       (t2/select-one Card :id id),
+                                      :object       (t2/select-one :m/card :id id),
                                       :user-id      user-id,
                                       :is-creation? (= :card-create topic)
                                       :message      revision-message)

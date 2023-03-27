@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.database :as database :refer [Database]]
@@ -105,7 +105,7 @@
               root-collection-path)
           (safe-name pulse)))
 
-(defmethod fully-qualified-name* Card
+(defmethod fully-qualified-name* :m/card
   [card]
   (format "%s/cards/%s"
           (or (some->> card
@@ -220,7 +220,7 @@
 
 (defmethod path->context* "cards"
   [context _ _ dashboard-name]
-  (assoc context :card (t2/select-one-pk Card
+  (assoc context :card (t2/select-one-pk :m/card
                          :collection_id (:collection context)
                          :name          dashboard-name)))
 

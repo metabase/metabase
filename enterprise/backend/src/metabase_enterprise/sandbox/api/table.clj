@@ -6,7 +6,7 @@
    [metabase.api.table :as api.table]
    [metabase.db.query :as mdb.query]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.table :as table :refer [Table]]
@@ -16,7 +16,7 @@
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
-(s/defn ^:private find-gtap-question :- (s/maybe (mi/InstanceOf Card))
+(s/defn ^:private find-gtap-question :- (s/maybe (mi/InstanceOf :m/card))
   "Find the associated GTAP question (if there is one) for the given `table-or-table-id` and
   `user-or-user-id`. Returns nil if no question was found."
   [table-or-table-id user-or-user-id]
@@ -29,7 +29,7 @@
                       [:= :sandboxes.table_id (u/the-id table-or-table-id)]
                       [:= :pgm.user_id (u/the-id user-or-user-id)]]})
            first
-           (models/do-post-select Card)))
+           (models/do-post-select :m/card)))
 
 (s/defn only-segmented-perms? :- s/Bool
   "Returns true if the user has only segemented and not full table permissions. If the user has full table permissions

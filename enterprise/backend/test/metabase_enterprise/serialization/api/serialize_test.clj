@@ -1,7 +1,7 @@
 (ns metabase-enterprise.serialization.api.serialize-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard]]
+   [metabase.models :refer [:m/card Collection Dashboard DashboardCard]]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.test :as mt]
@@ -16,12 +16,12 @@
                                     collection-eid  :entity_id
                                     collection-slug :slug}]
                     Dashboard     [{dashboard-id :id} {:collection_id collection-id}]
-                    Card          [{card-id :id}      {:collection_id collection-id}]
+                    :m/card          [{card-id :id}      {:collection_id collection-id}]
                     DashboardCard [_                  {:card_id card-id, :dashboard_id dashboard-id}]]
       (testing "Sanity Check"
         (is (integer? collection-id))
         (is (= collection-id
-               (t2/select-one-fn :collection_id Card :id card-id))))
+               (t2/select-one-fn :collection_id :m/card :id card-id))))
       (mt/with-temp-dir [dir "serdes-dir"]
         (f {:collection-id collection-id
             :collection-filename (if collection-slug

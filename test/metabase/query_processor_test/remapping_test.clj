@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
@@ -311,11 +311,11 @@
                                                &Products.products.title]}]
                     :order-by [[:asc $id]]
                     :limit    3})]
-          (mt/with-temp Card [{card-1-id :id} {:dataset_query   q1
+          (mt/with-temp :m/card [{card-1-id :id} {:dataset_query   q1
                                                :result_metadata (get-in (qp/process-query q1)
                                                                         [:data :results_metadata :columns])}]
             (let [q2 (mt/mbql-query nil {:source-table (format "card__%d" card-1-id)})]
-              (mt/with-temp Card [{card-2-id :id} {:dataset_query   q2
+              (mt/with-temp :m/card [{card-2-id :id} {:dataset_query   q2
                                                    :result_metadata (get-in (qp/process-query q2)
                                                                             [:data :results_metadata :columns])}]
                 (let [q3 (mt/mbql-query nil {:source-table (format "card__%d" card-2-id)})]

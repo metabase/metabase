@@ -8,7 +8,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.models :refer [Action Card Database]]
+   [metabase.models :refer [Action Database]]
    [metabase.models.action :as action]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
@@ -66,16 +66,16 @@
               []))]
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
     (let [models (if model-id
-                   [(api/read-check Card model-id)]
-                   (t2/select Card {:where
-                                    [:and
-                                     [:= :dataset true]
-                                     [:= :archived false]
-                                     ;; action permission keyed off of model permission
-                                     (collection/visible-collection-ids->honeysql-filter-clause
-                                      :collection_id
-                                      (collection/permissions-set->visible-collection-ids
-                                       @api/*current-user-permissions-set*))]}))]
+                   [(api/read-check :m/card model-id)]
+                   (t2/select :m/card {:where
+                                       [:and
+                                        [:= :dataset true]
+                                        [:= :archived false]
+                                        ;; action permission keyed off of model permission
+                                        (collection/visible-collection-ids->honeysql-filter-clause
+                                         :collection_id
+                                         (collection/permissions-set->visible-collection-ids
+                                          @api/*current-user-permissions-set*))]}))]
       (actions-for models))))
 
 (api/defendpoint GET "/public"
@@ -125,7 +125,7 @@
     (throw (ex-info (tru "Must provide a database_id for query actions")
                     {:type        type
                      :status-code 400})))
-  (let [model (api/write-check Card model_id)]
+  (let [model (api/write-check :m/card model_id)]
     (when (and (= "implicit" type)
                (not (card/model-supports-implicit-actions? model)))
       (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")

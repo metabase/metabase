@@ -9,7 +9,7 @@
    [metabase.automagic-dashboards.core :as magic]
    [metabase.automagic-dashboards.rules :as rules]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models :refer [Card Collection Database Field Metric Table]]
+   [metabase.models :refer [:m/card Collection Database Field Metric Table]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -72,7 +72,7 @@
    (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show :all}))
      (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show :all}) card-count))
    (when (or (and (not (mi/instance-of? Query entity))
-                  (not (mi/instance-of? Card entity)))
+                  (not (mi/instance-of? :m/card entity)))
              (#'magic/table-like? entity))
      (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show 1}))
        ;; 1 for the actual card returned + 1 for the visual display card = 2
@@ -123,7 +123,7 @@
 (deftest complicated-card-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (mt/id :venues)
+                    :m/card [{card-id :id} {:table_id      (mt/id :venues)
                                          :collection_id collection-id
                                          :dataset_query {:query    {:filter [:> [:field (mt/id :venues :price) nil] 10]
                                                                     :source-table (mt/id :venues)}
@@ -132,12 +132,12 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (t2/select-one Card :id card-id) 7))))))
+          (test-automagic-analysis (t2/select-one :m/card :id card-id) 7))))))
 
 (deftest query-breakout-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (mt/id :venues)
+                    :m/card [{card-id :id} {:table_id      (mt/id :venues)
                                          :collection_id collection-id
                                          :dataset_query {:query {:aggregation [[:count]]
                                                                  :breakout [[:field (mt/id :venues :category_id) nil]]
@@ -146,12 +146,12 @@
                                                          :database (mt/id)}}]]
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
-          (test-automagic-analysis (t2/select-one Card :id card-id) 17))))))
+          (test-automagic-analysis (t2/select-one :m/card :id card-id) 17))))))
 
 (deftest native-query-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      nil
+                    :m/card [{card-id :id} {:table_id      nil
                                          :collection_id collection-id
                                          :dataset_query {:native {:query "select * from users"}
                                                          :type :native
@@ -159,7 +159,7 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (t2/select-one Card :id card-id) 2))))))
+          (test-automagic-analysis (t2/select-one :m/card :id card-id) 2))))))
 
 (defn- result-metadata-for-query [query]
   (first
@@ -173,11 +173,11 @@
                         :type     :query
                         :database (mt/id)}]
       (mt/with-temp* [Collection [{collection-id :id}]
-                      Card [{source-id :id} {:table_id        (mt/id :venues)
+                      :m/card [{source-id :id} {:table_id        (mt/id :venues)
                                              :collection_id   collection-id
                                              :dataset_query   source-query
                                              :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}]
-                      Card [{card-id :id} {:table_id      (mt/id :venues)
+                      :m/card [{card-id :id} {:table_id      (mt/id :venues)
                                            :collection_id collection-id
                                            :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
                                                                       :source-table (str "card__" source-id)}
@@ -186,7 +186,7 @@
         (mt/with-test-user :rasta
           (automagic-dashboards.test/with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-            (test-automagic-analysis (t2/select-one Card :id card-id) 7)))))))
+            (test-automagic-analysis (t2/select-one :m/card :id card-id) 7)))))))
 
 (deftest native-query-with-cards-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -194,11 +194,11 @@
                         :type     :native
                         :database (mt/id)}]
       (mt/with-temp* [Collection [{collection-id :id}]
-                      Card [{source-id :id} {:table_id        nil
+                      :m/card [{source-id :id} {:table_id        nil
                                              :collection_id   collection-id
                                              :dataset_query   source-query
                                              :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}]
-                      Card [{card-id :id} {:table_id      nil
+                      :m/card [{card-id :id} {:table_id      nil
                                            :collection_id collection-id
                                            :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
                                                                       :source-table (str "card__" source-id)}
@@ -207,7 +207,7 @@
         (mt/with-test-user :rasta
           (automagic-dashboards.test/with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-            (test-automagic-analysis (t2/select-one Card :id card-id) 8)))))))
+            (test-automagic-analysis (t2/select-one :m/card :id card-id) 8)))))))
 
 (defn field! [table column]
   (or (t2/select-one Field :id (mt/id table column))
@@ -289,7 +289,7 @@
                                                        &u.products.price]})
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
-                          Card [card {:table_id        (mt/id :products)
+                          :m/card [card {:table_id        (mt/id :products)
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
@@ -322,7 +322,7 @@
                                                         :condition    [:= $orders.product_id &u.products.id]}]
                                         :fields       [$orders.created_at]})}]
           (mt/with-temp* [Collection [{collection-id :id}]
-                          Card [card {:table_id        (mt/id :products)
+                          :m/card [card {:table_id        (mt/id :products)
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
@@ -391,7 +391,7 @@
                                                         :condition    [:= $orders.product_id &p.products.id]}]
                                         :fields       [$orders.created_at]})}]
           (mt/with-temp* [Collection [{collection-id :id}]
-                          Card [card {:table_id        (mt/id :products)
+                          :m/card [card {:table_id        (mt/id :products)
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
@@ -473,7 +473,7 @@
                                                        &p.products.price]}),
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
-                          Card [card {:table_id        (mt/id :products)
+                          :m/card [card {:table_id        (mt/id :products)
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
@@ -513,7 +513,7 @@
                                                             [:field temporal-field-id nil]]}),
                                  :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
-                          Card [card {:table_id        (mt/id :products)
+                          :m/card [card {:table_id        (mt/id :products)
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
@@ -543,7 +543,7 @@
                                                        &u.people.latitude]}),
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
-                          Card [card {:table_id        (mt/id :people)
+                          :m/card [card {:table_id        (mt/id :people)
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
@@ -585,7 +585,7 @@
                                                      :alias        "Products"}]
                                      :fields       [[:field (mt/id :orders :created_at) nil]]}}]
         (mt/with-temp* [Collection [{collection-id :id}]
-                        Card [card {:table_id        (mt/id :orders)
+                        :m/card [card {:table_id        (mt/id :orders)
                                     :collection_id   collection-id
                                     :dataset_query   source-query
                                     :result_metadata (->> (mt/with-test-user :rasta (result-metadata-for-query source-query))
@@ -619,7 +619,7 @@
 (deftest card-breakout-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (mt/id :venues)
+                    :m/card [{card-id :id} {:table_id      (mt/id :venues)
                                          :collection_id collection-id
                                          :dataset_query {:query    {:aggregation  [[:count]]
                                                                     :breakout     [[:field (mt/id :venues :category_id) nil]]
@@ -629,12 +629,12 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (t2/select-one Card :id card-id) 17))))))
+          (test-automagic-analysis (t2/select-one :m/card :id card-id) 17))))))
 
 (deftest figure-out-table-id-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      nil
+                    :m/card [{card-id :id} {:table_id      nil
                                          :collection_id collection-id
                                          :dataset_query {:native   {:query "select * from users"}
                                                          :type     :native
@@ -642,12 +642,12 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (t2/select-one Card :id card-id) 2))))))
+          (test-automagic-analysis (t2/select-one :m/card :id card-id) 2))))))
 
 (deftest card-cell-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (mt/id :venues)
+                    :m/card [{card-id :id} {:table_id      (mt/id :venues)
                                          :collection_id collection-id
                                          :dataset_query {:query    {:filter       [:> [:field (mt/id :venues :price) nil] 10]
                                                                     :source-table (mt/id :venues)}
@@ -656,14 +656,14 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (-> (t2/select-one Card :id card-id)
+          (-> (t2/select-one :m/card :id card-id)
               (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
 
 
 (deftest complicated-card-cell-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (mt/id :venues)
+                    :m/card [{card-id :id} {:table_id      (mt/id :venues)
                                          :collection_id collection-id
                                          :dataset_query {:query    {:filter       [:> [:field (mt/id :venues :price) nil] 10]
                                                                     :source-table (mt/id :venues)}
@@ -672,7 +672,7 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (-> (t2/select-one Card :id card-id)
+          (-> (t2/select-one :m/card :id card-id)
               (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
 
 

@@ -8,7 +8,7 @@
    [metabase.http-client :as client]
    [metabase.integrations.slack :as slack]
    [metabase.models
-    :refer [Card
+    :refer [:m/card
             Collection
             Dashboard
             DashboardCard
@@ -178,8 +178,8 @@
 (deftest create-test
   (testing "POST /api/pulse"
     (testing "legacy pulse"
-      (mt/with-temp* [Card [card-1]
-                      Card [card-2]
+      (mt/with-temp* [:m/card [card-1]
+                      :m/card [card-2]
                       Dashboard [_ {:name "Birdcage KPIs"}]
                       Collection [collection]]
         (api.card-test/with-cards-in-readable-collection [card-1 card-2]
@@ -214,8 +214,8 @@
                        (update :channels remove-extra-channels-fields))))))))
     (testing "dashboard subscriptions"
       (mt/with-temp* [Collection [collection]
-                      Card [card-1]
-                      Card [card-2]
+                      :m/card [card-1]
+                      :m/card [card-2]
                       Dashboard [{permitted-dashboard-id :id} {:name "Birdcage KPIs" :collection_id (u/the-id collection)}]
                       Dashboard [{blocked-dashboard-id :id}   {:name "[redacted]"}]]
         (let [filter-params [{:id "abc123", :name "test", :type "date"}]
@@ -262,8 +262,8 @@
 (deftest create-with-hybrid-pulse-card-test
   (testing "POST /api/pulse"
     (testing "Create a pulse with a HybridPulseCard and a CardRef, PUT accepts this format, we should make sure POST does as well"
-      (mt/with-temp* [Card [card-1]
-                      Card [card-2 {:name        "The card"
+      (mt/with-temp* [:m/card [card-1]
+                      :m/card [card-2 {:name        "The card"
                                     :description "Info"
                                     :display     :table}]]
         (api.card-test/with-cards-in-readable-collection [card-1 card-2]
@@ -302,8 +302,8 @@
 (deftest create-csv-xls-test
   (testing "POST /api/pulse"
     (testing "Create a pulse with a csv and xls"
-      (mt/with-temp* [Card [card-1]
-                      Card [card-2]]
+      (mt/with-temp* [:m/card [card-1]
+                      :m/card [card-2]]
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp Collection [collection]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -356,7 +356,7 @@
                       (is (= nil
                              (:errors response))))))]
           (let [pulse-name (mt/random-name)]
-            (mt/with-temp* [Card       [card]
+            (mt/with-temp* [:m/card       [card]
                             Collection [collection]]
               (api.card-test/with-cards-in-readable-collection [card]
                 (create-pulse! 200 pulse-name card collection)
@@ -366,7 +366,7 @@
           (testing "...but not if we don't have permissions for the Collection"
             (mt/with-non-admin-groups-no-root-collection-perms
               (let [pulse-name (mt/random-name)]
-                (mt/with-temp* [Card       [card]
+                (mt/with-temp* [:m/card       [card]
                                 Collection [collection]]
                   (create-pulse! 403 pulse-name card collection)
                   (is (= nil
@@ -420,7 +420,7 @@
     (mt/with-temp* [Pulse                 [pulse]
                     PulseChannel          [pc    {:pulse_id (u/the-id pulse)}]
                     PulseChannelRecipient [_     {:pulse_channel_id (u/the-id pc), :user_id (mt/user->id :rasta)}]
-                    Card                  [card]]
+                    :m/card                  [card]]
       (let [filter-params [{:id "123abc", :name "species", :type "string"}]]
         (with-pulses-in-writeable-collection [pulse]
           (api.card-test/with-cards-in-readable-collection [card]
@@ -462,11 +462,11 @@
       ;; Specifically this will include a HybridPulseCard (the original card associated with the pulse) and a CardRef
       ;; (the new card)
       (mt/with-temp* [Pulse                 [pulse {:name "Original Pulse Name"}]
-                      Card                  [card-1 {:name        "Test"
+                      :m/card                  [card-1 {:name        "Test"
                                                      :description "Just Testing"}]
                       PulseCard             [_      {:card_id  (u/the-id card-1)
                                                      :pulse_id (u/the-id pulse)}]
-                      Card                  [card-2 {:name        "Test2"
+                      :m/card                  [card-2 {:name        "Test2"
                                                      :description "Just Testing2"}]]
         (with-pulses-in-writeable-collection [pulse]
           (api.card-test/with-cards-in-readable-collection [card-1 card-2]
@@ -587,7 +587,7 @@
                       Pulse                 [pulse {:collection_id (u/the-id collection)}]
                       PulseChannel          [pc    {:pulse_id (u/the-id pulse)}]
                       PulseChannelRecipient [pcr   {:pulse_channel_id (u/the-id pc), :user_id (mt/user->id :rasta)}]
-                      Card                  [_]]
+                      :m/card                  [_]]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:archived true})
@@ -713,13 +713,13 @@
       (testing (str "\n" message)
         (mt/with-temp* [Collection [collection-1]
                         Collection [collection-2]
-                        Card       [card-1]]
+                        :m/card       [card-1]]
           (api.card-test/with-ordered-items collection-1 [Pulse a
                                                           Pulse b
                                                           Pulse c
                                                           Pulse d]
-            (api.card-test/with-ordered-items collection-2 [Card      e
-                                                            Card      f
+            (api.card-test/with-ordered-items collection-2 [:m/card      e
+                                                            :m/card      f
                                                             Dashboard g
                                                             Dashboard h]
               (let [[action & args] action
@@ -890,7 +890,7 @@
       (mt/with-fake-inbox
         (mt/dataset sad-toucan-incidents
           (mt/with-temp* [Collection [collection]
-                          Card       [card  {:dataset_query (mt/mbql-query incidents {:aggregation [[:count]]})}]]
+                          :m/card       [card  {:dataset_query (mt/mbql-query incidents {:aggregation [[:count]]})}]]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (api.card-test/with-cards-in-readable-collection [card]
               (is (= {:ok true}
@@ -913,7 +913,7 @@
 
 (deftest send-test-pulse-validate-emails-test
   (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
-    (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp :m/card [card {:dataset_query (mt/mbql-query venues)}]
       (with-redefs [pulse-channel/validate-email-domains (fn [& _]
                                                            (throw (ex-info "Nope!" {:status-code 403})))]
         ;; make sure we validate raw emails whether they're part of `:details` or part of `:recipients` -- we
@@ -943,7 +943,7 @@
 
 (deftest send-test-pulse-native-query-default-parameters-test
   (testing "POST /api/pulse/test should work with a native query with default parameters"
-    (mt/with-temp* [Card [{card-id :id} {:dataset_query {:database (mt/id)
+    (mt/with-temp* [:m/card [{card-id :id} {:dataset_query {:database (mt/id)
                                                          :type     :native
                                                          :native   {:query         "SELECT {{x}}"
                                                                     :template-tags {"x" {:id           "abc"
@@ -984,9 +984,9 @@
 ;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data
 ;; of the same format that the pulse GET returns
 (deftest update-flow-test
-  (mt/with-temp* [Card [card-1 {:dataset_query
+  (mt/with-temp* [:m/card [card-1 {:dataset_query
                                 {:database (mt/id), :type :query, :query {:source-table (mt/id :venues)}}}]
-                  Card [card-2 {:dataset_query
+                  :m/card [card-2 {:dataset_query
                                 {:database (mt/id), :type :query, :query {:source-table (mt/id :venues)}}}]]
 
     (api.card-test/with-cards-in-readable-collection [card-1 card-2]
@@ -1078,7 +1078,7 @@
 (deftest preview-pulse-test
   (testing "GET /api/pulse/preview_card/:id"
     (mt/with-temp* [Collection [_]
-                    Card       [card {:dataset_query (mt/mbql-query checkins {:limit 5})}]]
+                    :m/card       [card {:dataset_query (mt/mbql-query checkins {:limit 5})}]]
       (letfn [(preview [expected-status-code]
                 (client/client-full-response (mt/user->credentials :rasta)
                                              :get expected-status-code (format "pulse/preview_card_png/%d" (u/the-id card))))]

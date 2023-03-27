@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.api.dashboard-test :as api.dashboard-test]
-   [metabase.models :refer [Card Dashboard DashboardCard FieldValues]]
+   [metabase.models :refer [:m/card Dashboard DashboardCard FieldValues]]
    [metabase.models.params.chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
@@ -72,7 +72,7 @@
   (testing "dashboard with a parameter that has source is a card, it should respects sandboxing"
     (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (mt/with-temp*
-        [Card      [{card-id         :id}
+        [:m/card      [{card-id         :id}
                     (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories))
                            {:database_id     (mt/id)
                             :table_id        (mt/id :categories)})]

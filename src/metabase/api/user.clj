@@ -205,7 +205,7 @@
                              [:= :archived false]
                              coll-ids-filter]}]
     #_{:clj-kondo/ignore [:discouraged-var]}
-    (assoc user :has_question_and_dashboard (and (db/exists? 'Card (perms-query user))
+    (assoc user :has_question_and_dashboard (and (db/exists? :m/card (perms-query user))
                                                  (db/exists? 'Dashboard (perms-query user))))))
 
 (defn- add-first-login

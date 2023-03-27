@@ -9,7 +9,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-channel :refer [PulseChannel]]
@@ -145,7 +145,7 @@
    channels         (su/non-empty [su/Map])}
   (validation/check-has-application-permission :subscription false)
   ;; To create an Alert you need read perms for its Card
-  (api/read-check Card (u/the-id card))
+  (api/read-check :m/card (u/the-id card))
   ;; ok, now create the Alert
   (let [alert-card (-> card (maybe-include-csv alert_condition) pulse/card->ref)
         new-alert  (api/check-500
@@ -191,10 +191,10 @@
             (tru "Invalid Alert: Alert does not have a Card associated with it"))
     ;; check permissions as needed.
     ;; Check permissions to update existing Card
-    (api/read-check Card (u/the-id (:card alert-before-update)))
+    (api/read-check :m/card (u/the-id (:card alert-before-update)))
     ;; if trying to change the card, check perms for that as well
     (when card
-      (api/write-check Card (u/the-id card)))
+      (api/write-check :m/card (u/the-id card)))
 
     (when-not (or api/*is-superuser?*
                   has-monitoring-permissions?

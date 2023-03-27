@@ -9,7 +9,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
@@ -104,7 +104,7 @@
   (doseq [card cards
           :let [card-id (u/the-id card)]]
     (assert (integer? card-id))
-    (api/read-check Card card-id)))
+    (api/read-check :m/card card-id)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -270,7 +270,7 @@
 (api/defendpoint-schema GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
   [id]
-  (let [card   (api/read-check Card id)
+  (let [card   (api/read-check :m/card id)
         result (pulse-card-query-results card)]
     {:status 200
      :body   (html
@@ -284,7 +284,7 @@
 (api/defendpoint-schema GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
   [id]
-  (let [card      (api/read-check Card id)
+  (let [card      (api/read-check :m/card id)
         result    (pulse-card-query-results card)
         data      (:data result)
         card-type (render/detect-pulse-chart-type card nil data)
@@ -304,7 +304,7 @@
 (api/defendpoint-schema GET "/preview_card_png/:id"
   "Get PNG rendering of a Card with `id`."
   [id]
-  (let [card   (api/read-check Card id)
+  (let [card   (api/read-check :m/card id)
         result (pulse-card-query-results card)
         ba     (binding [render/*include-title* true]
                  (render/render-pulse-card-to-png (metabase.pulse/defaulted-timezone card) card result preview-card-width))]

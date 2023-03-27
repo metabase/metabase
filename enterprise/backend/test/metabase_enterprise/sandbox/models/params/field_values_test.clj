@@ -7,7 +7,7 @@
     :as ee-params.field-values]
    [metabase-enterprise.test :as met]
    [metabase.models
-    :refer [Card
+    :refer [:m/card
             Field
             FieldValues
             PermissionsGroup
@@ -56,7 +56,7 @@
                                            {:filter [:and [:> $id 1] [:< $id 4]]})]
               ;; sleeping should ensure that updated_at changes
               (Thread/sleep 1)
-              (t2/update! Card card-id {:dataset_query new-query}))
+              (t2/update! :m/card card-id {:dataset_query new-query}))
             (params.field-values/get-or-create-advanced-field-values!
              fv-type
              (t2/select-one Field :id (mt/id :categories :id)))
@@ -125,7 +125,7 @@
                       (ee-params.field-values/hash-key-for-sandbox field-id))))]
           (testing "2 users in the same group"
             (mt/with-temp*
-              [Card                       [{card-id :id}]
+              [:m/card                       [{card-id :id}]
                PermissionsGroup           [{group-id :id}]
                User                       [{user-id-1 :id}]
                User                       [{user-id-2 :id}]
@@ -152,7 +152,7 @@
 
           (testing "gtap with native question"
             (mt/with-temp*
-              [Card                       [{card-id :id} {:query_type :native
+              [:m/card                       [{card-id :id} {:query_type :native
                                                           :name "A native query"
                                                           :dataset_query
                                                           {:type :native
@@ -178,7 +178,7 @@
 
           (testing "2 users in different groups but gtaps use the same card"
             (mt/with-temp*
-              [Card                       [{card-id :id}]
+              [:m/card                       [{card-id :id}]
 
                ;; user 1 in group 1
                User                       [{user-id-1 :id}]
@@ -212,7 +212,7 @@
 
           (testing "2 users in different groups and gtaps use 2 different cards"
             (mt/with-temp*
-              [Card                       [{card-id-1 :id}]
+              [:m/card                       [{card-id-1 :id}]
                User                       [{user-id-1 :id}]
                PermissionsGroup           [{group-id-1 :id}]
                PermissionsGroupMembership [_ {:group_id group-id-1
@@ -222,7 +222,7 @@
                                               :table_id (mt/id :categories)
                                               :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
                ;; user 2 in group 2 with gtap using card 2
-               Card                       [{card-id-2 :id}]
+               :m/card                       [{card-id-2 :id}]
                User                       [{user-id-2 :id}]
                PermissionsGroup           [{group-id-2 :id}]
                PermissionsGroupMembership [_ {:group_id group-id-2

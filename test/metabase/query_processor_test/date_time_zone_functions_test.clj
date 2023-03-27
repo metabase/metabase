@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.driver :as driver]
-   [metabase.models :refer [Card]]
+   [metabase.models :refer [:m/card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -681,7 +681,7 @@
                       first))))
 
         (testing "nested custom expression should works"
-          (mt/with-temp Card [card
+          (mt/with-temp :m/card [card
                               {:dataset_query
                                (mt/mbql-query
                                  times
@@ -813,7 +813,7 @@
   (mt/test-driver :athena
     (testing "datetime-diff can compare `date`, `timestamp`, and `timestamp with time zone` args with Athena"
       (mt/with-temp*
-        [Card [card (qp.test-util/card-with-source-metadata-for-query
+        [:m/card [card (qp.test-util/card-with-source-metadata-for-query
                      (mt/native-query {:query (str "select"
                                                    " date '2022-01-01' as d,"
                                                    " timestamp '2022-01-01 00:00:00.000' as dt,"
@@ -1034,7 +1034,7 @@
   ;; run another query with `datetime-diff` against it.
   (mt/test-driver :athena
     (mt/dataset diff-time-zones-athena-cases
-      (mt/with-temp* [Card [card (qp.test-util/card-with-source-metadata-for-query
+      (mt/with-temp* [:m/card [card (qp.test-util/card-with-source-metadata-for-query
                                   (mt/native-query {:query diff-time-zones-athena-cases-query}))]]
         (let [diffs
               (fn [a-str b-str]

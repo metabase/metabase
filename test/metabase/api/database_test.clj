@@ -10,7 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models
-    :refer [Card Collection Database Field FieldValues Metric Segment Table]]
+    :refer [:m/card Collection Database Field FieldValues Metric Segment Table]]
    [metabase.models.database :as database :refer [protected-password]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -162,14 +162,14 @@
      Table    [{table-id-1 :id} {:db_id db-id}]
      Table    [{table-id-2 :id} {:db_id db-id}]
      ;; question
-     Card     [_                {:database_id db-id
+     :m/card     [_                {:database_id db-id
                                  :table_id    table-id-1
                                  :dataset     false}]
      ;; dataset
-     Card     [_                {:database_id db-id
+     :m/card     [_                {:database_id db-id
                                  :table_id    table-id-1
                                  :dataset     true}]
-     Card     [_                {:database_id db-id
+     :m/card     [_                {:database_id db-id
                                  :table_id    table-id-2
                                  :dataset     true
                                  :archived    true}]
@@ -507,8 +507,8 @@
 (deftest card-autocomplete-suggestions-test
   (testing "GET /api/database/:id/card_autocomplete_suggestions"
     (mt/with-temp* [Collection [collection {:name "Maz Analytics"}]
-                    Card       [card-1 (card-with-native-query "Maz Quote Views Per Month")]
-                    Card       [card-2 (card-with-native-query "Maz Quote Views Per Day" :collection_id (:id collection))]]
+                    :m/card       [card-1 (card-with-native-query "Maz Quote Views Per Month")]
+                    :m/card       [card-2 (card-with-native-query "Maz Quote Views Per Day" :collection_id (:id collection))]]
       (let [card->result {card-1 (assoc (select-keys card-1 [:id :name :dataset]) :collection_name nil)
                           card-2 (assoc (select-keys card-2 [:id :name :dataset]) :collection_name (:name collection))}]
         (testing "exclude cards without perms"
@@ -529,7 +529,7 @@
                                            :query query)))))))
       (testing "should reject requests for databases for which the user has no perms"
         (mt/with-temp* [Database [{database-id :id}]
-                        Card     [_ (card-with-native-query "Maz Quote Views Per Month" :database_id database-id)]]
+                        :m/card     [_ (card-with-native-query "Maz Quote Views Per Month" :database_id database-id)]]
           (perms/revoke-data-perms! (perms-group/all-users) database-id)
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403
@@ -571,7 +571,7 @@
 
 (deftest databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
-    (mt/with-temp Card [_ (assoc (card-with-native-query "Some Card")
+    (mt/with-temp :m/card [_ (assoc (card-with-native-query "Some Card")
                                  :result_metadata [{:name "col_name"}])]
       (testing "We should be able to include the saved questions virtual DB (without Tables) with the param ?saved=true"
         (is (= {:name               "Saved Questions"
@@ -637,7 +637,7 @@
                       (:data (mt/user-http-request :crowberto :get 200 (str "database" params)))))]
         (testing "Check that we get back 'virtual' tables for Saved Questions"
           (testing "The saved questions virtual DB should be the last DB in the list"
-            (mt/with-temp Card [card (card-with-native-query "Maz Quote Views Per Month")]
+            (mt/with-temp :m/card [card (card-with-native-query "Maz Quote Views Per Month")]
               ;; run the Card which will populate its result_metadata column
               (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
               ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
@@ -647,7 +647,7 @@
                 (check-tables-included response (virtual-table-for-card card)))))
 
           (testing "Make sure saved questions are NOT included if the setting is disabled"
-            (mt/with-temp Card [card (card-with-native-query "Maz Quote Views Per Month")]
+            (mt/with-temp :m/card [card (card-with-native-query "Maz Quote Views Per Month")]
               (mt/with-temporary-setting-values [enable-nested-queries false]
                 ;; run the Card which will populate its result_metadata column
                 (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
@@ -658,8 +658,8 @@
         (testing "should pretend Collections are schemas"
           (mt/with-temp* [Collection [stamp-collection {:name "Stamps"}]
                           Collection [coin-collection  {:name "Coins"}]
-                          Card       [stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/the-id stamp-collection))]
-                          Card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/the-id coin-collection))]]
+                          :m/card       [stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/the-id stamp-collection))]
+                          :m/card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/the-id coin-collection))]]
             ;; run the Cards which will populate their result_metadata columns
             (doseq [card [stamp-card coin-card]]
               (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
@@ -674,8 +674,8 @@
                (virtual-table-for-card stamp-card :schema "Stamps")))))
 
         (testing "should remove Cards that have ambiguous columns"
-          (mt/with-temp* [Card [ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])]
-                          Card [cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]]
+          (mt/with-temp* [:m/card [ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])]
+                          :m/card [cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]]
             (let [response (fetch-virtual-database)]
               (is (schema= SavedQuestionsDB
                            response))
@@ -684,13 +684,13 @@
 
         (testing "should remove Cards that belong to a driver that doesn't support nested queries"
           (mt/with-temp* [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
-                          Card     [bad-card {:name            "Bad Card"
+                          :m/card     [bad-card {:name            "Bad Card"
                                               :dataset_query   {:database (u/the-id bad-db)
                                                                 :type     :native
                                                                 :native   {:query "[QUERY GOES HERE]"}}
                                               :result_metadata [{:name "sparrows"}]
                                               :database_id     (u/the-id bad-db)}]
-                          Card     [ok-card  (assoc (card-with-native-query "OK Card")
+                          :m/card     [ok-card  (assoc (card-with-native-query "OK Card")
                                                     :result_metadata [{:name "finches"}])]]
             (let [response (fetch-virtual-database)]
               (is (schema= SavedQuestionsDB
@@ -707,8 +707,8 @@
             (is (nil? (fetch-virtual-database)))))
 
         (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
-          (mt/with-temp* [Card [ok-card  (ok-mbql-card)]
-                          Card [bad-card (merge
+          (mt/with-temp* [:m/card [ok-card  (ok-mbql-card)]
+                          :m/card [bad-card (merge
                                           (mt/$ids checkins
                                             (card-with-mbql-query "Cum Count Card"
                                               :source-table $$checkins
@@ -723,7 +723,7 @@
 
 (deftest db-metadata-saved-questions-db-test
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
-    (mt/with-temp Card [card (assoc (card-with-native-query "Birthday Card")
+    (mt/with-temp :m/card [card (assoc (card-with-native-query "Birthday Card")
                                     :result_metadata [{:name "age_in_bird_years"}])]
       (let [response (mt/user-http-request :crowberto :get 200
                                            (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))]
@@ -1030,8 +1030,8 @@
 
     (testing "should work for the saved questions 'virtual' database"
       (mt/with-temp* [Collection [coll   {:name "My Collection"}]
-                      Card       [card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))]
-                      Card       [card-2 (card-with-native-query "Card 2")]]
+                      :m/card       [card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))]
+                      :m/card       [card-2 (card-with-native-query "Card 2")]]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
@@ -1147,8 +1147,8 @@
 
     (testing "should work for the saved questions 'virtual' database"
       (mt/with-temp* [Collection [coll   {:name "My Collection"}]
-                      Card       [card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))]
-                      Card       [card-2 (card-with-native-query "Card 2")]]
+                      :m/card       [card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))]
+                      :m/card       [card-2 (card-with-native-query "Card 2")]]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
@@ -1187,12 +1187,12 @@
                                        (format "database/%d/schema/Coin Collection" mbql.s/saved-questions-virtual-database-id)))))))
     (testing "should work for the datasets in the 'virtual' database"
       (mt/with-temp* [Collection [coll   {:name "My Collection"}]
-                      Card       [card-1 (assoc (card-with-native-query "Card 1")
+                      :m/card       [card-1 (assoc (card-with-native-query "Card 1")
                                                 :collection_id (:id coll)
                                                 :dataset true)]
-                      Card       [card-2 (assoc (card-with-native-query "Card 2")
+                      :m/card       [card-2 (assoc (card-with-native-query "Card 2")
                                                 :dataset true)]
-                      Card       [_card-3 (assoc (card-with-native-query "error")
+                      :m/card       [_card-3 (assoc (card-with-native-query "error")
                                                  ;; regular saved question should not be in the results
                                                  :dataset false)]]
         ;; run the cards to populate their result_metadata columns

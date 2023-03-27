@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.events.revision :as revision]
    [metabase.models
-    :refer [Card Dashboard DashboardCard Database Metric Revision Segment Table]]
+    :refer [:m/card Dashboard DashboardCard Database Metric Revision Segment Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -50,7 +50,7 @@
 
 (deftest card-create-test
   (testing ":card-create"
-    (mt/with-temp Card [{card-id :id, :as card} (card-properties)][]
+    (mt/with-temp :m/card [{card-id :id, :as card} (card-properties)][]
       (revision/process-revision-event! {:topic :card-create
                                          :item  card})
       (is (= {:model        "Card"
@@ -66,7 +66,7 @@
 
 (deftest card-update-test
   (testing ":card-update"
-    (mt/with-temp Card [{card-id :id, :as card} (card-properties)]
+    (mt/with-temp :m/card [{card-id :id, :as card} (card-properties)]
       (revision/process-revision-event! {:topic :card-update
                                          :item  card})
       (is (= {:model        "Card"
@@ -115,7 +115,7 @@
 (deftest dashboard-add-cards-test
   (testing ":dashboard-add-cards"
     (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
-                    Card          [{card-id :id}                     (card-properties)]
+                    :m/card          [{card-id :id}                     (card-properties)]
                     DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
       (revision/process-revision-event! {:topic :dashboard-add-cards
                                          :item  {:id        dashboard-id
@@ -135,7 +135,7 @@
 (deftest dashboard-remove-cards-test
   (testing ":dashboard-remove-cards"
     (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
-                    Card          [{card-id :id}                     (card-properties)]
+                    :m/card          [{card-id :id}                     (card-properties)]
                     DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
       (t2/delete! (t2/table-name DashboardCard), :id (:id dashcard))
       (revision/process-revision-event! {:topic :dashboard-remove-cards
@@ -156,7 +156,7 @@
 (deftest dashboard-reposition-cards-test
   (testing ":dashboard-reposition-cards"
     (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
-                    Card          [{card-id :id}                     (card-properties)]
+                    :m/card          [{card-id :id}                     (card-properties)]
                     DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
       (t2/update! DashboardCard (:id dashcard) {:size_x 3})
       (revision/process-revision-event! {:topic :dashboard-reeposition-cards

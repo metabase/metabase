@@ -2,7 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -113,7 +113,7 @@
 (defn ready-unpersisted-models!
   "Looks for all new models in database and creates a persisted-info ready to be synced."
   [database-id]
-  (let [cards (t2/select Card {:where [:and
+  (let [cards (t2/select :m/card {:where [:and
                                        [:= :database_id database-id]
                                        [:= :dataset true]
                                        [:not [:exists {:select [1]

@@ -7,7 +7,7 @@
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.integrations.slack :as slack]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card
     :as dashboard-card
@@ -59,7 +59,7 @@
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (try
     (let [card-id (u/the-id card-or-id)
-          card    (t2/select-one Card :id card-id)
+          card    (t2/select-one :m/card :id card-id)
           result  (qp.dashboard/run-query-for-dashcard-async
                    :dashboard-id  (u/the-id dashboard)
                    :card-id       card-id
@@ -183,7 +183,7 @@
 
 (s/defn defaulted-timezone :- s/Str
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
-  [card :- (mi/InstanceOf Card)]
+  [card :- (mi/InstanceOf :m/card)]
   (or (some->> card database-id (t2/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
 

@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models :refer [Card Collection Dimension Field]]
+   [metabase.models :refer [:m/card Collection Dimension Field]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -16,7 +16,7 @@
    [toucan2.core :as t2]))
 
 (defn- card-metadata [card]
-  (t2/select-one-fn :result_metadata Card :id (u/the-id card)))
+  (t2/select-one-fn :result_metadata :m/card :id (u/the-id card)))
 
 (defn- round-to-2-decimals
   "Defaults [[mt/round-all-decimals]] to 2 digits"
@@ -83,7 +83,7 @@
 
 (deftest save-result-metadata-test
   (testing "test that Card result metadata is saved after running a Card"
-    (mt/with-temp Card [card]
+    (mt/with-temp :m/card [card]
       (let [result (qp/process-userland-query
                     (assoc (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
                            :info {:card-id    (u/the-id card)
@@ -94,7 +94,7 @@
              (-> card card-metadata round-to-2-decimals)))))
 
   (testing "check that using a Card as your source doesn't overwrite the results metadata..."
-    (mt/with-temp Card [card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
+    (mt/with-temp :m/card [card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
                               :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
       (let [result (qp/process-userland-query {:database mbql.s/saved-questions-virtual-database-id
                                                :type     :query
@@ -106,7 +106,7 @@
 
   (testing "...even when running via the API endpoint"
     (mt/with-temp* [Collection [collection]
-                    Card       [card {:collection_id   (u/the-id collection)
+                    :m/card       [card {:collection_id   (u/the-id collection)
                                       :dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
                                       :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
@@ -171,7 +171,7 @@
 
 (deftest card-with-datetime-breakout-by-year-test
   (testing "make sure that a Card where a DateTime column is broken out by year works the way we'd expect"
-    (mt/with-temp Card [card]
+    (mt/with-temp :m/card [card]
       (qp/process-userland-query
        {:database (mt/id)
         :type     :query

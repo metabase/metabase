@@ -30,7 +30,7 @@
                (driver/supports? driver/*driver* :nested-queries)
                card-id
                (not source-card-id))
-      (t2/update! 'Card card-id {:result_metadata metadata}))
+      (t2/update! :m/card card-id {:result_metadata metadata}))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e

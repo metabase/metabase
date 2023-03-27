@@ -14,7 +14,7 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
@@ -455,7 +455,7 @@
                                             (remove nil?))
                                       parameter-mappings)]
       (when (seq card-ids)
-        (let [card-id->query        (t2/select-pk->fn :dataset_query Card :id [:in card-ids])
+        (let [card-id->query        (t2/select-pk->fn :dataset_query :m/card :id [:in card-ids])
               field-ids             (set (for [{:keys [target card-id]} parameter-mappings
                                                :when                    card-id
                                                :let                     [query    (or (card-id->query card-id)
@@ -495,7 +495,7 @@
    action_id          (s/maybe su/IntGreaterThanZero)}
   (api/check-not-archived (api/write-check Dashboard id))
   (when cardId
-    (api/check-not-archived (api/read-check Card cardId)))
+    (api/check-not-archived (api/read-check :m/card cardId)))
   (check-parameter-mapping-permissions (for [mapping parameter_mappings]
                                          (assoc mapping :card-id cardId)))
   (u/prog1 (api/check-500 (dashboard/add-dashcard! id cardId (-> dashboard-card

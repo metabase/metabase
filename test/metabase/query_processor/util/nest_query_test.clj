@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.driver :as driver]
-   [metabase.models :refer [Card Field]]
+   [metabase.models :refer [:m/card Field]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
@@ -281,7 +281,7 @@
               [:field "count" {:join-alias "Question 4918"}]]
              (#'nest-query/joined-fields query))))
     (mt/dataset sample-dataset
-      (mt/with-temp* [Card [base {:dataset_query
+      (mt/with-temp* [:m/card [base {:dataset_query
                                   (mt/mbql-query
                                    reviews
                                    {:breakout [$product_id],

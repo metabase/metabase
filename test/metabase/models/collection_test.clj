@@ -7,7 +7,7 @@
    [clojure.walk :as walk]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.models
-    :refer [Card
+    :refer [:m/card
             Collection
             Dashboard
             NativeQuerySnippet
@@ -108,17 +108,17 @@
 (deftest archive-cards-test
   (testing "check that archiving a Collection archives its Cards as well"
     (mt/with-temp* [Collection [collection]
-                    Card       [card       {:collection_id (u/the-id collection)}]]
+                    :m/card       [card       {:collection_id (u/the-id collection)}]]
       (t2/update! Collection (u/the-id collection)
         {:archived true})
-      (is (true? (t2/select-one-fn :archived Card :id (u/the-id card))))))
+      (is (true? (t2/select-one-fn :archived :m/card :id (u/the-id card))))))
 
   (testing "check that unarchiving a Collection unarchives its Cards as well"
     (mt/with-temp* [Collection [collection {:archived true}]
-                    Card       [card       {:collection_id (u/the-id collection), :archived true}]]
+                    :m/card       [card       {:collection_id (u/the-id collection), :archived true}]]
       (t2/update! Collection (u/the-id collection)
         {:archived false})
-      (is (false? (t2/select-one-fn :archived Card :id (u/the-id card)))))))
+      (is (false? (t2/select-one-fn :archived :m/card :id (u/the-id card)))))))
 
 (deftest validate-name-test
   (testing "check that collections' names cannot be blank"
@@ -1027,7 +1027,7 @@
              (collection-locations (vals collections) :archived false))))))
 
 (deftest nested-collection-archiving-objects-test
-  (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
+  (doseq [model [:m/card Dashboard NativeQuerySnippet Pulse]]
     (testing (format "Test that archiving applies to %ss" (name model))
       ;; object is in E; archiving E should cause object to be archived
       (with-collection-hierarchy [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
@@ -1047,7 +1047,7 @@
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))))
 
 (deftest nested-collection-unarchiving-objects-test
-  (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
+  (doseq [model [:m/card Dashboard NativeQuerySnippet Pulse]]
     (testing (format "Test that unarchiving applies to %ss" (name model))
       ;; object is in E; unarchiving E should cause object to be unarchived
       (with-collection-hierarchy [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
@@ -1469,29 +1469,29 @@
     (testing "Should succeed if namespace is allowed"
       (mt/with-temp Collection [{collection-id :id}]
         (is (= nil
-               (collection/check-collection-namespace Card collection-id)))))
+               (collection/check-collection-namespace :m/card collection-id)))))
 
     (testing "Should throw exception if namespace is not allowed"
       (mt/with-temp Collection [{collection-id :id} {:namespace "x"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Card can only go in Collections in the \"default\" namespace"
-             (collection/check-collection-namespace Card collection-id)))))
+             (collection/check-collection-namespace :m/card collection-id)))))
 
     (testing "Should throw exception if Collection does not exist"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Collection does not exist"
-           (collection/check-collection-namespace Card Integer/MAX_VALUE))))))
+           (collection/check-collection-namespace :m/card Integer/MAX_VALUE))))))
 
 (deftest delete-collection-set-children-collection-id-to-null-test
   (testing "When deleting a Collection, should change collection_id of Children to nil instead of Cascading"
     (mt/with-temp* [Collection [{coll-id :id}]
-                    Card       [{card-id :id}      {:collection_id coll-id}]
+                    :m/card       [{card-id :id}      {:collection_id coll-id}]
                     Dashboard  [{dashboard-id :id} {:collection_id coll-id}]
                     Pulse      [{pulse-id :id}     {:collection_id coll-id}]]
       (t2/delete! Collection :id coll-id)
-      (is (t2/exists? Card :id card-id)
+      (is (t2/exists? :m/card :id card-id)
           "Card")
       (is (t2/exists? Dashboard :id dashboard-id)
           "Dashboard")

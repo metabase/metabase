@@ -10,7 +10,7 @@
    [metabase.models.bookmark
     :as bookmark
     :refer [CardBookmark CollectionBookmark DashboardBookmark]]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.util.schema :as su]
@@ -28,7 +28,7 @@
 
 (def ^:private lookup
   "Lookup map from model as a string to [model bookmark-model item-id-key]."
-  {"card"       [Card       CardBookmark       :card_id]
+  {"card"       [:m/card       CardBookmark       :card_id]
    "dashboard"  [Dashboard  DashboardBookmark  :dashboard_id]
    "collection" [Collection CollectionBookmark :collection_id]})
 

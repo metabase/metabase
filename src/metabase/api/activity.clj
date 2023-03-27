@@ -8,7 +8,7 @@
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.activity :refer [Activity]]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.query-execution :refer [QueryExecution]]
@@ -46,7 +46,7 @@
   [referenced-objects]
   (merge
    (when-let [card-ids (get referenced-objects "card")]
-     (let [id->dataset?                       (t2/select-pk->fn :dataset Card
+     (let [id->dataset?                       (t2/select-pk->fn :dataset :m/card
                                                                    :id [:in card-ids])
            {dataset-ids true card-ids' false} (group-by (comp boolean id->dataset?)
                                                         ;; only existing ids go back
@@ -98,7 +98,7 @@
   [model ids]
   (t2/select
       (case model
-        "card"      [Card
+        "card"      [:m/card
                      :id :name :collection_id :description :display
                      :dataset_query :dataset :archived
                      :collection.authority_level]

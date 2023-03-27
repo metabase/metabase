@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.models :refer [Card Field]]
+   [metabase.models :refer [:m/card Field]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.store :as qp.store]
@@ -678,7 +678,7 @@
 
   (testing "Aggregated question with source is an aggregated models should infer display_name correctly (#23248)"
     (mt/dataset sample-dataset
-     (mt/with-temp* [Card [{card-id :id}
+     (mt/with-temp* [:m/card [{card-id :id}
                            {:dataset true
                             :dataset_query
                             (mt/$ids :products
@@ -750,8 +750,8 @@
                                    :source-table $$products
                                    :condition    [:= $product_id &Products.products.id]
                                    :alias        "Products"}]})]
-      (mt/with-temp* [Card [{card-1-id :id} {:dataset_query card-1-query}]
-                      Card [{card-2-id :id} {:dataset_query (mt/mbql-query people)}]]
+      (mt/with-temp* [:m/card [{card-1-id :id} {:dataset_query card-1-query}]
+                      :m/card [{card-2-id :id} {:dataset_query (mt/mbql-query people)}]]
         (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side"
           (mt/$ids nil
             (let [base-query (qp/preprocess
@@ -774,9 +774,9 @@
     (letfn [(native [query] {:type :native
                              :native {:query query :template-tags {}}
                              :database (mt/id)})]
-      (mt/with-temp* [Card [{card1-id :id} {:dataset_query
+      (mt/with-temp* [:m/card [{card1-id :id} {:dataset_query
                                             (native "select 'foo' as A_COLUMN")}]
-                      Card [{card2-id :id} {:dataset_query
+                      :m/card [{card2-id :id} {:dataset_query
                                             (native "select 'foo' as B_COLUMN")}]]
         (doseq [card-id [card1-id card2-id]]
           ;; populate metadata

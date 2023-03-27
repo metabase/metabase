@@ -4,7 +4,7 @@
    [metabase.api.embed-test :as embed-test]
    [metabase.api.pivots :as api.pivots]
    [metabase.api.preview-embed :as api.preview-embed]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.test :as mt]
@@ -330,7 +330,7 @@
 (deftest editable-params-should-not-be-invalid-test
   (testing "Make sure that editable params do not result in \"Invalid Parameter\" exceptions (#7212)"
     (embed-test/with-embedding-enabled-and-new-secret-key
-      (mt/with-temp Card [card {:dataset_query {:database (mt/id)
+      (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
                                                 :type     :native
                                                 :native   {:query         "SELECT {{num}} AS num"
                                                            :template-tags {:num {:name         "num"
@@ -356,7 +356,7 @@
   (mt/test-driver :postgres
     (testing "Make sure that ID params correctly get converted to numbers as needed (Postgres-specific)..."
       (embed-test/with-embedding-enabled-and-new-secret-key
-        (mt/with-temp Card [card {:dataset_query {:database (mt/id)
+        (mt/with-temp :m/card [card {:dataset_query {:database (mt/id)
                                                   :type     :query
                                                   :query    {:source-table (mt/id :venues)
                                                              :aggregation  [:count]}}}]
@@ -456,7 +456,7 @@
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
     (mt/dataset sample-dataset
       (embed-test/with-embedding-enabled-and-new-secret-key
-        (mt/with-temp Card [{card-id :id, :as card} {:dataset_query    (mt/native-query
+        (mt/with-temp :m/card [{card-id :id, :as card} {:dataset_query    (mt/native-query
                                                                          {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
                                                                           :template-tags {"NAME"
                                                                                           {:name         "NAME"

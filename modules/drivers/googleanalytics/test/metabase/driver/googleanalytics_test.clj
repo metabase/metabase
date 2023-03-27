@@ -8,7 +8,7 @@
    [metabase.driver.googleanalytics]
    [metabase.driver.googleanalytics.execute :as ga.execute]
    [metabase.driver.googleanalytics.query-processor :as ga.qp]
-   [metabase.models :refer [Card Database Field Table]]
+   [metabase.models :refer [:m/card Database Field Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.store :as qp.store]
@@ -386,6 +386,6 @@
                    ;; just make sure the API call actually worked by checking that the created Card is actually
                    ;; successfully saved in the DB
                    u/the-id
-                   (t2/count Card :id))]
+                   (t2/count :m/card :id))]
       (is (= 1
              cnt)))))

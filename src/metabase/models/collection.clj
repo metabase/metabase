@@ -990,7 +990,7 @@
                            ["Collection" child-id]))
         dashboards  (set (for [dash-id (t2/select-pks-set 'Dashboard :collection_id id)]
                            ["Dashboard" dash-id]))
-        cards       (set (for [card-id (t2/select-pks-set 'Card      :collection_id id)]
+        cards       (set (for [card-id (t2/select-pks-set :m/card      :collection_id id)]
                            ["Card" card-id]))]
     (set/union child-colls dashboards cards)))
 

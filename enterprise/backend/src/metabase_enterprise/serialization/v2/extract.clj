@@ -8,7 +8,7 @@
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard]]
+   [metabase.models :refer [:m/card Collection Dashboard DashboardCard]]
    [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
@@ -90,7 +90,7 @@
         dashboards     (t2/select Dashboard :collection_id [:in collection-set])
         ;; All cards that are in this collection set.
         cards          (reduce set/union (for [coll-id collection-set]
-                                           (t2/select-pks-set Card :collection_id coll-id)))
+                                           (t2/select-pks-set :m/card :collection_id coll-id)))
 
         ;; Map of {dashboard-id #{DashboardCard}} for dashcards whose cards OR parameter-bound cards are outside the
         ;; transitive collection set.
@@ -109,7 +109,7 @@
                                    [(:id dash) combined]))
         ;; {source-card-id target-card-id} the key is in the curated set, the value is not.
         all-cards          (for [id cards]
-                             (t2/select-one [Card :id :collection_id :dataset_query] :id id))
+                             (t2/select-one [:m/card :id :collection_id :dataset_query] :id id))
         bad-source         (for [card all-cards
                                  :let [^String src (some-> card :dataset_query :query :source-table)]
                                  :when (and (string? src) (.startsWith src "card__"))
@@ -148,7 +148,7 @@
             :let [dash-name (t2/select-one-fn :name Dashboard :id dash-id)]]
       (log/infof "Dashboard %d: %s\n" dash-id dash-name)
       (doseq [card_id card-ids
-              :let [card (t2/select-one [Card :collection_id :name] :id card_id)]]
+              :let [card (t2/select-one [:m/card :collection_id :name] :id card_id)]]
         (log/infof "          \tCard %d: %s\n"    card_id (:name card))
         (log/infof "        from collection %s\n" (collection-label (:collection_id card))))))
 
@@ -156,8 +156,8 @@
     (log/info "Questions based on outside questions")
     (log/info "====================================")
     (doseq [[curated-id alien-id] escaped-questions
-            :let [curated-card (t2/select-one [Card :collection_id :name] :id curated-id)
-                  alien-card   (t2/select-one [Card :collection_id :name] :id alien-id)]]
+            :let [curated-card (t2/select-one [:m/card :collection_id :name] :id curated-id)
+                  alien-card   (t2/select-one [:m/card :collection_id :name] :id alien-id)]]
       (log/infof "%-4d      %s    (%s)\n  -> %-4d %s    (%s)\n"
                  curated-id (:name curated-card) (collection-label (:collection_id curated-card))
                  alien-id   (:name alien-card)   (collection-label (:collection_id alien-card))))))

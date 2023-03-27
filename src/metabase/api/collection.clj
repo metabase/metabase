@@ -19,7 +19,7 @@
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
@@ -531,8 +531,8 @@
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
     :collection Collection
-    :card       Card
-    :dataset    Card
+    :card       :m/card
+    :dataset    :m/card
     :dashboard  Dashboard
     :pulse      Pulse
     :snippet    NativeQuerySnippet
@@ -900,7 +900,7 @@
   [collection-before-update collection-updates]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
     (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
-                            {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
+                            {:card-ids (t2/select-pks-set :m/card :collection_id (u/the-id collection-before-update))}))]
       (api.card/delete-alert-and-notify-archived! alerts))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

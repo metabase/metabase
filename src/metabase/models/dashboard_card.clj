@@ -6,7 +6,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.events :as events]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :refer [:m/card]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse-card :refer [PulseCard]]
@@ -34,7 +34,7 @@
 (defmethod mi/perms-objects-set DashboardCard
   [dashcard read-or-write]
   (let [card   (or (:card dashcard)
-                   (t2/select-one [Card :dataset_query] :id (u/the-id (:card_id dashcard))))
+                   (t2/select-one [:m/card :dataset_query] :id (u/the-id (:card_id dashcard))))
         series (or (:series dashcard)
                    (series dashcard))]
     (apply set/union (mi/perms-objects-set card read-or-write) (for [series-card series]
@@ -97,9 +97,9 @@
   :series
   "Return the `Cards` associated as additional series on this DashboardCard."
   [{:keys [id]}]
-  (t2/select [Card :id :name :description :display :dataset_query :visualization_settings :collection_id]
+  (t2/select [:m/card :id :name :description :display :dataset_query :visualization_settings :collection_id]
              (merge
-               (mdb.u/join [Card :id] [DashboardCardSeries :card_id])
+               (mdb.u/join [:m/card :id] [DashboardCardSeries :card_id])
                {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]
                 :where    [:= (db/qualify DashboardCardSeries :dashboardcard_id) id]})))
 
@@ -367,7 +367,7 @@
   [dashcard]
   (-> dashcard
       (dissoc :serdes/meta)
-      (update :card_id                serdes/import-fk 'Card)
+      (update :card_id                serdes/import-fk :m/card)
       (update :action_id              serdes/import-fk 'Action)
       (update :dashboard_id           serdes/import-fk 'Dashboard)
       (update :created_at             #(if (string? %) (u.date/parse %) %))

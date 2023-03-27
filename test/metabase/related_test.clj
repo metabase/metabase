@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models
-    :refer [Card Collection Dashboard DashboardCard Metric Revision Segment]]
+    :refer [:m/card Collection Dashboard DashboardCard Metric Revision Segment]]
    [metabase.related :as related]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -22,15 +22,15 @@
 
 
 (deftest similiarity-test
-  (mt/with-temp* [Card [{card-id-1 :id}
+  (mt/with-temp* [:m/card [{card-id-1 :id}
                         {:dataset_query (mt/mbql-query venues
                                           {:aggregation  [[:sum $price]]
                                            :breakout     [$category_id]})}]
-                  Card [{card-id-2 :id}
+                  :m/card [{card-id-2 :id}
                         {:dataset_query (mt/mbql-query venues
                                           {:aggregation [[:sum $longitude]]
                                            :breakout    [$category_id]})}]
-                  Card [{card-id-3 :id}
+                  :m/card [{card-id-3 :id}
                         {:dataset_query (mt/mbql-query venues
                                           {:aggregation  [[:sum $longitude]]
                                            :breakout     [$latitude]})}]]
@@ -42,7 +42,7 @@
                                                      [1 1] 1.0}]
         (testing (format "Similarity between Card #%d and Card #%d" card-x card-y)
           (is (= expected-similarity
-                 (double (#'related/similarity (t2/select-one Card :id (get cards card-x)) (t2/select-one Card :id (get cards card-y)))))))))))
+                 (double (#'related/similarity (t2/select-one :m/card :id (get cards card-x)) (t2/select-one :m/card :id (get cards card-y)))))))))))
 
 (def ^:private ^:dynamic *world*)
 
@@ -64,18 +64,18 @@
                                                    {:table_id   $$venues
                                                     :definition {:source-table $$venues
                                                                  :filter       [:!= $name nil]}})]
-                  Card       [{card-id-a :id}
+                  :m/card       [{card-id-a :id}
                               {:table_id      (mt/id :venues)
                                :dataset_query (mt/mbql-query venues
                                                 {:aggregation [[:sum $price]]
                                                  :breakout    [$category_id]})}]
-                  Card       [{card-id-b :id}
+                  :m/card       [{card-id-b :id}
                               {:table_id      (mt/id :venues)
                                :collection_id collection-id
                                :dataset_query (mt/mbql-query venues
                                                 {:aggregation [[:sum $longitude]]
                                                  :breakout    [$category_id]})}]
-                  Card       [{card-id-c :id}
+                  :m/card       [{card-id-c :id}
                               {:table_id      (mt/id :venues)
                                :dataset_query (mt/mbql-query venues
                                                 {:aggregation [[:sum $longitude]]
@@ -201,9 +201,9 @@
                     :similar-questions)))))))
 
 (deftest recommended-dashboards-test
-  (t2.with-temp/with-temp [Card          card-1        {}
-                           Card          card-2        {}
-                           Card          card-3        {}
+  (t2.with-temp/with-temp [:m/card          card-1        {}
+                           :m/card          card-2        {}
+                           :m/card          card-3        {}
                            Dashboard     {dash-id :id} {}
                            Revision      _             {:model    "Dashboard"
                                                         :model_id dash-id
