@@ -7,7 +7,7 @@ import type { TypedUseSelectorHook } from "react-redux";
 
 import type { State } from "metabase-types/store";
 
-// Note (EmmadUsmani): This interface is simply to keep typescript from erroring when
+// Note (PR#29530): This interface is simply to keep typescript from erroring when
 // typing `useDispatch`. Insipiration was taken from `redux-thunk`'s `ThunkDispatch` type
 // (https://github.com/reduxjs/redux-thunk/blob/e3d452948d5562b9ce871cc9391403219f83b4ff/src/types.ts#L14).
 // It is intentionally vague, we have middlewares that support more action types that are not covered here
