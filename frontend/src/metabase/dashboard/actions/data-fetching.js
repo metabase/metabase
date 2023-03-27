@@ -358,6 +358,7 @@ export const fetchCardData = createThunkAction(
         );
       }
 
+      await delay(5000);
       setFetchCardDataCancel(card.id, dashcard.id, null);
       clearTimeout(slowCardTimer);
 
@@ -372,7 +373,7 @@ export const fetchCardData = createThunkAction(
 
 export const fetchDashboardCardData = createThunkAction(
   FETCH_DASHBOARD_CARD_DATA,
-  options => (dispatch, getState) => {
+  options => async (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
 
     const promises = getAllDashboardCards(dashboard)
@@ -386,12 +387,20 @@ export const fetchDashboardCardData = createThunkAction(
       .filter(p => !!p);
 
     dispatch(setDocumentTitle(t`0/${promises.length} loaded`));
+    // await delay(20000);
 
     Promise.all(promises).then(() => {
       dispatch(loadingComplete());
     });
   },
 );
+
+// XXX: Don't forget to remove this function after done playing with it.
+function delay(timeout) {
+  return new Promise(resolve => {
+    setTimeout(resolve, timeout);
+  });
+}
 
 export const reloadDashboardCards = () => async (dispatch, getState) => {
   const dashboard = getDashboardComplete(getState());

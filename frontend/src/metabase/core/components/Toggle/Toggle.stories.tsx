@@ -19,3 +19,9 @@ export const Default = Template.bind({});
 Default.args = {
   value: false,
 };
+
+export const Labeled = Template.bind({});
+Labeled.args = {
+  value: true,
+  label: "Toggle me!",
+};

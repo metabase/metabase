@@ -5,7 +5,7 @@ import React, {
   useCallback,
   Ref,
 } from "react";
-import { ToggleRoot } from "./Toggle.styled";
+import { ToggleLabel, ToggleRoot, ToggleWithLabelRoot } from "./Toggle.styled";
 
 export interface ToggleProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> {
@@ -14,10 +14,11 @@ export interface ToggleProps
   small?: boolean;
   color?: string;
   onChange?: (value: boolean) => void;
+  label?: string;
 }
 
 const Toggle = forwardRef(function Toggle(
-  { className, value, small, color, onChange, ...rest }: ToggleProps,
+  { className, value, small, color, onChange, label, ...rest }: ToggleProps,
   ref: Ref<HTMLInputElement>,
 ): JSX.Element {
   const handleChange = useCallback(
@@ -26,6 +27,26 @@ const Toggle = forwardRef(function Toggle(
     },
     [onChange],
   );
+
+  if (label) {
+    return (
+      <ToggleWithLabelRoot>
+        <ToggleLabel>{label}</ToggleLabel>
+        <ToggleRoot
+          {...rest}
+          ref={ref}
+          className={className}
+          type="checkbox"
+          role="switch"
+          checked={value}
+          aria-checked={value}
+          small={small}
+          currentColor={color}
+          onChange={handleChange}
+        />
+      </ToggleWithLabelRoot>
+    );
+  }
 
   return (
     <ToggleRoot
