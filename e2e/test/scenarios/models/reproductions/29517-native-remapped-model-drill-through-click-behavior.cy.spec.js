@@ -16,7 +16,7 @@ const questionDetails = {
   },
 };
 
-describe.skip("issue 29517 - nested question based on native model with remapped values", () => {
+describe("issue 29517 - nested question based on native model with remapped values", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
