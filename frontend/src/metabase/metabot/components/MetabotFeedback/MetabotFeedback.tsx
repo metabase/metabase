@@ -10,8 +10,13 @@ export interface MetabotFeedbackProps {
   onTypeChange: (newType: MetabotFeedbackType) => void;
 }
 
-const MetabotFeedback = ({ onTypeChange }: MetabotFeedbackProps) => {
-  return <FeedbackSelection onTypeChange={onTypeChange} />;
+const MetabotFeedback = ({ type, onTypeChange }: MetabotFeedbackProps) => {
+  switch (type) {
+    case "great":
+      return <GreatFeedbackMessage />;
+    default:
+      return <FeedbackSelection onTypeChange={onTypeChange} />;
+  }
 };
 
 interface FeedbackSelectionProps {
@@ -39,6 +44,10 @@ const FeedbackSelection = ({ onTypeChange }: FeedbackSelectionProps) => {
       </Button>
     </FeedbackSelectionRoot>
   );
+};
+
+const GreatFeedbackMessage = () => {
+  return <MetabotMessage>{t`Glad to hear it!`}</MetabotMessage>;
 };
 
 export default MetabotFeedback;
