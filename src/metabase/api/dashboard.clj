@@ -387,7 +387,7 @@
   permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
   superuser."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id collection_position cache_ttl]
+                   embedding_params position archived collection_id collection_position cache_ttl auto_apply_filters]
             :as dash-updates} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
@@ -401,7 +401,8 @@
    archived                (s/maybe s/Bool)
    collection_id           (s/maybe su/IntGreaterThanZero)
    collection_position     (s/maybe su/IntGreaterThanZero)
-   cache_ttl               (s/maybe su/IntGreaterThanZero)}
+   cache_ttl               (s/maybe su/IntGreaterThanZero)
+   auto_apply_filters      (s/maybe s/Bool)}
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
@@ -415,7 +416,7 @@
       (when-let [updates (not-empty (u/select-keys-when dash-updates
                                       :present #{:description :position :collection_id :collection_position :cache_ttl}
                                       :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                                                 :embedding_params :archived}))]
+                                                 :embedding_params :archived :auto_apply_filters}))]
         (t2/update! Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (t2/select-one Dashboard :id id)]
