@@ -40,6 +40,7 @@
    [metabase.models.timeline :as timeline]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.middleware.permissions :refer [check-block-permissions]]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
@@ -959,7 +960,12 @@ saved later when it is ready."
   [card-id param-key]
   {card-id   ms/PositiveInt
    param-key ms/NonBlankString}
-  (param-values (api/read-check Card card-id) param-key nil true))
+  (let [db-id (db/select-one-field :database_id Card :id card-id)
+        block-check (try (check-block-permissions {:database db-id})
+                         nil
+                         (catch clojure.lang.ExceptionInfo e {:status 403 :body (ex-message e)}))]
+    (or block-check
+        (param-values (api/read-check Card card-id) param-key nil true))))
 
 (api/defendpoint GET "/:card-id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
@@ -972,6 +978,11 @@ saved later when it is ready."
   {card-id   ms/PositiveInt
    param-key ms/NonBlankString
    query     ms/NonBlankString}
-  (param-values (api/read-check Card card-id) param-key query true))
+  (let [db-id (db/select-one-field :database_id Card :id card-id)
+        block-check (try (check-block-permissions {:database db-id})
+                         nil
+                         (catch clojure.lang.ExceptionInfo e {:status 403 :body (ex-message e)}))]
+    (or block-check
+        (param-values (api/read-check Card card-id) param-key query true))))
 
 (api/define-routes)
