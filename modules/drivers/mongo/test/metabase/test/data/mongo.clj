@@ -24,7 +24,7 @@
 (defmethod tx/supports-timestamptz-type? :mongo [_driver] false)
 
 ;; during unit tests don't treat Mongo as having FK support
-(defmethod driver/supports? [:sparksql :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/supports? [:mongo :foreign-keys] [_ _] (not config/is-test?))
 
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."
