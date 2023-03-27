@@ -1,33 +1,13 @@
 import React, { useEffect } from "react";
 import type { AnyAction } from "redux";
 import type { State } from "metabase-types/store";
-import type { User } from "metabase-types/api";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockUser } from "metabase-types/api/mocks";
 import { useDispatch, useSelector } from "./hooks";
 import type { AppDispatch } from "./hooks";
 
-const DEFAULT_USER: User = {
-  id: 123,
-  first_name: null,
-  last_name: null,
-  common_name: "",
-  email: "",
-  locale: null,
-  google_auth: false,
-  is_active: false,
-  is_qbnewb: false,
-  is_superuser: false,
-  date_joined: "",
-  last_login: "",
-  first_login: "",
-  login_attributes: null,
-  is_installer: false,
-  has_invited_second_user: false,
-  has_question_and_dashboard: false,
-  personal_collection_id: 0,
-};
-
+const DEFAULT_USER = createMockUser({ email: undefined });
 const CUSTOM_ACTION_TYPE = "custom_action_type_for_test";
 const TEST_EMAIL = "test_email@metabase.test";
 
