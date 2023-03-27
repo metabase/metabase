@@ -965,7 +965,7 @@
                new-paths-set))))))
 
 (deftest migrate-field-database-type-test
-  (testing "Migration v47.00-003: set base-type to type/JSON for JSON database-types for postgres and mysql"
+  (testing "Migration v47.00-001: set base-type to type/JSON for JSON database-types for postgres and mysql"
     (impl/test-migrations ["v47.00-001"] [_]
       (let [{:keys [db-type ^javax.sql.DataSource
                     data-source]} mdb.connection/*application-db*
