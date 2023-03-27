@@ -1,14 +1,10 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-export const FormSection = styled.div`
-  margin: 1rem 0 1.5rem;
-`;
-
-export const FormSectionTitle = styled.div`
+export const FormLabel = styled.div`
   color: ${color("text-dark")};
   font-weight: bold;
-  padding: 0 2rem;
+  padding: 1.5rem 2rem 1rem;
 `;
 
 export const FormFooter = styled.div`
