@@ -5,7 +5,7 @@ import { MetabotApi } from "metabase/services";
 import { User } from "metabase-types/api";
 import { fillQuestionTemplateTags } from "metabase/metabot/utils/question";
 import Question from "metabase-lib/Question";
-import MetabotGreeting from "../MetabotGreeting";
+import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
 import ModelLink from "../ModelLink";
@@ -30,7 +30,7 @@ const ModelMetabot = ({ model, user }: ModelMetabotProps) => {
   return (
     <MetabotRoot>
       <MetabotHeader>
-        <MetabotGreeting>{getGreetingMessage(model, user)}</MetabotGreeting>
+        <MetabotMessage>{getGreetingMessage(model, user)}</MetabotMessage>
         <MetabotPrompt
           user={user}
           placeholder={gePromptPlaceholder(model)}

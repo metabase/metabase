@@ -7,7 +7,7 @@ import { fillQuestionTemplateTags } from "metabase/metabot/utils/question";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
 import DatabasePicker from "../DatabasePicker/DatabasePicker";
-import MetabotGreeting from "../MetabotGreeting";
+import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
 import { MetabotHeader, MetabotRoot } from "../MetabotLayout";
@@ -46,9 +46,9 @@ const DatabaseMetabot = ({
   return (
     <MetabotRoot>
       <MetabotHeader>
-        <MetabotGreeting>
+        <MetabotMessage>
           {getGreetingMessage(databases, onDatabaseChange, database, user)}
-        </MetabotGreeting>
+        </MetabotMessage>
         <MetabotPrompt
           user={user}
           placeholder={t`Ask something...`}

@@ -4,7 +4,7 @@ import { DatabaseId, User } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
 import DatabasePicker from "../DatabasePicker";
-import MetabotGreeting from "../MetabotGreeting";
+import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";
 import { MetabotHeader } from "./HomeMetabot.styled";
 
@@ -28,7 +28,7 @@ const HomeMetabot = ({ databases, model, user, onRun }: HomeMetabotProps) => {
 
   return (
     <MetabotHeader>
-      <MetabotGreeting>
+      <MetabotMessage>
         {getGreetingMessage(user)} {t`You can ask me things about your data.`}{" "}
         {databases.length > 1 &&
           jt`I’m thinking about the ${(
@@ -39,7 +39,7 @@ const HomeMetabot = ({ databases, model, user, onRun }: HomeMetabotProps) => {
               onChange={setDatabaseId}
             />
           )} database right now.`}
-      </MetabotGreeting>
+      </MetabotMessage>
       <MetabotPrompt
         user={user}
         placeholder={getPromptPlaceholder(model)}
