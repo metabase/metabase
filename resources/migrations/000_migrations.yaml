@@ -14391,7 +14391,7 @@ databaseChangeLog:
               JOIN metabase_table t ON t.db_id = d.id
               WHERE f.table_id = t.id AND f.base_type = 'type/JSON'
         - sql:
-            dbms: mysql
+            dbms: mysql,mariadb
             sql: >-
               UPDATE metabase_field f
               JOIN metabase_table t ON f.table_id = t.id
