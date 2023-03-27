@@ -5,7 +5,6 @@ import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEdit
 import Question from "metabase-lib/Question";
 import {
   FormFooter,
-  FormRoot,
   FormSection,
   FormSectionTitle,
 } from "./MetabotQueryForm.styled";
@@ -36,7 +35,7 @@ export const MetabotQueryForm = ({
   const handleSubmit = () => onSubmit(updatedQuery.question());
 
   return (
-    <FormRoot>
+    <div>
       <FormSection>
         <FormSectionTitle>{t`Here’s the generated SQL`}</FormSectionTitle>
         <NativeQueryEditor
@@ -57,7 +56,7 @@ export const MetabotQueryForm = ({
         <Button onClick={onCancel}>{t`Cancel`}</Button>
         <Button primary onClick={handleSubmit}>{t`Done`}</Button>
       </FormFooter>
-    </FormRoot>
+    </div>
   );
 };
 
