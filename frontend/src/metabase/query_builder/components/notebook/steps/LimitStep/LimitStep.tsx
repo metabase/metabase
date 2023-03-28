@@ -2,22 +2,24 @@ import React from "react";
 import { t } from "ttag";
 
 import LimitInput from "metabase/query_builder/components/LimitInput";
+import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../../types";
 import { NotebookCell } from "../../NotebookCell";
 
 function LimitStep({
-  query,
+  topLevelQuery,
+  step,
   color,
   updateQuery,
 }: NotebookStepUiComponentProps) {
-  const limit = query.limit();
+  const limit = Lib.currentLimit(topLevelQuery, step.stageIndex);
   const value = typeof limit === "number" ? limit : "";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const nextLimit = parseInt(e.target.value, 0);
     if (nextLimit >= 1) {
-      updateQuery(query.updateLimit(nextLimit));
+      updateQuery(Lib.limit(topLevelQuery, step.stageIndex, nextLimit));
     }
   };
 
