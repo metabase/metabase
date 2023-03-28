@@ -4,25 +4,25 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.mbql.predicates :as mbql.preds]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.models.humanization :as humanization]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
+   [metabase.query-processor.middleware.escape-join-aliases
+    :as escape-join-aliases]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.lib.core :as lib]
    [metabase.util.schema :as su]
-   [schema.core :as s]
-   [metabase.lib.convert :as lib.convert]))
+   [schema.core :as s]))
 
 (def ^:private Col
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -309,78 +309,15 @@
     (throw (ex-info (tru "Don''t know how to get information about Field: {0}" &match)
                     {:field &match}))))
 
-
-;;; ---------------------------------------------- Aggregate Field Info ----------------------------------------------
-
-(defn- expression-arg-display-name
-  "Generate an appropriate name for an `arg` in an expression aggregation."
-  [recursive-name-fn arg]
-  (mbql.u/match-one arg
-    ;; if the arg itself is a nested expression, recursively find a name for it, and wrap in parens
-    [(_ :guard #{:+ :- :/ :*}) & _]
-    (str "(" (recursive-name-fn &match) ")")
-
-    ;; if the arg is another aggregation, recurse to get its name. (Only aggregations, nested expressions, or numbers
-    ;; are allowed as args to expression aggregations; thus anything that's an MBQL clause, but not a nested
-    ;; expression, is a ag clause.)
-    [(_ :guard keyword?) & _]
-    (recursive-name-fn &match)
-
-    ;; otherwise for things like numbers just use that directly
-    _ &match))
-
-(s/defn aggregation-name :- su/NonBlankString
-  "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
-  or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
-
-  These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
-  [ag-clause :- mbql.s/Aggregation]
-  (when-not driver/*driver*
-    (throw (Exception. (tru "*driver* is unbound."))))
-  (mbql.u/match-one ag-clause
-    [:aggregation-options _ (options :guard :name)]
-    (:name options)
-
-    [:aggregation-options ag _]
-    #_:clj-kondo/ignore
-    (recur ag)
-
-    ;; For unnamed expressions, just compute a name like "sum + count"
-    ;; Top level expressions need a name without a leading __ as those are automatically removed from the results
-    [(operator :guard #{:+ :- :/ :*}) & args]
-    "expression"
-
-    ;; for historic reasons a distinct count clause is still named "count". Don't change this or you might break FE
-    ;; stuff that keys off of aggregation names.
-    ;;
-    ;; `cum-count` and `cum-sum` get the same names as the non-cumulative versions, due to limitations (they are
-    ;; written out of the query before we ever see them). For other code that makes use of this function give them
-    ;; the correct names to expect.
-    [(_ :guard #{:distinct :cum-count}) _]
-    "count"
-
-    [:cum-sum _]
-    "sum"
-
-    ;; for any other aggregation just use the name of the clause e.g. `sum`.
-    [clause-name & _]
-    (name clause-name)))
-
-(s/defn aggregation-display-name :- su/NonBlankString
-  "Return an appropriate user-facing display name for an aggregation clause."
-  [inner-query ag-clause]
-  (lib/display-name
-   (lib/query
-    qp.store/metadata-provider
-    (lib.convert/->pMBQL (lib.convert/legacy-query-from-inner-query
-                          (:id (qp.store/database))
-                          inner-query)))
-   -1
-   (lib.convert/->pMBQL ag-clause)))
-
 (defn- ag->name-info [inner-query ag]
-  {:name         (aggregation-name ag)
-   :display_name (aggregation-display-name inner-query ag)})
+  (let [mlv2-query (lib/query
+                    qp.store/metadata-provider
+                    (lib.convert/->pMBQL (lib.convert/legacy-query-from-inner-query
+                                          (:id (qp.store/database))
+                                          inner-query)))
+        mlv2-ag    (lib.convert/->pMBQL ag)]
+    {:display_name (lib/display-name mlv2-query -1 mlv2-ag)
+     :name         (lib/column-name mlv2-query -1 mlv2-ag)}))
 
 (s/defn col-info-for-aggregation-clause
   "Return appropriate column metadata for an `:aggregation` clause."

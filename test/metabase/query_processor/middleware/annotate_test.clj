@@ -401,11 +401,11 @@
   (mt/with-everything-store
     (testing "basic aggregation clauses"
       (testing "`:count` (no field)"
-        (is (= {:base_type :type/Float, :name "expression", :display_name "Count ÷ 2"}
+        (is (= {:base_type :type/Float, :name "count_divided_by_2", :display_name "Count ÷ 2"}
                (col-info-for-aggregation-clause [:/ [:count] 2]))))
 
       (testing "`:sum`"
-        (is (= {:base_type :type/Float, :name "sum", :display_name "Sum of Price + 1"}
+        (is (= {:base_type :type/Float, :name "sum_price_plus_1", :display_name "Sum of Price + 1"}
                (mt/$ids venues
                  (col-info-for-aggregation-clause [:sum [:+ $price 1]]))))))
 
@@ -433,7 +433,7 @@
         (is (= {:base_type     :type/Integer
                 :semantic_type :type/Category
                 :settings      nil
-                :name          "sum"
+                :name          "sum_price"
                 :display_name  "My Custom Name"}
                (mt/$ids venues
                  (col-info-for-aggregation-clause
@@ -452,7 +452,7 @@
               {:cols [{:name "totalEvents", :display_name "Total Events", :base_type :type/Text}]}))))
 
     (testing "col info for an `expression` aggregation w/ a named expression should work as expected"
-      (is (= {:base_type :type/Float, :name "sum", :display_name "Sum of double-price"}
+      (is (= {:base_type :type/Float, :name "sum_double-price", :display_name "Sum of double-price"}
              (mt/$ids venues
                (col-info-for-aggregation-clause
                 {:source-table (mt/id :venues)
@@ -639,19 +639,33 @@
 (deftest ^:parallel deduplicate-expression-names-test
   (testing "make sure multiple expressions come back with deduplicated names"
     (testing "expressions in aggregations"
-      (is (= [{:base_type :type/Float, :name "expression", :display_name "0.9 × Average of Price", :source :aggregation, :field_ref [:aggregation 0]}
-              {:base_type :type/Float, :name "expression_2", :display_name "0.8 × Average of Price", :source :aggregation, :field_ref [:aggregation 1]}]
+      (is (= [{:base_type    :type/Float
+               :name         "0_9_times_avg_price"
+               :display_name "0.9 × Average of Price"
+               :source       :aggregation
+               :field_ref    [:aggregation 0]}
+              {:base_type    :type/Float
+               :name         "0_9_times_avg_price_2"
+               :display_name "0.9 × Average of Price"
+               :source       :aggregation
+               :field_ref    [:aggregation 1]}]
              (:cols (add-column-info
                      (mt/mbql-query venues
-                                      {:aggregation [[:* 0.9 [:avg $price]] [:* 0.8 [:avg $price]]]
-                                       :limit       10})
+                       {:aggregation [[:* 0.9 [:avg $price]]
+                                      [:* 0.9 [:avg $price]]]
+                        :limit       10})
                      {})))))
     (testing "named :expressions"
-      (is (= [{:name "prev_month", :display_name "prev_month", :base_type :type/DateTime, :expression_name "prev_month", :source :fields, :field_ref [:expression "prev_month"]}]
+      (is (= [{:name            "prev_month"
+               :display_name    "prev_month"
+               :base_type       :type/DateTime
+               :expression_name "prev_month"
+               :source          :fields
+               :field_ref       [:expression "prev_month"]}]
              (:cols (add-column-info
                      (mt/mbql-query users
-                                      {:expressions {:prev_month [:+ $last_login [:interval -1 :month]]}
-                                       :fields      [[:expression "prev_month"]], :limit 10})
+                       {:expressions {:prev_month [:+ $last_login [:interval -1 :month]]}
+                        :fields      [[:expression "prev_month"]], :limit 10})
                      {})))))))
 
 (deftest ^:parallel mbql-cols-nested-queries-test
