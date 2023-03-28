@@ -30,7 +30,7 @@ const DatabaseMetabotApp = ({
   initialQuery,
   onDatabaseChange,
 }: DatabaseMetabotProps) => {
-  const initialGreeting = getInitialGreeting(
+  const initialGreeting = getGreetingMessage(
     databases,
     onDatabaseChange,
     database,
@@ -38,13 +38,13 @@ const DatabaseMetabotApp = ({
   );
 
   const handleFetchResults: MetabotProps["onFetchResults"] = useCallback(
-    async (query: string) => {
+    async (prompt: string) => {
       const card = await MetabotApi.databasePrompt({
         databaseId: database.id,
-        question: query,
+        question: prompt,
       });
-
-      return getMetabotQuestionResults(card, database.metadata);
+      const results = await getMetabotQuestionResults(card, database.metadata);
+      return { ...results, prompt };
     },
     [database],
   );
@@ -60,7 +60,7 @@ const DatabaseMetabotApp = ({
   );
 };
 
-const getInitialGreeting = (
+const getGreetingMessage = (
   databases: Database[],
   onDatabaseChange: (databaseId: number) => void,
   database: Database,

@@ -20,3 +20,8 @@ export const MetabotText = styled.div`
   color: ${color("text-medium")};
   font-weight: bold;
 `;
+
+export const MetabotFeedbackContainer = styled.footer`
+  padding: 1rem;
+  background-color: ${color("white")};
+`;

@@ -18,13 +18,13 @@ type ModelMetabotAppProps = StateProps;
 
 const ModelMetabotApp = ({ model, user }: ModelMetabotAppProps) => {
   const handleFetchResults = useCallback(
-    async (query: string) => {
+    async (prompt: string) => {
       const card = await MetabotApi.modelPrompt({
         modelId: model.id(),
-        question: query,
+        question: prompt,
       });
-
-      return getMetabotQuestionResults(card, model.metadata());
+      const results = await getMetabotQuestionResults(card, model.metadata());
+      return { ...results, prompt };
     },
     [model],
   );
