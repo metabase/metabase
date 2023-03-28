@@ -19,7 +19,6 @@
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
    [ring.mock.request :as ring.mock]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
