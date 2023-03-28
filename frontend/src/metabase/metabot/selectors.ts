@@ -10,6 +10,10 @@ export const getQuestion = (state: State) => {
   return new Question(state.metabot.card, getMetadata(state));
 };
 
+export const getQueryText = (state: State) => {
+  return state.metabot.queryText;
+};
+
 export const getQueryStatus = (state: State) => {
   return state.metabot.queryStatus;
 };
@@ -20,4 +24,12 @@ export const getQueryResults = (state: State) => {
 
 export const getQueryError = (state: State) => {
   return state.metabot.queryError;
+};
+
+export const getFeedbackType = (state: State) => {
+  return state.metabot.feedbackType;
+};
+
+export const getFeedbackStatus = (state: State) => {
+  return state.metabot.feedbackStatus;
 };

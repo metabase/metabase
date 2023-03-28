@@ -8,7 +8,7 @@ import Database from "metabase-lib/metadata/Database";
 type DatabasePickerProps = {
   databases: Database[];
   selectedDatabaseId?: DatabaseId;
-  onChange: (databaseId: DatabaseId) => void;
+  onChange?: (databaseId: DatabaseId) => void;
 };
 
 const DatabasePicker = ({

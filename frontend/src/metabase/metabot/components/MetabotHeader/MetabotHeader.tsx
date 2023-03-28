@@ -1,0 +1,153 @@
+import React from "react";
+import { connect } from "react-redux";
+import { jt, t } from "ttag";
+import { getUser } from "metabase/selectors/user";
+import { DatabaseId, MetabotFeedbackType, User } from "metabase-types/api";
+import {
+  Dispatch,
+  MetabotFeedbackStatus,
+  MetabotQueryStatus,
+  State,
+} from "metabase-types/store";
+import Question from "metabase-lib/Question";
+import Database from "metabase-lib/metadata/Database";
+import {
+  getFeedbackStatus,
+  getFeedbackType,
+  getQueryStatus,
+  getQueryText,
+} from "../../selectors";
+import MetabotMessage from "../MetabotMessage";
+import MetabotPrompt from "../MetabotPrompt";
+import ModelLink from "../ModelLink";
+import DatabasePicker from "../DatabasePicker";
+import { MetabotHeaderRoot } from "./MetabotHeader.styled";
+
+interface OwnProps {
+  model?: Question;
+  database?: Database;
+  databases?: Database[];
+}
+
+interface StateProps {
+  queryText?: string;
+  queryStatus: MetabotQueryStatus;
+  feedbackType?: MetabotFeedbackType;
+  feedbackStatus: MetabotFeedbackStatus;
+  user?: User;
+}
+
+interface DispatchProps {
+  onChangeQuery: (queryText: string) => void;
+  onSubmitQuery: () => void;
+  onDatabaseChange: (databaseId: DatabaseId) => void;
+}
+
+type MetabotHeaderProps = OwnProps & StateProps & DispatchProps;
+
+const mapStateToProps = (state: State): StateProps => ({
+  queryText: getQueryText(state),
+  queryStatus: getQueryStatus(state),
+  feedbackType: getFeedbackType(state),
+  feedbackStatus: getFeedbackStatus(state),
+  user: getUser(state) ?? undefined,
+});
+
+const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
+  onChangeQuery: () => undefined,
+  onSubmitQuery: () => undefined,
+  onDatabaseChange: () => undefined,
+});
+
+const MetabotHeader = ({
+  queryText,
+  queryStatus,
+  feedbackType,
+  model,
+  database,
+  databases,
+  user,
+  onChangeQuery,
+  onSubmitQuery,
+  onDatabaseChange,
+}: MetabotHeaderProps) => {
+  const title = getTitle(
+    model,
+    database,
+    databases,
+    user,
+    feedbackType,
+    onDatabaseChange,
+  );
+  const placeholder = getPlaceholder(model);
+
+  return (
+    <MetabotHeaderRoot>
+      <MetabotMessage>{title}</MetabotMessage>
+      <MetabotPrompt
+        queryText={queryText}
+        placeholder={placeholder}
+        user={user}
+        isLoading={queryStatus === "running"}
+        onChangeQuery={onChangeQuery}
+        onSubmitQuery={onSubmitQuery}
+      />
+    </MetabotHeaderRoot>
+  );
+};
+
+const getTitle = (
+  model?: Question,
+  database?: Database,
+  databases?: Database[],
+  user?: User,
+  feedbackType?: MetabotFeedbackType,
+  onDatabaseChange?: (databaseId: number) => void,
+) => {
+  if (feedbackType === "invalid-sql") {
+    return t`Sorry about that. Let me know what the SQL should've been.`;
+  } else if (model) {
+    return getModelTitle(model, user);
+  } else if (database) {
+    return getDatabaseTitle(database, databases, user, onDatabaseChange);
+  }
+};
+
+const getModelTitle = (model: Question, user?: User) => {
+  const link = <ModelLink model={model} />;
+  const name = user?.first_name;
+
+  return name
+    ? jt`What do you want to know about ${link}, ${name}?`
+    : jt`What do you want to know about ${link}?`;
+};
+
+const getDatabaseTitle = (
+  database: Database,
+  databases: Database[] = [],
+  user?: User,
+  onDatabaseChange?: (databaseId: number) => void,
+) => {
+  const name = user?.first_name;
+  const databasePicker = (
+    <DatabasePicker
+      databases={databases}
+      selectedDatabaseId={database.id}
+      onChange={onDatabaseChange}
+    />
+  );
+
+  return name
+    ? jt`What do you want to know about ${databasePicker}, ${name}?`
+    : jt`What do you want to know about ${databasePicker}?`;
+};
+
+const getPlaceholder = (model?: Question) => {
+  if (model) {
+    return t`Ask something like, how many ${model.displayName()} have we had over time?`;
+  } else {
+    return t`Ask something...`;
+  }
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(MetabotHeader);

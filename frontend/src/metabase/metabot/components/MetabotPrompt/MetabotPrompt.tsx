@@ -1,9 +1,4 @@
-import React, {
-  ChangeEvent,
-  KeyboardEvent,
-  useCallback,
-  useState,
-} from "react";
+import React, { ChangeEvent, KeyboardEvent, useCallback } from "react";
 import { User } from "metabase-types/api";
 import {
   PromptInput,
@@ -13,41 +8,37 @@ import {
 } from "./MetabotPrompt.styled";
 
 export interface MetabotPromptProps {
-  user?: User;
+  queryText?: string;
   placeholder?: string;
+  user?: User;
   isLoading?: boolean;
-  initialQueryText?: string;
-  onTextQuerySubmit: (queryText: string) => void;
+  onChangeQuery: (queryText: string) => void;
+  onSubmitQuery: () => void;
 }
 
 const MetabotPrompt = ({
-  user,
+  queryText = "",
   placeholder,
+  user,
   isLoading = false,
-  initialQueryText = "",
-  onTextQuerySubmit,
+  onChangeQuery,
+  onRunQuery,
 }: MetabotPromptProps) => {
-  const [queryText, setQueryText] = useState(initialQueryText);
-
-  const handleTextChange = useCallback(
+  const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      setQueryText(event.target.value);
+      onChangeQuery(event.target.value);
     },
-    [],
+    [onChangeQuery],
   );
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
-        onTextQuerySubmit(queryText);
+        onRunQuery();
       }
     },
-    [queryText, onTextQuerySubmit],
+    [onRunQuery],
   );
-
-  const handleRunClick = useCallback(() => {
-    onTextQuerySubmit(queryText);
-  }, [queryText, onTextQuerySubmit]);
 
   return (
     <PromptSection>
@@ -56,7 +47,7 @@ const MetabotPrompt = ({
         value={queryText}
         placeholder={placeholder}
         fullWidth
-        onChange={handleTextChange}
+        onChange={handleChange}
         onKeyDown={handleKeyDown}
       />
       {queryText.length > 0 ? (
@@ -64,7 +55,7 @@ const MetabotPrompt = ({
           isRunning={isLoading}
           compact
           isDirty
-          onRun={handleRunClick}
+          onRun={onRunQuery}
         />
       ) : null}
     </PromptSection>

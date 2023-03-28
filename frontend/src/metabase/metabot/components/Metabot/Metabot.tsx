@@ -1,14 +1,12 @@
 import React from "react";
-import { t } from "ttag";
 import { Dataset, User } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import useMetabot from "../../hooks/use-metabot";
-import MetabotMessage from "../MetabotMessage";
-import MetabotPrompt from "../MetabotPrompt";
+import MetabotHeader from "../MetabotHeader";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
 import MetabotFeedbackForm from "../MetabotFeedbackForm";
 import MetabotQueryForm from "../MetabotQueryForm";
-import { MetabotHeader, MetabotRoot } from "./Metabot.styled";
+import { MetabotRoot } from "./Metabot.styled";
 
 export interface QueryResults {
   prompt: string;
@@ -33,12 +31,8 @@ const Metabot = ({
 }: MetabotProps) => {
   const {
     question,
-    results,
-    isLoading,
-    error,
     feedbackType,
     isFeedbackSubmitted,
-    handleTextQuerySubmit,
     handleNativeQuerySubmit,
     handleFeedbackChange,
     handleFeedbackSubmit,
@@ -54,29 +48,8 @@ const Metabot = ({
 
   return (
     <MetabotRoot>
-      <MetabotHeader>
-        <MetabotMessage>
-          {feedbackType === "invalid-sql"
-            ? t`Sorry about that. Let me know what the SQL should've been.`
-            : title}
-        </MetabotMessage>
-        <MetabotPrompt
-          user={user}
-          placeholder={placeholder}
-          isLoading={isLoading}
-          initialQueryText={initialQueryText}
-          onTextQuerySubmit={handleTextQuerySubmit}
-        />
-      </MetabotHeader>
-
-      {hasQueryBuilder && (
-        <MetabotQueryBuilder
-          question={question}
-          results={results}
-          isLoading={isLoading}
-          error={error}
-        />
-      )}
+      <MetabotHeader />
+      {hasQueryBuilder && <MetabotQueryBuilder />}
 
       {question && hasQueryForm && (
         <MetabotQueryForm

@@ -8,10 +8,3 @@ export const MetabotRoot = styled.main`
   overflow: hidden;
   background-color: ${color("bg-white")};
 `;
-
-export const MetabotHeader = styled.header`
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  padding: 1.5rem 2rem;
-`;
