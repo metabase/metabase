@@ -64,3 +64,15 @@
                                :source-table "card__1"}]}]
     (is (= "My Card"
            (lib.metadata.calculation/display-name query -1 query)))))
+
+(deftest ^:parallel adding-and-removing-stages
+  (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")]
+    (is (not= query
+              (-> query
+                  (lib/append-stage)
+                  (lib/filter 1 (lib/= 1 (lib/field "VENUES" "NAME"))))))
+    (is (= query
+           (-> query
+               (lib/append-stage)
+               (lib/filter (lib/= 1 (lib/field "VENUES" "NAME")))
+               (lib/drop-stage))))))
