@@ -29,23 +29,7 @@
     ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
     #{"#123" "#123-with-slug"} "SELECT * FROM table WHERE {{ #123 }} AND {{  #123-with-slug  }}"
     #{"#123"} "SELECT * FROM table WHERE {{ #not-this }} AND {{#123}}"
-    #{} "{{ #123foo }}"
-
-  ;describe("cardIdFromTagName", () => {
-  ;  it("should get card Ids from a card tag name", () => {
-  ;    expect(cardIdFromTagName("#123-foo")).toEqual(123);
-  ;    expect(cardIdFromTagName("#123-foo-456")).toEqual(123);
-  ;    expect(cardIdFromTagName("#123")).toEqual(123);
-  ;  });
-
-  ;  it("should return null for invalid card tag names", () => {
-  ;    expect(cardIdFromTagName("123-foo")).toEqual(null);
-  ;    expect(cardIdFromTagName("#123foo")).toEqual(null);
-  ;    expect(cardIdFromTagName("123")).toEqual(null);
-  ;  });
-  ;});
-    )
-  )
+    #{} "{{ #123foo }}"))
 
 #?(:clj
    ;; TODO: This is only CLJ-only because =? from Hawk is not available in CLJS currently.
