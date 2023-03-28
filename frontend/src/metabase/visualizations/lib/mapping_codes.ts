@@ -148,6 +148,8 @@ export const COUNTRY_NAME_TO_CODE = {
   "falkland islands (islas malvinas)": "fk",
   "falkland islands": "fk",
   "faroe islands": "fo",
+  "fårö islands": "fo",
+  fårö: "fo",
   fiji: "fj",
   finland: "fi",
   france: "fr",
