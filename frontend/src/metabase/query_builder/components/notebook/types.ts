@@ -55,7 +55,7 @@ export interface NotebookStepUiComponentProps {
   isLastOpened: boolean;
   reportTimezone: string;
   readOnly?: boolean;
-  updateQuery: (query: StructuredQuery) => Promise<void>;
+  updateQuery: (query: StructuredQuery | Query) => Promise<void>;
 }
 
 export type OpenSteps = Record<NotebookStep["id"], boolean>;
