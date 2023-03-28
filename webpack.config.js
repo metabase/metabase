@@ -80,8 +80,8 @@ const config = {
       {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
-        use: [{ loader: "babel-loader" }],
-        // use: [{ loader: "swc-loader", options: SWC_CONFIG }],
+        // use: [{ loader: "babel-loader" }],
+        use: [{ loader: "swc-loader", options: SWC_CONFIG }],
       },
       ...(shouldUseEslint
         ? [
