@@ -7,6 +7,7 @@ import {
   visitDashboard,
   visitIframe,
   dragField,
+  leftSidebar,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -719,7 +720,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
 
     cy.findByText("Visualization").click();
-    sidebar().within(() => {
+    leftSidebar().within(() => {
       // This part is still failing. Uncomment when fixed.
       // cy.findByText("Pivot Table")
       //   .parent()
