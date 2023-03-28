@@ -149,7 +149,7 @@
     stage-number'))
 
 (defn previous-stage-number
-  "The index of the previous stage, if there is one."
+  "The index of the previous stage, if there is one. `nil` if there is no previous stage."
   [{:keys [stages], :as _query} stage-number]
   (let [stage-number (if (neg? stage-number)
                        (+ (count stages) stage-number)

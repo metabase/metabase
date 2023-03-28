@@ -22,6 +22,10 @@ export function rightSidebar() {
   return cy.findAllByTestId("sidebar-right");
 }
 
+export function leftSidebar() {
+  return cy.findByTestId("sidebar-left");
+}
+
 export function navigationSidebar() {
   return cy.get("#root aside").first();
 }

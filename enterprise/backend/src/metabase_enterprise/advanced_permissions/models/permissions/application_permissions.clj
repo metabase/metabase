@@ -9,7 +9,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
@@ -81,7 +80,7 @@
     (perms/log-permissions-changes diff-old changes)
     (perms/check-revision-numbers old-graph new-graph)
     (when (seq changes)
-      (db/transaction
+      (t2/with-transaction [_conn]
        (doseq [[group-id changes] changes]
          (update-application-permissions! group-id changes))
        (perms/save-perms-revision! ApplicationPermissionsRevision (:revision old-graph) (:groups old-graph) changes)))))

@@ -23,7 +23,6 @@
    [metabase.util.i18n :refer [tru]]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -770,7 +769,7 @@
       @api/*current-user-permissions-set*
       (automagic-dashboards.test/with-dashboard-cleanup
         (let [database (t2/select-one Database :id db-id)]
-          (db/with-call-counting [call-count]
+          (t2/with-call-count [call-count]
             (magic/candidate-tables database)
             (is (= 4
                    (call-count)))))))))

@@ -90,7 +90,6 @@
    [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2])
   (:import
@@ -639,7 +638,7 @@
             ;; write to DB
             (cond
               (nil? new-value)
-              (db/simple-delete! Setting :key setting-name)
+              (t2/delete! (t2/table-name Setting) :key setting-name)
 
               ;; if there's a value in the cache then the row already exists in the DB; update that
               (contains? (setting.cache/cache) setting-name)
@@ -1017,7 +1016,7 @@
   ;; if setting any of the settings fails, roll back the entire DB transaction and the restore the cache from the DB
   ;; to revert any changes in the cache
   (try
-    (db/transaction
+    (t2/with-transaction [_conn]
       (doseq [[k v] settings]
         (metabase.models.setting/set! k v)))
     settings

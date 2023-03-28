@@ -1,12 +1,12 @@
 (ns metabase.models.revision
   (:require
    [clojure.data :as data]
+   [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision.diff :refer [diff-string]]
    [metabase.models.user :refer [User]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]))
@@ -68,7 +68,7 @@
   [{:keys [model], :as revision}]
   ;; in some cases (such as tests) we have 'fake' models that cannot be resolved normally; don't fail entirely in
   ;; those cases
-  (let [model (u/ignore-exceptions (db/resolve-model (symbol model)))]
+  (let [model (u/ignore-exceptions (mdb.u/resolve-model (symbol model)))]
     (cond-> revision
       model (update :object (partial models/do-post-select model)))))
 
@@ -157,7 +157,7 @@
          (t2/exists? User :id user-id)
          (integer? revision-id)]}
   (let [serialized-instance (t2/select-one-fn :object Revision, :model (name entity), :model_id id, :id revision-id)]
-    (db/transaction
+    (t2/with-transaction [_conn]
       ;; Do the reversion of the object
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change

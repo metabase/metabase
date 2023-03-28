@@ -31,3 +31,9 @@
   [:fn
    {:error/message "valid base type"}
    #(isa? % :type/*)])
+
+(mr/def ::external-op
+  [:map
+   [:operator [:or :string :keyword]]
+   [:options {:optional true} ::options]
+   [:args [:sequential :any]]])

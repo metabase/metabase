@@ -3,6 +3,7 @@
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
@@ -15,8 +16,7 @@
 (defn- is-fn? [op tag args expected-args]
   (let [f (apply op args)]
     (is (fn? f))
-    (is (=? (into [tag {:lib/uuid string?}]
-                  expected-args)
+    (is (=? {:operator tag, :args expected-args}
             (f {:lib/metadata meta/metadata} -1)))))
 
 (deftest ^:parallel aggregation-test
@@ -24,9 +24,8 @@
         venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
         venue-field-check [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]
     (testing "count"
-      (testing "without query/stage-number, return a function for later resolution"
-        (is-fn? lib/count :count [] [])
-        (is-fn? lib/count :count [venues-category-id-metadata] [venue-field-check])))
+      (is-fn? lib/count :count [] [])
+      (is-fn? lib/count :count [venues-category-id-metadata] [venue-field-check]))
     (testing "single arg aggregations"
       (doseq [[op tag] [[lib/avg :avg]
                         [lib/max :max]
@@ -35,8 +34,7 @@
                         [lib/sum :sum]
                         [lib/stddev :stddev]
                         [lib/distinct :distinct]]]
-        (testing "without query/stage-number, return a function for later resolution"
-          (is-fn? op tag [venues-category-id-metadata] [venue-field-check]))))))
+        (is-fn? op tag [venues-category-id-metadata] [venue-field-check])))))
 
 (defn- aggregation-display-name [aggregation-clause]
   (lib.metadata.calculation/display-name lib.tu/venues-query -1 aggregation-clause))
@@ -173,14 +171,27 @@
               [:expression {:base-type :type/Integer, :lib/uuid (str (random-uuid))} "double-price"]])))))
 
 (deftest ^:parallel aggregate-test
-  (is (=? {:lib/type :mbql/query
-           :database (meta/id)
-           :type :pipeline
-           :stages [{:lib/type :mbql.stage/mbql
-                     :source-table (meta/id :venues)
-                     :lib/options {:lib/uuid string?}
-                     :aggregation [[:sum {:lib/uuid string?}
-                                    [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]]}]}
-          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-              (lib/aggregate (lib/sum (lib/field "VENUES" "CATEGORY_ID")))
-              (dissoc :lib/metadata)))))
+  (let [q (lib/query-for-table-name meta/metadata-provider "VENUES")
+        result-query
+        {:lib/type :mbql/query,
+         :database (meta/id) ,
+         :type :pipeline,
+         :stages [{:lib/type :mbql.stage/mbql,
+                   :source-table (meta/id :venues) ,
+                   :lib/options {:lib/uuid string?},
+                   :aggregation [[:sum {:lib/uuid string?}
+                                  [:field
+                                   {:base-type :type/Integer, :lib/uuid string?}
+                                   (meta/id :venues :category-id)]]]}]}]
+
+    (testing "with helper function"
+      (is (=? result-query
+              (-> q
+                  (lib/aggregate (lib/sum (lib/field "VENUES" "CATEGORY_ID")))
+                  (dissoc :lib/metadata)))))
+    (testing "with external format"
+      (is (=? result-query
+              (-> q
+                  (lib/aggregate {:operator :sum
+                                  :args [(lib.field/field q (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))]})
+                  (dissoc :lib/metadata)))))))

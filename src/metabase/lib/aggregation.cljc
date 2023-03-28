@@ -2,14 +2,14 @@
   (:refer-clojure :exclude [count distinct max min])
   (:require
    [metabase.lib.common :as lib.common]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu])
-  #?(:cljs (:require-macros [metabase.lib.aggregation])))
+   [metabase.util.malli :as mu]))
 
 (mu/defn resolve-aggregation :- ::lib.schema.aggregation/aggregation
   "Resolve an aggregation with a specific `index`."
@@ -211,3 +211,17 @@
        update :aggregation
        (fn [aggregations]
          (conj (vec aggregations) (lib.common/->op-arg query stage-number an-aggregate-clause)))))))
+
+(mu/defn aggregations :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+  "Get metadata about the aggregations in a given stage of a query."
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (when-let [aggregation-exprs (not-empty (:aggregation (lib.util/query-stage query stage-number)))]
+    (map-indexed (fn [i aggregation]
+                   (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)
+                         ag-ref   [:aggregation
+                                   {:lib/uuid  (str (random-uuid))
+                                    :base-type (:base_type metadata)}
+                                   i]]
+                     (assoc metadata :field_ref ag-ref, :source :aggregation)))
+                 aggregation-exprs)))

@@ -6,7 +6,6 @@
    [metabase.models :refer [PermissionsGroupMembership]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn user-group-memberships
@@ -45,7 +44,7 @@
                                                     :user_id api/*current-user-id* :is_group_manager true)))
         (throw (ex-info (tru "Not allowed to edit group memberships")
                         {:status-code 403}))))
-    (db/transaction
+    (t2/with-transaction [_conn]
      (when (seq to-remove-group-ids)
        (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove-group-ids]))
      (when (seq to-add-group-ids)

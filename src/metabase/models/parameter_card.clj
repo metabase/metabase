@@ -5,7 +5,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -30,7 +29,8 @@
 (defn- pre-update
   [pc]
   (u/prog1 pc
-    (validate-parameterized-object-type pc)))
+    (when (:parameterized_object_type pc)
+      (validate-parameterized-object-type pc))))
 
 (mi/define-methods
  ParameterCard
@@ -60,7 +60,7 @@
           conditions {:parameterized_object_id   parameterized-object-id
                       :parameterized_object_type parameterized-object-type
                       :parameter_id              id}]
-      (or (db/update-where! ParameterCard conditions :card_id card-id)
+      (or (pos? (t2/update! ParameterCard conditions {:card_id card-id}))
           (t2/insert! ParameterCard (merge conditions {:card_id card-id}))))))
 
 (mu/defn upsert-or-delete-from-parameters!

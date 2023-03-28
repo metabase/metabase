@@ -1411,7 +1411,7 @@
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)
-       (db/transaction
+       (t2/with-transaction [_conn]
         (doseq [[group-id changes] new]
           (update-group-permissions! group-id changes))
         (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
@@ -1436,7 +1436,7 @@
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)
-       (db/transaction
+       (t2/with-transaction [_conn]
          (doseq [[group-id changes] new]
            (update-execution-permissions! group-id changes))
          (save-perms-revision! PermissionsRevision (:revision old-graph) old new)))))

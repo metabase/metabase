@@ -48,7 +48,6 @@
    [metabase.util :as u]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -2084,10 +2083,10 @@
         (let [metadata (-> (qp/process-query (:dataset_query native-card))
                            :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
-          (db/update-where! 'Card {:id model-id}
-                            :result_metadata (json/generate-string
-                                              (assoc-in metadata [0 :id]
-                                                        (mt/id :products :category)))))
+          (t2/update! 'Card {:id model-id}
+                      {:result_metadata (json/generate-string
+                                         (assoc-in metadata [0 :id]
+                                                    (mt/id :products :category)))}))
         ;; ...so instead we create a question on top of this model (note that
         ;; metadata must be present on the model) and use the question on the
         ;; dashboard.

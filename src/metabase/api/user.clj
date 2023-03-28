@@ -256,7 +256,7 @@
   (api/check-superuser)
   (api/checkp (not (t2/exists? User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))
-  (db/transaction
+  (t2/with-transaction [_conn]
     (let [new-user-id (u/the-id (user/create-and-invite-user!
                                  (u/select-keys-when body
                                    :non-nil [:first_name :last_name :email :password :login_attributes])
@@ -331,7 +331,7 @@
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
     (api/checkp (not (t2/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
       "email" (tru "Email address already associated to another user."))
-    (db/transaction
+    (t2/with-transaction [_conn]
       ;; only superuser or self can update user info
       ;; implicitly prevent group manager from updating users' info
       (when (or (= id api/*current-user-id*)
