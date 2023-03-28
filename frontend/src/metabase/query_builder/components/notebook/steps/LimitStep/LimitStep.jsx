@@ -1,18 +1,12 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
 
 import LimitInput from "metabase/query_builder/components/LimitInput";
-import { NotebookCell } from "../NotebookCell";
 
-export default function LimitStep({
-  color,
-  query,
-  updateQuery,
-  isLastOpened,
-  ...props
-}) {
+import { NotebookCell } from "../../NotebookCell";
+
+function LimitStep({ query, color, updateQuery }) {
   return (
     <NotebookCell color={color}>
       <LimitInput
@@ -31,3 +25,5 @@ export default function LimitStep({
     </NotebookCell>
   );
 }
+
+export default LimitStep;
