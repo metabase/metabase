@@ -1,4 +1,6 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
+import reduceReducers from "reduce-reducers";
+
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import Dashboards from "metabase/entities/dashboards";
 
@@ -36,9 +38,11 @@ import {
   RESET,
   SET_PARAMETER_VALUES,
   UNDO_REMOVE_CARD_FROM_DASH,
+  tabsReducer,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
+import { INITIAL_DASHBOARD_STATE } from "./constants";
 
 const dashboardId = handleActions(
   {
@@ -48,7 +52,7 @@ const dashboardId = handleActions(
     },
     [RESET]: { next: state => null },
   },
-  null,
+  null, // TODO refactor these to use values from constant
 );
 
 const isEditing = handleActions(
@@ -163,7 +167,7 @@ const dashcards = handleActions(
       }),
     },
     [SET_MULTIPLE_DASHCARD_ATTRIBUTES]: {
-      next: (state, { payload: dashcards }) => {
+      next: (state, { payload: { dashcards } }) => {
         const nextState = { ...state };
         dashcards.forEach(({ id, attributes }) => {
           nextState[id] = {
@@ -450,18 +454,24 @@ const missingActionParameters = handleActions(
   null,
 );
 
-export default combineReducers({
-  dashboardId,
-  isEditing,
-  loadingControls,
-  dashboards,
-  dashcards,
-  dashcardData,
-  slowCards,
-  parameterValues,
-  draftParameterValues,
-  loadingDashCards,
-  isAddParameterPopoverOpen,
-  sidebar,
-  missingActionParameters,
-});
+export default reduceReducers(
+  INITIAL_DASHBOARD_STATE,
+  combineReducers({
+    dashboardId,
+    isEditing,
+    loadingControls,
+    dashboards,
+    dashcards,
+    dashcardData,
+    slowCards,
+    parameterValues,
+    draftParameterValues,
+    loadingDashCards,
+    isAddParameterPopoverOpen,
+    sidebar,
+    missingActionParameters,
+    // Combined reducer needs to init state for every slice
+    selectedTabId: (state = null) => state,
+  }),
+  tabsReducer,
+);
