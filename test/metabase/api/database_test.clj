@@ -286,7 +286,7 @@
                                         :engine  (u/qualified-name ::test-driver)
                                         :details {:db "my_db"}}))))))
 
-    (testing "should throw a 403 error if trying to set `cache_ttl` on OSS"
+    (testing "should throw a 402 error if trying to set `cache_ttl` on OSS"
       (with-redefs [premium-features/enable-advanced-config? (constantly false)]
         (mt/user-http-request :crowberto :post 402 "database"
                               {:name      (mt/random-name)
