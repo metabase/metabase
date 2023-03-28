@@ -22,55 +22,61 @@
   (testing "test that if database-type changes we will update it in the DB"
     (is (= [["Field" 1 {:database_type "Integer"}]]
            (updates-that-will-be-performed
-            {:name              "My Field"
-             :database-type     "Integer"
-             :base-type         :type/Integer
-             :database-position 0
-             :database-required false
-             :database-is-auto-increment false}
-            {:name              "My Field"
-             :database-type     "NULL"
-             :base-type         :type/Integer
-             :id                1
-             :database-position 0
-             :database-required false
-             :database-is-auto-increment false})))))
+            {:name                       "My Field"
+             :database-type              "Integer"
+             :base-type                  :type/Integer
+             :database-position          0
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}
+            {:name                       "My Field"
+             :database-type              "NULL"
+             :base-type                  :type/Integer
+             :id                         1
+             :database-position          0
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false})))))
 
 (deftest database-required-changed-test
   (testing "test that if database-required changes we will update it in the DB"
     (is (= [["Field" 1 {:database_required false}]]
            (updates-that-will-be-performed
-            {:name              "My Field"
-             :database-type     "Integer"
-             :base-type         :type/Integer
-             :database-position 0
-             :database-required false
-             :database-is-auto-increment false}
-            {:name              "My Field"
-             :database-type     "Integer"
-             :base-type         :type/Integer
-             :id                1
-             :database-position 0
-             :database-required true
-             :database-is-auto-increment false})))))
+            {:name                       "My Field"
+             :database-type              "Integer"
+             :base-type                  :type/Integer
+             :database-position          0
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}
+            {:name                       "My Field"
+             :database-type              "Integer"
+             :base-type                  :type/Integer
+             :id                         1
+             :database-position          0
+             :database-required          true
+             :database-is-auto-increment false
+             :json-unfolding             false})))))
 
 (deftest database-is-auto-increment-changed-test
   (testing "test that if database-required changes we will update it in the DB"
     (is (= [["Field" 1 {:database_is_auto_increment true}]]
            (updates-that-will-be-performed
-            {:name              "My Field"
-             :database-type     "Integer"
-             :base-type         :type/Integer
-             :database-position 0
-             :database-required false
-             :database-is-auto-increment true}
-            {:name              "My Field"
-             :database-type     "Integer"
-             :base-type         :type/Integer
-             :id                1
-             :database-position 0
-             :database-required false
-             :database-is-auto-increment false})))
+            {:name                       "My Field"
+             :database-type              "Integer"
+             :base-type                  :type/Integer
+             :database-position          0
+             :database-required          false
+             :database-is-auto-increment true
+             :json-unfolding             false}
+            {:name                       "My Field"
+             :database-type              "Integer"
+             :base-type                  :type/Integer
+             :id                         1
+             :database-position          0
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false})))
     (is (= [["Field" 1 {:database_is_auto_increment false}]]
            (updates-that-will-be-performed
             {:name              "My Field"
@@ -78,32 +84,56 @@
              :base-type         :type/Integer
              :database-position 0
              ;; no :database-is-auto-increment key to test case where describe-table does not not return it
-             :database-required false}
-            {:name              "My Field"
-             :database-type     "Integer"
-             :base-type         :type/Integer
-             :id                1
-             :database-position 0
              :database-required false
-             :database-is-auto-increment true})))))
+             :json-unfolding    false}
+            {:name                       "My Field"
+             :database-type              "Integer"
+             :base-type                  :type/Integer
+             :id                         1
+             :database-position          0
+             :database-required          false
+             :database-is-auto-increment true
+             :json-unfolding             false})))))
+
+(deftest database-json-unfolding-test
+  (testing "test that if json-unfolding changes we will update it in the DB"
+    (is (= [["Field" 1 {:json-unfolding true}]]
+           (updates-that-will-be-performed
+            {:name                       "My Field"
+             :database-type              "Integer"
+             :base-type                  :type/Integer
+             :database-position          0
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             true}
+            {:name                       "My Field"
+             :database-type              "Integer"
+             :base-type                  :type/Integer
+             :id                         1
+             :database-position          0
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false})))))
 
 (deftest no-op-test
   (testing "no changes should be made (i.e., no calls to `update!`) if nothing changes"
     (is (= []
            (updates-that-will-be-performed
-            {:name              "My Field"
-             :database-type     "Integer"
-             :base-type         :type/Integer
-             :database-position 0
-             :database-required false
-             :database-is-auto-increment true}
-            {:name              "My Field"
-             :database-type     "Integer"
-             :base-type         :type/Integer
-             :id                1
-             :database-position 0
-             :database-required false
-             :database-is-auto-increment true})))))
+            {:name                       "My Field"
+             :database-type              "Integer"
+             :base-type                  :type/Integer
+             :database-position          0
+             :database-required          false
+             :database-is-auto-increment true
+             :json-unfolding             false}
+            {:name                       "My Field"
+             :database-type              "Integer"
+             :base-type                  :type/Integer
+             :id                         1
+             :database-position          0
+             :database-required          false
+             :database-is-auto-increment true
+             :json-unfolding             false})))))
 
 (deftest nil-database-type-test
   (testing (str "test that if `database-type` comes back as `nil` in the metadata from the sync process, we won't try "
@@ -111,37 +141,41 @@
                 "`TableMetadataField` schema.")
     (is (= [["Field" 1 {:database_type "NULL"}]]
            (updates-that-will-be-performed
-            {:name              "My Field"
-             :database-type     nil
-             :base-type         :type/Integer
-             :database-position 0
-             :database-required false
-             :database-is-auto-increment false}
-            {:name              "My Field"
-             :database-type     "Integer"
-             :base-type         :type/Integer
-             :database-position 0
-             :id                1
-             :database-required false
-             :database-is-auto-increment false}))))
+            {:name                       "My Field"
+             :database-type              nil
+             :base-type                  :type/Integer
+             :database-position          0
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}
+            {:name                       "My Field"
+             :database-type              "Integer"
+             :base-type                  :type/Integer
+             :database-position          0
+             :id                         1
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}))))
 
   (testing (str "if `database-type` comes back as `nil` and was already saved in application DB as `NULL` no changes "
                 "should be made")
     (is (= []
            (updates-that-will-be-performed
-            {:name              "My Field"
-             :database-type     nil
-             :base-type         :type/Integer
-             :database-position 0
-             :database-required false
-             :database-is-auto-increment false}
-            {:name              "My Field"
-             :database-type     "NULL"
-             :base-type         :type/Integer
-             :id                1
-             :database-position 0
-             :database-required false
-             :database-is-auto-increment false})))))
+            {:name                       "My Field"
+             :database-type              nil
+             :base-type                  :type/Integer
+             :database-position          0
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false}
+            {:name                       "My Field"
+             :database-type              "NULL"
+             :base-type                  :type/Integer
+             :id                         1
+             :database-position          0
+             :database-required          false
+             :database-is-auto-increment false
+             :json-unfolding             false})))))
 
 (deftest dont-overwrite-semantic-type-test
   (testing "We should not override non-nil `semantic_type`s"
