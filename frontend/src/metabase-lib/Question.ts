@@ -114,7 +114,8 @@ type CljsCard = unknown & { _opaque: typeof CljsCard };
 declare const CljsCard: unique symbol;
 
 function massageForRoundTripCheck(x) {
-  if (typeof x === "undefined" || x == null) {
+  if (x == null) {
+    // undefined == null, so this check covers both of those.
     return null;
   }
   if (typeof x !== "object") {
@@ -122,28 +123,25 @@ function massageForRoundTripCheck(x) {
   }
 
   if (Array.isArray(x)) {
-    const ret = x.map(massageForRoundTripCheck);
-    if (ret.length === 2 && (ret[0] === "field" || ret[0] === "expression")) {
-      ret.push(null);
+    // For an array, massage each element.
+    const result = x.map(massageForRoundTripCheck);
+    // Then handle a specific case: a "field" or "expression" clause must always have three elements. If it doesn't,
+    // push a null `options` map as the third element.
+    if (
+      result.length === 2 &&
+      (result[0] === "field" || result[0] === "expression")
+    ) {
+      result.push(null);
     }
-    return ret;
+    return result;
   }
 
-  const ret = {};
-  for (const k of Object.keys(x)) {
-    ret[k] = massageForRoundTripCheck(x[k]);
-  }
-  return ret;
-}
-
-function diffKeys(a, b) {
-  const keys = [];
-  for (const k of Object.keys(a)) {
-    if (!_.isEqual(a[k], b[k])) {
-      keys.push(k);
-    }
-  }
-  return keys;
+  // An object: recursively massage each value.
+  const result = {};
+  Object.keys(x).forEach(k => {
+    result[k] = massageForRoundTripCheck(x[k]);
+  });
+  return result;
 }
 
 /**
@@ -247,12 +245,6 @@ class QuestionInner {
           : undefined),
       });
       if (!_.isEqual(originalCard, roundTripped)) {
-        console.log(
-          originalCard,
-          roundTripped,
-          diffKeys(originalCard, roundTripped),
-        );
-        //debugger;
         throw new Error(
           "round-tripped Question._card is not the same as the original",
         );

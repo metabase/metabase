@@ -60,8 +60,10 @@
    [:values_source_config {:optional true} :any]
    [:values_source_type {:optional true} :any]])
 
-(def Card
-  "Malli schema for a possibly-saved Card."
+(def CardNoQuery
+  "Base Malli schema for a Card.
+
+  This gives `:any` as the schema for the vital `:dataset_query` key, but that is overridden in [[Card]]."
   [:schema
    [:map
     [:archived {:optional true} boolean?]
@@ -93,7 +95,7 @@
     [:dashcard-id  {:optional true :js/prop "dashcardId"}  number?]
     [:database_id {:optional true} number?]
     [:dataset {:optional true} boolean?]
-    [:dataset_query ::lib.schema/query] ;; NOTE: This is not converted using Malli; see CardNoQuery.
+    [:dataset_query :any] ;; See Card below for the real schema for :dataset_query.
     [:description [:maybe string?]]
     ;; TODO: Display is really an enum but I don't know all its values.
     ;; Known values: table, scalar, gauge, map, area, bar, line. There are more missing for sure.
@@ -123,15 +125,13 @@
     [:updated_at {:optional true} string?] ;; TODO: Date regex
     [:visualization_settings VisualizationSettings]]])
 
-#?(:cljs
-   (def ^:private CardNoQuery
-     "Modified schema for Card, with the `:dataset_query` key set to :any.
-     Queries are special and we want Malli to disregard them."
-     (-> Card
-         mc/schema
-         mc/children
-         first
-         (mut/assoc-in [:dataset_query] :any))))
+(def Card
+  "Full schema for Card, with the real schema for `:dataset_query`.
+
+  Queries are special and we want Malli to disregard them. So Malli conversion is done based on [[CardNoQuery]], and
+  this is the complete schema for a Card."
+  (mut/merge CardNoQuery
+             [:map [:dataset_query ::lib.schema/query]]))
 
 #?(:cljs
    (def ^:private ->CardNoQuery
@@ -147,44 +147,11 @@
      This returns the Card converting everything but the query, which is left alone."
      (converters/outgoing CardNoQuery)))
 
-
-;;; ------------------------------- JS<->CLJS conversion helpers ---------------------------------
-#?(:cljs
-   ;; This is annoying, but `clj->js` will squash namespaced keywords to just the `name`, which breaks the round-trip
-   ;; in a few specific cases (eg. [:template-tags "foo" :widget-type] can be `:date/all-options`).
-   ;; `clj->js` supports overriding how keyword map keys get transformed, but it doesn't let you override how it
-   ;; handles values, hence this custom function.
-   (defn- fix-namespaced-values [x]
-     (cond
-       (keyword? x)    (if-let [ns-part (namespace x)]
-                         (str ns-part "/" (name x))
-                         (name x))
-       (map? x)        (update-vals x fix-namespaced-values)
-       (sequential? x) (map fix-namespaced-values x)
-       :else           x)))
-
-#?(:cljs
-  (defn- outgoing-query [query]
-    (let [legacy (lib.convert/->legacy-MBQL query)]
-      #?(:cljs (-> legacy fix-namespaced-values clj->js)
-         :clj  legacy))))
-
 ;;; ---------------------------------------- Exported API ----------------------------------------
 (de/define-getters-and-setters Card
-  ;; NOTE: Do not use define-getters-and-setters for `dataset-query`; it needs special handling.
+  ;; NOTE: Do not use define-getters-and-setters for `:dataset-query`; it needs special handling.
   display           [:display]
   display-is-locked [:display-is-locked])
-
-#_#?(:cljs
-   (defn ^:export query-from-js
-     "Converter for a plain JS object query to a CLJS map.
-     Needs special handling, and not just a Malli conversion."
-     [js-query metadata-provider]
-     (let [converted   (if (object? js-query) (js->clj js-query) js-query)]
-       (->> converted
-            mbql.normalize/normalize
-            lib.convert/->pMBQL
-            (lib.query/query metadata-provider)))))
 
 #?(:cljs
    (def ^:export from-js
@@ -193,15 +160,13 @@
      (fn [database-id js-metadata ^js js-card]
        (let [query       (lib.js/query database-id js-metadata (.-dataset_query js-card))
              card        (->CardNoQuery js-card)]
-         (js/console.log "from-js, before query added" card query)
          (assoc card :dataset_query query)))))
 
 #?(:cljs
    (defn ^:export to-js
      "Converter from CLJS maps to plain JS objects."
      [card]
-     (let [js-query (outgoing-query (:dataset_query card))]
-       (js/console.log "to-js, query" (:dataset_query card) js-query)
+     (let [js-query (lib.js/legacy-query (:dataset_query card))]
        (-> card
            (assoc :dataset_query js-query)
            CardNoQuery->))))
