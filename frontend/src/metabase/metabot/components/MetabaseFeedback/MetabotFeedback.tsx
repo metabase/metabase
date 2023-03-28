@@ -1,18 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
-import {
-  MetabotFeedbackPayload,
-  MetabotFeedbackType,
-} from "metabase-types/api";
+import { MetabotFeedbackType } from "metabase-types/api";
 import { maybeGetNativeQueryText } from "metabase/metabot/utils/question";
 import { MetabotApi } from "metabase/services";
 import Question from "metabase-lib/Question";
 import MetabotFeedbackForm from "../MetabotFeedbackForm";
 import MetabotQueryForm from "../MetabotQueryForm";
 import { QueryResults } from "../Metabot";
-
-const submitFeedback = async (feedbackPayload: MetabotFeedbackPayload) =>
-  await MetabotApi.sendFeedback(feedbackPayload);
 
 interface MetabotFeedbackProps {
   results: QueryResults;
@@ -27,7 +21,7 @@ const MetabotFeedback = ({
   onChangeFeedbackType,
   onSubmit,
 }: MetabotFeedbackProps) => {
-  const [, handleSubmit] = useAsyncFn(submitFeedback);
+  const [, handleSubmit] = useAsyncFn(MetabotApi.sendFeedback);
   const [isFeedbackSubmitted, setIsFeedbackSubmitted] = useState(false);
 
   const isFeedbackVisible = results != null;
