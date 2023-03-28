@@ -97,7 +97,7 @@
 
 (deftest database-json-unfolding-test
   (testing "test that if json-unfolding changes we will update it in the DB"
-    (is (= [["Field" 1 {:json-unfolding true}]]
+    (is (= [["Field" 1 {:json_unfolding true}]]
            (updates-that-will-be-performed
             {:name                       "My Field"
              :database-type              "Integer"
