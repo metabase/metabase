@@ -3,9 +3,11 @@ import {
   withDatabase,
   visitAlias,
   popover,
+  resetTestTable,
   startNewQuestion,
+  resyncDatabase,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -71,6 +73,13 @@ describe.skip("scenarios > admin > datamodel > field", () => {
       cy.contains("Do not include");
     });
   });
+  
+  // // test for json_unfolding
+  // describe("JSON Unfolding", () => {
+  //   before(restore);
+
+  //   it("lets you change json unfolding", () => {
+  //     visitAlias("@ORDERS_CREATED_AT_URL");
 
   describe("Filtering on this field", () => {
     before(restore);
@@ -131,5 +140,54 @@ describe.skip("scenarios > admin > datamodel > field", () => {
       cy.findByText("Number With Nulls").click();
       cy.findByText("nothin");
     });
+  });
+});
+    
+function getUnfoldJsonContent() {
+  return cy
+    .findByText("Unfold JSON")
+    .closest("section")
+    .find("[data-testid='select-button-content']")
+}
+
+describe("adding and executing actions", () => {
+  beforeEach(() => {
+    resetTestTable({ type: "postgres", table: "many_data_types" });
+    restore(`postgres-writable`);
+    cy.signInAsAdmin();
+    resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
+  });
+  
+  it("lets you enable/disable 'Unfold JSON' for JSON columns", () => {
+    cy.intercept("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`).as(
+      "sync_schema",
+    );
+    // Go to field settings
+    cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
+    cy.contains("Many Data Types").click();
+
+    // Check json is unfolded initially
+    cy.contains("json.a").should("be.visible");
+    cy.get("[data-testid='column-json'] [aria-label='gear icon']").click();
+    
+    getUnfoldJsonContent().contains("Yes").click();
+    popover().within(() => {
+      cy.findByText("No").click();
+    });
+
+    // Check setting has persisted
+    cy.reload();
+    getUnfoldJsonContent().contains("No");
+
+    // Sync database
+    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+    cy.findByText("Sync database schema now").click();
+    cy.wait("@sync_schema");
+    cy.findByText("Sync triggered!");
+
+    // Check json field is not unfolded
+    cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
+    cy.contains("Many Data Types").click();
+    cy.contains("json.a").should("not.exist");
   });
 });
