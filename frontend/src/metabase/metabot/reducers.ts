@@ -6,6 +6,7 @@ import {
   SET_ENTITY_ID,
   SET_ENTITY_TYPE,
   SET_FEEDBACK_TYPE,
+  SET_QUERY_ERROR,
   SET_QUERY_STATUS,
   SET_QUERY_TEXT,
 } from "./actions";
@@ -28,6 +29,7 @@ export const entityType = handleActions(
 
 export const card = handleActions(
   {
+    [FETCH_CARD]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
   null,
@@ -67,6 +69,7 @@ export const queryResults = handleActions(
 
 export const queryError = handleActions(
   {
+    [SET_QUERY_ERROR]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
   null,

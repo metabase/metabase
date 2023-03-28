@@ -22,10 +22,13 @@ export const SET_ENTITY_TYPE = "metabase/metabot/SET_ENTITY_TYPE";
 export const setEntityType = createAction(SET_ENTITY_TYPE);
 
 export const SET_QUERY_TEXT = "metabase/metabot/SET_QUERY_TEXT";
-export const setQueryText = createAction<string>(SET_QUERY_TEXT);
+export const setQueryText = createAction(SET_QUERY_TEXT);
 
 export const SET_QUERY_STATUS = "metabase/metabot/SET_QUERY_STATUS";
-export const setQueryStatus = createAction<string>(SET_QUERY_STATUS);
+export const setQueryStatus = createAction(SET_QUERY_STATUS);
+
+export const SET_QUERY_ERROR = "metabase/metabot/SET_QUERY_ERROR";
+export const setQueryError = createAction(SET_QUERY_ERROR);
 
 export const SET_FEEDBACK_TYPE = "metabase/metabot/SET_FEEDBACK_TYPE";
 export const setFeedbackType =
@@ -59,6 +62,8 @@ export const runTextQuery = createThunkAction(
       dispatch(setQueryStatus("running"));
       await dispatch(fetchCard());
       await dispatch(fetchQueryResults());
+    } catch (error) {
+      dispatch(setQueryError(error));
     } finally {
       dispatch(setQueryStatus("complete"));
     }
@@ -72,6 +77,8 @@ export const runCardQuery = createThunkAction(
     try {
       dispatch(setQueryStatus("running"));
       await dispatch(fetchQueryResults());
+    } catch (error) {
+      dispatch(setQueryError(error));
     } finally {
       dispatch(setQueryStatus("complete"));
     }
@@ -87,12 +94,12 @@ export const fetchCard = createThunkAction(
     const queryText = getQueryText(getState());
 
     if (entityType === "model") {
-      return MetabotApi.modelPrompt({
+      return await MetabotApi.modelPrompt({
         modelId: entityId,
         question: queryText,
       });
     } else {
-      return MetabotApi.databasePrompt({
+      return await MetabotApi.databasePrompt({
         databaseId: entityId,
         question: queryText,
       });
@@ -103,8 +110,8 @@ export const fetchCard = createThunkAction(
 export const FETCH_QUERY_RESULTS = "metabase/metabot/FETCH_QUERY_RESULTS";
 export const fetchQueryResults = createThunkAction(
   FETCH_QUERY_RESULTS,
-  () => (dispatch: Dispatch, getState: GetState) => {
+  () => async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
-    return question?.apiGetResults();
+    return await question?.apiGetResults();
   },
 );
