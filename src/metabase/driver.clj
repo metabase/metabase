@@ -503,8 +503,7 @@
 
     (supports? :postgres :set-timezone) ; -> true
 
-  DEPRECATED — [[database-supports?]] is intended to replace this method. However, it driver authors should continue
-  _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
+  DEPRECATED — [[database-supports?]] should be used instead. This function will be removed in a future version of Metabase."
   {:arglists '([driver feature]), :deprecated "0.41.0"}
   (fn [driver feature]
     (when-not (driver-features feature)
