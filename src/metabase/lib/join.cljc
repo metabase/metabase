@@ -97,9 +97,6 @@
   [query stage-number f]
   (->join-clause query stage-number (f query stage-number)))
 
-;; TODO this is basically the same as lib.common/->op-args,
-;; but requiring lib.common leads to crircular dependencies:
-;; join -> common -> field -> join.
 (defmulti ^:private ->join-condition
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
@@ -108,11 +105,6 @@
 (defmethod ->join-condition :default
   [_query _stage-number x]
   x)
-
-(defmethod ->join-condition :lib/external-op
-  [query stage-number {:keys [operator options args] :or {options {}}}]
-  (->join-condition query stage-number
-                    (lib.options/ensure-uuid (into [operator options] args))))
 
 (defmethod ->join-condition :dispatch-type/fn
   [query stage-number f]
