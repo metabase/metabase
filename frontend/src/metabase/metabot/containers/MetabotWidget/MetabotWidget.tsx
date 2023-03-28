@@ -9,7 +9,7 @@ import { getUser } from "metabase/selectors/user";
 import { Card, CollectionItem, DatabaseId, User } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
-import HomeMetabot from "../../components/HomeMetabot";
+import MetabotWidget from "../../components/MetabotWidget";
 
 interface SearchLoaderProps {
   models: CollectionItem[];
@@ -60,4 +60,4 @@ export default _.compose(
   }),
   Databases.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
-)(HomeMetabot);
+)(MetabotWidget);

@@ -1,5 +1,5 @@
 import React, { ReactNode } from "react";
-import HomeMetabotApp from "metabase/metabot/containers/HomeMetabotApp";
+import MetabotWidget from "metabase/metabot/containers/MetabotWidget";
 import { CollectionItem } from "metabase-types/api";
 import HomeGreeting from "../../containers/HomeGreeting";
 import {
@@ -22,10 +22,11 @@ const HomeLayout = ({
   children,
 }: HomeLayoutProps): JSX.Element => {
   const hasModels = models.length > 0;
+
   return (
     <LayoutRoot>
       {showIllustration && <LayoutIllustration />}
-      {isMetabotEnabled && hasModels ? <HomeMetabotApp /> : <HomeGreeting />}
+      {isMetabotEnabled && hasModels ? <MetabotWidget /> : <HomeGreeting />}
       <LayoutBody>{children}</LayoutBody>
     </LayoutRoot>
   );
