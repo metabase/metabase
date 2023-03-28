@@ -5,7 +5,6 @@ import { Dataset, MetabotFeedbackType, User } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
-import MetabotResultsWrapper from "../MetabotResultsWrapper";
 import MetabotMessage from "../MetabotMessage";
 import MetabotFeedback from "../MetabaseFeedback";
 import { MetabotHeader, MetabotRoot } from "./Metabot.styled";
@@ -34,8 +33,6 @@ const Metabot = ({
   const [{ loading, value, error }, handleRun] = useAsyncFn(onFetchResults);
   const [feedbackType, setFeedbackType] = useState<MetabotFeedbackType>();
 
-  const shouldHideResults = feedbackType === "invalid-sql";
-
   useEffect(() => {
     if (initialQuery) {
       handleRun(initialQuery);
@@ -57,12 +54,13 @@ const Metabot = ({
         />
       </MetabotHeader>
 
-      {!shouldHideResults && (
-        <MetabotResultsWrapper loading={loading} error={error} data={value}>
-          {({ question, results }) => (
-            <MetabotQueryBuilder question={question} results={results} />
-          )}
-        </MetabotResultsWrapper>
+      {feedbackType !== "invalid-sql" && (
+        <MetabotQueryBuilder
+          question={value?.question}
+          results={value?.results}
+          loading={loading}
+          error={error}
+        />
       )}
 
       {value && !loading ? (
