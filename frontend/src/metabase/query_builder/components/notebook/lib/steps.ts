@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
 import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -95,8 +96,12 @@ const STEPS: NotebookStepDef[] = [
       query.hasData() &&
       (!query.hasAggregations() || query.hasBreakouts()) &&
       (!query.sourceQuery() || query.hasAnyClauses()),
-    active: query => query.hasLimit(),
-    revert: query => query.clearLimit(),
+    active: (legacyQuery, itemIndex, query, stageIndex) =>
+      Lib.hasLimit(query, stageIndex),
+    revert: (legacyQuery, itemIndex, query, stageIndex) => {
+      const reverted = Lib.limit(query, stageIndex, null);
+      return legacyQuery.setDatasetQuery(Lib.toLegacyQuery(reverted));
+    },
     clean: query => query,
   },
 ];
