@@ -2,18 +2,17 @@ import { handleActions } from "redux-actions";
 import {
   FETCH_CARD,
   FETCH_QUERY_RESULTS,
+  INIT,
   RESET,
-  SET_ENTITY_ID,
-  SET_ENTITY_TYPE,
+  RUN_CARD_QUERY,
+  RUN_TEXT_QUERY,
   SET_FEEDBACK_TYPE,
-  SET_QUERY_ERROR,
-  SET_QUERY_STATUS,
   SET_QUERY_TEXT,
 } from "./actions";
 
 export const entityId = handleActions(
   {
-    [SET_ENTITY_ID]: { next: (state, { payload }) => payload },
+    [INIT]: { next: (state, { payload }) => payload.entityId },
     [RESET]: { next: () => null },
   },
   null,
@@ -21,7 +20,7 @@ export const entityId = handleActions(
 
 export const entityType = handleActions(
   {
-    [SET_ENTITY_TYPE]: { next: (state, { payload }) => payload },
+    [INIT]: { next: (state, { payload }) => payload.entityType },
     [RESET]: { next: () => null },
   },
   null,
@@ -45,6 +44,7 @@ export const originalCard = handleActions(
 
 export const queryText = handleActions(
   {
+    [INIT]: { next: (state, { payload }) => payload.initialQueryText },
     [SET_QUERY_TEXT]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => "" },
   },
@@ -53,7 +53,8 @@ export const queryText = handleActions(
 
 export const queryStatus = handleActions(
   {
-    [SET_QUERY_STATUS]: { next: (state, { payload }) => payload },
+    [RUN_TEXT_QUERY]: { next: () => "complete" },
+    [RUN_CARD_QUERY]: { next: () => "complete" },
     [RESET]: { next: () => "idle" },
   },
   "idle",
@@ -69,7 +70,6 @@ export const queryResults = handleActions(
 
 export const queryError = handleActions(
   {
-    [SET_QUERY_ERROR]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
   null,
