@@ -34,6 +34,7 @@ function setup({
       sourceQuestion={question}
       isLastStep={false}
       isLastOpened={false}
+      reportTimezone="Europe/London"
       openStep={openStep}
       updateQuery={updateQuery}
     />,

@@ -12,7 +12,7 @@ interface NotebookStepsProps {
   className?: string;
   question: Question;
   sourceQuestion?: Question;
-  reportTimezone?: string;
+  reportTimezone: string;
   updateQuestion: (question: Question) => Promise<void>;
   readOnly?: boolean;
 }

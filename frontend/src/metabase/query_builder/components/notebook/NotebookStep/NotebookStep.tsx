@@ -39,7 +39,7 @@ interface NotebookStepProps {
   sourceQuestion?: Question;
   isLastStep: boolean;
   isLastOpened: boolean;
-  reportTimezone?: string;
+  reportTimezone: string;
   openStep: (id: string) => void;
   updateQuery: (query: StructuredQuery) => Promise<void>;
   readOnly?: boolean;
