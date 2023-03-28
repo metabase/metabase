@@ -129,7 +129,7 @@ export const COUNTRY_NAME_TO_CODE = {
   "côte d'ivoire": "ci",
   croatia: "hr",
   cuba: "cu",
-  "curaã§ao": "cw",
+  curaçao: "cw",
   cyprus: "cy",
   "czech republic": "cz",
   czechia: "cz",
