@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
+import { t } from "ttag";
 import { Dataset, MetabotFeedbackType, User } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import MetabotPrompt from "../MetabotPrompt";
@@ -46,7 +47,9 @@ const Metabot = ({
   return (
     <MetabotRoot>
       <MetabotHeader>
-        <MetabotMessage>{initialGreeting}</MetabotMessage>
+        <MetabotMessage>
+          {getMetabotGreeting(feedbackType) ?? initialGreeting}
+        </MetabotMessage>
         <MetabotPrompt
           user={user}
           placeholder={placeholder}
@@ -73,6 +76,13 @@ const Metabot = ({
       ) : null}
     </MetabotRoot>
   );
+};
+
+const getMetabotGreeting = (feedbackType?: MetabotFeedbackType) => {
+  if (feedbackType === "invalid-sql") {
+    return t`Sorry about that. Let me know what the SQL should've been.`;
+  }
+  return null;
 };
 
 export default Metabot;
