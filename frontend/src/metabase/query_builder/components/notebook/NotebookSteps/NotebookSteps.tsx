@@ -4,7 +4,7 @@ import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { getQuestionSteps } from "../lib/steps";
-import { NotebookStep as INotebookStep, OpenSteps } from "../lib/steps.types";
+import { NotebookStep as INotebookStep, OpenSteps } from "../types";
 import NotebookStep from "../NotebookStep";
 import { Container } from "./NotebookSteps.styled";
 

@@ -11,10 +11,7 @@ import { getSavedStructuredQuestion } from "metabase-lib/mocks";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import {
-  NotebookStep as INotebookStep,
-  NotebookStepType,
-} from "../lib/steps.types";
+import { NotebookStep as INotebookStep, NotebookStepType } from "../types";
 import NotebookStep from "./NotebookStep";
 
 type SetupOpts = {
