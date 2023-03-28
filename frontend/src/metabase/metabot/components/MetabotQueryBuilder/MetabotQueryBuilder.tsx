@@ -22,7 +22,7 @@ const MetabotQueryBuilder = ({
 
   return (
     <MetabotQueryBuilderRoot>
-      <MetabotQueryEditor question={question} readOnly hasTopbar />
+      <MetabotQueryEditor question={question} isReadOnly hasTopbar />
       <MetabotQueryVisualizationContainer>
         <MetabotVisualization
           question={question}

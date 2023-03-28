@@ -28,13 +28,18 @@ export const MetabotQueryForm = ({
     <QueryEditorRoot>
       <QueryEditorTitle>{t`Here’s the generated SQL`}</QueryEditorTitle>
       <QueryEditorContainer>
-        <MetabotQueryEditor question={question} readOnly isInitiallyOpen />
+        <MetabotQueryEditor
+          question={question}
+          isReadOnly
+          isFullHeight
+          isInitiallyOpen
+        />
       </QueryEditorContainer>
       <QueryEditorTitle>{t`What should the SQL have been?`}</QueryEditorTitle>
       <QueryEditorContainer>
         <MetabotQueryEditor
           question={updatedQuestion}
-          readOnly
+          isFullHeight
           isInitiallyOpen
           setDatasetQuery={setUpdatedQuestion}
         />

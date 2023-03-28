@@ -8,8 +8,9 @@ import NativeQuery from "metabase-lib/queries/NativeQuery";
 interface MetabotQueryEditor {
   question: Question;
   height: number;
-  readOnly?: boolean;
+  isReadOnly?: boolean;
   hasTopBar?: boolean;
+  isFullHeight?: boolean;
   isInitiallyOpen?: boolean;
   onChange?: (question: Question) => void;
 }
@@ -17,21 +18,24 @@ interface MetabotQueryEditor {
 const MetabotQueryEditor = ({
   question,
   height,
-  readOnly = false,
+  isReadOnly = false,
   hasTopBar = false,
+  isFullHeight = false,
   isInitiallyOpen = false,
   onChange,
 }: MetabotQueryEditor) => {
   const [isOpen, setIsOpen] = useState(isInitiallyOpen);
   const handleChange = (query: NativeQuery) => onChange?.(query.question());
+  const resizableBoxProps = isFullHeight ? { minConstraints: [0, 0] } : {};
 
   return (
     <NativeQueryEditor
       question={question.setId(-1)}
       query={question.query()}
       viewHeight={height}
-      readOnly={readOnly}
+      isReadOnly={isReadOnly}
       resizable={false}
+      resizableBoxProps={resizableBoxProps}
       hasTopBar={hasTopBar}
       hasParametersList={false}
       canChangeDatabase={false}
