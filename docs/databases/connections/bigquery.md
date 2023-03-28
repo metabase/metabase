@@ -54,24 +54,26 @@ The JSON file contains the credentials your Metabase application will need to ac
 
 ### Datasets
 
-You can specify which BigQuery datasets you want to sync and scan. Options are:
+You can specify which BigQuery datasets you want to sync and scan:
 
 - All
 - Only these...
 - All except...
 
-For the Only these and All except options, you can input a comma-separated list of values to tell Metabase which datasets you want to include (or exclude). For example:
+> A BigQuery dataset is like a schema. Make sure to enter your dataset names, not your table names.
+
+Let's say you have three datasets: foo, bar, and baz.
+
+To sync all three datasets, select **Only these...** and enter:
 
 ```
 foo,bar,baz
 ```
 
-You can use the `*` wildcard to match multiple datasets.
+To sync datasets based on a string match, use the `*` wildcard:
 
-Let's say you have three datasets: foo, bar, and baz.
-
-- If you have **Only these...** set, and enter the string `b*`, you'll sync with bar and baz.
-- If you have **All except...** set, and enter the string `b*`, you'll just sync foo.
+- To sync bar and baz, select **Only these...** and enter the string `b*`.
+- To sync foo only, select **All except...**  and enter the string `b*`.
 
 Note that only the `*` wildcard is supported; you can't use other special characters or regexes.
 
