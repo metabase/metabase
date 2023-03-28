@@ -12,7 +12,7 @@ interface MetabotWidgetProps {
   databases: Database[];
   model?: Question;
   user?: User;
-  onRun: (databaseId: DatabaseId, query: string) => void;
+  onRun: (databaseId: DatabaseId, queryText: string) => void;
 }
 
 const MetabotWidget = ({
@@ -23,13 +23,11 @@ const MetabotWidget = ({
 }: MetabotWidgetProps) => {
   const initialDatabaseId = model?.databaseId() ?? databases[0]?.id;
   const [databaseId, setDatabaseId] = useState(initialDatabaseId);
+  const [queryText, setQueryText] = useState("");
 
-  const handleRun = useCallback(
-    (query: string) => {
-      onRun(databaseId, query);
-    },
-    [databaseId, onRun],
-  );
+  const handleRun = useCallback(() => {
+    onRun(databaseId, queryText);
+  }, [databaseId, queryText, onRun]);
 
   return (
     <MetabotHeader>
@@ -46,9 +44,11 @@ const MetabotWidget = ({
           )} database right now.`}
       </MetabotMessage>
       <MetabotPrompt
-        user={user}
+        queryText={queryText}
         placeholder={getPromptPlaceholder(model)}
-        onRun={handleRun}
+        user={user}
+        onChangeQuery={setQueryText}
+        onSubmitQuery={handleRun}
       />
     </MetabotHeader>
   );
