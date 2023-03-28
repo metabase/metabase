@@ -12,8 +12,8 @@ export interface DatabaseStatusProps {
 
 const DatabaseStatus = (props: DatabaseStatusProps): JSX.Element | null => {
   const databases = getDatabases(props);
-  const isActive = databases.some(isSyncInProgress);
-  const isVisible = useStatusVisibility(isActive);
+  const isActive = true || databases.some(isSyncInProgress);
+  const isVisible = true || useStatusVisibility(isActive);
 
   if (isVisible) {
     return <DatabaseStatusContent databases={databases} />;
