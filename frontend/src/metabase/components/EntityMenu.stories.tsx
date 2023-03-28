@@ -33,5 +33,5 @@ const items = [
 export const Default = Template.bind({});
 Default.args = {
   items,
-  trigger: <span>Hello</span>,
+  trigger: <span>Click Me</span>,
 };
