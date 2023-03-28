@@ -60,7 +60,7 @@ You can specify which BigQuery datasets you want to sync and scan. Options are:
 - Only these...
 - All except...
 
-> A BigQuery dataset is like a schema. Make sure to enter your dataset names, not your table names.
+> A BigQuery dataset is similar to a schema. Make sure to enter your dataset names (like `marketing`), _not_ your table names (`marketing.campaigns`).
 
 Let's say you have three datasets: foo, bar, and baz.
 
