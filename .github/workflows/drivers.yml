@@ -157,7 +157,6 @@ jobs:
       with:
         junit-name: 'be-tests-mariadb-10-2-ee'
 
-
   be-tests-mariadb-latest-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
