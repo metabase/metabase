@@ -59,7 +59,6 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [methodical.core :as methodical]
-   [toucan.models :as models]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -616,7 +615,7 @@
                                          @(requiring-resolve 'metabase.test.data.users/usernames)))]])
 
 (defn do-with-model-cleanup [models f]
-  {:pre [(sequential? models) (every? models/model? models)]}
+  {:pre [(sequential? models) (every? mdb.u/toucan-model? models)]}
   (hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]

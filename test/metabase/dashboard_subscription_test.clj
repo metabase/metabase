@@ -1,5 +1,6 @@
 (ns metabase.dashboard-subscription-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.models
     :refer [Collection
@@ -691,8 +692,8 @@
                      {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                      {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
                      {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
-                     {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
-                     {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
+                     {:text (format "### [New card name](%s/question/%d)\nLinked card desc" site-url card-id)}
+                     {:text (format "### [New card name](%s/question/%d)\nLinked model desc" site-url model-id)}
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
                     (@#'metabase.pulse/execute-dashboard {:creator_id collection-owner-id} dashboard))))
 

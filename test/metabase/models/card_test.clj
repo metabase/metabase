@@ -217,7 +217,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Card can only go in Collections in the \"default\" namespace"
+               #"A card can only go in Collections in the \"default\" namespace"
                (t2/insert! :m/card (assoc (tt/with-temp-defaults :m/card) :collection_id collection-id, :name card-name))))
           (finally
             (t2/delete! :m/card :name card-name)))))
@@ -226,7 +226,7 @@
       (mt/with-temp :m/card [{card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Card can only go in Collections in the \"default\" namespace"
+             #"A card can only go in Collections in the \"default\" namespace"
              (t2/update! :m/card card-id {:collection_id collection-id})))))))
 
 (deftest normalize-result-metadata-test

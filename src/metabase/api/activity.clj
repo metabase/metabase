@@ -95,25 +95,25 @@
 
 (defn- models-query
   [model ids]
-  (t2/select
-      (case model
-        "card"      [:m/card
-                     :id :name :collection_id :description :display
-                     :dataset_query :dataset :archived
-                     :collection.authority_level]
-        "dashboard" [Dashboard
-                     :id :name :collection_id :description
-                     :archived
-                     :collection.authority_level]
-        "table"     [Table
-                     :id :name :db_id
-                     :display_name :initial_sync_status
-                     :visibility_type])
-      (let [model-symb (symbol (str/capitalize model))
-            self-qualify #(db/qualify model-symb %)]
+  (let [select-query (case model
+                       "card"      [:m/card
+                                    :id :name :collection_id :description :display
+                                    :dataset_query :dataset :archived
+                                    :collection.authority_level]
+                       "dashboard" [Dashboard
+                                    :id :name :collection_id :description
+                                    :archived
+                                    :collection.authority_level]
+                       "table"     [Table
+                                    :id :name :db_id
+                                    :display_name :initial_sync_status
+                                    :visibility_type])]
+    (t2/select
+      select-query
+      (let [self-qualify #(db/qualify (first select-query) %)]
         (cond-> {:where [:in (self-qualify :id) ids]}
           (not= model "table")
-          (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})))))
+          (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]}))))))
 
 (defn- select-items! [model ids]
   (when (seq ids)

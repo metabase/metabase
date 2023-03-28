@@ -630,7 +630,7 @@
                   {:id       [:in affected-collection-ids]
                    :archived false}
                   {:archived true})
-     (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
+     (doseq [model '[:m/card Dashboard NativeQuerySnippet Pulse]]
        (t2/update! model {:collection_id [:in affected-collection-ids]
                            :archived      false}
                     {:archived true})))))

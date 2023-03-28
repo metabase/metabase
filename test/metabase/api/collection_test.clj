@@ -1505,7 +1505,7 @@
   (testing "PUT /api/collection/:id"
     (testing "Archiving a collection should delete any alerts associated with questions in the collection"
       (mt/with-temp* [Collection            [{collection-id :id}]
-                      :m/card                  [{card-id :id} {:collection_id collection-id}]
+                      :m/card               [{card-id :id} {:collection_id collection-id}]
                       Pulse                 [{pulse-id :id} {:alert_condition  "rows"
                                                              :alert_first_only false
                                                              :creator_id       (mt/user->id :rasta)

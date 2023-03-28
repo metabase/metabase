@@ -26,6 +26,14 @@
     #_{:clj-kondo/ignore [:discouraged-var]}
     (db/resolve-model model)))
 
+(defn toucan-model?
+  "Check if `model` is a toucan model.
+  In toucan2 any keyword can be a model so it's always true for keyword."
+  [model]
+  (if (keyword? model)
+    true
+    (models/model? model)))
+
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.
 

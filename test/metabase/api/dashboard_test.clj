@@ -280,8 +280,8 @@
     (testing "fetch a dashboard WITH a dashboard card on it"
       (mt/with-temp* [Dashboard     [{dashboard-id :id
                                       :as          dashboard}    {:name "Test Dashboard"}]
-                      :m/card          [{card-id :id
-                                         :as     card}         {:name "Dashboard Test Card"}]
+                      :m/card       [{card-id :id
+                                      :as     card}         {:name "Dashboard Test Card"}]
                       DashboardCard [dashcard           {:dashboard_id dashboard-id, :card_id card-id}]
                       User          [{user-id :id}      {:first_name "Test" :last_name "User"
                                                          :email      "test@example.com"}]

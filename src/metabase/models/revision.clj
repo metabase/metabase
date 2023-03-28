@@ -1,6 +1,7 @@
 (ns metabase.models.revision
   (:require
    [clojure.data :as data]
+   [clojure.string :as str]
    [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision.diff :refer [diff-string]]
@@ -70,7 +71,7 @@
   ;; those cases
   (let [model (u/ignore-exceptions (mdb.u/resolve-model (symbol model)))]
     (cond-> revision
-      model (update :object (partial models/do-post-select model)))))
+      model (update :object (partial toucan2.tools.after-select model)))))
 
 (mi/define-methods
  Revision
@@ -97,7 +98,7 @@
 (defn revisions
   "Get the revisions for `model` with `id` in reverse chronological order."
   [model id]
-  {:pre [(models/model? model) (integer? id)]}
+  {:pre [(mdb.u/toucan-model? model) (integer? id)]}
   (t2/select Revision, :model (name model), :model_id id, {:order-by [[:id :desc]]}))
 
 (defn revisions+details
@@ -113,7 +114,7 @@
 (defn- delete-old-revisions!
   "Delete old revisions of `model` with `id` when there are more than `max-revisions` in the DB."
   [model id]
-  {:pre [(models/model? model) (integer? id)]}
+  {:pre [(mdb.u/toucan-model? model) (integer? id)]}
   (when-let [old-revisions (seq (drop max-revisions (map :id (t2/select [Revision :id]
                                                                :model    (name model)
                                                                :model_id id
@@ -127,7 +128,7 @@
       :keys [entity id user-id is-creation? message],
       :or {id (:id object), is-creation? false}}]
   ;; TODO - rewrite this to use a schema
-  {:pre [(models/model? entity)
+  {:pre [(mdb.u/toucan-model? entity)
          (integer? user-id)
          (t2/exists? User :id user-id)
          (integer? id)
@@ -137,7 +138,7 @@
     ;; make sure we still have a map after calling out serialization function
     (assert (map? object))
     (t2/insert! Revision
-      :model        (name entity)
+      :model        (str/capitalize (name entity))
       :model_id     id
       :user_id      user-id
       :object       object
@@ -150,7 +151,7 @@
 (defn revert!
   "Revert `entity` with `id` to a given Revision."
   [& {:keys [entity id user-id revision-id]}]
-  {:pre [(models/model? entity)
+  {:pre [(mdb.u/toucan-model? entity)
          (integer? id)
          (t2/exists? entity :id id)
          (integer? user-id)

@@ -45,28 +45,28 @@
             revision-message (:revision_message object)]
         ;; TODO: seems unnecessary to select each entity again, is there a reason we aren't using `object` directly?
         (case model
-          "card"      (push-revision! :entity       :m/card,
-                                      :id           id,
-                                      :object       (t2/select-one :m/card :id id),
-                                      :user-id      user-id,
+          "card"      (push-revision! :entity       :m/card
+                                      :id           id
+                                      :object       (t2/select-one :m/card :id id)
+                                      :user-id      user-id
                                       :is-creation? (= :card-create topic)
                                       :message      revision-message)
-          "dashboard" (push-revision! :entity       Dashboard,
-                                      :id           id,
-                                      :object       (t2/select-one Dashboard :id id),
-                                      :user-id      user-id,
+          "dashboard" (push-revision! :entity       Dashboard
+                                      :id           id
+                                      :object       (t2/select-one Dashboard :id id)
+                                      :user-id      user-id
                                       :is-creation? (= :dashboard-create topic)
                                       :message      revision-message)
-          "metric"    (push-revision! :entity       Metric,
-                                      :id           id,
-                                      :object       (t2/select-one Metric :id id),
-                                      :user-id      user-id,
+          "metric"    (push-revision! :entity       Metric
+                                      :id           id
+                                      :object       (t2/select-one Metric :id id)
+                                      :user-id      user-id
                                       :is-creation? (= :metric-create topic)
                                       :message      revision-message)
-          "segment"   (push-revision! :entity       Segment,
-                                      :id           id,
-                                      :object       (t2/select-one Segment :id id),
-                                      :user-id      user-id,
+          "segment"   (push-revision! :entity       Segment
+                                      :id           id
+                                      :object       (t2/select-one Segment :id id)
+                                      :user-id      user-id
                                       :is-creation? (= :segment-create topic)
                                       :message      revision-message))))
     (catch Throwable e

@@ -67,10 +67,10 @@
                                                    :location (str "/" (:id grandparent) "/")}]
                          Collection  [child       {:name     "Child Collection"
                                                    :location (str "/" (:id grandparent) "/" (:id parent) "/")}]
-                         :m/card        [c1          {:name "root card"        :collection_id nil}]
-                         :m/card        [c2          {:name "grandparent card" :collection_id (:id grandparent)}]
-                         :m/card        [c3          {:name "parent card"      :collection_id (:id parent)}]
-                         :m/card        [c4          {:name "child card"       :collection_id (:id child)}]
+                         :m/card     [c1          {:name "root card"        :collection_id nil}]
+                         :m/card     [c2          {:name "grandparent card" :collection_id (:id grandparent)}]
+                         :m/card     [c3          {:name "parent card"      :collection_id (:id parent)}]
+                         :m/card     [c4          {:name "child card"       :collection_id (:id child)}]
                          Dashboard   [d1          {:name "parent dash"      :collection_id (:id parent)}]]
         (let [export          (into [] (extract/extract-metabase nil))]
           (storage/store! export dump-dir)

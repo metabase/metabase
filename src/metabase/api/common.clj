@@ -541,7 +541,7 @@
    old-position  :- (schema/maybe su/IntGreaterThanZero)
    new-position  :- (schema/maybe su/IntGreaterThanZero)]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
-                     (doseq [model '[Card Dashboard Pulse]]
+                     (doseq [model '[:m/card Dashboard Pulse]]
                        (t2/update! model {:collection_id       collection-id
                                           :collection_position position-update-clause}
                                    {:collection_position [plus-or-minus :collection_position 1]})))]
