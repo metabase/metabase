@@ -997,7 +997,7 @@
         tables (map api/write-check (:tables (first (add-tables [db]))))]
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
-    (db/update-where! Table {:id [:in (map :id tables)]} :initial_sync_status "complete"))
+    (t2/update! Table {:id [:in (map :id tables)]} {:initial_sync_status "complete"}))
   {:status :ok})
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?

@@ -13,7 +13,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2])
   (:import
@@ -243,8 +242,8 @@
         latest-version (when existing-id (latest-for-id existing-id))]
     (if latest-version
       (if (= (select-keys latest-version bump-version-keys) [kind src value])
-        (db/update-where! Secret {:id existing-id :version (:version latest-version)}
-                                 :name nm)
+        (pos? (t2/update! Secret {:id existing-id :version (:version latest-version)}
+                        {:name nm}))
         (insert-new (u/the-id latest-version) (inc (:version latest-version))))
       (insert-new nil 1))))
 

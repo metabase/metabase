@@ -7,7 +7,6 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
    [metabase.util.honey-sql-2 :as h2x]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -49,15 +48,15 @@
     (or
      ;; if it DOES NOT have a query (yet) set that. In 0.31.0 we added the query.query column, and it gets set for all
      ;; new entries, so at some point in the future we can take this out, and save a DB call.
-     (db/update-where! Query
+     (pos? (t2/update! Query
                        {:query_hash query-hash, :query nil}
-                       :query                 (json/generate-string query)
-                       :average_execution_time avg-execution-time)
+                       {:query                 (json/generate-string query)
+                        :average_execution_time avg-execution-time}))
      ;; if query is already set then just update average_execution_time. (We're doing this separate call to avoid
      ;; updating query on every single UPDATE)
-     (db/update-where! Query
+     (pos? (t2/update! Query
                        {:query_hash query-hash}
-                       :average_execution_time avg-execution-time))))
+                       {:average_execution_time avg-execution-time})))))
 
 (defn- record-new-query-entry!
   "Record a query and its execution time for a `query` with `query-hash` that's not already present in the DB.

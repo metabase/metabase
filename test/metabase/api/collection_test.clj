@@ -35,7 +35,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -601,7 +600,7 @@
       (mt/with-temp Collection [collection {:name "Art Collection"}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-some-children-of-collection collection
-          (db/update-where! Dashboard {:collection_id (u/the-id collection)} :archived true)
+          (t2/update! Dashboard {:collection_id (u/the-id collection)} {:archived true})
           (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))
@@ -625,8 +624,8 @@
       ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
       (t2/query-one {:update :revision
                     ;; in the past
-                    :set {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
-                    :where [:= :id (:id _revision1)]})
+                     :set {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
+                     :where [:= :id (:id _revision1)]})
       (testing "Results include last edited information from the `Revision` table"
         (is (= [{:name "AA"}
                 {:name "Card with history 1",
@@ -719,14 +718,14 @@
         (letfn [(at-year [year] (ZonedDateTime/of year 1 1 0 0 0 0 (ZoneId/of "UTC")))]
           (t2/query-one {:update :revision
                         ;; in the past
-                        :set    {:timestamp (at-year 2015)}
-                        :where  [:in :id (map :id [card-revision1 dash-revision1])]})
+                         :set    {:timestamp (at-year 2015)}
+                         :where  [:in :id (map :id [card-revision1 dash-revision1])]})
           ;; mark the later revisions with the user with name "pass". Note important that its the later revision by
           ;; id. Query assumes increasing timestamps with ids
           (t2/query-one {:update :revision
-                        :set    {:timestamp (at-year 2021)
-                                 :user_id   passuser-id}
-                        :where  [:in :id (map :id [card-revision2 dash-revision2])]}))
+                         :set    {:timestamp (at-year 2021)
+                                  :user_id   passuser-id}
+                         :where  [:in :id (map :id [card-revision2 dash-revision2])]}))
         (is (= ["pass" "pass"]
                (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?models=dashboard&models=card"))
                     :data

@@ -8,7 +8,6 @@
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -27,17 +26,17 @@
   "Simulate a different instance updating the value of `settings-last-updated` in the DB by updating its value without
   updating our locally cached value.."
   []
-  (db/update-where! Setting {:key setting.cache/settings-last-updated-key}
-                    :value [:raw (case (mdb/db-type)
-                                   ;; make it one second in the future so we don't end up getting an exact match when we try to test
-                                   ;; to see if things update below
-                                   :h2       "cast(dateadd('second', 1, current_timestamp) AS text)"
-                                   :mysql    "cast((current_timestamp + interval 1 second) AS char)"
-                                   :postgres "cast((current_timestamp + interval '1 second') AS text)")]))
+  (t2/update! Setting {:key setting.cache/settings-last-updated-key}
+              {:value [:raw (case (mdb/db-type)
+                              ;; make it one second in the future so we don't end up getting an exact match when we try to test
+                              ;; to see if things update below
+                              :h2       "cast(dateadd('second', 1, current_timestamp) AS text)"
+                              :mysql    "cast((current_timestamp + interval 1 second) AS char)"
+                              :postgres "cast((current_timestamp + interval '1 second') AS text)")]}))
 
 (defn- simulate-another-instance-updating-setting! [setting-name new-value]
   (if new-value
-    (db/update-where! Setting {:key (name setting-name)} :value new-value)
+    (t2/update! Setting {:key (name setting-name)} {:value new-value})
     (t2/delete! (t2/table-name Setting) {:key (name setting-name)}))
   (update-settings-last-updated-value-in-db!))
 

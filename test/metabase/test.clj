@@ -312,7 +312,7 @@
         _                          (t2/delete! (t2/table-name PermissionsGroupMembership) :group_id (:id (perms-group/admin)))
         existing-admin-ids         (t2/select-pks-set User :is_superuser true)
         _                          (when (seq existing-admin-ids)
-                                     (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser false))
+                                     (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser false}))
         temp-admin                 (first (t2/insert-returning-instances! User (merge (with-temp-defaults User)
                                                                                       attributes
                                                                                       {:is_superuser true})))
@@ -322,7 +322,7 @@
       (finally
         (t2/delete! User primary-key (primary-key temp-admin))
         (when (seq existing-admin-ids)
-          (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser true))
+          (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser true}))
         (db/insert-many! PermissionsGroupMembership existing-admin-memberships)))))
 
 (defmacro with-single-admin-user
