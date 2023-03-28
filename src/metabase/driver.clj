@@ -514,13 +514,6 @@
 
 (defmethod supports? :default [_ _] false)
 
-(defmethod supports? [::driver :basic-aggregations] [_ _] true)
-(defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
-(defmethod supports? [::driver :date-arithmetics] [_ _] true)
-(defmethod supports? [::driver :temporal-extract] [_ _] true)
-(defmethod supports? [::driver :convert-timezone] [_ _] false)
-(defmethod supports? [::driver :test/jvm-timezone-setting] [_ _] true)
-
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
   (A feature is a keyword, and can be any of the ones listed above in `driver-features`.
@@ -545,6 +538,14 @@
   :hierarchy #'hierarchy)
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
+
+(doseq [[feature supported?] {:basic-aggregations                     true
+                              :case-sensitivity-string-filter-options true
+                              :date-arithmetics                       true
+                              :temporal-extract                       true
+                              :convert-timezone                       false
+                              :test/jvm-timezone-setting              true}]
+  (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
