@@ -4,7 +4,7 @@
    [honey.sql :as hsql]
    [metabase.db.query :as mdb.query]
    [metabase.metabot.util :as metabot-util]
-   [metabase.metabot.invoker :as mbi]
+   [metabase.metabot.client :as metabot-client]
    [metabase.util :as u]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; Baseline approach: Feed in the create table DDL as training data ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -61,33 +61,17 @@
     (let [[_pre sql _post] (str/split s #"```(sql|SQL)?")]
       (mdb.query/format-sql sql))))
 
-(defn- denormalized-model->sql
-  "Given a denormalized model (all data) and a question, call the bot
-  (if the fake key isn't true and the env is configured correctly)
-  and return the parsed SQL."
-  [denormalized-model {:keys [question fake]}]
-  (cond
-    fake "SELECT * FROM ORDERS; -- THIS IS FAKE"
-    (and
-     (mbi/openai-api-key)
-     (mbi/openai-organization)) (mbi/invoke-metabot
-                                 (prepare-ddl-based-sql-generator-input denormalized-model question)
-                                 extract-sql)
-    :else "Set MB_OPENAI_API_KEY and MB_OPENAI_ORGANIZATION env vars and relaunch!"))
-
-(defn generate-dataset-from-prompt
+(defn infer-sql
   "Given a model and prompt, attempt to generate a native dataset."
-  ([{:keys [database_id] :as denormalized-model} prompt fake]
-   (when-some [bot-sql (denormalized-model->sql denormalized-model {:question prompt :fake fake})]
-     (let [final-sql (metabot-util/bot-sql->final-sql denormalized-model bot-sql)
-           response  {:dataset_query          {:database database_id
-                                               :type     "native"
-                                               :native   {:query final-sql}}
-                      :display                :table
-                      :visualization_settings {}}]
-       (tap> {:bot-sql   bot-sql
-              :final-sql final-sql
-              :response  response})
-       response)))
-  ([denormalized-model prompt]
-   (generate-dataset-from-prompt denormalized-model prompt false)))
+  [{:keys [database_id] :as denormalized-model} prompt]
+  (when-some [bot-sql (metabot-client/invoke-metabot
+                       (prepare-ddl-based-sql-generator-input denormalized-model prompt)
+                       extract-sql)]
+    (let [final-sql (metabot-util/bot-sql->final-sql denormalized-model bot-sql)
+          response  {:dataset_query          {:database database_id
+                                              :type     "native"
+                                              :native   {:query final-sql}}
+                     :display                :table
+                     :visualization_settings {}}]
+      (tap> {:response response})
+      response)))
