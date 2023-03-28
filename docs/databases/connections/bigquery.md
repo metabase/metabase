@@ -54,7 +54,7 @@ The JSON file contains the credentials your Metabase application will need to ac
 
 ### Datasets
 
-You can specify which BigQuery datasets you want to sync and scan:
+You can specify which BigQuery datasets you want to sync and scan. Options are:
 
 - All
 - Only these...
