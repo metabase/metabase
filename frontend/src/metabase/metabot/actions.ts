@@ -1,7 +1,6 @@
 import { createAction } from "redux-actions";
 import { createThunkAction } from "metabase/lib/redux";
 import { MetabotApi } from "metabase/services";
-import { MetabotFeedbackType } from "metabase-types/api";
 import {
   Dispatch,
   GetState,
@@ -31,8 +30,7 @@ export const SET_QUERY_ERROR = "metabase/metabot/SET_QUERY_ERROR";
 export const setQueryError = createAction(SET_QUERY_ERROR);
 
 export const SET_FEEDBACK_TYPE = "metabase/metabot/SET_FEEDBACK_TYPE";
-export const setFeedbackType =
-  createAction<MetabotFeedbackType>(SET_FEEDBACK_TYPE);
+export const setFeedbackType = createAction(SET_FEEDBACK_TYPE);
 
 export const RESET = "metabase/metabot/RESET";
 export const reset = createAction(RESET);

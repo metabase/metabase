@@ -7,6 +7,8 @@ import {
   MetabotQueryStatus,
   State,
 } from "metabase-types/store";
+import Question from "metabase-lib/Question";
+import Database from "metabase-lib/metadata/Database";
 import { init, reset } from "../../actions";
 import { getFeedbackType, getQueryStatus } from "../../selectors";
 import MetabotHeader from "../MetabotHeader";
@@ -19,6 +21,9 @@ interface OwnProps {
   entityId: MetabotEntityId;
   entityType: MetabotEntityType;
   initialQueryText: string;
+  model?: Question;
+  database?: Database;
+  databases?: Database[];
 }
 
 interface StateProps {
@@ -47,6 +52,9 @@ const Metabot = ({
   entityId,
   entityType,
   initialQueryText = "",
+  model,
+  database,
+  databases,
   queryStatus,
   feedbackType,
   onInit,
@@ -57,14 +65,14 @@ const Metabot = ({
     return () => onReset();
   }, [entityId, entityType, initialQueryText, onInit, onReset]);
 
-  const isIdle = queryStatus === "idle";
+  const isCompleted = queryStatus === "complete";
   const isInvalidSql = feedbackType === "invalid-sql";
 
   return (
     <MetabotRoot>
-      <MetabotHeader />
+      <MetabotHeader model={model} database={database} databases={databases} />
       {isInvalidSql ? <MetabotQueryForm /> : <MetabotQueryBuilder />}
-      {!isIdle && !isInvalidSql && <MetabotFeedbackForm />}
+      {isCompleted && !isInvalidSql && <MetabotFeedbackForm />}
     </MetabotRoot>
   );
 };

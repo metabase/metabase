@@ -4,7 +4,8 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import FormProvider from "metabase/core/components/FormProvider";
 import { MetabotFeedbackType } from "metabase-types/api";
-import { Dispatch, MetabotFeedbackStatus, State } from "metabase-types/store";
+import { MetabotFeedbackStatus, State } from "metabase-types/store";
+import { setFeedbackType } from "../../actions";
 import { getFeedbackStatus, getFeedbackType } from "../../selectors";
 import MetabotMessage from "../MetabotMessage";
 import {
@@ -32,10 +33,10 @@ const mapStateToProps = (state: State): StateProps => ({
   feedbackStatus: getFeedbackStatus(state),
 });
 
-const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onChangeFeedback: () => undefined,
+const mapDispatchToProps: DispatchProps = {
+  onChangeFeedback: setFeedbackType,
   onSubmitFeedback: () => undefined,
-});
+};
 
 const MetabotFeedbackForm = ({
   feedbackType,

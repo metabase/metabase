@@ -4,8 +4,9 @@ import { t } from "ttag";
 import { checkNotNull } from "metabase/core/utils/types";
 import Button from "metabase/core/components/Button";
 import { MetabotFeedbackType } from "metabase-types/api";
-import { Dispatch, State } from "metabase-types/store";
+import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
+import { setFeedbackType } from "../../actions";
 import { getOriginalQuestion, getQuestion } from "../../selectors";
 import MetabotQueryEditor from "../MetabotQueryEditor";
 import {
@@ -21,7 +22,7 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onChangeFeedbackType: (feedbackType?: MetabotFeedbackType) => void;
+  onChangeFeedbackType: (feedbackType: MetabotFeedbackType | null) => void;
   onChangeQuery: (question: Question) => void;
   onSubmitQuery: () => void;
 }
@@ -33,11 +34,11 @@ const mapStateToProps = (state: State): StateProps => ({
   originalQuestion: checkNotNull(getOriginalQuestion(state)),
 });
 
-const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onChangeFeedbackType: () => undefined,
+const mapDispatchToProps: DispatchProps = {
+  onChangeFeedbackType: setFeedbackType,
   onChangeQuery: () => undefined,
   onSubmitQuery: () => undefined,
-});
+};
 
 export const MetabotQueryForm = ({
   question,
@@ -46,7 +47,7 @@ export const MetabotQueryForm = ({
   onChangeQuery,
   onSubmitQuery,
 }: MetabotQueryFormProps) => {
-  const handleCancel = () => onChangeFeedbackType();
+  const handleCancel = () => onChangeFeedbackType(null);
 
   return (
     <QueryEditorRoot>
