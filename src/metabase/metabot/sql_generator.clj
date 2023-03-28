@@ -65,7 +65,6 @@
   "Given a model and prompt, attempt to generate a native dataset."
   [{:keys [database_id] :as denormalized-model} prompt]
   (when-some [bot-sql (metabot-client/invoke-metabot
-                       ;; TODO - Replace with lambda
                        (prepare-ddl-based-sql-generator-input denormalized-model prompt)
                        extract-sql)]
     (let [final-sql (metabot-util/bot-sql->final-sql denormalized-model bot-sql)
@@ -74,4 +73,5 @@
                                               :native   {:query final-sql}}
                      :display                :table
                      :visualization_settings {}}]
+      (tap> {:response response})
       response)))

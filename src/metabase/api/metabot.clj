@@ -10,16 +10,6 @@
 
 (set! *warn-on-reflection* true)
 
-;#_{:clj-kondo/ignore [:deprecated-var]}
-;(api/defendpoint-schema POST "/webhook"
-;  "Ask Metabot to generate a SQL query given a prompt about a given model."
-;  [body]
-;  ;{model-id ms/PositiveInt
-;  ; question string?}
-;  (let [b (json/parse-string body true)]
-;    (tap> {:b b})
-;    b))
-
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/model/:model-id"
   "Ask Metabot to generate a SQL query given a prompt about a given model."
@@ -28,7 +18,7 @@
   ; question string?}
   (tap> {:model-id model-id
          :request  body})
-  (let [model (api/check-404 (t2/select-one Card :id model-id :dataset true))
+  (let [model          (api/check-404 (t2/select-one Card :id model-id :dataset true))
         model-metadata (metabot-util/denormalize-model model)]
     (or
      (metabot/infer-sql model-metadata question)
@@ -50,7 +40,7 @@
   (tap> {:database-id database-id
          :request     body})
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
-        denormalized-database        (metabot-util/denormalize-database database)]
+        denormalized-database (metabot-util/denormalize-database database)]
     (if-some [model (metabot/infer-model denormalized-database question)]
       (metabot/infer-sql model question)
       (throw
@@ -67,12 +57,15 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/feedback"
-  "Ask Metabot to generate a SQL query given a prompt about a given database."
-  [database-id :as {{:keys [prompt sql feedback correct_sql] :as body} :body}]
+  "Record feedback on metabot results."
+  [:as {{:keys [prompt sql feedback correct_sql] :as body} :body}]
   ;{database-id ms/PositiveInt
   ; question string?}
   ;;great | wrong-data | incorrect-result | invalid-sql
-  (tap> {:feedback body})
+  (tap> {:prompt      prompt
+         :sql         sql
+         :feedback    feedback
+         :correct_sql correct_sql})
   {:message "Thanks for your feedback"})
 
 (api/define-routes)
