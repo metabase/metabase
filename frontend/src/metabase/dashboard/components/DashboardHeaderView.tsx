@@ -25,9 +25,9 @@ import {
   HeaderLastEditInfoLabel,
   HeaderCaption,
   HeaderCaptionContainer,
-} from "./DashboardHeader.styled";
+} from "./DashboardHeaderView.styled";
 
-interface DashboardHeaderProps {
+interface DashboardHeaderViewProps {
   editingTitle: string;
   editingSubtitle: string;
   editingButtons: JSX.Element[];
@@ -41,7 +41,6 @@ interface DashboardHeaderProps {
   dashboard: Dashboard;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
-  children: React.ReactNode;
   onHeaderModalDone: () => null;
   onHeaderModalCancel: () => null;
   onLastEditInfoClick: () => null;
@@ -49,7 +48,7 @@ interface DashboardHeaderProps {
   setDashboardAttribute: (prop: string, value: string) => null;
 }
 
-const DashboardHeader = ({
+function DashboardHeaderView({
   editingTitle = "",
   editingSubtitle = "",
   editingButtons = [],
@@ -61,13 +60,12 @@ const DashboardHeader = ({
   isNavBarOpen,
   dashboard,
   isLastEditInfoVisible,
-  children,
   onHeaderModalDone,
   onHeaderModalCancel,
   onLastEditInfoClick,
   onSave,
   setDashboardAttribute,
-}: DashboardHeaderProps) => {
+}: DashboardHeaderViewProps) {
   const [headerHeight, setHeaderHeight] = useState(0);
   const [showSubHeader, setShowSubHeader] = useState(true);
   const header = useRef<HTMLDivElement>(null);
@@ -165,9 +163,8 @@ const DashboardHeader = ({
           {_headerButtons}
         </HeaderButtonsContainer>
       </HeaderRoot>
-      {children}
     </div>
   );
-};
+}
 
-export default DashboardHeader;
+export default DashboardHeaderView;
