@@ -206,7 +206,7 @@ describe("scenarios > question > summarize sidebar", () => {
       "**The point of failure for ANY non-numeric value reported in v0.36.4**",
     );
     // the default type for "Reviewer" is "No semantic type"
-    popover().within(() => {
+    cy.findByTestId("expression-suggestions-list").within(() => {
       cy.contains("Reviewer");
     });
   });

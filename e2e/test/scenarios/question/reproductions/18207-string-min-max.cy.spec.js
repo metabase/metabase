@@ -5,7 +5,7 @@ import {
   visualize,
   openProductsTable,
   summarize,
-  sidebar,
+  leftSidebar,
 } from "e2e/support/helpers";
 
 describe("issue 18207", () => {
@@ -66,7 +66,7 @@ describe("issue 18207", () => {
 
     // Why is it not a table?
     cy.contains("Visualization").click();
-    sidebar().within(() => {
+    leftSidebar().within(() => {
       cy.icon("table").click();
       cy.findByTestId("Table-button").realHover();
       cy.icon("gear").click();
