@@ -178,12 +178,40 @@ describe("scenarios > collection defaults", () => {
     });
   });
 
-  describe("render last edited by when names are null", () => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-    });
+  describe("description", () => {
+    it('should display description', () => {
+      visitRootCollection();
+    
+      cy.icon("info").trigger("mouseenter");
 
+      popover().within(() => {
+        cy.findByText(/Collection First/);
+      })
+    })
+
+    it('should support markdown', () => {
+      getCollectionIdFromSlug("first_collection", id => {
+        visitCollection(id);
+      });
+
+      cy
+        .findByPlaceholderText("Add description")
+        .clear()
+        .type("**important text** and [link](https://metabase.com)")
+        .blur();
+
+      visitRootCollection();
+
+      cy.icon("info").trigger("mouseenter");
+
+      popover().within(() => {
+        cy.findByText(/important text/);
+        cy.findByText(/link/);
+      })
+    })
+  })
+
+  describe("render last edited by when names are null", () => {
     it("should render short value without tooltip", () => {
       cy.intercept(
         "GET",
