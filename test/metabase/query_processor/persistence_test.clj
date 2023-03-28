@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.models :refer [Card]]
@@ -22,7 +23,18 @@
         (mt/dataset test-data
           (let [[success? error] (ddl.i/check-can-persist (mt/db))]
             (is success? (str "Not able to persist on " driver/*driver*))
-            (is (= :persist.check/valid error))))))))
+            (is (= :persist.check/valid error)))
+          (testing "Populates the `cache_info` table with v1 information"
+            (let [schema-name (ddl.i/schema-name (mt/db) (public-settings/site-uuid))
+                  query {:query
+                         (first
+                          (sql/format {:select [:key :value]
+                                       :from [(keyword schema-name "cache_info")]}
+                                      {:dialect (if (= (:engine (mt/db)) :mysql)
+                                                  :mysql
+                                                  :ansi)}))}]
+              (is (= (into {} (map (juxt :key :value)) (ddl.i/kv-table-values))
+                     (into {} (->> query mt/native-query qp/process-query mt/rows)))))))))))
 
 (deftest persisted-models-max-rows-test
   (testing "Persisted models should have the full number of rows of the underlying query,
