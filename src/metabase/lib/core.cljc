@@ -58,6 +58,7 @@
    breakout]
   [lib.dev
    field
+   query-for-table-id
    query-for-table-name]
   [lib.expression
    expression

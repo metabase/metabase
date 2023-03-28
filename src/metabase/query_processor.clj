@@ -7,6 +7,7 @@
   `process-userland-query` (see documentation below)."
   (:refer-clojure :exclude [compile])
   (:require
+   [metabase.query-processor.middleware.unwind-pipeline-queries :as unwind-pipeline-queries]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -225,6 +226,7 @@
    ;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
    ;; It doesn't really need to be 'around' middleware tho.
    #'normalize/normalize
+   #'unwind-pipeline-queries/unwind-pipeline-queries
    (resolve 'ee.audit/handle-internal-queries)])
 
 ;; query -> preprocessed = around + pre-process

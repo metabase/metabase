@@ -310,12 +310,21 @@
                     {:field &match}))))
 
 (defn- mlv2-query [inner-query]
-  (qp.store/cached [:mlv2-query (hash inner-query)]
-    (lib/query
-     qp.store/metadata-provider
-     (lib.convert/->pMBQL (lib.convert/legacy-query-from-inner-query
-                           (:id (qp.store/database))
-                           inner-query)))))
+  (try
+    (qp.store/cached [:mlv2-query (hash inner-query)]
+      (let [pMBQL (lib.convert/->pMBQL (lib.convert/legacy-query-from-inner-query
+                                        (:id (qp.store/database))
+                                        inner-query))]
+        (try
+          (lib/query qp.store/metadata-provider pMBQL)
+          (catch Throwable e
+            (throw (ex-info (format "Error creating MLv2 query from pMBQL: %s" (ex-message e))
+                            {:type qp.error-type/qp, :pmbql pMBQL}
+                            e))))))
+    (catch Throwable e
+      (throw (ex-info (format "Error creating MLv2 query from legacy query: %s" (ex-message e))
+                      {:type qp.error-type/qp, :query inner-query}
+                      e)))))
 
 (s/defn col-info-for-aggregation-clause
   "Return appropriate column metadata for an `:aggregation` clause."
