@@ -7,11 +7,13 @@ export const getEntityType = (state: State) => {
 };
 
 export const getQuestion = (state: State) => {
-  return new Question(state.metabot.card, getMetadata(state));
+  const card = state.metabot.card;
+  return card ? new Question(card, getMetadata(state)) : null;
 };
 
 export const getOriginalQuestion = (state: State) => {
-  return new Question(state.metabot.originalCard, getMetadata(state));
+  const card = state.metabot.originalCard;
+  return card ? new Question(card, getMetadata(state)) : null;
 };
 
 export const getQueryText = (state: State) => {

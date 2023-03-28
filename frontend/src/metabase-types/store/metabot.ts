@@ -12,14 +12,14 @@ export type MetabotQueryStatus = "idle" | "running" | "complete";
 export type MetabotFeedbackStatus = "idle" | "complete";
 
 export interface MetabotState {
-  entityId?: MetabotEntityId;
+  entityId: MetabotEntityId | null;
   entityType: MetabotEntityType;
-  card?: Card;
-  originalCard?: Card;
-  queryText?: string;
+  card: Card | null;
+  originalCard: Card | null;
+  queryText: string;
   queryStatus: MetabotQueryStatus;
-  queryResults?: [Dataset];
-  queryError?: unknown;
-  feedbackType?: MetabotFeedbackType;
+  queryResults: [Dataset] | null;
+  queryError: unknown;
+  feedbackType: MetabotFeedbackType | null;
   feedbackStatus: MetabotFeedbackStatus;
 }

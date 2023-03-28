@@ -23,7 +23,7 @@ interface OwnProps {
 
 interface StateProps {
   queryStatus: MetabotQueryStatus;
-  feedbackType?: MetabotFeedbackType;
+  feedbackType: MetabotFeedbackType | null;
 }
 
 interface DispatchProps {

@@ -1,6 +1,7 @@
 import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import { checkNotNull } from "metabase/core/utils/types";
 import Button from "metabase/core/components/Button";
 import { MetabotFeedbackType } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
@@ -28,8 +29,8 @@ interface DispatchProps {
 type MetabotQueryFormProps = StateProps & DispatchProps;
 
 const mapStateToProps = (state: State): StateProps => ({
-  question: getQuestion(state),
-  originalQuestion: getOriginalQuestion(state),
+  question: checkNotNull(getQuestion(state)),
+  originalQuestion: checkNotNull(getOriginalQuestion(state)),
 });
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({

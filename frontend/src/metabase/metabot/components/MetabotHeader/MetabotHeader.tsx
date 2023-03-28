@@ -30,11 +30,11 @@ interface OwnProps {
 }
 
 interface StateProps {
-  queryText?: string;
+  queryText: string;
   queryStatus: MetabotQueryStatus;
-  feedbackType?: MetabotFeedbackType;
+  feedbackType: MetabotFeedbackType | null;
   feedbackStatus: MetabotFeedbackStatus;
-  user?: User;
+  user: User | null;
 }
 
 interface DispatchProps {
@@ -50,7 +50,7 @@ const mapStateToProps = (state: State): StateProps => ({
   queryStatus: getQueryStatus(state),
   feedbackType: getFeedbackType(state),
   feedbackStatus: getFeedbackStatus(state),
-  user: getUser(state) ?? undefined,
+  user: getUser(state),
 });
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
@@ -65,7 +65,7 @@ const MetabotHeader = ({
   feedbackType,
   model,
   database,
-  databases,
+  databases = [],
   user,
   onChangeQuery,
   onSubmitQuery,
@@ -97,12 +97,12 @@ const MetabotHeader = ({
 };
 
 const getTitle = (
-  model?: Question,
-  database?: Database,
-  databases?: Database[],
-  user?: User,
-  feedbackType?: MetabotFeedbackType,
-  onDatabaseChange?: (databaseId: number) => void,
+  model: Question | undefined,
+  database: Database | undefined,
+  databases: Database[],
+  user: User | null,
+  feedbackType: MetabotFeedbackType | null,
+  onDatabaseChange: (databaseId: number) => void,
 ) => {
   if (feedbackType === "invalid-sql") {
     return t`Sorry about that. Let me know what the SQL should've been.`;
@@ -113,7 +113,7 @@ const getTitle = (
   }
 };
 
-const getModelTitle = (model: Question, user?: User) => {
+const getModelTitle = (model: Question, user: User | null) => {
   const link = <ModelLink model={model} />;
   const name = user?.first_name;
 
@@ -125,8 +125,8 @@ const getModelTitle = (model: Question, user?: User) => {
 const getDatabaseTitle = (
   database: Database,
   databases: Database[] = [],
-  user?: User,
-  onDatabaseChange?: (databaseId: number) => void,
+  user: User | null,
+  onDatabaseChange: (databaseId: number) => void,
 ) => {
   const name = user?.first_name;
   const databasePicker = (

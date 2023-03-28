@@ -30,8 +30,8 @@ interface CardLoaderProps {
 }
 
 interface StateProps {
-  user?: User;
-  model?: Question;
+  user: User | null;
+  model: Question | null;
 }
 
 interface DispatchProps {
@@ -44,8 +44,8 @@ const mapStateToProps = (
   state: State,
   { card }: CardLoaderProps,
 ): StateProps => ({
-  user: getUser(state) ?? undefined,
-  model: card ? new Question(card, getMetadata(state)) : undefined,
+  user: getUser(state),
+  model: card ? new Question(card, getMetadata(state)) : null,
 });
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
@@ -97,7 +97,7 @@ const MetabotWidget = ({
   );
 };
 
-const getGreetingMessage = (user?: User) => {
+const getGreetingMessage = (user: User | null) => {
   if (user?.first_name) {
     return t`Hey there, ${user?.first_name}!`;
   } else {
@@ -105,7 +105,7 @@ const getGreetingMessage = (user?: User) => {
   }
 };
 
-const getPromptPlaceholder = (model?: Question) => {
+const getPromptPlaceholder = (model: Question | null) => {
   if (model) {
     return t`Ask something like, how many ${model?.displayName()} have we had over time?`;
   } else {

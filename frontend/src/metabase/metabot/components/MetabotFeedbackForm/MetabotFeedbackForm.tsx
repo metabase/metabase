@@ -16,7 +16,7 @@ import {
 } from "./MetabotFeedbackForm.styled";
 
 interface StateProps {
-  feedbackType?: MetabotFeedbackType;
+  feedbackType: MetabotFeedbackType | null;
   feedbackStatus: MetabotFeedbackStatus;
 }
 

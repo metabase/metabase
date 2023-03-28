@@ -23,10 +23,10 @@ import {
 } from "./MetabotQueryBuilder.styled";
 
 interface MetabotQueryBuilderProps {
-  question?: Question;
-  queryStatus?: MetabotQueryStatus;
-  queryResults?: [Dataset];
-  queryError?: unknown;
+  question: Question | null;
+  queryStatus: MetabotQueryStatus;
+  queryResults: [Dataset] | null;
+  queryError: unknown;
 }
 
 const mapStateToProps = (state: State): MetabotQueryBuilderProps => ({

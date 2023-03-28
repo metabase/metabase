@@ -8,16 +8,16 @@ import {
 } from "./MetabotPrompt.styled";
 
 export interface MetabotPromptProps {
-  queryText?: string;
-  placeholder?: string;
-  user?: User;
+  queryText: string;
+  placeholder: string;
+  user: User | null;
   isLoading?: boolean;
   onChangeQuery: (queryText: string) => void;
   onSubmitQuery: () => void;
 }
 
 const MetabotPrompt = ({
-  queryText = "",
+  queryText,
   placeholder,
   user,
   isLoading = false,
