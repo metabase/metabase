@@ -2325,7 +2325,9 @@
 
   ([card-values f]
    (let [all-permissions (t2/select perms/Permissions)
-         non-admin-perms (remove #(= "/" (:object %)) all-permissions)]
+         _ (log/fatal "All Permissions:" (pr-str all-permissions))
+         non-admin-perms (remove #(= "/" (:object %)) all-permissions)
+         _ (log/fatal "Non Admin Permissions:" (pr-str non-admin-perms))]
      (try
        (mt/with-temp*
          [Card [source-card {:database_id   (mt/id)
@@ -2379,7 +2381,7 @@
                                  :card              "_CARD_"
                                  :field-values      "name_param_id"}}))
        (finally
-         (doseq [{:keys [id]} (remove #(= "/" (:object %)) (t2/select perms/Permissions))]
+         (doseq [{:keys [id]} (remove #(#{"/" "/db/1/"} (:object %)) (t2/select perms/Permissions))]
            (t2/delete! perms/Permissions id))
          (t2/insert! perms/Permissions non-admin-perms))))))
 
