@@ -10,7 +10,6 @@ interface MetabotQueryEditor {
   height: number;
   isReadOnly?: boolean;
   hasTopBar?: boolean;
-  isFullHeight?: boolean;
   isInitiallyOpen?: boolean;
   onChange?: (question: Question) => void;
 }
@@ -20,13 +19,11 @@ const MetabotQueryEditor = ({
   height,
   isReadOnly = false,
   hasTopBar = false,
-  isFullHeight = false,
   isInitiallyOpen = false,
   onChange,
 }: MetabotQueryEditor) => {
   const [isOpen, setIsOpen] = useState(isInitiallyOpen);
   const handleChange = (query: NativeQuery) => onChange?.(query.question());
-  const resizableBoxProps = isFullHeight ? { minConstraints: [0, 0] } : {};
 
   return (
     <NativeQueryEditor
@@ -35,7 +32,6 @@ const MetabotQueryEditor = ({
       viewHeight={height}
       isReadOnly={isReadOnly}
       resizable={false}
-      resizableBoxProps={resizableBoxProps}
       hasTopBar={hasTopBar}
       hasParametersList={false}
       canChangeDatabase={false}
