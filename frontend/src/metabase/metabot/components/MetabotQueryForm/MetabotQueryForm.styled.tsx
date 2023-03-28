@@ -16,12 +16,10 @@ export const QueryEditorTitle = styled.div`
   padding-right: 2rem;
 `;
 
-export const QueryEditorSection = styled.div`
-  margin-bottom: 1.5rem;
-`;
-
 export const QueryEditorContainer = styled.div`
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-height: 0;
+  margin-bottom: 0.5rem;
 `;
 
 export const QueryEditorFooter = styled.div`
