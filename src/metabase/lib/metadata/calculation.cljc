@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata.calculation
   (:require
    [clojure.string :as str]
+   [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -34,6 +35,10 @@
   [_query _stage-number x]
   (lib.schema.expresssion/type-of x))
 
+(defmethod type-of-method :lib/external-op
+  [query stage-number external-op]
+  (type-of-method query stage-number (lib.common/internal-op external-op)))
+
 (defn type-of
   "Calculate the base type of an MBQL expression. This differs slightly from [[metabase.lib.schema.expression/type-of]]
   in that has access to a `query` and thus a metadata provider, so can do more complete type calculations."
@@ -41,7 +46,7 @@
    (type-of query -1 x))
 
   ([query stage-number x]
-   (or (:base_type (lib.options/options x))
+   (or (:base-type (lib.options/options x))
        (when (map? x)
          (:base_type x))
        (type-of-method query stage-number x))))

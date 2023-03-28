@@ -1,5 +1,6 @@
 (ns metabase.lib.field
   (:require
+   [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.join :as lib.join]
@@ -160,3 +161,7 @@
 (defmethod lib.join/with-join-alias-method :field
   [field-ref join-alias]
   (lib.options/update-options field-ref assoc :join-alias join-alias))
+
+(defmethod lib.common/->op-arg :metadata/field
+  [query stage-number field-metadata]
+  (field query stage-number field-metadata))

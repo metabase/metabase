@@ -1,13 +1,13 @@
 (ns metabase.lib.common
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.field :as lib.field]
-   #_{:clj-kondo/ignore [:unused-namespace]}
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as schema.common]
-   #_{:clj-kondo/ignore [:unused-namespace]}
    [metabase.util.malli :as mu])
   #?(:cljs (:require-macros [metabase.lib.common])))
+
+(comment lib.options/keep-me
+         mu/keep-me)
 
 (mu/defn external-op :- [:maybe ::schema.common/external-op]
   "Convert the internal operator `clause` to the external format."
@@ -18,6 +18,12 @@
      :options options
      :args (subvec clause 2)}))
 
+(mu/defn internal-op
+  "Convert the 'external-op' format back into a normal MBQL clause."
+  [{:keys [operator options args]}]
+  (-> (into [(keyword operator) (or options {})] args)
+      lib.options/ensure-uuid))
+
 (defmulti ->op-arg
   "Ensures that clause arguments are properly unwrapped"
   {:arglists '([query stage-number x])}
@@ -27,10 +33,6 @@
 (defmethod ->op-arg :default
   [_query _stage-number x]
   x)
-
-(defmethod ->op-arg :metadata/field
-  [query stage-number field-metadata]
-  (lib.field/field query stage-number field-metadata))
 
 (defmethod ->op-arg :lib/external-op
   [query stage-number {:keys [operator options args] :or {options {}}}]

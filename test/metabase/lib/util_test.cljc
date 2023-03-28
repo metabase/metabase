@@ -7,6 +7,8 @@
    [metabase.lib.util :as lib.util]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (deftest ^:parallel pipeline-test
   (are [query expected] (=? expected
                             (lib.util/pipeline query))
@@ -90,7 +92,7 @@
              :type     :pipeline
              :stages   [{:lib/type           :mbql.stage/mbql
                          :source-table       (meta/id :venues)
-                         :lib/stage-metadata [(meta/field-metadata :venues :id)]}
+                         :lib/stage-metadata {:columns [(meta/field-metadata :venues :id)]}}
                         {:lib/type :mbql.stage/mbql}]}
             (lib.util/pipeline
              {:database (meta/id)
