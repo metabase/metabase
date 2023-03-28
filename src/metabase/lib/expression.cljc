@@ -30,7 +30,6 @@
 (defmethod lib.metadata.calculation/type-of-method :expression
   [query stage-number [_expression _opts expression-name, :as _expression-ref]]
   (let [expression (resolve-expression query stage-number expression-name)]
-    (println "<HERE>")
     (lib.metadata.calculation/type-of query stage-number expression)))
 
 (defmethod lib.metadata.calculation/metadata :expression
