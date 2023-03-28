@@ -32,6 +32,7 @@ const Metabot = ({
 }: MetabotProps) => {
   const [{ loading, value, error }, handleRun] = useAsyncFn(onFetchResults);
   const [feedbackType, setFeedbackType] = useState<MetabotFeedbackType>();
+  const isInvalidSql = feedbackType === "invalid-sql";
 
   useEffect(() => {
     if (initialQuery) {
@@ -43,7 +44,9 @@ const Metabot = ({
     <MetabotRoot>
       <MetabotHeader>
         <MetabotMessage>
-          {getMetabotGreeting(feedbackType) ?? initialGreeting}
+          {isInvalidSql
+            ? t`Sorry about that. Let me know what the SQL should've been.`
+            : initialGreeting}
         </MetabotMessage>
         <MetabotPrompt
           user={user}
@@ -54,7 +57,7 @@ const Metabot = ({
         />
       </MetabotHeader>
 
-      {feedbackType !== "invalid-sql" && (
+      {!isInvalidSql && (
         <MetabotQueryBuilder
           question={value?.question}
           results={value?.results}
@@ -72,13 +75,6 @@ const Metabot = ({
       ) : null}
     </MetabotRoot>
   );
-};
-
-const getMetabotGreeting = (feedbackType?: MetabotFeedbackType) => {
-  if (feedbackType === "invalid-sql") {
-    return t`Sorry about that. Let me know what the SQL should've been.`;
-  }
-  return null;
 };
 
 export default Metabot;
