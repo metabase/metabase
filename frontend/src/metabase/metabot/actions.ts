@@ -5,6 +5,9 @@ import { Dispatch, GetState } from "metabase-types/store";
 import {
   getEntityId,
   getEntityType,
+  getFeedbackType,
+  getNativeQueryText,
+  getOriginalNativeQueryText,
   getQueryText,
   getQuestion,
 } from "./selectors";
@@ -76,5 +79,26 @@ export const fetchQueryResults = createThunkAction(
   () => async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
     return await question?.apiGetResults();
+  },
+);
+
+export const SUBMIT_FEEDBACK = "metabase/metabot/SUBMIT_FEEDBACK";
+export const sumbitFeedback = createThunkAction(
+  SUBMIT_FEEDBACK,
+  (message?: string) => async (_dispatch: Dispatch, getState: GetState) => {
+    const feedback = getFeedbackType(getState());
+    const prompt = getQueryText(getState());
+    const entity_type = getEntityType(getState());
+    const sql = getOriginalNativeQueryText(getState());
+    const correct_sql = getNativeQueryText(getState());
+
+    return await MetabotApi.sendFeedback({
+      message,
+      entity_type,
+      feedback,
+      prompt,
+      sql,
+      correct_sql,
+    });
   },
 );

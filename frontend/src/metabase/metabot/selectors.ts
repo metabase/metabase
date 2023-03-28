@@ -1,6 +1,8 @@
+import { createSelector } from "reselect";
 import { getMetadata } from "metabase/selectors/metadata";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
+import { maybeGetNativeQueryText } from "./utils";
 
 export const getEntityId = (state: State) => {
   return state.metabot.entityId;
@@ -43,3 +45,12 @@ export const getFeedbackType = (state: State) => {
 export const getFeedbackStatus = (state: State) => {
   return state.metabot.feedbackStatus;
 };
+
+export const getOriginalNativeQueryText = createSelector(
+  [getOriginalQuestion],
+  question => maybeGetNativeQueryText(question),
+);
+
+export const getNativeQueryText = createSelector([getQuestion], question =>
+  maybeGetNativeQueryText(question),
+);
