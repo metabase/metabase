@@ -206,8 +206,7 @@
 
 ;; only define an implementation for `:foreign-keys` if none exists already. In test extensions we define an alternate
 ;; implementation, and we don't want to stomp over that if it was loaded already
-(when-not (or (get (methods driver/supports?) [:sparksql :foreign-keys])
-              (get (methods driver/database-supports?) [:sparksql :foreign-keys]))
+(when-not (get (methods driver/database-supports?) [:sparksql :foreign-keys])
   (defmethod driver/database-supports? [:sparksql :foreign-keys] [_driver _feature _db] true))
 
 (defmethod sql.qp/quote-style :sparksql

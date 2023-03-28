@@ -74,7 +74,7 @@
                                       [id (u.date/format-sql (t/local-date-time (u.date/parse s))) cnt])
 
                                     (or (= timezone :utc)
-                                        (not (driver/supports? driver/*driver* :set-timezone)))
+                                        (not (driver/database-supports? driver/*driver* :set-timezone (mt/db))))
                                     utc-results
 
                                     :else

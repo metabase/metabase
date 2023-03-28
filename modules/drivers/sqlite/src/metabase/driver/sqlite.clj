@@ -47,7 +47,7 @@
 
 ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this so
 ;; for now we'll just skip the foreign key stuff in the tests.
-(defmethod driver/supports? [:sqlite :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/database-supports? [:sqlite :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 ;; Every SQLite3 file starts with "SQLite Format 3"
 ;; or "** This file contains an SQLite

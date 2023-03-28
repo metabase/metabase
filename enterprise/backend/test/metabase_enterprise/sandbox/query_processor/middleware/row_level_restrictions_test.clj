@@ -79,7 +79,7 @@
 
 (defn- venues-category-native-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
-    (assert (driver/supports? driver/*driver* :native-parameters))
+    (assert (driver/database-supports? driver/*driver* :native-parameters (mt/db)))
     (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
       {:query (mt/native-query
                 {:query
@@ -97,7 +97,7 @@
 
 (defn- parameterized-sql-with-join-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
-    (assert (driver/supports? driver/*driver* :native-parameters))
+    (assert (driver/database-supports? driver/*driver* :native-parameters (mt/db)))
     (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
       {:query (mt/native-query
                 {:query

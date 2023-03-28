@@ -367,7 +367,7 @@
 (defn supports-report-timezone?
   "Returns truthy if `driver` supports setting a timezone"
   [driver]
-  (driver/supports? driver :set-timezone))
+  (driver/database-supports? driver :set-timezone (data/db)))
 
 (defn cols
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
@@ -439,12 +439,12 @@
               (= driver driver-or-drivers)))]
     (if-not (add-fks? driver/*driver*)
       (thunk)
-      (let [supports? driver/supports?]
-        (with-redefs [driver/supports? (fn [driver feature]
-                                         (if (and (add-fks? driver)
-                                                  (= feature :foreign-keys))
-                                           true
-                                           (supports? driver feature)))]
+      (let [database-supports? driver/database-supports?]
+        (with-redefs [driver/database-supports? (fn [driver feature]
+                                                  (if (and (add-fks? driver)
+                                                           (= feature :foreign-keys))
+                                                    true
+                                                    (database-supports? driver feature (data/db))))]
           (let [thunk (reduce
                        (fn [thunk [source dest]]
                          (fn []

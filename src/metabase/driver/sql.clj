@@ -34,8 +34,8 @@
                       :inner-join
                       :full-join]]
   (defmethod driver/database-supports? [:sql join-feature]
-    [driver _feature _db]
-    (driver/supports? driver :foreign-keys)))
+    [driver _feature db]
+    (driver/database-supports? driver :foreign-keys db)))
 
 (defmethod driver/mbql->native :sql
   [driver query]

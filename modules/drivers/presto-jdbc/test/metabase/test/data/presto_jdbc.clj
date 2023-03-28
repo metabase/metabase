@@ -179,6 +179,3 @@
 (defmethod sql.tx/add-fk-sql :presto-jdbc
   [_ _ _ _]
   nil)
-
-;; FIXME Presto actually has very good timezone support
-#_(defmethod tx/has-questionable-timezone-support? :presto-jdbc [_] true)

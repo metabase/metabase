@@ -391,7 +391,7 @@
 
 (defmethod ->rvalue :absolute-datetime
   [[_ t unit]]
-  (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
+  (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (qp.store/database))
                                    "UTC"))
         t           (condp = (class t)
                      java.time.LocalDate      t
@@ -425,7 +425,7 @@
 (defmethod ->rvalue :relative-datetime
   [[_ amount unit]]
   (let [t (-> (t/zoned-date-time)
-              (t/with-zone-same-instant (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
+              (t/with-zone-same-instant (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (qp.store/database))
                                                        "UTC"))))]
     ($date-from-string
      (t/offset-date-time

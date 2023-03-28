@@ -13,14 +13,6 @@
 (defmethod driver/database-supports? [::test-driver :foreign-keys] [_driver _feature _db] true)
 (defmethod driver/database-supports? [::test-driver :foreign-keys] [_driver _feature db] (= db "dummy"))
 
-(deftest ^:parallel driver-supports?-test
-  (is (driver/supports? ::test-driver :foreign-keys))
-  (is (not (driver/supports? ::test-driver :expressions)))
-  (is (thrown-with-msg?
-       java.lang.Exception
-       #"Invalid driver feature: .*"
-       (driver/supports? ::test-driver :some-made-up-thing))))
-
 (deftest ^:parallel database-supports?-test
   (is (driver/database-supports? ::test-driver :foreign-keys "dummy"))
   (is (not (driver/database-supports? ::test-driver :foreign-keys "not-dummy")))
