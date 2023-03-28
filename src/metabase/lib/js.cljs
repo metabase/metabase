@@ -40,3 +40,24 @@
   (let [query-map (pMBQL query-map)]
     (log/debugf "query map: %s" (pr-str query-map))
     (lib.query/query (metadataProvider database-id metadata) query-map)))
+
+(defn- fix-namespaced-values
+  "This converts namespaced keywords to strings as `\"foo/bar\"`.
+
+  `clj->js` supports overriding how keyword map keys get transformed, but it doesn't let you override how values are
+  handled. So this function runs first and turns them into strings.
+
+  As an example of such a value, `(get-in card [:template-tags \"some-tag\" :widget-type])` can be `:date/all-options`."
+  [x]
+  (cond
+    (keyword? x)    (if-let [ns-part (namespace x)]
+                      (str ns-part "/" (name x))
+                      (name x))
+    (map? x)        (update-vals x fix-namespaced-values)
+    (sequential? x) (map fix-namespaced-values x)
+    :else           x))
+
+(defn ^:export legacy-query
+  "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."
+  [query-map]
+  (-> query-map convert/->legacy-MBQL fix-namespaced-values clj->js))
