@@ -105,10 +105,12 @@
 
 (defmethod lib.metadata.calculation/display-name-method :field
   [query stage-number [_field {:keys [join-alias temporal-unit], :as _opts} _id-or-name, :as field-clause]]
-  (let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
-                         join-alias    (assoc :source_alias join-alias)
-                         temporal-unit (assoc :unit temporal-unit))]
-    (lib.metadata.calculation/display-name query stage-number field-metadata)))
+  (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
+                            join-alias    (assoc :source_alias join-alias)
+                            temporal-unit (assoc :unit temporal-unit))]
+    (lib.metadata.calculation/display-name query stage-number field-metadata)
+    ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
+    (i18n/tru "[Unknown Field]")))
 
 (defmulti ^:private ->field
   {:arglists '([query stage-number field])}

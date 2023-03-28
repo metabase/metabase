@@ -16,6 +16,7 @@
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.segment :as lib.segment]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.table :as lib.table]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -33,6 +34,7 @@
          lib.metric/keep-me
          lib.order-by/keep-me
          lib.query/keep-me
+         lib.segment/keep-me
          lib.stage/keep-me
          lib.table/keep-me
          lib.temporal-bucket/keep-me)
@@ -131,6 +133,7 @@
   [lib.metadata.calculation
    column-name
    describe-query
+   describe-top-level-key
    display-name
    suggested-name]
   [lib.order-by

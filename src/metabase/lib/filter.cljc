@@ -16,7 +16,7 @@
 
 (comment metabase.lib.schema/keep-me)
 
-(defmethod lib.metadata.calculation/describe-top-level-key :filter
+(defmethod lib.metadata.calculation/describe-top-level-key-method :filter
   [query stage-number _key]
   (when-let [filter-clause (:filter (lib.util/query-stage query stage-number))]
     (i18n/tru "Filtered by {0}" (lib.metadata.calculation/display-name query stage-number filter-clause))))

@@ -15,7 +15,7 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-(defmethod lib.metadata.calculation/describe-top-level-key :order-by
+(defmethod lib.metadata.calculation/describe-top-level-key-method :order-by
   [query stage-number _k]
   (when-let [order-bys (not-empty (:order-by (lib.util/query-stage query stage-number)))]
     (i18n/tru "Sorted by {0}"

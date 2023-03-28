@@ -203,8 +203,7 @@
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/mbql
   [query stage-number _stage]
-  (let [parts        display-name-parts
-        descriptions (for [k parts]
+  (let [descriptions (for [k display-name-parts]
                        (lib.metadata.calculation/describe-top-level-key query stage-number k))]
     (str/join ", " (remove str/blank? descriptions))))
 
