@@ -9,21 +9,21 @@ import {
   InlineForm,
   InlineFormInput,
   InlineFormSubmitButton,
-} from "./MetabotFeedback.styled";
+} from "./MetabotFeedbackForm.styled";
 
-export interface MetabotFeedbackProps {
+export interface MetabotFeedbackFormProps {
   type: MetabotFeedbackType | undefined;
   isSubmitted: boolean;
   onTypeChange: (type: MetabotFeedbackType) => void;
   onSubmit: (message: string) => void;
 }
 
-const MetabotFeedback = ({
+const MetabotFeedbackForm = ({
   type,
   isSubmitted,
   onTypeChange,
   onSubmit,
-}: MetabotFeedbackProps) => {
+}: MetabotFeedbackFormProps) => {
   if (isSubmitted) {
     return <MetabotMessage>{t`Thanks for the feedback!`}</MetabotMessage>;
   }
@@ -112,4 +112,4 @@ const FeedbackMessageForm = ({
   );
 };
 
-export default MetabotFeedback;
+export default MetabotFeedbackForm;

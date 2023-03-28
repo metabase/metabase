@@ -1,15 +1,19 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
-import { User } from "metabase-types/api";
+import { Dataset, MetabotFeedbackType, User } from "metabase-types/api";
+import Question from "metabase-lib/Question";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
 import { MetabotHeader, MetabotRoot } from "../MetabotLayout";
 import MetabotResultsWrapper from "../MetabotResultsWrapper";
 import MetabotMessage from "../MetabotMessage";
+import MetabotFeedback from "../MetabaseFeedback";
 
-import { MetabotFeedbackContainer } from "../MetabotMessage/MetabotMessage.styled";
-import { QueryResults } from "./types";
-import { useFeedbackFlow } from "./use-feedback-flow";
+export interface QueryResults {
+  prompt: string;
+  question: Question;
+  results: [Dataset];
+}
 
 export interface MetabotProps {
   user?: User;
@@ -27,10 +31,11 @@ const Metabot = ({
   onFetchResults,
 }: MetabotProps) => {
   const [{ loading, value, error }, handleRun] = useAsyncFn(onFetchResults);
+  const [feedbackType, setFeedbackType] = useState<
+    MetabotFeedbackType | undefined
+  >();
 
-  const { feedbackContent, isQueryFormVisible } = useFeedbackFlow(
-    loading ? undefined : value,
-  );
+  const shouldHideResults = feedbackType === "invalid-sql";
 
   useEffect(() => {
     if (initialQuery) {
@@ -51,7 +56,7 @@ const Metabot = ({
         />
       </MetabotHeader>
 
-      {!isQueryFormVisible && (
+      {!shouldHideResults && (
         <MetabotResultsWrapper loading={loading} error={error} data={value}>
           {({ question, results }) => (
             <MetabotQueryBuilder question={question} results={results} />
@@ -59,8 +64,12 @@ const Metabot = ({
         </MetabotResultsWrapper>
       )}
 
-      {feedbackContent != null ? (
-        <MetabotFeedbackContainer>{feedbackContent}</MetabotFeedbackContainer>
+      {value && !loading ? (
+        <MetabotFeedback
+          results={value}
+          feedbackType={feedbackType}
+          onChangeFeedbackType={setFeedbackType}
+        />
       ) : null}
     </MetabotRoot>
   );
