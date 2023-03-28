@@ -5,7 +5,8 @@ import FormProvider from "metabase/core/components/FormProvider";
 import { MetabotFeedbackType } from "metabase-types/api";
 import MetabotMessage from "../MetabotMessage";
 import {
-  FeedbackSection,
+  FormRoot,
+  FormSection,
   InlineForm,
   InlineFormInput,
   InlineFormSubmitButton,
@@ -19,6 +20,24 @@ export interface MetabotFeedbackFormProps {
 }
 
 const MetabotFeedbackForm = ({
+  type,
+  isSubmitted,
+  onTypeChange,
+  onSubmit,
+}: MetabotFeedbackFormProps) => {
+  return (
+    <FormRoot>
+      <FeedbackFormContent
+        type={type}
+        isSubmitted={isSubmitted}
+        onTypeChange={onTypeChange}
+        onSubmit={onSubmit}
+      />
+    </FormRoot>
+  );
+};
+
+const FeedbackFormContent = ({
   type,
   isSubmitted,
   onTypeChange,
@@ -63,7 +82,7 @@ const FeedbackTypeSelect = ({ onTypeChange }: FeedbackTypeSelectProps) => {
   const handleInvalidSqlChange = () => onTypeChange("invalid-sql");
 
   return (
-    <FeedbackSection>
+    <FormSection>
       <MetabotMessage>{t`How did I do?`}</MetabotMessage>
       <Button onClick={handleGreatChange}>{t`This is great!`}</Button>
       <Button onClick={handleWrongDataChange}>
@@ -75,7 +94,7 @@ const FeedbackTypeSelect = ({ onTypeChange }: FeedbackTypeSelectProps) => {
       <Button onClick={handleInvalidSqlChange}>
         {t`This isn’t valid SQL.`}
       </Button>
-    </FeedbackSection>
+    </FormSection>
   );
 };
 
@@ -98,7 +117,7 @@ const FeedbackMessageForm = ({
   const handleSubmit = ({ message }: FeedbackFormValues) => onSubmit(message);
 
   return (
-    <FeedbackSection>
+    <FormSection>
       <MetabotMessage>{title}</MetabotMessage>
       <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
         {({ dirty }) => (
@@ -108,7 +127,7 @@ const FeedbackMessageForm = ({
           </InlineForm>
         )}
       </FormProvider>
-    </FeedbackSection>
+    </FormSection>
   );
 };
 

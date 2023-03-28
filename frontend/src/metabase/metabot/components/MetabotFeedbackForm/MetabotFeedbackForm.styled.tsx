@@ -1,10 +1,16 @@
 import styled from "@emotion/styled";
+import { color } from "metabase/lib/colors";
 import Input from "metabase/core/components/Input";
 import Form from "metabase/core/components/Form";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 
-export const FeedbackSection = styled.div`
+export const FormRoot = styled.div`
+  padding: 1rem;
+  background-color: ${color("white")};
+`;
+
+export const FormSection = styled.div`
   display: flex;
   align-items: center;
   gap: 1rem;

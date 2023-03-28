@@ -5,6 +5,7 @@ export const FormRoot = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1 0 auto;
+  background-color: ${color("bg-white")};
 `;
 
 export const FormSectionTitle = styled.div`

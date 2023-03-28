@@ -10,7 +10,6 @@ import Question from "metabase-lib/Question";
 import MetabotFeedbackForm from "../MetabotFeedbackForm";
 import MetabotQueryForm from "../MetabotQueryForm";
 import { QueryResults } from "../Metabot";
-import { MetabotFeedbackContainer } from "./MetabotFeedback.styled";
 
 const submitFeedback = async (feedbackPayload: MetabotFeedbackPayload) =>
   await MetabotApi.sendFeedback(feedbackPayload);
@@ -85,23 +84,19 @@ const MetabotFeedback = ({
     return null;
   }
 
-  return (
-    <MetabotFeedbackContainer>
-      {shouldShowQueryForm ? (
-        <MetabotQueryForm
-          question={results.question}
-          onCancel={handleCancelQueryForm}
-          onSubmit={handleSubmitQueryForm}
-        />
-      ) : (
-        <MetabotFeedbackForm
-          type={feedbackType}
-          onTypeChange={onChangeFeedbackType}
-          isSubmitted={isFeedbackSubmitted}
-          onSubmit={handleFeedbackSubmit}
-        />
-      )}
-    </MetabotFeedbackContainer>
+  return shouldShowQueryForm ? (
+    <MetabotQueryForm
+      question={results.question}
+      onCancel={handleCancelQueryForm}
+      onSubmit={handleSubmitQueryForm}
+    />
+  ) : (
+    <MetabotFeedbackForm
+      type={feedbackType}
+      onTypeChange={onChangeFeedbackType}
+      isSubmitted={isFeedbackSubmitted}
+      onSubmit={handleFeedbackSubmit}
+    />
   );
 };
 
