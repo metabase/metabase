@@ -57,14 +57,14 @@ const Metabot = ({
     return () => onReset();
   }, [entityId, entityType, initialQueryText, onInit, onReset]);
 
-  const isLoading = queryStatus === "running";
+  const isIdle = queryStatus === "idle";
   const isInvalidSql = feedbackType === "invalid-sql";
 
   return (
     <MetabotRoot>
       <MetabotHeader />
       {isInvalidSql ? <MetabotQueryForm /> : <MetabotQueryBuilder />}
-      {!isLoading && !isInvalidSql && <MetabotFeedbackForm />}
+      {!isIdle && !isInvalidSql && <MetabotFeedbackForm />}
     </MetabotRoot>
   );
 };
