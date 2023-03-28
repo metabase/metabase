@@ -1,5 +1,5 @@
 import React from "react";
-import { Formik } from "formik";
+import { Formik, useFormikContext } from "formik";
 import type { FormikConfig, FormikValues } from "formik";
 import type { AnySchema } from "yup";
 import useFormSubmit from "metabase/core/hooks/use-form-submit";
@@ -16,6 +16,7 @@ function FormProvider<T extends FormikValues, C = unknown>({
   validationSchema,
   validationContext,
   onSubmit,
+  children,
   ...props
 }: FormProviderProps<T, C>): JSX.Element {
   const { state, handleSubmit } = useFormSubmit({ onSubmit });
@@ -33,9 +34,20 @@ function FormProvider<T extends FormikValues, C = unknown>({
         validate={handleValidate}
         onSubmit={handleSubmit}
         {...props}
-      />
+      >
+        <>
+          {window.Cypress && <CypressFormikHelper />}
+          {children}
+        </>
+      </Formik>
     </FormContext.Provider>
   );
+}
+
+function CypressFormikHelper() {
+  const formikProps = useFormikContext();
+  window.formikProps = formikProps;
+  return null;
 }
 
 export default FormProvider;

@@ -21,8 +21,13 @@ describe("scenarios > admin > databases > add", () => {
     cy.findByText("Need help connecting?");
 
     chooseDatabase("H2");
-    typeAndBlurUsingLabel("Display name", "Test");
-    typeAndBlurUsingLabel("Connection String", "invalid");
+    // Using the Cypress application actions
+    cy.window().its("formikProps").invoke("setFieldValue", "name", "Test");
+    cy.window()
+      .its("formikProps")
+      .invoke("setFieldValue", "details.db", "invalid");
+    // typeAndBlurUsingLabel("Display name", "Test");
+    // typeAndBlurUsingLabel("Connection String", "invalid");
 
     cy.button("Save").click();
     cy.wait("@createDatabase");
