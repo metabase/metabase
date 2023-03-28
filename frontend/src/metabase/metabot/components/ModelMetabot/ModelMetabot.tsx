@@ -9,10 +9,10 @@ import Metabot from "../Metabot";
 interface ModelMetabotProps {
   model: Question;
   user?: User;
-  initialQuery?: string;
+  initialQueryText?: string;
 }
 
-const ModelMetabot = ({ model, user, initialQuery }: ModelMetabotProps) => {
+const ModelMetabot = ({ model, user, initialQueryText }: ModelMetabotProps) => {
   const handleFetch = async (query: string) => {
     const card = await MetabotApi.modelPrompt({
       modelId: model.id(),
@@ -27,7 +27,7 @@ const ModelMetabot = ({ model, user, initialQuery }: ModelMetabotProps) => {
       title={getTitle(model, user)}
       placeholder={getPlaceholder(model)}
       user={user}
-      initialQuery={initialQuery}
+      initialQueryText={initialQueryText}
       onFetchQuestion={handleFetch}
     />
   );

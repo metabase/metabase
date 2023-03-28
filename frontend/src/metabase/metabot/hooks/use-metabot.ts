@@ -4,52 +4,66 @@ import { Dataset, MetabotFeedbackType } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 
 interface UseMetabotProps {
-  initialQuery?: string;
+  initialQueryText?: string;
   onFetchQuestion: (query: string) => Promise<Question>;
 }
 
 interface UseMetabotResult {
-  query: string;
-  feedbackType?: MetabotFeedbackType;
   question?: Question;
   results?: [Dataset];
   isLoading: boolean;
   error?: unknown;
-  handleQueryChange: (query: string) => void;
-  handleQuerySubmit: () => void;
-  handleFeedbackTypeChange: (feedbackType?: MetabotFeedbackType) => void;
-  handleFeedbackSubmit: (message: string) => void;
+  feedbackType?: MetabotFeedbackType;
+  isFeedbackSubmitted: boolean;
+  handleTextQuerySubmit: (query: string) => void;
+  handleNativeQuerySubmit: (question: Question) => void;
+  handleFeedbackChange: (feedbackType?: MetabotFeedbackType) => void;
+  handleFeedbackSubmit: (feedbackMessage: string) => void;
 }
 
 const useMetabot = ({
-  initialQuery = "",
+  initialQueryText = "",
   onFetchQuestion,
 }: UseMetabotProps): UseMetabotResult => {
-  const [query, setQuery] = useState(initialQuery);
+  const [question, setQuestion] = useState<Question>();
   const [feedbackType, setFeedbackType] = useState<MetabotFeedbackType>();
+  const [isFeedbackSubmitted, setIsFeedbackSubmitted] = useState(false);
   const [questionState, loadQuestion] = useAsyncFn(onFetchQuestion);
   const [resultState, loadResults] = useAsyncFn(fetchResults);
 
-  const handleQuerySubmit = useCallback(() => {
-    loadQuestion(query).then(loadResults);
-  }, [query, loadQuestion, loadResults]);
+  const handleTextQuerySubmit = useCallback(
+    (queryText: string) => {
+      setQuestion(undefined);
+      loadQuestion(queryText).then(loadResults);
+    },
+    [loadQuestion, loadResults],
+  );
+
+  const handleNativeQuerySubmit = useCallback(
+    (question: Question) => {
+      setQuestion(question);
+      setIsFeedbackSubmitted(true);
+      loadResults(question);
+    },
+    [loadResults],
+  );
 
   useEffect(() => {
-    if (initialQuery) {
-      loadQuestion(initialQuery).then(loadResults);
+    if (initialQueryText) {
+      handleTextQuerySubmit(initialQueryText);
     }
-  }, [initialQuery, loadQuestion, loadResults]);
+  }, [initialQueryText, handleTextQuerySubmit]);
 
   return {
-    query,
-    feedbackType,
-    question: questionState.value,
+    question: question ?? questionState.value,
     results: resultState.value,
     isLoading: questionState.loading || resultState.loading,
     error: questionState.error ?? resultState.error,
-    handleQueryChange: setQuery,
-    handleQuerySubmit,
-    handleFeedbackTypeChange: setFeedbackType,
+    feedbackType,
+    isFeedbackSubmitted,
+    handleTextQuerySubmit,
+    handleNativeQuerySubmit: handleNativeQuerySubmit,
+    handleFeedbackChange: setFeedbackType,
     handleFeedbackSubmit: () => undefined,
   };
 };

@@ -26,7 +26,7 @@ interface CardLoaderProps {
 interface StateProps {
   model: Question;
   user?: User;
-  initialQuery?: string;
+  initialQueryText?: string;
 }
 
 const getModelId = (state: State, { params }: RouteProps) => {
@@ -39,7 +39,7 @@ const mapStateToProps = (
 ): StateProps => ({
   model: new Question(card, getMetadata(state)),
   user: getUser(state) ?? undefined,
-  initialQuery: location?.query?.query,
+  initialQueryText: location?.query?.query,
 });
 
 export default _.compose(

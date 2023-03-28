@@ -14,23 +14,23 @@ import {
 
 export interface MetabotFeedbackFormProps {
   feedbackType: MetabotFeedbackType | undefined;
-  isSubmitted: boolean;
-  onFeedbackTypeChange: (type: MetabotFeedbackType) => void;
+  isFeedbackSubmitted: boolean;
+  onFeedbackChange: (type: MetabotFeedbackType) => void;
   onFeedbackSubmit: (message: string) => void;
 }
 
 const MetabotFeedbackForm = ({
   feedbackType,
-  isSubmitted,
-  onFeedbackTypeChange,
+  isFeedbackSubmitted,
+  onFeedbackChange,
   onFeedbackSubmit,
 }: MetabotFeedbackFormProps) => {
   return (
     <FormRoot>
       <FeedbackFormContent
         feedbackType={feedbackType}
-        isSubmitted={isSubmitted}
-        onFeedbackTypeChange={onFeedbackTypeChange}
+        isFeedbackSubmitted={isFeedbackSubmitted}
+        onFeedbackChange={onFeedbackChange}
         onFeedbackSubmit={onFeedbackSubmit}
       />
     </FormRoot>
@@ -39,11 +39,11 @@ const MetabotFeedbackForm = ({
 
 const FeedbackFormContent = ({
   feedbackType,
-  isSubmitted,
-  onFeedbackTypeChange,
+  isFeedbackSubmitted,
+  onFeedbackChange,
   onFeedbackSubmit,
 }: MetabotFeedbackFormProps) => {
-  if (isSubmitted) {
+  if (isFeedbackSubmitted) {
     return <MetabotMessage>{t`Thanks for the feedback!`}</MetabotMessage>;
   }
 
@@ -67,21 +67,19 @@ const FeedbackFormContent = ({
         />
       );
     default:
-      return <FeedbackTypeSelect onFeedbackTypeChange={onFeedbackTypeChange} />;
+      return <FeedbackTypeSelect onFeedbackChange={onFeedbackChange} />;
   }
 };
 
 interface FeedbackTypeSelectProps {
-  onFeedbackTypeChange: (type: MetabotFeedbackType) => void;
+  onFeedbackChange: (type: MetabotFeedbackType) => void;
 }
 
-const FeedbackTypeSelect = ({
-  onFeedbackTypeChange,
-}: FeedbackTypeSelectProps) => {
-  const handleGreat = () => onFeedbackTypeChange("great");
-  const handleWrongData = () => onFeedbackTypeChange("wrong-data");
-  const handleIncorrectResult = () => onFeedbackTypeChange("incorrect-result");
-  const handleInvalidSql = () => onFeedbackTypeChange("invalid-sql");
+const FeedbackTypeSelect = ({ onFeedbackChange }: FeedbackTypeSelectProps) => {
+  const handleGreat = () => onFeedbackChange("great");
+  const handleWrongData = () => onFeedbackChange("wrong-data");
+  const handleIncorrectResult = () => onFeedbackChange("incorrect-result");
+  const handleInvalidSql = () => onFeedbackChange("invalid-sql");
 
   return (
     <FormSection>

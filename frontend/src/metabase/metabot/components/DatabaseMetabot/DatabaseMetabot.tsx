@@ -11,7 +11,7 @@ interface DatabaseMetabotProps {
   database: Database;
   databases: Database[];
   user?: User;
-  initialQuery?: string;
+  initialQueryText?: string;
   onDatabaseChange: (databaseId: DatabaseId) => void;
 }
 
@@ -19,7 +19,7 @@ const DatabaseMetabot = ({
   database,
   databases,
   user,
-  initialQuery,
+  initialQueryText,
   onDatabaseChange,
 }: DatabaseMetabotProps) => {
   const handleFetch = async (query: string) => {
@@ -36,7 +36,7 @@ const DatabaseMetabot = ({
       title={getTitle(database, databases, user, onDatabaseChange)}
       placeholder={t`Ask something...`}
       user={user}
-      initialQuery={initialQuery}
+      initialQueryText={initialQueryText}
       onFetchQuestion={handleFetch}
     />
   );

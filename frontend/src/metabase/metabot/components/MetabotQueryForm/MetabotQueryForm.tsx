@@ -13,18 +13,18 @@ import {
 
 interface MetabotQueryFormProps {
   question: Question;
-  onFeedbackTypeChange: (feedbackType?: MetabotFeedbackType) => void;
-  onSubmit: (question: Question) => void;
+  onFeedbackChange: (feedbackType?: MetabotFeedbackType) => void;
+  onNativeQuerySubmit: (question: Question) => void;
 }
 
 export const MetabotQueryForm = ({
   question,
-  onFeedbackTypeChange,
-  onSubmit,
+  onFeedbackChange,
+  onNativeQuerySubmit,
 }: MetabotQueryFormProps) => {
   const [updatedQuestion, setUpdatedQuestion] = useState(question);
-  const handleSubmit = () => onSubmit(updatedQuestion);
-  const handleCancel = () => onFeedbackTypeChange();
+  const handleSubmit = () => onNativeQuerySubmit(updatedQuestion);
+  const handleCancel = () => onFeedbackChange();
 
   return (
     <QueryEditorRoot>
@@ -37,7 +37,7 @@ export const MetabotQueryForm = ({
         <MetabotQueryEditor
           question={updatedQuestion}
           isInitiallyOpen
-          setDatasetQuery={setUpdatedQuestion}
+          onChange={setUpdatedQuestion}
         />
       </QueryEditorContainer>
       <QueryEditorFooter>

@@ -22,7 +22,7 @@ interface RouteProps {
 interface StateProps {
   user?: User;
   database?: Database;
-  initialQuery?: string;
+  initialQueryText?: string;
 }
 
 const mapStateToProps = (
@@ -33,7 +33,7 @@ const mapStateToProps = (
     entityId: extractEntityId(params.databaseId),
   }),
   user: getUser(state) ?? undefined,
-  initialQuery: location?.query?.query,
+  initialQueryText: location?.query?.query,
 });
 
 const mapDispatchToProps = {

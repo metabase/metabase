@@ -20,7 +20,7 @@ export interface MetabotProps {
   title: React.ReactNode;
   placeholder: string;
   user?: User;
-  initialQuery?: string;
+  initialQueryText?: string;
   onFetchQuestion: (query: string) => Promise<Question>;
 }
 
@@ -28,24 +28,29 @@ const Metabot = ({
   title,
   placeholder,
   user,
-  initialQuery,
+  initialQueryText,
   onFetchQuestion,
 }: MetabotProps) => {
   const {
-    query,
     question,
     results,
     isLoading,
     error,
     feedbackType,
-    handleQueryChange,
-    handleQuerySubmit,
-    handleFeedbackTypeChange,
+    isFeedbackSubmitted,
+    handleTextQuerySubmit,
+    handleNativeQuerySubmit,
+    handleFeedbackChange,
     handleFeedbackSubmit,
   } = useMetabot({
-    initialQuery,
+    initialQueryText,
     onFetchQuestion,
   });
+
+  const isInvalidSql = feedbackType === "invalid-sql";
+  const hasQueryBuilder = !isInvalidSql || isFeedbackSubmitted;
+  const hasQueryForm = isInvalidSql && !isFeedbackSubmitted;
+  const hasFeedbackForm = question != null && !hasQueryForm;
 
   return (
     <MetabotRoot>
@@ -56,16 +61,15 @@ const Metabot = ({
             : title}
         </MetabotMessage>
         <MetabotPrompt
-          query={query}
           user={user}
           placeholder={placeholder}
           isLoading={isLoading}
-          onQueryChange={handleQueryChange}
-          onQuerySubmit={handleQuerySubmit}
+          initialQueryText={initialQueryText}
+          onTextQuerySubmit={handleTextQuerySubmit}
         />
       </MetabotHeader>
 
-      {feedbackType !== "invalid-sql" && (
+      {hasQueryBuilder && (
         <MetabotQueryBuilder
           question={question}
           results={results}
@@ -74,19 +78,19 @@ const Metabot = ({
         />
       )}
 
-      {question && feedbackType === "invalid-sql" && (
+      {question && hasQueryForm && (
         <MetabotQueryForm
           question={question}
-          onFeedbackTypeChange={handleFeedbackTypeChange}
-          onSubmit={() => undefined}
+          onFeedbackChange={handleFeedbackChange}
+          onNativeQuerySubmit={handleNativeQuerySubmit}
         />
       )}
 
-      {question && feedbackType !== "invalid-sql" && (
+      {hasFeedbackForm && (
         <MetabotFeedbackForm
           feedbackType={feedbackType}
-          isSubmitted={false}
-          onFeedbackTypeChange={handleFeedbackTypeChange}
+          isFeedbackSubmitted={isFeedbackSubmitted}
+          onFeedbackChange={handleFeedbackChange}
           onFeedbackSubmit={handleFeedbackSubmit}
         />
       )}
