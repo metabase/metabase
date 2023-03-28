@@ -1,7 +1,6 @@
 (ns metabase.db.util
   "Utility functions for querying the application database."
   (:require
-   [metabase.db.util :as mdb.u]
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -14,6 +13,7 @@
   [model]
   (if (keyword? model)
     model
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (db/resolve-model model)))
 
 (defn join
