@@ -1,7 +1,5 @@
 import React from "react";
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
-import { routerActions } from "react-router-redux";
-import { UserAuthWrapper } from "redux-auth-wrapper";
 import { t } from "ttag";
 
 import { Route } from "metabase/hoc/Title";
@@ -87,68 +85,16 @@ import CollectionLanding from "metabase/collections/components/CollectionLanding
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
-import { getAdminPaths } from "metabase/admin/app/selectors";
 
 import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal";
 import ModelDetailPage from "metabase/models/containers/ModelDetailPage";
-
-const MetabaseIsSetup = UserAuthWrapper({
-  predicate: authData => authData.hasUserSetup,
-  failureRedirectPath: "/setup",
-  authSelector: state => ({ hasUserSetup: MetabaseSettings.hasUserSetup() }), // HACK
-  wrapperDisplayName: "MetabaseIsSetup",
-  allowRedirectBack: false,
-  redirectAction: routerActions.replace,
-});
-
-const UserIsAuthenticated = UserAuthWrapper({
-  failureRedirectPath: "/auth/login",
-  authSelector: state => state.currentUser,
-  wrapperDisplayName: "UserIsAuthenticated",
-  redirectAction: routerActions.replace,
-});
-
-const UserIsAdmin = UserAuthWrapper({
-  predicate: currentUser => currentUser && currentUser.is_superuser,
-  failureRedirectPath: "/unauthorized",
-  authSelector: state => state.currentUser,
-  allowRedirectBack: false,
-  wrapperDisplayName: "UserIsAdmin",
-  redirectAction: routerActions.replace,
-});
-
-const UserIsNotAuthenticated = UserAuthWrapper({
-  predicate: currentUser => !currentUser,
-  failureRedirectPath: "/",
-  authSelector: state => state.currentUser,
-  allowRedirectBack: false,
-  wrapperDisplayName: "UserIsNotAuthenticated",
-  redirectAction: routerActions.replace,
-});
-
-const UserCanAccessSettings = UserAuthWrapper({
-  predicate: adminItems => adminItems?.length > 0,
-  failureRedirectPath: "/unauthorized",
-  authSelector: getAdminPaths,
-  allowRedirectBack: false,
-  wrapperDisplayName: "UserCanAccessSettings",
-  redirectAction: routerActions.replace,
-});
-
-const IsAuthenticated = MetabaseIsSetup(
-  UserIsAuthenticated(({ children }) => children),
-);
-const IsAdmin = MetabaseIsSetup(
-  UserIsAuthenticated(UserIsAdmin(({ children }) => children)),
-);
-
-const IsNotAuthenticated = MetabaseIsSetup(
-  UserIsNotAuthenticated(({ children }) => children),
-);
-
-const CanAccessSettings = MetabaseIsSetup(
-  UserIsAuthenticated(UserCanAccessSettings(({ children }) => children)),
-);
+import {
+  CanAccessMetabot,
+  IsNotAuthenticated,
+  IsAuthenticated,
+  IsAdmin,
+  CanAccessSettings,
+} from "./route-guards";
 
 export const getRoutes = store => (
   <Route title={t`Metabase`} component={App}>
@@ -264,7 +210,7 @@ export const getRoutes = store => (
           <Redirect from="*" to="usage" />
         </Route>
 
-        <Route path="/metabot">
+        <Route path="/metabot" component={CanAccessMetabot}>
           <Route path="database/:databaseId" component={DatabaseMetabotApp} />
           <Route path="model/:slug" component={ModelMetabotApp} />
         </Route>

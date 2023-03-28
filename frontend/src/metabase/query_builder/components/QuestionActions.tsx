@@ -18,6 +18,7 @@ import { State } from "metabase-types/store";
 import { color } from "metabase/lib/colors";
 
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
+import { getSetting } from "metabase/selectors/settings";
 import Question from "metabase-lib/Question";
 
 import {
@@ -41,6 +42,7 @@ const ARCHIVE_TESTID = "archive-button";
 
 const mapStateToProps = (state: State, props: Props) => ({
   isModerator: getUserIsAdmin(state),
+  isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
 });
 
 const mapDispatchToProps = {
@@ -51,6 +53,7 @@ const mapDispatchToProps = {
 interface Props {
   isBookmarked: boolean;
   isShowingQuestionInfoSidebar: boolean;
+  isMetabotEnabled: boolean;
   handleBookmark: () => void;
   onOpenModal: (modalType: string) => void;
   question: Question;
@@ -69,6 +72,7 @@ interface Props {
 const QuestionActions = ({
   isBookmarked,
   isShowingQuestionInfoSidebar,
+  isMetabotEnabled,
   handleBookmark,
   onOpenModal,
   question,
@@ -126,7 +130,7 @@ const QuestionActions = ({
     PLUGIN_MODERATION.getMenuItems(question, isModerator, softReloadCard),
   );
 
-  if (isDataset) {
+  if (isMetabotEnabled && isDataset) {
     extraButtons.push(
       {
         title: t`Edit query definition`,

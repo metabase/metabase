@@ -130,26 +130,6 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`Enable X-ray features`,
         type: "boolean",
       },
-      {
-        key: "is-metabot-enabled",
-        display_name: t`Enable Metabot`,
-        description: null,
-        type: "boolean",
-      },
-      {
-        key: "openai-api-key",
-        display_name: t`OpenAI API Key`,
-        description: null,
-        type: "string",
-        getHidden: (_, settings) => !settings["is-metabot-enabled"],
-      },
-      {
-        key: "openai-organization",
-        display_name: t`OpenAPI Organization ID`,
-        description: null,
-        type: "string",
-        getHidden: (_, settings) => !settings["is-metabot-enabled"],
-      },
     ],
   },
   updates: {
@@ -603,6 +583,32 @@ const SECTIONS = updateSectionsWithPlugins({
         getHidden: settings => !settings["persisted-models-enabled"],
         onChanged: (previousValue, value) =>
           PersistedModelsApi.setRefreshSchedule({ cron: value }),
+      },
+    ],
+  },
+  metabot: {
+    name: t`Metabot`,
+    order: 13,
+    settings: [
+      {
+        key: "is-metabot-enabled",
+        display_name: t`Enable Metabot`,
+        description: t`Metabot is in Alpha, and in general LargeLanguageModel generated SQL should be examined carefully before using its results in critical applications. By using Metabot, you agree to share prompt and resultant queries with Metabase to help us improve Metabot’s performance.`,
+        type: "boolean",
+      },
+      {
+        key: "openai-api-key",
+        display_name: t`OpenAI API Key`,
+        description: null,
+        type: "string",
+        getHidden: (_, settings) => !settings["is-metabot-enabled"],
+      },
+      {
+        key: "openai-organization",
+        display_name: t`OpenAPI Organization ID`,
+        description: null,
+        type: "string",
+        getHidden: (_, settings) => !settings["is-metabot-enabled"],
       },
     ],
   },
