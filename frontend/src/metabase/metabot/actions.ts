@@ -24,6 +24,9 @@ export const setEntityType = createAction(SET_ENTITY_TYPE);
 export const SET_QUERY_TEXT = "metabase/metabot/SET_QUERY_TEXT";
 export const setQueryText = createAction<string>(SET_QUERY_TEXT);
 
+export const SET_QUERY_STATUS = "metabase/metabot/SET_QUERY_STATUS";
+export const setQueryStatus = createAction<string>(SET_QUERY_STATUS);
+
 export const SET_FEEDBACK_TYPE = "metabase/metabot/SET_FEEDBACK_TYPE";
 export const setFeedbackType =
   createAction<MetabotFeedbackType>(SET_FEEDBACK_TYPE);
@@ -52,8 +55,13 @@ export const RUN_TEXT_QUERY = "metabase/metabot/RUN_TEXT_QUERY";
 export const runTextQuery = createThunkAction(
   RUN_TEXT_QUERY,
   () => async (dispatch: Dispatch) => {
-    await dispatch(fetchCard());
-    await dispatch(fetchQueryResults());
+    try {
+      dispatch(setQueryStatus("running"));
+      await dispatch(fetchCard());
+      await dispatch(fetchQueryResults());
+    } finally {
+      dispatch(setQueryStatus("complete"));
+    }
   },
 );
 
@@ -61,7 +69,12 @@ export const RUN_CARD_QUERY = "metabase/metabot/RUN_CARD_QUERY";
 export const runCardQuery = createThunkAction(
   RUN_CARD_QUERY,
   () => async (dispatch: Dispatch) => {
-    await dispatch(fetchQueryResults());
+    try {
+      dispatch(setQueryStatus("running"));
+      await dispatch(fetchQueryResults());
+    } finally {
+      dispatch(setQueryStatus("complete"));
+    }
   },
 );
 

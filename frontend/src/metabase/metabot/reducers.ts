@@ -6,6 +6,7 @@ import {
   SET_ENTITY_ID,
   SET_ENTITY_TYPE,
   SET_FEEDBACK_TYPE,
+  SET_QUERY_STATUS,
   SET_QUERY_TEXT,
 } from "./actions";
 
@@ -50,6 +51,7 @@ export const queryText = handleActions(
 
 export const queryStatus = handleActions(
   {
+    [SET_QUERY_STATUS]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => "idle" },
   },
   "idle",

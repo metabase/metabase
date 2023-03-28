@@ -4,14 +4,13 @@ import { jt, t } from "ttag";
 import { getUser } from "metabase/selectors/user";
 import { DatabaseId, MetabotFeedbackType, User } from "metabase-types/api";
 import {
-  Dispatch,
   MetabotFeedbackStatus,
   MetabotQueryStatus,
   State,
 } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
-import { setQueryText } from "../../actions";
+import { runTextQuery, setQueryText } from "../../actions";
 import {
   getFeedbackStatus,
   getFeedbackType,
@@ -54,11 +53,11 @@ const mapStateToProps = (state: State): StateProps => ({
   user: getUser(state),
 });
 
-const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onChangeQuery: queryText => dispatch(setQueryText(queryText)),
-  onSubmitQuery: () => undefined,
+const mapDispatchToProps: DispatchProps = {
+  onChangeQuery: setQueryText,
+  onSubmitQuery: runTextQuery,
   onDatabaseChange: () => undefined,
-});
+};
 
 const MetabotHeader = ({
   queryText,
