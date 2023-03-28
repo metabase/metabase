@@ -13,7 +13,7 @@ export type MetabotFeedbackStatus = "idle" | "complete";
 
 export interface MetabotState {
   entityId: MetabotEntityId | null;
-  entityType: MetabotEntityType;
+  entityType: MetabotEntityType | null;
   card: Card | null;
   originalCard: Card | null;
   queryText: string;
