@@ -52,7 +52,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
-   [ring.middleware.multipart-params :as mp]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
@@ -973,9 +972,10 @@ saved later when it is ready."
 
 (api/defendpoint ^:multipart POST "/from-csv"
   "Create a table and model populated with the values from the attached CSV."
-  [:as body]
-  (println "hello")
-  (println (:body body))
-  {:status 200, :body (pr-str (:body body))})
+  [:as {raw-params :params}]
+  (let [f (get raw-params "file")]
+    (println f)
+    (println (slurp (:tempfile f)))
+    {:status 200}))
 
 (api/define-routes)
