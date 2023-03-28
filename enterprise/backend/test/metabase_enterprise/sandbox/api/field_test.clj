@@ -30,16 +30,16 @@
                 {:gtaps      {:venues {:query      (mt.tu/restricted-column-query (mt/id))
                                        :remappings {:cat [:dimension (mt/id :venues :category_id)]}}}
                  :attributes {:cat 50}}]
-               #_["native"
-                  {:gtaps      {:venues {:query
-                                         (mt/native-query
-                                           {:query "SELECT id, name, category_id FROM venues WHERE category_id = {{cat}}"
-                                            :template-tags {"cat" {:id           "__MY_CAT__"
-                                                                   :name         "cat"
-                                                                   :display-name "Cat id"
-                                                                   :type         :number}}})
-                                         :remappings {:cat [:variable [:template-tag "cat"]]}}}
-                   :attributes {:cat 50}}]]]
+               ["native"
+                {:gtaps      {:venues {:query
+                                       (mt/native-query
+                                         {:query "SELECT id, name, category_id FROM venues WHERE category_id = {{cat}}"
+                                          :template-tags {"cat" {:id           "__MY_CAT__"
+                                                                 :name         "cat"
+                                                                 :display-name "Cat id"
+                                                                 :type         :number}}})
+                                       :remappings {:cat [:variable [:template-tag "cat"]]}}}
+                 :attributes {:cat 50}}]]]
         (testing (format "GTAP rule is a %s query" query-type)
           (met/with-gtaps gtap-rule
             (testing (str "When I call the FieldValues API endpoint for a Field that I have segmented table access only "
