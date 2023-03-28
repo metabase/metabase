@@ -21,12 +21,20 @@ export const setQueryText = createAction(SET_QUERY_TEXT);
 export const SET_FEEDBACK_TYPE = "metabase/metabot/SET_FEEDBACK_TYPE";
 export const setFeedbackType = createAction(SET_FEEDBACK_TYPE);
 
+export const RUN_QUERY = "metabase/metabot/RUN_QUERY";
+export const runQuery = createAction(RUN_QUERY);
+
+export const QUERY_COMPLETED = "metabase/metabot/QUERY_COMPLETED";
+export const queryCompleted = createAction(QUERY_COMPLETED);
+
 export const RUN_TEXT_QUERY = "metabase/metabot/RUN_TEXT_QUERY";
 export const runTextQuery = createThunkAction(
   RUN_TEXT_QUERY,
   () => async (dispatch: Dispatch) => {
+    dispatch(runQuery());
     await dispatch(fetchCard());
     await dispatch(fetchQueryResults());
+    dispatch(queryCompleted());
   },
 );
 
@@ -34,7 +42,9 @@ export const RUN_CARD_QUERY = "metabase/metabot/RUN_CARD_QUERY";
 export const runCardQuery = createThunkAction(
   RUN_CARD_QUERY,
   () => async (dispatch: Dispatch) => {
+    dispatch(runQuery());
     await dispatch(fetchQueryResults());
+    dispatch(queryCompleted());
   },
 );
 

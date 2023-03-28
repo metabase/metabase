@@ -3,9 +3,9 @@ import {
   FETCH_CARD,
   FETCH_QUERY_RESULTS,
   INIT,
+  QUERY_COMPLETED,
   RESET,
-  RUN_CARD_QUERY,
-  RUN_TEXT_QUERY,
+  RUN_QUERY,
   SET_FEEDBACK_TYPE,
   SET_QUERY_TEXT,
 } from "./actions";
@@ -53,8 +53,8 @@ export const queryText = handleActions(
 
 export const queryStatus = handleActions(
   {
-    [RUN_TEXT_QUERY]: { next: () => "complete" },
-    [RUN_CARD_QUERY]: { next: () => "complete" },
+    [RUN_QUERY]: { next: () => "running" },
+    [QUERY_COMPLETED]: { next: () => "complete" },
     [RESET]: { next: () => "idle" },
   },
   "idle",
