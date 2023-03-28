@@ -9,7 +9,10 @@ import {
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
 import { Expression } from "metabase-types/types/Query";
-import ExpressionStep, { ExpressionStepProps } from "./ExpressionStep";
+
+import type { NotebookStepUiComponentProps } from "../types";
+import { createMockNotebookStep } from "../test-utils";
+import ExpressionStep from "./ExpressionStep";
 
 describe("Notebook Editor > Expression Step", () => {
   it("should handle updating existing expression", async () => {
@@ -84,7 +87,7 @@ const createMockQueryForExpressions = (
 };
 
 function setup(
-  additionalProps?: Partial<ExpressionStepProps>,
+  additionalProps?: Partial<NotebookStepUiComponentProps>,
   expressions?: Record<string, Expression>,
 ) {
   const updateQuery = jest.fn();
@@ -99,6 +102,10 @@ function setup(
   query.removeExpression = removeExpression;
 
   const props = {
+    step: createMockNotebookStep({
+      type: "expression",
+      query,
+    }),
     color: "#93A1AB",
     query,
     updateQuery,
