@@ -5,6 +5,7 @@ import { color as c } from "metabase/lib/colors";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import Icon from "metabase/components/Icon";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import ExpandingContent from "metabase/components/ExpandingContent";
 
 import type Question from "metabase-lib/Question";
@@ -104,6 +105,7 @@ function NotebookStep({
   const color = getColor();
   const canPreview = step?.previewQuery?.isValid?.();
   const hasPreviewButton = !isPreviewOpen && canPreview;
+  const canRevert = typeof step.revert === "function";
 
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
@@ -113,13 +115,18 @@ function NotebookStep({
       >
         <StepHeader color={color}>
           {title}
-          <Icon
-            name="close"
-            className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
-            tooltip={t`Remove`}
-            onClick={handleClickRevert}
-            data-testid="remove-step"
-          />
+          {canRevert && (
+            <IconButtonWrapper
+              className="ml-auto text-light text-medium-hover hover-child"
+              onClick={handleClickRevert}
+            >
+              <Icon
+                name="close"
+                tooltip={t`Remove`}
+                aria-label={t`Remove step`}
+              />
+            </IconButtonWrapper>
+          )}
         </StepHeader>
 
         {NotebookStepComponent && (

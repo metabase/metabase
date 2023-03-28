@@ -97,7 +97,7 @@ function removeExpression(name) {
 
 function removeAllExpressions() {
   getNotebookStep("expression", { stage: 1 }).within(() => {
-    cy.findByTestId("remove-step").click({ force: true });
+    cy.findByLabelText("Remove step").click({ force: true });
   });
 }
 
