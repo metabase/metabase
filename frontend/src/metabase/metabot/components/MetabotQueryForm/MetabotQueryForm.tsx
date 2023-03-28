@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
+import { MetabotFeedbackType } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import MetabotQueryEditor from "../MetabotQueryEditor";
 import {
@@ -12,17 +13,18 @@ import {
 
 interface MetabotQueryFormProps {
   question: Question;
+  onFeedbackTypeChange: (feedbackType?: MetabotFeedbackType) => void;
   onSubmit: (question: Question) => void;
-  onCancel: () => void;
 }
 
 export const MetabotQueryForm = ({
   question,
+  onFeedbackTypeChange,
   onSubmit,
-  onCancel,
 }: MetabotQueryFormProps) => {
   const [updatedQuestion, setUpdatedQuestion] = useState(question);
   const handleSubmit = () => onSubmit(updatedQuestion);
+  const handleCancel = () => onFeedbackTypeChange();
 
   return (
     <QueryEditorRoot>
@@ -39,7 +41,7 @@ export const MetabotQueryForm = ({
         />
       </QueryEditorContainer>
       <QueryEditorFooter>
-        <Button onClick={onCancel}>{t`Cancel`}</Button>
+        <Button onClick={handleCancel}>{t`Cancel`}</Button>
         <Button primary onClick={handleSubmit}>{t`Done`}</Button>
       </QueryEditorFooter>
     </QueryEditorRoot>

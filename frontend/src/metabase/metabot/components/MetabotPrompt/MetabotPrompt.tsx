@@ -1,9 +1,4 @@
-import React, {
-  ChangeEvent,
-  KeyboardEvent,
-  useCallback,
-  useState,
-} from "react";
+import React, { ChangeEvent, KeyboardEvent, useCallback } from "react";
 import { User } from "metabase-types/api";
 import {
   PromptInput,
@@ -13,40 +8,36 @@ import {
 } from "./MetabotPrompt.styled";
 
 export interface MetabotPromptProps {
+  query: string;
   user?: User;
   placeholder?: string;
-  initialQuery?: string;
-  isRunning?: boolean;
-  onRun: (questionText: string) => void;
+  isLoading?: boolean;
+  onQueryChange: (query: string) => void;
+  onQuerySubmit: () => void;
 }
 
 const MetabotPrompt = ({
+  query,
   user,
   placeholder,
-  initialQuery = "",
-  isRunning = false,
-  onRun,
+  isLoading = false,
+  onQueryChange,
+  onQuerySubmit,
 }: MetabotPromptProps) => {
-  const [query, setQuery] = useState(initialQuery);
-
   const handleTextChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      setQuery(event.target.value);
+      onQueryChange(event.target.value);
     },
-    [],
+    [onQueryChange],
   );
-
-  const handleRunClick = useCallback(() => {
-    onRun(query);
-  }, [query, onRun]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
-        onRun(query);
+        onQuerySubmit();
       }
     },
-    [query, onRun],
+    [onQuerySubmit],
   );
 
   return (
@@ -61,10 +52,10 @@ const MetabotPrompt = ({
       />
       {query.length > 0 ? (
         <PromptRunButton
-          isRunning={isRunning}
+          isRunning={isLoading}
           compact
           isDirty
-          onRun={handleRunClick}
+          onRun={onQuerySubmit}
         />
       ) : null}
     </PromptSection>

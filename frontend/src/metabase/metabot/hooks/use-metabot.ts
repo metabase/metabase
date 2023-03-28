@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
-import { Dataset } from "metabase-types/api";
+import { Dataset, MetabotFeedbackType } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 
 interface UseMetabotProps {
@@ -9,50 +9,48 @@ interface UseMetabotProps {
 }
 
 interface UseMetabotResult {
+  query: string;
+  feedbackType?: MetabotFeedbackType;
   question?: Question;
   results?: [Dataset];
-  loading: boolean;
+  isLoading: boolean;
   error?: unknown;
-  handleRun: (query: string) => void;
-  handleRerun: (question: Question) => void;
+  handleQueryChange: (query: string) => void;
+  handleQuerySubmit: () => void;
+  handleFeedbackTypeChange: (feedbackType?: MetabotFeedbackType) => void;
+  handleFeedbackSubmit: (message: string) => void;
 }
 
 const useMetabot = ({
-  initialQuery,
+  initialQuery = "",
   onFetchQuestion,
 }: UseMetabotProps): UseMetabotResult => {
-  const [question, setQuestion] = useState<Question>();
+  const [query, setQuery] = useState(initialQuery);
+  const [feedbackType, setFeedbackType] = useState<MetabotFeedbackType>();
   const [questionState, loadQuestion] = useAsyncFn(onFetchQuestion);
   const [resultState, loadResults] = useAsyncFn(fetchResults);
 
-  const handleRun = useCallback(
-    (query: string) => {
-      loadQuestion(query).then(loadResults);
-    },
-    [loadQuestion, loadResults],
-  );
-
-  const handleRerun = useCallback(
-    (question: Question) => {
-      setQuestion(question);
-      loadResults(question);
-    },
-    [loadResults],
-  );
+  const handleQuerySubmit = useCallback(() => {
+    loadQuestion(query).then(loadResults);
+  }, [query, loadQuestion, loadResults]);
 
   useEffect(() => {
     if (initialQuery) {
-      handleRun(initialQuery);
+      loadQuestion(initialQuery).then(loadResults);
     }
-  }, [initialQuery, handleRun]);
+  }, [initialQuery, loadQuestion, loadResults]);
 
   return {
-    question: question ?? questionState.value,
+    query,
+    feedbackType,
+    question: questionState.value,
     results: resultState.value,
-    loading: questionState.loading || resultState.loading,
+    isLoading: questionState.loading || resultState.loading,
     error: questionState.error ?? resultState.error,
-    handleRun,
-    handleRerun,
+    handleQueryChange: setQuery,
+    handleQuerySubmit,
+    handleFeedbackTypeChange: setFeedbackType,
+    handleFeedbackSubmit: () => undefined,
   };
 };
 

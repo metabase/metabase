@@ -13,41 +13,41 @@ import {
 } from "./MetabotFeedbackForm.styled";
 
 export interface MetabotFeedbackFormProps {
-  type: MetabotFeedbackType | undefined;
+  feedbackType: MetabotFeedbackType | undefined;
   isSubmitted: boolean;
-  onTypeChange: (type: MetabotFeedbackType) => void;
-  onSubmit: (message: string) => void;
+  onFeedbackTypeChange: (type: MetabotFeedbackType) => void;
+  onFeedbackSubmit: (message: string) => void;
 }
 
 const MetabotFeedbackForm = ({
-  type,
+  feedbackType,
   isSubmitted,
-  onTypeChange,
-  onSubmit,
+  onFeedbackTypeChange,
+  onFeedbackSubmit,
 }: MetabotFeedbackFormProps) => {
   return (
     <FormRoot>
       <FeedbackFormContent
-        type={type}
+        feedbackType={feedbackType}
         isSubmitted={isSubmitted}
-        onTypeChange={onTypeChange}
-        onSubmit={onSubmit}
+        onFeedbackTypeChange={onFeedbackTypeChange}
+        onFeedbackSubmit={onFeedbackSubmit}
       />
     </FormRoot>
   );
 };
 
 const FeedbackFormContent = ({
-  type,
+  feedbackType,
   isSubmitted,
-  onTypeChange,
-  onSubmit,
+  onFeedbackTypeChange,
+  onFeedbackSubmit,
 }: MetabotFeedbackFormProps) => {
   if (isSubmitted) {
     return <MetabotMessage>{t`Thanks for the feedback!`}</MetabotMessage>;
   }
 
-  switch (type) {
+  switch (feedbackType) {
     case "great":
       return <MetabotMessage>{t`Glad to hear it!`}</MetabotMessage>;
     case "wrong-data":
@@ -55,7 +55,7 @@ const FeedbackFormContent = ({
         <FeedbackMessageForm
           title={t`What data should it have used?`}
           placeholder={t`Type the name of the data it should have used.`}
-          onSubmit={onSubmit}
+          onSubmit={onFeedbackSubmit}
         />
       );
     case "incorrect-result":
@@ -63,37 +63,35 @@ const FeedbackFormContent = ({
         <FeedbackMessageForm
           title={t`Sorry about that.`}
           placeholder={t`Describe what’s wrong`}
-          onSubmit={onSubmit}
+          onSubmit={onFeedbackSubmit}
         />
       );
     default:
-      return <FeedbackTypeSelect onTypeChange={onTypeChange} />;
+      return <FeedbackTypeSelect onFeedbackTypeChange={onFeedbackTypeChange} />;
   }
 };
 
 interface FeedbackTypeSelectProps {
-  onTypeChange: (type: MetabotFeedbackType) => void;
+  onFeedbackTypeChange: (type: MetabotFeedbackType) => void;
 }
 
-const FeedbackTypeSelect = ({ onTypeChange }: FeedbackTypeSelectProps) => {
-  const handleGreatChange = () => onTypeChange("great");
-  const handleWrongDataChange = () => onTypeChange("wrong-data");
-  const handleIncorrectResultChange = () => onTypeChange("incorrect-result");
-  const handleInvalidSqlChange = () => onTypeChange("invalid-sql");
+const FeedbackTypeSelect = ({
+  onFeedbackTypeChange,
+}: FeedbackTypeSelectProps) => {
+  const handleGreat = () => onFeedbackTypeChange("great");
+  const handleWrongData = () => onFeedbackTypeChange("wrong-data");
+  const handleIncorrectResult = () => onFeedbackTypeChange("incorrect-result");
+  const handleInvalidSql = () => onFeedbackTypeChange("invalid-sql");
 
   return (
     <FormSection>
       <MetabotMessage>{t`How did I do?`}</MetabotMessage>
-      <Button onClick={handleGreatChange}>{t`This is great!`}</Button>
-      <Button onClick={handleWrongDataChange}>
-        {t`This used the wrong data.`}
-      </Button>
-      <Button onClick={handleIncorrectResultChange}>
+      <Button onClick={handleGreat}>{t`This is great!`}</Button>
+      <Button onClick={handleWrongData}>{t`This used the wrong data.`}</Button>
+      <Button onClick={handleIncorrectResult}>
         {t`This result isn’t correct.`}
       </Button>
-      <Button onClick={handleInvalidSqlChange}>
-        {t`This isn’t valid SQL.`}
-      </Button>
+      <Button onClick={handleInvalidSql}>{t`This isn’t valid SQL.`}</Button>
     </FormSection>
   );
 };

@@ -17,17 +17,17 @@ import {
 interface MetabotQueryBuilderProps {
   question?: Question;
   results?: [Dataset];
-  loading?: boolean;
+  isLoading?: boolean;
   error?: unknown;
 }
 
 const MetabotQueryBuilder = ({
   question,
   results,
-  loading,
+  isLoading,
   error,
 }: MetabotQueryBuilderProps) => {
-  if (loading) {
+  if (isLoading) {
     return <LoadingState loadingMessage={t`Doing science...`} />;
   }
 

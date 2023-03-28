@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { useAsyncFn } from "react-use";
+import React from "react";
 import { t } from "ttag";
-import { Dataset, MetabotFeedbackType, User } from "metabase-types/api";
+import { Dataset, User } from "metabase-types/api";
 import Question from "metabase-lib/Question";
-import { fetchResults } from "../../utils/question";
+import useMetabot from "../../hooks/use-metabot";
+import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
-import MetabotMessage from "../MetabotMessage";
-import MetabotFeedback from "../MetabotFeedback";
+import MetabotFeedbackForm from "../MetabotFeedbackForm";
+import MetabotQueryForm from "../MetabotQueryForm";
 import { MetabotHeader, MetabotRoot } from "./Metabot.styled";
 
 export interface QueryResults {
@@ -31,51 +31,65 @@ const Metabot = ({
   initialQuery,
   onFetchQuestion,
 }: MetabotProps) => {
-  const [{ loading, value, error }, handleRun] = useAsyncFn((query: string) =>
-    onFetchQuestion(query).then(fetchResults),
-  );
-  const [feedbackType, setFeedbackType] = useState<MetabotFeedbackType>();
-  const isInvalidSql = feedbackType === "invalid-sql";
-
-  useEffect(() => {
-    if (initialQuery) {
-      handleRun(initialQuery);
-    }
-  }, [initialQuery, handleRun]);
+  const {
+    query,
+    question,
+    results,
+    isLoading,
+    error,
+    feedbackType,
+    handleQueryChange,
+    handleQuerySubmit,
+    handleFeedbackTypeChange,
+    handleFeedbackSubmit,
+  } = useMetabot({
+    initialQuery,
+    onFetchQuestion,
+  });
 
   return (
     <MetabotRoot>
       <MetabotHeader>
         <MetabotMessage>
-          {isInvalidSql
+          {feedbackType === "invalid-sql"
             ? t`Sorry about that. Let me know what the SQL should've been.`
             : title}
         </MetabotMessage>
         <MetabotPrompt
+          query={query}
           user={user}
           placeholder={placeholder}
-          initialQuery={initialQuery}
-          isRunning={loading}
-          onRun={handleRun}
+          isLoading={isLoading}
+          onQueryChange={handleQueryChange}
+          onQuerySubmit={handleQuerySubmit}
         />
       </MetabotHeader>
 
-      {!isInvalidSql && (
+      {feedbackType !== "invalid-sql" && (
         <MetabotQueryBuilder
-          question={value?.question}
-          results={value?.results}
-          loading={loading}
+          question={question}
+          results={results}
+          isLoading={isLoading}
           error={error}
         />
       )}
 
-      {value && !loading ? (
-        <MetabotFeedback
-          results={value}
-          feedbackType={feedbackType}
-          onChangeFeedbackType={setFeedbackType}
+      {question && feedbackType === "invalid-sql" && (
+        <MetabotQueryForm
+          question={question}
+          onFeedbackTypeChange={handleFeedbackTypeChange}
+          onSubmit={() => undefined}
         />
-      ) : null}
+      )}
+
+      {question && feedbackType !== "invalid-sql" && (
+        <MetabotFeedbackForm
+          feedbackType={feedbackType}
+          isSubmitted={false}
+          onFeedbackTypeChange={handleFeedbackTypeChange}
+          onFeedbackSubmit={handleFeedbackSubmit}
+        />
+      )}
     </MetabotRoot>
   );
 };
