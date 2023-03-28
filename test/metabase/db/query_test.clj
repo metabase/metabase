@@ -76,8 +76,8 @@
                :database (mt/id)}]
         (verify-same-query q)))))
 
-(deftest nonsql-dialects-return-nil-test
-  (testing "Passing a mongodb query through format-sql returns nil"
+(deftest nonsql-dialects-return-original-string-test
+  (testing "Passing a mongodb query through format-sql returns the original string"
     (with-open [r (io/reader (io/resource "metabase/db/mongodbquery.json"))]
       (let [query                 (slurp r)
             ;; Formatting a non-sql string returns nothing
@@ -85,8 +85,8 @@
             ;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
             ;; This is a corner case since the system should always be using the right driver
             weird-formatted-query (mdb.query/format-sql query :postgres)]
-        (testing "Formatting a non-sql query returns nothing"
-          (is (nil? formatted-query)))
+        (testing "Formatting a non-sql query returns the same string"
+          (is (= query formatted-query)))
         (testing "The wrong formatter will change the format..."
           (is (not= query weird-formatted-query)))
         (testing "...but the resulting data is still the same"
