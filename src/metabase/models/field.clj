@@ -413,7 +413,7 @@
   (->> (for [dim dimensions]
          (-> (into (sorted-map) dim)
              (dissoc :field_id :updated_at) ; :field_id is implied by the nesting under that field.
-             (update :human_readable_field_id serdes/*export-field-fk*)))
+             (update :human_readable_field_id serdes/export-field-fk)))
        (sort-by :created_at)))
 
 (defmethod serdes/extract-one "Field"
@@ -423,14 +423,14 @@
                 (assoc field :dimensions (t2/select Dimension :field_id (:id field))))]
     (-> (serdes/extract-one-basics "Field" field)
         (update :dimensions         extract-dimensions)
-        (update :table_id           serdes/*export-table-fk*)
-        (update :fk_target_field_id serdes/*export-field-fk*))))
+        (update :table_id           serdes/export-table-fk)
+        (update :fk_target_field_id serdes/export-field-fk))))
 
 (defmethod serdes/load-xform "Field"
   [field]
   (-> (serdes/load-xform-basics field)
-      (update :table_id           serdes/*import-table-fk*)
-      (update :fk_target_field_id serdes/*import-field-fk*)))
+      (update :table_id           serdes/import-table-fk)
+      (update :fk_target_field_id serdes/import-field-fk)))
 
 (defmethod serdes/load-find-local "Field"
   [path]

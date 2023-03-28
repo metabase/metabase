@@ -367,9 +367,9 @@
   [dashcard]
   (-> dashcard
       (dissoc :serdes/meta)
-      (update :card_id                serdes/*import-fk* 'Card)
-      (update :action_id              serdes/*import-fk* 'Action)
-      (update :dashboard_id           serdes/*import-fk* 'Dashboard)
+      (update :card_id                serdes/import-fk 'Card)
+      (update :action_id              serdes/import-fk 'Action)
+      (update :dashboard_id           serdes/import-fk 'Dashboard)
       (update :created_at             #(if (string? %) (u.date/parse %) %))
       (update :parameter_mappings     serdes/import-parameter-mappings)
       (update :visualization_settings serdes/import-visualization-settings)))
