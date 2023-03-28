@@ -21,24 +21,24 @@
 (mu/defn ^:private resolve-field-id :- lib.metadata/ColumnMetadata
   "Integer Field ID: get metadata from the metadata provider. This is probably not 100% the correct thing to do if
   this isn't the first stage of the query, but we can fix that behavior in a follow-on"
-  [query          :- ::lib.schema/query
-   _stage-number  :- :int
-   field-id       :- ::lib.schema.id/field]
+  [query         :- ::lib.schema/query
+   _stage-number :- :int
+   field-id      :- ::lib.schema.id/field]
   (lib.metadata/field query field-id))
 
 (mu/defn ^:private resolve-field-name :- lib.metadata/ColumnMetadata
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
   have a native query or a Saved Question source query or whatever get it from our results metadata."
-  [query         :- ::lib.schema/query
-   stage-number  :- :int
-   column-name   :- ::lib.schema.common/non-blank-string]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column-name  :- ::lib.schema.common/non-blank-string]
   (or (some (fn [column]
               (when (= (:name column) column-name)
                 column))
-            (if-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-              (let [previous-stage (lib.util/query-stage query previous-stage-number)]
-                (:lib/stage-metadata previous-stage))
-              (get-in (lib.util/query-stage query stage-number) [:lib/stage-metadata :columns])))
+            (let [stage (if-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+                          (lib.util/query-stage query previous-stage-number)
+                          (lib.util/query-stage query stage-number))]
+              (get-in stage [:lib/stage-metadata :columns])))
       (throw (ex-info (i18n/tru "Invalid :field clause: column {0} does not exist" (pr-str column-name))
                       {:name         column-name
                        :query        query

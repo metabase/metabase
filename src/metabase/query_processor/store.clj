@@ -13,6 +13,7 @@
   but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
   those Fields potentially dozens of times in a single query execution."
   (:require
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
@@ -20,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
+   [pretty.core :as pretty]
    [schema.core :as s]
    [toucan2.core :as t2]))
 
@@ -315,3 +317,44 @@
   ;; for the unique key use a gensym prefixed by the namespace to make for easier store debugging if needed
   (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
     `(cached-fn ~ks (fn [] ~@body))))
+
+(def metadata-provider
+  "A MLv2 Metadata provider using the current QP store."
+  (reify
+    lib.metadata.protocols/MetadataProvider
+    (database [_this]
+      (some-> (database) (assoc :lib/type :metadata/database)))
+
+    (table [_this table-id]
+      (some-> (table table-id) (assoc :lib/type :metadata/table)))
+
+    (field [_this field-id]
+      (some-> (field field-id) (assoc :lib/type :metadata/field)))
+
+    (card [_this card-id]
+      (cached [:card card-id]
+        (some-> (t2/select-one :metabase.models.card/Card :id card-id) (assoc :lib/type :metadata/card))))
+
+    (metric [_this metric-id]
+      (cached [:metric metric-id]
+        (some-> (t2/select-one :metabase.models.metric/Metric :id metric-id) (assoc :lib/type :metadata/metric))))
+
+    (segment [_this segment-id]
+      (cached [:segment segment-id]
+        (some-> (t2/select-one :metabase.models.segment/Segment :id segment-id) (assoc :lib/type :metadata/segment))))
+
+    (tables [_metadata-provider]
+      (cached [:tables]
+        (not-empty
+         (for [table (t2/select :metabase.models.table/Table :db_id (:id (database)))]
+           (assoc table :lib/type :metadata/table)))))
+
+    (fields [_metadata-provider table-id]
+      (cached [:fields table-id]
+        (not-empty
+         (for [field (t2/select :metabase.models.field/Field :table_id table-id)]
+           (assoc field :lib/type :metadata/field)))))
+
+    pretty/PrettyPrintable
+    (pretty [_this]
+      `metadata-provider)))

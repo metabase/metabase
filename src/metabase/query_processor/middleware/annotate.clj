@@ -19,8 +19,10 @@
    [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.lib.core :as lib]
    [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [metabase.lib.convert :as lib.convert]))
 
 (def ^:private Col
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -364,58 +366,17 @@
     [clause-name & _]
     (name clause-name)))
 
-(declare aggregation-display-name)
-
-(s/defn ^:private aggregation-arg-display-name :- su/NonBlankString
-  "Name to use for an aggregation clause argument such as a Field when constructing the complete aggregation name."
-  [inner-query, ag-arg :- Object]
-  (or (when (mbql.preds/Field? ag-arg)
-        (when-let [info (col-info-for-field-clause inner-query ag-arg)]
-          (some info [:display_name :name])))
-      (aggregation-display-name inner-query ag-arg)))
-
 (s/defn aggregation-display-name :- su/NonBlankString
   "Return an appropriate user-facing display name for an aggregation clause."
   [inner-query ag-clause]
-  (mbql.u/match-one ag-clause
-    [:aggregation-options _ (options :guard :display-name)]
-    (:display-name options)
-
-    [:aggregation-options ag _]
-    #_:clj-kondo/ignore
-    (recur ag)
-
-    [(operator :guard #{:+ :- :/ :*}) & args]
-    (str/join (format " %s " (name operator))
-              (for [arg args]
-                (expression-arg-display-name (partial aggregation-arg-display-name inner-query) arg)))
-
-    [:count]             (tru "Count")
-    [:case]              (tru "Case")
-    [:distinct    arg]   (tru "Distinct values of {0}"    (aggregation-arg-display-name inner-query arg))
-    [:count       arg]   (tru "Count of {0}"              (aggregation-arg-display-name inner-query arg))
-    [:avg         arg]   (tru "Average of {0}"            (aggregation-arg-display-name inner-query arg))
-    ;; cum-count and cum-sum get names for count and sum, respectively (see explanation in `aggregation-name`)
-    [:cum-count   arg]   (tru "Count of {0}"              (aggregation-arg-display-name inner-query arg))
-    [:cum-sum     arg]   (tru "Sum of {0}"                (aggregation-arg-display-name inner-query arg))
-    [:stddev      arg]   (tru "SD of {0}"                 (aggregation-arg-display-name inner-query arg))
-    [:sum         arg]   (tru "Sum of {0}"                (aggregation-arg-display-name inner-query arg))
-    [:min         arg]   (tru "Min of {0}"                (aggregation-arg-display-name inner-query arg))
-    [:max         arg]   (tru "Max of {0}"                (aggregation-arg-display-name inner-query arg))
-    [:var         arg]   (tru "Variance of {0}"           (aggregation-arg-display-name inner-query arg))
-    [:median      arg]   (tru "Median of {0}"             (aggregation-arg-display-name inner-query arg))
-    [:percentile  arg p] (tru "{0}th percentile of {1}" p (aggregation-arg-display-name inner-query arg))
-
-    ;; until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
-    [:sum-where   arg _] (tru "Sum of {0} matching condition" (aggregation-arg-display-name inner-query arg))
-    [:share       _]     (tru "Share of rows matching condition")
-    [:count-where _]     (tru "Count of rows matching condition")
-
-    (_ :guard mbql.preds/Field?)
-    (:display_name (col-info-for-field-clause inner-query ag-clause))
-
-    _
-    (aggregation-name ag-clause)))
+  (lib/display-name
+   (lib/query
+    qp.store/metadata-provider
+    (lib.convert/->pMBQL (lib.convert/legacy-query-from-inner-query
+                          (:id (qp.store/database))
+                          inner-query)))
+   -1
+   (lib.convert/->pMBQL ag-clause)))
 
 (defn- ag->name-info [inner-query ag]
   {:name         (aggregation-name ag)

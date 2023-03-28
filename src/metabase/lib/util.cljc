@@ -86,8 +86,17 @@
   (let [previous-stages (if source-query
                           (inner-query->stages source-query)
                           [])
+        source-metadata (when source-metadata
+                          (-> (if (vector? source-metadata)
+                                {:columns source-metadata}
+                                source-metadata)
+                              (update :columns (fn [columns]
+                                                 (for [column columns]
+                                                   (assoc column :lib/type :metadata/field))))
+                              (assoc :lib/type :metadata/results)))
         previous-stages (cond-> previous-stages
-                          source-metadata (assoc-in [(dec (count previous-stages)) :lib/stage-metadata] source-metadata))
+                          source-metadata
+                          (assoc-in [(dec (count previous-stages)) :lib/stage-metadata] source-metadata))
         stage-type      (if (:native inner-query)
                           :mbql.stage/native
                           :mbql.stage/mbql)
