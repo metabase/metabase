@@ -2085,7 +2085,7 @@
           (is (seq metadata) "Did not get metadata")
           (t2/update! 'Card {:id model-id}
                       {:result_metadata (json/generate-string
-                                          (assoc-in metadata [0 :id]
+                                         (assoc-in metadata [0 :id]
                                                     (mt/id :products :category)))}))
         ;; ...so instead we create a question on top of this model (note that
         ;; metadata must be present on the model) and use the question on the
