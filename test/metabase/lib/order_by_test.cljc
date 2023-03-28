@@ -277,16 +277,10 @@
                  {:id (meta/id :categories :name), :name "NAME"}]
                 (lib/orderable-columns query)))))))
 
-(defn- FIXME-is-empty
-  "FIXME: Currently no way to add an `:is-empty` clause inline."
-  [expr]
-  (fn [query stage-number]
-    (lib/is-empty query stage-number expr)))
-
 (deftest ^:parallel orderable-expressions-exclude-boolean-expressions-test
   (testing "orderable-columns should filter out boolean expressions."
     (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                    (lib/expression "Name is empty?"  (FIXME-is-empty (lib/field "VENUES" "NAME"))))]
+                    (lib/expression "Name is empty?"  (lib/is-empty (lib/field "VENUES" "NAME"))))]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
         (is (=? [{:id (meta/id :venues :id), :name "ID"}
                  {:id (meta/id :venues :name), :name "NAME"}
@@ -298,26 +292,12 @@
                  {:id (meta/id :categories :name), :name "NAME"}]
                 (lib/orderable-columns query)))))))
 
-(defn- FIXME-=
-  "FIXME: [[metabase.lib.core]] doesn't have a test-friendly version of `:=` yet."
-  [a b]
-  (fn [query stage-number]
-    (let [a (if (fn? a)
-              (a query stage-number)
-              a)
-          b (if (fn? b)
-              (b query stage-number)
-              b)]
-      ;; This is another FIXME!
-      #_{:clj-kondo/ignore [:invalid-arity]}
-      (lib/= query stage-number a b))))
-
 (deftest ^:parallel orderable-explicit-joins-test
   (testing "orderable-columns should include columns from explicit joins"
     (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
-                                   (FIXME-=
+                                   (lib/=
                                     (lib/field "VENUES" "CATEGORY_ID")
                                     (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")))
                                   (lib/with-join-alias "Cat")
