@@ -1019,7 +1019,7 @@
   [driver _top-level-clause honeysql-form {aggregations :aggregation, :as inner-query}]
   (let [honeysql-ags (vec (for [ag   aggregations
                                 :let [ag-expr  (->honeysql driver ag)
-                                      ag-name  (annotate/col-info-for-aggregation-clause inner-query ag)
+                                      ag-name  (annotate/aggregation-name inner-query ag)
                                       ag-alias (->honeysql driver (hx/identifier
                                                                    :field-alias
                                                                    (driver/escape-alias driver ag-name)))]]
