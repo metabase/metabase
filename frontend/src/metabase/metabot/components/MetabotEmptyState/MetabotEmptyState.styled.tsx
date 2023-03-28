@@ -7,6 +7,7 @@ export const EmptyStateRoot = styled.div`
   justify-content: center;
   align-items: center;
   flex: 1 0 auto;
+  background-color: ${color("bg-light")};
 `;
 
 export const EmptyStateIcon = styled(Icon)`
