@@ -14,6 +14,7 @@
 (defn- create-udfs!
   "Registers the JSON manipulation functions for an H2 database."
   [^JdbcConnection conn]
+  ;; JSON_VALUE is tested in metabase.db.schema-migrations-test/migrate-field-json-unfolding-type-test
   (.execute (.createStatement conn) "
 CREATE ALIAS IF NOT EXISTS JSON_VALUE AS $$
 import org.json.simple.JSONObject;
