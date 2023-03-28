@@ -1,23 +1,14 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import Question from "metabase-lib/Question";
+import MetabotQueryEditor from "../MetabotQueryEditor";
 import {
-  FormFooter,
-  FormRoot,
-  FormSectionTitle,
+  QueryEditorFooter,
+  QueryEditorContainer,
+  QueryEditorRoot,
+  QueryEditorTitle,
 } from "./MetabotQueryForm.styled";
-
-const NATIVE_EDITOR_OPTS = {
-  viewHeight: "full",
-  resizable: false,
-  enableRun: false,
-  hasTopBar: false,
-  hasParametersList: false,
-  hasEditingSidebar: false,
-  isNativeEditorOpen: true,
-};
 
 interface MetabotQueryFormProps {
   question: Question;
@@ -30,29 +21,29 @@ export const MetabotQueryForm = ({
   onSubmit,
   onCancel,
 }: MetabotQueryFormProps) => {
-  const initialQuery = question.query();
-  const [updatedQuery, setUpdatedQuery] = useState(initialQuery);
-  const handleSubmit = () => onSubmit(updatedQuery.question());
+  const [updatedQuestion, setUpdatedQuestion] = useState(question);
+  const handleSubmit = () => onSubmit(updatedQuestion);
 
   return (
-    <FormRoot>
-      <FormSectionTitle>{t`Here’s the generated SQL`}</FormSectionTitle>
-      <NativeQueryEditor
-        {...NATIVE_EDITOR_OPTS}
-        query={initialQuery}
-        readOnly
-      />
-      <FormSectionTitle>{t`What should the SQL have been?`}</FormSectionTitle>
-      <NativeQueryEditor
-        {...NATIVE_EDITOR_OPTS}
-        query={updatedQuery}
-        setDatasetQuery={setUpdatedQuery}
-      />
-      <FormFooter>
+    <QueryEditorRoot>
+      <QueryEditorTitle>{t`Here’s the generated SQL`}</QueryEditorTitle>
+      <QueryEditorContainer>
+        <MetabotQueryEditor question={question} readOnly isInitiallyOpen />
+      </QueryEditorContainer>
+      <QueryEditorTitle>{t`What should the SQL have been?`}</QueryEditorTitle>
+      <QueryEditorContainer>
+        <MetabotQueryEditor
+          question={updatedQuestion}
+          readOnly
+          isInitiallyOpen
+          setDatasetQuery={setUpdatedQuestion}
+        />
+      </QueryEditorContainer>
+      <QueryEditorFooter>
         <Button onClick={onCancel}>{t`Cancel`}</Button>
         <Button primary onClick={handleSubmit}>{t`Done`}</Button>
-      </FormFooter>
-    </FormRoot>
+      </QueryEditorFooter>
+    </QueryEditorRoot>
   );
 };
 
