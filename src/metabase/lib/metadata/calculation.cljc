@@ -24,6 +24,28 @@
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x)))
 
+(defmulti type-of-method
+  "Impl for [[type-of]]."
+  {:arglists '([query stage-number x])}
+  (fn [_query _stage-number x]
+    (lib.dispatch/dispatch-value x)))
+
+(defmethod type-of-method :default
+  [_query _stage-number x]
+  (lib.schema.expresssion/type-of x))
+
+(defn type-of
+  "Calculate the base type of an MBQL expression. This differs slightly from [[metabase.lib.schema.expression/type-of]]
+  in that has access to a `query` and thus a metadata provider, so can do more complete type calculations."
+  ([query x]
+   (type-of query -1 x))
+
+  ([query stage-number x]
+   (or (:base_type (lib.options/options x))
+       (when (map? x)
+         (:base_type x))
+       (type-of-method query stage-number x))))
+
 (mu/defn ^:export display-name :- ::lib.schema.common/non-blank-string
   "Calculate a nice human-friendly display name for something."
   ([query x]
@@ -46,20 +68,23 @@
 
 (mu/defn column-name :- ::lib.schema.common/non-blank-string
   "Calculate a database-friendly name to use for an expression."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   x]
-  (or
-   ;; if this is an MBQL clause with `:name` in the options map, then use that rather than calculating a name.
-   (:name (lib.options/options x))
-   (try
-     (column-name-method query stage-number x)
-     (catch #?(:clj Throwable :cljs js/Error) e
-       (throw (ex-info (i18n/tru "Error calculating column name for {0}: {1}" (pr-str x) (ex-message e))
-                       {:x            x
-                        :query        query
-                        :stage-number stage-number}
-                       e))))))
+  ([query x]
+   (column-name query -1 x))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    x]
+   (or
+    ;; if this is an MBQL clause with `:name` in the options map, then use that rather than calculating a name.
+    (:name (lib.options/options x))
+    (try
+      (column-name-method query stage-number x)
+      (catch #?(:clj Throwable :cljs js/Error) e
+        (throw (ex-info (i18n/tru "Error calculating column name for {0}: {1}" (pr-str x) (ex-message e))
+                        {:x            x
+                         :query        query
+                         :stage-number stage-number}
+                        e)))))))
 
 (defmethod display-name-method :default
   [_query _stage-number x]
@@ -120,7 +145,7 @@
 (defmethod metadata :default
   [query stage-number x]
   {:lib/type     :metadata/field
-   :base_type    (lib.schema.expresssion/type-of x)
+   :base_type    (type-of query stage-number x)
    :name         (column-name query stage-number x)
    :display_name (display-name query stage-number x)})
 

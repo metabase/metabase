@@ -173,12 +173,12 @@
               [:expression {:base-type :type/Integer, :lib/uuid (str (random-uuid))} "double-price"]])))))
 
 (deftest ^:parallel aggregate-test
-  (is (=? {:lib/type :mbql/query,
-           :database (meta/id) ,
-           :type :pipeline,
-           :stages [{:lib/type :mbql.stage/mbql,
-                     :source-table (meta/id :venues) ,
-                     :lib/options {:lib/uuid string?},
+  (is (=? {:lib/type :mbql/query
+           :database (meta/id)
+           :type :pipeline
+           :stages [{:lib/type :mbql.stage/mbql
+                     :source-table (meta/id :venues)
+                     :lib/options {:lib/uuid string?}
                      :aggregation [[:sum {:lib/uuid string?}
                                     [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]]}]}
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")

@@ -195,6 +195,11 @@
 (lib.common/defop sum [x])
 (lib.common/defop sum-where [x y])
 
+(doseq [op [:max :min :median :percentile :sum :sum-where]]
+  (defmethod lib.metadata.calculation/type-of-method op
+    [query stage-number [_tag _opts x]]
+    (lib.metadata.calculation/type-of query stage-number x)))
+
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."
   ([query an-aggregate-clause]

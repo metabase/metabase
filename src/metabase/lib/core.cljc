@@ -149,7 +149,8 @@
    describe-query
    describe-top-level-key
    display-name
-   suggested-name]
+   suggested-name
+   type-of]
   [lib.order-by
    order-by
    order-by-clause

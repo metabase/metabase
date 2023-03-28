@@ -1016,12 +1016,13 @@
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
 (defmethod apply-top-level-clause [:sql :aggregation]
-  [driver _ honeysql-form {aggregations :aggregation}]
+  [driver _top-level-clause honeysql-form {aggregations :aggregation, :as inner-query}]
   (let [honeysql-ags (vec (for [ag   aggregations
                                 :let [ag-expr  (->honeysql driver ag)
+                                      ag-name  (annotate/col-info-for-aggregation-clause inner-query ag)
                                       ag-alias (->honeysql driver (hx/identifier
                                                                    :field-alias
-                                                                   (driver/escape-alias driver (annotate/aggregation-name ag))))]]
+                                                                   (driver/escape-alias driver ag-name)))]]
                             (case (long hx/*honey-sql-version*)
                               1 [ag-expr ag-alias]
                               2 [ag-expr [ag-alias]])))]

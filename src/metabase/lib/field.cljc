@@ -67,6 +67,7 @@
   [_query _stage-number field-metadata]
   field-metadata)
 
+;;; TODO -- base type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata :field
   [query stage-number [_tag {:keys [base-type temporal-unit], :as opts} :as field-ref]]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
@@ -82,6 +83,12 @@
                           {:unit temporal-unit}))]
     (cond->> metadata
       (:parent_id metadata) (add-parent-column-metadata query))))
+
+(defmethod lib.metadata.calculation/type-of-method :field
+  [query stage-number field-ref]
+  (if-let [field-metadata (resolve-field-metadata query stage-number field-ref)]
+    (lib.metadata.calculation/type-of query stage-number field-metadata)
+    :type/*))
 
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.

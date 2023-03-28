@@ -97,6 +97,27 @@
            -1
            [:expression {:lib/uuid (str (random-uuid))} "double-price"]))))
 
+(deftest ^:parallel col-info-expression-aggregation-test
+  (testing "Calculate correct type for an expression aggregation with `:field` references that do not have `:base-type`"
+    (let [query  {:lib/type     :mbql/query
+                  :lib/metadata meta/metadata-provider
+                  :database     (meta/id)
+                  :type         :pipeline
+                  :stages       [{:lib/type     :mbql.stage/mbql
+                                  :lib/options  {:lib/uuid "2ef26cfc-bfcb-483c-8d25-8f620b5b412a"}
+                                  :source-table (meta/id :venues)}]}
+          clause [:sum
+                  {:lib/uuid "6e60a073-a1a2-4c59-a54a-6ecf5d93552f"}
+                  [:+
+                   {:lib/uuid "ca71213d-2f4f-418b-ad6e-28bbc581ad60"}
+                   [:field {:lib/uuid "1d64bf62-c892-45fc-9783-9b1e0039d7b5"} (meta/id :venues :price)]
+                   1]]]
+      (is (= {:lib/type     :metadata/field
+              :base_type    :type/Integer
+              :name         "sum_price_plus_1"
+              :display_name "Sum of Price + 1"}
+             (lib.metadata.calculation/metadata query -1 clause))))))
+
 (deftest ^:parallel expression-references-in-fields-clause-test
   (let [query (lib.tu/venues-query-with-last-stage
                {:expressions {"prev_month" [:+

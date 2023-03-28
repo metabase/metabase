@@ -7,7 +7,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.mbql.predicates :as mbql.preds]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
@@ -309,72 +309,34 @@
     (throw (ex-info (tru "Don''t know how to get information about Field: {0}" &match)
                     {:field &match}))))
 
-(defn- ag->name-info [inner-query ag]
-  (let [mlv2-query (lib/query
-                    qp.store/metadata-provider
-                    (lib.convert/->pMBQL (lib.convert/legacy-query-from-inner-query
-                                          (:id (qp.store/database))
-                                          inner-query)))
-        mlv2-ag    (lib.convert/->pMBQL ag)]
-    {:display_name (lib/display-name mlv2-query -1 mlv2-ag)
-     :name         (lib/column-name mlv2-query -1 mlv2-ag)}))
+(defn- mlv2-query [inner-query]
+  (qp.store/cached [:mlv2-query (hash inner-query)]
+    (lib/query
+     qp.store/metadata-provider
+     (lib.convert/->pMBQL (lib.convert/legacy-query-from-inner-query
+                           (:id (qp.store/database))
+                           inner-query)))))
 
 (s/defn col-info-for-aggregation-clause
   "Return appropriate column metadata for an `:aggregation` clause."
   ;; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
   ;; `match` pattern for field clauses below
-  [inner-query :- su/Map, clause]
-  (mbql.u/match-one clause
-    ;; ok, if this is a aggregation w/ options recurse so we can get information about the ag it wraps
-    [:aggregation-options ag _]
-    (merge
-     (col-info-for-aggregation-clause inner-query ag)
-     (ag->name-info inner-query &match))
+  [inner-query :- su/Map clause]
+  (let [mlv2-clause (lib.convert/->pMBQL clause)]
+    (lib.metadata.calculation/metadata (mlv2-query inner-query) -1 mlv2-clause)))
 
-    ;; Always treat count or distinct count as an integer even if the DB in question returns it as something
-    ;; wacky like a BigDecimal or Float
-    [(_ :guard #{:count :distinct}) & args]
-    (merge
-     (col-info-for-aggregation-clause inner-query args)
-     {:base_type     :type/BigInteger
-      :semantic_type :type/Quantity}
-     (ag->name-info inner-query &match))
+(defn aggregation-name
+  "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
+  or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
 
-    [:count-where _]
-    (merge
-     {:base_type     :type/Integer
-      :semantic_type :type/Quantity}
-     (ag->name-info inner-query &match))
+  These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
+  [inner-query ag-clause]
+  (lib.metadata.calculation/column-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
 
-    [:share _]
-    (merge
-     {:base_type     :type/Float
-      :semantic_type :type/Share}
-     (ag->name-info inner-query &match))
-
-    ;; get info from a Field if we can (theses Fields are matched when ag clauses recursively call
-    ;; `col-info-for-ag-clause`, and this info is added into the results)
-    (_ :guard mbql.preds/Field?)
-    (select-keys (col-info-for-field-clause inner-query &match) [:base_type :semantic_type :settings])
-    #{:expression :+ :- :/ :*}
-    (merge
-     (infer-expression-type &match)
-     (when (mbql.preds/Aggregation? &match)
-       (ag->name-info inner-query &match)))
-
-    ;; the type returned by a case statement depends on what its expressions are; we'll just return the type info for
-    ;; the first expression for the time being. I guess it's possible the expression might return a string for one
-    ;; case and a number for another, but I think in post cases it should be the same type for every clause.
-    [:case & _]
-    (merge
-     (infer-expression-type &match)
-     (ag->name-info inner-query &match))
-
-    ;; get name/display-name of this ag
-    [(_ :guard keyword?) arg & _]
-    (merge
-     (col-info-for-aggregation-clause inner-query arg)
-     (ag->name-info inner-query &match))))
+(defn aggregation-display-name
+  "Return an appropriate user-facing display name for an aggregation clause."
+  [inner-query ag-clause]
+  (lib.metadata.calculation/display-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
 
 
 ;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------
@@ -418,8 +380,6 @@
   (concat
    (cols-for-ags-and-breakouts inner-query)
    (cols-for-fields inner-query)))
-
-
 
 (s/defn ^:private merge-source-metadata-col :- (s/maybe su/Map)
   [source-metadata-col :- (s/maybe su/Map) col :- (s/maybe su/Map)]

@@ -11,6 +11,7 @@
     :as lib.schema.temporal-bucketing]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.types :as types]
    [metabase.util.malli :as mu]))
 
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
@@ -26,15 +27,19 @@
                          :query           query
                          :stage-number    stage-number})))))
 
-(defmethod lib.metadata.calculation/metadata :expression
-  [query stage-number [_expression opts expression-name, :as expression-ref]]
+(defmethod lib.metadata.calculation/type-of-method :expression
+  [query stage-number [_expression _opts expression-name, :as _expression-ref]]
   (let [expression (resolve-expression query stage-number expression-name)]
-    {:lib/type     :metadata/field
-     :field_ref    expression-ref
-     :name         expression-name
-     :display_name (lib.metadata.calculation/display-name query stage-number expression-ref)
-     :base_type    (or (:base-type opts)
-                       (lib.schema.expression/type-of expression))}))
+    (println "<HERE>")
+    (lib.metadata.calculation/type-of query stage-number expression)))
+
+(defmethod lib.metadata.calculation/metadata :expression
+  [query stage-number [_expression _opts expression-name, :as expression-ref]]
+  {:lib/type     :metadata/field
+   :field_ref    expression-ref
+   :name         expression-name
+   :display_name (lib.metadata.calculation/display-name query stage-number expression-ref)
+   :base_type    (lib.metadata.calculation/type-of query stage-number expression-ref)})
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/number
   [_query _stage-number n]
@@ -154,6 +159,20 @@
        query stage-number
        update :expressions
        assoc expression-name (lib.common/->op-arg query stage-number an-expression-clause)))))
+
+(doseq [operator [:+ :- :*]]
+  (defmethod lib.metadata.calculation/type-of-method operator
+    [query stage-number [_tag _opts & args]]
+    ;; Okay to use reduce without an init value here since we know we have >= 2 args
+    #_{:clj-kondo/ignore [:reduce-without-init]}
+    (reduce types/most-specific-common-ancestor
+            (map (partial lib.metadata.calculation/type-of query stage-number)
+                 args))))
+
+;;; we always do floating-point division regardless of args.
+(defmethod lib.metadata.calculation/type-of-method :/
+  [_query _stage-number _clause]
+  :type/Float)
 
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])
