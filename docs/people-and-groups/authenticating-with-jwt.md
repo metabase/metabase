@@ -56,7 +56,7 @@ These are additional settings you can fill in to pass user attributes to Metabas
 - **First Name attribute:** the key to retrieve each JWT user's first name.
 - **Last Name attribute:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
 
-User attributes can also be sent programatically on the JWT, by adding new keys and values, other than the 3 above, to Metabase. These attributes will be synced on every login.
+You can send additional user attributes to Metabase by adding the attributes as key/value pairs to your JWT. These attributes will be synced on every login.
 
 ## Group schema
 
