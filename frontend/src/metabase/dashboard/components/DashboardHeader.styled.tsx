@@ -16,7 +16,9 @@ interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;
 }
 
-export const HeaderRoot = styled(
+export const HeaderRoot = styled.div``;
+
+export const HeaderRow = styled(
   FullWidthContainer,
 )<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;

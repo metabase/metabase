@@ -17,7 +17,7 @@ import EditBar from "metabase/components/EditBar";
 import HeaderModal from "metabase/components/HeaderModal";
 import {
   EditWarning,
-  HeaderRoot,
+  HeaderRow,
   HeaderBadges,
   HeaderContent,
   HeaderButtonsContainer,
@@ -25,7 +25,9 @@ import {
   HeaderLastEditInfoLabel,
   HeaderCaption,
   HeaderCaptionContainer,
+  HeaderRoot,
 } from "./DashboardHeader.styled";
+import { DashboardTabs } from "./DashboardTabs";
 
 interface DashboardHeaderProps {
   editingTitle: string;
@@ -132,36 +134,41 @@ const DashboardHeader = ({
         onDone={onHeaderModalDone}
         onCancel={onHeaderModalCancel}
       />
-      <HeaderRoot
-        isNavBarOpen={isNavBarOpen}
-        className={cx("QueryBuilder-section", headerClassName)}
-        ref={header}
-      >
-        <HeaderContent hasSubHeader showSubHeader={showSubHeader}>
-          <HeaderCaptionContainer>
-            <HeaderCaption
-              key={dashboard.name}
-              initialValue={dashboard.name}
-              placeholder={t`Add title`}
-              isDisabled={!dashboard.can_write}
-              data-testid="dashboard-name-heading"
-              onChange={handleUpdateCaption}
-            />
-          </HeaderCaptionContainer>
-          <HeaderBadges>
-            {isLastEditInfoVisible && (
-              <HeaderLastEditInfoLabel
-                item={dashboard}
-                onClick={onLastEditInfoClick}
-                className=""
+      <HeaderRoot>
+        <HeaderRow
+          isNavBarOpen={isNavBarOpen}
+          className={cx("QueryBuilder-section", headerClassName)}
+          ref={header}
+        >
+          <HeaderContent hasSubHeader showSubHeader={showSubHeader}>
+            <HeaderCaptionContainer>
+              <HeaderCaption
+                key={dashboard.name}
+                initialValue={dashboard.name}
+                placeholder={t`Add title`}
+                isDisabled={!dashboard.can_write}
+                data-testid="dashboard-name-heading"
+                onChange={handleUpdateCaption}
               />
-            )}
-          </HeaderBadges>
-        </HeaderContent>
+            </HeaderCaptionContainer>
+            <HeaderBadges>
+              {isLastEditInfoVisible && (
+                <HeaderLastEditInfoLabel
+                  item={dashboard}
+                  onClick={onLastEditInfoClick}
+                  className=""
+                />
+              )}
+            </HeaderBadges>
+          </HeaderContent>
 
-        <HeaderButtonsContainer isNavBarOpen={isNavBarOpen}>
-          {_headerButtons}
-        </HeaderButtonsContainer>
+          <HeaderButtonsContainer isNavBarOpen={isNavBarOpen}>
+            {_headerButtons}
+          </HeaderButtonsContainer>
+        </HeaderRow>
+        <HeaderRow isNavBarOpen={isNavBarOpen}>
+          <DashboardTabs />
+        </HeaderRow>
       </HeaderRoot>
     </div>
   );
