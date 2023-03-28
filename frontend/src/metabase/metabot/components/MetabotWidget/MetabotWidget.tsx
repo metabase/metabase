@@ -1,6 +1,15 @@
 import React, { useCallback, useState } from "react";
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import { jt, t } from "ttag";
-import { DatabaseId, User } from "metabase-types/api";
+import _ from "underscore";
+import Databases from "metabase/entities/databases";
+import Questions from "metabase/entities/questions";
+import Search from "metabase/entities/search";
+import { getUser } from "metabase/selectors/user";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Card, CollectionItem, DatabaseId, User } from "metabase-types/api";
+import { Dispatch, State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
 import DatabasePicker from "../DatabasePicker";
@@ -8,26 +17,60 @@ import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";
 import { MetabotHeader } from "./MetabotWidget.styled";
 
-interface MetabotWidgetProps {
+interface DatabaseLoaderProps {
   databases: Database[];
-  model?: Question;
-  user?: User;
-  onRun: (databaseId: DatabaseId, queryText: string) => void;
 }
+
+interface SearchLoaderProps {
+  models: CollectionItem[];
+}
+
+interface CardLoaderProps {
+  card?: Card;
+}
+
+interface StateProps {
+  user?: User;
+  model?: Question;
+}
+
+interface DispatchProps {
+  onSubmitQuery: (databaseId: DatabaseId, query: string) => void;
+}
+
+type MetabotWidgetProps = StateProps & DispatchProps & DatabaseLoaderProps;
+
+const mapStateToProps = (
+  state: State,
+  { card }: CardLoaderProps,
+): StateProps => ({
+  user: getUser(state) ?? undefined,
+  model: card ? new Question(card, getMetadata(state)) : undefined,
+});
+
+const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
+  onSubmitQuery: (databaseId, queryText) =>
+    dispatch(
+      push({
+        pathname: `/metabot/database/${databaseId}`,
+        query: { query: queryText },
+      }),
+    ),
+});
 
 const MetabotWidget = ({
   databases,
   model,
   user,
-  onRun,
+  onSubmitQuery,
 }: MetabotWidgetProps) => {
   const initialDatabaseId = model?.databaseId() ?? databases[0]?.id;
   const [databaseId, setDatabaseId] = useState(initialDatabaseId);
   const [queryText, setQueryText] = useState("");
 
-  const handleRun = useCallback(() => {
-    onRun(databaseId, queryText);
-  }, [databaseId, queryText, onRun]);
+  const handleSubmitQuery = useCallback(() => {
+    onSubmitQuery(databaseId, queryText);
+  }, [databaseId, queryText, onSubmitQuery]);
 
   return (
     <MetabotHeader>
@@ -48,7 +91,7 @@ const MetabotWidget = ({
         placeholder={getPromptPlaceholder(model)}
         user={user}
         onChangeQuery={setQueryText}
-        onSubmitQuery={handleRun}
+        onSubmitQuery={handleSubmitQuery}
       />
     </MetabotHeader>
   );
@@ -70,4 +113,18 @@ const getPromptPlaceholder = (model?: Question) => {
   }
 };
 
-export default MetabotWidget;
+export default _.compose(
+  Search.loadList({
+    query: {
+      models: "dataset",
+      limit: 1,
+    },
+    listName: "models",
+  }),
+  Questions.load({
+    id: (state: State, { models }: SearchLoaderProps) => models[0]?.id,
+    entityAlias: "card",
+  }),
+  Databases.loadList(),
+  connect(mapStateToProps, mapDispatchToProps),
+)(MetabotWidget);

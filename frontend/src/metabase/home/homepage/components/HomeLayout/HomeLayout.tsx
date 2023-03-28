@@ -1,5 +1,5 @@
 import React, { ReactNode } from "react";
-import MetabotWidget from "metabase/metabot/containers/MetabotWidget";
+import MetabotWidget from "metabase/metabot/components/MetabotWidget";
 import { CollectionItem } from "metabase-types/api";
 import HomeGreeting from "../../containers/HomeGreeting";
 import {
