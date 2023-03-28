@@ -66,13 +66,15 @@
            (lib.metadata.calculation/display-name query -1 query)))))
 
 (deftest ^:parallel adding-and-removing-stages
-  (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")]
-    (is (not= query
-              (-> query
-                  (lib/append-stage)
-                  (lib/filter 1 (lib/= 1 (lib/field "VENUES" "NAME"))))))
+  (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
+        query-with-new-stage (-> query
+                                 lib/append-stage
+                                 (lib/order-by 1 (lib/field "VENUES" "NAME") :asc))]
+    (is (= 0 (count (lib/order-bys query-with-new-stage 0))))
+    (is (= 1 (count (lib/order-bys query-with-new-stage 1))))
     (is (= query
-           (-> query
-               (lib/append-stage)
+           (-> query-with-new-stage
                (lib/filter (lib/= 1 (lib/field "VENUES" "NAME")))
-               (lib/drop-stage))))))
+               (lib/drop-stage))))
+    (testing "Dropping with 1 stage should error"
+      (is (thrown-with-msg? Exception #"Cannot drop the only stage" (-> query (lib/drop-stage)))))))

@@ -258,4 +258,6 @@
 (mu/defn drop-stage :- ::lib.schema/query
   "Drops the final stage in the pipeline"
   [query]
+  (when (= 1 (count (:stages query)))
+    (throw (ex-info (i18n/tru "Cannot drop the only stage") {:stages (:stages query)})))
   (update query :stages (comp vec butlast)))
