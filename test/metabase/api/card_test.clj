@@ -46,6 +46,7 @@
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
