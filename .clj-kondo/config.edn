@@ -143,6 +143,9 @@
    toucan.db/select-field->field {:message "Use t2/select-fn->fn instead of toucan.db/select-field->field"}
    toucan.db/select-field->id    {:message "Use t2/select-fn->pk instead of toucan.db/select-field->id"}
    toucan.db/select-id->field    {:message "Use t2/select-pk->field instead of toucan.db/select-id->field"}
+   toucan.db/simple-insert!      {:message "Use t2/insert-returning-pks! with table name instead of toucan.db/simple-insert!"}
+   toucan.db/simple-insert-many! {:message "Use t2/insert-returning-pks! with table name instead of toucan.db/simple-insert-many!"}
+   toucan.db/simple-delete!      {:message "Use t2/delete! with table name instead of toucan.db/simple-delete!"}
    toucan.db/delete!             {:message "Use t2/delete! instead of toucan.db/delete!"}
    toucan.db/insert!             {:message "Use t2/insert-returning-instances! instead of toucan.db/insert!"}
    toucan.db/update!             {:message "Use t2/update! instead of toucan.db/update!"}
@@ -153,7 +156,6 @@
    toucan.db/with-call-counting  {:message "Use t2/with-call-count instead of toucan.db/with-call-counting"}
    toucan.db/execute!            {:message "Use t2/query-one instead of toucan.db/execute!"}
    toucan.db/reducible-query     {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}}
-
 
   :discouraged-namespace
   {clojure.tools.logging {:message "Use metabase.util.log instead of clojure.tools.logging directly"}

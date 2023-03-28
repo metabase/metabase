@@ -117,7 +117,7 @@
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
           (mt/with-temp User [{user-id :id}]
             (let [session-id (str (UUID/randomUUID))]
-              (db/simple-insert! Session {:id session-id, :user_id user-id, :created_at created-at})
+              (t2/insert! (t2/table-name Session) {:id session-id, :user_id user-id, :created_at created-at})
               (let [session (#'mw.session/current-user-info-for-session session-id nil)]
                 (if expected
                   (is (= nil

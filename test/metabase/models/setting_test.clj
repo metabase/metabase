@@ -514,7 +514,7 @@
 (defn clear-settings-last-updated-value-in-db!
   "Deletes the timestamp for the last updated setting from the DB."
   []
-  (db/simple-delete! Setting {:key setting.cache/settings-last-updated-key}))
+  (t2/delete! (t2/table-name Setting) :key setting.cache/settings-last-updated-key))
 
 (defn settings-last-updated-value-in-db
   "Fetches the timestamp of the last updated setting."
@@ -571,7 +571,7 @@
 (deftest cache-sync-test
   (testing "make sure that if for some reason the cache gets out of sync it will reset so we can still set new settings values (#4178)"
     ;; clear out any existing values of `toucan-name`
-    (db/simple-delete! setting/Setting {:key "toucan-name"})
+    (t2/delete! (t2/table-name setting/Setting) :key "toucan-name")
     ;; restore the cache
     (setting.cache/restore-cache-if-needed!)
     ;; now set a value for the `toucan-name` setting the wrong way

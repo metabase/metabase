@@ -76,8 +76,8 @@
   {:pre [(number? max-age-seconds)]}
   (log/tracef "Purging old cache entries.")
   (try
-    (db/simple-delete! QueryCache
-                       :updated_at [:<= (seconds-ago max-age-seconds)])
+    (t2/delete! (t2/table-name QueryCache)
+                :updated_at [:<= (seconds-ago max-age-seconds)])
     (catch Throwable e
       (log/error e (trs "Error purging old cache entries"))))
   nil)

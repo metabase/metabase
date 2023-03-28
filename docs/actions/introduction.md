@@ -20,19 +20,18 @@ Here are a few ideas for what you can do with actions:
 - Let team members remove redundant data.
 - Create a customer feedback form and embed it on your website.
 
-Actions must be added to a [model](../data-modeling/models.md), but actions only run on the raw tables that back those models (so actions will never edit your [model definition](../data-modeling/models.md#edit-a-models-query).
+Actions must be added to a [model](../data-modeling/models.md), but actions only run on the raw tables that back those models (so actions will never edit your [model definition](../data-modeling/models.md#edit-a-models-query)).
 
-## Enabling actions
+## Enabling actions for a database
 
-To enable actions for a database connection, admins should click on the gear icon in the upper right and navigate to **Admin settings** > **Databases**, then click on the database you want to create actions for. On the right side of the connection settings form, toggle the **Model actions** option.
+For actions to work, you'll first need to do the following two things:
 
-For actions to work, the database user account (the account you're using to connect to the database) must have write permissions. And for now, actions are only supported on PostgreSQL, MySQL, and H2 databases.
+1. **Enable model actions for the database connection**. To enable actions for a database connection, admins should click on the **gear** icon in the upper right and navigate to **Admin settings** > **Databases**, then click on the database you want to create actions for. On the right side of the connection settings form, toggle the **Model actions** option. For actions to work, the database user account (the account you're using to connect to the database) must have write permissions. And for now, actions are only supported on PostgreSQL, MySQL, and H2 databases.
+2. **Create at least one model from that database.** Actions are associated with models, so you'll need to have created (or have access to) at least one model before you can start creating actions.
 
 ## Who can use actions
 
-Actions are associated with models, so you'll need to have created (or have access to) at least one model before you can start using actions.
-
-- **To create or edit an action**, a person must be in a group with Native query editing privileges for the relevant database.
+- **To create or edit an action**, a person must be in a group with [Native query editing](../permissions/data.md) privileges for the relevant database.
 - **To run an action**, all you need is view access to the action's model or dashboard (or a link to a public action).
 
 ## Types of actions

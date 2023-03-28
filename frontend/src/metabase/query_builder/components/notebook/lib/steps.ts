@@ -1,5 +1,9 @@
 import _ from "underscore";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
+import type Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
+import { NotebookStep, NotebookStepFn, OpenSteps } from "./steps.types";
 
 // This converts an MBQL query into a sequence of notebook "steps", with special logic to determine which steps are
 // allowed to be added at every other step, generating a preview query at each step, how to delete a step,
@@ -7,24 +11,32 @@ import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 // identifier for this step, e.x. `0:data` (or `0:join:1` for sub-steps)
 
-const STEPS = [
+type NotebookStepDef = Pick<NotebookStep, "type" | "clean" | "revert"> & {
+  valid: NotebookStepFn<boolean>;
+  active: NotebookStepFn<boolean>;
+  subSteps?: (query: StructuredQuery) => number;
+};
+
+const STEPS: NotebookStepDef[] = [
   {
     type: "data",
     valid: query => !query.sourceQuery(),
     active: query => true,
     clean: query => query,
+    revert: null,
   },
   {
     type: "join",
-    valid: query => query.hasData() && query.database().hasFeature("join"),
-    // active: query => query.hasJoins(),
-    // revert: query => query.clearJoins(),
-    // clean: query => query.cleanJoins(),
+    valid: query => {
+      const database = query.database();
+      return query.hasData() && database != null && database.hasFeature("join");
+    },
     subSteps: query => query.joins().length,
-    active: (query, index) => query.joins().length > index,
+    active: (query, index) =>
+      typeof index === "number" && query.joins().length > index,
     revert: (query, index) => query.removeJoin(index),
     clean: (query, index) => {
-      const join = query.joins()[index];
+      const join = typeof index === "number" ? query.joins()[index] : null;
       if (!join || join.isValid() || join.hasGaps()) {
         return query;
       }
@@ -37,7 +49,12 @@ const STEPS = [
   },
   {
     type: "expression",
-    valid: query => query.hasData() && query.database().supportsExpressions(),
+    valid: query => {
+      const database = query.database();
+      return (
+        query.hasData() && database != null && database.supportsExpressions()
+      );
+    },
     active: query => query.hasExpressions(),
     revert: query => query.clearExpressions(),
     clean: query => query.cleanExpressions(),
@@ -49,20 +66,6 @@ const STEPS = [
     revert: query => query.clearFilters(),
     clean: query => query.cleanFilters(),
   },
-  // {
-  //   type: "aggregate",
-  //   valid: query => query.hasData(),
-  //   active: query => query.hasAggregations,
-  //   revert: query => query.clearAggregations(),
-  //   clean: query => query.cleanAggregations(),
-  // },
-  // {
-  //   type: "breakout",
-  //   valid: query => query.hasData() && query.hasAggregations() ,
-  //   active: query => query.hasBreakouts(),
-  //   revert: query => query.clearBreakouts(),
-  //   clean: query => query.cleanBreakouts(),
-  // },
   {
     // NOTE: summarize is a combination of aggregate and breakout
     type: "summarize",
@@ -100,11 +103,11 @@ const STEPS = [
 /**
  * Returns an array of "steps" to be displayed in the notebook for one "stage" (nesting) of a query
  */
-export function getQuestionSteps(question, openSteps = {}) {
-  const allSteps = [];
+export function getQuestionSteps(question: Question, openSteps = {}) {
+  const allSteps: NotebookStep[] = [];
 
-  let query = question.query();
-  if (query instanceof StructuredQuery) {
+  if (question.isStructured()) {
+    let query = question.query() as StructuredQuery;
     const database = question.database();
     const allowsNesting = database && database.hasFeature("nested-queries");
 
@@ -142,13 +145,21 @@ export function getQuestionSteps(question, openSteps = {}) {
 /**
  * Returns an array of "steps" to be displayed in the notebook for one "stage" (nesting) of a query
  */
-export function getStageSteps(stageQuery, stageIndex, openSteps) {
-  const getId = (step, itemIndex) =>
-    `${stageIndex}:${step.type}` + (itemIndex > 0 ? `:${itemIndex}` : ``);
+export function getStageSteps(
+  stageQuery: StructuredQuery,
+  stageIndex: number,
+  openSteps: OpenSteps,
+) {
+  const getId = (step: NotebookStepDef, itemIndex: number | null) => {
+    const isValidItemIndex = itemIndex != null && itemIndex > 0;
+    return (
+      `${stageIndex}:${step.type}` + (isValidItemIndex ? `:${itemIndex}` : "")
+    );
+  };
 
-  function getStep(STEP, itemIndex = null) {
+  function getStep(STEP: NotebookStepDef, itemIndex: number | null = null) {
     const id = getId(STEP, itemIndex);
-    const step = {
+    const step: NotebookStep = {
       id: id,
       type: STEP.type,
       stageIndex: stageIndex,
@@ -158,14 +169,17 @@ export function getStageSteps(stageQuery, stageIndex, openSteps) {
       active: STEP.active(stageQuery, itemIndex),
       visible:
         STEP.valid(stageQuery, itemIndex) &&
-        (STEP.active(stageQuery, itemIndex) || openSteps[id]),
-      revert: STEP.revert ? query => STEP.revert(query, itemIndex) : null,
+        !!(STEP.active(stageQuery, itemIndex) || openSteps[id]),
+      revert: STEP.revert
+        ? (query: StructuredQuery) =>
+            STEP.revert ? STEP.revert(query, itemIndex) : null
+        : null,
       clean: query => STEP.clean(query, itemIndex),
       update: datasetQuery => {
         let newQuery = stageQuery.setDatasetQuery(datasetQuery);
         // clean each subsequent step individually. we have to do this rather than calling newQuery.clean() in case
         // the current step is in a temporarily invalid state
-        let current = step;
+        let current: NotebookStep | null = step;
         while ((current = current.next)) {
           // when switching to the next stage we need to setSourceQuery
           if (
@@ -201,7 +215,7 @@ export function getStageSteps(stageQuery, stageIndex, openSteps) {
     }),
   );
 
-  let previewQuery = stageQuery;
+  let previewQuery: StructuredQuery | null = stageQuery;
 
   let actions = [];
   // iterate over steps in reverse so we can revert query for previewing and accumulate valid actions
@@ -218,13 +232,17 @@ export function getStageSteps(stageQuery, stageIndex, openSteps) {
       if (step.valid) {
         actions.unshift({
           type: step.type,
-          action: ({ openStep }) => openStep(step.id),
+          action: ({
+            openStep,
+          }: {
+            openStep: (id: NotebookStep["id"]) => void;
+          }) => openStep(step.id),
         });
       }
       steps.splice(i, 1);
     }
     // revert the previewQuery for this step
-    if (step.revert) {
+    if (step.revert && previewQuery) {
       previewQuery = step.revert(previewQuery);
     }
   }
