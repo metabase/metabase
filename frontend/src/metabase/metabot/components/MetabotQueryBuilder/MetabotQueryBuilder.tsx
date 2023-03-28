@@ -1,8 +1,16 @@
 import React from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { Dataset } from "metabase-types/api";
+import { MetabotQueryStatus, State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
+import {
+  getQueryError,
+  getQueryResults,
+  getQueryStatus,
+  getQuestion,
+} from "../../selectors";
 import MetabotQueryEditor from "../MetabotQueryEditor";
 import MetabotVisualization from "../MetabotVisualization";
 import {
@@ -16,33 +24,40 @@ import {
 
 interface MetabotQueryBuilderProps {
   question?: Question;
-  results?: [Dataset];
-  isLoading?: boolean;
-  error?: unknown;
+  queryStatus?: MetabotQueryStatus;
+  queryResults?: [Dataset];
+  queryError?: unknown;
 }
+
+const mapStateToProps = (state: State): MetabotQueryBuilderProps => ({
+  question: getQuestion(state),
+  queryStatus: getQueryStatus(state),
+  queryResults: getQueryResults(state),
+  queryError: getQueryError(state),
+});
 
 const MetabotQueryBuilder = ({
   question,
-  results,
-  isLoading,
-  error,
+  queryStatus,
+  queryResults,
+  queryError,
 }: MetabotQueryBuilderProps) => {
-  if (isLoading) {
+  if (queryStatus === "running") {
     return <LoadingState loadingMessage={t`Doing science...`} />;
   }
 
-  if (error) {
+  if (queryError) {
     return (
       <ErrorStateRoot>
         <ErrorStateMessage
-          message={getResponseErrorMessage(error)}
+          message={getResponseErrorMessage(queryError)}
           icon="warning"
         />
       </ErrorStateRoot>
     );
   }
 
-  if (!question || !results) {
+  if (!question || !queryResults) {
     return (
       <EmptyStateRoot>
         <EmptyStateIcon name="insight" />
@@ -53,9 +68,9 @@ const MetabotQueryBuilder = ({
   return (
     <QueryStateRoot>
       <MetabotQueryEditor question={question} isReadOnly hasTopbar />
-      <MetabotVisualization question={question} results={results} />
+      <MetabotVisualization question={question} queryResults={queryResults} />
     </QueryStateRoot>
   );
 };
 
-export default MetabotQueryBuilder;
+export default connect(mapStateToProps)(MetabotQueryBuilder);

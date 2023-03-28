@@ -6,12 +6,12 @@ import { FullVisualization } from "./MetabotVisualization.styled";
 
 interface MetabotVisualizationProps {
   question: Question;
-  results: [Dataset];
+  queryResults: [Dataset];
 }
 
 const MetabotVisualization = ({
   question,
-  results: [result],
+  queryResults: [result],
 }: MetabotVisualizationProps) => {
   const card = question.card();
 
