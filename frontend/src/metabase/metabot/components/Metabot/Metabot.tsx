@@ -6,7 +6,7 @@ import Question from "metabase-lib/Question";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
 import MetabotMessage from "../MetabotMessage";
-import MetabotFeedback from "../MetabaseFeedback";
+import MetabotFeedback from "../MetabotFeedback";
 import { MetabotHeader, MetabotRoot } from "./Metabot.styled";
 
 export interface QueryResults {
