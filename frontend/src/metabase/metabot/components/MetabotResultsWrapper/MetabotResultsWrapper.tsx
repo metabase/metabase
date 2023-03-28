@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import { VisualizationRunningState } from "metabase/query_builder/components/QueryVisualization";
-import MetabaseEmptyState from "../MetabotEmptyState";
+import MetabotEmptyState from "../MetabotEmptyState";
 import { ErrorState, ErrorWrapperRoot } from "./MetabotResultsWrapper.styled";
 
 interface Props<T> {
@@ -41,7 +41,7 @@ const MetabotResultsWrapper = <T,>({
     return <>{children(data)}</>;
   }
 
-  return <MetabaseEmptyState />;
+  return <MetabotEmptyState />;
 };
 
 export default MetabotResultsWrapper;

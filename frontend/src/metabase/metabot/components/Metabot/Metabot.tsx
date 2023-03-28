@@ -32,9 +32,7 @@ const Metabot = ({
   onFetchResults,
 }: MetabotProps) => {
   const [{ loading, value, error }, handleRun] = useAsyncFn(onFetchResults);
-  const [feedbackType, setFeedbackType] = useState<
-    MetabotFeedbackType | undefined
-  >();
+  const [feedbackType, setFeedbackType] = useState<MetabotFeedbackType>();
 
   const shouldHideResults = feedbackType === "invalid-sql";
 
