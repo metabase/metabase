@@ -7,10 +7,9 @@
    [metabase.api.query-description :as api.qd]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models :refer [Metric  MetricImportantField Table]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :as metric :refer [Metric]]
    [metabase.models.revision :as revision]
-   [metabase.models.table :refer [Table]]
    [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -131,7 +130,7 @@
 
     ;; delete old fields as needed
     (when (seq fields-to-remove)
-      (db/simple-delete! 'MetricImportantField {:metric_id id, :field_id [:in fields-to-remove]}))
+      (t2/delete! (t2/table-name MetricImportantField) {:metric_id id, :field_id [:in fields-to-remove]}))
     ;; add new fields as needed
     (db/insert-many! 'MetricImportantField (for [field-id fields-to-add]
                                              {:metric_id id, :field_id field-id}))

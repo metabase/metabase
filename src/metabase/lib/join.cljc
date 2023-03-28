@@ -141,6 +141,37 @@
    (cond-> (join-clause query stage-number x)
      condition (assoc :condition (join-condition query stage-number condition)))))
 
+(defmulti with-join-alias-method
+  "Implementation for [[with-join-alias]]."
+  {:arglists '([x join-alias])}
+  (fn [x _join-alias]
+    (lib.dispatch/dispatch-value x)))
+
+(mu/defn with-join-alias
+  "Add a specific `join-alias` to something `x`, either a `:field` or join map. Does not recursively update other
+  references (yet; we can add this in the future)."
+  [x join-alias :- ::lib.schema.common/non-blank-string]
+  (with-join-alias-method x join-alias))
+
+(defmethod with-join-alias-method :dispatch-type/fn
+  [f join-alias]
+  (fn [query stage-number]
+    (let [x (f query stage-number)]
+      (with-join-alias-method x join-alias))))
+
+(defmethod with-join-alias-method :mbql/join
+  [join join-alias]
+  (assoc join :alias join-alias))
+
+(mu/defn with-join-fields
+  "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
+  references."
+  [x fields :- ::lib.schema.join/fields]
+  (if (fn? x)
+    (fn [query stage-number]
+      (with-join-fields (x query stage-number) fields))
+    (assoc x :fields fields)))
+
 (mu/defn join :- ::lib.schema/query
   "Create a join map as if by [[join-clause]] and add it to a `query`.
 

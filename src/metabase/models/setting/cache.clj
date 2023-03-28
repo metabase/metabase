@@ -84,7 +84,7 @@
         ;; and ignore that Exception if one is thrown.
         (try
           ;; Use `simple-insert!` because we do *not* want to trigger pre-insert behavior, such as encrypting `:value`
-          (db/simple-insert! 'Setting :key settings-last-updated-key, :value current-timestamp-as-string-honeysql)
+          (t2/insert! (t2/table-name (t2/resolve-model 'Setting)) :key settings-last-updated-key, :value current-timestamp-as-string-honeysql)
           (catch java.sql.SQLException e
             ;; go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
             (log/error (trs "Error updating Settings last updated value: {0}"

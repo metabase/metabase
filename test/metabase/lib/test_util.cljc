@@ -64,3 +64,37 @@
     (fields   [_this table-id]   (for [field fields
                                        :when (= (:table_id field) table-id)]
                                    (assoc field :lib/type :metadata/field)))))
+
+(defn composed-metadata-provider
+  "A metadata provider composed of several different `metadata-providers`. Methods try each constituent provider in
+  turn from left to right until one returns a truthy result."
+  [& metadata-providers]
+  (reify metadata.protocols/MetadataProvider
+    (database [_this]            (some metadata.protocols/database                metadata-providers))
+    (table    [_this table-id]   (some #(metadata.protocols/table   % table-id)   metadata-providers))
+    (field    [_this field-id]   (some #(metadata.protocols/field   % field-id)   metadata-providers))
+    (card     [_this card-id]    (some #(metadata.protocols/card    % card-id)    metadata-providers))
+    (metric   [_this metric-id]  (some #(metadata.protocols/metric  % metric-id)  metadata-providers))
+    (segment  [_this segment-id] (some #(metadata.protocols/segment % segment-id) metadata-providers))
+    (tables   [_this]            (some metadata.protocols/tables                  metadata-providers))
+    (fields   [_this table-id]   (some #(metadata.protocols/fields  % table-id)   metadata-providers))))
+
+(def metadata-provider-with-card
+  "[[meta/metadata-provider]], but with a Card with ID 1."
+  (composed-metadata-provider
+   meta/metadata-provider
+   (mock-metadata-provider
+    {:cards [(assoc meta/saved-question
+                    :name "My Card"
+                    :id 1)]})))
+
+(defn query-with-card-source-table
+  "A query with a `card__<id>` source Table, and a metadata provider that has that Card."
+  []
+  {:lib/type     :mbql/query
+   :lib/metadata metadata-provider-with-card
+   :type         :pipeline
+   :database     (meta/id)
+   :stages       [{:lib/type     :mbql.stage/mbql
+                   :lib/options  {:lib/uuid (str (random-uuid))}
+                   :source-table "card__1"}]})

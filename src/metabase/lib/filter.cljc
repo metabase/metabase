@@ -27,11 +27,11 @@
 
 (defmethod lib.metadata.calculation/display-name-method :segment
   [query _stage-number [_tag _opts segment-id]]
-  (clojure.core/or
-   (when-let [segment-metadata (lib.metadata/segment query segment-id)]
+  (let [segment-metadata (lib.metadata/segment query segment-id)]
+    (clojure.core/or
      (:display_name segment-metadata)
-     (some->> (:name segment-metadata) (u.humanization/name->human-readable-name :simple)))
-   (i18n/tru "[Unknown Segment]")))
+     (some->> (:name segment-metadata) (u.humanization/name->human-readable-name :simple))
+     (i18n/tru "[Unknown Segment]"))))
 
 (defmethod lib.metadata.calculation/display-name-method :and
   [query stage-number [_tag _opts & subclauses]]
@@ -43,7 +43,7 @@
 (defmethod lib.metadata.calculation/display-name-method :or
   [query stage-number [_tag _opts & subclauses]]
   (lib.util/join-strings-with-conjunction
-   (i18n/tru "and")
+   (i18n/tru "or")
    (for [clause subclauses]
      (lib.metadata.calculation/display-name query stage-number clause))))
 
