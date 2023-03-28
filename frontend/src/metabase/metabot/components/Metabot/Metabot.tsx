@@ -29,13 +29,7 @@ const Metabot = ({
   initialQueryText,
   onFetchQuestion,
 }: MetabotProps) => {
-  const {
-    question,
-    feedbackType,
-    isFeedbackSubmitted,
-    handleFeedbackChange,
-    handleFeedbackSubmit,
-  } = useMetabot({
+  const { question, feedbackType, isFeedbackSubmitted } = useMetabot({
     initialQueryText,
     onFetchQuestion,
   });
@@ -50,15 +44,7 @@ const Metabot = ({
       <MetabotHeader />
       {hasQueryBuilder && <MetabotQueryBuilder />}
       {hasQueryForm && <MetabotQueryForm />}
-
-      {hasFeedbackForm && (
-        <MetabotFeedbackForm
-          feedbackType={feedbackType}
-          isFeedbackSubmitted={isFeedbackSubmitted}
-          onFeedbackChange={handleFeedbackChange}
-          onFeedbackSubmit={handleFeedbackSubmit}
-        />
-      )}
+      {hasFeedbackForm && <MetabotFeedbackForm />}
     </MetabotRoot>
   );
 };

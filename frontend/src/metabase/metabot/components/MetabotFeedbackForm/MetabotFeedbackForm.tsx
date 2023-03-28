@@ -1,8 +1,11 @@
 import React from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import FormProvider from "metabase/core/components/FormProvider";
 import { MetabotFeedbackType } from "metabase-types/api";
+import { Dispatch, MetabotFeedbackStatus, State } from "metabase-types/store";
+import { getFeedbackStatus, getFeedbackType } from "../../selectors";
 import MetabotMessage from "../MetabotMessage";
 import {
   FormRoot,
@@ -12,26 +15,41 @@ import {
   InlineFormSubmitButton,
 } from "./MetabotFeedbackForm.styled";
 
-export interface MetabotFeedbackFormProps {
-  feedbackType: MetabotFeedbackType | undefined;
-  isFeedbackSubmitted: boolean;
-  onFeedbackChange: (type: MetabotFeedbackType) => void;
-  onFeedbackSubmit: (message: string) => void;
+interface StateProps {
+  feedbackType?: MetabotFeedbackType;
+  feedbackStatus: MetabotFeedbackStatus;
 }
+
+interface DispatchProps {
+  onChangeFeedback: (feedbackType: MetabotFeedbackType) => void;
+  onSubmitFeedback: (feedbackMessage: string) => void;
+}
+
+type MetabotFeedbackFormProps = StateProps & DispatchProps;
+
+const mapStateToProps = (state: State): StateProps => ({
+  feedbackType: getFeedbackType(state),
+  feedbackStatus: getFeedbackStatus(state),
+});
+
+const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
+  onChangeFeedback: () => undefined,
+  onSubmitFeedback: () => undefined,
+});
 
 const MetabotFeedbackForm = ({
   feedbackType,
-  isFeedbackSubmitted,
-  onFeedbackChange,
-  onFeedbackSubmit,
+  feedbackStatus,
+  onChangeFeedback,
+  onSubmitFeedback,
 }: MetabotFeedbackFormProps) => {
   return (
     <FormRoot>
       <FeedbackFormContent
         feedbackType={feedbackType}
-        isFeedbackSubmitted={isFeedbackSubmitted}
-        onFeedbackChange={onFeedbackChange}
-        onFeedbackSubmit={onFeedbackSubmit}
+        feedbackStatus={feedbackStatus}
+        onChangeFeedback={onChangeFeedback}
+        onSubmitFeedback={onSubmitFeedback}
       />
     </FormRoot>
   );
@@ -39,11 +57,11 @@ const MetabotFeedbackForm = ({
 
 const FeedbackFormContent = ({
   feedbackType,
-  isFeedbackSubmitted,
-  onFeedbackChange,
-  onFeedbackSubmit,
+  feedbackStatus,
+  onChangeFeedback,
+  onSubmitFeedback,
 }: MetabotFeedbackFormProps) => {
-  if (isFeedbackSubmitted) {
+  if (feedbackStatus === "complete") {
     return <MetabotMessage>{t`Thanks for the feedback!`}</MetabotMessage>;
   }
 
@@ -55,7 +73,7 @@ const FeedbackFormContent = ({
         <FeedbackMessageForm
           title={t`What data should it have used?`}
           placeholder={t`Type the name of the data it should have used.`}
-          onSubmit={onFeedbackSubmit}
+          onSubmit={onSubmitFeedback}
         />
       );
     case "incorrect-result":
@@ -63,23 +81,23 @@ const FeedbackFormContent = ({
         <FeedbackMessageForm
           title={t`Sorry about that.`}
           placeholder={t`Describe what’s wrong`}
-          onSubmit={onFeedbackSubmit}
+          onSubmit={onSubmitFeedback}
         />
       );
     default:
-      return <FeedbackTypeSelect onFeedbackChange={onFeedbackChange} />;
+      return <FeedbackTypeSelect onChangeFeedback={onChangeFeedback} />;
   }
 };
 
 interface FeedbackTypeSelectProps {
-  onFeedbackChange: (type: MetabotFeedbackType) => void;
+  onChangeFeedback: (type: MetabotFeedbackType) => void;
 }
 
-const FeedbackTypeSelect = ({ onFeedbackChange }: FeedbackTypeSelectProps) => {
-  const handleGreat = () => onFeedbackChange("great");
-  const handleWrongData = () => onFeedbackChange("wrong-data");
-  const handleIncorrectResult = () => onFeedbackChange("incorrect-result");
-  const handleInvalidSql = () => onFeedbackChange("invalid-sql");
+const FeedbackTypeSelect = ({ onChangeFeedback }: FeedbackTypeSelectProps) => {
+  const handleGreat = () => onChangeFeedback("great");
+  const handleWrongData = () => onChangeFeedback("wrong-data");
+  const handleIncorrectResult = () => onChangeFeedback("incorrect-result");
+  const handleInvalidSql = () => onChangeFeedback("invalid-sql");
 
   return (
     <FormSection>
@@ -127,4 +145,7 @@ const FeedbackMessageForm = ({
   );
 };
 
-export default MetabotFeedbackForm;
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(MetabotFeedbackForm);
