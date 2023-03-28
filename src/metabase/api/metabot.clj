@@ -10,24 +10,6 @@
 
 (set! *warn-on-reflection* true)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/prompt/:model-id"
-  "A webhook"
-  [model-id :as {{:keys [question fake] :as body} :body}]
-  ;{model-id ms/PositiveInt
-  ; question string?}
-  (let [model (api/check-404 (t2/select-one Card :id model-id :dataset true))]
-    (or
-     (sql-generator/infer-sql model question)
-     (throw
-      (let [message (format
-                     "Query '%s' didn't produce any SQL. Perhaps try a more detailed query."
-                     question)]
-        (ex-info
-         message
-         {:status-code 400
-          :message     message}))))))
-
 ;#_{:clj-kondo/ignore [:deprecated-var]}
 ;(api/defendpoint-schema POST "/webhook"
 ;  "Ask Metabot to generate a SQL query given a prompt about a given model."
