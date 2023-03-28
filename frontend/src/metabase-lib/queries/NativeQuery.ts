@@ -45,9 +45,6 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
 ///////////////////////////
 // QUERY TEXT TAG UTILS
 
-// matches '#123-foo-bar' and '#123' but not '#123foo'
-const CARD_TAG_NAME_REGEX: RegExp = /^#([0-9]*)(-[a-z0-9-]*)?$/;
-
 function tagRegex(tagName: string): RegExp {
   return new RegExp(`{{\\s*${tagName}\\s*}}`, "g");
 }
@@ -61,11 +58,6 @@ function replaceTagName(
     .queryText()
     .replace(tagRegex(oldTagName), `{{${newTagName}}}`);
   return query.setQueryText(queryText);
-}
-
-export function cardIdFromTagName(name: string): number | null {
-  const match = name.match(CARD_TAG_NAME_REGEX);
-  return parseInt(match?.[1]) || null;
 }
 
 export function updateCardTemplateTagNames(

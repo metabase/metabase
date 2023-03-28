@@ -150,7 +150,7 @@
    display-name
    suggested-name]
   [lib.native
-   ->TemplateTags
+   #?@(:cljs (->TemplateTags))
    recognize-template-tags
    template-tags]
   [lib.order-by
