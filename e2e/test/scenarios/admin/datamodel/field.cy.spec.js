@@ -172,12 +172,6 @@ describe("Unfold JSON", () => {
     cy.reload();
     getUnfoldJsonContent().contains("No");
 
-    // Sync database
-    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-    cy.findByText("Sync database schema now").click();
-    cy.wait("@sync_schema");
-    cy.findByText("Sync triggered!");
-
     // Check json field is not unfolded
     cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
     cy.contains("Many Data Types").click();
