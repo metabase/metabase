@@ -1,8 +1,10 @@
 (ns metabase.test.data.redshift
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
@@ -47,15 +49,8 @@
   [& _]
   @db-connection-details)
 
-;; Redshift is tested remotely, which means we need to support multiple tests happening against the same remote host
-;; at the same time. Since Redshift doesn't let us create and destroy databases (we must re-use the same database
-;; throughout the tests) we'll just fake it by creating a new schema when tests start running and re-use the same
-;; schema for each test
-(defonce ^:private session-schema-number
-  (rand-int 240)) ; there's a maximum of 256 schemas per DB so make sure we don't go over that limit
-
-(defonce session-schema-name
-  (str "schema_" session-schema-number))
+(defn- unique-session-schema []
+  (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
@@ -63,7 +58,7 @@
 (defmethod sql.tx/pk-sql-type :redshift [_] "INTEGER IDENTITY(1,1)")
 
 (defmethod sql.tx/qualified-name-components :redshift [& args]
-  (apply tx/single-db-qualified-name-components session-schema-name args))
+  (apply tx/single-db-qualified-name-components (unique-session-schema) args))
 
 ;; don't use the Postgres implementation of `drop-db-ddl-statements` because it adds an extra statment to kill all
 ;; open connections to that DB, which doesn't work with Redshift
@@ -77,16 +72,32 @@
 
 ;;; Create + destroy the schema used for this test session
 
-(defn execute! [format-string & args]
-  (let [sql  (apply format format-string args)
-        spec (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)]
-    (log/info (u/format-color 'blue "[redshift] %s" sql))
-    (jdbc/execute! spec sql))
-  (log/info (u/format-color 'blue "[ok]")))
+(defn- delete-old-schemas! [^java.sql.Connection conn]
+  (with-open [rset (.. conn getMetaData getSchemas)
+              stmt (.createStatement conn)]
+    (while (.next rset)
+      (let [schema (.getString rset "TABLE_SCHEM")
+            sql    (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema)]
+        (when (or (sql.tu.unique-prefix/old-dataset-name? schema)
+                  ;; delete legacy schemas following the `schema_<n>` format from before we shifted to
+                  ;; using [[metabase.driver.sql.test-util.unique-prefix]]
+                  (str/starts-with? "schema_"))
+          (log/info (u/format-color 'blue "[redshift] %s" sql))
+          (.execute stmt sql))))))
+
+(defn- create-session-schema! [^java.sql.Connection conn]
+  (with-open [stmt (.createStatement conn)]
+    (doseq [^String sql [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" (unique-session-schema))
+                         (format "CREATE SCHEMA \"%s\";"  (unique-session-schema))]]
+      (log/info (u/format-color 'blue "[redshift] %s" sql))
+      (.execute stmt sql))))
 
 (defmethod tx/before-run :redshift
-  [_]
-  (execute! "DROP SCHEMA IF EXISTS %s CASCADE; CREATE SCHEMA %s;" session-schema-name session-schema-name))
+  [_driver]
+  (with-open [conn (jdbc/get-connection
+                    (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details))]
+    (delete-old-schemas! conn)
+    (create-session-schema! conn)))
 
 (defonce ^:private ^{:arglists '([driver connection metadata _ _])}
   original-filtered-syncable-schemas
@@ -103,4 +114,4 @@
   [driver conn metadata schema-inclusion-filters schema-exclusion-filters]
   (if *use-original-filtered-syncable-schemas-impl?*
     (original-filtered-syncable-schemas driver conn metadata schema-inclusion-filters schema-exclusion-filters)
-    #{session-schema-name "spectrum"}))
+    #{(unique-session-schema) "spectrum"}))
