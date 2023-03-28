@@ -21,5 +21,10 @@
   ;; of [[toucan2.core/model]]?
   (or (mbql-clause-type x)
       (when (map? x)
-        (:lib/type x))
+        (if (and (or (keyword? (:operator x))
+                     (string? (:operator x)))
+                 (vector? (:args x))
+                 (map? (:options x {})))
+          :lib/external-op
+          (:lib/type x)))
       (u/dispatch-type-keyword x)))
