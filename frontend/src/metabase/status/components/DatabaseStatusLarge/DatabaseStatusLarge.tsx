@@ -32,7 +32,7 @@ export interface DatabaseStatusLargeProps {
 
 const DatabaseStatusLarge = ({
   databases,
-  isActive,
+  isActive = true,
   onCollapse,
 }: DatabaseStatusLargeProps): JSX.Element => {
   return (
