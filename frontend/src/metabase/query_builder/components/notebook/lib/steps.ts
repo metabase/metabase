@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
@@ -107,6 +108,8 @@ export function getQuestionSteps(question: Question, openSteps = {}) {
   const allSteps: NotebookStep[] = [];
 
   if (question.isStructured()) {
+    const topLevelQuery = question._getMLv2Query();
+
     let query = question.query() as StructuredQuery;
     const database = question.database();
     const allowsNesting = database && database.hasFeature("nested-queries");
@@ -121,6 +124,7 @@ export function getQuestionSteps(question: Question, openSteps = {}) {
 
     for (const [stageIndex, stageQuery] of query.queries().entries()) {
       const { steps, actions } = getStageSteps(
+        topLevelQuery,
         stageQuery,
         stageIndex,
         openSteps,
@@ -146,6 +150,7 @@ export function getQuestionSteps(question: Question, openSteps = {}) {
  * Returns an array of "steps" to be displayed in the notebook for one "stage" (nesting) of a query
  */
 function getStageSteps(
+  topLevelQuery: Query,
   stageQuery: StructuredQuery,
   stageIndex: number,
   openSteps: OpenSteps,
@@ -164,6 +169,7 @@ function getStageSteps(
       type: STEP.type,
       stageIndex: stageIndex,
       itemIndex: itemIndex,
+      topLevelQuery,
       query: stageQuery,
       valid: STEP.valid(stageQuery, itemIndex),
       active: STEP.active(stageQuery, itemIndex),

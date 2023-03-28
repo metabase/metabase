@@ -15,6 +15,7 @@ function setup(step = createMockNotebookStep()) {
     <LimitStep
       step={step}
       query={step.query}
+      topLevelQuery={step.topLevelQuery}
       color="brand"
       isLastOpened={false}
       reportTimezone="UTC"
