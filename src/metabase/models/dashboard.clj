@@ -31,7 +31,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]))
@@ -136,9 +135,9 @@
                                     :position          position})]
         (t2/with-transaction [_conn]
           (binding [pulse/*allow-moving-dashboard-subscriptions* true]
-            (db/update-where! Pulse {:dashboard_id dashboard-id}
-              :name (:name dashboard)
-              :collection_id (:collection_id dashboard))
+            (t2/update! Pulse {:dashboard_id dashboard-id}
+                        {:name (:name dashboard)
+                         :collection_id (:collection_id dashboard)})
             (pulse-card/bulk-create! new-pulse-cards)))))))
 
 (defn- post-update

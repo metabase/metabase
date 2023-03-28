@@ -8,6 +8,7 @@
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.util :as mdb.u]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
@@ -478,7 +479,7 @@
 (defn- check-perms-with-fn
   ([fn-symb read-or-write a-model object-id]
    (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (t2/select-one a-model (models/primary-key a-model) object-id))))
+       (check-perms-with-fn fn-symb read-or-write (t2/select-one a-model (mdb.u/primary-key a-model) object-id))))
 
   ([fn-symb read-or-write object]
    (and object

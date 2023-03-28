@@ -24,7 +24,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -481,7 +480,7 @@
   {id ms/PositiveInt}
   (api/write-check (t2/select-one Table :id id))
   (when-let [field-ids (t2/select-pks-set Field :table_id id)]
-    (db/simple-delete! FieldValues :field_id [:in field-ids]))
+    (t2/delete! (t2/table-name FieldValues) :field_id [:in field-ids]))
   {:status :success})
 
 (api/defendpoint GET "/:id/related"
