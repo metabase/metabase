@@ -9,6 +9,7 @@ export const QueryStateRoot = styled.div`
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  border-top: 1px solid ${color("border")};
 `;
 
 export const EmptyStateRoot = styled.div`
@@ -16,6 +17,7 @@ export const EmptyStateRoot = styled.div`
   justify-content: center;
   align-items: center;
   flex: 1 0 auto;
+  border-top: 1px solid ${color("border")};
   background-color: ${color("bg-light")};
 `;
 
@@ -27,6 +29,7 @@ export const EmptyStateIcon = styled(Icon)`
 
 export const LoadingState = styled(VisualizationRunningState)`
   flex: 1 0 auto;
+  border-top: 1px solid ${color("border")};
 `;
 
 export const ErrorStateRoot = styled.div`
@@ -34,6 +37,7 @@ export const ErrorStateRoot = styled.div`
   align-items: center;
   justify-content: center;
   height: 100%;
+  border-top: 1px solid ${color("border")};
 `;
 
 export const ErrorStateMessage = styled(EmptyState)`
