@@ -50,12 +50,10 @@
   As an example of such a value, `(get-in card [:template-tags \"some-tag\" :widget-type])` can be `:date/all-options`."
   [x]
   (cond
-    (keyword? x)    (if-let [ns-part (namespace x)]
-                      (str ns-part "/" (name x))
-                      (name x))
-    (map? x)        (update-vals x fix-namespaced-values)
-    (sequential? x) (map fix-namespaced-values x)
-    :else           x))
+    (qualified-keyword? x)    (str (namespace x) "/" (name x))
+    (map? x)                  (update-vals x fix-namespaced-values)
+    (sequential? x)           (map fix-namespaced-values x)
+    :else                     x))
 
 (defn ^:export legacy-query
   "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."

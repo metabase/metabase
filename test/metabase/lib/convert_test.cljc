@@ -107,3 +107,24 @@
                                         :aggregation  [[:aggregation-options
                                                         [:sum [:field 1 nil]]
                                                         {:display-name "Revenue"}]]}}))))
+
+(deftest ^:parallel round-trip-test
+  ;; Miscellaneous queries that have caused test failures in the past, captured here for quick feedback.
+  (are [query] (= query (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))
+       ;; :aggregation-options on a non-aggregate expression with an inner aggregate.
+       {:database 194,
+        :query {:aggregation [[:aggregation-options
+                               [:- [:sum [:field 1677 nil]] 41]
+                               {:name "Sum-41"}]],
+                :breakout [[:field 1677 nil]],
+                :source-table 517},
+        :type :query}
+
+       ;; aggregation-options on a nested aggregation inside a larger expression
+       {:database 194,
+        :query {:aggregation [[:+ [:aggregation-options
+                                   [:distinct [:field 1677 nil]]
+                                   {:name "differences"}]
+                               1]],
+                :source-table 517},
+        :type :query}))

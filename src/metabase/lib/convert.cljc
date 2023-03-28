@@ -69,7 +69,11 @@
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
   (let [[tag opts & args] (->pMBQL aggregation)]
-    (into [tag (merge opts options)] args)))
+    (into [tag (merge opts
+                      options
+                      ;; Keep track of the keys of :aggregation-options in case of converting back with ->legacy-MBQL.
+                      {:lib/aggregation-options (keys options)})]
+          args)))
 
 (defmulti ->legacy-MBQL
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's
@@ -146,25 +150,12 @@
                (update-vals ->legacy-MBQL))
            (chain-stages base))))
 
-(defn- aggregation->legacy-MBQL [input]
-  (let [[tag options & args] input
-        inner (into [tag] (map ->legacy-MBQL args))]
-    (if-let [options (not-empty (disqualify options))]
-      [:aggregation-options inner options]
-      inner)))
-
-(defmethod ->legacy-MBQL :count [x] (aggregation->legacy-MBQL x))
-(defmethod ->legacy-MBQL :avg [x] (aggregation->legacy-MBQL x))
-(defmethod ->legacy-MBQL :count-where [x] (aggregation->legacy-MBQL x))
-(defmethod ->legacy-MBQL :distinct [x] (aggregation->legacy-MBQL x))
-(defmethod ->legacy-MBQL :max [x] (aggregation->legacy-MBQL x))
-(defmethod ->legacy-MBQL :median [x] (aggregation->legacy-MBQL x))
-(defmethod ->legacy-MBQL :min [x] (aggregation->legacy-MBQL x))
-(defmethod ->legacy-MBQL :percentile [x] (aggregation->legacy-MBQL x))
-(defmethod ->legacy-MBQL :share [x] (aggregation->legacy-MBQL x))
-(defmethod ->legacy-MBQL :stddev [x] (aggregation->legacy-MBQL x))
-(defmethod ->legacy-MBQL :sum [x] (aggregation->legacy-MBQL x))
-(defmethod ->legacy-MBQL :sum-where [x] (aggregation->legacy-MBQL x))
+(defmethod ->legacy-MBQL :mbql/aggregation-options [[tag options & args]]
+  (let [aggregation-keys    (:lib/aggregation-options options)
+        aggregation-options (select-keys options aggregation-keys)
+        inner-options       (apply dissoc options :lib/aggregation-options aggregation-keys)
+        inner               (into [tag inner-options] args)]
+    [:aggregation-options (->legacy-MBQL inner) aggregation-options]))
 
 (defmethod ->legacy-MBQL :mbql.stage/mbql [stage]
   (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
