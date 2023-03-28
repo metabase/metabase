@@ -1,53 +1,39 @@
-import React, { useCallback } from "react";
-import { useAsyncFn } from "react-use";
+import React from "react";
 import { jt, t } from "ttag";
 import { MetabotApi } from "metabase/services";
 import { User } from "metabase-types/api";
-import { fillQuestionTemplateTags } from "metabase/metabot/utils/question";
 import Question from "metabase-lib/Question";
-import MetabotMessage from "../MetabotMessage";
-import MetabotPrompt from "../MetabotPrompt";
-import MetabotQueryBuilder from "../MetabotQueryBuilder";
 import ModelLink from "../ModelLink";
-import { MetabotHeader, MetabotRoot } from "../MetabotLayout";
-import MetabotResultsWrapper from "../MetabotResultsWrapper";
+import Metabot from "../Metabot";
 
 interface ModelMetabotProps {
   model: Question;
   user?: User;
+  initialQueryText?: string;
 }
 
-const ModelMetabot = ({ model, user }: ModelMetabotProps) => {
-  const [{ value, loading, error }, run] = useAsyncFn(getQuestionAndResults);
+const ModelMetabot = ({ model, user, initialQueryText }: ModelMetabotProps) => {
+  const handleFetch = async (query: string) => {
+    const card = await MetabotApi.modelPrompt({
+      modelId: model.id(),
+      question: query,
+    });
 
-  const handleRun = useCallback(
-    (query: string) => {
-      run(model, query);
-    },
-    [model, run],
-  );
+    return new Question(card, model.metadata());
+  };
 
   return (
-    <MetabotRoot>
-      <MetabotHeader>
-        <MetabotMessage>{getGreetingMessage(model, user)}</MetabotMessage>
-        <MetabotPrompt
-          user={user}
-          placeholder={gePromptPlaceholder(model)}
-          isRunning={loading}
-          onRun={handleRun}
-        />
-      </MetabotHeader>
-      <MetabotResultsWrapper loading={loading} error={error} data={value}>
-        {({ question, results }) => (
-          <MetabotQueryBuilder question={question} results={results} />
-        )}
-      </MetabotResultsWrapper>
-    </MetabotRoot>
+    <Metabot
+      title={getTitle(model, user)}
+      placeholder={getPlaceholder(model)}
+      user={user}
+      initialQueryText={initialQueryText}
+      onFetchQuestion={handleFetch}
+    />
   );
 };
 
-const getGreetingMessage = (model: Question, user?: User) => {
+const getTitle = (model: Question, user?: User) => {
   const link = <ModelLink model={model} />;
   const name = user?.first_name;
 
@@ -56,21 +42,8 @@ const getGreetingMessage = (model: Question, user?: User) => {
     : jt`What do you want to know about ${link}?`;
 };
 
-const gePromptPlaceholder = (model: Question) => {
+const getPlaceholder = (model: Question) => {
   return t`Ask something like, how many ${model.displayName()} have we had over time?`;
-};
-
-const getQuestionAndResults = async (model: Question, query: string) => {
-  const card = await MetabotApi.modelPrompt({
-    modelId: model.id(),
-    question: query,
-  });
-  const question = fillQuestionTemplateTags(
-    new Question(card, model.metadata()),
-  );
-  const results = await question.apiGetResults();
-
-  return { question, results };
 };
 
 export default ModelMetabot;

@@ -1,43 +1,39 @@
 import { connect } from "react-redux";
 import _ from "underscore";
-
+import type { LocationDescriptorObject } from "history";
 import { push } from "react-router-redux";
-import { getUser } from "metabase/selectors/user";
+import { extractEntityId } from "metabase/lib/urls";
 import Databases from "metabase/entities/databases";
-import { Card, Database, DatabaseId, User } from "metabase-types/api";
+import { getUser } from "metabase/selectors/user";
+import { DatabaseId, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import DatabaseMetabot from "metabase/metabot/components/DatabaseMetabot";
-import { LocationDescriptor } from "metabase-types/types";
+import Database from "metabase-lib/metadata/Database";
+import DatabaseMetabot from "../../components/DatabaseMetabot";
 
 interface RouterParams {
-  databaseId?: string;
+  databaseId: string;
 }
 
-interface CardLoaderProps {
-  card: Card;
+interface RouteProps {
   params: RouterParams;
-  location: LocationDescriptor;
+  location: LocationDescriptorObject;
 }
 
 interface StateProps {
   user?: User;
   database?: Database;
-  initialQuery?: string;
+  initialQueryText?: string;
 }
-
-const getDatabaseId = (params: RouterParams) => {
-  return params.databaseId != null ? parseInt(params.databaseId) : null;
-};
 
 const mapStateToProps = (
   state: State,
-  { params, location }: CardLoaderProps,
+  { params, location }: RouteProps,
 ): StateProps => ({
-  user: getUser(state) ?? undefined,
   database: Databases.selectors.getObject(state, {
-    entityId: getDatabaseId(params),
+    entityId: extractEntityId(params.databaseId),
   }),
-  initialQuery: location?.query?.query,
+  user: getUser(state) ?? undefined,
+  initialQueryText: location?.query?.query,
 });
 
 const mapDispatchToProps = {

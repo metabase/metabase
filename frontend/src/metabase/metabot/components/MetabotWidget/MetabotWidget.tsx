@@ -6,16 +6,21 @@ import Database from "metabase-lib/metadata/Database";
 import DatabasePicker from "../DatabasePicker";
 import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";
-import { MetabotHeader } from "./HomeMetabot.styled";
+import { MetabotHeader } from "./MetabotWidget.styled";
 
-interface HomeMetabotProps {
+interface MetabotWidgetProps {
   databases: Database[];
   model?: Question;
   user?: User;
   onRun: (databaseId: DatabaseId, query: string) => void;
 }
 
-const HomeMetabot = ({ databases, model, user, onRun }: HomeMetabotProps) => {
+const MetabotWidget = ({
+  databases,
+  model,
+  user,
+  onRun,
+}: MetabotWidgetProps) => {
   const initialDatabaseId = model?.databaseId() ?? databases[0]?.id;
   const [databaseId, setDatabaseId] = useState(initialDatabaseId);
 
@@ -65,4 +70,4 @@ const getPromptPlaceholder = (model?: Question) => {
   }
 };
 
-export default HomeMetabot;
+export default MetabotWidget;

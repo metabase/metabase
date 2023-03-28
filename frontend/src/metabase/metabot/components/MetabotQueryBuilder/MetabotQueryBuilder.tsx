@@ -1,41 +1,60 @@
-import React, { useState } from "react";
-import { Dataset } from "metabase-types/types/Dataset";
+import React from "react";
+import { t } from "ttag";
+import { getResponseErrorMessage } from "metabase/core/utils/errors";
+import { Dataset } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import MetabotQueryEditor from "../MetabotQueryEditor";
-import MetabotQueryFooter from "../MetabotQueryFooter";
 import MetabotVisualization from "../MetabotVisualization";
 import {
-  MetabotQueryBuilderRoot,
-  MetabotQueryVisualizationContainer,
+  EmptyStateIcon,
+  EmptyStateRoot,
+  ErrorStateMessage,
+  ErrorStateRoot,
+  LoadingState,
+  QueryStateRoot,
 } from "./MetabotQueryBuilder.styled";
 
-type MetabotQueryBuilderProps = {
-  question: Question;
-  results: [Dataset];
-};
+interface MetabotQueryBuilderProps {
+  question?: Question;
+  results?: [Dataset];
+  isLoading?: boolean;
+  error?: unknown;
+}
 
 const MetabotQueryBuilder = ({
   question,
   results,
+  isLoading,
+  error,
 }: MetabotQueryBuilderProps) => {
-  const [isShowingRawTable, setIsShowingRawTable] = useState(false);
+  if (isLoading) {
+    return <LoadingState loadingMessage={t`Doing science...`} />;
+  }
+
+  if (error) {
+    return (
+      <ErrorStateRoot>
+        <ErrorStateMessage
+          message={getResponseErrorMessage(error)}
+          icon="warning"
+        />
+      </ErrorStateRoot>
+    );
+  }
+
+  if (!question || !results) {
+    return (
+      <EmptyStateRoot>
+        <EmptyStateIcon name="insight" />
+      </EmptyStateRoot>
+    );
+  }
 
   return (
-    <MetabotQueryBuilderRoot>
-      <MetabotQueryEditor question={question} />
-      <MetabotQueryVisualizationContainer>
-        <MetabotVisualization
-          question={question}
-          results={results}
-          isShowingRawTable={isShowingRawTable}
-        />
-      </MetabotQueryVisualizationContainer>
-      <MetabotQueryFooter
-        question={question}
-        isShowingRawTable={isShowingRawTable}
-        onToggleRawTable={setIsShowingRawTable}
-      />
-    </MetabotQueryBuilderRoot>
+    <QueryStateRoot>
+      <MetabotQueryEditor question={question} isReadOnly hasTopbar />
+      <MetabotVisualization question={question} results={results} />
+    </QueryStateRoot>
   );
 };
 

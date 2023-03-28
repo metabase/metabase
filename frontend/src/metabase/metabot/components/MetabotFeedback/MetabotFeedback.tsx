@@ -1,114 +1,96 @@
-import React from "react";
-import { t } from "ttag";
-import Button from "metabase/core/components/Button";
-import FormProvider from "metabase/core/components/FormProvider";
+import React, { useCallback, useEffect, useState } from "react";
+import { useAsyncFn } from "react-use";
 import { MetabotFeedbackType } from "metabase-types/api";
-import MetabotMessage from "../MetabotMessage";
-import {
-  FeedbackSection,
-  InlineForm,
-  InlineFormInput,
-  InlineFormSubmitButton,
-} from "./MetabotFeedback.styled";
+import { maybeGetNativeQueryText } from "metabase/metabot/utils/question";
+import { MetabotApi } from "metabase/services";
+import Question from "metabase-lib/Question";
+import MetabotFeedbackForm from "../MetabotFeedbackForm";
+import MetabotQueryForm from "../MetabotQueryForm";
+import { QueryResults } from "../Metabot";
 
-export interface MetabotFeedbackProps {
-  type?: MetabotFeedbackType;
-  isSubmitted?: boolean;
-  onTypeChange?: (type: MetabotFeedbackType) => void;
-  onSubmit?: (message: string) => void;
+interface MetabotFeedbackProps {
+  results: QueryResults;
+  feedbackType?: MetabotFeedbackType;
+  onSubmit?: (correctedQuestion: Question) => void;
+  onChangeFeedbackType: (feedbackType?: MetabotFeedbackType) => void;
 }
 
 const MetabotFeedback = ({
-  type,
-  isSubmitted,
-  onTypeChange,
+  results,
+  feedbackType,
+  onChangeFeedbackType,
   onSubmit,
 }: MetabotFeedbackProps) => {
-  if (isSubmitted) {
-    return <MetabotMessage>{t`Thanks for the feedback!`}</MetabotMessage>;
-  }
+  const [, handleSubmit] = useAsyncFn(MetabotApi.sendFeedback);
+  const [isFeedbackSubmitted, setIsFeedbackSubmitted] = useState(false);
 
-  switch (type) {
-    case "great":
-      return <MetabotMessage>{t`Glad to hear it!`}</MetabotMessage>;
-    case "wrong-data":
-      return (
-        <FeedbackMessageForm
-          title={t`What data should it have used?`}
-          placeholder={t`Type the name of the data it should have used.`}
-          onSubmit={onSubmit}
-        />
-      );
-    case "incorrect-result":
-      return (
-        <FeedbackMessageForm
-          title={t`Sorry about that.`}
-          placeholder={t`Describe what’s wrong`}
-          onSubmit={onSubmit}
-        />
-      );
-    default:
-      return <FeedbackTypeSelect onTypeChange={onTypeChange} />;
-  }
-};
+  const isFeedbackVisible = results != null;
 
-interface FeedbackTypeSelectProps {
-  onTypeChange?: (type: MetabotFeedbackType) => void;
-}
+  useEffect(() => {
+    setIsFeedbackSubmitted(false);
+    onChangeFeedbackType(undefined);
+  }, [onChangeFeedbackType, results]);
 
-const FeedbackTypeSelect = ({ onTypeChange }: FeedbackTypeSelectProps) => {
-  const handleGreatChange = () => onTypeChange?.("great");
-  const handleWrongDataChange = () => onTypeChange?.("wrong-data");
-  const handleIncorrectResultChange = () => onTypeChange?.("incorrect-result");
-  const handleInvalidSqlChange = () => onTypeChange?.("invalid-sql");
+  const handleFeedbackSubmit = useCallback(
+    async (message?: string, correct_sql?: string) => {
+      if (results == null || feedbackType == null) {
+        return;
+      }
 
-  return (
-    <FeedbackSection>
-      <MetabotMessage>{t`How did I do?`}</MetabotMessage>
-      <Button onClick={handleGreatChange}>{t`This is great!`}</Button>
-      <Button onClick={handleWrongDataChange}>
-        {t`This used the wrong data.`}
-      </Button>
-      <Button onClick={handleIncorrectResultChange}>
-        {t`This result isn’t correct.`}
-      </Button>
-      <Button onClick={handleInvalidSqlChange}>
-        {t`This isn’t valid SQL.`}
-      </Button>
-    </FeedbackSection>
+      const sql = maybeGetNativeQueryText(results.question);
+
+      if (!sql) {
+        return;
+      }
+
+      await handleSubmit({
+        feedback: feedbackType,
+        sql,
+        prompt: results.prompt,
+        message,
+        correct_sql,
+      });
+
+      // TODO: add error handling once BE is ready
+      setIsFeedbackSubmitted(true);
+      onChangeFeedbackType(undefined);
+    },
+    [feedbackType, handleSubmit, onChangeFeedbackType, results],
   );
-};
 
-interface FeedbackFormValues {
-  message: string;
-}
+  const handleSubmitQueryForm = useCallback(
+    async (question: Question) => {
+      const queryText = maybeGetNativeQueryText(question);
+      await handleFeedbackSubmit(undefined, queryText);
+      onSubmit?.(question);
+    },
+    [handleFeedbackSubmit, onSubmit],
+  );
 
-interface FeedbackMessageFormProps {
-  title: string;
-  placeholder: string;
-  onSubmit?: (message: string) => void;
-}
+  const handleCancelQueryForm = useCallback(
+    () => onChangeFeedbackType(undefined),
+    [onChangeFeedbackType],
+  );
 
-const FeedbackMessageForm = ({
-  title,
-  placeholder,
-  onSubmit,
-}: FeedbackMessageFormProps) => {
-  const initialValues = { message: "" };
-  const handleSubmit = ({ message }: FeedbackFormValues) => onSubmit?.(message);
+  const shouldShowQueryForm = feedbackType === "invalid-sql";
 
-  return (
-    <FeedbackSection>
-      <MetabotMessage>{title}</MetabotMessage>
-      <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
-        {({ dirty }) => (
-          <InlineForm disabled={!dirty}>
-            <InlineFormInput name="message" placeholder={placeholder} />
-            <InlineFormSubmitButton title="" icon="check" primary />
-          </InlineForm>
-        )}
-      </FormProvider>
-    </FeedbackSection>
+  if (!isFeedbackVisible) {
+    return null;
+  }
+
+  return shouldShowQueryForm ? (
+    <MetabotQueryForm
+      question={results.question}
+      onCancel={handleCancelQueryForm}
+      onSubmit={handleSubmitQueryForm}
+    />
+  ) : (
+    <MetabotFeedbackForm
+      type={feedbackType}
+      onTypeChange={onChangeFeedbackType}
+      isSubmitted={isFeedbackSubmitted}
+      onSubmit={handleFeedbackSubmit}
+    />
   );
 };
 

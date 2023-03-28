@@ -5,6 +5,8 @@ export const MetabotRoot = styled.main`
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
+  background-color: ${color("bg-white")};
 `;
 
 export const MetabotHeader = styled.header`
@@ -12,6 +14,4 @@ export const MetabotHeader = styled.header`
   flex-direction: column;
   gap: 1.5rem;
   padding: 1.5rem 2rem;
-  border-bottom: 1px solid ${color("border")};
-  background-color: ${color("bg-white")};
 `;
