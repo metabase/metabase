@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+import React from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import { MetabotFeedbackType } from "metabase-types/api";
+import { Dispatch, State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
+import { getOriginalQuestion, getQuestion } from "../../selectors";
 import MetabotQueryEditor from "../MetabotQueryEditor";
 import {
   QueryEditorContainer,
@@ -11,41 +14,63 @@ import {
   QueryEditorTitle,
 } from "./MetabotQueryForm.styled";
 
-interface MetabotQueryFormProps {
+interface StateProps {
   question: Question;
-  onFeedbackChange: (feedbackType?: MetabotFeedbackType) => void;
-  onNativeQuerySubmit: (question: Question) => void;
+  originalQuestion: Question;
 }
+
+interface DispatchProps {
+  onChangeFeedbackType: (feedbackType?: MetabotFeedbackType) => void;
+  onChangeQuery: (question: Question) => void;
+  onSubmitQuery: () => void;
+}
+
+type MetabotQueryFormProps = StateProps & DispatchProps;
+
+const mapStateToProps = (state: State): StateProps => ({
+  question: getQuestion(state),
+  originalQuestion: getOriginalQuestion(state),
+});
+
+const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
+  onChangeFeedbackType: () => undefined,
+  onChangeQuery: () => undefined,
+  onSubmitQuery: () => undefined,
+});
 
 export const MetabotQueryForm = ({
   question,
-  onFeedbackChange,
-  onNativeQuerySubmit,
+  originalQuestion,
+  onChangeFeedbackType,
+  onChangeQuery,
+  onSubmitQuery,
 }: MetabotQueryFormProps) => {
-  const [updatedQuestion, setUpdatedQuestion] = useState(question);
-  const handleSubmit = () => onNativeQuerySubmit(updatedQuestion);
-  const handleCancel = () => onFeedbackChange();
+  const handleCancel = () => onChangeFeedbackType();
 
   return (
     <QueryEditorRoot>
       <QueryEditorTitle>{t`Here’s the generated SQL`}</QueryEditorTitle>
       <QueryEditorContainer>
-        <MetabotQueryEditor question={question} isReadOnly isInitiallyOpen />
+        <MetabotQueryEditor
+          question={originalQuestion}
+          isReadOnly
+          isInitiallyOpen
+        />
       </QueryEditorContainer>
       <QueryEditorTitle>{t`What should the SQL have been?`}</QueryEditorTitle>
       <QueryEditorContainer>
         <MetabotQueryEditor
-          question={updatedQuestion}
+          question={question}
           isInitiallyOpen
-          onChange={setUpdatedQuestion}
+          onChange={onChangeQuery}
         />
       </QueryEditorContainer>
       <QueryEditorFooter>
         <Button onClick={handleCancel}>{t`Cancel`}</Button>
-        <Button primary onClick={handleSubmit}>{t`Done`}</Button>
+        <Button primary onClick={onSubmitQuery}>{t`Done`}</Button>
       </QueryEditorFooter>
     </QueryEditorRoot>
   );
 };
 
-export default MetabotQueryForm;
+export default connect(mapStateToProps, mapDispatchToProps)(MetabotQueryForm);

@@ -10,6 +10,10 @@ export const getQuestion = (state: State) => {
   return new Question(state.metabot.card, getMetadata(state));
 };
 
+export const getOriginalQuestion = (state: State) => {
+  return new Question(state.metabot.originalCard, getMetadata(state));
+};
+
 export const getQueryText = (state: State) => {
   return state.metabot.queryText;
 };

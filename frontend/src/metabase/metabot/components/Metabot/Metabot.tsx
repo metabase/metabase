@@ -33,7 +33,6 @@ const Metabot = ({
     question,
     feedbackType,
     isFeedbackSubmitted,
-    handleNativeQuerySubmit,
     handleFeedbackChange,
     handleFeedbackSubmit,
   } = useMetabot({
@@ -50,14 +49,7 @@ const Metabot = ({
     <MetabotRoot>
       <MetabotHeader />
       {hasQueryBuilder && <MetabotQueryBuilder />}
-
-      {question && hasQueryForm && (
-        <MetabotQueryForm
-          question={question}
-          onFeedbackChange={handleFeedbackChange}
-          onNativeQuerySubmit={handleNativeQuerySubmit}
-        />
-      )}
+      {hasQueryForm && <MetabotQueryForm />}
 
       {hasFeedbackForm && (
         <MetabotFeedbackForm
