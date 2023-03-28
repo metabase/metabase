@@ -15,17 +15,11 @@ import {
   getQuestion,
 } from "./selectors";
 
-export interface InitPayload {
-  entityId: MetabotEntityId;
-  entityType: MetabotEntityType;
-  initialQueryText: string;
-}
+export const SET_ENTITY_ID = "metabase/metabot/SET_ENTITY_ID";
+export const setEntityId = createAction(SET_ENTITY_ID);
 
-export const INIT = "metabase/metabot/INIT";
-export const init = createAction<InitPayload>(INIT);
-
-export const RESET = "metabase/metabot/RESET";
-export const reset = createAction(RESET);
+export const SET_ENTITY_TYPE = "metabase/metabot/SET_ENTITY_TYPE";
+export const setEntityType = createAction(SET_ENTITY_TYPE);
 
 export const SET_QUERY_TEXT = "metabase/metabot/SET_QUERY_TEXT";
 export const setQueryText = createAction<string>(SET_QUERY_TEXT);
@@ -33,6 +27,43 @@ export const setQueryText = createAction<string>(SET_QUERY_TEXT);
 export const SET_FEEDBACK_TYPE = "metabase/metabot/SET_FEEDBACK_TYPE";
 export const setFeedbackType =
   createAction<MetabotFeedbackType>(SET_FEEDBACK_TYPE);
+
+export const RESET = "metabase/metabot/RESET";
+export const reset = createAction(RESET);
+
+export interface InitPayload {
+  entityId: MetabotEntityId;
+  entityType: MetabotEntityType;
+  initialQueryText: string;
+}
+
+export const INIT = "metabase/metabot/INIT";
+export const init = createThunkAction(
+  INIT,
+  ({ entityId, entityType, initialQueryText }: InitPayload) =>
+    (dispatch: Dispatch) => {
+      dispatch(setEntityId(entityId));
+      dispatch(setEntityType(entityType));
+      dispatch(setQueryText(initialQueryText));
+    },
+);
+
+export const RUN_TEXT_QUERY = "metabase/metabot/RUN_TEXT_QUERY";
+export const runTextQuery = createThunkAction(
+  RUN_TEXT_QUERY,
+  () => async (dispatch: Dispatch) => {
+    await dispatch(fetchCard());
+    await dispatch(fetchQueryResults());
+  },
+);
+
+export const RUN_CARD_QUERY = "metabase/metabot/RUN_CARD_QUERY";
+export const runCardQuery = createThunkAction(
+  RUN_CARD_QUERY,
+  () => async (dispatch: Dispatch) => {
+    await dispatch(fetchQueryResults());
+  },
+);
 
 export const FETCH_CARD = "metabase/metabot/FETCH_CARD";
 export const fetchCard = createThunkAction(
