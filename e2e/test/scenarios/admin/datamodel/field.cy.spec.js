@@ -73,13 +73,6 @@ describe.skip("scenarios > admin > datamodel > field", () => {
       cy.contains("Do not include");
     });
   });
-  
-  // // test for json_unfolding
-  // describe("JSON Unfolding", () => {
-  //   before(restore);
-
-  //   it("lets you change json unfolding", () => {
-  //     visitAlias("@ORDERS_CREATED_AT_URL");
 
   describe("Filtering on this field", () => {
     before(restore);
@@ -150,7 +143,7 @@ function getUnfoldJsonContent() {
     .find("[data-testid='select-button-content']")
 }
 
-describe("adding and executing actions", () => {
+describe("Unfold JSON", () => {
   beforeEach(() => {
     resetTestTable({ type: "postgres", table: "many_data_types" });
     restore(`postgres-writable`);
