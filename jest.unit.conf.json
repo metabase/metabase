@@ -11,7 +11,7 @@
     "<rootDir>/node_modules/(?!rehype-external-links/)"
   ],
   "testPathIgnorePatterns": [
-    "<rootDir>/frontend/test/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}"
+    "<rootDir>/frontend/**/*.tz.unit.spec.{js,jsx,ts,tsx}"
   ],
   "testMatch": [
     "<rootDir>/**/*.unit.spec.js",
