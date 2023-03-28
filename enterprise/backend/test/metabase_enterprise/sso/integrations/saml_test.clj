@@ -587,9 +587,11 @@
                          response    (client-full-response :post 302 "/auth/sso" req-options)]
                      (is (successful-login? response))
                      (is (= redirect-url
-                            (get-in response [:headers "Location"])))))))))))
+                            (get-in response [:headers "Location"]))))))))))))))
 
-
+(deftest sso-subpath-e2e-test
+  (testing "Redirect URL should correcly append the site-url when the redirect is a relative path (#28650)"
+    (with-saml-default-setup
       (doseq [redirect-url ["/collection/root"
                             "/test"
                             "/"]]
@@ -602,7 +604,7 @@
                   _          (is (string? location))
                   params-map (uri->params-map location)]
               (testing (format "\nresult =\n%s" (u/pprint-to-str params-map))
-                (testing "\nPOST request should redirect to the original redirect URL with the correct site-ur path"
+                (testing "\nPOST request should redirect to the original redirect URL with the correct site-url path"
                   (do-with-some-validators-disabled
                    (fn []
                      (let [req-options (saml-post-request-options (saml-test-response)
