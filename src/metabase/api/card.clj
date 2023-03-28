@@ -53,7 +53,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
@@ -72,17 +71,17 @@
 ;; return all Cards. This is the default filter option.
 (defmethod cards-for-filter-option* :all
   [_]
-  (db/select Card, :archived false, {:order-by [[:%lower.name :asc]]}))
+  (t2/select Card, :archived false, {:order-by [[:%lower.name :asc]]}))
 
 ;; return Cards created by the current user
 (defmethod cards-for-filter-option* :mine
   [_]
-  (db/select Card, :creator_id api/*current-user-id*, :archived false, {:order-by [[:%lower.name :asc]]}))
+  (t2/select Card, :creator_id api/*current-user-id*, :archived false, {:order-by [[:%lower.name :asc]]}))
 
 ;; return all Cards bookmarked by the current user.
 (defmethod cards-for-filter-option* :bookmarked
   [_]
-  (let [cards (for [{{:keys [archived], :as card} :card} (hydrate (db/select [CardBookmark :card_id]
+  (let [cards (for [{{:keys [archived], :as card} :card} (hydrate (t2/select [CardBookmark :card_id]
                                                                     :user_id api/*current-user-id*)
                                                                   :card)
                     :when                                 (not archived)]
@@ -92,25 +91,25 @@
 ;; Return all Cards belonging to Database with `database-id`.
 (defmethod cards-for-filter-option* :database
   [_ database-id]
-  (db/select Card, :database_id database-id, :archived false, {:order-by [[:%lower.name :asc]]}))
+  (t2/select Card, :database_id database-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
 ;; Return all Cards belonging to `Table` with `table-id`.
 (defmethod cards-for-filter-option* :table
   [_ table-id]
-  (db/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
+  (t2/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
 (s/defn ^:private cards-with-ids :- (s/maybe [(mi/InstanceOf Card)])
   "Return unarchived Cards with `card-ids`.
   Make sure cards are returned in the same order as `card-ids`; `[in card-ids]` won't preserve the order."
   [card-ids :- [su/IntGreaterThanZero]]
   (when (seq card-ids)
-    (let [card-id->card (m/index-by :id (db/select Card, :id [:in (set card-ids)], :archived false))]
+    (let [card-id->card (m/index-by :id (t2/select Card, :id [:in (set card-ids)], :archived false))]
       (filter identity (map card-id->card card-ids)))))
 
 ;; Return the 10 Cards most recently viewed by the current user, sorted by how recently they were viewed.
 (defmethod cards-for-filter-option* :recent
   [_]
-  (cards-with-ids (map :model_id (db/select [ViewLog :model_id [:%max.timestamp :max]]
+  (cards-with-ids (map :model_id (t2/select [ViewLog :model_id [:%max.timestamp :max]]
                                    :model   "card"
                                    :user_id api/*current-user-id*
                                    {:group-by [:model_id]
@@ -122,7 +121,7 @@
 ;; being).
 (defmethod cards-for-filter-option* :popular
   [_]
-  (cards-with-ids (map :model_id (db/select [ViewLog :model_id [:%count.* :count]]
+  (cards-with-ids (map :model_id (t2/select [ViewLog :model_id [:%count.* :count]]
                                    :model "card"
                                    {:group-by [:model_id]
                                     :order-by [[:count :desc]]}))))
@@ -130,7 +129,7 @@
 ;; Cards that have been archived.
 (defmethod cards-for-filter-option* :archived
   [_]
-  (db/select Card, :archived true, {:order-by [[:%lower.name :asc]]}))
+  (t2/select Card, :archived true, {:order-by [[:%lower.name :asc]]}))
 
 ;; Cards that are using a given model.
 (defmethod cards-for-filter-option* :using_model
@@ -325,7 +324,7 @@ saved later when it is ready."
             (future
               (let [current-query (t2/select-one-fn :dataset_query Card :id id)]
                 (if (= (:dataset_query card) current-query)
-                  (do (db/update! Card id {:result_metadata metadata})
+                  (do (t2/update! Card id {:result_metadata metadata})
                       (log/info (trs "Metadata updated asynchronously for card {0}" id)))
                   (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
                                  id)))))))))
@@ -355,13 +354,13 @@ saved later when it is ready."
          metadata-timeout     (a/timeout metadata-sync-wait-ms)
          [metadata port]      (a/alts!! [result-metadata-chan metadata-timeout])
          timed-out?           (= port metadata-timeout)
-         card                 (db/transaction
+         card                 (t2/with-transaction [_conn]
                                ;; Adding a new card at `collection_position` could cause other cards in this
                                ;; collection to change position, check that and fix it if needed
                                (api/maybe-reconcile-collection-position! card-data)
-                               (db/insert! Card (cond-> card-data
-                                                  (and metadata (not timed-out?))
-                                                  (assoc :result_metadata metadata))))]
+                               (first (t2/insert-returning-instances! Card (cond-> card-data
+                                                                             (and metadata (not timed-out?))
+                                                                             (assoc :result_metadata metadata)))))]
      (when-not delay-event?
        (events/publish-event! :card-create card))
      (when timed-out?
@@ -494,7 +493,7 @@ saved later when it is ready."
 (defn- delete-alert-and-notify!
   "Removes all of the alerts and notifies all of the email recipients of the alerts change via `NOTIFY-FN!`"
   [notify-fn! alerts]
-  (db/delete! Pulse :id [:in (map :id alerts)])
+  (t2/delete! Pulse :id [:in (map :id alerts)])
   (doseq [{:keys [channels] :as alert} alerts
           :let [email-channel (m/find-first #(= :email (:channel_type %)) channels)]]
     (doseq [recipient (:recipients email-channel)]
@@ -569,7 +568,7 @@ saved later when it is ready."
   included, otherwise the metadata will be saved to the database asynchronously."
   [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
-  (db/transaction
+  (t2/with-transaction [_conn]
    (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
    (when (and (card-is-verified? card-before-update)
@@ -582,7 +581,7 @@ saved later when it is ready."
                                         :status              nil
                                         :text                (tru "Unverified due to edit")}))
    ;; ok, now save the Card
-   (db/update! Card id
+   (t2/update! Card id
      ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
      ;; modified if they're passed in as non-nil
      (u/select-keys-when card-updates
@@ -669,7 +668,7 @@ saved later when it is ready."
   [id]
   (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
   (let [card (api/write-check Card id)]
-    (db/delete! Card :id id)
+    (t2/delete! Card :id id)
     (events/publish-event! :card-delete (assoc card :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
@@ -697,9 +696,10 @@ saved later when it is ready."
             (api/reconcile-position-for-collection! collection_id collection_position nil)
             ;; Now we can update the card with the new collection and a new calculated position
             ;; that appended to the end
-            (db/update! Card (u/the-id card)
-              :collection_position idx
-              :collection_id       new-collection-id-or-nil))
+            (t2/update! Card
+                        (u/the-id card)
+                        {:collection_position idx
+                         :collection_id       new-collection-id-or-nil}))
           ;; These are reversed because of the classic issue when removing an item from array. If we remove an
           ;; item at index 1, everthing above index 1 will get decremented. By reversing our processing order we
           ;; can avoid changing the index of cards we haven't yet updated
@@ -712,7 +712,7 @@ saved later when it is ready."
     (api/write-check Collection new-collection-id-or-nil))
   ;; for each affected card...
   (when (seq card-ids)
-    (let [cards (db/select [Card :id :collection_id :collection_position :dataset_query]
+    (let [cards (t2/select [Card :id :collection_id :collection_position :dataset_query]
                   {:where [:and [:in :id (set card-ids)]
                                 [:or [:not= :collection_id new-collection-id-or-nil]
                                   (when new-collection-id-or-nil
@@ -728,7 +728,7 @@ saved later when it is ready."
       ;; here. We are querying for the max card position for a given collection, then using that to base our position
       ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll
       ;; get duplicates
-      (db/transaction
+      (t2/with-transaction [_conn]
         ;; If any of the cards have a `:collection_position`, we'll need to fixup the old collection now that the cards
         ;; are gone and update the position in the new collection
         (when-let [cards-with-position (seq (filter :collection_position cards))]
@@ -738,8 +738,9 @@ saved later when it is ready."
         (when-let [cards-without-position (seq (for [card cards
                                                      :when (not (:collection_position card))]
                                                  (u/the-id card)))]
-          (db/update-where! Card {:id [:in (set cards-without-position)]}
-            :collection_id new-collection-id-or-nil))))))
+          (t2/update! (t2/table-name Card)
+                      {:id [:in (set cards-without-position)]}
+                      {:collection_id new-collection-id-or-nil}))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/collections"
@@ -808,9 +809,9 @@ saved later when it is ready."
   (let [{existing-public-uuid :public_uuid} (t2/select-one [Card :public_uuid] :id card-id)]
     {:uuid (or existing-public-uuid
                (u/prog1 (str (UUID/randomUUID))
-                 (db/update! Card card-id
-                   :public_uuid       <>
-                   :made_public_by_id api/*current-user-id*)))}))
+                 (t2/update! Card card-id
+                             {:public_uuid       <>
+                              :made_public_by_id api/*current-user-id*})))}))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:card-id/public_link"
@@ -819,9 +820,9 @@ saved later when it is ready."
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-exists? Card :id card-id, :public_uuid [:not= nil])
-  (db/update! Card card-id
-    :public_uuid       nil
-    :made_public_by_id nil)
+  (t2/update! Card card-id
+              {:public_uuid       nil
+               :made_public_by_id nil})
   {:status 204, :body nil})
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -830,7 +831,7 @@ saved later when it is ready."
   []
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
-  (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+  (t2/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/embeddable"
@@ -839,7 +840,7 @@ saved later when it is ready."
   []
   (validation/check-has-application-permission :setting)
   (validation/check-embedding-enabled)
-  (db/select [Card :name :id], :enable_embedding true, :archived false))
+  (t2/select [Card :name :id], :enable_embedding true, :archived false))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/related"

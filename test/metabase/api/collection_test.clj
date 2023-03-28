@@ -35,7 +35,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -131,7 +130,7 @@
                                       crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
                                       crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
                                       luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
-                                  (is (= (into (set (map :name (db/select Collection))) public-collections)
+                                  (is (= (into (set (map :name (t2/select Collection))) public-collections)
                                          crowbertos))
                                   (is (= (into public-collections #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
                                          crowbertos-with-excludes))
@@ -601,7 +600,7 @@
       (mt/with-temp Collection [collection {:name "Art Collection"}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-some-children-of-collection collection
-          (db/update-where! Dashboard {:collection_id (u/the-id collection)} :archived true)
+          (t2/update! Dashboard {:collection_id (u/the-id collection)} {:archived true})
           (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))
@@ -623,10 +622,10 @@
                                             :user_id  user1-id
                                             :object   (revision/serialize-instance card2 card2-id card2)}]]
       ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
-      (db/execute! {:update :revision
+      (t2/query-one {:update :revision
                     ;; in the past
-                    :set {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
-                    :where [:= :id (:id _revision1)]})
+                     :set {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
+                     :where [:= :id (:id _revision1)]})
       (testing "Results include last edited information from the `Revision` table"
         (is (= [{:name "AA"}
                 {:name "Card with history 1",
@@ -717,16 +716,16 @@
                                    :user_id  failuser-id
                                    :object   (revision/serialize-instance dashboard dashboard-id dashboard)}]]
         (letfn [(at-year [year] (ZonedDateTime/of year 1 1 0 0 0 0 (ZoneId/of "UTC")))]
-          (db/execute! {:update :revision
+          (t2/query-one {:update :revision
                         ;; in the past
-                        :set    {:timestamp (at-year 2015)}
-                        :where  [:in :id (map :id [card-revision1 dash-revision1])]})
+                         :set    {:timestamp (at-year 2015)}
+                         :where  [:in :id (map :id [card-revision1 dash-revision1])]})
           ;; mark the later revisions with the user with name "pass". Note important that its the later revision by
           ;; id. Query assumes increasing timestamps with ids
-          (db/execute! {:update :revision
-                        :set    {:timestamp (at-year 2021)
-                                 :user_id   passuser-id}
-                        :where  [:in :id (map :id [card-revision2 dash-revision2])]}))
+          (t2/query-one {:update :revision
+                         :set    {:timestamp (at-year 2021)
+                                  :user_id   passuser-id}
+                         :where  [:in :id (map :id [card-revision2 dash-revision2])]}))
         (is (= ["pass" "pass"]
                (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?models=dashboard&models=card"))
                     :data
@@ -1012,7 +1011,7 @@
 
   (testing "Let's make sure the 'archived` option works on Collections, nested or not"
     (with-collection-hierarchy [a b c]
-      (db/update! Collection (u/the-id b) :archived true)
+      (t2/update! Collection (u/the-id b) {:archived true})
       (testing "ancestors"
         (is (= {:effective_ancestors []
                 :effective_location  "/"}
@@ -1272,7 +1271,7 @@
 
     (testing "does `archived` work on Collections as well?"
       (with-collection-hierarchy [a b d e f g]
-        (db/update! Collection (u/the-id a) :archived true)
+        (t2/update! Collection (u/the-id a) {:archived true})
         (testing "children"
           (is (= [(collection-item "A")]
                  (remove-non-test-collections (api-get-root-collection-children :archived true)))))))
@@ -1422,7 +1421,7 @@
                                               :descrption "My SQL Snippets"
                                               :namespace  "snippets"})))
           (finally
-            (db/delete! Collection :name collection-name)))))
+            (t2/delete! Collection :name collection-name)))))
     (testing "collection types"
       (mt/with-model-cleanup [Collection]
         (testing "Admins should be able to create with a type"

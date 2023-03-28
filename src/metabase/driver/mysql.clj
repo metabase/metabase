@@ -442,7 +442,7 @@
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
     :YEAR       :type/Date
-    :JSON       :type/SerializedJSON}
+    :JSON       :type/JSON}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
 

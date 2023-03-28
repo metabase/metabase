@@ -11,7 +11,6 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -84,7 +83,7 @@
   :feature :sandboxes
   [field-ids]
   (let [fields                   (when (seq field-ids)
-                                   (hydrate (db/select Field :id [:in (set field-ids)]) :table))
+                                   (hydrate (t2/select Field :id [:in (set field-ids)]) :table))
         {unsandboxed-fields false
          sandboxed-fields   true} (group-by (comp boolean field-is-sandboxed?) fields)]
     (merge

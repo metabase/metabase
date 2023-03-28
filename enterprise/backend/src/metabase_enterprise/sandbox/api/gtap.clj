@@ -10,7 +10,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (api/defendpoint GET "/"
@@ -20,7 +19,7 @@
    table_id [:maybe ms/PositiveInt]}
   (if (and group_id table_id)
     (t2/select-one GroupTableAccessPolicy :group_id group_id :table_id table_id)
-    (db/select GroupTableAccessPolicy {:order-by [[:id :asc]]})))
+    (t2/select GroupTableAccessPolicy {:order-by [[:id :asc]]})))
 
 (api/defendpoint GET "/:id"
   "Fetch GTAP by `id`"
@@ -42,11 +41,11 @@
    card_id              (s/maybe su/IntGreaterThanZero)
    group_id             su/IntGreaterThanZero
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
-  (db/insert! GroupTableAccessPolicy
-    {:table_id             table_id
-     :card_id              card_id
-     :group_id             group_id
-     :attribute_remappings attribute_remappings}))
+  (first (t2/insert-returning-instances! GroupTableAccessPolicy
+                                         {:table_id             table_id
+                                          :card_id              card_id
+                                          :group_id             group_id
+                                          :attribute_remappings attribute_remappings})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
@@ -60,7 +59,7 @@
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
   ;; This allows existing values to be "cleared" by being set to nil
   (when (some #(contains? body %) [:card_id :attribute_remappings])
-    (db/update! GroupTableAccessPolicy id
+    (t2/update! GroupTableAccessPolicy id
       (u/select-keys-when body
         :present #{:card_id :attribute_remappings})))
   (t2/select-one GroupTableAccessPolicy :id id))
@@ -79,7 +78,7 @@
   [id]
   {id ms/PositiveInt}
   (api/check-404 (t2/select-one GroupTableAccessPolicy :id id))
-  (db/delete! GroupTableAccessPolicy :id id)
+  (t2/delete! GroupTableAccessPolicy :id id)
   api/generic-204-no-content)
 
 (defn- +check-sandboxes-enabled

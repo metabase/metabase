@@ -56,8 +56,8 @@ const stepShape = {
   clean: PropTypes.func.isRequired,
   actions: PropTypes.array.isRequired,
 };
-stepShape.previous = stepShape;
-stepShape.next = stepShape;
+stepShape.previous = PropTypes.shape(stepShape);
+stepShape.next = PropTypes.shape(stepShape);
 
 const joinStepPropTypes = {
   query: PropTypes.object.isRequired,

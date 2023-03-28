@@ -14,7 +14,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -39,7 +38,7 @@
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
 (defn- group-id->permissions-set []
-  (into {} (for [[group-id perms] (group-by :group_id (db/select Permissions))]
+  (into {} (for [[group-id perms] (group-by :group_id (t2/select Permissions))]
              {group-id (set (map :object perms))})))
 
 (s/defn ^:private perms-type-for-collection :- CollectionPermissions
@@ -99,7 +98,7 @@
    (graph nil))
 
   ([collection-namespace :- (s/maybe su/KeywordOrString)]
-   (db/transaction
+   (t2/with-transaction [_conn]
      (-> collection-namespace
          non-personal-collection-ids
          (collection-permission-graph collection-namespace)))))
@@ -151,7 +150,7 @@
      (perms/log-permissions-changes diff-old changes)
      (perms/check-revision-numbers old-graph new-graph)
      (when (seq changes)
-       (db/transaction
+       (t2/with-transaction [_conn]
          (doseq [[group-id changes] changes]
            (update-group-permissions! collection-namespace group-id changes))
          (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)

@@ -150,7 +150,7 @@ To change a column's [filter widget](../dashboards/filters.md):
 
 ### Changing a search box filter to a dropdown filter
 
-The dropdown filter widget can be finicky, because Metabase needs to run a [scan](../databases/connecting.md#how-database-scans-work) to get the list of values for the dropdown menu.
+The dropdown filter widget can be finicky, because Metabase needs to run a [scan](../databases/sync-scan.md#how-database-scans-work) to get the list of values for the dropdown menu.
 
 1. Go to **Admin settings** > **Data Model**.
 2. Find your database and table.
@@ -209,7 +209,7 @@ https://www.google.com/search?q=askew
 
 To update the values in your filter dropdown menus, refresh or reset the cached values. **Cache actions** include:
 
-- **Re-scan this table or field** to run a manual scan for new or updated column values. If possible, re-scan the table during off-peak hours, as [scans](../databases/connecting.md#how-database-scans-work) can slow down your database.
+- **Re-scan this table or field** to run a manual scan for new or updated column values. If possible, re-scan the table during off-peak hours, as [scans](../databases/sync-scan.md#how-database-scans-work) can slow down your database.
 - **Discard cached field values** to clear cached values and stop them from showing up in your [filter widgets](#changing-the-filter-widget).
 
 ### Table cache actions

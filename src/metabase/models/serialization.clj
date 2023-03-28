@@ -15,6 +15,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.db.util :as mdb.u]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
@@ -25,7 +26,6 @@
    [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
    [toucan2.core :as t2])
   (:refer-clojure :exclude [descendants]))
 
@@ -92,8 +92,8 @@
 (defn infer-self-path
   "Returns `{:model \"ModelName\" :id \"id-string\"}`"
   [model-name entity]
-  (let [model (db/resolve-model (symbol model-name))
-        pk    (models/primary-key model)]
+  (let [model (mdb.u/resolve-model (symbol model-name))
+        pk    (mdb.u/primary-key model)]
     {:model model-name
      :id    (or (entity-id model-name entity)
                 (some-> (get entity pk) model identity-hash))}))
@@ -137,7 +137,7 @@
 
   Returns a reducible stream of modeled Toucan maps.
 
-  Defaults to using `(toucan.db/select model)` for the entire table.
+  Defaults to using `(toucan.t2/select model)` for the entire table.
 
   You may want to override this to eg. skip archived entities, or otherwise filter what gets serialized."
   {:arglists '([model-name opts])}
@@ -197,8 +197,8 @@
 
   Returns the Clojure map."
   [model-name entity]
-  (let [model (db/resolve-model (symbol model-name))
-        pk    (models/primary-key model)]
+  (let [model (mdb.u/resolve-model (symbol model-name))
+        pk    (mdb.u/primary-key model)]
     (-> (into {} entity)
         (assoc :serdes/meta (generate-path model-name entity))
         (dissoc pk :updated_at))))
@@ -246,7 +246,7 @@
 
 (defmethod load-find-local :default [path]
   (let [{id :id model-name :model} (last path)
-        model                      (db/resolve-model (symbol model-name))]
+        model                      (mdb.u/resolve-model (symbol model-name))]
     (when model
       (lookup-by-id model id))))
 
@@ -291,7 +291,7 @@
   "Called by the default [[load-one!]] if there is a corresponding entity already in the appdb.
   `(load-update! \"ModelName\" ingested-and-xformed local-Toucan-entity)`
 
-  Defaults to a straightforward [[db/update!]], and you may not need to update it.
+  Defaults to a straightforward [[t2/update!]], and you may not need to update it.
 
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
@@ -300,20 +300,21 @@
   (fn [model _ _] model))
 
 (defmethod load-update! :default [model-name ingested local]
-  (let [model    (db/resolve-model (symbol model-name))
-        pk       (models/primary-key model)
+  (let [model    (mdb.u/resolve-model (symbol model-name))
+        pk       (mdb.u/primary-key model)
         id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
-    (db/update! model id ingested)
+    (t2/update! model id ingested)
     (t2/select-one model pk id)))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
   `(load-insert! \"ModelName\" ingested-and-xformed)`
 
-  Defaults to a straightforward [[db/insert!]], and you probably don't need to implement this.
+  Defaults to a straightforward [[(comp first t2/insert-returning-instances!)]] (returning the created object),
+  and you probably don't need to implement this.
 
-  Note that any [[db/insert!]] behavior we don't want to run (like generating an `:entity_id`!) should be skipped based
+  Note that any [[t2/insert!]] behavior we don't want to run (like generating an `:entity_id`!) should be skipped based
   on the [[mi/*deserializing?*]] dynamic var.
 
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
@@ -324,7 +325,7 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s: %s" model-name (pr-str ingested))
-  (db/insert! (symbol model-name) ingested))
+  (first (t2/insert-returning-instances! (symbol model-name) ingested)))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -417,7 +418,7 @@
   "Creates the basic context for storage. This is a map with a single entry: `:collections` is a map from collection ID
   to the path of collections."
   []
-  (let [colls      (db/select ['Collection :id :entity_id :location :slug])
+  (let [colls      (t2/select ['Collection :id :entity_id :location :slug])
         coll-names (into {} (for [{:keys [id entity_id slug]} colls]
                               [(str id) (storage-leaf-file-name entity_id slug)]))
         coll->path (into {} (for [{:keys [entity_id id location]} colls
@@ -444,8 +445,8 @@
   [id model]
   (when id
     (let [model-name (name model)
-          model      (db/resolve-model (symbol model-name))
-          entity     (t2/select-one model (models/primary-key model) id)
+          model      (mdb.u/resolve-model (symbol model-name))
+          entity     (t2/select-one model (mdb.u/primary-key model) id)
           path       (mapv :id (generate-path model-name entity))]
       (if (= (count path) 1)
         (first path)
@@ -465,13 +466,13 @@
   [eid model]
   (when eid
     (let [model-name (name model)
-          model      (db/resolve-model (symbol model-name))
+          model      (mdb.u/resolve-model (symbol model-name))
           eid        (if (vector? eid)
                        (last eid)
                        eid)
           entity     (lookup-by-id model eid)]
       (if entity
-        (get entity (models/primary-key model))
+        (get entity (mdb.u/primary-key model))
         (throw (ex-info "Could not find foreign key target - bad serdes-dependencies or other serialization error"
                         {:entity_id eid :model (name model)}))))))
 

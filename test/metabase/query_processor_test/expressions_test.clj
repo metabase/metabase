@@ -10,7 +10,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -358,13 +358,13 @@
                                        [:field (mt/id :lots-of-fields :a) nil]
                                        [:field (mt/id :lots-of-fields :b) nil]]}
                      :fields      (into [[:expression "c"]]
-                                        (for [{:keys [id]} (db/select [Field :id]
+                                        (for [{:keys [id]} (t2/select [Field :id]
                                                              :table_id (mt/id :lots-of-fields)
                                                              :id       [:not-in #{(mt/id :lots-of-fields :a)
                                                                                   (mt/id :lots-of-fields :b)}]
                                                              {:order-by [[:name :asc]]})]
                                           [:field id nil]))})]
-        (db/with-call-counting [call-count-fn]
+        (t2/with-call-count [call-count-fn]
           (mt/with-native-query-testing-context query
             (is (= 1
                    (-> (qp/process-query query) mt/rows ffirst))))

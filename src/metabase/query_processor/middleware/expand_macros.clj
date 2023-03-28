@@ -17,7 +17,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -63,7 +62,7 @@
 (s/defn ^:private metric-clauses->id->info :- {su/IntGreaterThanZero MetricInfo}
   [metric-clauses :- [mbql.s/metric]]
   (when (seq metric-clauses)
-    (m/index-by :id (for [metric (db/select [Metric :id :name :definition] :id [:in (set (map second metric-clauses))])
+    (m/index-by :id (for [metric (t2/select [Metric :id :name :definition] :id [:in (set (map second metric-clauses))])
                           :let   [errors (u/prog1 (metric-info-validation-errors metric)
                                            (when <>
                                              (log/warn (trs "Invalid metric: {0} reason: {1}" metric <>))))]

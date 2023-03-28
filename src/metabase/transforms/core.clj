@@ -19,7 +19,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (s/defn ^:private add-bindings :- Bindings
@@ -175,7 +174,7 @@
   [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str)]
   (table/with-fields
     (de/with-domain-entity
-      (db/select 'Table :db_id db-id :schema schema))))
+      (t2/select 'Table :db_id db-id :schema schema))))
 
 (s/defn apply-transform!
   "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`.

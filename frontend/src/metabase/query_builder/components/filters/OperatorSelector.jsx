@@ -19,6 +19,7 @@ export default class OperatorSelector extends Component {
         value={operator}
         onChange={e => onOperatorChange(e.target.value)}
         className={cx("border-medium text-default", className)}
+        data-testid="operator-select"
       >
         {operators.map(o => (
           <Option key={o.name} value={o.name}>

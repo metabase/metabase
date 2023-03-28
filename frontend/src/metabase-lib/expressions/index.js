@@ -52,11 +52,7 @@ export function formatIdentifier(name, { quotes = EDITOR_QUOTES } = {}) {
   return quoteString(name, quotes.identifierQuoteDefault);
 }
 
-export function parseIdentifierString(identifierString) {
-  return unquoteString(identifierString);
-}
-
-export function isReservedWord(word) {
+function isReservedWord(word) {
   return !!getMBQLName(word);
 }
 
@@ -141,9 +137,6 @@ export function formatStringLiteral(
   { quotes = EDITOR_QUOTES } = {},
 ) {
   return quoteString(mbqlString, quotes.literalQuoteDefault);
-}
-export function parseStringLiteral(expressionString) {
-  return unquoteString(expressionString);
 }
 
 const DOUBLE_QUOTE = '"';

@@ -13,7 +13,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2])
   (:import
@@ -228,23 +227,23 @@
   {:added "0.42.0"}
   [existing-id nm kind src value]
   (let [insert-new     (fn [id v]
-                         (let [inserted (db/insert! Secret (cond-> {:version    v
-                                                                    :name       nm
-                                                                    :kind       kind
-                                                                    :source     src
-                                                                    :value      value
-                                                                    :creator_id api/*current-user-id*}
-                                                             id
-                                                             (assoc :id id)))]
+                         (let [inserted (first (t2/insert-returning-instances! Secret (cond-> {:version    v
+                                                                                               :name       nm
+                                                                                               :kind       kind
+                                                                                               :source     src
+                                                                                               :value      value
+                                                                                               :creator_id api/*current-user-id*}
+                                                                                        id
+                                                                                        (assoc :id id))))]
                            ;; Toucan doesn't support composite primary keys, so adding a new record with incremented
-                           ;; version for an existing ID won't return a result from db/insert!, hence we may need to
+                           ;; version for an existing ID won't return a result from t2/insert!, hence we may need to
                            ;; manually select it here
                            (t2/select-one Secret :id (or id (u/the-id inserted)) :version v)))
         latest-version (when existing-id (latest-for-id existing-id))]
     (if latest-version
       (if (= (select-keys latest-version bump-version-keys) [kind src value])
-        (db/update-where! Secret {:id existing-id :version (:version latest-version)}
-                                 :name nm)
+        (pos? (t2/update! Secret {:id existing-id :version (:version latest-version)}
+                        {:name nm}))
         (insert-new (u/the-id latest-version) (inc (:version latest-version))))
       (insert-new nil 1))))
 

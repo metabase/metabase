@@ -8,6 +8,7 @@
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.util :as mdb.u]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
@@ -448,7 +449,7 @@
   "NEW! Check whether or not the current user is allowed to update an object and by updating properties to values in
    the `changes` map. This is equivalent to checking whether you're allowed to perform
 
-    (toucan.db/update! model id changes)
+    (toucan2.core/update! model id changes)
 
   This method is appropriate for powering `PUT` API endpoints. Like [[can-create?]] this method was added YEARS after
   most of the current API endpoints were written, so it is used in very few places, and this logic is determined ad-hoc
@@ -478,7 +479,7 @@
 (defn- check-perms-with-fn
   ([fn-symb read-or-write a-model object-id]
    (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (t2/select-one a-model (models/primary-key a-model) object-id))))
+       (check-perms-with-fn fn-symb read-or-write (t2/select-one a-model (mdb.u/primary-key a-model) object-id))))
 
   ([fn-symb read-or-write object]
    (and object

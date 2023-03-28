@@ -13,7 +13,6 @@
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- do-with-all-user-data-perms
@@ -215,7 +214,7 @@
             (mt/user-http-request :rasta :post 200 (format "field/%d/rescan_values" field-id))))
 
         (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
-          (db/delete! FieldValues :field_id (mt/id :venues :price))
+          (t2/delete! FieldValues :field_id (mt/id :venues :price))
           (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
           (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
                                                :data-model {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
@@ -281,7 +280,7 @@
           (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" table-id))))
 
       (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
-        (db/delete! FieldValues :field_id (mt/id :venues :price))
+        (t2/delete! FieldValues :field_id (mt/id :venues :price))
         (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
         (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
           (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
@@ -393,7 +392,7 @@
           (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))
 
       (testing "A non-admin with no data access can discard field values if they have DB details perms"
-        (db/insert! FieldValues :id values-id :field_id field-id :values [1 2 3 4])
+        (t2/insert! FieldValues :id values-id :field_id field-id :values [1 2 3 4])
         (with-all-users-data-perms {db-id {:data    {:schemas :block :native :none}
                                            :details :yes}}
           (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id)))
@@ -406,7 +405,7 @@
           (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id)))))
 
       (testing "A non-admin with no data access can trigger a re-scan of field values if they have DB details perms"
-        (db/delete! FieldValues :field_id (mt/id :venues :price))
+        (t2/delete! FieldValues :field_id (mt/id :venues :price))
         (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
         (with-all-users-data-perms {(mt/id) {:data   {:schemas :block :native :none}
                                              :details :yes}}

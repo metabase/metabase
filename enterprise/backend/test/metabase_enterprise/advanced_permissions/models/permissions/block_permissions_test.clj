@@ -13,7 +13,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;;; Graph-related stuff
@@ -124,7 +123,7 @@
           (grant-block-perms! group-id)
           (is (= {:schemas :block}
                  (test-db-perms group-id)))
-          (is (not (db/exists? GroupTableAccessPolicy :group_id group-id))))))))
+          (is (not (t2/exists? GroupTableAccessPolicy :group_id group-id))))))))
 
 (deftest update-graph-data-perms-should-delete-block-perms-test
   (testing "granting data permissions should delete existing block permissions"
@@ -164,9 +163,9 @@
                     Permissions [_ {:group_id (u/the-id (perms-group/all-users))
                                     :object   (perms/database-block-perms-path db-id)}]]
       (letfn [(perms-exist? []
-                (db/exists? Permissions :object (perms/database-block-perms-path db-id)))]
+                (t2/exists? Permissions :object (perms/database-block-perms-path db-id)))]
         (is (perms-exist?))
-        (db/delete! Database :id db-id)
+        (t2/delete! Database :id db-id)
         (is (not (perms-exist?)))))))
 
 ;;;; QP perms-check related stuff.
