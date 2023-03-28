@@ -11,6 +11,7 @@ import {
 } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
+import { setQueryText } from "../../actions";
 import {
   getFeedbackStatus,
   getFeedbackType,
@@ -54,7 +55,7 @@ const mapStateToProps = (state: State): StateProps => ({
 });
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onChangeQuery: () => undefined,
+  onChangeQuery: queryText => dispatch(setQueryText(queryText)),
   onSubmitQuery: () => undefined,
   onDatabaseChange: () => undefined,
 });
