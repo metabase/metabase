@@ -52,10 +52,6 @@ export default class AggregationPopover extends Component {
     // passing a dimension disables the field picker and only shows relevant aggregations
     dimension: PropTypes.object,
 
-    // DEPRECATED: replaced with `query`
-    tableMetadata: PropTypes.object,
-    datasetQuery: PropTypes.object,
-
     aggregationOperators: PropTypes.array,
 
     showCustom: PropTypes.bool,
@@ -147,7 +143,7 @@ export default class AggregationPopover extends Component {
     return (
       aggregationOperators ||
       dimension?.aggregationOperators() ||
-      query.table().aggregationOperators()
+      query.aggregationOperators()
     ).filter(
       aggregationOperator =>
         showRawData || aggregationOperator.short !== "rows",

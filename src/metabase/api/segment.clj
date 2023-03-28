@@ -16,7 +16,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -31,12 +30,12 @@
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (api/create-check Segment body)
   (let [segment (api/check-500
-                 (db/insert! Segment
-                   :table_id    table_id
-                   :creator_id  api/*current-user-id*
-                   :name        name
-                   :description description
-                   :definition  definition))]
+                  (first (t2/insert-returning-instances! Segment
+                                                         :table_id    table_id
+                                                         :creator_id  api/*current-user-id*
+                                                         :name        name
+                                                         :description description
+                                                         :definition  definition)))]
     (-> (events/publish-event! :segment-create segment)
         (hydrate :creator))))
 
@@ -63,7 +62,7 @@
 (api/defendpoint-schema GET "/"
   "Fetch *all* `Segments`."
   []
-  (as-> (db/select Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
+  (as-> (t2/select Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
     (hydrate segments :creator)
     (add-query-descriptions segments)))
@@ -84,7 +83,7 @@
                      new-body)
         archive?   (:archived changes)]
     (when changes
-      (db/update! Segment id changes))
+      (t2/update! Segment id changes))
     (u/prog1 (hydrated-segment id)
       (events/publish-event! (if archive? :segment-delete :segment-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))

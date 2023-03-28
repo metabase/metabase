@@ -15,7 +15,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -37,9 +36,9 @@
   ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
   ;; disk.
   (when-let [clean-before-date (t2/select-one-fn :ended_at TaskHistory {:limit    1
-                                                                           :offset   num-rows-to-keep
-                                                                           :order-by [[:ended_at :desc]]})]
-    (db/simple-delete! TaskHistory :ended_at [:<= clean-before-date])))
+                                                                        :offset   num-rows-to-keep
+                                                                        :order-by [[:ended_at :desc]]})]
+    (t2/delete! (t2/table-name TaskHistory) :ended_at [:<= clean-before-date])))
 
 ;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
 ;;; monitoring permissions, Otherwise it requires superusers.
@@ -106,7 +105,7 @@
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"
   [limit  :- (s/maybe su/IntGreaterThanZero)
    offset :- (s/maybe su/IntGreaterThanOrEqualToZero)]
-  (db/select TaskHistory (merge {:order-by [[:ended_at :desc]]}
+  (t2/select TaskHistory (merge {:order-by [[:ended_at :desc]]}
                                 (when limit
                                   {:limit limit})
                                 (when offset
@@ -127,11 +126,11 @@
   (let [end-time-ms (System/currentTimeMillis)
         duration-ms (- end-time-ms start-time-ms)]
     (try
-      (db/insert! TaskHistory
-        (assoc info
-          :started_at (t/instant start-time-ms)
-          :ended_at   (t/instant end-time-ms)
-          :duration   duration-ms))
+      (first (t2/insert-returning-instances! TaskHistory
+                                             (assoc info
+                                                    :started_at (t/instant start-time-ms)
+                                                    :ended_at   (t/instant end-time-ms)
+                                                    :duration   duration-ms)))
       (catch Throwable e
         (log/warn e (trs "Error saving task history"))))))
 

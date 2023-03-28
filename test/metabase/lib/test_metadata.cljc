@@ -785,8 +785,8 @@
    :lib/type                    :metadata/database})
 
 (def metadata-provider
-  "[[metabase.lib.metadata.protocols/DatabaseMetadataProvider]] using the test [[metadata]]."
-  (lib.metadata.protocols/->SimpleGraphDatabaseMetadataProvider metadata))
+  "[[metabase.lib.metadata.protocols/MetadataProvider]] using the test [[metadata]]."
+  (lib.metadata.protocols/->SimpleGraphMetadataProvider metadata))
 
 (def results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
@@ -808,7 +808,7 @@
                :semantic_type  :type/PK
                :fingerprint    nil}
               {:lib/type       :metadata/field
-               :display_name   "NAME"
+               :display_name   "NAME" ; TODO -- these display names are icky
                :field_ref      [:field "NAME" {:base-type :type/Text}]
                :name           "NAME"
                :base_type      :type/Text

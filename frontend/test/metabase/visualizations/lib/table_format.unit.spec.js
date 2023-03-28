@@ -3,6 +3,7 @@ import {
   canCompareSubstrings,
   OPERATOR_FORMATTER_FACTORIES,
   compileFormatter,
+  extent,
 } from "metabase/visualizations/lib/table_format";
 
 describe("compileFormatter", () => {
@@ -137,5 +138,23 @@ describe("canCompareSubstrings", () => {
     expect(canCompareSubstrings("", "foo")).toBe(false);
     expect(canCompareSubstrings("foo", "")).toBe(false);
     expect(canCompareSubstrings("", "")).toBe(false);
+  });
+});
+
+describe("extent", () => {
+  it("should correctly compute the extents for each column", () => {
+    const rows = [
+      [-12, 4, 8],
+      [0, -3, 2],
+      [-1, 0, 17],
+    ];
+
+    expect(extent(rows, 0)).toEqual([-12, 0]);
+    expect(extent(rows, 1)).toEqual([-3, 4]);
+    expect(extent(rows, 2)).toEqual([2, 17]);
+  });
+
+  it("should ignore null and undefined values", () => {
+    expect(extent([[null], [1], [undefined]], 0)).toEqual([1, 1]);
   });
 });

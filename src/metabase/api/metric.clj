@@ -7,10 +7,9 @@
    [metabase.api.query-description :as api.qd]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models :refer [Metric  MetricImportantField Table]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :as metric :refer [Metric]]
    [metabase.models.revision :as revision]
-   [metabase.models.table :refer [Table]]
    [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -32,12 +31,12 @@
   ;; TODO - why can't set the other properties like `show_in_getting_started` when you create a Metric?
   (api/create-check Metric body)
   (let [metric (api/check-500
-                (db/insert! Metric
-                  :table_id    table_id
-                  :creator_id  api/*current-user-id*
-                  :name        name
-                  :description description
-                  :definition  definition))]
+                 (first (t2/insert-returning-instances! Metric
+                                                        :table_id    table_id
+                                                        :creator_id  api/*current-user-id*
+                                                        :name        name
+                                                        :description description
+                                                        :definition  definition)))]
     (-> (events/publish-event! :metric-create metric)
         (hydrate :creator))))
 
@@ -72,7 +71,7 @@
 (api/defendpoint-schema GET "/"
   "Fetch *all* `Metrics`."
   []
-  (as-> (db/select Metric, :archived false, {:order-by [:%lower.name]}) metrics
+  (as-> (t2/select Metric, :archived false, {:order-by [:%lower.name]}) metrics
     (hydrate metrics :creator)
     (add-db-ids metrics)
     (filter mi/can-read? metrics)
@@ -94,7 +93,7 @@
                      new-body)
         archive?   (:archived changes)]
     (when changes
-      (db/update! Metric id changes))
+      (t2/update! Metric id changes))
     (u/prog1 (hydrated-metric id)
       (events/publish-event! (if archive? :metric-delete :metric-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
@@ -131,7 +130,7 @@
 
     ;; delete old fields as needed
     (when (seq fields-to-remove)
-      (db/simple-delete! 'MetricImportantField {:metric_id id, :field_id [:in fields-to-remove]}))
+      (t2/delete! (t2/table-name MetricImportantField) {:metric_id id, :field_id [:in fields-to-remove]}))
     ;; add new fields as needed
     (db/insert-many! 'MetricImportantField (for [field-id fields-to-add]
                                              {:metric_id id, :field_id field-id}))

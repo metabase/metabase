@@ -92,7 +92,7 @@
   [:and
    [:or
     [:fn
-     {:error/message "This is shaped like an MBQL clause"}
+     {:error/message "shaped like an MBQL clause"}
      (complement mbql-clause?)]
     [:ref :metabase.lib.schema.mbql-clause/clause]]
    [:fn
@@ -126,8 +126,12 @@
 (mr/def ::temporal
   (expression-schema :type/Temporal "expression returning a date, time, or date time"))
 
+(def orderable-types
+  "Set of base types that are orderable."
+  #{:type/Text :type/Number :type/Temporal})
+
 (mr/def ::orderable
-  (expression-schema #{:type/Text :type/Number :type/Temporal}
+  (expression-schema orderable-types
                      "an expression that can be compared with :> or :<"))
 
 (mr/def ::equality-comparable

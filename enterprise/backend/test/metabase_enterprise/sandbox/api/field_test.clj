@@ -7,7 +7,6 @@
    [metabase.models :refer [Field FieldValues User]]
    [metabase.models.field-values :as field-values]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest fetch-field-test
@@ -107,8 +106,8 @@
     (mt/with-temp-copy-of-db
       (let [field-id   (mt/id :venues :price)
             full-fv-id (t2/select-one-pk FieldValues :field_id field-id :type :full)]
-        (db/update! FieldValues full-fv-id
-                    :human_readable_values ["$" "$$" "$$$" "$$$$"])
+        (t2/update! FieldValues full-fv-id
+                    {:human_readable_values ["$" "$$" "$$$" "$$$$"]})
         ;; sanity test without gtap
         (is (= [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]
                (:values (mt/user-http-request :rasta :get 200 (format "field/%d/values" field-id)))))
@@ -151,7 +150,7 @@
       (testing "Do we use cached values when available?"
         (with-redefs [field-values/distinct-values (fn [_] (assert false "Should not be called"))]
           (is (some? (:values (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values")))))
-          (is (= 1 (db/count FieldValues
+          (is (= 1 (t2/count FieldValues
                              :field_id (:id field)
                              :type :sandbox)))))
 
@@ -164,7 +163,7 @@
                                                    :attributes {:cat 5}}
               (mt/user-http-request another-user :get 200 (str "field/" (:id field) "/values"))
               ;; create another one for the new user
-              (is (= 2 (db/count FieldValues
+              (is (= 2 (t2/count FieldValues
                                  :field_id (:id field)
                                  :type :sandbox)))))))
 
@@ -175,7 +174,7 @@
                 new-values ["foo" "bar"]]
             (testing "Sanity check: make sure FieldValues exist"
               (is (some? fv-id)))
-            (db/update! FieldValues fv-id
+            (t2/update! FieldValues fv-id
                         {:values new-values})
             (with-redefs [field-values/distinct-values (constantly {:values          new-values
                                                                     :has_more_values false})]
@@ -194,6 +193,6 @@
                                                                       (= (:id fv) old-sandbox-fv-id))]
             (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
             ;; did the old one get deleted?
-            (is (not (db/exists? FieldValues :id old-sandbox-fv-id)))
+            (is (not (t2/exists? FieldValues :id old-sandbox-fv-id)))
             ;; make sure we created a new one
-            (is (= 1 (db/count FieldValues :field_id (:id field) :type :sandbox)))))))))
+            (is (= 1 (t2/count FieldValues :field_id (:id field) :type :sandbox)))))))))

@@ -7,7 +7,6 @@
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest update-database-type-test
@@ -17,7 +16,7 @@
       (let [venues-table (t2/select-one Table :db_id (u/the-id db), :display_name "Venues")]
         ;; ok, now give all the Fields `?` as their `database_type`. (This is what the DB migration does for existing
         ;; Fields)
-        (db/update-where! Field {:table_id (u/the-id venues-table)}, :database_type "?")
+        (t2/update! Field {:table_id (u/the-id venues-table)}, {:database_type "?"})
         ;; now sync the DB again
         (let [{:keys [step-info task-history]} (sync.util-test/sync-database! "sync-fields" db)]
           (is (= {:total-fields 16, :updated-fields 6}
@@ -32,7 +31,7 @@
                      {:name "LONGITUDE",   :database_type "DOUBLE PRECISION"}
                      {:name "NAME",        :database_type "CHARACTER VARYING"}}
                    (set (mt/derecordize
-                         (db/select [Field :name :database_type] :table_id (u/the-id venues-table))))))))))))
+                         (t2/select [Field :name :database_type] :table_id (u/the-id venues-table))))))))))))
 
 (deftest update-base-type-test
   (testing "make sure that if a driver reports back a different base-type the Field gets updated accordingly"
@@ -40,7 +39,7 @@
       (let [{new-step-info :step-info, new-task-history :task-history} (sync.util-test/sync-database! "sync-fields" db)
             venues-table                                               (t2/select-one Table :db_id (u/the-id db), :display_name "Venues")]
         ;; ok, now give all the Fields `:type/*` as their `base_type`
-        (db/update-where! Field {:table_id (u/the-id venues-table)}, :base_type "type/*")
+        (t2/update! Field {:table_id (u/the-id venues-table)}, {:base_type "type/*"})
         ;; now sync the DB again
         (let [{after-step-info :step-info, after-task-history :task-history} (sync.util-test/sync-database! "sync-fields" db)]
           (is (= {:updated-fields 16, :total-fields 16}
@@ -59,4 +58,4 @@
                      {:name "NAME",        :base_type :type/Text}
                      {:name "ID",          :base_type :type/BigInteger}}
                    (set (mt/derecordize
-                         (db/select [Field :name :base_type] :table_id (u/the-id venues-table))))))))))))
+                         (t2/select [Field :name :base_type] :table_id (u/the-id venues-table))))))))))))

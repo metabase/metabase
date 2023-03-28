@@ -77,7 +77,7 @@
       (let [{email :email} user-before-update
             new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
-          (db/update! Collection (:id collection) :name new-collection-name))))))
+          (t2/update! Collection (:id collection) {:name new-collection-name}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
@@ -161,7 +161,7 @@
   (when (or status include_deactivated)
     (validation/check-group-manager))
   (let [include_deactivated (Boolean/parseBoolean include_deactivated)]
-    {:data   (cond-> (db/select
+    {:data   (cond-> (t2/select
                       (vec (cons User (user-visible-columns)))
                       (cond-> (user-clauses status query group_id include_deactivated)
                         (some? group_id) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
@@ -175,7 +175,7 @@
                (or api/*is-superuser?*
                    api/*is-group-manager?*)
                (hydrate :group_ids))
-     :total  (db/count User (user-clauses status query group_id include_deactivated))
+     :total  (t2/count User (user-clauses status query group_id include_deactivated))
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
@@ -204,6 +204,7 @@
         perms-query {:where [:and
                              [:= :archived false]
                              coll-ids-filter]}]
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (assoc user :has_question_and_dashboard (and (db/exists? 'Card (perms-query user))
                                                  (db/exists? 'Dashboard (perms-query user))))))
 
@@ -253,9 +254,9 @@
    user_group_memberships (s/maybe [user/UserGroupMembership])
    login_attributes       (s/maybe user/LoginAttributes)}
   (api/check-superuser)
-  (api/checkp (not (db/exists? User :%lower.email (u/lower-case-en email)))
+  (api/checkp (not (t2/exists? User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))
-  (db/transaction
+  (t2/with-transaction [_conn]
     (let [new-user-id (u/the-id (user/create-and-invite-user!
                                  (u/select-keys-when body
                                    :non-nil [:first_name :last_name :email :password :login_attributes])
@@ -328,9 +329,9 @@
       (api/checkp (valid-name-update? user-before-update :last_name last_name)
         "last_name" (tru "Editing last name is not allowed for SSO users.")))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-    (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
+    (api/checkp (not (t2/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
       "email" (tru "Email address already associated to another user."))
-    (db/transaction
+    (t2/with-transaction [_conn]
       ;; only superuser or self can update user info
       ;; implicitly prevent group manager from updating users' info
       (when (or (= id api/*current-user-id*)
@@ -341,7 +342,7 @@
                                          api/*is-superuser?* (conj :login_attributes))
                               :non-nil (cond-> #{:email}
                                          api/*is-superuser?* (conj :is_superuser))))]
-          (db/update! User id changes))
+          (t2/update! User id changes))
         (maybe-update-user-personal-collection-name! user-before-update body))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
@@ -352,15 +353,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- reactivate-user! [existing-user]
-  (db/update! User (u/the-id existing-user)
-    :is_active     true
-    :is_superuser  false
-    ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
-    ;; (see metabase#3323)
-    :google_auth   (boolean (and (:google_auth existing-user)
-                                 (google/google-auth-enabled)))
-    :ldap_auth     (boolean (and (:ldap_auth existing-user)
-                                 (api.ldap/ldap-enabled))))
+  (t2/update! User (u/the-id existing-user)
+              {:is_active     true
+               :is_superuser  false
+               ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
+               ;; (see metabase#3323)
+               :google_auth   (boolean (and (:google_auth existing-user)
+                                            (google/google-auth-enabled)))
+               :ldap_auth     (boolean (and (:ldap_auth existing-user)
+                                            (api.ldap/ldap-enabled)))})
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
@@ -408,7 +409,7 @@
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [id]
   (api/check-superuser)
-  (api/check-500 (db/update! User id, :is_active false))
+  (api/check-500 (pos? (t2/update! User id {:is_active false})))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -427,7 +428,7 @@
               (throw (ex-info (tru "Unrecognized modal: {0}" modal)
                               {:modal modal
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
-    (api/check-500 (db/update! User id, k false)))
+    (api/check-500 (pos? (t2/update! User id {k false}))))
   {:success true})
 
 #_{:clj-kondo/ignore [:deprecated-var]}

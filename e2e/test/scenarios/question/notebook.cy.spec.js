@@ -97,7 +97,7 @@ describe("scenarios > question > notebook", () => {
 
     cy.findByText("ID between 96 97").click();
     cy.findByText("Between").click();
-    popover().within(() => {
+    cy.findByTestId("operator-select-list").within(() => {
       cy.contains("Is not");
       cy.contains("Greater than");
       cy.contains("Less than");

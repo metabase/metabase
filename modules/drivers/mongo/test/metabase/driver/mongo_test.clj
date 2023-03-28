@@ -22,7 +22,6 @@
             [metabase.util.log :as log]
             [monger.collection :as mcoll]
             [taoensso.nippy :as nippy]
-            [toucan.db :as db]
             [toucan2.core :as t2])
   (:import org.bson.types.ObjectId))
 
@@ -88,7 +87,7 @@
               :expected false}]]
       (testing (str "supports with " dbms_version)
         (is (= expected
-               (let [db (db/insert! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version})]
+               (let [db (first (t2/insert-returning-instances! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version}))]
                  (driver/database-supports? :mongo :expressions db))))))))
 
 
@@ -200,7 +199,7 @@
               {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :semantic_type :type/Name}]
              (map
               (partial into {})
-              (db/select [Field :name :database_type :base_type :semantic_type]
+              (t2/select [Field :name :database_type :base_type :semantic_type]
                 :table_id (mt/id :bird_species)
                 {:order-by [:name]})))))))
 
@@ -227,7 +226,7 @@
                    {:name "max_wingspan", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type nil}}
                  (into #{}
                        (map (partial into {}))
-                       (db/select [Field :name :database_type :base_type :semantic_type]
+                       (t2/select [Field :name :database_type :base_type :semantic_type]
                          :table_id (mt/id :bird_species)
                          {:order-by [:name]})))))))))
 
@@ -252,7 +251,7 @@
             {:active true, :name "checkins"}
             {:active true, :name "users"}
             {:active true, :name "venues"}]
-           (for [field (db/select [Table :name :active]
+           (for [field (t2/select [Table :name :active]
                          :db_id (mt/id)
                          {:order-by [:name]})]
              (into {} field)))
@@ -278,7 +277,7 @@
                {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
                {:semantic_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
              (vec (for [table-name table-names]
-                    (vec (for [field (db/select [Field :name :base_type :semantic_type]
+                    (vec (for [field (t2/select [Field :name :base_type :semantic_type]
                                        :active   true
                                        :table_id (mt/id table-name)
                                        {:order-by [:name]})]
@@ -446,7 +445,7 @@
             (log/infof "Inserted %d rows into %s collection %s."
                        (count row-maps) (pr-str database-name) (pr-str collection-name)))
           ;; now sync the Database.
-          (let [db (db/insert! Database {:name database-name, :engine "mongo", :details details})]
+          (let [db (first (t2/insert-returning-instances! Database {:name database-name, :engine "mongo", :details details}))]
             (sync/sync-database! db)
             db)))))
 

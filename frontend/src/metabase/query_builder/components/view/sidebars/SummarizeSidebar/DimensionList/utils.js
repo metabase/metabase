@@ -1,16 +1,11 @@
 import _ from "underscore";
 
-export const getItemName = (item, shouldIncludeTable) => {
-  const dimensionName = item.name ?? item.dimension?.displayName();
-
-  if (!shouldIncludeTable) {
-    return dimensionName;
+export const getItemName = (item, isForeignDimension) => {
+  if (isForeignDimension) {
+    return item.dimension.render();
   }
 
-  const field = item.dimension?.field?.();
-  const tableName = field?.table?.displayName();
-
-  return `${tableName} → ${dimensionName}`;
+  return item.name ?? item.dimension?.displayName();
 };
 
 export const getItemIcon = item => item.icon ?? item.dimension?.icon();

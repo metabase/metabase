@@ -71,6 +71,62 @@ const expression = [
   ],
   // should not compile:
   // ["\"Hell\" + 1", null, "adding a string to a number"],
+
+  [
+    "Sum([Total]) / Sum([Product → Price]) * Average([Tax])",
+    [
+      "*",
+      [
+        "/",
+        ["sum", ["field", 6, null]],
+        ["sum", ["field", 25, { "source-field": 3 }]],
+      ],
+      ["avg", ["field", 5, null]],
+    ],
+    "should handle priority for multiply and division without parenthesis",
+  ],
+
+  [
+    "Sum([Total]) / (Sum([Product → Price]) * Average([Tax]))",
+    [
+      "/",
+      ["sum", ["field", 6, null]],
+      [
+        "*",
+        ["sum", ["field", 25, { "source-field": 3 }]],
+        ["avg", ["field", 5, null]],
+      ],
+    ],
+    "should handle priority for multiply and division with parenthesis",
+  ],
+
+  [
+    "Sum([Total]) - Sum([Product → Price]) + Average([Tax])",
+    [
+      "+",
+      [
+        "-",
+        ["sum", ["field", 6, null]],
+        ["sum", ["field", 25, { "source-field": 3 }]],
+      ],
+      ["avg", ["field", 5, null]],
+    ],
+    "should handle priority for addition and subtraction without parenthesis",
+  ],
+
+  [
+    "Sum([Total]) - (Sum([Product → Price]) + Average([Tax]))",
+    [
+      "-",
+      ["sum", ["field", 6, null]],
+      [
+        "+",
+        ["sum", ["field", 25, { "source-field": 3 }]],
+        ["avg", ["field", 5, null]],
+      ],
+    ],
+    "should handle priority for addition and subtraction with parenthesis",
+  ],
 ];
 
 const aggregation = [

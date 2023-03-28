@@ -154,15 +154,16 @@
   "Returns a transducer for computing metatdata about the fields in `table`."
   [driver table]
   (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
-                 (let [semantic-type (calculated-semantic-type driver column-name database-type)]
+                 (let [base-type (database-type->base-type-or-warn driver database-type)
+                       semantic-type (calculated-semantic-type driver column-name database-type)]
                    (merge
                     (u/select-non-nil-keys col [:name :database-type :field-comment :database-required :database-is-auto-increment])
-                    {:base-type         (database-type->base-type-or-warn driver database-type)
+                    {:base-type         base-type
                      :database-position i}
                     (when semantic-type
                       {:semantic-type semantic-type})
                     (when (and
-                           (isa? semantic-type :type/SerializedJSON)
+                           (isa? base-type :type/JSON)
                            (driver/database-supports?
                             driver
                             :nested-field-columns
@@ -398,7 +399,7 @@
   (with-open [conn (jdbc/get-connection spec)]
     (let [table-identifier-info [(:schema table) (:name table)]
           table-fields          (describe-table-fields driver conn table nil)
-          json-fields           (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)]
+          json-fields           (filter #(isa? (:base-type %) :type/JSON) table-fields)]
       (if (nil? (seq json-fields))
         #{}
         (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
