@@ -12,7 +12,6 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -99,7 +98,7 @@
         :present #{:description :icon :collection_id :default :archived}
         :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
-      (db/update-where! TimelineEvent {:timeline_id id} :archived archived))
+      (t2/update! TimelineEvent {:timeline_id id} {:archived archived}))
     (hydrate (t2/select-one Timeline :id id) :creator [:collection :can_write])))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

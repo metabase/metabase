@@ -42,7 +42,7 @@
   that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want
   to differentiate between the two versions."
   [:map
-   [:lib/type [:= :metadata/field]]
+   [:lib/type [:= :metadata/field]] ; TODO -- should this be changed to `:metadata/column`?
    [:id {:optional true} ::lib.schema.id/field]
    [:name ::lib.schema.common/non-blank-string]])
 

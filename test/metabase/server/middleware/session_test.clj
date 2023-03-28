@@ -19,7 +19,6 @@
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
    [ring.mock.request :as ring.mock]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
@@ -117,7 +116,7 @@
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
           (mt/with-temp User [{user-id :id}]
             (let [session-id (str (UUID/randomUUID))]
-              (db/simple-insert! Session {:id session-id, :user_id user-id, :created_at created-at})
+              (t2/insert! (t2/table-name Session) {:id session-id, :user_id user-id, :created_at created-at})
               (let [session (#'mw.session/current-user-info-for-session session-id nil)]
                 (if expected
                   (is (= nil
@@ -251,8 +250,8 @@
       (mt/with-user-in-groups [group-1 {:name "New Group 1"}
                                group-2 {:name "New Group 2"}
                                user    [group-1 group-2]]
-        (db/update-where! PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-2)}
-          :is_group_manager true)
+        (t2/update! PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-2)}
+                    {:is_group_manager true})
         (t2/insert! Session {:id      (str test-uuid)
                              :user_id (:id user)})
         (testing "is `false` if advanced-permisison is disabled"

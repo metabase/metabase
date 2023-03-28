@@ -43,3 +43,7 @@ This guide contains detailed information on how to work on Metabase codebase.
 ## Metabase documentation
 
 - [Developing Metabase documentation](./docs.md)
+
+## Releases
+
+- [Metabase release versioning](./versioning.md)

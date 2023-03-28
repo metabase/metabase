@@ -82,8 +82,8 @@
   (let [fields-to-reactivate (matching-inactive-fields table new-field-metadatas parent-id)]
     ;; if the fields already exist but were just marked inactive then reäctivate them
     (when (seq fields-to-reactivate)
-      (db/update-where! Field {:id [:in (map u/the-id fields-to-reactivate)]}
-        :active true))
+      (t2/update! Field {:id [:in (map u/the-id fields-to-reactivate)]}
+                  {:active true}))
     (let [reactivated?  (comp (set (map common/canonical-name fields-to-reactivate))
                               common/canonical-name)
           ;; If we reactivated the fields, no need to insert them; insert new rows for any that weren't reactivated

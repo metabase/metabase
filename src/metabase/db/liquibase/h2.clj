@@ -14,34 +14,18 @@
 (defn- create-udfs!
   "Registers the JSON manipulation functions for an H2 database."
   [^JdbcConnection conn]
+  ;; JSON_VALUE is tested in metabase.db.schema-migrations-test/migrate-field-json-unfolding-type-test
   (.execute (.createStatement conn) "
 CREATE ALIAS IF NOT EXISTS JSON_VALUE AS $$
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
-import org.json.simple.JSONArray;
 @CODE
 String jsonStringValue(String s, String key) {
     Object obj = JSONValue.parse(s);
-    if (obj instanceof JSONObject) {
-        JSONObject jsonObject = (JSONObject) obj;
-        if (jsonObject.containsKey(key)) {
-            if (jsonObject.get(key) != null) {
-                return jsonObject.get(key).toString();
-            } else {
-                return null;
-            }
-        } else {
-            return null;
-        }
-    } else if (obj instanceof JSONArray) {
-        JSONArray jsonArray = (JSONArray) obj;
-        int keyInt = Integer.parseInt(key);
-        if (keyInt < jsonArray.size() && keyInt >= 0) {
-            if (jsonArray.get(keyInt) != null) {
-                return jsonArray.get(keyInt).toString();
-            } else {
-                return null;
-            }
+    JSONObject jsonObject = (JSONObject) obj;
+    if (jsonObject.containsKey(key)) {
+        if (jsonObject.get(key) != null) {
+            return jsonObject.get(key).toString();
         } else {
             return null;
         }

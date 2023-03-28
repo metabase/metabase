@@ -735,50 +735,54 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
       (mt/dataset json
-        (let [field (t2/select-one Field :id (mt/id :json :json_bit))
-              enable-json-unfolding! (fn [v]
-                                       (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                             (assoc field :json_unfolding v)))
-              nested-fields          (fn []
-                                       (->> (t2/select Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
-                                            (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
-          (testing "json-unfolding is enabled by default"
-            (is (true? (:json_unfolding field))))
-          (testing "nested fields are present since json unfolding is enabled by default"
-            (is (seq (nested-fields))))
-          (testing "nested fields are removed when json unfolding is disabled"
-            (enable-json-unfolding! false)
-            (is (empty? (nested-fields))))
-          (testing "nested fields are added when json unfolding is enabled again"
-            (enable-json-unfolding! true)
-            (is (seq (nested-fields)))))))))
+        ;; Create a new database with the same details as the json dataset, with json unfolding enabled by default
+        (let [database (t2/select-one Database :id (mt/id))]
+          (mt/with-temp* [Database [database {:engine driver/*driver*, :details (assoc (:details database) :json-unfolding true)}]]
+            (mt/with-db database
+              ;; Sync the new database
+              (sync/sync-database! database)
+              (let [field (t2/select-one Field :id (mt/id :json :json_bit))
+                    enable-json-unfolding! (fn [v]
+                                             (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
+                                                                   (assoc field :json_unfolding v)))
+                    nested-fields          (fn []
+                                             (->> (t2/select Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
+                                                  (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
+                (testing "json-unfolding is enabled by default"
+                  (is (true? (:json_unfolding field))))
+                (testing "nested fields are present since json unfolding is enabled by default"
+                  (is (seq (nested-fields))))
+                (testing "nested fields are removed when json unfolding is disabled"
+                  (enable-json-unfolding! false)
+                  (is (empty? (nested-fields))))
+                (testing "nested fields are added when json unfolding is enabled again"
+                  (enable-json-unfolding! true)
+                  (is (seq (nested-fields))))))))))))
 
 (deftest json-unfolding-default-false-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
       (mt/dataset json
         (let [database (t2/select-one Database :id (mt/id))]
-        ;; Create a new database with the same details as the json dataset, with json unfolding disabled by default
+          ;; Create a new database with the same details as the json dataset, with json unfolding disabled by default
           (mt/with-temp* [Database [database {:engine driver/*driver*, :details (assoc (:details database) :json-unfolding false)}]]
             (mt/with-db database
-            ;; Sync the new database
-            (sync/sync-database! database)
-            (let [field (t2/select-one Field :id (mt/id :json :json_bit))
-                  enable-json-unfolding! (fn [v]
-                                           (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                 (assoc field :json_unfolding v)))
-                  nested-fields (fn []
-                                  (->> (t2/select Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
-                                       (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
-              (testing "json-unfolding is disabled by default"
-                (is (false? (:json_unfolding field))))
-              (testing "nested fields are not present since json unfolding is disabled by default"
-                (is (empty? (nested-fields))))
-              (testing "nested fields are added when json unfolding is enabled"
-                (enable-json-unfolding! true)
-                ;; Wait for sync to complete asynchronously
-                (Thread/sleep 200)
-                (is (seq (nested-fields))))
-              (testing "nested fields are removed when json unfolding is disabled again"
-                (enable-json-unfolding! false)
-                (is (empty? (nested-fields))))))))))))
+              ;; Sync the new database
+              (sync/sync-database! database)
+              (let [field (t2/select-one Field :id (mt/id :json :json_bit))
+                    enable-json-unfolding! (fn [v]
+                                             (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
+                                                                   (assoc field :json_unfolding v)))
+                    nested-fields (fn []
+                                    (->> (t2/select Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
+                                         (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
+                (testing "json-unfolding is disabled by default"
+                  (is (false? (:json_unfolding field))))
+                (testing "nested fields are not present since json unfolding is disabled by default"
+                  (is (empty? (nested-fields))))
+                (testing "nested fields are added when json unfolding is enabled"
+                  (enable-json-unfolding! true)
+                  (is (seq (nested-fields))))
+                (testing "nested fields are removed when json unfolding is disabled again"
+                  (enable-json-unfolding! false)
+                  (is (empty? (nested-fields))))))))))))

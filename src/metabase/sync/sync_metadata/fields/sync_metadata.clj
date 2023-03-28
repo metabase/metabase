@@ -80,7 +80,7 @@
                           (common/field-metadata-name-for-logging table metabase-field)
                           old-json-unfolding
                           new-json-unfolding))
-           {:database_type new-database-type})
+           {:json_unfolding new-json-unfolding})
          (when new-base-type?
            (log/info (trs "Base type of {0} has changed from ''{1}'' to ''{2}''."
                           (common/field-metadata-name-for-logging table metabase-field)

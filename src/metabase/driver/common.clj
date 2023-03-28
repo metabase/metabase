@@ -174,7 +174,7 @@
 (def json-unfolding
   "Map representing the `json-unfolding` option in a DB connection form"
   {:name         "json-unfolding"
-   :display-name (deferred-tru "Unfold JSON Columns by Default")
+   :display-name (deferred-tru "Unfold JSON columns by default")
    :type         :boolean
    :visible-if   {"advanced-options" true}
    :description  (deferred-tru
