@@ -6,7 +6,7 @@ import {
   getStoredSettingsForSeries,
 } from "metabase/visualizations/lib/settings/visualization";
 
-import { DateTimeColumn, NumberColumn } from "../../__support__/visualizations";
+import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 
 describe("visualization_settings", () => {
   describe("getComputedSettingsForSeries", () => {

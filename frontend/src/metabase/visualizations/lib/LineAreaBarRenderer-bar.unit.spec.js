@@ -7,7 +7,7 @@ import {
   renderLineAreaBar,
   createFixture,
   cleanupFixture,
-} from "../__support__/visualizations";
+} from "__support__/visualizations";
 
 const DEFAULT_SETTINGS = {
   "graph.x_axis.scale": "ordinal",

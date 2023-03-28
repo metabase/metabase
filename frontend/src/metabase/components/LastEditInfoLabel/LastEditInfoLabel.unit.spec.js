@@ -3,7 +3,7 @@ import mockDate from "mockdate";
 import moment from "moment-timezone";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
-import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
+import LastEditInfoLabel from "./LastEditInfoLabel";
 
 describe("LastEditInfoLabel", () => {
   afterEach(() => {
