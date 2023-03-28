@@ -17,7 +17,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------ "Crufty" Tables -------------------------------------------------
@@ -136,11 +135,11 @@
             (for [table old-tables]
               (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [{schema :schema, table-name :name, :as _table} old-tables]
-    (db/update-where! Table {:db_id  (u/the-id database)
-                             :schema schema
-                             :name   table-name
-                             :active true}
-      :active false)))
+    (t2/update! Table {:db_id  (u/the-id database)
+                       :schema schema
+                       :name   table-name
+                       :active true}
+                {:active false})))
 
 
 (s/defn ^:private update-table-description!
@@ -151,11 +150,11 @@
               (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [{schema :schema, table-name :name, description :description} changed-tables]
     (when-not (str/blank? description)
-      (db/update-where! Table {:db_id       (u/the-id database)
-                               :schema      schema
-                               :name        table-name
-                               :description nil}
-                        :description description))))
+      (t2/update! Table {:db_id       (u/the-id database)
+                         :schema      schema
+                         :name        table-name
+                         :description nil}
+                  {:description description}))))
 
 
 (s/defn ^:private table-set :- #{i/DatabaseMetadataTable}

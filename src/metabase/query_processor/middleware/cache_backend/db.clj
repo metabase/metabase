@@ -76,8 +76,8 @@
   {:pre [(number? max-age-seconds)]}
   (log/tracef "Purging old cache entries.")
   (try
-    (db/simple-delete! QueryCache
-                       :updated_at [:<= (seconds-ago max-age-seconds)])
+    (t2/delete! (t2/table-name QueryCache)
+                :updated_at [:<= (seconds-ago max-age-seconds)])
     (catch Throwable e
       (log/error e (trs "Error purging old cache entries"))))
   nil)
@@ -88,9 +88,9 @@
   [^bytes query-hash ^bytes results]
   (log/debug (trs "Caching results for query with hash {0}." (pr-str (i/short-hex-hash query-hash))))
   (try
-    (or (db/update-where! QueryCache {:query_hash query-hash}
-          :updated_at (t/offset-date-time)
-          :results    results)
+    (or (pos? (t2/update! QueryCache {:query_hash query-hash}
+                          {:updated_at (t/offset-date-time)
+                           :results    results}))
         (first (t2/insert-returning-instances! QueryCache
                                                :updated_at (t/offset-date-time)
                                                :query_hash query-hash

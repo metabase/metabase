@@ -10,7 +10,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [ring.mock.request :as ring.mock]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.util UUID)))
@@ -63,8 +62,8 @@
         (try
           (t2/insert! Session {:id      session-id
                                :user_id (test.users/user->id :rasta)})
-          (db/update-where! Session {:id session-id}
-            :created_at (t/instant 0))
+          (t2/update! (t2/table-name Session) {:id session-id}
+            {:created_at (t/instant 0)})
           (is (= mw.util/response-unauthentic
                  (auth-enforced-handler (request-with-session-id session-id))))
           (finally (t2/delete! Session :id session-id)))))

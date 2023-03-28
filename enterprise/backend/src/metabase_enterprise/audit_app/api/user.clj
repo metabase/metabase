@@ -6,7 +6,6 @@
    [metabase.api.user :as api.user]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -19,7 +18,7 @@
   ;; Alerts/DashboardSubscriptions
   (t2/delete! PulseChannelRecipient :user_id id)
   ;; archive anything they created.
-  (db/update-where! Pulse {:creator_id id, :archived false} :archived true)
+  (t2/update! Pulse {:creator_id id, :archived false} {:archived true})
   api/generic-204-no-content)
 
 (api/define-routes)

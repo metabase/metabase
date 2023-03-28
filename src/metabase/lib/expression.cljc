@@ -1,8 +1,11 @@
 (ns metabase.lib.expression
-  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace])
+  (:refer-clojure
+   :exclude
+   [+ - * / case coalesce abs time concat replace])
   (:require
    [clojure.string :as str]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -20,11 +23,16 @@
    stage-number    :- :int
    expression-name :- ::lib.schema.common/non-blank-string]
   (let [stage (lib.util/query-stage query stage-number)]
-    (or (get-in stage [:expressions expression-name])
+    (or (some-> (get-in stage [:expressions expression-name])
+                lib.common/external-op)
         (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                         {:expression-name expression-name
                          :query           query
                          :stage-number    stage-number})))))
+
+(defmethod lib.schema.expression/type-of* :lib/external-op
+  [{:keys [operator options args] :or {options {}}}]
+  (lib.schema.expression/type-of* (into [(keyword operator) options] args)))
 
 (defmethod lib.metadata.calculation/metadata :expression
   [query stage-number [_expression opts expression-name, :as expression-ref]]
@@ -197,3 +205,14 @@
 (lib.common/defop rtrim [s])
 (lib.common/defop upper [s])
 (lib.common/defop lower [s])
+
+(mu/defn expressions :- [:sequential lib.metadata/ColumnMetadata]
+  "Get metadata about the expressions in a given stage of a `query`."
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (for [[expression-name expression-definition] (:expressions (lib.util/query-stage query stage-number))]
+    (let [metadata (lib.metadata.calculation/metadata query stage-number expression-definition)]
+      (merge
+       metadata
+       {:field_ref [:expression {:lib/uuid (str (random-uuid)), :base-type (:base_type metadata)} expression-name]
+        :source    :expressions}))))

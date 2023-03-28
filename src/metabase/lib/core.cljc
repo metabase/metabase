@@ -99,8 +99,6 @@
    rtrim
    upper
    lower]
-  [lib.field
-   with-join-alias]
   [lib.filter
    filter
    add-filter
@@ -120,25 +118,13 @@
    starts-with ends-with
    contains does-not-contain
    time-interval
-   segment
-   ->and
-   ->or
-   ->not
-   ->= ->!=
-   ->< -><=
-   ->> ->>=
-   ->between
-   ->inside
-   ->is-null ->not-null
-   ->is-empty ->not-empty
-   ->starts-with ->ends-with
-   ->contains ->does-not-contain
-   ->time-interval
-   ->segment]
+   segment]
   [lib.join
    join
    join-clause
-   joins]
+   joins
+   with-join-alias
+   with-join-fields]
   [lib.limit
    current-limit
    limit]
@@ -150,7 +136,8 @@
   [lib.order-by
    order-by
    order-by-clause
-   order-bys]
+   order-bys
+   orderable-columns]
   [lib.query
    native-query
    query
