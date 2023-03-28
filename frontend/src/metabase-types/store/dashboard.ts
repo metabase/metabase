@@ -5,6 +5,7 @@ import type {
   DashCardId,
   DashCardDataMap,
   ParameterId,
+  DashboardTabId,
 } from "metabase-types/api";
 import { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
@@ -17,7 +18,11 @@ export type DashboardSidebarName =
 
 export interface DashboardState {
   dashboardId: DashboardId | null;
-  dashboards: Record<DashboardId, Dashboard>;
+  selectedTabId: DashboardTabId | null;
+  dashboards: Record<
+    DashboardId,
+    Omit<Dashboard, "ordered_cards"> & { ordered_cards: DashCardId[] }
+  >;
 
   dashcards: Record<DashCardId, DashboardOrderedCard>;
   dashcardData: DashCardDataMap;

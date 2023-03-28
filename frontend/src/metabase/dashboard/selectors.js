@@ -16,6 +16,7 @@ import Question from "metabase-lib/Question";
 import { isVirtualDashCard } from "./utils";
 
 export const getDashboardId = state => state.dashboard.dashboardId;
+export const getSelectedTabId = state => state.dashboard.selectedTabId;
 export const getIsEditing = state => !!state.dashboard.isEditing;
 export const getDashboardBeforeEditing = state => state.dashboard.isEditing;
 export const getClickBehaviorSidebarDashcard = state => {
@@ -92,13 +93,19 @@ export const getDashCardTable = (state, dashcardId) => {
 };
 
 export const getDashboardComplete = createSelector(
-  [getDashboard, getDashcards],
-  (dashboard, dashcards) =>
+  [getDashboard, getDashcards, getSelectedTabId],
+  (dashboard, dashcards, selectedTabId) =>
     dashboard && {
       ...dashboard,
       ordered_cards: dashboard.ordered_cards
         .map(id => dashcards[id])
-        .filter(dc => !dc.isRemoved),
+        .filter(
+          dc =>
+            !dc.isRemoved &&
+            (!selectedTabId ||
+              dc.dashboardtab_id === selectedTabId ||
+              dc.dashboardtab_id === null),
+        ),
     },
 );
 

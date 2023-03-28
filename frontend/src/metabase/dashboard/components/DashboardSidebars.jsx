@@ -2,6 +2,7 @@ import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
+import { useSelector } from "react-redux";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
@@ -74,15 +75,17 @@ export function DashboardSidebars({
   setDashboardAttribute,
   saveDashboardAndCards,
 }) {
+  const tabId = useSelector(state => state.dashboard.selectedTabId);
   const handleAddCard = useCallback(
     cardId => {
       addCardToDashboard({
         dashId: dashboard.id,
         cardId: cardId,
+        tabId,
       });
       MetabaseAnalytics.trackStructEvent("Dashboard", "Add Card");
     },
-    [addCardToDashboard, dashboard.id],
+    [addCardToDashboard, dashboard.id, tabId],
   );
 
   if (isFullscreen) {
