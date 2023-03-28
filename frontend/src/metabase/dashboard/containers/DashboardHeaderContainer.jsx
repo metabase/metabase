@@ -30,12 +30,12 @@ import {
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
-import Header from "../components/DashboardHeader";
+import DashboardHeader from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
-} from "./DashboardHeader.styled";
+} from "./DashboardHeaderContainer.styled";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -55,7 +55,7 @@ const mapDispatchToProps = {
   addActionToDashboard,
 };
 
-class DashboardHeader extends Component {
+class DashboardHeaderContainer extends Component {
   constructor(props) {
     super(props);
 
@@ -418,7 +418,7 @@ class DashboardHeader extends Component {
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
-      <Header
+      <DashboardHeader
         headerClassName="wrapper"
         objectType="dashboard"
         analyticsContext="Dashboard"
@@ -443,4 +443,4 @@ class DashboardHeader extends Component {
 export default _.compose(
   Bookmark.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
-)(DashboardHeader);
+)(DashboardHeaderContainer);

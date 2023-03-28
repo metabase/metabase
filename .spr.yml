@@ -1,0 +1,12 @@
+githubRepoOwner: metabase
+githubRepoName: metabase
+githubHost: github.com
+requireChecks: true
+requireApproval: true
+githubRemote: origin
+githubBranch: master
+remoteBranches: []
+mergeMethod: squash
+prTemplatePath: .github/PULL_REQUEST_TEMPLATE.md
+prTemplateInsertStart: '### Description'
+prTemplateInsertEnd: '### How to verify'

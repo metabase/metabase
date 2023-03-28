@@ -7,7 +7,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import ClockIcon from "metabase/components/icons/ClockIcon";
 import CountdownIcon from "metabase/components/icons/CountdownIcon";
 
-import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
+import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeaderContainer.styled";
 import {
   RefreshOptionIcon,
   RefreshOptionItem,
