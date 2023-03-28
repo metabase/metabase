@@ -1,8 +1,9 @@
 import { handleActions } from "redux-actions";
-import { SET_QUERY_TEXT, SET_FEEDBACK_TYPE, RESET } from "./actions";
+import { SET_QUERY_TEXT, SET_FEEDBACK_TYPE, RESET, INIT } from "./actions";
 
 export const entityId = handleActions(
   {
+    [INIT]: { next: (state, { payload }) => payload.entityId },
     [RESET]: { next: () => null },
   },
   null,
@@ -10,6 +11,7 @@ export const entityId = handleActions(
 
 export const entityType = handleActions(
   {
+    [INIT]: { next: (state, { payload }) => payload.entityType },
     [RESET]: { next: () => null },
   },
   null,
@@ -31,6 +33,7 @@ export const originalCard = handleActions(
 
 export const queryText = handleActions(
   {
+    [INIT]: { next: (state, { payload }) => payload.initialQueryText },
     [SET_QUERY_TEXT]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => "" },
   },

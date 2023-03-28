@@ -2,12 +2,12 @@ import React, { useEffect } from "react";
 import { connect } from "react-redux";
 import { MetabotFeedbackType } from "metabase-types/api";
 import {
-  Dispatch,
   MetabotEntityId,
   MetabotEntityType,
   MetabotQueryStatus,
   State,
 } from "metabase-types/store";
+import { init, reset } from "../../actions";
 import { getFeedbackType, getQueryStatus } from "../../selectors";
 import MetabotHeader from "../MetabotHeader";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
@@ -18,7 +18,7 @@ import { MetabotRoot } from "./Metabot.styled";
 interface OwnProps {
   entityId: MetabotEntityId;
   entityType: MetabotEntityType;
-  initialQueryText?: string;
+  initialQueryText: string;
 }
 
 interface StateProps {
@@ -38,15 +38,15 @@ const mapStateToProps = (state: State): StateProps => ({
   feedbackType: getFeedbackType(state),
 });
 
-const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onInit: () => undefined,
-  onReset: () => undefined,
-});
+const mapDispatchToProps: DispatchProps = {
+  onInit: init,
+  onReset: reset,
+};
 
 const Metabot = ({
   entityId,
   entityType,
-  initialQueryText,
+  initialQueryText = "",
   queryStatus,
   feedbackType,
   onInit,

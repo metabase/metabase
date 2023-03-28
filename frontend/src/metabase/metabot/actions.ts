@@ -5,7 +5,7 @@ import { MetabotFeedbackType } from "metabase-types/api";
 export interface InitPayload {
   entityId: MetabotEntityId;
   entityType: MetabotEntityType;
-  initialQueryText?: string;
+  initialQueryText: string;
 }
 
 export const INIT = "metabase/metabot/INIT";
