@@ -55,10 +55,19 @@
           {:status-code 400
            :message     message}))))))
 
+;Add buttons at the bottom with the following
+;This is great!
+;This used the wrong data
+;It should have used <X>
+;This isn’t valid SQL
+;Is should have been <Y>
+;This result is incorrect
+;Is should have been <Z>
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/feedback"
   "Record feedback on metabot results."
-  [:as {{:keys [prompt sql feedback correct_sql] :as body} :body}]
+  [:as {{:keys [prompt sql feedback correct_sql]} :body}]
   ;{database-id ms/PositiveInt
   ; question string?}
   ;;great | wrong-data | incorrect-result | invalid-sql
