@@ -4,7 +4,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.upsert :as upsert]
    [metabase.db.util :as mdb.u]
-   [metabase.models :refer [Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet]]
+   [metabase.models :refer [Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet
+                            Pulse Segment Table User]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]
