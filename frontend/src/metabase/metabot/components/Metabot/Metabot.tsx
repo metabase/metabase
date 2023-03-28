@@ -1,52 +1,72 @@
-import React from "react";
-import { Dataset, User } from "metabase-types/api";
-import Question from "metabase-lib/Question";
-import useMetabot from "../../hooks/use-metabot";
+import React, { useEffect } from "react";
+import { connect } from "react-redux";
+import { MetabotFeedbackType } from "metabase-types/api";
+import {
+  Dispatch,
+  MetabotEntityId,
+  MetabotEntityType,
+  MetabotQueryStatus,
+  State,
+} from "metabase-types/store";
+import { getFeedbackType, getQueryStatus } from "../../selectors";
 import MetabotHeader from "../MetabotHeader";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
 import MetabotFeedbackForm from "../MetabotFeedbackForm";
 import MetabotQueryForm from "../MetabotQueryForm";
 import { MetabotRoot } from "./Metabot.styled";
 
-export interface QueryResults {
-  prompt: string;
-  question: Question;
-  results: [Dataset];
+interface OwnProps {
+  entityId: MetabotEntityId;
+  entityType: MetabotEntityType;
+  initialQueryText?: string;
 }
 
-export interface MetabotProps {
-  title: React.ReactNode;
-  placeholder: string;
-  user?: User;
-  initialQueryText?: string;
-  onFetchQuestion: (query: string) => Promise<Question>;
+interface StateProps {
+  queryStatus: MetabotQueryStatus;
+  feedbackType?: MetabotFeedbackType;
 }
+
+interface DispatchProps {
+  onInit: (props: OwnProps) => void;
+  onReset: () => void;
+}
+
+type MetabotProps = OwnProps & StateProps & DispatchProps;
+
+const mapStateToProps = (state: State): StateProps => ({
+  queryStatus: getQueryStatus(state),
+  feedbackType: getFeedbackType(state),
+});
+
+const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
+  onInit: () => undefined,
+  onReset: () => undefined,
+});
 
 const Metabot = ({
-  title,
-  placeholder,
-  user,
+  entityId,
+  entityType,
   initialQueryText,
-  onFetchQuestion,
+  queryStatus,
+  feedbackType,
+  onInit,
+  onReset,
 }: MetabotProps) => {
-  const { question, feedbackType, isFeedbackSubmitted } = useMetabot({
-    initialQueryText,
-    onFetchQuestion,
-  });
+  useEffect(() => {
+    onInit({ entityId, entityType, initialQueryText });
+    return () => onReset();
+  }, [entityId, entityType, initialQueryText, onInit, onReset]);
 
+  const isLoading = queryStatus === "running";
   const isInvalidSql = feedbackType === "invalid-sql";
-  const hasQueryBuilder = !isInvalidSql || isFeedbackSubmitted;
-  const hasQueryForm = isInvalidSql && !isFeedbackSubmitted;
-  const hasFeedbackForm = question != null && !hasQueryForm;
 
   return (
     <MetabotRoot>
       <MetabotHeader />
-      {hasQueryBuilder && <MetabotQueryBuilder />}
-      {hasQueryForm && <MetabotQueryForm />}
-      {hasFeedbackForm && <MetabotFeedbackForm />}
+      {isInvalidSql ? <MetabotQueryForm /> : <MetabotQueryBuilder />}
+      {!isLoading && !isInvalidSql && <MetabotFeedbackForm />}
     </MetabotRoot>
   );
 };
 
-export default Metabot;
+export default connect(mapStateToProps, mapDispatchToProps)(Metabot);
