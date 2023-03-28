@@ -37,7 +37,7 @@
   [_ _]
   (throw (UnsupportedOperationException. "Redshift does not have a TIME data type.")))
 
-(def ^:private db-connection-details
+(def db-connection-details
   (delay {:host     (tx/db-test-env-var-or-throw :redshift :host)
           :port     (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
           :db       (tx/db-test-env-var-or-throw :redshift :db)
@@ -48,7 +48,7 @@
   [& _]
   @db-connection-details)
 
-(defn- unique-session-schema []
+(defn unique-session-schema []
   (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
