@@ -1,8 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import { Dataset } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import MetabotQueryEditor from "../MetabotQueryEditor";
-import MetabotQueryFooter from "../MetabotQueryFooter";
 import MetabotVisualization from "../MetabotVisualization";
 import {
   MetabotQueryBuilderRoot,
@@ -18,23 +17,12 @@ const MetabotQueryBuilder = ({
   question,
   results,
 }: MetabotQueryBuilderProps) => {
-  const [isShowingRawTable, setIsShowingRawTable] = useState(false);
-
   return (
     <MetabotQueryBuilderRoot>
       <MetabotQueryEditor question={question} isReadOnly hasTopbar />
       <MetabotQueryVisualizationContainer>
-        <MetabotVisualization
-          question={question}
-          results={results}
-          isShowingRawTable={isShowingRawTable}
-        />
+        <MetabotVisualization question={question} results={results} />
       </MetabotQueryVisualizationContainer>
-      <MetabotQueryFooter
-        question={question}
-        isShowingRawTable={isShowingRawTable}
-        onToggleRawTable={setIsShowingRawTable}
-      />
     </MetabotQueryBuilderRoot>
   );
 };
