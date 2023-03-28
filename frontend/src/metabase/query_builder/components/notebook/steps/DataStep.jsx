@@ -15,10 +15,10 @@ import {
 } from "../FieldsPickerIcon";
 import FieldsPicker from "./FieldsPicker";
 
-function DataStep({ color, query, updateQuery }) {
+function DataStep({ color, query, updateQuery, readOnly }) {
   const question = query.question();
   const table = query.table();
-  const canSelectTableColumns = table && query.isRaw();
+  const canSelectTableColumns = table && query.isRaw() && !readOnly;
 
   const hasCollectionDatasetsStep =
     question &&

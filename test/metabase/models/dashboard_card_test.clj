@@ -14,7 +14,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))
@@ -216,11 +215,11 @@
                     Card          [{series-id-1 :id} {:name "Series Card 1"}]
                     Card          [{series-id-2 :id} {:name "Series Card 2"}]]
       (testing "Should have fewer DB calls if there are no changes to the dashcards"
-        (db/with-call-counting [call-count]
+        (t2/with-call-count [call-count]
           (dashboard/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])
           (is (= 6 (call-count)))))
       (testing "Should have more calls if there are changes to the dashcards"
-        (db/with-call-counting [call-count]
+        (t2/with-call-count [call-count]
           (dashboard/update-dashcards! dashboard [{:id     (:id dashcard-1)
                                                    :cardId card-id
                                                    :row    1

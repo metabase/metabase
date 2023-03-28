@@ -26,7 +26,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -85,7 +84,7 @@
                          :error (str (me/humanize explained)
                                      "\n"
                                      (pr-str explained))}))))
-    (db/transaction
+    (t2/with-transaction [_conn]
      (perms/update-data-perms-graph! (dissoc graph :sandboxes))
      (if-let [sandboxes (:sandboxes body)]
        (let [new-sandboxes (upsert-sandboxes! sandboxes)]

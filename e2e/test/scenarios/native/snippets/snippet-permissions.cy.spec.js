@@ -4,6 +4,7 @@ import {
   popover,
   describeEE,
   openNativeEditor,
+  rightSidebar,
 } from "e2e/support/helpers";
 
 import { USER_GROUPS } from "e2e/support/cypress_data";
@@ -52,6 +53,8 @@ describeEE("scenarios > question > snippets", () => {
       collection_id: null,
     });
 
+    cy.intercept("GET", "api/collection/*").as("collection");
+
     openNativeEditor();
 
     // create folder
@@ -74,8 +77,12 @@ describeEE("scenarios > question > snippets", () => {
       .parent()
       .within(() => {
         cy.icon("chevrondown").click({ force: true });
-        cy.findByText("Edit").click();
       });
+
+    rightSidebar().within(() => {
+      cy.findByText("Edit").click();
+    });
+
     modal().within(() => cy.findByText("Top folder").click());
     popover().within(() => cy.findByText("my favorite snippets").click());
     cy.intercept("/api/collection/root/items?namespace=snippets").as(
