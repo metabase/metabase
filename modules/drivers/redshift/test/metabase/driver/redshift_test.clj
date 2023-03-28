@@ -86,14 +86,20 @@
                                  "FROM"
                                  "  \"{{schema}}\".\"test_data_users\""
                                  "WHERE"
-                                 "  (\"{{schema}}\".\"test_data_users\".\"id\" = 1)"
-                                 "  OR (\"{{schema}}\".\"test_data_users\".\"id\" = 2)"
-                                 "  OR (\"{{schema}}\".\"test_data_users\".\"id\" = 3)"
+                                 "  ("
+                                 "    \"{{schema}}\".\"test_data_users\".\"id\" = 1"
+                                 "  )"
+                                 "  OR ("
+                                 "    \"{{schema}}\".\"test_data_users\".\"id\" = 2"
+                                 "  )"
+                                 "  OR ("
+                                 "    \"{{schema}}\".\"test_data_users\".\"id\" = 3"
+                                 "  )"
                                  "LIMIT"
                                  "  2000"]]
-                         (-> line
-                             (str/replace #"\Q{{site-uuid}}\E" (public-settings/site-uuid))
-                             (str/replace #"\Q{{schema}}\E" (redshift.test/unique-session-schema))))]
+                       (-> line
+                           (str/replace #"\Q{{site-uuid}}\E" (public-settings/site-uuid))
+                           (str/replace #"\Q{{schema}}\E" (redshift.test/unique-session-schema))))]
         (is (= expected
                (sql->lines
                 (query->native
