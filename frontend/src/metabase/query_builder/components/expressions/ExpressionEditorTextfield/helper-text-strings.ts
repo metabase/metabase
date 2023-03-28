@@ -12,9 +12,8 @@ const getDescriptionForNow: HelpTextConfig["description"] = (
   reportTimezone,
 ) => {
   const hasTimezoneFeatureFlag = database.features.includes("set-timezone");
-  const timezone =
-    hasTimezoneFeatureFlag && reportTimezone ? reportTimezone : "UTC";
-  const nowAtTimezone = getNowAtTimezone(timezone);
+  const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
+  const nowAtTimezone = getNowAtTimezone(timezone, reportTimezone);
 
   // H2 is the only DBMS we support where:
   // · set-timezone isn't a feature, and
@@ -28,8 +27,13 @@ const getDescriptionForNow: HelpTextConfig["description"] = (
   }
 };
 
-const getNowAtTimezone = (timezone: string) =>
-  timezone ? moment().tz(timezone).format("LT") : moment().format("LT");
+const getNowAtTimezone = (
+  timezone: string | undefined,
+  reportTimezone: string | undefined,
+) =>
+  timezone && reportTimezone
+    ? moment().tz(reportTimezone).format("LT")
+    : moment().format("LT");
 
 const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {

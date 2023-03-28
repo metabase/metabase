@@ -46,14 +46,14 @@ describe("getHelpText", () => {
       const { database } = setup();
       const helpText = getHelpText("now", database, reportTimezone);
 
-      expect(helpText?.description).toMatch("currently");
+      expect(helpText?.description).toMatch("Currently");
     });
 
     it("should not include timestamps in description for h2 database engines", () => {
       const { database } = setup({ engine: "h2" });
       const helpText = getHelpText("now", database, reportTimezone);
 
-      expect(helpText?.description).not.toMatch("currently");
+      expect(helpText?.description).not.toMatch("Currently");
     });
 
     it("should use custom reportTimezone in description for supporting database engines", () => {
