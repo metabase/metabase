@@ -1,14 +1,14 @@
 import { connect } from "react-redux";
 import _ from "underscore";
 import { LocationDescriptorObject } from "history";
+import { checkNotNull } from "metabase/core/utils/types";
 import { extractEntityId } from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getUser } from "metabase/selectors/user";
 import Questions from "metabase/entities/questions";
-import { Card, User } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import { Card, CardId } from "metabase-types/api";
+import { MetabotEntityType, State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
-import ModelMetabot from "../../components/ModelMetabot";
+import Metabot from "../../components/Metabot";
 
 interface RouterParams {
   slug: string;
@@ -24,25 +24,30 @@ interface CardLoaderProps {
 }
 
 interface StateProps {
+  entityId: CardId;
+  entityType: MetabotEntityType;
   model: Question;
-  user?: User;
   initialQueryText?: string;
 }
 
-const getModelId = (state: State, { params }: RouteProps) => {
-  return extractEntityId(params.slug);
-};
-
 const mapStateToProps = (
   state: State,
-  { card, location }: CardLoaderProps & RouteProps,
-): StateProps => ({
-  model: new Question(card, getMetadata(state)),
-  user: getUser(state) ?? undefined,
-  initialQueryText: location?.query?.query,
-});
+  { card, params, location }: CardLoaderProps & RouteProps,
+): StateProps => {
+  const entityId = checkNotNull(extractEntityId(params.slug));
+
+  return {
+    entityId,
+    entityType: "model",
+    model: new Question(card, getMetadata(state)),
+    initialQueryText: location?.query?.query,
+  };
+};
 
 export default _.compose(
-  Questions.load({ id: getModelId, entityAlias: "card" }),
+  Questions.load({
+    id: (state: State, { params }: RouteProps) => extractEntityId(params.slug),
+    entityAlias: "card",
+  }),
   connect(mapStateToProps),
-)(ModelMetabot);
+)(Metabot);
