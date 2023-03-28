@@ -736,9 +736,3 @@
     (regexp? x)     :dispatch-type/regex
     ;; we should add more mappings here as needed
     :else           :dispatch-type/*))
-
-(defn parse-int
-  "Given a string, parses it to an integer. (A Long, on the JVM, and a JS number in CLJS.)"
-  [s]
-  #?(:cljs (js/parseInt s)
-     :clj  (Long/parseLong s)))

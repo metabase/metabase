@@ -6,7 +6,6 @@
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.lib.schema.common :as common]
-   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.domain-entities.converters :as converters]))))
@@ -51,7 +50,7 @@
 
 (defn- tag-name->card-id [tag-name]
   (when-let [[_ id-str] (re-matches #"^#(\d+)(-[a-z0-9-]*)?$" tag-name)]
-    (u/parse-int id-str)))
+    (parse-long id-str)))
 
 (defn- tag-name->snippet-name [tag-name]
   (when (str/starts-with? tag-name "snippet:")
