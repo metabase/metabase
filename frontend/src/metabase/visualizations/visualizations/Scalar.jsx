@@ -215,7 +215,7 @@ export default class Scalar extends Component {
     };
     const isClickable = visualizationIsClickable(clicked);
 
-    const hideTitle =
+    const showSmallTitle =
       !!settings["card.title"] &&
       isDashboard &&
       (gridSize?.width < 2 || gridSize?.height < 2);
@@ -250,22 +250,23 @@ export default class Scalar extends Component {
           </span>
         </ScalarContainer>
 
-        {hideTitle ? (
-          <LabelIcon
-            name="ellipsis"
-            tooltip={settings["card.title"]}
-            size={10}
-          />
-        ) : (
-          <ScalarTitle
-            title={settings["card.title"]}
-            description={settings["card.description"]}
-            onClick={
-              onChangeCardAndRun &&
-              (() => onChangeCardAndRun({ nextCard: card }))
-            }
-          />
-        )}
+        {isDashboard &&
+          (showSmallTitle ? (
+            <LabelIcon
+              name="ellipsis"
+              tooltip={settings["card.title"]}
+              size={10}
+            />
+          ) : (
+            <ScalarTitle
+              title={settings["card.title"]}
+              description={settings["card.description"]}
+              onClick={
+                onChangeCardAndRun &&
+                (() => onChangeCardAndRun({ nextCard: card }))
+              }
+            />
+          ))}
       </ScalarWrapper>
     );
   }
