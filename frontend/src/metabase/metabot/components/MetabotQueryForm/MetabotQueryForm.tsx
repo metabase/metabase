@@ -8,6 +8,7 @@ import {
   QueryEditorContainer,
   QueryEditorRoot,
   QueryEditorTitle,
+  QueryEditorSection,
 } from "./MetabotQueryForm.styled";
 
 interface MetabotQueryFormProps {
@@ -26,19 +27,23 @@ export const MetabotQueryForm = ({
 
   return (
     <QueryEditorRoot>
-      <QueryEditorTitle>{t`Here’s the generated SQL`}</QueryEditorTitle>
-      <QueryEditorContainer>
-        <MetabotQueryEditor question={question} readOnly isInitiallyOpen />
-      </QueryEditorContainer>
-      <QueryEditorTitle>{t`What should the SQL have been?`}</QueryEditorTitle>
-      <QueryEditorContainer>
-        <MetabotQueryEditor
-          question={updatedQuestion}
-          readOnly
-          isInitiallyOpen
-          setDatasetQuery={setUpdatedQuestion}
-        />
-      </QueryEditorContainer>
+      <QueryEditorSection>
+        <QueryEditorTitle>{t`Here’s the generated SQL`}</QueryEditorTitle>
+        <QueryEditorContainer>
+          <MetabotQueryEditor question={question} readOnly isInitiallyOpen />
+        </QueryEditorContainer>
+      </QueryEditorSection>
+      <QueryEditorSection>
+        <QueryEditorTitle>{t`What should the SQL have been?`}</QueryEditorTitle>
+        <QueryEditorContainer>
+          <MetabotQueryEditor
+            question={updatedQuestion}
+            readOnly
+            isInitiallyOpen
+            setDatasetQuery={setUpdatedQuestion}
+          />
+        </QueryEditorContainer>
+      </QueryEditorSection>
       <QueryEditorFooter>
         <Button onClick={onCancel}>{t`Cancel`}</Button>
         <Button primary onClick={handleSubmit}>{t`Done`}</Button>

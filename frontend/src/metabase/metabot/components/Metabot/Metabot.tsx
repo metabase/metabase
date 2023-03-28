@@ -5,10 +5,10 @@ import { Dataset, MetabotFeedbackType, User } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
-import { MetabotHeader, MetabotRoot } from "../MetabotLayout";
 import MetabotResultsWrapper from "../MetabotResultsWrapper";
 import MetabotMessage from "../MetabotMessage";
 import MetabotFeedback from "../MetabaseFeedback";
+import { MetabotHeader, MetabotRoot } from "./Metabot.styled";
 
 export interface QueryResults {
   prompt: string;

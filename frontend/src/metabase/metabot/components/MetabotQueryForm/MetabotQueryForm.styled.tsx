@@ -11,7 +11,13 @@ export const QueryEditorRoot = styled.div`
 export const QueryEditorTitle = styled.div`
   color: ${color("text-dark")};
   font-weight: bold;
-  padding: 1.5rem 2rem 1rem;
+  margin-bottom: 1rem;
+  padding-left: 2rem;
+  padding-right: 2rem;
+`;
+
+export const QueryEditorSection = styled.div`
+  margin-bottom: 1.5rem;
 `;
 
 export const QueryEditorContainer = styled.div`
@@ -22,5 +28,7 @@ export const QueryEditorFooter = styled.div`
   display: flex;
   justify-content: end;
   gap: 1rem;
-  padding: 0 2rem 1.5rem;
+  padding-left: 2rem;
+  padding-right: 2rem;
+  padding-bottom: 1.5rem;
 `;
