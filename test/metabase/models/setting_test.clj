@@ -15,7 +15,6 @@
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -535,8 +534,8 @@
 
     (testing "make sure that fetching the Setting always fetches the latest value from the DB"
       (uncached-setting! "ABCDEF")
-      (db/update-where! Setting {:key "uncached-setting"}
-                        :value "123456")
+      (t2/update! Setting {:key "uncached-setting"}
+                  {:value "123456"})
       (is (= "123456"
              (uncached-setting))))
 

@@ -148,10 +148,6 @@
   ([query stage-number x]
    (->field query stage-number x)))
 
-(defn with-join-alias
-  "Update a `field` so that it has `join-alias`."
-  [field-or-fn join-alias]
-  (if (fn? field-or-fn)
-    (fn [query stage-number]
-      (with-join-alias (field-or-fn query stage-number) join-alias))
-    (lib.options/update-options field-or-fn assoc :join-alias join-alias)))
+(defmethod lib.join/with-join-alias-method :field
+  [field-ref join-alias]
+  (lib.options/update-options field-ref assoc :join-alias join-alias))

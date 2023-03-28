@@ -3,7 +3,7 @@ import _ from "underscore";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import { NotebookStep, NotebookStepFn } from "./steps.types";
+import { NotebookStep, NotebookStepFn, OpenSteps } from "./steps.types";
 
 // This converts an MBQL query into a sequence of notebook "steps", with special logic to determine which steps are
 // allowed to be added at every other step, generating a preview query at each step, how to delete a step,
@@ -148,7 +148,7 @@ export function getQuestionSteps(question: Question, openSteps = {}) {
 export function getStageSteps(
   stageQuery: StructuredQuery,
   stageIndex: number,
-  openSteps: Record<NotebookStep["id"], boolean>,
+  openSteps: OpenSteps,
 ) {
   const getId = (step: NotebookStepDef, itemIndex: number | null) => {
     const isValidItemIndex = itemIndex != null && itemIndex > 0;

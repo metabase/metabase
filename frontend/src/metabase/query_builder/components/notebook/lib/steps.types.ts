@@ -53,3 +53,5 @@ export interface NotebookStepUiComponentProps {
   isLastOpened: boolean;
   reportTimezone: string;
 }
+
+export type OpenSteps = Record<NotebookStep["id"], boolean>;

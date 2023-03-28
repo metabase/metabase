@@ -149,13 +149,16 @@
    toucan.db/delete!             {:message "Use t2/delete! instead of toucan.db/delete!"}
    toucan.db/insert!             {:message "Use t2/insert-returning-instances! instead of toucan.db/insert!"}
    toucan.db/update!             {:message "Use t2/update! instead of toucan.db/update!"}
+   toucan.db/update-where!       {:message "Use t2/update! instead of toucan.db/update-where!"}
    toucan.db/query               {:message "Use mdb.query/query instead of toucan.db/query"}
    toucan.db/count               {:message "Use t2/count instead of toucan.db/count"}
    toucan.db/exists?             {:message "Use t2/exists? instead of toucan.db/exists?"}
    toucan.db/transaction         {:message "Use t2/with-transaction instead of toucan.db/transaction"}
    toucan.db/with-call-counting  {:message "Use t2/with-call-count instead of toucan.db/with-call-counting"}
    toucan.db/execute!            {:message "Use t2/query-one instead of toucan.db/execute!"}
-   toucan.db/reducible-query     {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}}
+   toucan.db/reducible-query     {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}
+   toucan.db/resolve-model       {:message "Use metabase.db.util/resolve-model instead of toucan.db/resolve-model"}
+   toucan.models/primary-key     {:message "Use metabase.db.util/primary-key instead of toucan.models/primary-key"}}
 
   :discouraged-namespace
   {clojure.tools.logging {:message "Use metabase.util.log instead of clojure.tools.logging directly"}

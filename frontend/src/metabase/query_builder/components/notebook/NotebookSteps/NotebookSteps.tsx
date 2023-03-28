@@ -4,7 +4,7 @@ import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { getQuestionSteps } from "../lib/steps";
-import { NotebookStep as INotebookStep } from "../lib/steps.types";
+import { NotebookStep as INotebookStep, OpenSteps } from "../lib/steps.types";
 import NotebookStep from "../NotebookStep";
 import { Container } from "./NotebookSteps.styled";
 
@@ -15,8 +15,6 @@ interface NotebookStepsProps {
   reportTimezone?: string;
   updateQuestion: (question: Question) => Promise<void>;
 }
-
-type OpenSteps = { [key: string]: boolean };
 
 function getInitialOpenSteps(question: Question): OpenSteps {
   const isNew = !question.table();
@@ -94,7 +92,6 @@ function NotebookSteps({
             reportTimezone={reportTimezone}
             updateQuery={onChange}
             openStep={handleStepOpen}
-            closeStep={handleStepClose}
           />
         );
       })}
