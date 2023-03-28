@@ -75,7 +75,7 @@
 (defn- sql->lines [sql]
   (str/split-lines (mdb.query/format-sql sql :redshift)))
 
-(deftest ^:parallel remark-test
+(deftest remark-test
   (testing "if I run a Redshift query, does it get a remark added to it?"
     (mt/test-driver :redshift
       (let [expected (for [line ["-- /* partner: \"metabase\", {\"dashboard_id\":5678,\"chart_id\":1234,\"optional_user_id\":1000,\"optional_account_id\":\"{{site-uuid}}\",\"filter_values\":{\"id\":[\"1\",\"2\",\"3\"]}} */ Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2"
@@ -216,18 +216,23 @@
   (let [sql  (apply format format-string args)
         spec (sql-jdbc.conn/connection-details->spec :redshift @redshift.test/db-connection-details)]
     (log/info (u/format-color 'blue "[redshift] %s" sql))
-    (jdbc/execute! spec sql))
+    (try
+      (jdbc/execute! spec sql)
+      (catch Throwable e
+        (throw (ex-info (format "Error executing SQL: %s" (ex-message e))
+                        {:sql sql}
+                        e)))))
   (log/info (u/format-color 'blue "[ok]")))
 
-(deftest redshift-types-test
+(deftest ^:parallel redshift-types-test
   (mt/test-driver
     :redshift
     (testing "Redshift specific types should be synced correctly"
       (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
             tbl-nm       "redshift_specific_types"
-            qual-tbl-nm  (str (redshift.test/unique-session-schema) "." tbl-nm)
+            qual-tbl-nm  (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) tbl-nm)
             view-nm      "late_binding_view"
-            qual-view-nm (str (redshift.test/unique-session-schema) "." view-nm)]
+            qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
         (mt/with-temp Database [database {:engine :redshift, :details db-details}]
           (try
             ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
@@ -255,13 +260,13 @@
                         qual-tbl-nm
                         qual-view-nm))))))))
 
-(deftest redshift-lbv-sync-error-test
+(deftest ^:parallel redshift-lbv-sync-error-test
   (mt/test-driver
     :redshift
     (testing "Late-binding view with with data types that cause a JDBC error can still be synced successfully (#21215)"
       (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
             view-nm      "weird_late_binding_view"
-            qual-view-nm (str (redshift.test/unique-session-schema) "." view-nm)]
+            qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
         (mt/with-temp Database [database {:engine :redshift, :details db-details}]
           (try
             (execute!
