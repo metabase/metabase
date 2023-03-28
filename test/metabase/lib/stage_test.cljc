@@ -77,4 +77,4 @@
                (lib/filter (lib/= 1 (lib/field "VENUES" "NAME")))
                (lib/drop-stage))))
     (testing "Dropping with 1 stage should error"
-      (is (thrown-with-msg? Exception #"Cannot drop the only stage" (-> query (lib/drop-stage)))))))
+      (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Cannot drop the only stage" (-> query (lib/drop-stage)))))))
