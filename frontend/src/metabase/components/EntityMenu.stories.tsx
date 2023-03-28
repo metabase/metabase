@@ -3,7 +3,7 @@ import type { ComponentStory } from "@storybook/react";
 import EntityMenu from "./EntityMenu";
 
 export default {
-  title: "Entity Menu",
+  title: "Components/Entity Menu",
   component: EntityMenu,
 };
 
