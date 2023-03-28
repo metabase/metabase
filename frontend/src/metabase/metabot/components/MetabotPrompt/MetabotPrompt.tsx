@@ -22,7 +22,7 @@ const MetabotPrompt = ({
   user,
   isLoading = false,
   onChangeQuery,
-  onRunQuery,
+  onSubmitQuery,
 }: MetabotPromptProps) => {
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -34,10 +34,10 @@ const MetabotPrompt = ({
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
-        onRunQuery();
+        onSubmitQuery();
       }
     },
-    [onRunQuery],
+    [onSubmitQuery],
   );
 
   return (
@@ -55,7 +55,7 @@ const MetabotPrompt = ({
           isRunning={isLoading}
           compact
           isDirty
-          onRun={onRunQuery}
+          onRun={onSubmitQuery}
         />
       ) : null}
     </PromptSection>
