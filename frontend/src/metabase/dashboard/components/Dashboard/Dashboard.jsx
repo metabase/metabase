@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { getMainElement } from "metabase/lib/dom";
 
-import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
+import DashboardHeaderContainer from "metabase/dashboard/containers/DashboardHeaderContainer";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
@@ -275,7 +275,7 @@ class Dashboard extends Component {
                 isFullscreen={isFullscreen}
                 isNightMode={shouldRenderAsNightMode}
               >
-                <DashboardHeader
+                <DashboardHeaderContainer
                   {...this.props}
                   onEditingChange={this.setEditing}
                   setDashboardAttribute={this.setDashboardAttribute}

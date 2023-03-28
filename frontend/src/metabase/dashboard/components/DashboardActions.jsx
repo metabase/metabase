@@ -9,7 +9,7 @@ import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
 import Tooltip from "metabase/core/components/Tooltip";
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
 
-import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
+import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeaderContainer.styled";
 import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
 
 export const getDashboardActions = (

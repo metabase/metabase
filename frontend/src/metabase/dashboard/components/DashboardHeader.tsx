@@ -41,7 +41,6 @@ interface DashboardHeaderProps {
   dashboard: Dashboard;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
-  children: React.ReactNode;
   onHeaderModalDone: () => null;
   onHeaderModalCancel: () => null;
   onLastEditInfoClick: () => null;
@@ -61,7 +60,6 @@ const DashboardHeader = ({
   isNavBarOpen,
   dashboard,
   isLastEditInfoVisible,
-  children,
   onHeaderModalDone,
   onHeaderModalCancel,
   onLastEditInfoClick,
@@ -165,7 +163,6 @@ const DashboardHeader = ({
           {_headerButtons}
         </HeaderButtonsContainer>
       </HeaderRoot>
-      {children}
     </div>
   );
 };
