@@ -538,7 +538,7 @@ export default class NativeQuery extends AtomicQuery {
         }
 
         // ensure all tags have an id since we need it for parameter values to work
-        for (const tag: TemplateTag of Object.values(templateTags)) {
+        for (const tag of Object.values(templateTags)) {
           if (tag.id == null) {
             tag.id = Utils.uuid();
           }

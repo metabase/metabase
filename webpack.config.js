@@ -5,6 +5,8 @@ const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 
 const webpack = require("webpack");
 
+const SpeedMeasurePlugin = require("speed-measure-webpack-plugin");
+
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const HtmlWebpackHarddiskPlugin = require("html-webpack-harddisk-plugin");
@@ -41,6 +43,10 @@ const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
 };
 
+const SWC_CONFIG = {
+  parseMap: true,
+};
+
 const CSS_CONFIG = {
   localIdentName: devMode
     ? "[name]__[local]___[hash:base64:5]"
@@ -48,7 +54,7 @@ const CSS_CONFIG = {
   importLoaders: 1,
 };
 
-const config = (module.exports = {
+const config = {
   mode: devMode ? "development" : "production",
   context: SRC_PATH,
 
@@ -74,7 +80,8 @@ const config = (module.exports = {
       {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
-        use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+        use: [{ loader: "babel-loader" }],
+        // use: [{ loader: "swc-loader", options: SWC_CONFIG }],
       },
       ...(shouldUseEslint
         ? [
@@ -98,6 +105,7 @@ const config = (module.exports = {
       },
       {
         test: /\.css$/,
+        exclude: /node_modules/,
         use: [
           devMode
             ? "style-loader"
@@ -109,6 +117,21 @@ const config = (module.exports = {
               },
           { loader: "css-loader", options: CSS_CONFIG },
           { loader: "postcss-loader" },
+        ],
+      },
+      {
+        test: /\.css$/,
+        include: /node_modules/,
+        use: [
+          devMode
+            ? "style-loader"
+            : {
+                loader: MiniCssExtractPlugin.loader,
+                options: {
+                  publicPath: "./",
+                },
+              },
+          { loader: "css-loader", options: CSS_CONFIG },
         ],
       },
       {
@@ -229,7 +252,7 @@ const config = (module.exports = {
     // https://github.com/remarkjs/remark/discussions/903
     new webpack.ProvidePlugin({ process: "process/browser.js" }),
   ],
-});
+};
 
 if (WEBPACK_BUNDLE === "hot") {
   const localIpAddress =
@@ -353,3 +376,7 @@ function getLocalIpAddress(ipFamily) {
     .shift();
   return address;
 }
+const smp = new SpeedMeasurePlugin();
+// module.exports = smp.wrap(config);
+module.exports = config;
+

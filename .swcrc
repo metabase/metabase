@@ -1,0 +1,13 @@
+{
+  "jsc": {
+    "parser": {
+      "syntax": "typescript",
+      "tsx": true,
+      "decorators": false,
+      "dynamicImport": false
+    },
+    "experimental": {
+      "plugins": [ ["@swc/plugin-emotion", {} ] ]
+    }
+  }
+}

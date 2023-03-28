@@ -11,6 +11,7 @@
 .cpcache/
 .eastwood
 .idea/
+.swc/
 .nrepl-port
 .vscode
 /*.h2.db
