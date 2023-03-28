@@ -12,6 +12,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.match :refer [match]]
+   [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -372,7 +373,7 @@
                       (take 1)))
        first))
 
-(defn ^:dynamic ^::cache lookup-by-id
+(defn ^::cache lookup-by-id
   "Given an ID string, this endeavours to find the matching entity, whether it's an entity ID or identity hash.
   This is useful when writing [[load-xform]] to turn a foreign key from a portable form to an appdb ID.
   Returns a Toucan entity or nil."
@@ -435,7 +436,7 @@
 ;; utils
 
 ;; -------------------------------------------- General Foreign Keys -------------------------------------------------
-(defn ^:dynamic ^::cache export-fk
+(defn ^::cache export-fk
   "Given a numeric foreign key and its model (symbol, name or IModel), looks up the entity by ID and gets its entity ID
   or identity hash.
   Unusual parameter order means this can be used as `(update x :some_id export-fk 'SomeModel)`.
@@ -452,7 +453,7 @@
         (first path)
         path))))
 
-(defn ^:dynamic ^::cache import-fk
+(defn ^::cache import-fk
   "Given an identifier, and the model it represents (symbol, name or IModel), looks up the corresponding
   entity and gets its primary key.
 
@@ -476,7 +477,7 @@
         (throw (ex-info "Could not find foreign key target - bad serdes-dependencies or other serialization error"
                         {:entity_id eid :model (name model)}))))))
 
-(defn ^:dynamic ^::cache export-fk-keyed
+(defn ^::cache export-fk-keyed
   "Given a numeric ID, look up a different identifying field for that entity, and return it as a portable ID.
   Eg. `Database.name`.
   [[import-fk-keyed]] is the inverse.
@@ -486,7 +487,7 @@
   [id model field]
   (t2/select-one-fn field model :id id))
 
-(defn ^:dynamic ^::cache import-fk-keyed
+(defn ^::cache import-fk-keyed
   "Given a single, portable, identifying field and the model it refers to, this resolves the entity and returns its
   numeric `:id`.
   Eg. `Database.name`.
@@ -497,14 +498,14 @@
   (t2/select-one-pk model field portable))
 
 ;; -------------------------------------------------- Users ----------------------------------------------------------
-(defn ^:dynamic ^::cache export-user
+(defn ^::cache export-user
   "Exports a user as the email address.
   This just calls [[export-fk-keyed]], but the counterpart [[import-user]] is more involved. This is a unique function
   so they form a pair."
   [id]
   (when id (export-fk-keyed id 'User :email)))
 
-(defn ^:dynamic ^::cache import-user
+(defn ^::cache import-user
   "Imports a user by their email address.
   If a user with that email address exists, returns its primary key.
   If no such user exists, creates a dummy one with the default settings, blank name, and randomized password.
@@ -516,7 +517,7 @@
         (:id ((resolve 'metabase.models.user/serdes-synthesize-user!) {:email email})))))
 
 ;; -------------------------------------------------- Tables ---------------------------------------------------------
-(defn ^:dynamic ^::cache export-table-fk
+(defn ^::cache export-table-fk
   "Given a numeric `table_id`, return a portable table reference.
   If the `table_id` is `nil`, return `nil`. This is legal for a native question.
   That has the form `[db-name schema table-name]`, where the `schema` might be nil.
@@ -527,7 +528,7 @@
           db-name                     (t2/select-one-fn :name 'Database :id db_id)]
       [db-name schema name])))
 
-(defn ^:dynamic ^::cache import-table-fk
+(defn ^::cache import-table-fk
   "Given a `table_id` as exported by [[export-table-fk]], resolve it back into a numeric `table_id`.
   The input might be nil, in which case so is the output. This is legal for a native question."
   [[db-name schema table-name :as table-id]]
@@ -560,7 +561,7 @@
             ["tables" table-name])))
 
 ;; -------------------------------------------------- Fields ---------------------------------------------------------
-(defn ^:dynamic ^::cache export-field-fk
+(defn ^::cache export-field-fk
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
   [[import-field-fk]] is the inverse."
@@ -570,7 +571,7 @@
           [db-name schema field-name] (export-table-fk table_id)]
       [db-name schema field-name name])))
 
-(defn ^:dynamic ^::cache import-field-fk
+(defn ^::cache import-field-fk
   "Given a `field_id` as exported by [[export-field-fk]], resolve it back into a numeric `field_id`."
   [[db-name schema table-name field-name :as field-id]]
   (when field-id
@@ -982,13 +983,20 @@
          (filter some?)
          (reduce set/union))))
 
+(def ^:private cached-vars
+  (filter (comp ::cache meta) (vals (ns-interns *ns*))))
+
+(defn init-cache
+  "(Re-)initializes serdes import/export lookup caching."
+  []
+  (doseq [v cached-vars]
+    (if (memoize/memoized? @v)
+      (memoize/memo-clear! @v)
+      (alter-var-root v memoize/memo))))
+
 (defmacro with-cache
-  "Runs body with all functions marked with ::cache re-bound to memoized versions for performance."
+  "Calls body with certain serdes functions memoized for performance."
   [& body]
-  (let [ns* 'metabase.models.serialization]
-    `(binding ~(reduce into []
-                       (for [[var-sym var] (ns-interns ns*)
-                             :when (::cache (meta var))
-                             :let  [fq-sym (symbol (name ns*) (name var-sym))]]
-                         [fq-sym `(memoize ~fq-sym)]))
-       ~@body)))
+  `(do
+     (init-cache)
+     ~@body))
