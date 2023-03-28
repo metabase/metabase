@@ -13,6 +13,7 @@ import { getDashboardBeforeEditing } from "../selectors";
 import { updateDashcardIds } from "./core";
 import { fetchDashboard } from "./data-fetching";
 import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
+import { selectTab } from "./tabs";
 
 export const SAVE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/SAVE_DASHBOARD_AND_CARDS";
@@ -22,7 +23,8 @@ export const saveDashboardAndCards = createThunkAction(
   function () {
     return async function (dispatch, getState) {
       const state = getState();
-      const { dashboards, dashcards, dashboardId } = state.dashboard;
+      const { dashboards, dashcards, dashboardId, selectedTabId } =
+        state.dashboard;
       const dashboard = {
         ...dashboards[dashboardId],
         ordered_cards: dashboards[dashboardId].ordered_cards.map(
@@ -103,27 +105,57 @@ export const saveDashboardAndCards = createThunkAction(
       const dashcardsToUpdate = dashboard.ordered_cards.filter(
         dc => !dc.isRemoved,
       );
-      const updatedDashCards = await DashboardApi.updateCards({
-        dashId: dashboard.id,
-        cards: dashcardsToUpdate.map(dc => ({
-          id: dc.id,
-          card_id: dc.card_id,
-          action_id: dc.action_id,
-          row: dc.row,
-          col: dc.col,
-          size_x: dc.size_x,
-          size_y: dc.size_y,
-          series: dc.series,
-          visualization_settings: dc.visualization_settings,
-          parameter_mappings: dc.parameter_mappings,
-        })),
-      });
+      const { cards: updatedDashCards, tabs: updatedTabs } =
+        await DashboardApi.updateCards({
+          dashId: dashboard.id,
+          cards: dashcardsToUpdate.map(dc => ({
+            id: dc.id,
+            card_id: dc.card_id,
+            dashboardtab_id: dc.dashboardtab_id,
+            action_id: dc.action_id,
+            row: dc.row,
+            col: dc.col,
+            size_x: dc.size_x,
+            size_y: dc.size_y,
+            series: dc.series,
+            visualization_settings: dc.visualization_settings,
+            parameter_mappings: dc.parameter_mappings,
+          })),
+          tabs: (dashboard.ordered_tabs ?? []).map(
+            ({ id, name, position }) => ({
+              id,
+              name,
+              position,
+            }),
+          ),
+        });
       dispatch(
         updateDashcardIds(
           dashcardsToUpdate.map(dc => dc.id),
           updatedDashCards.map(dc => dc.id),
         ),
       );
+
+      // re-select the tab with its permanent id
+      if (dashboard.ordered_tabs) {
+        const selectedTabIndex = dashboard.ordered_tabs.findIndex(
+          tab => tab.id === selectedTabId,
+        );
+        const updatedTabId = updatedTabs[selectedTabIndex].id;
+        console.log(
+          "dashboard.ordered_tabs",
+          dashboard.ordered_tabs,
+          "selectedTabId",
+          selectedTabId,
+          "selectedTabIndex",
+          selectedTabIndex,
+          "updatedTabs",
+          updatedTabs,
+          "updatedTabId",
+          updatedTabId,
+        );
+        dispatch(selectTab({ tabId: updatedTabId }));
+      }
 
       await dispatch(Dashboards.actions.update(dashboard));
 

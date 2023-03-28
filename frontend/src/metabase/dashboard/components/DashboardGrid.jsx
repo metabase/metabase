@@ -132,7 +132,7 @@ class DashboardGrid extends Component {
     });
 
     if (changes.length > 0) {
-      setMultipleDashCardAttributes(changes);
+      setMultipleDashCardAttributes({ dashcards: changes });
       MetabaseAnalytics.trackStructEvent("Dashboard", "Layout Changed");
     }
   };

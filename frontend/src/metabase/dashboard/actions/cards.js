@@ -24,7 +24,7 @@ function generateTemporaryDashcardId() {
 }
 
 export const addCardToDashboard =
-  ({ dashId, cardId }) =>
+  ({ dashId, cardId, tabId }) =>
   async (dispatch, getState) => {
     await dispatch(Questions.actions.fetch({ id: cardId }));
     const card = Questions.selectors.getObject(getState(), {
@@ -42,6 +42,7 @@ export const addCardToDashboard =
     const dashcard = {
       id: generateTemporaryDashcardId(),
       dashboard_id: dashId,
+      dashboardtab_id: tabId ?? null,
       card_id: card.id,
       card: card,
       series: [],
