@@ -2,6 +2,10 @@
   "Method implementations for a stage of a query."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
@@ -15,24 +19,6 @@
    [metabase.util.malli :as mu]))
 
 (declare stage-metadata)
-
-(mu/defn ^:private breakout-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
-  [query        :- ::lib.schema/query
-   stage-number :- :int]
-  (when-let [{breakouts :breakout} (lib.util/query-stage query stage-number)]
-    (mapv (fn [field-ref]
-            (assoc (lib.metadata.calculation/metadata query stage-number field-ref) :source :breakout))
-          breakouts)))
-
-(mu/defn ^:private aggregation-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
-  [query        :- ::lib.schema/query
-   stage-number :- :int]
-  (when-let [{aggregations :aggregation} (lib.util/query-stage query stage-number)]
-    (map-indexed (fn [i aggregation]
-                   (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)
-                         ag-ref   [:aggregation {:lib/uuid (str (random-uuid))} i]]
-                     (assoc metadata :field_ref ag-ref)))
-                 aggregations)))
 
 (mu/defn ^:private fields-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   [query        :- ::lib.schema/query
@@ -58,6 +44,14 @@
              [(or position 0) (u/lower-case-en (or field-name ""))])
            field-metadatas))
 
+(defn- ensure-field-refs [field-metadatas]
+  (for [field-metadata field-metadatas]
+    (cond-> field-metadata
+      (not (:field_ref field-metadata))
+      (assoc :field_ref [:field
+                         {:lib/uuid (str (random-uuid)), :base-type (:base_type field-metadata)}
+                         ((some-fn :id :name) field-metadata)]))))
+
 (mu/defn ^:private source-table-default-fields :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Determine the Fields we'd normally return for a source Table.
   See [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]]."
@@ -66,7 +60,8 @@
   (when-let [field-metadatas (lib.metadata/fields query table-id)]
     (->> field-metadatas
          remove-hidden-default-fields
-         sort-default-fields)))
+         sort-default-fields
+         ensure-field-refs)))
 
 (mu/defn ^:private default-join-alias :- ::lib.schema.common/non-blank-string
   "Generate an alias for a join that doesn't already have one."
@@ -94,7 +89,7 @@
               (not (:alias join)) (assoc :alias (unique-name-generator (default-join-alias query stage-number join)))))
           joins)))
 
-(mu/defn ^:private default-columns-added-by-join :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn ^:private default-columns-added-by-join :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   [query        :- ::lib.schema/query
    stage-number :- :int
    join         :- ::lib.schema.join/join]
@@ -109,7 +104,7 @@
            (mapcat (partial default-columns-added-by-join query stage-number))
            (ensure-all-joins-have-aliases query stage-number joins)))))
 
-(mu/defn ^:private default-columns :- [:sequential {:min 1} lib.metadata/ColumnMetadata]
+(mu/defn ^:private default-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Calculate the columns to return if `:aggregations`/`:breakout`/`:fields` are unspecified.
 
   Formula for the so-called 'default' columns is
@@ -118,7 +113,9 @@
 
   1b. Default 'visible' Fields for our `:source-table`, OR
 
-  1c. `:lib/stage-metadata` if this is a `:mbql.stage/native` stage
+  1c. Metadata associated with a Saved Question, if `:source-table` is a `card__<id>` string, OR
+
+  1d. `:lib/stage-metadata` if this is a `:mbql.stage/native` stage
 
   PLUS
 
@@ -132,11 +129,22 @@
      (stage-metadata query previous-stage-number)
      ;; 1b or 1c
      (let [{:keys [source-table], :as this-stage} (lib.util/query-stage query stage-number)]
-       (if (integer? source-table)
-         ;; 1b: default visible Fields for the source Table
-         (source-table-default-fields query source-table)
-         ;; 1c: `:lib/stage-metadata` for the native query
-         (:columns (:lib/stage-metadata this-stage)))))
+       (or
+        ;; 1b: default visible Fields for the source Table
+        (when (integer? source-table)
+          (source-table-default-fields query source-table))
+        ;; 1c. Metadata associated with a Saved Question, if `:source-table` is a `card__<id>` string, OR
+        (when (string? source-table)
+          (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" source-table)]
+            (when-let [card-id (parse-long card-id-str)]
+              (when-let [result-metadata (:result_metadata (lib.metadata/card query card-id))]
+                (not-empty (for [col (:columns result-metadata)]
+                             (assoc col
+                                    :field_ref [:field
+                                                {:lib/uuid (str (random-uuid)), :base-type (:base_type col)}
+                                                (:name col)])))))))
+        ;; 1d: `:lib/stage-metadata` for the native query
+        (:columns (:lib/stage-metadata this-stage)))))
    ;; 2: columns added by joins at this stage
    (default-columns-added-by-joins query stage-number)))
 
@@ -170,8 +178,8 @@
      (or
       (not-empty (into []
                        cat
-                       [(breakout-columns query stage-number)
-                        (aggregation-columns query stage-number)
+                       [(lib.breakout/breakouts query stage-number)
+                        (lib.aggregation/aggregations query stage-number)
                         (fields-columns query stage-number)]))
       (default-columns query stage-number)))))
 
@@ -199,3 +207,45 @@
         descriptions (for [k parts]
                        (lib.metadata.calculation/describe-top-level-key query stage-number k))]
     (str/join ", " (remove str/blank? descriptions))))
+
+(defn- implicitly-joinable-columns
+  "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to
+  have appropriate FK metadata, i.e. have an `:fk_target_field_id` pointing to another Field. (I think we only include
+  this information for Databases that support FKs and joins, so I don't think we need to do an additional DB feature
+  check here.)
+
+  This does not include columns from any Tables that are already explicitly joined, and does not include multiple
+  versions of a column when there are multiple pathways to it (i.e. if there is more than one FK to a Table). This
+  behavior matches how things currently work in MLv1, at least for order by; we can adjust as needed in the future if
+  it turns out we do need that stuff.
+
+  Does not include columns that would be implicitly joinable via multiple hops."
+  [query column-metadatas]
+  (let [existing-table-ids (into #{} (map :table_id) column-metadatas)]
+    (into []
+          (comp (filter :fk_target_field_id)
+                (m/distinct-by :fk_target_field_id)
+                (map (fn [{source-field-id :id, target-field-id :fk_target_field_id}]
+                       (-> (lib.metadata/field query target-field-id)
+                           (assoc :source-field-id source-field-id))))
+                (remove #(contains? existing-table-ids (:table_id %)))
+                (m/distinct-by :table_id)
+                (mapcat (fn [{table-id :table_id, :keys [source-field-id]}]
+                          (for [field (source-table-default-fields query table-id)]
+                            (assoc field :field_ref [:field
+                                                     {:lib/uuid     (str (random-uuid))
+                                                      :base-type    (:base_type field)
+                                                      :source-field source-field-id}
+                                                     (:id field)])))))
+          column-metadatas)))
+
+(mu/defn visible-columns :- [:sequential lib.metadata/ColumnMetadata]
+  "Columns that are visible inside a given stage of a query. Ignores `:fields`, `:breakout`, and `:aggregation`.
+  Includes columns that are implicitly joinable from other Tables."
+  [query stage-number]
+  (let [query   (lib.util/update-query-stage query stage-number dissoc :fields :breakout :aggregation)
+        columns (default-columns query stage-number)]
+    (concat
+     (lib.expression/expressions query stage-number)
+     columns
+     (implicitly-joinable-columns query columns))))

@@ -262,6 +262,14 @@
                               :test/jvm-timezone-setting       false}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
+;; We say Mongo supports foreign keys so that the front end can use implicit
+;; joins. In reality, Mongo doesn't support foreign keys.
+;; Only define an implementation for `:foreign-keys` if none exists already.
+;; In test extensions we define an alternate implementation, and we don't want
+;; to stomp over that if it was loaded already.
+(when-not (get (methods driver/supports?) [:mongo :foreign-keys])
+  (defmethod driver/supports? [:mongo :foreign-keys] [_ _] true))
+
 (defmethod driver/database-supports? [:mongo :expressions]
   [_driver _feature db]
   (-> (:dbms_version db)

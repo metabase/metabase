@@ -1,3 +1,5 @@
+import { popover } from "e2e/support/helpers";
+
 export function crudGroupMappingsWidget(authenticationMethod) {
   cy.visit("/admin/settings/authentication/" + authenticationMethod);
   cy.wait("@getSettings");
@@ -84,13 +86,15 @@ const addGroupsToMapping = (mappingName, groups) => {
     });
 
   groups.forEach(group => {
-    cy.findByText(group).click();
+    popover().within(() => {
+      cy.findByText(group).click();
 
-    cy.findByText(group)
-      .closest(".List-section")
-      .within(() => {
-        cy.icon("check");
-      });
+      cy.findByText(group)
+        .closest(".List-section")
+        .within(() => {
+          cy.icon("check");
+        });
+    });
   });
 };
 

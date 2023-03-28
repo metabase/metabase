@@ -3,12 +3,12 @@
    [clojure.data :as data]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.upsert :as upsert]
+   [metabase.db.util :as mdb.u]
    [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet
                             Pulse Segment Table User]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 (def ^:private same? (comp nil? second data/diff))
@@ -94,7 +94,7 @@
                       ;; create an additional entity so we're sure whe get the right one
                       model     [_ (dummy-entity dashboard model e1 1)]
                       model     [{id :id} (dummy-entity dashboard model e2 2)]]
-        (let [e (t2/select-one model (models/primary-key model) id)]
+        (let [e (t2/select-one model (mdb.u/primary-key model) id)]
           ;; make sure that all columns in identity-condition actually exist in the model
           (is (= (set id-cond) (-> e
                                    (select-keys id-cond)

@@ -30,6 +30,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.sample-data :as sample-data]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
@@ -746,6 +747,10 @@
    auto_run_queries (s/maybe s/Bool)
    cache_ttl        (s/maybe su/IntGreaterThanZero)}
   (api/check-superuser)
+  (when cache_ttl
+    (api/check (premium-features/enable-advanced-config?)
+               [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
+                              "advanced-config feature."))]))
   (let [is-full-sync?    (or (nil? is_full_sync)
                              (boolean is_full_sync))
         details-or-error (test-connection-details engine details)
@@ -930,8 +935,10 @@
         ;; do nothing in the case that user is not in control of
         ;; scheduling. leave them as they are in the db
 
-        ;; unlike the other fields, folks might want to nil out cache_ttl
-        (t2/update! Database id {:cache_ttl cache_ttl})
+        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
+        ;; with the advanced-config feature enabled.
+        (when (premium-features/enable-advanced-config?)
+          (t2/update! Database id {:cache_ttl cache_ttl}))
 
         (let [db (t2/select-one Database :id id)]
           (events/publish-event! :database-update db)
@@ -991,7 +998,7 @@
         tables (map api/write-check (:tables (first (add-tables [db]))))]
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
-    (db/update-where! Table {:id [:in (map :id tables)]} :initial_sync_status "complete"))
+    (t2/update! Table {:id [:in (map :id tables)]} {:initial_sync_status "complete"}))
   {:status :ok})
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
