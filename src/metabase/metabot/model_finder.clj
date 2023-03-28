@@ -1,6 +1,6 @@
 (ns metabase.metabot.model-finder
   (:require [clojure.string :as str]
-            [metabase.metabot.invoker :as mbi]))
+            [metabase.metabot.client :as metabot-client]))
 
 (defn- card->column-names
   "Generate a string of the format 'Table named '%model-id%' has title '%model-name%' and columns 'a', 'b''
@@ -38,9 +38,9 @@
     (let [discovered (map parse-long (re-seq #"\d+" message))]
       (first (filter candidates discovered)))))
 
-(defn find-best-model
+(defn infer-model
   "Find the model in the db that best matches the prompt. Return nil if no good model found."
   [{:keys [models] :as _denormalized-database} prompt]
   (let [model-input   (prepare-model-finder-input models prompt)
-        best-model-id (mbi/invoke-metabot model-input #(find-table-id % (set (map :id models))))]
+        best-model-id (metabot-client/invoke-metabot model-input #(find-table-id % (set (map :id models))))]
     (some (fn [{model-id :id :as model}] (when (= model-id best-model-id) model)) models)))
