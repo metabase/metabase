@@ -171,16 +171,21 @@ function getStageSteps(
       itemIndex: itemIndex,
       topLevelQuery,
       query: stageQuery,
-      valid: STEP.valid(stageQuery, itemIndex),
-      active: STEP.active(stageQuery, itemIndex),
+      valid: STEP.valid(stageQuery, itemIndex, topLevelQuery, stageIndex),
+      active: STEP.active(stageQuery, itemIndex, topLevelQuery, stageIndex),
       visible:
-        STEP.valid(stageQuery, itemIndex) &&
-        !!(STEP.active(stageQuery, itemIndex) || openSteps[id]),
+        STEP.valid(stageQuery, itemIndex, topLevelQuery, stageIndex) &&
+        !!(
+          STEP.active(stageQuery, itemIndex, topLevelQuery, stageIndex) ||
+          openSteps[id]
+        ),
       revert: STEP.revert
         ? (query: StructuredQuery) =>
-            STEP.revert ? STEP.revert(query, itemIndex) : null
+            STEP.revert
+              ? STEP.revert(query, itemIndex, topLevelQuery, stageIndex)
+              : null
         : null,
-      clean: query => STEP.clean(query, itemIndex),
+      clean: query => STEP.clean(query, itemIndex, topLevelQuery, stageIndex),
       update: datasetQuery => {
         let newQuery = stageQuery.setDatasetQuery(datasetQuery);
         // clean each subsequent step individually. we have to do this rather than calling newQuery.clean() in case
@@ -194,7 +199,12 @@ function getStageSteps(
           ) {
             newQuery = current.query.setSourceQuery(newQuery.query());
           }
-          newQuery = current.clean(newQuery);
+          newQuery = current.clean(
+            newQuery,
+            current.itemIndex,
+            topLevelQuery,
+            current.stageIndex,
+          );
         }
         // strip empty source queries
         return newQuery.cleanNesting();
@@ -249,7 +259,12 @@ function getStageSteps(
     }
     // revert the previewQuery for this step
     if (step.revert && previewQuery) {
-      previewQuery = step.revert(previewQuery);
+      previewQuery = step.revert(
+        previewQuery,
+        step.itemIndex,
+        topLevelQuery,
+        step.stageIndex,
+      );
     }
   }
 

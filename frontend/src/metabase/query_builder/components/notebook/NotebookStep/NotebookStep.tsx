@@ -90,7 +90,12 @@ function NotebookStep({
   }, [step.query, step.actions, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
-    const reverted = step.revert?.(step.query);
+    const reverted = step.revert?.(
+      step.query,
+      step.itemIndex,
+      step.topLevelQuery,
+      step.stageIndex,
+    );
     if (reverted) {
       updateQuery(reverted);
     }

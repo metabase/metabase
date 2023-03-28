@@ -16,7 +16,9 @@ export type NotebookStepType =
 
 export type NotebookStepFn<ReturnType> = (
   query: StructuredQuery,
-  index?: number | null,
+  index: number | undefined | null,
+  topLevelQuery: Query,
+  stageIndex: number,
 ) => ReturnType;
 
 export interface NotebookStep {
