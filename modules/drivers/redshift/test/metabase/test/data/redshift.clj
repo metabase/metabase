@@ -1,7 +1,6 @@
 (ns metabase.test.data.redshift
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
@@ -78,10 +77,7 @@
     (while (.next rset)
       (let [schema (.getString rset "TABLE_SCHEM")
             sql    (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema)]
-        (when (or (sql.tu.unique-prefix/old-dataset-name? schema)
-                  ;; delete legacy schemas following the `schema_<n>` format from before we shifted to
-                  ;; using [[metabase.driver.sql.test-util.unique-prefix]]
-                  (str/starts-with? "schema_"))
+        (when (sql.tu.unique-prefix/old-dataset-name? schema)
           (log/info (u/format-color 'blue "[redshift] %s" sql))
           (.execute stmt sql))))))
 
