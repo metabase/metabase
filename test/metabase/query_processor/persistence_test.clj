@@ -1,18 +1,19 @@
 (ns metabase.query-processor.persistence-test
-  (:require [clojure.core.async :as a]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.models :refer [Card]]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.async :as qp.async]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.middleware.fix-bad-references
-             :as fix-bad-refs]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [honey.sql :as sql]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.models :refer [Card]]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.async :as qp.async]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.fix-bad-references
+    :as fix-bad-refs]
+   [metabase.test :as mt]))
 
 (deftest can-persist-test
   (testing "Can each database that allows for persistence actually persist"
@@ -21,7 +22,18 @@
         (mt/dataset test-data
           (let [[success? error] (ddl.i/check-can-persist (mt/db))]
             (is success? (str "Not able to persist on " driver/*driver*))
-            (is (= :persist.check/valid error))))))))
+            (is (= :persist.check/valid error)))
+          (testing "Populates the `cache_info` table with v1 information"
+            (let [schema-name (ddl.i/schema-name (mt/db) (public-settings/site-uuid))
+                  query {:query
+                         (first
+                          (sql/format {:select [:key :value]
+                                       :from [(keyword schema-name "cache_info")]}
+                                      {:dialect (if (= (:engine (mt/db)) :mysql)
+                                                  :mysql
+                                                  :ansi)}))}]
+              (is (= (into {} (map (juxt :key :value)) (ddl.i/kv-table-values))
+                     (into {} (->> query mt/native-query qp/process-query mt/rows)))))))))))
 
 (deftest persisted-models-max-rows-test
   (testing "Persisted models should have the full number of rows of the underlying query,
