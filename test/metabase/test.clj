@@ -317,7 +317,7 @@
         temp-admin                 (first (t2/insert-returning-instances! User (merge (with-temp-defaults User)
                                                                                       attributes
                                                                                       {:is_superuser true})))
-        primary-key                (models/primary-key User)]
+        primary-key                (mdb.u/primary-key User)]
     (try
       (thunk temp-admin)
       (finally

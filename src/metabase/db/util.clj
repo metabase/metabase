@@ -5,7 +5,17 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
+   [toucan.models :as models]
    [toucan2.core :as t2]))
+
+(defn primary-key
+  "Replacement of [[mdb.u/primary-key]], this is used to make the transition to toucan 2 easier.
+  In toucan2, every keyword can be a model so if `model` is a keyword, returns as is, otherwise calls [[mdb.u/primary-key]]."
+  [model]
+  (if (keyword? model)
+   (first (t2/primary-keys :m/card))
+   #_{:clj-kondo/ignore [:discouraged-var]}
+   (models/primary-key model)))
 
 (defn resolve-model
   "Replacement of [[mb.models/resolve-model]], this is used to make the transition to toucan 2 easier.

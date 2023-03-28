@@ -7,6 +7,7 @@
   (:require
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.db.util :as mdb.u]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -18,7 +19,7 @@
   "Updates all rows of a particular model to have `:entity_id` set, based on the [[serdes/identity-hash]]."
   [model]
   (let [missing (t2/select model :entity_id nil)
-        pk      (models/primary-key model)]
+        pk      (mdb.u/primary-key model)]
     (when (seq missing)
       (log/info (trs "Backfilling entity_id for {0} rows of {1}" (pr-str (count missing)) (name model)))
       (doseq [entity missing
@@ -27,7 +28,7 @@
         (t2/update! model (get entity pk) {:entity_id eid})))))
 
 (defn- has-entity-id? [model]
-  (:entity_id (models/properties model)))
+  (::mi/entity-id (models/properties model)))
 
 (defn backfill-ids
   "Updates all rows of all models that are (a) serialized and (b) have `entity_id` columns to have the
