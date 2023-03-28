@@ -9,12 +9,14 @@ export default function SortStep({
   query,
   updateQuery,
   isLastOpened,
+  readOnly,
   ...props
 }) {
   return (
     <ClauseStep
       color={color}
       items={query.sorts()}
+      readOnly={readOnly}
       renderName={(sort, index) => (
         <span
           className="flex align-center"

@@ -1,4 +1,4 @@
-import { restore, describeEE, openNativeEditor, startNewQuestion } from "e2e/support/helpers";
+import { restore, describeEE, openNativeEditor, openOrdersTable } from "e2e/support/helpers";
 
 describeEE("audit > ad-hoc", () => {
   describe("native query", () => {
@@ -45,18 +45,16 @@ describeEE("audit > ad-hoc", () => {
 
       cy.log("Run ad hoc notebook query as normal user");
       cy.signInAsNormalUser();
-      startNewQuestion();
-      cy.findByTextEnsureVisible("Sample Database").click();
-      cy.findByTextEnsureVisible("Orders").click();
+      openOrdersTable();
 
       cy.button('Visualize').click();
-
       cy.wait('@dataset');
+
       // Sign in as admin to be able to access audit logs in tests
       cy.signInAsAdmin();
     });
 
-    it.skip("should appear in audit log #29456", () => {
+    it("should appear in audit log #29456", () => {
       cy.visit("/admin/audit/members/log");
 
       cy.findByText("GUI")
@@ -70,7 +68,14 @@ describeEE("audit > ad-hoc", () => {
       cy.url().should("include", "/admin/audit/query/");
 
       cy.get(".PageTitle").contains("Query");
-      cy.findByText("Open in Metabase");
+      cy.findByText("Open in Metabase").should('be.visible');
+
+      cy.findByTestId('read-only-notebook').within(() => {
+        cy.findByTestId('data-step-cell').within(() => {
+          cy.findByText("Orders");
+        });
+        cy.findByText(/Filter/i).should("not.exist");
+      });
     });
   });
 });

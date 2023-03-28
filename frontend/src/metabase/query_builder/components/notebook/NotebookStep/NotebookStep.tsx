@@ -45,6 +45,7 @@ interface NotebookStepProps {
   reportTimezone?: string;
   openStep: (id: string) => void;
   updateQuery: (query: StructuredQuery) => Promise<void>;
+  readOnly?: boolean;
 }
 
 function NotebookStep({
@@ -55,6 +56,7 @@ function NotebookStep({
   reportTimezone,
   openStep,
   updateQuery,
+  readOnly = false,
 }: NotebookStepProps) {
   const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
     useToggle(false);
@@ -105,7 +107,7 @@ function NotebookStep({
   const color = getColor();
   const canPreview = step?.previewQuery?.isValid?.();
   const hasPreviewButton = !isPreviewOpen && canPreview;
-  const canRevert = typeof step.revert === "function";
+  const canRevert = typeof step.revert === "function" && !readOnly;
 
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
@@ -140,21 +142,24 @@ function NotebookStep({
                 updateQuery={updateQuery}
                 isLastOpened={isLastOpened}
                 reportTimezone={reportTimezone}
+                readOnly={readOnly}
               />
             </StepContent>
-            <StepButtonContainer>
-              <ActionButton
-                ml={[1, 2]}
-                className={
-                  !hasPreviewButton ? "hidden disabled" : "text-brand-hover"
-                }
-                icon="play"
-                title={t`Preview`}
-                color={c("text-light")}
-                transparent
-                onClick={openPreview}
-              />
-            </StepButtonContainer>
+            {!readOnly && (
+              <StepButtonContainer>
+                <ActionButton
+                  ml={[1, 2]}
+                  className={
+                    !hasPreviewButton ? "hidden disabled" : "text-brand-hover"
+                  }
+                  icon="play"
+                  title={t`Preview`}
+                  color={c("text-light")}
+                  transparent
+                  onClick={openPreview}
+                />
+              </StepButtonContainer>
+            )}
           </StepBody>
         )}
 
@@ -162,7 +167,7 @@ function NotebookStep({
           <NotebookStepPreview step={step} onClose={closePreview} />
         )}
 
-        {actionButtons.length > 0 && (
+        {actionButtons.length > 0 && !readOnly && (
           <StepActionsContainer data-testid="action-buttons">
             {actionButtons}
           </StepActionsContainer>

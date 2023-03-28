@@ -10,6 +10,7 @@ export interface ExpressionStepProps {
   updateQuery: (query: StructuredQuery) => Promise<void>;
   isLastOpened: boolean;
   reportTimezone: string;
+  readOnly?: boolean;
 }
 
 const ExpressionStep = ({
@@ -18,6 +19,7 @@ const ExpressionStep = ({
   updateQuery,
   isLastOpened,
   reportTimezone,
+  readOnly,
 }: ExpressionStepProps): JSX.Element => {
   const items = Object.entries(query.expressions()).map(
     ([name, expression]) => ({ name, expression }),
@@ -28,6 +30,7 @@ const ExpressionStep = ({
       color={color}
       items={items}
       renderName={({ name }) => name}
+      readOnly={readOnly}
       renderPopover={item => (
         <ExpressionWidget
           query={query}
