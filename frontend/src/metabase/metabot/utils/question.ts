@@ -1,5 +1,3 @@
-import { Card } from "metabase-types/api";
-import Metadata from "metabase-lib/metadata/Metadata";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
 
@@ -24,11 +22,8 @@ const fillQuestionTemplateTags = (question: Question) => {
   return query.setQueryText(queryText).question();
 };
 
-export const getMetabotQuestionResults = async (
-  card: Card,
-  metadata: Metadata,
-) => {
-  const question = fillQuestionTemplateTags(new Question(card, metadata));
-  const results = await question.apiGetResults();
-  return { question, results };
+export const fetchResults = async (question: Question) => {
+  const newQuestion = fillQuestionTemplateTags(question);
+  const results = await newQuestion.apiGetResults();
+  return { question: newQuestion, results };
 };

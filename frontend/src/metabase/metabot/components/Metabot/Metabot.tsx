@@ -3,6 +3,7 @@ import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 import { Dataset, MetabotFeedbackType, User } from "metabase-types/api";
 import Question from "metabase-lib/Question";
+import { fetchResults } from "../../utils/question";
 import MetabotPrompt from "../MetabotPrompt";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
 import MetabotMessage from "../MetabotMessage";
@@ -16,21 +17,23 @@ export interface QueryResults {
 }
 
 export interface MetabotProps {
+  title: React.ReactNode;
+  placeholder: string;
   user?: User;
   initialQuery?: string;
-  placeholder: string;
-  initialGreeting: React.ReactNode;
-  onFetchResults: (query: string) => Promise<QueryResults>;
+  onFetchQuestion: (query: string) => Promise<Question>;
 }
 
 const Metabot = ({
+  title,
+  placeholder,
   user,
   initialQuery,
-  initialGreeting,
-  placeholder,
-  onFetchResults,
+  onFetchQuestion,
 }: MetabotProps) => {
-  const [{ loading, value, error }, handleRun] = useAsyncFn(onFetchResults);
+  const [{ loading, value, error }, handleRun] = useAsyncFn((query: string) =>
+    onFetchQuestion(query).then(fetchResults),
+  );
   const [feedbackType, setFeedbackType] = useState<MetabotFeedbackType>();
   const isInvalidSql = feedbackType === "invalid-sql";
 
@@ -46,7 +49,7 @@ const Metabot = ({
         <MetabotMessage>
           {isInvalidSql
             ? t`Sorry about that. Let me know what the SQL should've been.`
-            : initialGreeting}
+            : title}
         </MetabotMessage>
         <MetabotPrompt
           user={user}
