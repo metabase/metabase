@@ -2,6 +2,10 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 
+export const getEntityId = (state: State) => {
+  return state.metabot.entityId;
+};
+
 export const getEntityType = (state: State) => {
   return state.metabot.entityType;
 };
