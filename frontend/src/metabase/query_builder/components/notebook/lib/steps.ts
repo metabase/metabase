@@ -113,8 +113,6 @@ export function getQuestionSteps(question: Question, openSteps = {}) {
   const allSteps: NotebookStep[] = [];
 
   if (question.isStructured()) {
-    const topLevelQuery = question._getMLv2Query();
-
     let query = question.query() as StructuredQuery;
     const database = question.database();
     const allowsNesting = database && database.hasFeature("nested-queries");
@@ -126,6 +124,8 @@ export function getQuestionSteps(question: Question, openSteps = {}) {
     if (allowsNesting && query.hasBreakouts()) {
       query = query.nest();
     }
+
+    const topLevelQuery = query.question()._getMLv2Query();
 
     for (const [stageIndex, stageQuery] of query.queries().entries()) {
       const { steps, actions } = getStageSteps(
