@@ -14,6 +14,7 @@ import {
   APP_BAR_EXTENDED_HEIGHT,
   NAV_SIDEBAR_WIDTH,
 } from "metabase/nav/constants";
+import Button from "metabase/core/components/Button";
 
 // Class names are added here because we still use traditional css,
 // see dashboard.css
@@ -90,11 +91,11 @@ export const ParametersAndCardsContainer = styled.div`
 `;
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)`
-  align-items: flex-start;
+  align-items: baseline;
   background-color: ${color("bg-light")};
   border-bottom: 1px solid ${color("bg-light")};
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   padding-top: ${space(2)};
   padding-bottom: ${space(1)};
   z-index: 3;
@@ -130,6 +131,14 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
       left: ${parseInt(NAV_SIDEBAR_WIDTH) + 1 + "px"};
       width: calc(100% - ${NAV_SIDEBAR_WIDTH});
     `}
+`;
+
+export const ApplyButton = styled(Button)`
+  margin-left: auto;
+
+  transition: opacity visibility 200ms;
+  opacity: ${({ isVisible }) => (isVisible ? 1 : 0)};
+  visibility: ${({ isVisible }) => (isVisible ? "visible" : "hidden")};
 `;
 
 export const CardsContainer = styled(FullWidthContainer)`

@@ -58,6 +58,7 @@ class Dashboard extends Component {
     parameters: PropTypes.array,
     parameterValues: PropTypes.object,
     editingParameter: PropTypes.object,
+    applyFilterButton: PropTypes.element,
 
     editingOnLoad: PropTypes.bool,
     addCardOnLoad: PropTypes.number,
@@ -228,6 +229,7 @@ class Dashboard extends Component {
       setEditingParameter,
       isHeaderVisible,
       embedOptions,
+      applyFilterButton,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -309,6 +311,7 @@ class Dashboard extends Component {
                     topNav={embedOptions?.top_nav}
                   >
                     {parametersWidget}
+                    {applyFilterButton}
                   </ParametersWidgetContainer>
                 )}
 
