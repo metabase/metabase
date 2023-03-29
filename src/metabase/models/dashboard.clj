@@ -289,7 +289,7 @@
    for example updating FieldValues for On-Demand DBs.
    Returns newly created DashboardCards."
   {:style/indent 2}
-  [dashboard-or-id & dashcards]
+  [dashboard-or-id dashcards]
   (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
         dashboard-cards     (map (fn [dashcard]
                                    (-> (assoc dashcard :dashboard_id (u/the-id dashboard-or-id))

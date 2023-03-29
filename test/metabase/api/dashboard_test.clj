@@ -1198,16 +1198,17 @@
                 :created_at             true
                 :updated_at             true}
                (-> (mt/user-http-request :rasta :post 200 (format "dashboard/%d/cards" dashboard-id)
-                                         {:cardId                 card-id
-                                          :row                    4
-                                          :col                    4
-                                          :size_x                 4
-                                          :size_y                 4
-                                          :parameter_mappings     [{:parameter_id "abc"
-                                                                    :card_id 123
-                                                                    :hash "abc"
-                                                                    :target "foo"}]
-                                          :visualization_settings {}})
+                                         {:cards [{:card_id                card-id
+                                                   :row                    4
+                                                   :col                    4
+                                                   :size_x                 4
+                                                   :size_y                 4
+                                                   :parameter_mappings     [{:parameter_id "abc"
+                                                                             :card_id 123
+                                                                             :hash "abc"
+                                                                             :target "foo"}]
+                                                   :visualization_settings {}}]})
+                   first
                    (dissoc :id :dashboard_id :action_id :card_id :entity_id)
                    (update :created_at boolean)
                    (update :updated_at boolean))))
@@ -1227,27 +1228,27 @@
                   Card      [{series-id-1 :id} {:name "Series Card"}]]
     (with-dashboards-in-writeable-collection [dashboard-id]
       (api.card-test/with-cards-in-readable-collection [card-id series-id-1]
-        (let [dashboard-card (mt/user-http-request :rasta :post 200 (format "dashboard/%d/cards" dashboard-id)
-                                                   {:cardId card-id
-                                                    :row     4
-                                                    :col     4
-                                                    :size_x  4
-                                                    :size_y  4
-                                                    :series [{:id series-id-1}]})]
-          (is (= {:row                    4
-                  :col                    4
-                  :size_x                 4
-                  :size_y                 4
-                  :parameter_mappings     []
-                  :visualization_settings {}
-                  :series                 [{:name                   "Series Card"
-                                            :description            nil
-                                            :dataset_query          (:dataset_query api.card-test/card-defaults)
-                                            :display                "table"
-                                            :visualization_settings {}}]
-                  :created_at             true
-                  :updated_at             true}
-                 (remove-ids-and-booleanize-timestamps dashboard-card)))
+        (let [dashboard-cards (mt/user-http-request :rasta :post 200 (format "dashboard/%d/cards" dashboard-id)
+                                                    {:cards [{:card_id card-id
+                                                              :row     4
+                                                              :col     4
+                                                              :size_x  4
+                                                              :size_y  4
+                                                              :series [{:id series-id-1}]}]})]
+          (is (= [{:row                    4
+                   :col                    4
+                   :size_x                 4
+                   :size_y                 4
+                   :parameter_mappings     []
+                   :visualization_settings {}
+                   :series                 [{:name                   "Series Card"
+                                             :description            nil
+                                             :dataset_query          (:dataset_query api.card-test/card-defaults)
+                                             :display                "table"
+                                             :visualization_settings {}}]
+                   :created_at             true
+                   :updated_at             true}]
+                 (remove-ids-and-booleanize-timestamps dashboard-cards)))
           (is (= [{:size_x 4
                    :size_y 4
                    :col    4
@@ -1255,7 +1256,7 @@
                  (map (partial into {})
                       (t2/select [DashboardCard :size_x :size_y :col :row], :dashboard_id dashboard-id))))
           (is (= #{0}
-                 (t2/select-fn-set :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
+                 (t2/select-fn-set :position DashboardCardSeries, :dashboardcard_id (:id (first dashboard-cards))))))))))
 
 (defn do-with-add-card-parameter-mapping-permissions-fixtures [f]
   (mt/with-temp-copy-of-db
@@ -1276,12 +1277,12 @@
             :add-card!    (fn [expected-status-code]
                             (mt/user-http-request :rasta
                                                   :post expected-status-code (format "dashboard/%d/cards" dashboard-id)
-                                                  {:cardId             card-id
-                                                   :row                0
-                                                   :col                0
-                                                   :size_x             4
-                                                   :size_y             4
-                                                   :parameter_mappings mappings}))
+                                                  {:cards [{:card_id            card-id
+                                                            :row                0
+                                                            :col                0
+                                                            :size_x             4
+                                                            :size_y             4
+                                                            :parameter_mappings mappings}]}))
             :dashcards    (fn [] (t2/select DashboardCard :dashboard_id dashboard-id))})))))
 
 (deftest add-card-parameter-mapping-permissions-test
@@ -1303,13 +1304,13 @@
                   (dashcards))))
          (testing "If they have data permissions, it should be ok"
            (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :venues)))
-           (is (schema= {:card_id            (s/eq card-id)
-                         :parameter_mappings [(s/one
-                                               {:parameter_id (s/eq "_CATEGORY_ID_")
-                                                :target       (s/eq ["dimension" ["field" (mt/id :venues :category_id) nil]])
-                                                s/Keyword     s/Any}
-                                               "mapping")]
-                         s/Keyword           s/Any}
+           (is (schema= [{:card_id            (s/eq card-id)
+                          :parameter_mappings [(s/one
+                                                {:parameter_id (s/eq "_CATEGORY_ID_")
+                                                 :target       (s/eq ["dimension" ["field" (mt/id :venues :category_id) nil]])
+                                                 s/Keyword     s/Any}
+                                                "mapping")]
+                           s/Keyword           s/Any}]
                         (add-card! 200)))
            (is (schema= [(s/one {:card_id            (s/eq card-id)
                                  :parameter_mappings (s/eq mappings)
@@ -1377,15 +1378,16 @@
                     Card                [{card-id :id}]
                     Card                [{series-id-1 :id}]
                     Card                [{series-id-2 :id}]
-                    DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
-                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
+                    DashboardCard       [{dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                    DashboardCard       [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id-1, :card_id series-id-1, :position 0}]
+                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id-1, :card_id series-id-2, :position 1}]]
       (with-dashboards-in-writeable-collection [dashboard-id]
-        (is (= 1
+        (is (= 2
                (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
         (is (= nil
                (mt/user-http-request :rasta :delete 204
-                                     (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)))
+                                     (format "dashboard/%d/cards" dashboard-id) :dashcard_ids [dashcard-id-1, dashcard-id-2])))
         (is (= 0
                (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))))))
 
@@ -2569,17 +2571,17 @@
         (mt/with-actions [{:keys [action-id]} {:type action-type :visualization_settings {:hello true}}]
           (testing (str "Creating dashcard with action: " action-type)
             (mt/with-temp* [Dashboard [{dashboard-id :id}]]
-              (is (partial= {:visualization_settings {:label "Update"}
-                             :action_id              action-id
-                             :card_id                nil}
+              (is (partial= [{:visualization_settings {:label "Update"}
+                              :action_id              action-id
+                              :card_id                nil}]
                             (mt/user-http-request :crowberto :post 200 (format "dashboard/%s/cards" dashboard-id)
-                                                  {:size_x                 1
-                                                   :size_y                 1
-                                                   :row                    1
-                                                   :col                    1
-                                                   :cardId                 nil
-                                                   :action_id              action-id
-                                                   :visualization_settings {:label "Update"}})))
+                                                  {:cards [{:size_x                 1
+                                                            :size_y                 1
+                                                            :row                    1
+                                                            :col                    1
+                                                            :card_id                nil
+                                                            :action_id              action-id
+                                                            :visualization_settings {:label "Update"}}]})))
               (is (partial= {:ordered_cards [{:action (cond-> {:visualization_settings {:hello true}
                                                                :type (name action-type)
                                                                :parameters [{:id "id"}]}

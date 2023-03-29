@@ -208,7 +208,7 @@
    [:dashboard_id                            ms/PositiveInt]
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
    ;; TODO - use ParamMapping. Breaks too many tests right now tho
-   [:parameter_mappings     {:optional true} [:maybe map?]]
+   [:parameter_mappings     {:optional true} [:maybe [:sequential map?]]]
    [:visualization_settings {:optional true} [:maybe map?]]
    [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 

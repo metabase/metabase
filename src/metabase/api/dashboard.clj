@@ -36,7 +36,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -481,58 +481,34 @@
                                :table-id           table-id
                                :actual-permissions @api/*current-user-permissions-set*})))))))))
 
-(api/defendpoint POST "/:id/cardss"
+(api/defendpoint POST "/:id/cards"
   "Add a `Card` or `Action` to a Dashboard."
   [id :as {{:keys [cards]} :body}]
   {id    ms/PositiveInt
    cards [:sequential
           [:map
-           [:row                                 ms/PositiveInt]
-           [:col                                 ms/PositiveInt]
+           [:row                                 int?]
+           [:col                                 int?]
            [:size_x                              ms/PositiveInt]
            [:size_y                              ms/PositiveInt]
            [:card_id            {:optional true} [:maybe ms/PositiveInt]]
-           [:parameter_mappings {:optional true} [:sequential ms/ParameterMapping]]
+           [:parameter_mappings {:optional true} [:maybe [:sequential ms/ParameterMapping]]]
            [:action_id          {:optional true} [:maybe ms/PositiveInt]]
            [:series             {:optional true} :any]]]}
-  (api/check-not-archived (api/write-check Dashboard id))
-  (for [{:keys [card_id]} cards
-        :when  card_id]
-    (api/check-not-archived (api/read-check Card card_id)))
-  (check-parameter-mapping-permissions (flatten (for [{:keys [card_id parameter_mappings]} cards]
-                                                  (for [mapping parameter_mappings]
-                                                    (assoc mapping :card-id card_id)))))
-  (u/prog1 (api/check-500 (dashboard/add-dashcard! id (map #(assoc % :creator_id api/*current-user*) cards)))
-    (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})
-    (doseq [{:keys [card_id]} cards]
-      (snowplow/track-event! ::snowplow/question-added-to-dashboard
-                             api/*current-user-id*
-                             {:dashboard-id id, :question-id card_id}))))
-
-;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/cards"
-  "Add a `Card` or `Action` to a Dashboard."
-  [id :as {{:keys [cardId parameter_mappings row col size_x size_y action_id], :as dashboard-card} :body}]
-  {cardId             (s/maybe su/IntGreaterThanZero)
-   parameter_mappings (s/maybe [dashboard-card/ParamMapping])
-   row                su/IntGreaterThanOrEqualToZero
-   col                su/IntGreaterThanOrEqualToZero
-   size_x             su/IntGreaterThanZero
-   size_y             su/IntGreaterThanZero
-   action_id          (s/maybe su/IntGreaterThanZero)}
-  (api/check-not-archived (api/write-check Dashboard id))
-  (when cardId
-    (api/check-not-archived (api/read-check Card cardId)))
-  (check-parameter-mapping-permissions (for [mapping parameter_mappings]
-                                         (assoc mapping :card-id cardId)))
-  (u/prog1 (api/check-500 (dashboard/add-dashcard! id cardId (-> dashboard-card
-                                                                 (assoc :creator_id api/*current-user*)
-                                                                 (dissoc :cardId))))
-    (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})
-    (snowplow/track-event! ::snowplow/question-added-to-dashboard
-                           api/*current-user-id*
-                           {:dashboard-id id, :question-id cardId})))
+  (let [dashboard (api/write-check Dashboard id)]
+    (api/check-not-archived (api/write-check Dashboard id))
+    (for [{:keys [card_id]} cards
+          :when  card_id]
+      (api/check-not-archived (api/read-check Card card_id)))
+    (check-parameter-mapping-permissions (flatten (for [{:keys [card_id parameter_mappings]} cards]
+                                                    (for [mapping parameter_mappings]
+                                                      (assoc mapping :card-id card_id)))))
+    (u/prog1 (api/check-500 (dashboard/add-dashcards! dashboard (map #(assoc % :creator_id @api/*current-user*) cards)))
+      (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards <>})
+      (doseq [{:keys [card_id]} cards]
+        (snowplow/track-event! ::snowplow/question-added-to-dashboard
+                               api/*current-user-id*
+                               {:dashboard-id id, :question-id card_id})))))
 
 (defn- existing-parameter-mappings
   "Returns a map of DashboardCard ID -> parameter mappings for a Dashboard of the form
@@ -606,23 +582,15 @@
     (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
     {:status :ok}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id/cards"
-  "Remove a `DashboardCard` from a Dashboard."
-  [id dashcardId]
-  {dashcardId su/IntStringGreaterThanZero}
-  (api/check-not-archived (api/write-check Dashboard id))
-  (when-let [dashboard-card (t2/select-one DashboardCard :id (Integer/parseInt dashcardId))]
-    (api/check-500 (dashboard-card/delete-dashboard-card! dashboard-card api/*current-user-id*))
-    api/generic-204-no-content))
-
-(api/defendpoint DELETE "/:id/cardss"
+(api/defendpoint DELETE "/:id/cards"
   "Remove a `DashboardCard` from a Dashboard."
   [id dashcard_ids]
-  {dashcard_ids [:sequential ms/PositiveInt]}
-  (api/check-not-archived (api/write-check Dashboard id))
-  (when-let [dashboard-card (t2/select-one DashboardCard :id [:id dashcard_ids])]
-    (api/check-500 (dashboard-card/delete-dashboard-cards! dashboard-card id api/*current-user-id*))
+  {id pos-int?}
+  (let [dashcard-ids (json/parse-string dashcard_ids)]
+    (api/check-not-archived (api/write-check Dashboard id))
+    (when-let [dashboard-cards (t2/select DashboardCard :id [:in dashcard-ids])]
+      (api/check-500 (dashboard-card/delete-dashboard-cards! dashboard-cards id api/*current-user-id*))
+      api/generic-204-no-content)
     api/generic-204-no-content))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
