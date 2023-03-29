@@ -288,13 +288,13 @@
 (defn- segment [metadata segment-id]
   (some-> metadata :segments deref (get segment-id) deref))
 
-(defn- tables [database-id metadata]
+(defn- tables [metadata database-id]
   (for [[_id table-delay]  (some-> metadata :tables deref)
         :let               [a-table (some-> table-delay deref)]
         :when              (and a-table (= (:db_id a-table) database-id))]
     a-table))
 
-(defn- fields [table-id metadata]
+(defn- fields [metadata table-id]
   (for [[_id field-delay]  (some-> metadata :fields deref)
         :let               [a-field (some-> field-delay deref)]
         :when              (and a-field (= (:table_id a-field) table-id))]
@@ -312,5 +312,5 @@
       (metric   [_this metric-id]  (metric   metadata metric-id))
       (segment  [_this segment-id] (segment  metadata segment-id))
       (card     [_this card-id]    (card     metadata card-id))
-      (tables   [_this]            (tables   database-id metadata))
+      (tables   [_this]            (tables   metadata database-id))
       (fields   [_this table-id]   (fields   metadata table-id)))))
