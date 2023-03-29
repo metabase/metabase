@@ -4,7 +4,7 @@ import { Card } from "metabase-types/types/Card";
 import { Field } from "metabase-types/types/Field";
 import { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
-export type QueryBuilderMode = "view" | "notebook" | "dataset" | "metabot";
+export type QueryBuilderMode = "view" | "notebook" | "dataset";
 export type DatasetEditorTab = "query" | "metadata";
 export type QueryBuilderQueryStatus = "idle" | "running" | "complete";
 
