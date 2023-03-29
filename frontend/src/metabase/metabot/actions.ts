@@ -48,35 +48,34 @@ export const updateQuestion = createAction(
 export const UPDATE_PROMPT = "metabase/metabot/UPDATE_PROMPT";
 export const updatePrompt = createAction(UPDATE_PROMPT);
 
-export const RUN_QUERY = "metabase/metabot/RUN_QUERY";
-export const runQuery = createAction(RUN_QUERY);
-
-export const QUERY_COMPLETED = "metabase/metabot/QUERY_COMPLETED";
-export const queryCompleted = createAction(QUERY_COMPLETED);
-
-export const QUERY_ERRORED = "metabase/metabot/QUERY_ERRORED";
-export const queryErrored = createAction(QUERY_ERRORED);
-
+export const RUN_PROMPT_QUERY = "metabase/metabot/RUN_PROMPT_QUERY";
+export const RUN_PROMPT_QUERY_FULFILLED =
+  "metabase/metabot/RUN_PROMPT_QUERY_FULFILLED";
+export const RUN_PROMPT_QUERY_REJECTED =
+  "metabase/metabot/RUN_PROMPT_QUERY_REJECTED";
 export const runPromptQuery = () => async (dispatch: Dispatch) => {
   try {
-    dispatch(runQuery());
+    dispatch({ type: RUN_PROMPT_QUERY });
     await dispatch(fetchQuestion());
     await dispatch(fetchQueryResults());
+    dispatch({ type: RUN_PROMPT_QUERY_FULFILLED });
   } catch (error) {
-    dispatch(queryErrored(error));
-  } finally {
-    dispatch(queryCompleted());
+    dispatch({ type: RUN_PROMPT_QUERY_REJECTED, payload: error });
   }
 };
 
+export const RUN_QUESTION_QUERY = "metabase/metabot/RUN_QUESTION_QUERY";
+export const RUN_QUESTION_QUERY_FULFILLED =
+  "metabase/metabot/RUN_QUESTION_QUERY_FULFILLED";
+export const RUN_QUESTION_QUERY_REJECTED =
+  "metabase/metabot/RUN_QUESTION_QUERY_REJECTED";
 export const runQuestionQuery = () => async (dispatch: Dispatch) => {
   try {
-    dispatch(runQuery());
+    dispatch({ type: RUN_QUESTION_QUERY });
     await dispatch(fetchQueryResults());
+    dispatch({ type: RUN_QUESTION_QUERY_FULFILLED });
   } catch (error) {
-    dispatch(queryErrored(error));
-  } finally {
-    dispatch(queryCompleted());
+    dispatch({ type: RUN_QUESTION_QUERY_REJECTED, payload: error });
   }
 };
 
