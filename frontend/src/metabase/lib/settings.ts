@@ -287,6 +287,10 @@ class MetabaseSettings {
     return this.isHosted() || this.isEnterprise();
   }
 
+  isMetabotEnabled() {
+    return this.get("is-metabot-enabled");
+  }
+
   passwordComplexityRequirements(): PasswordComplexity {
     return this.get("password-complexity") || {};
   }
