@@ -18,7 +18,6 @@ import {
 import MetabotHeader from "../MetabotHeader";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
 import MetabotFeedbackForm from "../MetabotFeedbackForm";
-import MetabotQueryForm from "../MetabotQueryForm";
 import { MetabotRoot } from "./Metabot.styled";
 
 interface OwnProps {
@@ -79,7 +78,7 @@ const Metabot = ({
   return (
     <MetabotRoot>
       <MetabotHeader model={model} database={database} databases={databases} />
-      {isInvalidSql ? <MetabotQueryForm /> : <MetabotQueryBuilder />}
+      <MetabotQueryBuilder />
       {hasFeedbackForm && <MetabotFeedbackForm />}
     </MetabotRoot>
   );
