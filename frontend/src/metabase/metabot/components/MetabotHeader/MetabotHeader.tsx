@@ -13,7 +13,7 @@ import {
 } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
-import { runPromptQuery, setPrompt } from "../../actions";
+import { runPromptQuery, updatePrompt } from "../../actions";
 import {
   getFeedbackStatus,
   getFeedbackType,
@@ -57,7 +57,7 @@ const mapStateToProps = (state: State): StateProps => ({
 });
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onChangePrompt: prompt => dispatch(setPrompt(prompt)),
+  onChangePrompt: prompt => dispatch(updatePrompt(prompt)),
   onSubmitPrompt: () => dispatch(runPromptQuery()),
   onDatabaseChange: databaseId => push(Urls.databaseMetabot(databaseId)),
 });

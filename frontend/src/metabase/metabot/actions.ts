@@ -1,5 +1,4 @@
 import { createAction } from "redux-actions";
-import { createThunkAction } from "metabase/lib/redux";
 import { MetabotApi } from "metabase/services";
 import { MetabotFeedbackType } from "metabase-types/api";
 import {
@@ -19,49 +18,33 @@ import {
   getQuestion,
 } from "./selectors";
 
-interface InitPayload {
+export interface InitPayload {
   entityId: MetabotEntityId;
   entityType: MetabotEntityType;
-  initialPrompt: string;
+  initialPrompt?: string;
 }
 
 export const INIT = "metabase/metabot/INIT";
-export const init = createThunkAction(
-  INIT,
-  ({ entityId, entityType, initialPrompt }: InitPayload) =>
-    (dispatch: Dispatch) => {
-      dispatch(setEntityId(entityId));
-      dispatch(setEntityType(entityType));
-      dispatch(setPrompt(initialPrompt));
+export const init = (payload: InitPayload) => (dispatch: Dispatch) => {
+  dispatch({ type: INIT, payload });
 
-      if (initialPrompt) {
-        dispatch(runPromptQuery());
-      }
-    },
-);
+  if (payload.initialPrompt) {
+    dispatch(runPromptQuery());
+  }
+};
 
 export const RESET = "metabase/metabot/RESET";
 export const reset = createAction(RESET);
 
-export const SET_ENTITY_ID = "metabase/metabot/SET_ENTITY_ID";
-export const setEntityId = createAction(SET_ENTITY_ID);
-
-export const SET_ENTITY_TYPE = "metabase/metabot/SET_ENTITY_TYPE";
-export const setEntityType = createAction(SET_ENTITY_TYPE);
-
-export const SET_CARD = "metabase/metabot/SET_CARD";
-export const setCard = createAction(SET_CARD, (question: Question) =>
+export const UPDATE_CARD = "metabase/metabot/UPDATE_CARD";
+export const updateCard = createAction(UPDATE_CARD, (question: Question) =>
   question.card(),
 );
 
-export const SET_PROMPT = "metabase/metabot/SET_PROMPT";
-export const setPrompt = createAction(SET_PROMPT);
+export const UPDATE_PROMPT = "metabase/metabot/UPDATE_PROMPT";
+export const updatePrompt = createAction(UPDATE_PROMPT);
 
-export const SET_FEEDBACK_TYPE = "metabase/metabot/SET_FEEDBACK_TYPE";
-
-export const setFeedbackType = createAction(SET_FEEDBACK_TYPE);
 export const RUN_QUERY = "metabase/metabot/RUN_QUERY";
-
 export const runQuery = createAction(RUN_QUERY);
 
 export const QUERY_COMPLETED = "metabase/metabot/QUERY_COMPLETED";
@@ -70,100 +53,75 @@ export const queryCompleted = createAction(QUERY_COMPLETED);
 export const QUERY_ERRORED = "metabase/metabot/QUERY_ERRORED";
 export const queryErrored = createAction(QUERY_ERRORED);
 
-export const RUN_PROMPT_QUERY = "metabase/metabot/RUN_PROMPT_QUERY";
-export const runPromptQuery = createThunkAction(
-  RUN_PROMPT_QUERY,
-  () => async (dispatch: Dispatch) => {
-    try {
-      dispatch(runQuery());
-      await dispatch(fetchCard());
-      await dispatch(fetchQueryResults());
-    } catch (error) {
-      dispatch(queryErrored(error));
-    } finally {
-      dispatch(queryCompleted());
-    }
-  },
-);
+export const runPromptQuery = () => async (dispatch: Dispatch) => {
+  try {
+    dispatch(runQuery());
+    await dispatch(fetchCard());
+    await dispatch(fetchQueryResults());
+  } catch (error) {
+    dispatch(queryErrored(error));
+  } finally {
+    dispatch(queryCompleted());
+  }
+};
 
-export const RUN_CARD_QUERY = "metabase/metabot/RUN_CARD_QUERY";
-export const runCardQuery = createThunkAction(
-  RUN_CARD_QUERY,
-  () => async (dispatch: Dispatch) => {
-    try {
-      dispatch(runQuery());
-      await dispatch(fetchQueryResults());
-    } catch (error) {
-      dispatch(queryErrored(error));
-    } finally {
-      dispatch(queryCompleted());
-    }
-  },
-);
+export const runCardQuery = () => async (dispatch: Dispatch) => {
+  try {
+    dispatch(runQuery());
+    await dispatch(fetchQueryResults());
+  } catch (error) {
+    dispatch(queryErrored(error));
+  } finally {
+    dispatch(queryCompleted());
+  }
+};
 
 export const FETCH_CARD = "metabase/metabot/FETCH_CARD";
-export const fetchCard = createThunkAction(
-  FETCH_CARD,
-  () => async (_dispatch: Dispatch, getState: GetState) => {
+export const fetchCard =
+  () => async (dispatch: Dispatch, getState: GetState) => {
     const entityId = getEntityId(getState());
     const entityType = getEntityType(getState());
-    const prompt = getPrompt(getState());
+    const question = getPrompt(getState());
 
-    if (entityType === "model") {
-      return await MetabotApi.modelPrompt({
-        modelId: entityId,
-        question: prompt,
-      });
-    } else {
-      return await MetabotApi.databasePrompt({
-        databaseId: entityId,
-        question: prompt,
-      });
-    }
-  },
-);
+    const payload =
+      entityType === "model"
+        ? await MetabotApi.modelPrompt({ modelId: entityId, question })
+        : await MetabotApi.databasePrompt({ databaseId: entityId, question });
+
+    dispatch({ type: FETCH_CARD, payload });
+  };
 
 export const FETCH_QUERY_RESULTS = "metabase/metabot/FETCH_QUERY_RESULTS";
-export const fetchQueryResults = createThunkAction(
-  FETCH_QUERY_RESULTS,
+export const fetchQueryResults =
   () => async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
-    return await question?.apiGetResults();
-  },
-);
+    const payload = await question?.apiGetResults();
+    dispatch({ type: FETCH_QUERY_RESULTS, payload });
+  };
 
-export const SUBMIT_FEEDBACK_TYPE = "metabase/metabot/SUBMIT_FEEDBACK_TYPE";
-export const submitFeedbackType = createThunkAction(
-  SUBMIT_FEEDBACK_TYPE,
+export const UPDATE_FEEDBACK_TYPE = "metabase/metabot/UPDATE_FEEDBACK_TYPE";
+export const updateFeedbackType =
   (feedbackType: MetabotFeedbackType) => (dispatch: Dispatch) => {
-    dispatch(setFeedbackType(feedbackType));
+    dispatch({ type: UPDATE_FEEDBACK_TYPE, payload: feedbackType });
+
     if (feedbackType === "great") {
       dispatch(submitFeedback());
     }
-  },
-);
+  };
 
-export const SUBMIT_FEEDBACK_FORM = "metabase/metabot/SUBMIT_FEEDBACK_FORM";
-export const submitFeedbackForm = createThunkAction(
-  SUBMIT_FEEDBACK_FORM,
+export const submitFeedbackForm =
   (feedbackMessage: string) => (dispatch: Dispatch) => {
     dispatch(submitFeedback(feedbackMessage));
-  },
-);
+  };
 
-export const SUBMIT_QUERY_FORM = "metabase/metabot/SUBMIT_QUERY_FORM";
-export const submitQueryForm = createThunkAction(
-  SUBMIT_QUERY_FORM,
-  () => (dispatch: Dispatch) => {
-    dispatch(submitFeedback());
-    dispatch(runCardQuery());
-  },
-);
+export const submitQueryForm = () => (dispatch: Dispatch) => {
+  dispatch(submitFeedback());
+  dispatch(runCardQuery());
+};
 
 export const SUBMIT_FEEDBACK = "metabase/metabot/SUBMIT_FEEDBACK";
-export const submitFeedback = createThunkAction(
-  SUBMIT_FEEDBACK,
-  (feedbackMessage?: string) => (_dispatch: Dispatch, getState: GetState) => {
+export const submitFeedback =
+  (feedbackMessage?: string) => (dispatch: Dispatch, getState: GetState) => {
     const prompt = getPrompt(getState());
     const entityType = getEntityType(getState());
     const sql = getOriginalNativeQueryText(getState());
@@ -178,5 +136,6 @@ export const submitFeedback = createThunkAction(
       message: feedbackMessage,
       correct_sql: feedbackType === "invalid-sql" ? correctSql : undefined,
     });
-  },
-);
+
+    dispatch({ type: SUBMIT_FEEDBACK });
+  };

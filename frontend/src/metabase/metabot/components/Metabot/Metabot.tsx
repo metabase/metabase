@@ -9,7 +9,7 @@ import {
 } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
-import { init, reset } from "../../actions";
+import { init, InitPayload, reset } from "../../actions";
 import { getFeedbackType, getQueryStatus } from "../../selectors";
 import MetabotHeader from "../MetabotHeader";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
@@ -20,7 +20,7 @@ import { MetabotRoot } from "./Metabot.styled";
 interface OwnProps {
   entityId: MetabotEntityId;
   entityType: MetabotEntityType;
-  initialPrompt: string;
+  initialPrompt?: string;
   model?: Question;
   database?: Database;
   databases?: Database[];
@@ -32,7 +32,7 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onInit: (props: OwnProps) => void;
+  onInit: (payload: InitPayload) => void;
   onReset: () => void;
 }
 
@@ -51,7 +51,7 @@ const mapDispatchToProps: DispatchProps = {
 const Metabot = ({
   entityId,
   entityType,
-  initialPrompt = "",
+  initialPrompt,
   model,
   database,
   databases,

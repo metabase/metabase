@@ -6,17 +6,16 @@ import {
   QUERY_ERRORED,
   RESET,
   RUN_QUERY,
-  SET_CARD,
-  SET_ENTITY_ID,
-  SET_ENTITY_TYPE,
-  SET_FEEDBACK_TYPE,
-  SET_PROMPT,
+  UPDATE_CARD,
+  UPDATE_PROMPT,
   SUBMIT_FEEDBACK,
+  INIT,
+  UPDATE_FEEDBACK_TYPE,
 } from "./actions";
 
 export const entityId = handleActions(
   {
-    [SET_ENTITY_ID]: { next: (state, { payload }) => payload },
+    [INIT]: { next: (state, { payload }) => payload.entityId },
     [RESET]: { next: () => null },
   },
   null,
@@ -24,7 +23,7 @@ export const entityId = handleActions(
 
 export const entityType = handleActions(
   {
-    [SET_ENTITY_TYPE]: { next: (state, { payload }) => payload },
+    [INIT]: { next: (state, { payload }) => payload.entityType },
     [RESET]: { next: () => null },
   },
   null,
@@ -32,7 +31,7 @@ export const entityType = handleActions(
 
 export const card = handleActions(
   {
-    [SET_CARD]: { next: (state, { payload }) => payload },
+    [UPDATE_CARD]: { next: (state, { payload }) => payload },
     [FETCH_CARD]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
@@ -49,7 +48,8 @@ export const originalCard = handleActions(
 
 export const prompt = handleActions(
   {
-    [SET_PROMPT]: { next: (state, { payload }) => payload },
+    [INIT]: { next: (state, { payload }) => payload.initialPrompt ?? "" },
+    [UPDATE_PROMPT]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => "" },
   },
   "",
@@ -83,7 +83,7 @@ export const queryError = handleActions(
 export const feedbackType = handleActions(
   {
     [RUN_QUERY]: { next: () => null },
-    [SET_FEEDBACK_TYPE]: { next: (state, { payload }) => payload },
+    [UPDATE_FEEDBACK_TYPE]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
   null,
