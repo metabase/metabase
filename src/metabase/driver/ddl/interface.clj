@@ -5,7 +5,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [tru]])
   (:import
-   (java.time LocalDate)
+   (java.time Instant)
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
@@ -61,8 +61,8 @@
   [{:key   "settings-version"
     :value "1"}
    {:key   "created-at"
-    ;; "2023-03-28"
-    :value (.format (LocalDate/now) DateTimeFormatter/ISO_LOCAL_DATE)}
+    ;; "2023-03-29T14:01:27.871697Z"
+    :value (.format DateTimeFormatter/ISO_INSTANT (Instant/now))}
    {:key   "instance-uuid"
     :value (public-settings/site-uuid)}
    {:key   "instance-name"
