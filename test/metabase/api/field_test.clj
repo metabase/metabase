@@ -782,6 +782,8 @@
                   (is (empty? (nested-fields))))
                 (testing "nested fields are added when json unfolding is enabled"
                   (enable-json-unfolding! true)
+                  ;; Wait for sync to happen
+                  (Thread/sleep 500)
                   (is (seq (nested-fields))))
                 (testing "nested fields are removed when json unfolding is disabled again"
                   (enable-json-unfolding! false)
