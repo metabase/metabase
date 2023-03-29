@@ -2,15 +2,14 @@
   (:refer-clojure :exclude [defn])
   (:require
    [clojure.core :as core]
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.destructure]
    [malli.error :as me]
    [malli.util :as mut]
    [metabase.shared.util.i18n :refer [tru]]
    [metabase.util :as u]
-   #?@(:clj  ([clojure.string :as str]
-              [malli.experimental :as mx]
-              [malli.instrument :as minst]
+   #?@(:clj  ([malli.experimental :as mx]
               [metabase.util.i18n :as i18n]
               [net.cgrand.macrovich :as macros]
               [ring.util.codec :as codec])))
@@ -27,7 +26,7 @@
   (str message ", " (tru "received") ": " (pr-str value)))
 
 (core/defn explain-fn-fail!
-  "Used as reporting function to minst/instrument!"
+  "Used as reporting function for mc/-instrument"
   [type data]
   (let [{:keys [input args output value]} data
         humanized (cond input  (me/humanize (mc/explain input args) {:wrap humanize-include-value})
@@ -60,18 +59,16 @@
            raw-arglists (map :raw-arglist parglists)
            schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
            bodies (map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
-           validate? (= target :clj)
-           doc (annotate-docstring single parglists return doc)
            enriched-meta (assoc body-meta
                                 :raw-arglists (list 'quote raw-arglists)
                                 :schema schema
                                 :doc doc)]
-       `(let [defn# ~(if validate?
+       `(let [defn# ~(if (= target :clj)
                        `(def
                           ~(with-meta name (merge var-meta
                                                   enriched-meta
                                                   {:arglists (list 'quote (map :arglist parglists))}))
-                          ~@(some-> doc vector)
+                          ~@(some-> (annotate-docstring single parglists return doc) vector)
                           ;; replace defn body with instrumented function:
                           (mc/-instrument {:schema ~schema :report explain-fn-fail!}
                                           (fn ~(gensym (clojure.lang.Compiler/munge (str name "-instrumented"))) ~@bodies)))
