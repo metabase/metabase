@@ -585,7 +585,12 @@ class NativeQueryEditor extends Component {
             this._editor.resize();
           }}
         >
-          <div className="flex-full" id={ACE_ELEMENT_ID} ref={this.editor} />
+          <div
+            className="flex-full"
+            data-testid="native-query-editor"
+            id={ACE_ELEMENT_ID}
+            ref={this.editor}
+          />
 
           <RightClickPopover
             isOpen={this.state.isSelectedTextPopoverOpen}

@@ -91,7 +91,7 @@
   ([conditions-map]
    (mark-for-pruning! conditions-map "deletable"))
   ([conditions-map state]
-   (db/update-where! PersistedInfo conditions-map :active false, :state state, :state_change_at :%now)))
+   (t2/update! PersistedInfo conditions-map {:active false, :state state, :state_change_at :%now})))
 
 (defn- create-row
   "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."

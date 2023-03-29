@@ -108,7 +108,7 @@ describe("scenarios > admin > localization", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".TableInteractive-header").next().as("resultTable");
+    cy.findByTestId("TableInteractive-root").as("resultTable");
 
     cy.get("@resultTable").within(() => {
       // The third cell in the first row (CREATED_AT_DAY)

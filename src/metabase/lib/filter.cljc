@@ -1,13 +1,12 @@
 (ns metabase.lib.filter
   (:refer-clojure :exclude [filter and or not = < <= > ->> >= not-empty case])
   (:require
-   [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.field :as lib.field]
+   [metabase.lib.common :as lib.common]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema]
-   [metabase.lib.schema.expression :as schema.expression]
+   [metabase.lib.schema.common :as schema.common]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -17,7 +16,7 @@
 
 (comment metabase.lib.schema/keep-me)
 
-(defmethod lib.metadata.calculation/describe-top-level-key :filter
+(defmethod lib.metadata.calculation/describe-top-level-key-method :filter
   [query stage-number _key]
   (when-let [filter-clause (:filter (lib.util/query-stage query stage-number))]
     (i18n/tru "Filtered by {0}" (lib.metadata.calculation/display-name query stage-number filter-clause))))
@@ -27,11 +26,11 @@
 
 (defmethod lib.metadata.calculation/display-name-method :segment
   [query _stage-number [_tag _opts segment-id]]
-  (clojure.core/or
-   (when-let [segment-metadata (lib.metadata/segment query segment-id)]
+  (let [segment-metadata (lib.metadata/segment query segment-id)]
+    (clojure.core/or
      (:display_name segment-metadata)
-     (some->> (:name segment-metadata) (u.humanization/name->human-readable-name :simple)))
-   (i18n/tru "[Unknown Segment]")))
+     (some->> (:name segment-metadata) (u.humanization/name->human-readable-name :simple))
+     (i18n/tru "[Unknown Segment]"))))
 
 (defmethod lib.metadata.calculation/display-name-method :and
   [query stage-number [_tag _opts & subclauses]]
@@ -43,7 +42,7 @@
 (defmethod lib.metadata.calculation/display-name-method :or
   [query stage-number [_tag _opts & subclauses]]
   (lib.util/join-strings-with-conjunction
-   (i18n/tru "and")
+   (i18n/tru "or")
    (for [clause subclauses]
      (lib.metadata.calculation/display-name query stage-number clause))))
 
@@ -167,129 +166,70 @@
             (lib.metadata.calculation/display-name query stage-number expr)
             (lib.temporal-bucket/interval->i18n n unit)))
 
-(defmulti ^:private ->filter-arg
-  {:arglists '([query stage-number x])}
-  (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x)))
-
-(defmethod ->filter-arg :default
-  [_query _stage-number x]
-  x)
-
-(defmethod ->filter-arg :metadata/field
-  [query stage-number field-metadata]
-  (lib.field/field query stage-number field-metadata))
-
-(defmethod ->filter-arg :dispatch-type/fn
-  [query stage-number f]
-  (->filter-arg query stage-number (f query stage-number)))
-
-#?(:clj
-   (defmacro ^:private deffilter
-     [filter-name argvec]
-     {:pre [(symbol? filter-name)
-            (vector? argvec) (every? symbol? argvec)
-            (not-any? #{'query 'stage-number} argvec)]}
-     (let [filter-name-str (name filter-name)
-           vararg? (.contains ^java.util.Collection argvec '&)
-           args (remove #{'&} argvec)
-           arglist-expr (if vararg?
-                          (cons 'list* args)
-                          argvec)]
-       `(do
-          (mu/defn ~filter-name :- ~(keyword "mbql.clause" filter-name-str)
-            ~(format "Create a filter clause of type `%s`." filter-name-str)
-            [~'query ~'stage-number ~@argvec]
-            (-> (into [~(keyword filter-name)]
-                      (map (fn [~'arg]
-                             (->filter-arg ~'query ~'stage-number ~'arg)))
-                      ~arglist-expr)
-                metabase.lib.options/ensure-uuid))
-
-          (mu/defn ~(symbol (str "->" filter-name-str)) :- fn?
-            ~(format "Return function creating a filter clause of type `%s`." filter-name-str)
-            ~argvec
-            (fn [~'query ~'stage-number]
-              ~(cond->> (concat [filter-name 'query 'stage-number] args)
-                 vararg? (cons `apply))))))))
-
-(metabase.lib.filter/deffilter and [x y & more])
-(metabase.lib.filter/deffilter or [x y & more])
-(metabase.lib.filter/deffilter not [x])
-(metabase.lib.filter/deffilter = [x y & more])
-(metabase.lib.filter/deffilter != [x y & more])
-(metabase.lib.filter/deffilter < [x y])
-(metabase.lib.filter/deffilter <= [x y])
-(metabase.lib.filter/deffilter > [x y])
-(metabase.lib.filter/deffilter >= [x y])
-(metabase.lib.filter/deffilter between [x lower upper])
-(metabase.lib.filter/deffilter inside [lat lon lat-max lon-min lat-min lon-max])
-(metabase.lib.filter/deffilter is-null [x])
-(metabase.lib.filter/deffilter not-null [x])
-(metabase.lib.filter/deffilter is-empty [x])
-(metabase.lib.filter/deffilter not-empty [x])
-(metabase.lib.filter/deffilter starts-with [whole part])
-(metabase.lib.filter/deffilter ends-with [whole part])
-(metabase.lib.filter/deffilter contains [whole part])
-(metabase.lib.filter/deffilter does-not-contain [whole part])
-(metabase.lib.filter/deffilter time-interval [x amount unit])
-(metabase.lib.filter/deffilter segment [segment-id])
-
-(defmulti ^:private ->filter-clause
-  {:arglists '([query stage-number x])}
-  (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x)))
-
-(defmethod ->filter-clause :default
-  [query stage-number x]
-  (if (vector? x)
-    (-> (mapv #(clojure.core/->> %
-                                 (->filter-arg query stage-number)
-                                 (->filter-clause query stage-number)) x)
-        lib.options/ensure-uuid)
-    x))
-
-(defmethod ->filter-clause :dispatch-type/fn
-  [query stage-number f]
-  (->filter-clause query stage-number (f query stage-number)))
+(lib.common/defop and [x y & more])
+(lib.common/defop or [x y & more])
+(lib.common/defop not [x])
+(lib.common/defop = [x y & more])
+(lib.common/defop != [x y & more])
+(lib.common/defop < [x y])
+(lib.common/defop <= [x y])
+(lib.common/defop > [x y])
+(lib.common/defop >= [x y])
+(lib.common/defop between [x lower upper])
+(lib.common/defop inside [lat lon lat-max lon-min lat-min lon-max])
+(lib.common/defop is-null [x])
+(lib.common/defop not-null [x])
+(lib.common/defop is-empty [x])
+(lib.common/defop not-empty [x])
+(lib.common/defop starts-with [whole part])
+(lib.common/defop ends-with [whole part])
+(lib.common/defop contains [whole part])
+(lib.common/defop does-not-contain [whole part])
+(lib.common/defop time-interval [x amount unit])
+(lib.common/defop segment [segment-id])
 
 (mu/defn filter :- :metabase.lib.schema/query
   "Sets `boolean-expression` as a filter on `query`."
-  ([query boolean-expression]
-   (metabase.lib.filter/filter query -1 boolean-expression))
+  ([query :- :metabase.lib.schema/query
+    boolean-expression]
+   (metabase.lib.filter/filter query nil boolean-expression))
 
-  ([query stage-number boolean-expression]
+  ([query :- :metabase.lib.schema/query
+    stage-number :- [:maybe :int]
+    boolean-expression]
    (let [stage-number (clojure.core/or stage-number -1)
-         new-filter   (->filter-clause query stage-number boolean-expression)]
+         new-filter (lib.common/->op-arg query stage-number boolean-expression)]
      (lib.util/update-query-stage query stage-number assoc :filter new-filter))))
 
 (defn- and-clause? [clause]
   (clojure.core/and (vector? clause)
                     (clojure.core/= (first clause) :and)))
 
-(mu/defn current-filter :- [:maybe ::schema.expression/boolean]
+(mu/defn current-filter :- [:maybe ::schema.common/external-op]
   "Returns the current filter in stage with `stage-number` of `query`.
   If `stage-number` is omitted, the last stage is used.
   See also [[metabase.lib.util/query-stage]]."
-  ([query :- :metabase.lib.schema/query] (current-filter query -1))
+  ([query :- :metabase.lib.schema/query] (current-filter query nil))
   ([query :- :metabase.lib.schema/query
-    stage-number :- :int]
-   (:filter (lib.util/query-stage query stage-number))))
+    stage-number :- [:maybe :int]]
+   (-> (lib.util/query-stage query (clojure.core/or stage-number -1))
+       :filter
+       lib.common/external-op)))
 
-(mu/defn current-filters :- [:sequential ::schema.expression/boolean]
+(mu/defn current-filters :- [:sequential ::schema.common/external-op]
   "Returns the current filters in stage with `stage-number` of `query`.
   If `stage-number` is omitted, the last stage is used. Logicaly, the
   filter attached to the query is the conjunction of the expressions
   in the returned list. If the returned list is empty, then there is no
   filter attached to the query.
   See also [[metabase.lib.util/query-stage]]."
-  ([query :- :metabase.lib.schema/query] (current-filters query -1))
+  ([query :- :metabase.lib.schema/query] (current-filters query nil))
   ([query :- :metabase.lib.schema/query
-    stage-number :- :int]
-   (if-let [existing-filter (:filter (lib.util/query-stage query stage-number))]
+    stage-number :- [:maybe :int]]
+   (if-let [existing-filter (:filter (lib.util/query-stage query (clojure.core/or stage-number -1)))]
      (if (and-clause? existing-filter)
-       (subvec existing-filter 2)
-       [existing-filter])
+       (mapv lib.common/external-op (subvec existing-filter 2))
+       [(lib.common/external-op existing-filter)])
      [])))
 
 (defn- conjoin [existing-filter new-filter]
@@ -304,23 +244,28 @@
   yet, builds a conjunction with the current filter otherwise."
   ([query :- :metabase.lib.schema/query
     boolean-expression]
-   (metabase.lib.filter/add-filter query -1 boolean-expression))
+   (metabase.lib.filter/add-filter query nil boolean-expression))
 
   ([query :- :metabase.lib.schema/query
-    stage-number :- :int
+    stage-number :- [:maybe :int]
     boolean-expression]
    (let [stage-number (clojure.core/or stage-number -1)
-         new-filter   (->filter-clause query stage-number boolean-expression)]
+         new-filter (lib.common/->op-arg query stage-number boolean-expression)]
      (lib.util/update-query-stage query stage-number update :filter conjoin new-filter))))
 
 (mu/defn replace-filter :- :metabase.lib.schema/query
   "Replaces the expression with `target-uuid` with `boolean-expression` the filter of `query`."
-  ([query target-uuid boolean-expression]
-   (metabase.lib.filter/replace-filter query -1 target-uuid boolean-expression))
+  ([query :- :metabase.lib.schema/query
+    target-uuid :- :string
+    boolean-expression]
+   (metabase.lib.filter/replace-filter query nil target-uuid boolean-expression))
 
-  ([query stage-number target-uuid boolean-expression]
+  ([query :- :metabase.lib.schema/query
+    stage-number :- [:maybe :int]
+    target-uuid :- :string
+    boolean-expression]
    (let [stage-number (clojure.core/or stage-number -1)
-         new-filter   (->filter-clause query stage-number boolean-expression)]
+         new-filter   (lib.common/->op-arg query stage-number boolean-expression)]
      (lib.util/update-query-stage query stage-number
                                   update :filter
                                   lib.util/replace-clause target-uuid new-filter))))

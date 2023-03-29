@@ -105,10 +105,12 @@
 
 (defmethod lib.metadata.calculation/display-name-method :field
   [query stage-number [_field {:keys [join-alias temporal-unit], :as _opts} _id-or-name, :as field-clause]]
-  (let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
-                         join-alias    (assoc :source_alias join-alias)
-                         temporal-unit (assoc :unit temporal-unit))]
-    (lib.metadata.calculation/display-name query stage-number field-metadata)))
+  (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
+                            join-alias    (assoc :source_alias join-alias)
+                            temporal-unit (assoc :unit temporal-unit))]
+    (lib.metadata.calculation/display-name query stage-number field-metadata)
+    ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
+    (i18n/tru "[Unknown Field]")))
 
 (defmulti ^:private ->field
   {:arglists '([query stage-number field])}
@@ -148,10 +150,6 @@
   ([query stage-number x]
    (->field query stage-number x)))
 
-(defn with-join-alias
-  "Update a `field` so that it has `join-alias`."
-  [field-or-fn join-alias]
-  (if (fn? field-or-fn)
-    (fn [query stage-number]
-      (with-join-alias (field-or-fn query stage-number) join-alias))
-    (lib.options/update-options field-or-fn assoc :join-alias join-alias)))
+(defmethod lib.join/with-join-alias-method :field
+  [field-ref join-alias]
+  (lib.options/update-options field-ref assoc :join-alias join-alias))

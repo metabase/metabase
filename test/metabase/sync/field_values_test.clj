@@ -12,7 +12,6 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- venues-price-field-values []
@@ -93,8 +92,8 @@
            valid-sandbox-id
            valid-linked-filter-id
            old-full-id
-           new-full-id]             (db/simple-insert-many!
-                                      FieldValues
+           new-full-id]             (t2/insert-returning-pks!
+                                      (t2/table-name FieldValues)
                                       [;; expired sandbox fieldvalues
                                        {:field_id   field-id
                                         :type       "sandbox"

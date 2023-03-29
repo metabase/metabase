@@ -13,17 +13,22 @@ export type NotebookStepType =
   | "sort"
   | "limit";
 
+export type NotebookStepFn<ReturnType> = (
+  query: StructuredQuery,
+  index?: number | null,
+) => ReturnType;
+
 export interface NotebookStep {
   id: string;
   type: NotebookStepType;
   stageIndex: number;
-  itemIndex: number;
+  itemIndex: number | null;
   query: StructuredQuery;
   valid: boolean;
   active: boolean;
   visible: boolean;
-  revert: ((query: StructuredQuery) => StructuredQuery | null) | null;
-  clean: (query: StructuredQuery) => StructuredQuery;
+  revert: NotebookStepFn<StructuredQuery | null> | null;
+  clean: NotebookStepFn<StructuredQuery>;
   update: (datasetQuery: DatasetQuery) => StructuredQuery;
   actions: NotebookStepAction[];
   previewQuery: StructuredQuery | null;
@@ -48,3 +53,5 @@ export interface NotebookStepUiComponentProps {
   isLastOpened: boolean;
   reportTimezone: string;
 }
+
+export type OpenSteps = Record<NotebookStep["id"], boolean>;

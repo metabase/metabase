@@ -68,6 +68,15 @@
   (let [[tag opts & args] (->pMBQL aggregation)]
     (into [tag (merge opts options)] args)))
 
+(defn legacy-query-from-inner-query
+  "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
+  like [[metabase.mbql.normalize/normalize]], and then probably to [[->pMBQL]]."
+  [database-id inner-query]
+  (merge {:database database-id, :type :query}
+         (if (:native inner-query)
+           {:native (set/rename-keys inner-query {:native :query})}
+           {:query inner-query})))
+
 (defmulti ->legacy-MBQL
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's
   not already legacy MBQL."
