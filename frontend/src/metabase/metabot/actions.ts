@@ -1,5 +1,6 @@
 import { createAction } from "redux-actions";
 import { MetabotApi } from "metabase/services";
+import { closeNavbar } from "metabase/redux/app";
 import { MetabotFeedbackType } from "metabase-types/api";
 import {
   Dispatch,
@@ -27,6 +28,7 @@ export interface InitPayload {
 export const INIT = "metabase/metabot/INIT";
 export const init = (payload: InitPayload) => (dispatch: Dispatch) => {
   dispatch({ type: INIT, payload });
+  dispatch(closeNavbar());
 
   if (payload.initialPrompt) {
     dispatch(runPromptQuery());
