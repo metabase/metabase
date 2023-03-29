@@ -14,29 +14,33 @@
       {:resource {:question  <card-id>
                   :dashboard <dashboard-id>}
        :params   <params>}"
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [GET]]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.api.common.validation :as validation]
-            [metabase.api.dashboard :as api.dashboard]
-            [metabase.api.dataset :as api.dataset]
-            [metabase.api.public :as api.public]
-            [metabase.driver.common.parameters.operators :as params.ops]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.pulse.parameters :as params]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.util :as u]
-            [metabase.util.embed :as embed]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [compojure.core :refer [GET]]
+   [medley.core :as m]
+   [metabase.api.card :as api.card]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.api.dashboard :as api.dashboard]
+   [metabase.api.dataset :as api.dataset]
+   [metabase.api.public :as api.public]
+   [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.pulse.parameters :as params]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.util :as u]
+   [metabase.util.embed :as embed]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------- Param Checking -------------------------------------------------
 
@@ -49,14 +53,14 @@
       (case status
         ;; disabled means a param is not allowed to be specified by either token or user
         "disabled" (api/check (not (contains? all-params param))
-                     [400 (tru "You''re not allowed to specify a value for {0}." param)])
+                              [400 (tru "You''re not allowed to specify a value for {0}." param)])
         ;; enabled means either JWT *or* user can specify the param, but not both. Param is *not* required
         "enabled"  (api/check (not (contains? duplicated-params param))
-                     [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
+                              [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
         ;; locked means JWT must specify param
         "locked"   (api/check
-                       (contains? token-params param)      [400 (tru "You must specify a value for {0} in the JWT." param)]
-                       (not (contains? user-params param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
+                    (contains? token-params param)      [400 (tru "You must specify a value for {0} in the JWT." param)]
+                    (not (contains? user-params param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
 
 (defn- check-params-exist
   "Make sure all the params specified are specified in `object-embedding-params`."
@@ -153,30 +157,6 @@
                 card))
             ordered-cards))))
 
-(defn- template-tag-parameters
-  "Transforms native query's `template-tags` into `parameters`."
-  [card]
-  ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase/parameters/utils/cards.js
-  (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
-        :when                         (and tag-type
-                                           (or widget-type (not= tag-type :dimension)))]
-    {:id      (:id tag)
-     :type    (or widget-type (cond (= tag-type :date)   :date/single
-                                    (= tag-type :string) :string/=
-                                    (= tag-type :number) :number/=
-                                    :else                :category))
-     :target  (if (= tag-type :dimension)
-                [:dimension [:template-tag (:name tag)]]
-                [:variable  [:template-tag (:name tag)]])
-     :name    (:display-name tag)
-     :slug    (:name tag)
-     :default (:default tag)}))
-
-(defn- add-implicit-card-parameters
-  "Add template tag parameter information to `card`'s `:parameters`."
-  [card]
-  (update card :parameters concat (template-tag-parameters card)))
-
 (s/defn ^:private apply-slug->value :- (s/maybe [{:slug   su/NonBlankString
                                                   :type   s/Keyword
                                                   :target s/Any
@@ -200,8 +180,8 @@
 (defn- resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
   [card-or-id]
-  (-> (db/select-one [Card :dataset_query], :id (u/the-id card-or-id))
-      add-implicit-card-parameters
+  (-> (db/select-one [Card :dataset_query :parameters], :id (u/the-id card-or-id))
+      api.public/combine-parameters-and-template-tags
       :parameters))
 
 (s/defn ^:private resolve-dashboard-parameters :- [api.dashboard/ParameterWithID]
@@ -236,12 +216,12 @@
 (defn card-for-unsigned-token
   "Return the info needed for embedding about Card specified in `token`. Additional `constraints` can be passed to the
   `public-card` function that fetches the Card."
-  {:style/indent 1}
   [unsigned-token & {:keys [embedding-params constraints]}]
-  (let [card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-        token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
+  {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
+  (let [card-id      (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+        token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-card :id card-id, constraints)
-        add-implicit-card-parameters
+        api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
         (remove-locked-and-disabled-params (or embedding-params
                                                (db/select-one-field :embedding_params Card :id card-id))))))
@@ -269,8 +249,8 @@
 (defn dashboard-for-unsigned-token
   "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
   the `public-dashboard` function that fetches the Dashboard."
-  {:style/indent 1}
   [unsigned-token & {:keys [embedding-params constraints]}]
+  {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
   (let [dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-dashboard :id dashboard-id, constraints)
@@ -335,7 +315,7 @@
   [token]
   (let [unsigned (embed/unsign token)]
     (check-embedding-enabled-for-card (embed/get-in-unsigned-token-or-throw unsigned [:resource :question]))
-    (card-for-unsigned-token unsigned, :constraints {:enable_embedding true})))
+    (card-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
 
 (defn ^:private run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
@@ -356,7 +336,8 @@
       :constraints       constraints
       :options           options)))
 
-(api/defendpoint ^:streaming GET "/card/:token/query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET "/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -366,7 +347,8 @@
   [token & query-params]
   (run-query-for-unsigned-token-async (embed/unsign token) :api query-params))
 
-(api/defendpoint ^:streaming GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [token export-format :as {:keys [query-params]}]
   {export-format api.dataset/ExportFormat}
@@ -391,7 +373,7 @@
   [token]
   (let [unsigned (embed/unsign token)]
     (check-embedding-enabled-for-dashboard (embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
-    (dashboard-for-unsigned-token unsigned, :constraints {:enable_embedding true})))
+    (dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
 
 (defn- dashcard-results-for-signed-token-async
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
@@ -424,7 +406,8 @@
       :constraints      constraints
       :qp-runner        qp-runner)))
 
-(api/defendpoint ^:streaming GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
@@ -437,7 +420,8 @@
 
 ;;; -------------------------------------------------- Field Values --------------------------------------------------
 
-(api/defendpoint GET "/card/:token/field/:field-id/values"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:token/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by an embedded Card."
   [token field-id]
   (let [unsigned-token (embed/unsign token)
@@ -445,7 +429,8 @@
     (check-embedding-enabled-for-card card-id)
     (api.public/card-and-field-id->values card-id field-id)))
 
-(api/defendpoint GET "/dashboard/:token/field/:field-id/values"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/dashboard/:token/field/:field-id/values"
   "Fetch FieldValues for a Field that is used as a param in an embedded Dashboard."
   [token field-id]
   (let [unsigned-token (embed/unsign token)
@@ -456,7 +441,8 @@
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 
-(api/defendpoint GET "/card/:token/field/:field-id/search/:search-field-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by an embedded Card."
   [token field-id search-field-id value limit]
   {value su/NonBlankString
@@ -466,7 +452,8 @@
     (check-embedding-enabled-for-card card-id)
     (api.public/search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
-(api/defendpoint GET "/dashboard/:token/field/:field-id/search/:search-field-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/dashboard/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in an embedded Dashboard."
   [token field-id search-field-id value limit]
   {value su/NonBlankString
@@ -480,7 +467,8 @@
 
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
-(api/defendpoint GET "/card/:token/field/:field-id/remapping/:remapped-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:token/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Cards."
   [token field-id remapped-id value]
@@ -490,7 +478,8 @@
     (check-embedding-enabled-for-card card-id)
     (api.public/card-field-remapped-values card-id field-id remapped-id value)))
 
-(api/defendpoint GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Dashboards."
   [token field-id remapped-id value]
@@ -500,8 +489,9 @@
     (check-embedding-enabled-for-dashboard dashboard-id)
     (api.public/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
-(api/defendpoint ^:streaming GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
-                                  :export-format api.dataset/export-format-regex]
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
+                                         :export-format api.dataset/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
   [token export-format dashcard-id card-id, :as {:keys [query-params]}]
@@ -517,7 +507,7 @@
                  :format-rows?          false}))
 
 
-;;; ----------------------------------------------- Chain Filtering -------------------------------------------------
+;;; ----------------------------------------------- Param values -------------------------------------------------
 
 ;; embedding parameters in `:embedding_params` and the JWT are keyed by `:slug`; the chain filter endpoints instead
 ;; key by `:id`. So we need to do a little conversion back and forth below.
@@ -525,7 +515,7 @@
 ;; variables whose name includes `id-` e.g. `id-query-params` below are ones that are keyed by ID; ones whose name
 ;; includes `slug-` are keyed by slug.
 
-(s/defn ^:private chain-filter-merged-params :- {su/NonBlankString s/Any}
+(s/defn ^:private param-values-merged-params :- {su/NonBlankString s/Any}
   [id->slug slug->id embedding-params token-params id-query-params]
   (let [slug-query-params  (into {}
                                  (for [[id v] id-query-params]
@@ -541,7 +531,50 @@
     (into {} (for [[slug value] merged-slug->value]
                [(get slug->id (name slug)) value]))))
 
-(defn- chain-filter [token searched-param-id prefix id-query-params]
+(defn card-param-values
+  "Search for card parameter values. Does security checks to ensure the parameter is on the card and then gets param
+  values according to [[api.card/param-values]]."
+  [{:keys [unsigned-token card param-key search-prefix]}]
+  (let [slug-token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+        parameters          (or (seq (:parameters card))
+                                (card/template-tag-parameters card))
+        id->slug            (into {} (map (juxt :id :slug) parameters))
+        slug->id            (into {} (map (juxt :slug :id) parameters))
+        searched-param-slug (get id->slug param-key)
+        embedding-params    (:embedding_params card)]
+    (try
+      (when-not (= (get embedding-params (keyword searched-param-slug)) "enabled")
+        (throw (ex-info (tru "Cannot search for values: {0} is not an enabled parameter."
+                             (pr-str searched-param-slug))
+                        {:status-code 400})))
+      (when (get slug-token-params (keyword searched-param-slug))
+        (throw (ex-info (tru "You can''t specify a value for {0} if it's already set in the JWT." (pr-str searched-param-slug))
+                        {:status-code 400})))
+      (try
+        (binding [api/*current-user-permissions-set* (atom #{"/"})]
+          (api.card/param-values card param-key search-prefix))
+        (catch Throwable e
+          (throw (ex-info (.getMessage e)
+                          {:card-id       (u/the-id card)
+                           :param-key     param-key
+                           :search-prefix search-prefix}
+                          e))))
+      (catch Throwable e
+        (let [e (ex-info (.getMessage e)
+                         {:card-id (u/the-id card)
+                          :card-params (:parametres card)
+                          :allowed-param-slugs embedding-params
+                          :slug->id            slug->id
+                          :id->slug            id->slug
+                          :param-id            param-key
+                          :param-slug          searched-param-slug
+                          :token-params        slug-token-params}
+                         e)]
+          (log/errorf e "embedded card-param-values error\n%s"
+                      (u/pprint-to-str (u/all-ex-data e)))
+          (throw e))))))
+
+(defn- dashboard-param-values [token searched-param-id prefix id-query-params]
   (let [unsigned-token                       (embed/unsign token)
         dashboard-id                         (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         _                                    (check-embedding-enabled-for-dashboard dashboard-id)
@@ -560,10 +593,10 @@
         (throw (ex-info (tru "You can''t specify a value for {0} if it's already set in the JWT." (pr-str searched-param-slug))
                         {:status-code 400})))
       ;; ok, at this point we can run the query
-      (let [merged-id-params (chain-filter-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
+      (let [merged-id-params (param-values-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
           (binding [api/*current-user-permissions-set* (atom #{"/"})]
-            (api.dashboard/chain-filter (db/select-one Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
+            (api.dashboard/param-values (db/select-one Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
           (catch Throwable e
             (throw (ex-info (.getMessage e)
                             {:merged-id-params merged-id-params}
@@ -582,17 +615,45 @@
           (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
 
-(api/defendpoint GET "/dashboard/:token/params/:param-key/values"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
   [token param-key :as {:keys [query-params]}]
-  (chain-filter token param-key nil query-params))
+  (dashboard-param-values token param-key nil query-params))
 
-(api/defendpoint GET "/dashboard/:token/params/:param-key/search/:prefix"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/dashboard/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [token param-key prefix :as {:keys [query-params]}]
-  (chain-filter token param-key prefix query-params))
+  (dashboard-param-values token param-key prefix query-params))
 
-(api/defendpoint ^:streaming GET "/pivot/card/:token/query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:token/params/:param-key/values"
+  "Embedded version of api.card filter values endpoint."
+  [token param-key]
+  (let [unsigned (embed/unsign token)
+        card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
+        card     (db/select-one Card :id card-id)]
+    (check-embedding-enabled-for-card card-id)
+    (card-param-values {:unsigned-token unsigned
+                        :card           card
+                        :param-key      param-key})))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/card/:token/params/:param-key/search/:prefix"
+  "Embedded version of chain filter search endpoint."
+  [token param-key prefix]
+  (let [unsigned (embed/unsign token)
+        card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
+        card     (db/select-one Card :id card-id)]
+    (check-embedding-enabled-for-card card-id)
+    (card-param-values {:unsigned-token unsigned
+                        :card           card
+                        :param-key      param-key
+                        :search-prefix  prefix})))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET "/pivot/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -602,7 +663,8 @@
   [token & query-params]
   (run-query-for-unsigned-token-async (embed/unsign token) :api query-params :qp-runner qp.pivot/run-pivot-query))
 
-(api/defendpoint ^:streaming GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema ^:streaming GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]

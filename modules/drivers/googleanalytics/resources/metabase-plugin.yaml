@@ -4,7 +4,7 @@ info:
   description: Allows Metabase to connect to Google Analytics accounts.
 driver:
   name: googleanalytics
-  display-name: Google Analytics
+  display-name: Google Analytics (Deprecated driver)
   lazy-load: true
   connection-properties:
     - name: account-id

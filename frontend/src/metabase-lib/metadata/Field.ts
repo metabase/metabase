@@ -4,32 +4,37 @@ import _ from "underscore";
 import moment from "moment-timezone";
 
 import { formatField, stripId } from "metabase/lib/formatting";
-import type { FieldFingerprint } from "metabase-types/api/field";
+import type {
+  DatasetColumn,
+  Field as IField,
+  FieldFingerprint,
+} from "metabase-types/api";
 import type { Field as FieldRef } from "metabase-types/types/Query";
 import {
+  isAddress,
+  isBoolean,
+  isCategory,
+  isCity,
+  isComment,
+  isCoordinate,
+  isCountry,
   isDate,
-  isTime,
+  isDateWithoutTime,
+  isDescription,
+  isDimension,
+  isEntityName,
+  isFK,
+  isLocation,
+  isMetric,
   isNumber,
   isNumeric,
-  isBoolean,
+  isPK,
+  isScope,
+  isState,
   isString,
   isSummable,
-  isScope,
-  isCategory,
-  isAddress,
-  isCity,
-  isState,
+  isTime,
   isZipCode,
-  isCountry,
-  isCoordinate,
-  isLocation,
-  isDescription,
-  isComment,
-  isDimension,
-  isMetric,
-  isPK,
-  isFK,
-  isEntityName,
 } from "metabase-lib/types/utils/isa";
 import { getFilterOperators } from "metabase-lib/operators/utils";
 import { getFieldValues } from "metabase-lib/queries/utils/field";
@@ -57,19 +62,23 @@ class FieldInner extends Base {
   name: string;
   description: string | null;
   semantic_type: string | null;
-  database_required: boolean;
   fingerprint?: FieldFingerprint;
   base_type: string | null;
   table?: Table;
   table_id?: Table["id"];
   target?: Field;
   has_field_values?: "list" | "search" | "none";
+  has_more_values?: boolean;
   values: any[];
   metadata?: Metadata;
   source?: string;
 
   // added when creating "virtual fields" that are associated with a given query
   query?: StructuredQuery | NativeQuery;
+
+  getPlainObject(): IField {
+    return this._plainObject;
+  }
 
   getId() {
     if (Array.isArray(this.id)) {
@@ -141,6 +150,10 @@ class FieldInner extends Base {
 
   isDate() {
     return isDate(this);
+  }
+
+  isDateWithoutTime() {
+    return isDateWithoutTime(this);
   }
 
   isTime() {
@@ -381,8 +394,7 @@ class FieldInner extends Base {
    * @return {?Field}
    */
   remappedField() {
-    const displayFieldId =
-      this.dimensions && this.dimensions.human_readable_field_id;
+    const displayFieldId = this.dimensions?.[0]?.human_readable_field_id;
 
     if (displayFieldId != null) {
       return this.metadata.field(displayFieldId);
@@ -432,7 +444,20 @@ class FieldInner extends Base {
     return this.isString();
   }
 
-  column(extra = {}) {
+  searchField(disablePKRemapping = false): Field | null {
+    if (disablePKRemapping && this.isPK()) {
+      return this.isSearchable() ? this : null;
+    }
+
+    const remappedField = this.remappedField();
+    if (remappedField && remappedField.isSearchable()) {
+      return remappedField;
+    }
+
+    return this.isSearchable() ? this : null;
+  }
+
+  column(extra = {}): DatasetColumn {
     return this.dimension().column({
       source: "fields",
       ...extra,
@@ -474,6 +499,10 @@ class FieldInner extends Base {
    */
   foreign(foreignField) {
     return this.dimension().foreign(foreignField.dimension());
+  }
+
+  isVirtual() {
+    return typeof this.id !== "number";
   }
 
   /**

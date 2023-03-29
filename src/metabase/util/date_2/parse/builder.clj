@@ -8,9 +8,13 @@
   https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatterBuilder.html for documenation.
 
   TODO - this is a prime library candidate."
-  (:require [metabase.util.date-2.common :as u.date.common])
-  (:import [java.time.format DateTimeFormatter DateTimeFormatterBuilder SignStyle]
-           java.time.temporal.TemporalField))
+  (:require
+   [metabase.util.date-2.common :as u.date.common])
+  (:import
+   (java.time.format DateTimeFormatter DateTimeFormatterBuilder SignStyle)
+   (java.time.temporal TemporalField)))
+
+(set! *warn-on-reflection* true)
 
 (defprotocol ^:private Section
   (^:private apply-section [this builder]))

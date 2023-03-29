@@ -1,11 +1,12 @@
 (ns metabase.sync.sync-metadata.fields.common
   "Schemas and functions shared by different `metabase.sync.sync-metadata.fields.*` namespaces."
-  (:require [clojure.string :as str]
-            [metabase.sync.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def ParentID
   "Schema for the `parent-id` of a Field, i.e. an optional ID."
@@ -36,7 +37,7 @@
   "Return the lower-cased 'canonical' name that should be used to uniquely identify `field` -- this is done to ignore
   case differences when syncing, e.g. we will consider `field` and `field` to mean the same thing."
   [field]
-  (str/lower-case (:name field)))
+  (u/lower-case-en (:name field)))
 
 (s/defn semantic-type :- (s/maybe su/FieldSemanticOrRelationType)
   "Determine a the appropriate `semantic-type` for a Field with `field-metadata`."

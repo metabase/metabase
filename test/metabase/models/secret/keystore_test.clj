@@ -1,16 +1,20 @@
 (ns metabase.models.secret.keystore-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [metabase.api.common :as api]
-            [metabase.models :refer [Database Secret]]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [toucan.db :as db])
-  (:import [java.io ByteArrayOutputStream File]
-           java.nio.charset.StandardCharsets
-           [java.security KeyStore KeyStore$PasswordProtection KeyStore$SecretKeyEntry]
-           javax.crypto.SecretKey
-           javax.crypto.spec.SecretKeySpec))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.models :refer [Database Secret]]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [toucan.db :as db])
+  (:import
+   (java.io ByteArrayOutputStream File)
+   (java.nio.charset StandardCharsets)
+   (java.security KeyStore KeyStore$PasswordProtection KeyStore$SecretKeyEntry)
+   (javax.crypto SecretKey)
+   (javax.crypto.spec SecretKeySpec)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
@@ -73,7 +77,7 @@
             (is (not (contains? details :keystore-password-value)) ":keystore-password-value was removed from details")
             (is (contains? details :keystore-password-id) ":keystore-password-id was added to details")
             (let [{ks-pw-bytes :value} (db/select-one Secret :id (:keystore-password-id details))
-                  ks-pw-str            (String. ks-pw-bytes StandardCharsets/UTF_8)
+                  ks-pw-str            (String. ^bytes ks-pw-bytes StandardCharsets/UTF_8)
                   {:keys [value]}      (db/select-one Secret :id (:keystore-id details))
                   ks                   (bytes->keystore value (.toCharArray ks-pw-str))]
               (assert-entries ks-pw-str ks {key-alias key-value}))))))))

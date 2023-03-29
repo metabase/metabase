@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import type { ComponentStory } from "@storybook/react";
 import Input from "./Input";
 
@@ -7,19 +7,33 @@ export default {
   component: Input,
 };
 
-const Template: ComponentStory<typeof Input> = args => {
+const UncontrolledTemplate: ComponentStory<typeof Input> = args => {
   return <Input {...args} />;
 };
 
-export const Default = Template.bind({});
+const ControlledTemplate: ComponentStory<typeof Input> = args => {
+  const [value, setValue] = useState("");
+  return (
+    <Input
+      {...args}
+      value={value}
+      onChange={e => setValue(e.target.value)}
+      onResetClick={() => setValue("")}
+    />
+  );
+};
 
-export const WithError = Template.bind({});
+export const Default = UncontrolledTemplate.bind({});
+
+export const WithError = UncontrolledTemplate.bind({});
 WithError.args = {
   error: true,
 };
 
-export const WithRightIcon = Template.bind({});
+export const WithRightIcon = UncontrolledTemplate.bind({});
 WithRightIcon.args = {
   rightIcon: "info",
   rightIconTooltip: "Useful tips",
 };
+
+export const Controlled = ControlledTemplate.bind({});

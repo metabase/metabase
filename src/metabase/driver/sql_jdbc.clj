@@ -1,13 +1,14 @@
 (ns metabase.driver.sql-jdbc
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
-  (:require [clojure.java.jdbc :as jdbc]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util.honeysql-extensions :as hx]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.util.honeysql-extensions :as hx]))
 
 (comment sql-jdbc.actions/keep-me)
 
@@ -25,8 +26,12 @@
                (sql.qp/format-honeysql driver honeysql-form)))
 
   ([driver database table honeysql-form]
-   (query driver database (merge {:from [(sql.qp/->honeysql driver (hx/identifier :table (:schema table) (:name table)))]}
-                                 honeysql-form))))
+   (let [table-identifier (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+                            (->> (hx/identifier :table (:schema table) (:name table))
+                                 (sql.qp/->honeysql driver)
+                                 sql.qp/maybe-wrap-unaliased-expr))]
+     (query driver database (merge {:from [table-identifier]}
+                                   honeysql-form)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -60,6 +65,10 @@
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
   (sql-jdbc.conn/notify-database-updated database))
+
+(defmethod driver/dbms-version :sql-jdbc
+  [driver database]
+  (sql-jdbc.sync/dbms-version driver (sql-jdbc.conn/db->pooled-connection-spec database)))
 
 (defmethod driver/describe-database :sql-jdbc
   [driver database]

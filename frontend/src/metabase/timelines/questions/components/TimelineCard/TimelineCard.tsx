@@ -3,13 +3,15 @@ import React, {
   MouseEvent,
   memo,
   useCallback,
+  useMemo,
   useState,
   useEffect,
 } from "react";
+import { t } from "ttag";
 import _ from "underscore";
+import { Timeline, TimelineEvent } from "metabase-types/api";
 import { getTimelineName } from "metabase/lib/timelines";
 import Ellipsified from "metabase/core/components/Ellipsified";
-import { Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
   CardHeader,
@@ -23,29 +25,41 @@ import {
 export interface TimelineCardProps {
   timeline: Timeline;
   isDefault?: boolean;
-  isVisible?: boolean;
+  visibleEventIds: number[];
   selectedEventIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
   onMoveEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
-  onToggleEvent?: (event: TimelineEvent, isSelected: boolean) => void;
-  onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
+  onToggleEventSelected?: (event: TimelineEvent, isSelected: boolean) => void;
+  onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
+  onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
 }
 
 const TimelineCard = ({
   timeline,
   isDefault,
-  isVisible,
+  visibleEventIds = [],
   selectedEventIds = [],
   onEditEvent,
   onMoveEvent,
   onArchiveEvent,
-  onToggleEvent,
-  onToggleTimeline,
+  onToggleEventSelected,
+  onShowTimelineEvents,
+  onHideTimelineEvents,
 }: TimelineCardProps): JSX.Element => {
   const events = getEvents(timeline.events);
   const isEventSelected = events.some(e => selectedEventIds.includes(e.id));
   const [isExpanded, setIsExpanded] = useState(isDefault || isEventSelected);
+
+  const anyEventVisible = useMemo(
+    () => events.some(event => visibleEventIds.includes(event.id)),
+    [events, visibleEventIds],
+  );
+
+  const allEventsVisible = useMemo(
+    () => events.every(event => visibleEventIds.includes(event.id)),
+    [events, visibleEventIds],
+  );
 
   const handleHeaderClick = useCallback(() => {
     setIsExpanded(isExpanded => !isExpanded);
@@ -55,22 +69,15 @@ const TimelineCard = ({
     event.stopPropagation();
   }, []);
 
-  const handleToggleTimeline = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      onToggleTimeline?.(timeline, event.target.checked);
-    },
-    [timeline, onToggleTimeline],
-  );
-
-  const handleToggleEvent = useCallback(
-    (event: TimelineEvent, isSelected: boolean) => {
-      onToggleEvent?.(event, isSelected);
-
-      if (isSelected && !isVisible) {
-        onToggleTimeline?.(timeline, true);
+  const handleChangeVisibility = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      if (e.target.checked) {
+        timeline.events && onShowTimelineEvents(timeline.events);
+      } else {
+        timeline.events && onHideTimelineEvents(timeline.events);
       }
     },
-    [timeline, isVisible, onToggleTimeline, onToggleEvent],
+    [timeline, onShowTimelineEvents, onHideTimelineEvents],
   );
 
   useEffect(() => {
@@ -81,11 +88,15 @@ const TimelineCard = ({
 
   return (
     <CardRoot>
-      <CardHeader onClick={handleHeaderClick}>
+      <CardHeader
+        onClick={handleHeaderClick}
+        aria-label={t`Timeline card header`}
+      >
         <CardCheckbox
-          checked={isVisible}
+          checked={anyEventVisible}
+          indeterminate={anyEventVisible && !allEventsVisible}
           onClick={handleCheckboxClick}
-          onChange={handleToggleTimeline}
+          onChange={handleChangeVisibility}
         />
         <CardLabel>
           <Ellipsified tooltipMaxWidth="100%">
@@ -102,10 +113,13 @@ const TimelineCard = ({
               event={event}
               timeline={timeline}
               isSelected={selectedEventIds.includes(event.id)}
+              isVisible={visibleEventIds.includes(event.id)}
               onEdit={onEditEvent}
               onMove={onMoveEvent}
               onArchive={onArchiveEvent}
-              onToggle={handleToggleEvent}
+              onToggleSelected={onToggleEventSelected}
+              onShowTimelineEvents={onShowTimelineEvents}
+              onHideTimelineEvents={onHideTimelineEvents}
             />
           ))}
         </CardContent>

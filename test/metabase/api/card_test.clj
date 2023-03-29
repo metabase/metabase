@@ -1,56 +1,61 @@
 (ns metabase.api.card-test
   "Tests for /api/card endpoints."
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.tools.macro :as tools.macro]
-            [clojurewerkz.quartzite.scheduler :as qs]
-            [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.api.card :as api.card]
-            [metabase.api.pivots :as api.pivots]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.http-client :as client]
-            [metabase.models :refer [Card
-                                     CardBookmark
-                                     Collection
-                                     Dashboard
-                                     Database
-                                     ModerationReview
-                                     PersistedInfo
-                                     Pulse
-                                     PulseCard
-                                     PulseChannel
-                                     PulseChannelRecipient
-                                     Table
-                                     Timeline
-                                     TimelineEvent
-                                     ViewLog]]
-            [metabase.models.moderation-review :as moderation-review]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.revision :as revision :refer [Revision]]
-            [metabase.models.user :refer [User]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.async :as qp.async]
-            [metabase.query-processor.card :as qp.card]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.task :as task]
-            [metabase.task.persist-refresh :as task.persist-refresh]
-            [metabase.task.sync-databases :as task.sync-databases]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
-  (:import java.io.ByteArrayInputStream
-           java.util.UUID
-           org.quartz.impl.StdSchedulerFactory))
+  (:require
+   [cheshire.core :as json]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.tools.macro :as tools.macro]
+   [clojurewerkz.quartzite.scheduler :as qs]
+   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.api.card :as api.card]
+   [metabase.api.pivots :as api.pivots]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Card
+            CardBookmark
+            Collection
+            Dashboard
+            Database
+            ModerationReview
+            PersistedInfo
+            Pulse
+            PulseCard
+            PulseChannel
+            PulseChannelRecipient
+            Table
+            Timeline
+            TimelineEvent
+            ViewLog]]
+   [metabase.models.moderation-review :as moderation-review]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.revision :as revision :refer [Revision]]
+   [metabase.models.user :refer [User]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.async :as qp.async]
+   [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.task :as task]
+   [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.task.sync-databases :as task.sync-databases]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]])
+  (:import
+   (java.io ByteArrayInputStream)
+   (java.util UUID)
+   (org.quartz.impl StdSchedulerFactory)))
+
+(set! *warn-on-reflection* true)
 
 (comment api.card/keep-me)
 
@@ -184,16 +189,7 @@
                       :rasta :post 202 (format "card/%d/query" card-id)
                       {:parameters [{:type   :number
                                      :target [:variable [:template-tag :category]]
-                                     :value  2}]})))))
-    (testing "should not allow cards with is_write true"
-      (mt/with-temp*
-        [Database   [db    {:details (:details (mt/db)), :engine :h2}]
-         Card       [card  {:is_write true
-                            :dataset_query
-                            {:database (u/the-id db)
-                             :type     :native
-                             :native   {:query "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = 1;"}}}]]
-        (mt/user-http-request :rasta :post 405 (str  "card/" (:id card) "/query") {})))))
+                                     :value  2}]})))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -326,6 +322,73 @@
                (for [card (mt/user-http-request :rasta :get 200 "card", :f :bookmarked)]
                  (select-keys card [:name]))))))))
 
+(deftest filter-by-using-model
+  (testing "list cards using a model"
+    (mt/with-temp* [Card [{model-id :id :as model} {:name "Model", :dataset true
+                                                    :dataset_query {:query {:source-table 1
+                                                                            :filter [:= [:field 1 nil] "1"]}}}]
+                    ;; matching question
+                    Card [card-1 {:name "Card 1"
+                                  :dataset_query {:query {:source-table (str "card__" model-id)}}}]
+                    Card [{other-card-id :id}]
+                    ;; source-table doesn't match
+                    Card [card-2 {:name "Card 2"
+                                  :dataset_query {:query {:source-table (str "card__" other-card-id)
+                                                          :filter [:= [:field 5 nil] (str "card__" model-id)]}}}]
+                    ;; matching join
+                    Card [card-3 {:name "Card 3"
+                                  :dataset_query (let [alias (str "Question " model-id)]
+                                                   {:type :query
+                                                    :query {:joins [{:fields [[:field 35 {:join-alias alias}]]
+                                                                     :source-table (str "card__" model-id)
+                                                                     :condition [:=
+                                                                                 [:field 5 nil]
+                                                                                 [:field 33 {:join-alias alias}]]
+                                                                     :alias alias
+                                                                     :strategy :inner-join}]
+                                                            :fields [[:field 9 nil]]}
+                                                    :database 1})}]
+                    ;; matching native query
+                    Card [card-4 {:name "Card 4"
+                                  :dataset_query {:type :native
+                                                  :native (let [model-ref (format "#%d-q1" model-id)]
+                                                            {:query (format "select o.id from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
+                                                                            model-ref)
+                                                             :template-tags {model-ref
+                                                                             {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
+                                                                              :name model-ref
+                                                                              :display-name model-ref
+                                                                              :type :card
+                                                                              :card-id model-id}}})
+                                                  :database 1}}]
+                    ;; native query reference doesn't match
+                    Card [card-5 {:name "Card 5"
+                                   :dataset_query {:type :native
+                                                   :native (let [model-ref (str "card__" model-id)
+                                                                 card-id other-card-id
+                                                                 card-ref (format "#%d-q1" card-id)]
+                                                             {:query (format "select o.id %s from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
+                                                                             model-ref card-ref)
+                                                              :template-tags {card-ref
+                                                                              {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
+                                                                               :name card-ref
+                                                                               :display-name card-ref
+                                                                               :type :card
+                                                                               :card-id card-id}}})
+                                                   :database 1}}]
+                    Database [{other-database-id :id}]
+                    ;; database doesn't quite match
+                    Card [card-6 {:name "Card 6", :database_id other-database-id
+                                   :dataset_query {:query {:source-table (str "card__" model-id)}}}]
+                    ;; same as matching question, but archived
+                    Card [card-7 {:name "Card 7"
+                                  :archived true
+                                  :dataset_query {:query {:source-table (str "card__" model-id)}}}]]
+      (with-cards-in-readable-collection [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
+        (is (= #{"Card 1" "Card 3" "Card 4"}
+               (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
+                                                           :f :using_model :model_id model-id))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -353,7 +416,6 @@
                        :parameter_mappings     [{:parameter_id "abc123", :card_id 10,
                                                  :target ["dimension" ["template-tags" "category"]]}]
                        :dataset_query          true
-                       :is_write               false
                        :query_type             "query"
                        :visualization_settings {:global {:title nil}}
                        :database_id            true
@@ -523,7 +585,7 @@
 (deftest updating-card-updates-metadata
   (let [query          (mt/mbql-query venues {:fields [$id $name]})
         modified-query (mt/mbql-query venues {:fields [$id $name $price]})
-        norm           (comp str/upper-case :name)
+        norm           (comp u/upper-case-en :name)
         to-native      (fn [q]
                          {:database (:database q)
                           :type     :native
@@ -677,8 +739,8 @@
           (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
             (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                           :query          (s/eq (mt/obj->json->obj query))
-                          :required-perms [perms/Path]
-                          :actual-perms   [perms/Path]
+                          :required-perms [perms/PathSchema]
+                          :actual-perms   [perms/PathSchema]
                           :trace          [s/Any]
                           s/Keyword       s/Any}
                          (create-card! :rasta 403)))))))))
@@ -724,6 +786,7 @@
                   card-defaults
                   (select-keys card [:id :name :entity_id :created_at :updated_at])
                   {:dashboard_count        0
+                   :parameter_usage_count  0
                    :creator_id             (mt/user->id :rasta)
                    :creator                (merge
                                             (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])
@@ -734,7 +797,6 @@
                                              :first_name   "Rasta"
                                              :email        "rasta@metabase.com"})
                    :dataset_query          (mt/obj->json->obj (:dataset_query card))
-                   :is_write               false
                    :display                "table"
                    :query_type             "query"
                    :visualization_settings {}
@@ -1204,8 +1266,8 @@
               (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
                 (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
                               :query          (s/eq (mt/obj->json->obj (mt/mbql-query users)))
-                              :required-perms [perms/Path]
-                              :actual-perms   [perms/Path]
+                              :required-perms [perms/PathSchema]
+                              :actual-perms   [perms/PathSchema]
                               :trace          [s/Any]
                               s/Keyword       s/Any}
                              (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
@@ -1577,17 +1639,7 @@
             (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanitiy "
                           "check to make sure the `with-redefs` in the test above actually works)")
               (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
-                     (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card)))))))))))
-  (testing "is_write cards cannot be exported"
-    (mt/with-temp*
-      [Database   [db    {:details (:details (mt/db)), :engine :h2}]
-       Card       [card  {:is_write true
-                          :dataset_query
-                          {:database (u/the-id db)
-                           :type     :native
-                           :native   {:query "delete from users;"}}}]]
-      (is (= "Write queries are only executable via the Actions API."
-             (:message (mt/user-http-request :rasta :post 405 (format "card/%d/query/csv" (u/the-id card)))))))))
+                     (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
 
 (defn- test-download-response-headers
   [url]
@@ -1965,24 +2017,6 @@
         (is (= "Not found."
                (mt/user-http-request :crowberto :post 404 (format "card/%d/public_link" Integer/MAX_VALUE))))))))
 
-(deftest disallow-sharing-is-write-card-test
-  (testing "POST /api/card/:id/public_link"
-    (testing "Disallow sharing an is_write (QueryAction) Card (#22846)"
-      (mt/with-temporary-setting-values [enable-public-sharing true]
-        (mt/with-temp Card [{card-id :id} {:is_write true}]
-          (is (= "You cannot share an is_write Card."
-                 (mt/user-http-request :crowberto :post 400 (format "card/%d/public_link" card-id)))))))))
-
-(deftest disallow-embbeding-is-write-card-test
-  (testing "PUT /api/card/:id"
-    (testing "Disallow making an is_write (QueryAction) Card embeddable (#22846)"
-      (mt/with-temporary-setting-values [enable-embedding true]
-        (mt/with-temp Card [{card-id :id} {:is_write true}]
-          (is (= "You cannot enable embedding for an is_write Card."
-                 (mt/user-http-request :crowberto :put 400
-                                       (format "card/%d" card-id)
-                                       {:enable_embedding true}))))))))
-
 (deftest share-already-shared-card-test
   (testing "POST /api/card/:id/public_link"
     (testing "Attempting to share a Card that's already shared should return the existing public UUID"
@@ -2071,17 +2105,6 @@
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
-(deftest pivot-card-with-writeable-card
-  (mt/with-temp*
-    [Database   [db    {:details (:details (mt/db)), :engine :h2}]
-     Card       [card  {:is_write true
-                        :dataset_query
-                        {:database (u/the-id db)
-                         :type     :native
-                         :native   {:query "delete from users;"}}}]]
-    (is (= "Write queries are only executable via the Actions API."
-           (:message (mt/user-http-request :rasta :post 405 (format "card/pivot/%d/query" (u/the-id card))))))))
-
 (deftest dataset-card
   (testing "Setting a question to a dataset makes it viz type table"
     (mt/with-temp Card [card {:display       :bar
@@ -2157,7 +2180,7 @@
   (testing "Cards preserve edits to metadata when query changes"
     (let [query          (mt/mbql-query venues {:fields [$id $name]})
           modified-query (mt/mbql-query venues {:fields [$id $name $price]})
-          norm           (comp str/upper-case :name)
+          norm           (comp u/upper-case-en :name)
           to-native      (fn [q]
                            {:database (:database q)
                             :type     :native
@@ -2189,9 +2212,9 @@
                                                :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
                                                                      metadata)))
                           :result_metadata
-                          (map (comp str/upper-case :display_name)))))
+                          (map (comp u/upper-case-en :display_name)))))
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
-                     (map (comp str/upper-case :display_name)
+                     (map (comp u/upper-case-en :display_name)
                           (db/select-one-field :result_metadata Card :id card-id))))
               (testing "Even if you only send the new query and not existing metadata"
                 (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
@@ -2231,154 +2254,6 @@
           (is (= "details-only" (-> query-result
                                     :data :cols last :visibility_type))
               "in cols (important for the saved metadata)"))))))
-
-;;;; Setting `is_write`
-
-(defn- do-with-actions-enabled [thunk]
-  (mt/with-temporary-setting-values [experimental-enable-actions true]
-    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-      (thunk))))
-
-(defmacro ^:private with-actions-enabled {:style/indent 0} [& body]
-  `(do-with-actions-enabled (fn [] ~@body)))
-
-(defn- test-update-is-write-card [{:keys [user query status-code before-fn result-fn get-fn]
-                                   :or   {user  :crowberto
-                                          query (mt/native-query {:query "UPDATE whatever SET whatever = {{whatever}};"})}}]
-  (testing "PUT /api/card/:id"
-    (doseq [initial-value [true false]
-            :let          [new-value (not initial-value)]]
-      (testing (format "Change is_write %s => %s" initial-value new-value)
-        (mt/with-temp Card [{card-id :id} {:dataset_query query}]
-          (when initial-value
-            ;; get around any `pre-update` restrictions or the like
-            (db/execute! {:update Card, :set {:is_write true}, :where [:= :id card-id]}))
-          (when before-fn
-            (before-fn (db/select-one Card :id card-id)))
-          (let [result (mt/user-http-request user :put status-code (str "card/" card-id) {:is_write new-value})]
-            (result-fn result new-value))
-          (let [fail?          (>= status-code 400)
-                expected-value (if fail?
-                                 initial-value
-                                 new-value)]
-            (testing "Application DB value"
-              (is (= expected-value
-                     (db/select-one-field :is_write Card :id card-id))))
-            (testing "GET /api/card/:id value"
-              (let [get-result (mt/user-http-request :crowberto :get 200 (str "card/" card-id))]
-                (is (partial= {:is_write expected-value}
-                              get-result))
-                (when get-fn
-                  (get-fn get-result expected-value))))
-            (when fail?
-              (testing "\nNo-op update should be allowed."
-                (is (some? (mt/user-http-request user :put 200 (str "card/" card-id) {:is_write initial-value})))))))))))
-
-(defn- test-create-is-write-card [{:keys [user query status-code result-fn]
-                                   :or   {user  :crowberto
-                                          query (mt/native-query {:query "SELECT 1;"})}}]
-  (mt/with-model-cleanup [Card]
-    (testing "POST /api/card"
-      (let [result (mt/user-http-request user :post status-code "card" (merge (mt/with-temp-defaults Card)
-                                                                              {:is_write      true
-                                                                               :dataset_query query}))]
-        (result-fn result true)
-        (when (map? result)
-          (when-let [card-id (:id result)]
-            (let [fail? (>= status-code 400)]
-              (testing "Application DB value"
-                (is (= (if fail?
-                         false
-                         true)
-                       (db/select-one-field :is_write Card :id card-id)))))))))))
-
-(deftest set-is-write-actions-disabled-globally-test
-  (with-actions-enabled
-    (mt/with-temporary-setting-values [experimental-enable-actions false]
-      (doseq [f [test-update-is-write-card
-                 test-create-is-write-card]]
-        (f {:status-code 400
-            :result-fn   (fn [result _]
-                           (is (= {:errors {:is_write "Cannot mark Saved Question as 'is_write': Actions are not enabled."}}
-                                  result)))})))))
-
-(deftest set-is-write-actions-disabled-for-database-test
-  (with-actions-enabled
-    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
-      (testing "Sanity check: make sure database-enable-actions was actually set to `false`"
-        (is (= {:database-enable-actions false}
-               (db/select-one-field :settings Database :id (mt/id)))))
-      (doseq [f [test-update-is-write-card
-                 test-create-is-write-card]]
-        (f {:status-code 400
-            :result-fn   (fn [result _]
-                           (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Actions are not enabled for Database [\d,]+\."}}
-                                        result)))})))))
-
-(driver/register! ::feature-flag-test-driver, :parent :h2)
-
-(defmethod driver/database-supports? [::feature-flag-test-driver :actions]
-  [_driver _feature _database]
-  false)
-
-(deftest set-is-write-driver-does-not-support-actions-test
-  (with-actions-enabled
-    (mt/with-temp-vals-in-db Database (mt/id) {:engine (u/qualified-name ::feature-flag-test-driver)}
-      (doseq [f [test-update-is-write-card
-                 test-create-is-write-card]]
-        (f {:status-code 400
-            :result-fn   (fn [result _]
-                           (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Actions are not enabled for Database [\d,]+\."}}
-                                        result)))})))))
-
-(deftest set-is-write-card-is-dataset-test
-  (with-actions-enabled
-    (test-update-is-write-card
-     {:before-fn   (fn [{card-id :id}]
-                     (db/update! Card card-id :dataset true))
-      :status-code 400
-      :result-fn   (fn [result _]
-                     (is (= {:errors {:is_write "Cannot mark Saved Question as 'is_write': Saved Question is a Dataset."}}
-                            result)))})))
-
-(deftest set-is-write-user-is-not-admin-test
-  (with-actions-enabled
-    (doseq [f [test-update-is-write-card
-               test-create-is-write-card]]
-      (f {:status-code 403
-          :user                 :rasta
-          :result-fn            (fn [result _]
-                                  (is (= "You don't have permissions to do that."
-                                         result)))}))))
-
-(deftest set-is-write-card-query-is-not-native-query-test
-  (with-actions-enabled
-    (doseq [f [test-update-is-write-card
-               test-create-is-write-card]]
-      (f {:status-code 400
-          :query       (mt/mbql-query venues)
-          :result-fn   (fn [result _]
-                         (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Query must be a native query."}}
-                                      result)))}))))
-
-(deftest set-is-write-happy-path-test
-  (with-actions-enabled
-    (doseq [f [test-update-is-write-card
-               test-create-is-write-card]]
-      (f {:status-code 200
-          :get-fn (fn [result is-write]
-                    (if is-write
-                      (is (contains? result :action_id))
-                      (is (not (contains? result :action_id)))))
-          :result-fn (fn [result is-write]
-                       (if is-write
-                         (do
-                           (is (contains? result :action_id))
-                           (is (some? (db/select-one 'QueryAction :card_id (:id result)))))
-                         (do
-                           (is (not (contains? result :action_id)))
-                           (is (nil? (db/select-one 'QueryAction :card_id (:id result))))))
-                       (is (map? result)))}))))
 
 (defn- do-with-persistence-setup [f]
   ;; mt/with-temp-scheduler actually just reuses the current scheduler. The scheduler factory caches by name set in
@@ -2432,3 +2307,235 @@
           (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
                               (u/the-id parchived)))
               "Scheduled refresh of archived model"))))))
+
+(defn param-values-url
+  "Returns an URL used to get values for parameter of a card.
+  Use search end point if a `query` is provided."
+  ([card-or-id param-key]
+   (param-values-url card-or-id param-key nil))
+  ([card-or-id param-key query]
+   (if query
+     (format "card/%d/params/%s/search/%s" (u/the-id card-or-id) (name param-key) query)
+     (format "card/%d/params/%s/values" (u/the-id card-or-id) (name param-key)))))
+
+(defn do-with-card-param-values-fixtures
+  "Impl of `with-card-param-values-fixtures` macro."
+  ([f]
+   (do-with-card-param-values-fixtures nil f))
+
+  ([card-values f]
+   (mt/with-temp*
+     [Card [source-card {:database_id   (mt/id)
+                         :table_id      (mt/id :venues)
+                         :dataset_query (mt/mbql-query venues {:limit 5})}]
+      Card [field-filter-card  {:dataset_query
+                                {:database (mt/id)
+                                 :type     :native
+                                 :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
+                                            :template-tags {"NAME" {:id           "name_param_id"
+                                                                    :name         "NAME"
+                                                                    :display_name "Name"
+                                                                    :type         :dimension
+                                                                    :dimension    [:field (mt/id :venues :name) nil]
+                                                                    :required     true}}}}
+                                :name       "native card with field filter"
+                                :parameters [{:id     "name_param_id",
+                                              :type   :string/=,
+                                              :target [:dimension [:template-tag "NAME"]],
+                                              :name   "Name",
+                                              :slug   "NAME"}]}]
+      Card [card        (merge
+                         {:database_id   (mt/id)
+                          :dataset_query (mt/mbql-query venues)
+                          :parameters    [{:name                 "Static Category",
+                                           :slug                 "static_category"
+                                           :id                   "_STATIC_CATEGORY_",
+                                           :type                 "category",
+                                           :values_source_type   "static-list"
+                                           :values_source_config {:values ["African" "American" "Asian"]}}
+                                          {:name                 "Static Category label",
+                                           :slug                 "static_category_label"
+                                           :id                   "_STATIC_CATEGORY_LABEL_",
+                                           :type                 "category",
+                                           :values_source_type   "static-list"
+                                           :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}
+                                          {:name                 "Card as source"
+                                           :slug                 "card"
+                                           :id                   "_CARD_"
+                                           :type                 "category"
+                                           :values_source_type   "card"
+                                           :values_source_config {:card_id     (:id source-card)
+                                                                  :value_field (mt/$ids $venues.name)}}]
+                          :table_id      (mt/id :venues)}
+                         card-values)]]
+     (f {:source-card       source-card
+         :card              card
+         :field-filter-card field-filter-card
+         :param-keys        {:static-list       "_STATIC_CATEGORY_"
+                             :static-list-label "_STATIC_CATEGORY_LABEL_"
+                             :card              "_CARD_"
+                             :field-values      "name_param_id"}}))))
+
+(defmacro with-card-param-values-fixtures
+  "Execute `body` with all needed setup to tests param values on card."
+  [[binding card-values] & body]
+  `(do-with-card-param-values-fixtures ~card-values (fn [~binding] ~@body)))
+
+(deftest parameters-with-source-is-card-test
+  (testing "getting values"
+    (with-card-param-values-fixtures [{:keys [card param-keys]}]
+      (testing "GET /api/card/:card-id/params/:param-key/values"
+        (is (=? {:values          ["Brite Spot Family Restaurant"
+                                   "Red Medicine"
+                                   "Stout Burgers & Beers"
+                                   "The Apple Pan"
+                                   "Wurstküche"]
+                 :has_more_values false}
+                (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
+
+      (testing "GET /api/card/:card-id/params/:param-key/search/:query"
+        (is (= {:values          ["Red Medicine"]
+                :has_more_values false}
+               (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red")))))))
+
+  (testing "fallback to field-values"
+    (with-redefs [api.card/mapping->field-values (constantly "field-values")]
+      (testing "if value-field not found in source card"
+        (mt/with-temp* [Card [{source-card-id :id}]
+                        Card [card
+                              {:parameters [{:id                   "abc"
+                                             :type                 "category"
+                                             :name                 "CATEGORY"
+                                             :values_source_type   "card"
+                                             :values_source_config {:card_id     source-card-id
+                                                                    :value_field (mt/$ids $venues.name)}}]}]]
+          (let [url (param-values-url card "abc")]
+            (is (= "field-values" (mt/user-http-request :rasta :get 200 url))))))
+
+      (testing "if card is archived"
+        (mt/with-temp* [Card [{source-card-id :id} {:archived true}]
+                        Card [card
+                              {:parameters [{:id                   "abc"
+                                             :type                 "category"
+                                             :name                 "CATEGORY"
+                                             :values_source_type   "card"
+                                             :values_source_config {:card_id     source-card-id
+                                                                    :value_field (mt/$ids $venues.name)}}]}]]
+          (let [url (param-values-url card "abc")]
+            (is (= "field-values" (mt/user-http-request :rasta :get 200 url))))))))
+
+  (testing "users must have permissions to read the collection that source card is in"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp*
+        [Collection [coll1 {:name "Source card collection"}]
+         Card       [{source-card-id :id}
+                     {:collection_id (:id coll1)
+                      :database_id   (mt/id)
+                      :table_id      (mt/id :venues)
+                      :dataset_query (mt/mbql-query venues {:limit 5})}]
+         Collection [coll2 {:name "Card collections"}]
+         Card       [{card-id         :id}
+                     {:collection_id  (:id coll2)
+                      :database_id    (mt/id)
+                      :dataset_query  (mt/mbql-query venues)
+                      :parameters     [{:id                   "abc"
+                                        :type                 "category"
+                                        :name                 "CATEGORY"
+                                        :values_source_type   "card"
+                                        :values_source_config {:card_id     source-card-id
+                                                               :value_field (mt/$ids $venues.name)}}]
+                      :table_id       (mt/id :venues)}]]
+        (testing "Fail because user doesn't have read permissions to coll1"
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc"))))
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc" "search-query")))))
+        ;; grant permission to read the collection contains the card
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll2)
+        (testing "having read permissions to the card collection is not enough"
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc"))))
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc" "search-query")))))
+        ;; grant permission to read the collection contains the source card
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll1)
+        (testing "success if has read permission to the source card's collection"
+          (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc"))))
+          (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "search-query")))))))))
+
+(deftest paramters-using-old-style-field-values
+  (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+    (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
+      (testing "without search query"
+        (let [response (mt/user-http-request :rasta :get 200
+                                             (param-values-url field-filter-card (:field-values param-keys)))]
+          (is (false? (:has_more_values response)))
+          (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                           (-> response :values set)))))
+      (testing "with search query"
+        (let [response (mt/user-http-request :rasta :get 200
+                                             (param-values-url field-filter-card
+                                                               (:field-values param-keys)
+                                                               "bar"))]
+          (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                           (-> response :values set)))
+          (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))
+  (testing "Old style, inferred parameters from native template-tags"
+    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+      ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
+      (db/update! Card (:id field-filter-card) :parameters [])
+      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
+        (testing "without search query"
+          (let [response (mt/user-http-request :rasta :get 200
+                                               (param-values-url field-filter-card (:field-values param-keys)))]
+            (is (false? (:has_more_values response)))
+            (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                             (-> response :values set)))))
+        (testing "with search query"
+          (let [response (mt/user-http-request :rasta :get 200
+                                               (param-values-url field-filter-card
+                                                                 (:field-values param-keys)
+                                                                 "bar"))]
+            (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                             (-> response :values set)))
+            (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
+
+(deftest parameters-with-source-is-static-list-test
+  (with-card-param-values-fixtures [{:keys [card param-keys]}]
+    (testing "we could get the values"
+      (is (= {:has_more_values false,
+              :values          ["African" "American" "Asian"]}
+             (mt/user-http-request :rasta :get 200
+                                   (param-values-url card (:static-list param-keys)))))
+
+      (is (= {:has_more_values false,
+              :values          [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}
+             (mt/user-http-request :rasta :get 200
+                                   (param-values-url card (:static-list-label param-keys))))))
+
+    (testing "we could search the values"
+      (is (= {:has_more_values false,
+              :values          ["African"]}
+             (mt/user-http-request :rasta :get 200
+                                   (param-values-url card (:static-list param-keys) "af"))))
+
+      (is (= {:has_more_values false,
+              :values          [["African" "Af"]]}
+             (mt/user-http-request :rasta :get 200
+                                   (param-values-url card (:static-list-label param-keys) "af")))))
+
+    (testing "we could edit the values list"
+      (let [card (mt/user-http-request :rasta :put 200 (str "card/" (:id card))
+                                       {:parameters [{:name                  "Static Category",
+                                                      :slug                  "static_category"
+                                                      :id                    "_STATIC_CATEGORY_",
+                                                      :type                  "category",
+                                                      :values_source_type    "static-list"
+                                                      :values_source_config {"values" ["BBQ" "Bakery" "Bar"]}}]})]
+        (is (= [{:name                  "Static Category",
+                 :slug                  "static_category"
+                 :id                    "_STATIC_CATEGORY_",
+                 :type                  "category",
+                 :values_source_type    "static-list"
+                 :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
+               (:parameters card)))))))

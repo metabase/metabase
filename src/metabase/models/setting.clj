@@ -29,7 +29,7 @@
   You can define additional Settings types adding implementations of [[default-tag-for-type]], [[get-value-of-type]],
   and [[set-value-of-type!]].
 
-  [[admin-writable-settings]] and [[user-readable-values-map]] can be used to fetch *all* Admin-writable and
+  [[writable-settings]] and [[user-readable-values-map]] can be used to fetch *all* Admin-writable and
   User-readable Settings, respectively. See their docstrings for more information.
 
   ### User-local and Database-local Settings
@@ -50,7 +50,7 @@
 
   * `:only` means this Setting can *only* have a User- or Database-local value and cannot have a 'normal' site-wide
   value. It cannot be set via env var. Default values are still allowed for User- and Database-local-only Settings.
-  User- and Database-local-only Settings are never returned by [[admin-writable-settings]] or
+  User- and Database-local-only Settings are never returned by [[writable-settings]] or
   [[user-readable-values-map]] regardless of their [[Visibility]].
 
   * `:allowed` means this Setting can be User- or Database-local and can also have a normal site-wide value; if both
@@ -72,28 +72,32 @@
 
   See #14055 and #19399 for more information about and motivation behind User- and Database-local Settings."
   (:refer-clojure :exclude [get])
-  (:require [cheshire.core :as json]
-            [clojure.core :as core]
-            [clojure.data :as data]
-            [clojure.data.csv :as csv]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [environ.core :as env]
-            [medley.core :as m]
-            [metabase.api.common :as api]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.setting.cache :as setting.cache]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models])
-  (:import [clojure.lang Keyword Symbol]
-           java.io.StringWriter
-           java.time.temporal.Temporal))
+  (:require
+   [cheshire.core :as json]
+   [clojure.core :as core]
+   [clojure.data :as data]
+   [clojure.data.csv :as csv]
+   [clojure.string :as str]
+   [environ.core :as env]
+   [medley.core :as m]
+   [metabase.api.common :as api]
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.setting.cache :as setting.cache]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
+   [metabase.util.log :as log]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang Keyword Symbol)
+   (java.io StringWriter)
+   (java.time.temporal Temporal)))
 
 ;; TODO -- a way to SET Database-local values.
 (def ^:dynamic *database-local-values*
@@ -135,15 +139,12 @@
 
 (declare admin-writable-site-wide-settings get-value-of-type set-value-of-type!)
 
-(models/defmodel Setting
-  "The model that underlies [[defsetting]]."
-  :setting)
+(models/defmodel Setting :setting)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Setting)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types       (constantly {:value :encrypted-text})
-          :primary-key (constantly :key)}))
+(mi/define-methods
+ Setting
+ {:types       (constantly {:value :encrypted-text})
+  :primary-key (constantly :key)})
 
 (defmethod serdes.hash/identity-hash-fields Setting
   [_setting]
@@ -168,7 +169,7 @@
           "Valid Setting :type"))
 
 (def ^:private Visibility
-  (s/enum :public :authenticated :admin :internal))
+  (s/enum :public :authenticated :settings-manager :admin :internal))
 
 (defmulti default-tag-for-type
   "Type tag that will be included in the Setting's metadata, so that the getter function will not cause reflection
@@ -235,7 +236,7 @@
    :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
    :visibility  Visibility       ; where this setting should be visible (default: :admin)
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
-   :deprecated  (s/maybe s/Str)            ; if non-nil, contains the Metabase version in which this setting was deprecated
+   :deprecated  (s/maybe s/Str)  ; if non-nil, contains the Metabase version in which this setting was deprecated
 
    ;; whether this Setting can be Database-local or User-local. See [[metabase.models.setting]] docstring for more info.
    :database-local LocalOption
@@ -350,18 +351,20 @@
   set to true when settings are being written directly via /api/setting endpoints."
   false)
 
-(defn- has-advanced-setting-access?
+(defn has-advanced-setting-access?
   "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
-  Return `false` when `advanced-permissions` is disabled."
+  Return `false` for all non-admins when `advanced-permissions` is disabled. Return `true` for all admins."
   []
-  (u/ignore-exceptions
-   (classloader/require 'metabase-enterprise.advanced-permissions.common
-                        'metabase.public-settings.premium-features))
-  (if-let [current-user-has-application-permisisons?
-           (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
-                (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
-    (current-user-has-application-permisisons? :setting)
-    false))
+  (or api/*is-superuser?*
+      (do
+        (u/ignore-exceptions
+         (classloader/require 'metabase-enterprise.advanced-permissions.common
+                              'metabase.public-settings.premium-features))
+        (if-let [current-user-has-application-permisisons?
+                 (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
+                      (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
+          (current-user-has-application-permisisons? :setting)
+          false))))
 
 (defn- current-user-can-access-setting?
   "This checks whether the current user should have the ability to read or write the provided setting.
@@ -373,8 +376,13 @@
   (or (not *enforce-setting-access-checks*)
       (nil? api/*current-user-id*)
       api/*is-superuser?*
-      (has-advanced-setting-access?)
       (and
+       ;; Non-admin setting managers can only access settings that are not marked as admin-only
+       (not api/*is-superuser?*)
+       (has-advanced-setting-access?)
+       (not= (:visibility setting) :admin))
+      (and
+       ;; Non-admins can only access user-local settings not marked as admin-only
        (allows-user-local-values? setting)
        (not= (:visibility setting) :admin))))
 
@@ -389,7 +397,12 @@
   (str "MB_" (-> (setting-name setting-definition-or-name)
                  munge-setting-name
                  (str/replace "-" "_")
-                 str/upper-case)))
+                 u/upper-case-en)))
+
+(defn setting-env-map-name
+  "Correctly translate a setting to the keyword it will be found at in [[env/env]]."
+  [setting-definition-or-name]
+  (keyword (str "mb-" (munge-setting-name (setting-name setting-definition-or-name)))))
 
 (defn env-var-value
   "Get the value of `setting-definition-or-name` from the corresponding env var, if any.
@@ -400,7 +413,7 @@
   ^String [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
     (when (allows-site-wide-values? setting)
-      (let [v (env/env (keyword (str "mb-" (munge-setting-name (setting-name setting)))))]
+      (let [v (env/env (setting-env-map-name setting))]
         (when (seq v)
           v)))))
 
@@ -499,7 +512,7 @@
   "Interpret a `string-value` of a Setting as a boolean."
   [string-value :- (s/maybe s/Str)]
   (when (seq string-value)
-    (case (str/lower-case string-value)
+    (case (u/lower-case-en string-value)
       "true"  true
       "false" false
       (throw (Exception.
@@ -564,14 +577,9 @@
   "Update an existing Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
   [setting-name new-value]
   (assert (not= setting-name setting.cache/settings-last-updated-key)
-    (tru "You cannot update `settings-last-updated` yourself! This is done automatically."))
-  ;; This is indeed a very annoying way of having to do things, but `update-where!` doesn't call `pre-update` (in case
-  ;; it updates thousands of objects). So we need to manually trigger `pre-update` behavior by calling `do-pre-update`
-  ;; so that `value` can get encrypted if `MB_ENCRYPTION_SECRET_KEY` is in use. Then take that possibly-encrypted
-  ;; value and pass that into `update-where!`.
-  (let [{maybe-encrypted-new-value :value} (models/do-pre-update Setting {:value new-value})]
-    (db/update-where! Setting {:key setting-name}
-      :value maybe-encrypted-new-value)))
+          (tru "You cannot update `settings-last-updated` yourself! This is done automatically."))
+  ;; Toucan 2 version of `update!` will do transforms and stuff like that
+  (t2/update! Setting :key setting-name {:value new-value}))
 
 (defn- set-new-setting!
   "Insert a new row for a Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
@@ -870,13 +878,18 @@
   [description-form]
   (when-not (valid-trs-or-tru? description-form)
     ;; this doesn't need to be i18n'ed because it's a compile-time error.
-    (throw (ex-info (str "defsetting docstrings must be an *deferred* i18n form unless the Setting has"
-                         " `:visibilty` `:internal` or `:setter` `:none`."
+    (throw (ex-info (str "defsetting docstrings must be a *deferred* i18n form unless the Setting has"
+                         " `:visibilty` `:internal`, `:setter` `:none`, or is defined in a test namespace."
                          (format " Got: ^%s %s"
                                  (some-> description-form class (.getCanonicalName))
                                  (pr-str description-form)))
                     {:description-form description-form})))
   description-form)
+
+(defn- in-test?
+  "Is `defsetting` currently being used in a test namespace?"
+  []
+  (str/ends-with? (ns-name *ns*) "-test"))
 
 (defmacro defsetting
   "Defines a new Setting that will be added to the DB at some point in the future.
@@ -905,7 +918,18 @@
 
   ###### `:visibility`
 
-  `:public`, `:authenticated`, `:admin` (default), or `:internal`. Controls where this setting is visible
+  Controls where this setting is visibile, and who can update it. Possible values are:
+
+    Visibility       | Who Can See It?              | Who Can Update It?
+    ---------------- | ---------------------------- | --------------------
+    :public          | The entire world             | Admins and Settings Managers
+    :authenticated   | Logged-in Users              | Admins and Settings Managers
+    :settings-manager| Admins and Settings Managers | Admins and Settings Managers
+    :admin           | Admins                       | Admins
+    :internal        | Nobody                       | No one (usually for env-var-only settings)
+
+  'Settings Managers' are non-admin users with the 'settings' permission, which gives them access to the Settings page
+  in the Admin Panel.
 
   ###### `:getter`
 
@@ -927,7 +951,7 @@
 
   Is this a sensitive setting, such as a password, that we should never return in plaintext? (Default: `false`).
   Obfuscation is not done by getter functions, but instead by functions that ultimately return these values via the
-  API, such as [[admin-writable-settings]] below. (In other words, code in the backend can continute to consume
+  API, such as [[writable-settings]] below. (In other words, code in the backend can continute to consume
   sensitive Settings normally; sensitivity is a purely user-facing option.)
 
   ###### `:database-local`
@@ -958,7 +982,8 @@
          ;; and `exciting!!` for the setter.
          (not (str/includes? (name setting-symbol) "!"))]}
   (let [description               (if (or (= (:visibility options) :internal)
-                                          (= (:setter options) :none))
+                                          (= (:setter options) :none)
+                                          (in-test?))
                                     description
                                     (validate-description-form description))
         definition-form           (assoc options
@@ -1060,7 +1085,27 @@
                        (tru "Using value of env var {0}" (str \$ (env-var-name setting)))
                        default)}))
 
-(defn admin-writable-settings
+(defn current-user-readable-visibilities
+  "Returns a set of setting visibilities that the current user has read access to."
+  []
+  (set (concat [:public]
+               (when @api/*current-user*
+                 [:authenticated])
+               (when (has-advanced-setting-access?)
+                 [:settings-manager])
+               (when api/*is-superuser?*
+                 [:admin]))))
+
+(defn current-user-writable-visibilities
+  "Returns a set of setting visibilities that the current user has write access to."
+  []
+  (set (concat []
+               (when (has-advanced-setting-access?)
+                 [:settings-manager :authenticated :public])
+               (when api/*is-superuser?*
+                 [:admin]))))
+
+(defn writable-settings
   "Return a sequence of site-wide Settings maps in a format suitable for consumption by the frontend.
   (For security purposes, this doesn't return the value of a Setting if it was set via env var).
 
@@ -1068,20 +1113,24 @@
 
   This is currently used by `GET /api/setting` ([[metabase.api.setting/GET_]]; admin-only; powers the Admin Settings
   page) so all admin-visible Settings should be included. We *do not* want to return env var values, since admins
-  are not allowed to modify them."
+  are not allowed to modify them.
+
+  For settings managers who are not admins, only the subset of settings with the :settings-manager visibility level
+  are returned."
   [& {:as options}]
   ;; ignore Database-local values, but not User-local values
-  (binding [*database-local-values* nil]
-    (into
-     []
-     (comp (filter (fn [setting]
-                     (and (not= (:visibility setting) :internal)
-                          (not= (:database-local setting) :only))))
-           (map #(m/mapply user-facing-info % options)))
-     (sort-by :name (vals @registered-settings)))))
+  (let [writable-visibilities (current-user-writable-visibilities)]
+    (binding [*database-local-values* nil]
+      (into
+       []
+       (comp (filter (fn [setting]
+                       (and (contains? writable-visibilities (:visibility setting))
+                            (not= (:database-local setting) :only))))
+             (map #(m/mapply user-facing-info % options)))
+       (sort-by :name (vals @registered-settings))))))
 
 (defn admin-writable-site-wide-settings
-  "Returns a sequence of site-wide Settings maps, similar to [[admin-writable-settings]]. However, this function
+  "Returns a sequence of site-wide Settings maps, similar to [[writable-settings]]. However, this function
   excludes User-local Settings in addition to Database-local Settings. Settings that are optionally user-local will
   be included with their site-wide value, if a site-wide value is set.
 
@@ -1100,24 +1149,32 @@
            (map #(m/mapply user-facing-info % options)))
      (sort-by :name (vals @registered-settings)))))
 
+(defn can-read-setting?
+  "Returns true if a setting can be read according to the provided set of `allowed-visibilities`, and false otherwise.
+   `allowed-visibilities` is a set of visibilities that the user can read."
+  [setting allowed-visibilities]
+  (let [setting (resolve-setting setting)]
+    (boolean (and (not (:sensitive? setting))
+                  (contains? allowed-visibilities (:visibility setting))))))
+
 (defn user-readable-values-map
-  "Returns Settings as a map of setting name -> site-wide value for a given [[Visibility]] e.g. `:public`.
+  "Returns Settings as a map of setting name -> site-wide value for a given set of [[Visibility]] keywords
+  e.g. `#{:public :authenticated}`.
 
   Settings marked `:sensitive?` (e.g. passwords) are excluded.
 
-  The is currently used by `GET /api/session/properties` ([[metabase.api.session/GET_properties]]) and
+  This is currently used by `GET /api/session/properties` ([[metabase.api.session/GET_properties]]) and
   in [[metabase.server.routes.index/load-entrypoint-template]]. These are used as read-only sources of Settings for
   the frontend client. For that reason, these Settings *should* include values that come back from environment
   variables, *unless* they are marked `:sensitive?`."
-  [visibility]
+  [visibilities]
   ;; ignore Database-local values, but not User-local values
   (binding [*database-local-values* nil]
     (into
      {}
      (comp (filter (fn [[_setting-name setting]]
-                     (and (not (:sensitive? setting))
-                          (allows-site-wide-values? setting)
-                          (= (:visibility setting) visibility))))
+                     (and (allows-site-wide-values? setting)
+                          (can-read-setting? setting visibilities))))
            (map (fn [[setting-name]]
                   [setting-name (get setting-name)])))
      @registered-settings)))

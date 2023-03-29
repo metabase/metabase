@@ -33,7 +33,7 @@ export const InfoIcon = styled(Icon)`
   color: ${color("bg-dark")};
 
   &:hover {
-    color: ${() => color("brand")};
+    color: ${color("brand")};
   }
 `;
 

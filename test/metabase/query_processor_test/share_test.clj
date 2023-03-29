@@ -1,10 +1,11 @@
 (ns metabase.query-processor-test.share-test
   "Tests for the `:share` aggregation."
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.test :as mt]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
@@ -31,14 +32,22 @@
                                    [:ends-with $name "t"]]]]]})))))
 
     (testing "empty results"
-      ;; due to a bug in the Mongo counts are returned as empty when there are no results (#5419)
-      (is (= (if (= driver/*driver* :mongo)
-               []
-               [[nil]])
-             (mt/rows
-               (mt/run-mbql-query venues
-                 {:aggregation [[:share [:< $price 4]]]
-                  :filter      [:> $price Long/MAX_VALUE]})))))))
+      ;; Vertica doesn't allow dividing null by zero
+      ;; TODO consider wrapping all divisions in nullif checking the first argument
+      (if (= driver/*driver* :vertica)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Division by zero"
+             (mt/run-mbql-query venues
+               {:aggregation [[:share [:< $price 4]]]
+               :filter      [:> $price Long/MAX_VALUE]})))
+        ;; due to a bug in the Mongo counts are returned as empty when there are no results (#5419)
+        (is (= (if (= driver/*driver* :mongo)
+                 []
+                 [[nil]])
+               (mt/rows
+                (mt/run-mbql-query venues
+                  {:aggregation [[:share [:< $price 4]]]
+                   :filter      [:> $price Long/MAX_VALUE]}))))))))
 
 (deftest segments-metrics-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)

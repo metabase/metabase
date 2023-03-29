@@ -1,13 +1,14 @@
-(ns metabase-enterprise.serialization.v2.backfill-ids-test
+(ns ^:mb/once metabase-enterprise.serialization.v2.backfill-ids-test
   (:require
-    [clojure.test :refer :all]
-    [metabase-enterprise.serialization.test-util :as ts]
-    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-    [metabase.models :refer [Collection]]
-    [toucan.db :as db]))
+   [clojure.test :refer :all]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
+   [metabase.models :refer [Collection]]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 (deftest backfill-needed-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [Collection [{c1-id :id} {:name "some collection"}]
                        Collection [{c2-id :id} {:name "other collection"}]
                        ;; These two deliberately have the same name!
@@ -31,7 +32,7 @@
           (is (every? some? (all-eids))))))))
 
 (deftest no-overwrite-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [Collection [{c1-id :id c1-eid :entity_id} {:name "some collection"}]
                        Collection [{c2-id :id}                   {:name "other collection"}]]
       (testing "deleting the entity_id for one of them"
@@ -47,7 +48,7 @@
           (is (= c1-eid (db/select-one-field :entity_id Collection :id c1-id))))))))
 
 (deftest repeatable-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [Collection [{c1-eid :entity_id} {:name "some collection"}]
                        Collection [{c2-id :id}         {:name "other collection"}]]
       (testing "deleting the entity_id for one of them"

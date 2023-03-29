@@ -1,9 +1,12 @@
 (ns metabase.cmd.reset-password
-  (:require [metabase.db :as mdb]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-trs trs]]
-            [toucan.db :as db]))
+  (:require
+   [metabase.db :as mdb]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-trs trs]]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (defn- set-reset-token!
   "Set and return a new `reset_token` for the user with EMAIL-ADDRESS."

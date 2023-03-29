@@ -1,8 +1,9 @@
 (ns metabase-enterprise.audit-app.interface
-  (:require [metabase.plugins.classloader :as classloader]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def ResultsMetadata
   "Schema for the expected format for `:metadata` returned by an internal query function."

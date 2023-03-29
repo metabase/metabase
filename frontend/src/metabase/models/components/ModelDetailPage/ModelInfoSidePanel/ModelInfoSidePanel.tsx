@@ -39,20 +39,28 @@ function ModelInfoSidePanel({ model, mainTable, onChangeDescription }: Props) {
           isOptional
           isMultiline
           isDisabled={!canWrite}
+          aria-label={t`Description`}
           onChange={onChangeDescription}
         />
       </ModelInfoSection>
-      <ModelRelationships model={model} mainTable={mainTable} />
+      {!model.isNative() && (
+        <ModelRelationships model={model} mainTable={mainTable} />
+      )}
       {modelCard.creator && (
         <ModelInfoSection>
           <ModelInfoTitle>{t`Contact`}</ModelInfoTitle>
-          <ModelInfoText>{modelCard.creator.common_name}</ModelInfoText>
+          <ModelInfoText aria-label={t`Contact`}>
+            {modelCard.creator.common_name}
+          </ModelInfoText>
         </ModelInfoSection>
       )}
       {mainTable && (
         <ModelInfoSection>
           <ModelInfoTitle>{t`Backing table`}</ModelInfoTitle>
-          <ModelInfoLink to={mainTable.newQuestion().getUrl({ clean: false })}>
+          <ModelInfoLink
+            to={mainTable.newQuestion().getUrl({ clean: false })}
+            aria-label={t`Backing table`}
+          >
             {mainTable.displayName()}
           </ModelInfoLink>
         </ModelInfoSection>

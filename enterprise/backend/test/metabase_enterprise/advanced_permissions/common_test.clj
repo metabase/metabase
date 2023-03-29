@@ -1,18 +1,19 @@
 (ns metabase-enterprise.advanced-permissions.common-test
-  (:require [cheshire.core :as json]
-            [clojure.core.memoize :as memoize]
-            [clojure.test :refer :all]
-            [metabase.api.database :as api.database]
-            [metabase.models :refer [Database Field FieldValues Permissions Table]]
-            [metabase.models.database :as database]
-            [metabase.models.field :as field]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.sync.concurrent :as sync.concurrent]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.core.memoize :as memoize]
+   [clojure.test :refer :all]
+   [metabase.api.database :as api.database]
+   [metabase.models :refer [Dashboard DashboardCard Database Field FieldValues Permissions Table]]
+   [metabase.models.database :as database]
+   [metabase.models.field :as field]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.sync.concurrent :as sync.concurrent]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn- do-with-all-user-data-perms
   [graph f]
@@ -30,7 +31,7 @@
            (@#'perms/update-group-permissions! all-users-group-id current-graph)))))))
 
 (defmacro ^:private with-all-users-data-perms
-  "Runs `f` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
+  "Runs `body` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
   permissions feature flag, and clears the (5 second TTL) cache used for Field permissions, for convenience."
   [graph & body]
   `(do-with-all-user-data-perms ~graph (fn [] ~@body)))
@@ -432,3 +433,28 @@
                                          :details :yes}}
         (is (partial= {:details {}}
              (mt/user-http-request :rasta :get 200 (format "database/%d?exclude_uneditable_details=true" db-id))))))))
+
+(deftest actions-test
+  (mt/with-temp-copy-of-db
+    (mt/with-actions-test-data
+      (mt/with-actions [{:keys [action-id model-id]} {}]
+        (testing "Executing dashcard with action"
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :action_id action-id
+                                                            :card_id model-id}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
+                                       dashboard-id
+                                       dashcard-id)]
+              (testing "Fails with access to the DB blocked"
+                (with-all-users-data-perms {(u/the-id (mt/db)) {:data    {:native :none :schemas :block}
+                                                                :details :yes}}
+                  (mt/with-actions-enabled
+                    (is (partial= {:message "You don't have permissions to do that."}
+                                  (mt/user-http-request :rasta :post 403 execute-path
+                                                        {:parameters {"id" 1}}))))))
+              (testing "Works with access to the DB not blocked"
+                (mt/with-actions-enabled
+                  (is (= {:rows-affected 1}
+                         (mt/user-http-request :rasta :post 200 execute-path
+                                               {:parameters {"id" 1}}))))))))))))

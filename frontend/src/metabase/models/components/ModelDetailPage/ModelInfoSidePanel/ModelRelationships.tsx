@@ -25,17 +25,20 @@ function ModelRelationships({ model, mainTable }: Props) {
     );
   }, [model, mainTable]);
 
-  if (relatedTables.length <= 0) {
+  if (relatedTables.length === 0) {
     return null;
   }
 
   return (
     <ModelInfoSection>
       <ModelInfoTitle>{t`Relationships`}</ModelInfoTitle>
-      <List>
+      <List data-testid="model-relationships">
         {relatedTables.map(table => (
           <li key={table.id}>
-            <ListItemLink to={table.newQuestion().getUrl()}>
+            <ListItemLink
+              to={table.newQuestion().getUrl()}
+              aria-label={table.displayName()}
+            >
               <Icon name="table" />
               <ListItemName>{table.displayName()}</ListItemName>
             </ListItemLink>

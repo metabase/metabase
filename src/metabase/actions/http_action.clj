@@ -1,20 +1,19 @@
 (ns metabase.actions.http-action
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.driver.common.parameters :as params]
-            [metabase.driver.common.parameters.parse :as params.parse]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]])
-  (:import com.fasterxml.jackson.databind.ObjectMapper
-           (net.thisptr.jackson.jq
-             BuiltinFunctionLoader
-             JsonQuery
-             Output
-             Scope
-             Versions)))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.string :as str]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log])
+  (:import
+   (com.fasterxml.jackson.databind ObjectMapper)
+   (net.thisptr.jackson.jq BuiltinFunctionLoader JsonQuery Output Scope Versions)))
+
+(set! *warn-on-reflection* true)
 
 (defonce ^:private root-scope
   (delay

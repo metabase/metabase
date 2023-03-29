@@ -603,6 +603,10 @@ export const setTimeComponent = (value, hours, minutes) => {
   }
 };
 
+const getMomentDateForSerialization = date => {
+  return date.clone().locale("en");
+};
+
 export const TIME_SELECTOR_DEFAULT_HOUR = 12;
 export const TIME_SELECTOR_DEFAULT_MINUTE = 30;
 
@@ -624,7 +628,7 @@ export const EXCLUDE_OPTIONS = {
         return {
           displayName,
           value,
-          serialized: date.format("ddd"),
+          serialized: getMomentDateForSerialization(date).format("ddd"),
           test: val => value === val,
         };
       }),
@@ -645,7 +649,7 @@ export const EXCLUDE_OPTIONS = {
       return {
         displayName,
         value,
-        serialized: date.format("MMM"),
+        serialized: getMomentDateForSerialization(date).format("MMM"),
         test: value => moment(value).format("MMMM") === displayName,
       };
     };
@@ -662,7 +666,7 @@ export const EXCLUDE_OPTIONS = {
         return {
           displayName: displayName + suffix,
           value,
-          serialized: date.format("Q"),
+          serialized: getMomentDateForSerialization(date).format("Q"),
           test: value => moment(value).format("Qo") === displayName,
         };
       }),

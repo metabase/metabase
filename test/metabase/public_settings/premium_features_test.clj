@@ -5,6 +5,7 @@
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
    [metabase.config :as config]
+   [metabase.db.connection :as mdb.connection]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features
@@ -12,7 +13,9 @@
     :refer [defenterprise defenterprise-schema]]
    [metabase.test :as mt]
    [schema.core :as s]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn do-with-premium-features [features f]
   (let [features (set (map name features))]
@@ -36,8 +39,8 @@
 (defn- token-status-response
   [token premium-features-response]
   (http-fake/with-fake-routes-in-isolation
-    {{:address      (#'premium-features/token-status-url token)
-      :query-params {:users     (str (#'premium-features/active-user-count))
+    {{:address      (#'premium-features/token-status-url token @#'premium-features/token-check-url)
+      :query-params {:users     (str (#'premium-features/active-users-count*))
                      :site-uuid (public-settings/site-uuid-for-premium-features-token-checks)}}
      (constantly premium-features-response)}
     (#'premium-features/fetch-token-status* token)))
@@ -77,7 +80,7 @@
                   :status        "Unable to validate token"
                   :error-details "network issues"}
                  (premium-features/fetch-token-status (apply str (repeat 64 "b")))))))
-      (testing "Only attempt the token once"
+      (testing "Only attempt the token twice (default and fallback URLs)"
         (let [call-count (atom 0)
               token      (random-token)]
           (binding [clj-http.client/request (fn [& _]
@@ -100,7 +103,7 @@
                                     #'premium-features/enable-serialization?]]
                 (testing (format "\n%s is false" (:name (meta has-feature?)))
                   (is (not (has-feature?)))))
-              (is (= 1
+              (is (= 2
                      @call-count))))))
 
       (testing "With a valid token"
@@ -254,3 +257,17 @@
   (testing "If premium-embedding-token is nil, the token-status setting should also be nil."
     (mt/with-temporary-setting-values [premium-embedding-token nil]
       (is (nil? (premium-features/token-status))))))
+
+(deftest active-users-count-setting-test
+  (t2.with-temp/with-temp
+    [User _ {:is_active false}]
+    ;; premium-features/active-users-count is cached so it could be make the test flaky
+    ;; rebinding to avoid caching
+    (testing "returns the number of active users"
+      (with-redefs [premium-features/cached-active-user-count #'premium-features/active-users-count*]
+        (is (= (t2/count :core_user :is_active true)
+               (premium-features/active-users-count)))))
+
+    (testing "Default to 0 if db is not setup yet"
+      (binding [mdb.connection/*application-db* {:status (atom nil)}]
+        (is (zero? (premium-features/active-users-count)))))))

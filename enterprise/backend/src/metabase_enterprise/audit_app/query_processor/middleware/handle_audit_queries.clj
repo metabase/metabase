@@ -37,15 +37,16 @@
     {:metadata ...
      :results  (fn [context] ...)
      :xform    ...}"
-  (:require [clojure.data :as data]
-            [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase.api.common.validation :as validation]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.data :as data]
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase.api.common.validation :as validation]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (defn- check-results-and-metadata-keys-match
   "Primarily for dev and debugging purposes. We can probably take this out when shipping the finished product."
@@ -58,10 +59,10 @@
         (throw
          (Exception.
           (str "results-keys and metadata-keys differ.\n"
-               "results-keys:" results-keys "\n"
-               "metadata-keys:" metadata-keys "\n"
-               "in results, but not metadata:" only-in-results "\n"
-               "in metadata, but not results:" only-in-metadata)))))))
+               "results-keys: " results-keys "\n"
+               "metadata-keys: " metadata-keys "\n"
+               "in results, but not metadata: " only-in-results "\n"
+               "in metadata, but not results: " only-in-metadata)))))))
 
 (defn- metadata->cols [metadata]
   (for [[k v] metadata]

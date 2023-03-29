@@ -1,10 +1,12 @@
 (ns metabase.query-processor.middleware.resolve-source-table-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-source-table]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor.middleware.resolve-source-table
+    :as qp.resolve-source-table]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.test :as mt]))
 
 (defn- resolve-source-tables [query]
   (qp.resolve-source-table/resolve-source-tables query))

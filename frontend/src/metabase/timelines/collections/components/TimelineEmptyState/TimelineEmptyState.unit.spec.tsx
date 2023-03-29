@@ -23,7 +23,7 @@ describe("TimelineEmptyState", () => {
 
     render(<TimelineEmptyState {...props} />);
 
-    expect(screen.getByText("January 1, 2015"));
+    expect(screen.getByText("January 1, 2015")).toBeInTheDocument();
   });
 
   it("should not allow to add events when the timeline is read-only", () => {

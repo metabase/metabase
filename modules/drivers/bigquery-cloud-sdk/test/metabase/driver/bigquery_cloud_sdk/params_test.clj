@@ -1,9 +1,12 @@
 (ns metabase.driver.bigquery-cloud-sdk.params-test
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]))
 
-(deftest set-parameters-test
+(set! *warn-on-reflection* true)
+
+(deftest ^:parallel set-parameters-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Make sure we're setting various types of parameters correctly\n"
       (doseq [[v expected] [[nil                                        {:base-type :type/Text}]
@@ -19,10 +22,10 @@
                             [(double 100.0)                             {:base-type :type/Float}]
                             ;; one case for NUMERIC/DECIMAL
                             [(bigdec "-2.3E+16")                        {:base-type :type/Decimal
-                                                                         :v         "-23000000000000000"}]
+                                                                         :v         -23000000000000000M}]
                             ;; and one for BIGNUMERIC/BIGDECIMAL
                             [(bigdec "1.6E+31")                         {:base-type :type/Decimal
-                                                                         :v         "16000000000000000000000000000000"}]
+                                                                         :v         16000000000000000000000000000000M}]
                             ;; LocalDate
                             [#t "2020-05-26"                            {:base-type :type/Date
                                                                          :v         #t "2020-05-26"}]
@@ -43,8 +46,8 @@
         (testing (format "^%s %s" (some-> v class .getCanonicalName) (pr-str v))
           (let [results (qp/process-query
                          (assoc (mt/native-query
-                                  {:query  "SELECT ?"
-                                   :params [v]})
+                                 {:query  "SELECT ?"
+                                  :params [v]})
                                 :middleware {:format-rows? false}))]
             (is (= (or (:v expected) v)
                    (first (mt/first-row results))))

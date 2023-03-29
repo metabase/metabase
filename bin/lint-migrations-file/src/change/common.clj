@@ -1,5 +1,6 @@
 (ns change.common
-  (:require [clojure.spec.alpha :as s]))
+  (:require
+   [clojure.spec.alpha :as s]))
 
 (s/def ::tableName
   string?)

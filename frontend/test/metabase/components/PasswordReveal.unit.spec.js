@@ -1,18 +1,20 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, screen } from "@testing-library/react";
 import PasswordReveal from "metabase/components/PasswordReveal";
 
 describe("password reveal", () => {
   it("should toggle the visibility state when hide / show are clicked", () => {
-    const { getByText } = render(<PasswordReveal />);
+    render(<PasswordReveal />);
+    expect(screen.queryByText("Hide")).not.toBeInTheDocument();
 
-    fireEvent.click(getByText("Show"));
-    getByText("Hide");
+    fireEvent.click(screen.getByText("Show"));
+
+    expect(screen.getByText("Hide")).toBeInTheDocument();
+    expect(screen.queryByText("Show")).not.toBeInTheDocument();
   });
 
   it("should render a copy button", () => {
-    const { getByTestId } = render(<PasswordReveal />);
-    // implicit assertion => it will throw an error if element is not found
-    getByTestId("copy-button");
+    render(<PasswordReveal />);
+    expect(screen.getByTestId("copy-button")).toBeInTheDocument();
   });
 });

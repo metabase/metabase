@@ -1,35 +1,39 @@
 (ns metabase.query-processor.middleware.cache-test
   "Tests for the Query Processor cache."
-  (:require [buddy.core.codecs :as codecs]
-            [clojure.core.async :as a]
-            [clojure.data.csv :as csv]
-            [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.query :as query :refer [Query]]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.context.default :as context.default]
-            [metabase.query-processor.middleware.cache :as cache]
-            [metabase.query-processor.middleware.cache-backend.interface :as i]
-            [metabase.query-processor.middleware.cache.impl :as impl]
-            [metabase.query-processor.middleware.cache.impl-test :as impl-test]
-            [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
-            [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [pretty.core :as pretty]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [clojure.core.async :as a]
+   [clojure.data.csv :as csv]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.query :as query :refer [Query]]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.middleware.cache :as cache]
+   [metabase.query-processor.middleware.cache-backend.interface :as i]
+   [metabase.query-processor.middleware.cache.impl :as impl]
+   [metabase.query-processor.middleware.cache.impl-test :as impl-test]
+   [metabase.query-processor.middleware.process-userland-query
+    :as process-userland-query]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [pretty.core :as pretty]
+   [schema.core :as s]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -119,7 +123,7 @@
 (defmacro with-mock-cache [[& bindings] & body]
   `(do-with-mock-cache (fn [{:keys [~@bindings]}] ~@body)))
 
-(def ^:private ^:dynamic ^Integer *query-execution-delay-ms* 10)
+(def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
 (defn- test-query [query-kvs]
   (merge {:cache-ttl 60, :query :abc} query-kvs))

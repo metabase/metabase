@@ -1,30 +1,41 @@
 (ns metabase.driver.bigquery-cloud-sdk
-  (:require [clojure.core.async :as a]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
-            [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
-            [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
-            [metabase.driver.sync :as driver.s]
-            [metabase.models :refer [Database Table] :rename {Table MetabaseTable}] ; Table clashes with the class below
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import clojure.lang.PersistentList
-           [com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableListOption
-                                      BigQuery$TableOption BigQueryException BigQueryOptions Dataset DatasetId Field
-                                      Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table TableId
-                                      TableResult]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver :as driver]
+   [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+   [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
+   [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
+   [metabase.driver.sync :as driver.s]
+   [metabase.models :refer [Database]]
+   [metabase.models.table
+    :as table
+    :refer [Table]
+    :rename
+    {Table MetabaseTable}]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang PersistentList)
+   (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
+                              BigQuery$TableListOption BigQuery$TableOption BigQueryException BigQueryOptions Dataset
+                              DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table
+                              TableDefinition$Type TableId TableResult)))
+
+(set! *warn-on-reflection* true)
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
 
@@ -155,6 +166,65 @@
                table-schema->metabase-field-info
                set)})
 
+(defn- get-field-parsers [^Schema schema]
+  (into []
+        (map (fn [^Field field]
+               (let [column-type (.. field getType name)
+                     column-mode (.getMode field)
+                     method (get-method bigquery.qp/parse-result-of-type column-type)]
+                 (partial method column-type column-mode bigquery.common/*bigquery-timezone-id*))))
+        (.getFields schema)))
+
+(defn- parse-field-value [^FieldValue cell parser]
+  (when-let [v (.getValue cell)]
+    ;; There is a weird error where everything that *should* be NULL comes back as an Object.
+    ;; See https://jira.talendforge.org/browse/TBD-1592
+    ;; Everything else comes back as a String luckily so we can proceed normally.
+    (when-not (= (class v) Object)
+      (parser v))))
+
+(defn- extract-fingerprint [field-idxs parsers ^FieldValueList values]
+  (map (fn [^Integer idx parser]
+         (parse-field-value (.get values idx) parser))
+       field-idxs parsers))
+
+(defn- sample-table
+  "Process a sample of rows of fields corresponding to the Metabase fields
+  `fields` from the BigQuery table `bq-table` using the query result reducing
+  function `rff`.
+
+  `.getSchema` returns nil if called on the result of `.list`, so we have to
+  match fields by position. Here it is assumed that :database_position in
+  `fields` represents the positions of the columns in the BigQuery table and
+  that `.list` returns the fields in that order. The first assumption could be
+  lifted by matching the names in `fields` to the names in the table schema."
+  [^Table bq-table fields rff]
+  (let [field-idxs  (mapv :database_position fields)
+        all-parsers (get-field-parsers (.. bq-table getDefinition getSchema))
+        parsers     (mapv all-parsers field-idxs)
+        rows        (.list bq-table (u/varargs BigQuery$TableDataListOption))]
+    (transduce (comp (take metadata-queries/max-sample-rows)
+                     (map (partial extract-fingerprint field-idxs parsers)))
+               ;; Instead of passing on fields, we could recalculate the
+               ;; metadata from the schema, but that probably makes no
+               ;; difference and currently the metadata is ignored anyway.
+               (rff {:cols fields})
+               (-> rows .iterateAll .iterator iterator-seq))))
+
+(defmethod driver/table-rows-sample :bigquery-cloud-sdk
+  [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
+  (let [database (table/database table)
+        bq-table (get-table database dataset-id table-name)]
+    (if (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
+           ;; We couldn't easily test if the following two can show up as
+           ;; tables and if `.list` is supported for hem, so they are here
+           ;; to make sure we don't break existing instances.
+           TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
+         (.. bq-table getDefinition getType))
+      (do (log/debugf "%s.%s is a view, so we cannot use the list API; falling back to regular query"
+                      dataset-id table-name)
+          ((get-method driver/table-rows-sample :sql-jdbc) driver table fields rff opts))
+      (sample-table bq-table fields rff))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Running Queries                                                 |
@@ -180,7 +250,7 @@
   (try
     (let [request (doto (QueryJobConfiguration/newBuilder sql)
                     ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
-                    (.setUseLegacySql (str/includes? (str/lower-case sql) "#legacysql"))
+                    (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
                     (bigquery.params/set-parameters! parameters)
                     ;; .setMaxResults is very misleading; it's actually the page size, and it only takes
                     ;; effect for RPC (a.k.a. "fast") calls
@@ -205,6 +275,9 @@
               (when (future-done? res-fut) ; canceled received after it was finished; may as well return it
                 @res-fut)))))
       @res-fut)
+    (catch java.util.concurrent.CancellationException _e
+      ;; trying to deref the value after the future has been cancelled
+      (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters})))
     (catch BigQueryException e
       (if (.isRetryable e)
         (throw (ex-info (tru "BigQueryException executing query")
@@ -245,28 +318,17 @@
         (.getSchema resp)
 
         parsers
-        (doall
-          (for [^Field field (.getFields schema)
-                :let                    [column-type (.. field getType name)
-                                         column-mode (.getMode field)
-                                         method (get-method bigquery.qp/parse-result-of-type column-type)]]
-            (partial method column-type column-mode bigquery.common/*bigquery-timezone-id*)))
+        (get-field-parsers schema)
 
         columns
         (for [column (table-schema->metabase-field-info schema)]
           (-> column
-            (set/rename-keys {:base-type :base_type})
-            (dissoc :database-type :database-position)))]
+              (set/rename-keys {:base-type :base_type})
+              (dissoc :database-type :database-position)))]
     (respond
-      {:cols columns}
-      (for [^FieldValueList row (fetch-page resp cancel-requested?)]
-        (for [[^FieldValue cell, parser] (partition 2 (interleave row parsers))]
-          (when-let [v (.getValue cell)]
-            ;; There is a weird error where everything that *should* be NULL comes back as an Object.
-            ;; See https://jira.talendforge.org/browse/TBD-1592
-            ;; Everything else comes back as a String luckily so we can proceed normally.
-            (when-not (= (class v) Object)
-              (parser v))))))))
+     {:cols columns}
+     (for [^FieldValueList row (fetch-page resp cancel-requested?)]
+       (map parse-field-value row parsers)))))
 
 (defn- process-native* [respond database sql parameters cancel-chan]
   {:pre [(map? database) (map? (:details database))]}
@@ -357,7 +419,7 @@
     (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
                     db-id))
     (try
-      (db/execute! {:update MetabaseTable
+      (db/execute! {:update (t2/table-name MetabaseTable)
                     :set    {:schema dataset-id}
                     :where  [:and
                              [:= :db_id db-id]
@@ -375,7 +437,7 @@
       updated-db)))
 
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk
-  [_ {:keys [:details] :as database}]
+  [_driver {:keys [:details] :as database}]
   (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
     (log/errorf (str "Database ID %d, which was migrated from the legacy :bigquery driver to :bigquery-cloud-sdk, has"
                      " one or more OAuth style authentication scheme parameters saved to db-details, which cannot"

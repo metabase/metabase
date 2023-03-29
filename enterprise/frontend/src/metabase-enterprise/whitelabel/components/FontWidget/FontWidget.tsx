@@ -15,7 +15,7 @@ export interface FontWidgetProps {
 const FontWidget = ({
   setting,
   settingValues,
-  availableFonts = MetabaseSettings.get("available-fonts"),
+  availableFonts = MetabaseSettings.get("available-fonts") || [],
   onChange,
   onChangeSetting,
 }: FontWidgetProps): JSX.Element => {

@@ -1,11 +1,12 @@
 (ns metabase.models.session
-  (:require [buddy.core.codecs :as codecs]
-            [buddy.core.nonce :as nonce]
-            [metabase.server.middleware.misc :as mw.misc]
-            [metabase.server.request.util :as request.u]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.models :as models]))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.nonce :as nonce]
+   [metabase.models.interface :as mi]
+   [metabase.server.middleware.misc :as mw.misc]
+   [metabase.server.request.util :as request.u]
+   [schema.core :as s]
+   [toucan.models :as models]))
 
 (s/defn ^:private random-anti-csrf-token :- #"^[0-9a-f]{32}$"
   []
@@ -24,11 +25,9 @@
   (let [session-type (if anti-csrf-token :full-app-embed :normal)]
     (assoc session :type session-type)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Session)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:pre-insert  pre-insert
-    :post-insert post-insert
-    :pre-update  pre-update
-    :properties  (constantly {:created-at-timestamped? true})}))
+(mi/define-methods
+ Session
+ {:pre-insert  pre-insert
+  :post-insert post-insert
+  :pre-update  pre-update
+  :properties  (constantly {::mi/created-at-timestamped? true})})

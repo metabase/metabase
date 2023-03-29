@@ -1,81 +1,113 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 
-import { delay } from "metabase/lib/promise";
-
-// import the un-connected component so we can test its internal logic sans
-// redux
-import { SavedQuestionLoader } from "metabase/containers/SavedQuestionLoader";
+import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
+import { renderWithProviders } from "__support__/ui";
+import {
+  setupCardEndpoints,
+  setupSchemaEndpoints,
+  setupUnauthorizedSchemaEndpoints,
+  setupUnauthorizedCardEndpoints,
+} from "__support__/server-mocks";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
 
+const databaseMock = createMockDatabase({ id: 1 });
+
+const childrenRenderFn = ({ loading, question, error }) => {
+  if (error) {
+    return <div>error</div>;
+  }
+
+  if (loading) {
+    return <div>loading</div>;
+  }
+
+  return <div>{question.displayName()}</div>;
+};
+
+const setupQuestion = ({ id, name, hasAccess }) => {
+  const card = createMockCard({
+    id,
+    name,
+    result_metadata: [createMockColumn()],
+  });
+  const q = new Question(card, null);
+
+  if (hasAccess) {
+    setupCardEndpoints(q.card());
+  } else {
+    setupUnauthorizedCardEndpoints(q.card());
+  }
+
+  return card;
+};
+
+const setup = ({ questionId, hasAccess }) => {
+  if (hasAccess) {
+    setupSchemaEndpoints(databaseMock);
+  } else {
+    setupUnauthorizedSchemaEndpoints(databaseMock);
+  }
+
+  const card = setupQuestion({
+    id: questionId,
+    name: "Question 1",
+    hasAccess,
+  });
+
+  const { rerender } = renderWithProviders(
+    <SavedQuestionLoader questionId={questionId}>
+      {childrenRenderFn}
+    </SavedQuestionLoader>,
+  );
+
+  return { rerender, card };
+};
+
 describe("SavedQuestionLoader", () => {
-  let loadQuestionSpy, loadMetadataSpy, mockChild;
   beforeEach(() => {
-    // reset mocks between tests so we have fresh spies, etc
     jest.resetAllMocks();
-    mockChild = jest.fn().mockReturnValue(<div />);
-    loadMetadataSpy = jest.fn();
-    loadQuestionSpy = jest.spyOn(
-      SavedQuestionLoader.prototype,
-      "_loadQuestion",
-    );
   });
 
   it("should load a question given a questionId", async () => {
-    const questionId = 1;
-    const q = Question.create({ databaseId: 1, tableId: 2 });
-    const mockFetchQuestion = jest.fn().mockResolvedValue(q.card());
+    setup({ questionId: 1, hasAccess: true });
 
-    render(
-      <SavedQuestionLoader
-        questionId={questionId}
-        loadMetadataForCard={loadMetadataSpy}
-        fetchQuestion={mockFetchQuestion}
-      >
-        {mockChild}
-      </SavedQuestionLoader>,
-    );
-    expect(mockChild.mock.calls[0][0].loading).toEqual(true);
-    expect(mockChild.mock.calls[0][0].error).toEqual(null);
-
-    // stuff happens asynchronously
-    await delay(0);
-
-    expect(loadQuestionSpy).toHaveBeenCalledWith(questionId);
-
-    const calls = mockChild.mock.calls;
-    const { question, loading, error } = calls[calls.length - 1][0];
-    expect(question.card()).toEqual(q.card());
-    expect(loading).toEqual(false);
-    expect(error).toEqual(null);
+    expect(screen.getByText("loading")).toBeInTheDocument();
+    expect(await screen.findByText("Question 1")).toBeInTheDocument();
   });
 
-  it("should load a new question if the question ID changes", () => {
-    const originalQuestionId = 1;
-    const newQuestionId = 2;
+  it("should handle errors", async () => {
+    setup({ questionId: 1, hasAccess: false });
 
-    const { rerender } = render(
-      <SavedQuestionLoader
-        questionId={originalQuestionId}
-        loadMetadataForCard={loadMetadataSpy}
-      >
-        {mockChild}
-      </SavedQuestionLoader>,
-    );
+    expect(screen.getByText("loading")).toBeInTheDocument();
+    expect(await screen.findByText("error")).toBeInTheDocument();
+  });
 
-    expect(loadQuestionSpy).toHaveBeenCalledWith(originalQuestionId);
+  it("should load a new question if the question ID changes", async () => {
+    const nextQuestionId = 2;
+    setupQuestion({
+      id: nextQuestionId,
+      name: "Question 2",
+      hasAccess: true,
+    });
 
-    // update the question ID, a new question id param in the url would do this
+    const { rerender } = setup({ questionId: 1, hasAccess: true });
+
+    expect(await screen.findByText("Question 1")).toBeInTheDocument();
+
     rerender(
-      <SavedQuestionLoader
-        questionId={newQuestionId}
-        loadMetadataForCard={loadMetadataSpy}
-      >
-        {mockChild}
+      <SavedQuestionLoader questionId={nextQuestionId}>
+        {childrenRenderFn}
       </SavedQuestionLoader>,
     );
 
-    // question loading should begin with the new ID
-    expect(loadQuestionSpy).toHaveBeenCalledWith(newQuestionId);
+    expect(screen.getByText("loading")).toBeInTheDocument();
+
+    expect(await screen.findByText("Question 2")).toBeInTheDocument();
   });
 });

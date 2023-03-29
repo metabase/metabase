@@ -50,7 +50,7 @@ describe("NativeQuery", () => {
       });
     });
     describe("databaseId()", () => {
-      it("returns the Database ID of the wrapped query ", () => {
+      it("returns the Database ID of the wrapped query", () => {
         expect(query.databaseId()).toBe(SAMPLE_DATABASE.id);
       });
     });
@@ -134,19 +134,19 @@ describe("NativeQuery", () => {
       expect(q1).toEqual(q2);
     });
   });
-  describe("Acessing the underlying native query", () => {
-    describe("You can access the actual native query via queryText()", () => {
+  describe("Accessing the underlying native query", () => {
+    test("You can access the actual native query via queryText()", () => {
       expect(makeQuery("SELECT * FROM ORDERS").queryText()).toEqual(
         "SELECT * FROM ORDERS",
       );
     });
-    describe("You can update query text the same way as well via setQueryText(newQueryText)", () => {
+    test("You can update query text the same way as well via setQueryText(newQueryText)", () => {
       const newQuery = makeQuery("SELECT 1");
       expect(newQuery.queryText()).toEqual("SELECT 1");
       const newerQuery = newQuery.setQueryText("SELECT 2");
       expect(newerQuery.queryText()).toEqual("SELECT 2");
     });
-    describe("lineCount() lets you know how long your query is", () => {
+    test("lineCount() lets you know how long your query is", () => {
       expect(makeQuery("SELECT 1").lineCount()).toBe(1);
       expect(makeQuery("SELECT \n 1").lineCount()).toBe(2);
     });
@@ -266,6 +266,39 @@ describe("NativeQuery", () => {
         );
         expect(q.templateTags().map(v => v["card-id"])).toEqual([1, 2, 1]);
       });
+    });
+  });
+  describe("values source settings", () => {
+    it("should preserve the order of templates tags when updating", () => {
+      const oldQuery = makeQuery().setQueryText(
+        "SELECT * FROM PRODUCTS WHERE {{t1}} AND {{t2}}",
+      );
+      const newQuery = oldQuery.setTemplateTag(
+        "t1",
+        oldQuery.templateTagsMap()["t1"],
+      );
+
+      expect(oldQuery.templateTags()).toEqual(newQuery.templateTags());
+    });
+
+    it("should allow setting source settings for tags", () => {
+      const oldQuery = makeQuery().setQueryText(
+        "SELECT * FROM PRODUCTS WHERE {{t1}} AND {{t2}}",
+      );
+      const newQuery = oldQuery.setTemplateTagConfig(
+        oldQuery.templateTagsMap()["t1"],
+        {
+          values_query_type: "search",
+          values_source_type: "static-list",
+          values_source_config: { values: ["A"] },
+        },
+      );
+
+      const newParameters = newQuery.question().parameters();
+      expect(newParameters).toHaveLength(2);
+      expect(newParameters[0].values_query_type).toEqual("search");
+      expect(newParameters[0].values_source_type).toEqual("static-list");
+      expect(newParameters[0].values_source_config).toEqual({ values: ["A"] });
     });
   });
   describe("variables", () => {

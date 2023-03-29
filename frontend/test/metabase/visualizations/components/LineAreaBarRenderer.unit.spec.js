@@ -235,7 +235,7 @@ describe("LineAreaBarRenderer", () => {
       expect(qs(".line")).not.toBe(null);
     });
 
-    it("when there are many empty and nonempty values ", () => {
+    it("when there are many empty and nonempty values", () => {
       renderTimeseriesLine({
         rowsOfSeries: [
           [],
@@ -307,7 +307,7 @@ describe("LineAreaBarRenderer", () => {
 
       expect(qs(".goal .line")).not.toBe(null);
       expect(qs(".goal text")).not.toBe(null);
-      expect(qs(".goal text").textContent).toEqual("Goal");
+      expect(qs(".goal text")).toHaveTextContent("Goal");
     });
 
     it("should render a goal tooltip with the proper value", () => {
@@ -374,7 +374,7 @@ describe("LineAreaBarRenderer", () => {
       const { groups, dimension, yExtents } =
         getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
 
-      expect(warn).not.toBeCalled();
+      expect(warn).not.toHaveBeenCalled();
       expect(groups[0][0].all()[0]).toEqual({ key: "a", value: 1 });
       expect(dimension.top(1)).toEqual([["a", 1]]);
       expect(yExtents).toEqual([[1, 1]]);
@@ -397,7 +397,7 @@ describe("LineAreaBarRenderer", () => {
       const { groups, yExtents } =
         getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
 
-      expect(warn).not.toBeCalled();
+      expect(warn).not.toHaveBeenCalled();
       expect(groups.length).toEqual(2);
       expect(yExtents).toEqual([
         [1, 2],
@@ -425,7 +425,7 @@ describe("LineAreaBarRenderer", () => {
       const { groups, yExtents } =
         getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
 
-      expect(warn).not.toBeCalled();
+      expect(warn).not.toHaveBeenCalled();
       expect(groups.length).toEqual(1);
       expect(yExtents).toEqual([[3, 5]]);
     });

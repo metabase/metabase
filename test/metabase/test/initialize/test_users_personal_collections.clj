@@ -1,6 +1,7 @@
 (ns metabase.test.initialize.test-users-personal-collections
-  (:require [metabase.models.collection :as collection]
-            [metabase.test.data.users :as test.users]))
+  (:require
+   [metabase.models.collection :as collection]
+   [metabase.test.data.users :as test.users]))
 
 (defn init!
   "Force the creation of the Personal Collections for our various test users. They are eventually going to get

@@ -1,21 +1,22 @@
 (ns metabase.models.persisted-info
-  (:require [buddy.core.codecs :as codecs]
-            [clojure.string :as str]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.interface :as mi]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [clojure.string :as str]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (defn- field-metadata->field-defintion
   "Map containing the type and name of fields for dll. The type is :base-type and uses the effective_type else base_type
   of a field."
   [{field-name :name :keys [base_type effective_type]}]
   {:field-name field-name
-     :base-type (or effective_type base_type)})
+   :base-type (or effective_type base_type)})
 
 (def ^:private Metadata
   "Spec for metadata. Just asserting we have base types and names, not the full metadata of the qp."
@@ -50,7 +51,7 @@
   at schemas. Persisted table names will follow the pattern `model_<card-id>_slug` and the model-id will ensure
   uniqueness."
   [nom]
-  (->> (str/replace (str/lower-case nom) #"\s+" "_")
+  (->> (str/replace (u/lower-case-en nom) #"\s+" "_")
        (take 10)
        (apply str)))
 
@@ -64,14 +65,13 @@
 
 (models/defmodel PersistedInfo :persisted_info)
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PersistedInfo)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types (constantly {:definition ::definition})}))
+(mi/define-methods
+ PersistedInfo
+ {:types (constantly {:definition ::definition})})
 
-(defn persisted?
+(mi/define-batched-hydration-method persisted?
+  :persisted
   "Hydrate a card :is_persisted for the frontend."
-  {:batched-hydrate :persisted}
   [cards]
   (when (seq cards)
     (let [existing-ids (db/select-field :card_id PersistedInfo

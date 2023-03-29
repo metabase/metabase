@@ -1,16 +1,17 @@
 (ns metabase.events.activity-feed
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
-            [metabase.events :as events]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.activity :as activity :refer [Activity]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.table :as table]
-            [metabase.query-processor :as qp]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [toucan.db :as db]))
+  (:require
+   [clojure.core.async :as a]
+   [metabase.events :as events]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.activity :as activity :refer [Activity]]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.table :as table]
+   [metabase.query-processor :as qp]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [toucan.db :as db]))
 
 (def ^:private activity-feed-topics
   "The set of event topics which are subscribed to for use in the Metabase activity feed."

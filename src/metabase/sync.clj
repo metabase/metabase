@@ -8,17 +8,19 @@
 
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the `sync-database!` function to do all three at once."
-  (:require [metabase.driver.util :as driver.u]
-            [metabase.models.field :as field]
-            [metabase.models.table :as table]
-            [metabase.sync.analyze :as analyze]
-            [metabase.sync.analyze.fingerprint :as fingerprint]
-            [metabase.sync.field-values :as field-values]
-            [metabase.sync.interface :as i]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.sync.util :as sync-util]
-            [schema.core :as s])
-  (:import java.time.temporal.Temporal))
+  (:require
+   [metabase.driver.util :as driver.u]
+   [metabase.models.field :as field]
+   [metabase.models.table :as table]
+   [metabase.sync.analyze :as analyze]
+   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.field-values :as field-values]
+   [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.util :as sync-util]
+   [schema.core :as s])
+  (:import
+   (java.time.temporal Temporal)))
 
 (def SyncDatabaseResults
   "Schema for results returned from `sync-database!`"
@@ -35,7 +37,6 @@
 
   Please note that this function is *not* what is called by the scheduled tasks; those call different steps
   independently. This function is called when a Database is first added."
-  {:style/indent 1}
   ([database]
    (sync-database! database nil))
 

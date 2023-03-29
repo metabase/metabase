@@ -20,12 +20,15 @@
   This namespace exposes the vars [[db-type]] and [[data-source]] based on the aforementioned environment variables.
   Normally you should use the equivalent functions in [[metabase.db.connection]] which can be overridden rather than
   using this namespace directly."
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.config :as config]
-            [metabase.db.data-source :as mdb.data-source]
-            [metabase.util :as u]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [metabase.config :as config]
+   [metabase.db.data-source :as mdb.data-source]
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 ;;;; [[env->db-type]]
 

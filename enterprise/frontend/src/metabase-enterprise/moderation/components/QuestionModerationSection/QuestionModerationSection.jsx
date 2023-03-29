@@ -57,7 +57,7 @@ function QuestionModerationSection({
         <ModerationReviewBanner
           className={reviewBannerClassName}
           moderationReview={latestModerationReview}
-          onRemove={isModerator && onRemoveModerationReview}
+          onRemove={isModerator ? onRemoveModerationReview : undefined}
         />
       )}
     </React.Fragment>

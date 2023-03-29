@@ -83,11 +83,6 @@ describe("DatabaseEngineWarning", () => {
     expect(screen.queryByText(/driver/)).not.toBeInTheDocument();
   });
 
-  it("should render a warning when the driver is new", () => {
-    render(<DatabaseEngineWarning engineKey="presto-jdbc" engines={engines} />);
-    expect(screen.getByText(/This is our new Presto/)).toBeInTheDocument();
-  });
-
   it("should render nothing when there is no new driver, and the driver is official", () => {
     render(<DatabaseEngineWarning engineKey="postgres" engines={engines} />);
     expect(screen.queryByText(/driver/)).not.toBeInTheDocument();
@@ -97,9 +92,7 @@ describe("DatabaseEngineWarning", () => {
     render(
       <DatabaseEngineWarning engineKey="communityEngine" engines={engines} />,
     );
-    expect(
-      screen.queryByText(/community-developed driver/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/community-developed driver/)).toBeInTheDocument();
   });
 
   it("should render both community and deprecated warnings together", () => {
@@ -109,9 +102,7 @@ describe("DatabaseEngineWarning", () => {
         engines={engines}
       />,
     );
-    expect(
-      screen.queryByText(/community-developed driver/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/community-developed driver/)).toBeInTheDocument();
     expect(screen.getByText(/This driver will be removed/)).toBeInTheDocument();
   });
 
@@ -119,50 +110,50 @@ describe("DatabaseEngineWarning", () => {
     render(
       <DatabaseEngineWarning engineKey="partnerEngine" engines={engines} />,
     );
-    expect(screen.queryByText(/partner-developed driver/)).toBeInTheDocument();
+    expect(screen.getByText(/partner-developed driver/)).toBeInTheDocument();
   });
 
   it("should render a partner contact information web link", () => {
-    const { container } = render(
+    render(
       <DatabaseEngineWarning engineKey="partnerEngine" engines={engines} />,
     );
-    expect(container.querySelector("a")).toHaveAttribute(
+    expect(screen.getByRole("link")).toHaveAttribute(
       "href",
       "https://example.com/contact",
     );
   });
 
   it("should render a partner contact information email link", () => {
-    const { container } = render(
+    render(
       <DatabaseEngineWarning
         engineKey="partnerEngineWithEmail"
         engines={engines}
       />,
     );
-    expect(container.querySelector("a")).toHaveAttribute(
+    expect(screen.getByRole("link")).toHaveAttribute(
       "href",
       "mailto:contactus@example.com",
     );
   });
 
   it("should render a partner warning when missing contact name", () => {
-    const { container } = render(
+    render(
       <DatabaseEngineWarning
         engineKey="anonymousPartnerEngine"
         engines={engines}
       />,
     );
-    expect(container.querySelector("a")).toBeNull();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
   it("should render a partner warning when missing contact information", () => {
-    const { container } = render(
+    render(
       <DatabaseEngineWarning
         engineKey="partnerWithoutContactInfoEngine"
         engines={engines}
       />,
     );
-    expect(container.querySelector("a")).toBeNull();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
     screen.getByText(/partner-developed driver/);
     screen.getByText(/Partners Incorporated Two/);
   });

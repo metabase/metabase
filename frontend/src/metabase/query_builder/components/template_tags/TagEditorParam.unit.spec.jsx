@@ -1,6 +1,6 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
-import { render, screen, fireEvent } from "__support__/ui";
+import { fireEvent, render, screen } from "__support__/ui";
 import {
   PEOPLE,
   PRODUCTS,
@@ -14,12 +14,16 @@ jest.mock("metabase/query_builder/components/DataSelector", () => ({
   // eslint-disable-next-line react/prop-types
   SchemaTableAndFieldDataSelector: function FakeSelector({ setFieldFn }) {
     return (
-      <button id="fake-selector" onClick={() => setFieldFn(mockFieldId)} />
+      <button
+        data-testid="fake-selector"
+        onClick={() => setFieldFn(mockFieldId)}
+      />
     );
   },
 }));
 
 jest.mock("metabase/entities/schemas", () => ({
+  load: () => children => children,
   Loader: ({ children }) => children(),
 }));
 
@@ -92,6 +96,9 @@ describe("TagEditorParam", () => {
       expect(mockSetTemplateTag).toHaveBeenCalledWith({
         ...textTag,
         type: "number",
+        default: undefined,
+        dimension: undefined,
+        "widget-type": undefined,
       });
     });
 
@@ -108,9 +115,10 @@ describe("TagEditorParam", () => {
 
       expect(mockSetTemplateTag).toHaveBeenCalledWith({
         ...mappedDimensionTag,
-        "widget-type": undefined,
-        dimension: undefined,
         type: "text",
+        default: undefined,
+        dimension: undefined,
+        "widget-type": undefined,
       });
     });
   });
@@ -138,7 +146,7 @@ describe("TagEditorParam", () => {
         },
       });
 
-      screen.getByText("String");
+      expect(screen.getByText("String")).toBeInTheDocument();
     });
   });
 
@@ -148,9 +156,7 @@ describe("TagEditorParam", () => {
         tag: mappedDimensionTag,
       });
 
-      const label = screen.getByText("Required?");
-      const toggle = label.parentElement.querySelector("input");
-      toggle.click();
+      userEvent.click(screen.getByRole("switch"));
 
       expect(mockSetTemplateTag).toHaveBeenCalledWith({
         ...mappedDimensionTag,
@@ -168,9 +174,7 @@ describe("TagEditorParam", () => {
         },
       });
 
-      const label = screen.getByText("Required?");
-      const toggle = label.parentElement.querySelector("input");
-      toggle.click();
+      userEvent.click(screen.getByRole("switch"));
 
       expect(mockSetTemplateTag).toHaveBeenCalledWith({
         ...mappedDimensionTag,
@@ -186,8 +190,7 @@ describe("TagEditorParam", () => {
         tag: mappedDimensionTag,
       });
 
-      const label = screen.getByText("Filter widget label");
-      const input = label.parentElement.querySelector("input");
+      const input = screen.getByTestId("tag-display-name-input");
       userEvent.type(input, "Foo");
       fireEvent.blur(input);
 
@@ -204,7 +207,7 @@ describe("TagEditorParam", () => {
         tag: mappedDimensionTag,
       });
 
-      document.querySelector("#fake-selector").click();
+      userEvent.click(screen.getByTestId("fake-selector"));
 
       expect(mockSetTemplateTag).toHaveBeenCalledWith({
         ...mappedDimensionTag,

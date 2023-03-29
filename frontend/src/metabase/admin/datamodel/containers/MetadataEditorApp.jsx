@@ -8,7 +8,6 @@ import _ from "underscore";
 import { t } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-import AdminEmptyText from "metabase/components/AdminEmptyText";
 import {
   metrics as Metrics,
   databases as Databases,
@@ -112,13 +111,11 @@ class MetadataEditorInner extends Component {
           ) : (
             <div style={{ paddingTop: "10rem" }} className="full text-centered">
               {!loading && (
-                <AdminEmptyText
-                  message={
-                    hasLoadedDatabase
-                      ? t`Select any table to see its schema and add or edit metadata.`
-                      : t`The page you asked for couldn't be found.`
-                  }
-                />
+                <h2 className="text-medium">
+                  {hasLoadedDatabase
+                    ? t`Select any table to see its schema and add or edit metadata.`
+                    : t`The page you asked for couldn't be found.`}
+                </h2>
               )}
             </div>
           )}

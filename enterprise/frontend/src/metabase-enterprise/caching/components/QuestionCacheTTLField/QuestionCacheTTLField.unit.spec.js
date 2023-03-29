@@ -1,8 +1,8 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { mockSettings } from "__support__/settings";
 import { msToMinutes, msToHours } from "metabase/lib/time";
-import MetabaseSettings from "metabase/lib/settings";
 import QuestionCacheTTLField from "./QuestionCacheTTLField";
 
 const TEN_MINUTES = 10 * 60 * 1000;
@@ -16,17 +16,10 @@ function setup({
 } = {}) {
   const onChange = jest.fn();
 
-  const spy = jest.spyOn(MetabaseSettings, "get");
-  spy.mockImplementation(key => {
-    if (key === "enable-query-caching") {
-      return true;
-    }
-    if (key === "query-caching-ttl-ratio") {
-      return cacheTTLMultiplier;
-    }
-    if (key === "query-caching-min-ttl") {
-      return minCacheThreshold;
-    }
+  mockSettings({
+    "enable-query-caching": true,
+    "query-caching-ttl-ratio": cacheTTLMultiplier,
+    "query-caching-min-ttl": minCacheThreshold,
   });
 
   const question = {

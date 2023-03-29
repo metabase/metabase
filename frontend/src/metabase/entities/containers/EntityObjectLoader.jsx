@@ -20,6 +20,7 @@ const CONSUMED_PROPS = [
   "loadingAndErrorWrapper",
   "LoadingAndErrorWrapper",
   "selectorName",
+  "requestType",
 ];
 
 // NOTE: Memoize entityQuery so we don't re-render even if a new but identical
@@ -31,6 +32,7 @@ const getMemoizedEntityQuery = createMemoizedSelector(
 
 class EntityObjectLoaderInner extends React.Component {
   static defaultProps = {
+    requestType: "fetch",
     loadingAndErrorWrapper: true,
     LoadingAndErrorWrapper: LoadingAndErrorWrapper,
     reload: false,
@@ -54,10 +56,16 @@ class EntityObjectLoaderInner extends React.Component {
     );
   }
 
+  fetch = (query, options) => {
+    const fetch = this.props[this.props.requestType];
+    // errors are handled in redux actions
+    return fetch(query, options).catch(() => {});
+  };
+
   UNSAFE_componentWillMount() {
-    const { entityId, entityQuery, fetch, dispatchApiErrorEvent } = this.props;
+    const { entityId, entityQuery, dispatchApiErrorEvent } = this.props;
     if (entityId != null) {
-      fetch(
+      this.fetch(
         { id: entityId, ...entityQuery },
         {
           reload: this.props.reload,
@@ -72,7 +80,7 @@ class EntityObjectLoaderInner extends React.Component {
       nextProps.entityId !== this.props.entityId &&
       nextProps.entityId != null
     ) {
-      nextProps.fetch(
+      this.fetch(
         { id: nextProps.entityId, ...nextProps.entityQuery },
         {
           reload: nextProps.reload,
@@ -122,7 +130,7 @@ class EntityObjectLoaderInner extends React.Component {
   }
 
   reload = () => {
-    return this.props.fetch(
+    return this.fetch(
       { id: this.props.entityId },
       {
         reload: true,
@@ -147,6 +155,7 @@ const EntityObjectLoader = _.compose(
         entityId,
         entityQuery,
         selectorName = "getObject",
+        requestType = "fetch",
         ...props
       },
     ) => {
@@ -157,13 +166,15 @@ const EntityObjectLoader = _.compose(
         entityQuery = entityQuery(state, props);
       }
 
+      const entityOptions = { entityId, requestType };
+
       return {
         entityId,
         entityQuery: getMemoizedEntityQuery(state, entityQuery),
-        object: entityDef.selectors[selectorName](state, { entityId }),
-        fetched: entityDef.selectors.getFetched(state, { entityId }),
-        loading: entityDef.selectors.getLoading(state, { entityId }),
-        error: entityDef.selectors.getError(state, { entityId }),
+        object: entityDef.selectors[selectorName](state, entityOptions),
+        fetched: entityDef.selectors.getFetched(state, entityOptions),
+        loading: entityDef.selectors.getLoading(state, entityOptions),
+        error: entityDef.selectors.getError(state, entityOptions),
       };
     },
   ),

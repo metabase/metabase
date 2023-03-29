@@ -8,21 +8,25 @@
   5. verify that data looks like what we'd expect after running migration(s)
 
   Actual tests using this code live in `metabase.db.schema-migrations-test`."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.db.data-source :as mdb.data-source]
-            [metabase.db.liquibase :as liquibase]
-            [metabase.db.test-util :as mdb.test-util]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.initialize :as initialize]
-            [metabase.util :as u])
-  (:import [liquibase Contexts Liquibase]
-           [liquibase.changelog ChangeSet DatabaseChangeLog]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.data-source :as mdb.data-source]
+   [metabase.db.liquibase :as liquibase]
+   [metabase.db.test-util :as mdb.test-util]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.test.data.datasets :as datasets]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.initialize :as initialize]
+   [metabase.util :as u]
+   [metabase.util.log :as log])
+  (:import
+   (liquibase Contexts Liquibase)
+   (liquibase.changelog ChangeSet DatabaseChangeLog)))
+
+(set! *warn-on-reflection* true)
 
 (defmulti do-with-temp-empty-app-db*
   "Create a new completely empty app DB for `driver`, then call `(f jdbc-spec)` with a spec for that DB. Should clean up
@@ -185,8 +189,9 @@
   (log/debug (u/format-color 'yellow "Testing migrations for driver %s..." driver))
   (with-temp-empty-app-db [conn driver]
     ;; sanity check: make sure the DB is actually empty
-    (let [metadata (.getMetaData conn)]
-      (with-open [rs (.getTables metadata nil nil "%" (into-array String ["TABLE"]))]
+    (let [metadata (.getMetaData conn)
+          schema (when (= :h2 driver) "PUBLIC")]
+      (with-open [rs (.getTables metadata nil schema "%" (into-array String ["TABLE"]))]
         (let [tables (jdbc/result-set-seq rs)]
           (assert (zero? (count tables))
                   (str "'Empty' application DB is not actually empty. Found tables:\n"
@@ -208,7 +213,7 @@
                             migration-range
                             [migration-range migration-range])]
     (testing (format "Migrations %s thru %s" start-id (or end-id "end"))
-      (mt/test-drivers #{:h2 :mysql :postgres}
+      (datasets/test-drivers #{:h2 :mysql :postgres}
         (test-migrations-for-driver driver/*driver* [start-id end-id] f)))))
 
 (defmacro test-migrations

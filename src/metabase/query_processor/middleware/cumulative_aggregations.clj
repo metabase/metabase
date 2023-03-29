@@ -1,8 +1,9 @@
 (ns metabase.query-processor.middleware.cumulative-aggregations
   "Middlware for handling cumulative count and cumulative sum aggregations."
-  (:require [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [schema.core :as s]))
+  (:require
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [schema.core :as s]))
 
 ;;;; Pre-processing
 

@@ -1,17 +1,35 @@
-(ns metabase-enterprise.serialization.v2.e2e.yaml-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase-enterprise.serialization.v2.extract :as extract]
-            [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
-            [metabase-enterprise.serialization.v2.load :as serdes.load]
-            [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.test.generate :as test-gen]
-            [reifyhealth.specmonstah.core :as rs]
-            [toucan.db :as db]
-            [yaml.core :as yaml]))
+(ns ^:mb/once metabase-enterprise.serialization.v2.e2e.yaml-test
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
+   [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
+   [metabase.models :refer [Card
+                            Collection
+                            Dashboard
+                            DashboardCard
+                            Database
+                            ParameterCard
+                            Field
+                            Table]]
+   [metabase.models.action :as action]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.test :as mt]
+   [metabase.test.generate :as test-gen]
+   [reifyhealth.specmonstah.core :as rs]
+   [toucan.db :as db]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [yaml.core :as yaml])
+ (:import
+  (java.io File)
+  (java.nio.file Path)))
+
+(set! *warn-on-reflection* true)
 
 (defn- dir->contents-set [p dir]
   (->> dir
@@ -31,6 +49,10 @@
        .listFiles
        (remove #(.isFile %))))
 
+(defn- by-model [entities model-name]
+  (filter #(-> % :serdes/meta last :model (= model-name))
+          entities))
+
 (defn- collections [dir]
   (for [coll-dir (subdirs dir)
         :when (->> ["cards" "dashboards" "timelines"]
@@ -39,9 +61,9 @@
                    empty?)]
     coll-dir))
 
-(defn- file-set [dir]
-  (let [base (.toPath dir)]
-    (set (for [file (file-seq dir)
+(defn- file-set [^File dir]
+  (let [^Path base (.toPath dir)]
+    (set (for [^File file (file-seq dir)
                :when (.isFile file)
                :let [rel (.relativize base (.toPath file))]]
            (mapv str rel)))))
@@ -89,7 +111,32 @@
         (ts/with-source-db
           (testing "insert"
             (test-gen/insert!
-              {:collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
+              {;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query, implicit, or http)
+               ;; We generate 10 actions for each subtype, and 10 of each subtype.
+               ;; actions 0-9 are query actions, 10-19 are implicit actions, and 20-29 are http actions.
+               :action                  (apply concat
+                                               (for [type [:query :implicit :http]]
+                                                 (many-random-fks 10
+                                                                  {:spec-gen {:type type}}
+                                                                  {:model_id   [:sm 10]
+                                                                   :creator_id [:u 10]})))
+               :query-action            (map-indexed
+                                         (fn [idx x]
+                                           (assoc-in x [1 :refs :action_id] (keyword (str "action" idx))))
+                                         (many-random-fks 10 {} {:database_id [:db 10]}))
+               :implicit-action         (map-indexed
+                                         (fn [idx x]
+                                           (update-in x [1 :refs]
+                                                      (fn [refs]
+                                                        (assoc refs :action_id (keyword (str "action" (+ 10 idx)))))))
+                                         (many-random-fks 10 {} {}))
+               :http-action             (map-indexed
+                                         (fn [idx x]
+                                           (update-in x [1 :refs]
+                                                      (fn [refs]
+                                                        (assoc refs :action_id (keyword (str "action" (+ 20 idx)))))))
+                                         (many-random-fks 10 {} {}))
+               :collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
                                          [10  {:refs     {:personal_owner_id ::rs/omit}
                                                :spec-gen {:namespace :snippets}}]]
                :database                [[10]]
@@ -101,14 +148,28 @@
                :core-user               [[100]]
                :card                    (mapv #(update-in % [1 :refs] table->db)
                                               (many-random-fks
-                                                100
+                                               100
+                                               {:spec-gen {:dataset_query {:database 1
+                                                                           :query {:source-table 3
+                                                                                   :aggregation [[:count]]
+                                                                                   :breakout [[:field 16 nil]]}
+                                                                           :type :query}
+                                                           :dataset       true}}
+                                               {:table_id      [:t    100]
+                                                :collection_id [:coll 100]
+                                                :creator_id    [:u    10]}))
+               ;; Simple model is primary used for actions.
+               ;; We can't use :card for actions because implicit actions require the model's query to contain
+               ;; nothing but a source table
+               :simple-model            (mapv #(update-in % [1 :refs] table->db)
+                                               (many-random-fks
+                                                10
                                                 {:spec-gen {:dataset_query {:database 1
-                                                                            :query {:source-table 3
-                                                                                    :aggregation [[:count]]
-                                                                                    :breakout [[:field 16 nil]]}
-                                                                            :type :query}}}
-                                                {:table_id      [:t    100]
-                                                 :collection_id [:coll 100]
+                                                                            :query {:source-table 3}
+                                                                            :type :query}
+                                                            :dataset       true}}
+                                                {:table_id      [:t    10]
+                                                 :collection_id [:coll 10]
                                                  :creator_id    [:u    10]}))
                :dashboard               (many-random-fks 100 {} {:collection_id [:coll 100]
                                                                  :creator_id    [:u    10]})
@@ -116,12 +177,12 @@
                                                                  :dashboard_id [:d 100]})
                :dimension               (vec (concat
                                                ;; 20 with both IDs set
-                                               (many-random-fks 20 {}
-                                                                {:field_id                [:field 1000]
-                                                                 :human_readable_field_id [:field 1000]})
+                                              (many-random-fks 20 {}
+                                                               {:field_id                [:field 1000]
+                                                                :human_readable_field_id [:field 1000]})
                                                ;; 20 with just :field_id
-                                               (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
-                                                                {:field_id [:field 1000]})))
+                                              (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
+                                                               {:field_id [:field 1000]})))
                :metric                  (many-random-fks 30 {:spec-gen {:definition {:aggregation  [[:count]]
                                                                                      :source-table 9}}}
                                                          {:table_id   [:t 100]
@@ -137,25 +198,25 @@
                :timeline-event          (many-random-fks 90 {} {:timeline_id   [:timeline 10]})
                :pulse                   (vec (concat
                                                ;; 10 classic pulses, from collections
-                                               (many-random-fks 10 {} {:collection_id [:coll 100]})
+                                              (many-random-fks 10 {} {:collection_id [:coll 100]})
                                                ;; 10 classic pulses, no collection
-                                               (many-random-fks 10 {:refs {:collection_id ::rs/omit}} {})
+                                              (many-random-fks 10 {:refs {:collection_id ::rs/omit}} {})
                                                ;; 10 dashboard subs
-                                               (many-random-fks 10 {:refs {:collection_id ::rs/omit}}
-                                                                {:dashboard_id  [:d 100]})))
+                                              (many-random-fks 10 {:refs {:collection_id ::rs/omit}}
+                                                               {:dashboard_id  [:d 100]})))
                :pulse-card              (vec (concat
                                                ;; 60 pulse cards for the classic pulses
-                                               (many-random-fks 60 {} {:card_id       [:c 100]
-                                                                       :pulse_id      [:pulse 10]})
+                                              (many-random-fks 60 {} {:card_id       [:c 100]
+                                                                      :pulse_id      [:pulse 10]})
                                                ;; 60 pulse cards connected to dashcards for the dashboard subs
-                                               (many-random-fks 60 {} {:card_id           [:c 100]
-                                                                       :pulse_id          [:pulse 10 20]
-                                                                       :dashboard_card_id [:dc 300]})))
+                                              (many-random-fks 60 {} {:card_id           [:c 100]
+                                                                      :pulse_id          [:pulse 10 20]
+                                                                      :dashboard_card_id [:dc 300]})))
                :pulse-channel           (vec (concat
                                                ;; 15 channels for the classic pulses
-                                               (many-random-fks 15 {} {:pulse_id  [:pulse 10]})
+                                              (many-random-fks 15 {} {:pulse_id  [:pulse 10]})
                                                ;; 15 channels for the dashboard subs
-                                               (many-random-fks 15 {} {:pulse_id  [:pulse 10 20]})))
+                                              (many-random-fks 15 {} {:pulse_id  [:pulse 10 20]})))
                :pulse-channel-recipient (many-random-fks 40 {} {:pulse_channel_id [:pulse-channel 30]
                                                                 :user_id          [:u 100]})}))
 
@@ -171,6 +232,9 @@
 
           (testing "storage"
             (storage.yaml/store! (seq @extraction) dump-dir)
+
+            (testing "for Actions"
+              (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
 
             (testing "for Collections"
               (is (= 110 (count (for [f (file-set (io/file dump-dir))
@@ -200,7 +264,8 @@
                   "Fields are scattered, so the directories are harder to count"))
 
             (testing "for cards"
-              (is (= 100 (->> (io/file dump-dir "collections")
+              ;; 100 from card, and 10 from simple-model
+              (is (= 110 (->> (io/file dump-dir "collections")
                               collections
                               (map (comp count dir->file-set #(io/file % "cards")))
                               (reduce +)))))
@@ -238,7 +303,7 @@
                              (reduce +)))))
 
             (testing "for settings"
-              (is (.exists (io/file dump-dir "settings.yaml"))))))
+              (is (.exists (io/file dump-dir "settings.yaml")))))
 
           (testing "ingest and load"
             (ts/with-dest-db
@@ -247,11 +312,19 @@
                   (is (= (count extracted-set)
                          (count @extraction)))
                   (is (= extracted-set
-                       (set (keys (#'ingest.yaml/ingest-all (io/file dump-dir))))))))
+                         (set (keys (#'ingest.yaml/ingest-all (io/file dump-dir))))))))
 
               (testing "doing ingestion"
                 (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
                     "successful"))
+
+              (testing "for Actions"
+                (doseq [{:keys [entity_id] :as coll} (get @entities "Action")]
+                  (is (= (clean-entity coll)
+                         (->> (db/select-one 'Action :entity_id entity_id)
+                              (@#'action/hydrate-subtype)
+                              (serdes.base/extract-one "Action" {})
+                              clean-entity)))))
 
               (testing "for Collections"
                 (doseq [{:keys [entity_id] :as coll} (get @entities "Collection")]
@@ -344,4 +417,210 @@
               (testing "for settings"
                 (is (= (into {} (for [{:keys [key value]} (get @entities "Setting")]
                                   [key value]))
-                       (yaml/from-file (io/file dump-dir "settings.yaml")))))))))))
+                       (yaml/from-file (io/file dump-dir "settings.yaml"))))))))))))
+
+;; This is a seperate test instead of a `testing` block inside `e2e-storage-ingestion-test`
+;; because it's quite tricky to set up the generative test to generate parameters with source is card
+(deftest card-and-dashboard-has-parameter-with-source-is-card-test
+  (testing "Dashboard and Card that has parameter with source is a card must be deserialized correctly"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-source-and-dest-dbs
+        (ts/with-source-db
+          ;; preparation
+          (mt/with-temp*
+            [Database   [db1s {:name "my-db"}]
+             Collection [coll1s {:name "My Collection"}]
+             Table      [table1s {:name  "CUSTOMERS"
+                                  :db_id (:id db1s)}]
+             Field      [field1s {:name     "NAME"
+                                  :table_id (:id table1s)}]
+             Card       [card1s  {:name "Source card"}]
+             Card       [card2s  {:name "Card with parameter"
+                                  :database_id (:id db1s)
+                                  :table_id (:id table1s)
+                                  :collection_id (:id coll1s)
+                                  :parameters [{:id                   "abc"
+                                                :type                 "category"
+                                                :name                 "CATEGORY"
+                                                :values_source_type   "card"
+                                                ;; card_id is in a different collection with dashboard's collection
+                                                :values_source_config {:card_id     (:id card1s)
+                                                                       :value_field [:field (:id field1s) nil]}}]}]
+             Dashboard  [dash1s {:name "A dashboard"
+                                 :collection_id (:id coll1s)
+                                 :parameters [{:id                   "abc"
+                                               :type                 "category"
+                                               :name                 "CATEGORY"
+                                               :values_source_type   "card"
+                                               ;; card_id is in a different collection with dashboard's collection
+                                               :values_source_config {:card_id     (:id card1s)
+                                                                      :value_field [:field (:id field1s) nil]}}]}]]
+
+            (testing "make sure we insert ParameterCard when insert Dashboard/Card"
+              ;; one for parameter on card card2s, and one for parmeter on dashboard dash1s
+              (is (= 2 (db/count ParameterCard))))
+
+            (testing "extract and store"
+              (let [extraction (into [] (extract/extract-metabase {}))]
+                (is (= [{:id                   "abc",
+                         :name                 "CATEGORY",
+                         :type                 :category,
+                         :values_source_config {:card_id     (:entity_id card1s),
+                                                :value_field [:field
+                                                              ["my-db" nil "CUSTOMERS" "NAME"]
+                                                              nil]},
+                         :values_source_type "card"}]
+                       (:parameters (first (by-model extraction "Dashboard")))))
+
+                (is (= [{:id                   "abc",
+                         :name                 "CATEGORY",
+                         :type                 :category,
+                         :values_source_config {:card_id     (:entity_id card1s),
+                                                :value_field [:field
+                                                              ["my-db" nil "CUSTOMERS" "NAME"]
+                                                              nil]},
+                         :values_source_type "card"}]
+                       (:parameters (first (by-model extraction "Card")))))
+
+                (storage.yaml/store! (seq extraction) dump-dir)))
+
+            (testing "ingest and load"
+              (ts/with-dest-db
+                ;; ingest
+                (testing "doing ingestion"
+                  (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
+                      "successful"))
+
+                (let [dash1d (db/select-one Dashboard :name (:name dash1s))
+                      card1d (db/select-one Card :name (:name card1s))
+                      card2d (db/select-one Card :name (:name card2s))
+                      field1d (db/select-one Field :name (:name field1s))]
+                  (testing "parameter on dashboard is loaded correctly"
+                    (is (= {:card_id     (:id card1d),
+                            :value_field [:field (:id field1d) nil]}
+                           (-> dash1d
+                               :parameters
+                               first
+                               :values_source_config)))
+                    (is (some? (db/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+
+                  (testing "parameter on card is loaded correctly"
+                    (is (= {:card_id     (:id card1d),
+                            :value_field [:field (:id field1d) nil]}
+                           (-> card2d
+                               :parameters
+                               first
+                               :values_source_config)))
+                    (is (some? (db/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d))))))))))))))
+
+(deftest dashcards-with-link-cards-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (ts/with-source-and-dest-dbs
+      (ts/with-source-db
+        (let [link-card-viz-setting (fn [model id]
+                                      {:virtual_card {:display "link"}
+                                       :link         {:entity {:id    id
+                                                               :model model}}})
+              dashboard->link-cards (fn [dashboard]
+                                      (map #(get-in % [:visualization_settings :link :entity]) (:ordered_cards dashboard)))]
+          (t2.with-temp/with-temp
+            [Collection    {coll-id   :id
+                            coll-name :name
+                            coll-eid  :entity_id}    {:name        "Link collection"
+                                                      :description "Linked Collection"}
+             Database      {db-id   :id
+                            db-name :name}           {:name        "Linked database"
+                                                      :description "Linked database desc"}
+             Table         {table-id   :id
+                            table-name :name}        {:db_id        db-id
+                                                      :schema      "Public"
+                                                      :name        "Linked table"
+                                                      :description "Linked table desc"}
+             Card          {card-id   :id
+                            card-name :name
+                            card-eid  :entity_id}    {:name          "Linked card"
+                                                      :description   "Linked card desc"
+                                                      :display       "bar"}
+
+             Card          {model-id   :id
+                            model-name :name
+                            model-eid  :entity_id}   {:dataset       true
+                                                      :name          "Linked model"
+                                                      :description   "Linked model desc"
+                                                      :display       "table"}
+
+             Dashboard     {dash-id   :id
+                            dash-name :name
+                            dash-eid  :entity_id}    {:name          "Linked Dashboard"
+                                                      :collection_id coll-id
+                                                      :description   "Linked Dashboard desc"}
+             Dashboard     {dashboard-id   :id
+                            dashboard-name :name}    {:name          "Test Dashboard"
+                                                      :collection_id coll-id}
+             DashboardCard _                         {:dashboard_id           dashboard-id
+                                                      :visualization_settings (link-card-viz-setting "collection" coll-id)}
+             DashboardCard _                         {:dashboard_id           dashboard-id
+                                                      :visualization_settings (link-card-viz-setting "database" db-id)}
+             DashboardCard _                         {:dashboard_id           dashboard-id
+                                                      :visualization_settings (link-card-viz-setting "table" table-id)}
+             DashboardCard _                         {:dashboard_id           dashboard-id
+                                                      :visualization_settings (link-card-viz-setting "dashboard" dash-id)}
+             DashboardCard _                         {:dashboard_id           dashboard-id
+                                                      :visualization_settings (link-card-viz-setting "card" card-id)}
+             DashboardCard _                         {:dashboard_id           dashboard-id
+                                                      :visualization_settings (link-card-viz-setting "dataset" model-id)}]
+            (testing "extract and store"
+              (let [extraction          (into [] (extract/extract-metabase {}))
+                    extracted-dashboard (first (filter #(= (:name %) "Test Dashboard") (by-model extraction "Dashboard")))]
+                (is (= [{:model "collection" :id coll-eid}
+                        {:model "database"   :id "Linked database"}
+                        {:model "table"      :id ["Linked database" "Public" "Linked table"]}
+                        {:model "dashboard"  :id dash-eid}
+                        {:model "card"       :id card-eid}
+                        {:model "dataset"    :id model-eid}]
+                       (dashboard->link-cards extracted-dashboard)))
+
+               (is (= #{[{:id dash-eid          :model "Dashboard"}]
+                        [{:id coll-eid          :model "Collection"}]
+                        [{:id model-eid         :model "Card"}]
+                        [{:id card-eid          :model "Card"}]
+                        [{:id "Linked database" :model "Database"}]
+                        [{:model "Database" :id "Linked database"}
+                         {:model "Schema"   :id "Public"}
+                         {:model "Table"    :id "Linked table"}]}
+                    (set (serdes.base/serdes-dependencies extracted-dashboard))))
+
+               (storage.yaml/store! (seq extraction) dump-dir)))
+
+            (testing "ingest and load"
+              ;; ingest
+              (ts/with-dest-db
+                (testing "doing ingestion"
+                  (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
+                      "successful"))
+
+                (doseq [[name model]
+                        [[db-name    'Database]
+                         [table-name 'Table]
+                         [card-name  'Card]
+                         [model-name 'Card]
+                         [dash-name  'Dashboard]]]
+                  (testing (format "model %s from link cards are loaded properly" model)
+                   (is (some? (db/select model :name name)))))
+
+                (testing "linkcards are loaded with correct fk"
+                  (let [new-db-id    (t2/select-one-pk Database :name db-name)
+                        new-table-id (t2/select-one-pk Table :name table-name)
+                        new-card-id  (t2/select-one-pk Card :name card-name)
+                        new-model-id (t2/select-one-pk Card :name model-name)
+                        new-dash-id  (t2/select-one-pk Dashboard :name dash-name)
+                        new-coll-id  (t2/select-one-pk Collection :name coll-name)]
+                    (is (= [{:id new-coll-id  :model "collection"}
+                            {:id new-db-id    :model "database"}
+                            {:id new-table-id :model "table"}
+                            {:id new-dash-id  :model "dashboard"}
+                            {:id new-card-id  :model "card"}
+                            {:id new-model-id :model "dataset"}]
+                           (-> (t2/select-one Dashboard :name dashboard-name)
+                               (t2/hydrate :ordered_cards)
+                               dashboard->link-cards)))))))))))))

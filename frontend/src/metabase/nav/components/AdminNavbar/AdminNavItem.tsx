@@ -2,14 +2,19 @@ import React from "react";
 import { mixpanel } from "metabase/plugins/mixpanel";
 import { AdminNavLink, ExternalNavLink } from "./AdminNavItem.styled";
 
-interface AdminNavItem {
+interface AdminNavItemProps {
   name: string;
   path: string;
   currentPath: string;
   id: string;
 }
 
-export const AdminNavItem = ({ name, path, currentPath, id }: AdminNavItem) => {
+export const AdminNavItem = ({
+  name,
+  path,
+  currentPath,
+  id,
+}: AdminNavItemProps) => {
   if (id === "people") {
     return (
       <li>

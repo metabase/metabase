@@ -1,16 +1,16 @@
 (ns metabase.cmd.copy-test
-  (:require [clojure.test :refer :all]
-            [metabase.cmd.copy :as copy]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [toucan.models :as models]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.cmd.copy :as copy]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [toucan.models :as models]))
 
 (deftest all-models-accounted-for-test
   ;; This fetches the `metabase.cmd.load-from-h2/entities` and compares it all existing entities
   (let [migrated-model-names (set (map :name copy/entities))
         ;; Models that should *not* be migrated in `load-from-h2`.
-        models-to-exclude    #{"TaskHistory" "Query" "QueryCache" "QueryExecution" "CardFavorite" "DashboardFavorite"
-                               "Action" "HTTPAction" "QueryAction"}
+        models-to-exclude    #{"TaskHistory" "Query" "QueryCache" "QueryExecution" "CardFavorite" "DashboardFavorite"}
         all-model-names      (set (for [ns       u/metabase-namespace-symbols
                                         :when    (or (re-find #"^metabase\.models\." (name ns))
                                                      (= (name ns) "metabase.db.data-migrations"))

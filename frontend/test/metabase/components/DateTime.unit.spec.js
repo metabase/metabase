@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import moment from "moment-timezone";
 
 import {
@@ -14,19 +14,19 @@ describe("DateTime", () => {
   const TEST_DATE = "2021-06-08T14:40:10";
 
   function setup(props = {}) {
-    const utils = render(
+    const { rerender } = render(
       <DateTime {...props} value={TEST_DATE} data-testid="date-time" />,
     );
-    const node = utils.getByTestId("date-time");
+    const node = screen.getByTestId("date-time");
 
     function refresh() {
-      utils.rerender(
+      rerender(
         <DateTime {...props} value={TEST_DATE} data-testid="date-time" />,
       );
     }
 
     return {
-      ...utils,
+      ...screen,
       node,
       refresh,
     };

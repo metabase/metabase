@@ -11,7 +11,4 @@ export interface Bookmark {
 
   // For questions and models
   dataset?: boolean;
-
-  // For data app collections
-  app_id?: number;
 }

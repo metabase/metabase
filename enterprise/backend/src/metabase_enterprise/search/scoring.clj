@@ -1,7 +1,8 @@
 (ns metabase-enterprise.search.scoring
   ;; TODO -- move to `metabase-enterprise.<feature>.*`
-  (:require [metabase.public-settings.premium-features :refer [defenterprise]]
-            [metabase.search.scoring :as scoring]))
+  (:require
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.search.scoring :as scoring]))
 
 (defn- official-collection-score
   "A scorer for items in official collections"

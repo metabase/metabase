@@ -7,11 +7,14 @@
    [metabase.models :refer [Collection]]
    [metabase.test :as mt]
    [toucan.db :as db])
-  (:import java.time.LocalDateTime))
+  (:import
+   (java.time LocalDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (deftest seed-entity-ids-test
   (testing "Sanity check: should succeed before we go around testing specific situations"
-    (is (true? (v2.seed-entity-ids/seed-entity-ids! nil))))
+    (is (true? (v2.seed-entity-ids/seed-entity-ids!))))
   (testing "With a temp Collection with no entity ID"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
       (mt/with-temp Collection [c {:name       "No Entity ID Collection"
@@ -25,7 +28,7 @@
                  (entity-id)))
           (testing "Should return truthy on success"
             (is (= true
-                   (v2.seed-entity-ids/seed-entity-ids! nil))))
+                   (v2.seed-entity-ids/seed-entity-ids!))))
           (is (= "998b109c"
                  (entity-id))))
         (testing "Error: duplicate entity IDs"
@@ -40,6 +43,6 @@
                      (entity-id)))
               (testing "Should return falsey on error"
                 (is (= false
-                       (v2.seed-entity-ids/seed-entity-ids! nil))))
+                       (v2.seed-entity-ids/seed-entity-ids!))))
               (is (= nil
                      (entity-id))))))))))

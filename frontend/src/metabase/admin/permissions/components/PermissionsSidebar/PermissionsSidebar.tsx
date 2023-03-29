@@ -7,7 +7,7 @@ import {
 } from "./PermissionsSidebarContent";
 import { SidebarRoot } from "./PermissionsSidebar.styled";
 
-interface PermissionsSidebar extends PermissionsSidebarContentProps {
+interface PermissionsSidebarProps extends PermissionsSidebarContentProps {
   isLoading?: boolean;
   error: string;
 }
@@ -16,7 +16,7 @@ export const PermissionsSidebar = ({
   isLoading,
   error,
   ...contentProps
-}: PermissionsSidebar) => {
+}: PermissionsSidebarProps) => {
   return (
     <SidebarRoot>
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>

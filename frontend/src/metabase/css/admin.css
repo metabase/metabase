@@ -12,19 +12,6 @@
   transition: background 0.2s linear;
 }
 
-.Actions-group {
-  margin-bottom: 2em;
-}
-
-.Actions-group:last-child {
-  margin-bottom: 0;
-}
-
-.Actions-groupLabel {
-  font-size: 1em;
-  margin-bottom: 1em;
-}
-
 .ContentTable {
   width: 100%;
   border-collapse: collapse;
@@ -55,6 +42,11 @@
 
 .ContentTable td,
 .ContentTable th {
+  padding: 1em;
+}
+
+.ContentTable th {
+  color: var(--color-text-dark);
   padding: 1em;
 }
 

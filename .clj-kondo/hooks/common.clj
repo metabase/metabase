@@ -2,6 +2,12 @@
   (:require [clj-kondo.hooks-api :as hooks]
             [clojure.pprint]))
 
+(defn with-macro-meta
+  "When introducing internal nodes (let, defn, etc) it is important to provide a meta of an existing token
+   as the current version of kondo will use the whole form by default."
+  [new-node hook-node]
+  (with-meta new-node (meta (first (:children hook-node)))))
+
 ;;; This stuff is to help debug hooks. Trace a function and it will pretty-print the before & after sexprs.
 ;;;
 ;;;    (hooks.common/trace #'calculate-bird-scarcity)
@@ -35,12 +41,14 @@
 ;;;; Common hook definitions
 
 (defn do*
-  "This is basically the same as [[clojure.core/do]] but doesn't cause Kondo to complain about redundant dos."
-  [{{[_ & args] :children} :node}]
-  (let [node* (hooks/list-node
-               (list*
-                (hooks/token-node 'do)
-                args))]
+  "This is the same idea as [[clojure.core/do]] but doesn't cause Kondo to complain about redundant dos or unused values."
+  [{{[_ & args] :children, :as node} :node}]
+  (let [node* (-> (hooks/list-node
+                   (list*
+                    (with-meta (hooks/token-node 'do) {:clj-kondo/ignore [:redundant-do]})
+                    (for [arg args]
+                      (vary-meta arg update :clj-kondo/ignore #(conj (vec %) :unused-value)))))
+                  (with-meta (meta node)))]
     {:node node*}))
 
 (defn with-one-binding
@@ -231,4 +239,25 @@
                (list*
                 (hooks/token-node 'do)
                 body))]
+    {:node node*}))
+
+(defn with-used-first-arg
+  "For macros like
+
+    (with-drivers (filter pred? some-drivers)
+      ...)
+
+    =>
+
+    (let [_1234 (filter pred? some-drivers)]
+      ...)
+
+  where the first arg should be linted and appear to be used."
+  [{{[_ arg & body] :children} :node}]
+  (let [node* (hooks/list-node
+                (list*
+                  (hooks/token-node 'let)
+                  (hooks/vector-node [(hooks/token-node (gensym "_"))
+                                      arg])
+                  body))]
     {:node node*}))

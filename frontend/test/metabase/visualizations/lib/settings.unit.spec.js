@@ -18,7 +18,7 @@ describe("settings framework", () => {
       const expected = { foo: "foo" };
       expect(getComputedSettings(defs, mockObject, stored)).toEqual(expected);
     });
-    it("should not return stored settings for settings without setting definition ", () => {
+    it("should not return stored settings for settings without setting definition", () => {
       const defs = {};
       const stored = { foo: "foo" };
       const expected = {};
@@ -137,7 +137,6 @@ describe("settings framework", () => {
       const defs = { foo: { widget: "input", getProps } };
       const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
       expect(widgets[0].props).toEqual({ hello: "world" });
-      // expect(getProps.mock.calls).toEqual([[null, {}, FIXME, {}]]);
     });
     it("should call onChangeSettings with new value", () => {
       const defs = { foo: { widget: "input" } };
@@ -152,26 +151,6 @@ describe("settings framework", () => {
       );
       widgets[0].onChange("bar");
       expect(onChangeSettings.mock.calls).toEqual([[{ foo: "bar" }]]);
-    });
-    // FIXME: is writeDependencies broken or is this test wrong?
-    xit("should include writeDependencies in onChangeSettings", () => {
-      const defs = {
-        foo: { widget: "input", writeDependencies: ["bar"] },
-        bar: { default: "foo" },
-      };
-      const stored = { foo: "foo" };
-      const onChangeSettings = jest.fn();
-      const widgets = getSettingsWidgets(
-        defs,
-        stored,
-        stored,
-        mockObject,
-        onChangeSettings,
-      );
-      widgets[0].onChange("bar");
-      expect(onChangeSettings.mock.calls).toEqual([
-        [{ foo: "bar", bar: "bar" }],
-      ]);
     });
   });
 

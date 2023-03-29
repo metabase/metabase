@@ -30,7 +30,7 @@ const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
     <div className="mt2 mb1">
       <Heading>{t`Customize link text (optional)`}</Heading>
       <InputBlurChange
-        className="input block full"
+        className="block full"
         placeholder={t`E.x. Details for {{Column Name}}`}
         value={clickBehavior.linkTextTemplate}
         onBlurChange={handleChange}

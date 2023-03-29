@@ -13,5 +13,9 @@
 	"forwardPorts": [3000],
 
 	// Comment out the next line to run as root instead.
-	"remoteUser": "vscode"
+	"remoteUser": "vscode",
+
+	"runArgs": ["--network=metabase-dev"],
+
+	"postStartCommand": "git config --global --add safe.directory /workspaces/metabase"
 }

@@ -1,9 +1,13 @@
 (ns metabase.util.date-2.common
-  (:require [clojure.string :as str]
-            [java-time :as t]
-            [metabase.util :as u])
-  (:import [java.time ZoneId ZoneOffset]
-           [java.time.temporal ChronoField IsoFields TemporalField WeekFields]))
+  (:require
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.util :as u])
+  (:import
+   (java.time ZoneId ZoneOffset)
+   (java.time.temporal ChronoField IsoFields TemporalField WeekFields)))
+
+(set! *warn-on-reflection* true)
 
 ;; TODO - not sure this belongs here, it seems to be a bit more general than just `date-2`.
 

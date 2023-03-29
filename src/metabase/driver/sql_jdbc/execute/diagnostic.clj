@@ -1,6 +1,9 @@
 (ns metabase.driver.sql-jdbc.execute.diagnostic
   "Code related to capturing diagnostic information for JDBC connection pools at execution time."
-  (:import com.mchange.v2.c3p0.PoolBackedDataSource))
+  (:import
+   (com.mchange.v2.c3p0 PoolBackedDataSource)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^:dynamic *diagnostic-info*
   "Atom used to hold diagnostic info for the current query execution, to be made available via a helper macro/fn below."

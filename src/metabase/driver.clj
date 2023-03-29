@@ -6,17 +6,18 @@
   SQL-based drivers can use the `:sql` driver as a parent, and JDBC-based SQL drivers can use `:sql-jdbc`. Both of
   these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
   [[metabase.driver.sql-jdbc]] for more details."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.driver.impl :as driver.impl]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.schema :as su]
-            [potemkin :as p]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.driver.impl :as driver.impl]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
+   [potemkin :as p]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (declare notify-database-updated)
 
@@ -43,8 +44,14 @@
      java.time.format.TextStyle/SHORT
      (java.util.Locale/getDefault))))
 
+(defn- long-timezone-name [timezone-id]
+  (if (seq timezone-id)
+    timezone-id
+    (str (t/zone-id))))
+
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
+  :visibility :settings-manager
   :setter
   (fn [new-value]
     (setting/set-value-of-type! :string :report-timezone new-value)
@@ -55,6 +62,13 @@
   :visibility :public
   :setter     :none
   :getter     (fn [] (short-timezone-name (report-timezone)))
+  :doc        false)
+
+(defsetting report-timezone-long
+  "Current report timezone string"
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (long-timezone-name (report-timezone)))
   :doc        false)
 
 
@@ -221,7 +235,7 @@
 
 (defmulti display-name
   "A nice name for the driver that we'll display to in the admin panel, e.g. \"PostgreSQL\" for `:postgres`. Default
-  implementation capitializes the name of the driver, e.g. `:presto` becomes \"Presto\".
+  implementation capitializes the name of the driver, e.g. `:oracle` becomes \"Oracle\".
 
   When writing a driver that you plan to ship as a separate, lazy-loading plugin (including core drivers packaged this
   way, like SQLite), you do not need to implement this method; instead, specifiy it in your plugin manifest, and
@@ -253,6 +267,19 @@
   {:arglists '([driver details])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti dbms-version
+  "Return a map containing information that describes the version of the DBMS. This typically includes a
+  `:version` containing the (semantic) version of the DBMS as a string and potentially a `:flavor`
+  specifying the flavor like `MySQL` or `MariaDB`."
+  {:arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+;; Some drivers like BigQuery or Snowflake cannot provide a meaningful stable version.
+(defmethod dbms-version :default
+  [_ _]
+  nil)
 
 (defmulti describe-database
   "Return a map containing information that describes all of the tables in a `database`, an instance of the `Database`
@@ -292,41 +319,44 @@
 (defmethod describe-table-fks ::driver [_ _ _]
   nil)
 
-(def ConnectionDetailsProperty
-  "Schema for a map containing information about a connection property we should ask the user to supply when setting up
+;;; this is no longer used but we can leave it around for not for documentation purposes. Maybe we can actually do
+;;; something useful with it like write a test that validates that drivers return correct connection details?
+
+#_(def ConnectionDetailsProperty
+    "Schema for a map containing information about a connection property we should ask the user to supply when setting up
   a new database, as returned by an implementation of `connection-properties`."
-  (s/constrained
-   {
-    ;; The key that should be used to store this property in the `details` map.
-    :name su/NonBlankString
+    (s/constrained
+     {
+      ;; The key that should be used to store this property in the `details` map.
+      :name su/NonBlankString
 
-    ;; Human-readable name that should be displayed to the User in UI for editing this field.
-    :display-name su/NonBlankString
+      ;; Human-readable name that should be displayed to the User in UI for editing this field.
+      :display-name su/NonBlankString
 
-    ;; Human-readable text that gives context about a field's input.
-    (s/optional-key :helper-text) s/Str
+      ;; Human-readable text that gives context about a field's input.
+      (s/optional-key :helper-text) s/Str
 
-    ;; Type of this property. Defaults to `:string` if unspecified.
-    ;; `:select` is a `String` in the backend.
-    (s/optional-key :type) (s/enum :string :integer :boolean :password :select :text)
+      ;; Type of this property. Defaults to `:string` if unspecified.
+      ;; `:select` is a `String` in the backend.
+      (s/optional-key :type) (s/enum :string :integer :boolean :password :select :text)
 
-    ;; A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a
-    ;; placeholder.
-    (s/optional-key :default) s/Any
+      ;; A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a
+      ;; placeholder.
+      (s/optional-key :default) s/Any
 
-    ;; Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value
-    ;; is *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as
-    ;; placeholders, you cannot specify both `:default` and `:placeholder`.
-    (s/optional-key :placeholder) s/Any
+      ;; Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value
+      ;; is *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as
+      ;; placeholders, you cannot specify both `:default` and `:placeholder`.
+      (s/optional-key :placeholder) s/Any
 
-    ;; Is this property required? Defaults to `false`.
-    (s/optional-key :required?) s/Bool
+      ;; Is this property required? Defaults to `false`.
+      (s/optional-key :required?) s/Bool
 
-    ;; Any options for `:select` types
-    (s/optional-key :options) {s/Keyword s/Str}}
+      ;; Any options for `:select` types
+      (s/optional-key :options) {s/Keyword s/Str}}
 
-   (complement (every-pred #(contains? % :default) #(contains? % :placeholder)))
-   "connection details that does not have both default and placeholder"))
+     (complement (every-pred #(contains? % :default) #(contains? % :placeholder)))
+     "connection details that does not have both default and placeholder"))
 
 (defmulti connection-properties
   "Return information about the connection properties that should be exposed to the user for databases that will use
@@ -386,7 +416,9 @@
     ;; DEFAULTS TO TRUE.
     :basic-aggregations
 
-    ;; Does this driver support standard deviation and variance aggregations?
+    ;; Does this driver support standard deviation and variance aggregations? Note that if variance is not supported
+    ;; directly, you can calculate it manually by taking the square of the standard deviation. See the MongoDB driver
+    ;; for example.
     :standard-deviation-aggregations
 
     ;; Does this driver support expressions (e.g. adding the values of 2 columns together)?
@@ -458,9 +490,12 @@
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
-    ;; Does the driver support custom writeback actions using `is_write` Saved Questions. Drivers that support this must
+    ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
-    :actions/custom})
+    :actions/custom
+
+    ;; Does changing the JVM timezone allow producing correct results? (See #27876 for details.)
+    :test/jvm-timezone-setting})
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
@@ -484,6 +519,7 @@
 (defmethod supports? [::driver :date-arithmetics] [_ _] true)
 (defmethod supports? [::driver :temporal-extract] [_ _] true)
 (defmethod supports? [::driver :convert-timezone] [_ _] false)
+(defmethod supports? [::driver :test/jvm-timezone-setting] [_ _] true)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -497,9 +533,8 @@
   (e.g., :left-join is not supported by any version of Mongo DB).
 
   In some cases, a feature may only be supported by certain versions of the database engine.
-  In this case, after implementing `:version` in `describe-database` for the driver,
-  you can check in `(get-in db [:details :version])` and determine
-  whether a feature is supported for this particular database.
+  In this case, after implementing `[[dbms-version]]` for your driver
+  you can determine whether a feature is supported for this particular database.
 
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database]), :added "0.41.0"}
@@ -510,12 +545,6 @@
   :hierarchy #'hierarchy)
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
-
-(defmulti ^{:deprecated "0.42.0"} format-custom-field-name
-  "Unused in Metabase 0.42.0+. Implement [[escape-alias]] instead. This method will be removed in a future release."
-  {:arglists '([driver custom-field-name])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
@@ -724,6 +753,12 @@
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
+;;; TODO:
+;;;
+;;; 1. We definitely should not be asking drivers to "update the value for `:details`". Drivers shouldn't touch the
+;;;    application database.
+;;;
+;;; 2. Something that is done for side effects like updating the application DB NEEDS TO END IN AN EXCLAMATION MARK!
 (defmulti normalize-db-details
   "Normalizes db-details for the given driver. This is to handle migrations that are too difficult to perform via
   regular Liquibase queries. This multimethod will be called from a `:post-select` handler within the database model.
@@ -756,8 +791,22 @@
   nil)
 
 (defmulti execute-write-query!
-  "Execute a writeback query (from an `is_write` Card) e.g. one powering a custom
-  `QueryAction` (see [[metabase.models.action]]). Drivers that support `:actions/custom` must implement this method."
+  "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.models.action]]).
+  Drivers that support `:actions/custom` must implement this method."
   {:added "0.44.0", :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti table-rows-sample
+  "Processes a sample of rows produced by `driver`, from the `table`'s `fields`
+  using the query result processing function `rff`.
+  The default implementation defined in [[metabase.db.metadata-queries]] runs a
+  row sampling MBQL query using the regular query processor to produce the
+  sample rows. This is good enough in most cases so this multimethod should not
+  be implemented unless really necessary.
+  `opts` is a map that may contain additional parameters:
+  `:truncation-size`: size to truncate text fields to if the driver supports
+  expressions."
+  {:arglists '([driver table fields rff opts]), :added "0.46.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

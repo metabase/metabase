@@ -13,7 +13,7 @@ const propTypes = {
   searchQuery: PropTypes.string.required,
   onSelect: PropTypes.func.required,
   searchModels: PropTypes.arrayOf(
-    PropTypes.arrayOf(PropTypes.oneOf(["card", "table"])),
+    PropTypes.oneOf(["card", "dataset", "table"]),
   ),
 };
 

@@ -1,17 +1,23 @@
 (ns metabase.models.card-test
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [metabase.models :refer [Action Card Collection Dashboard DashboardCard QueryAction]]
-            [metabase.models.card :as card]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
-  (:import java.time.LocalDateTime))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [metabase.models
+    :refer [Card Collection Dashboard DashboardCard ParameterCard NativeQuerySnippet]]
+   [metabase.models.card :as card]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.hydrate :as hydrate]
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
+
+(set! *warn-on-reflection* true)
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
@@ -19,7 +25,13 @@
                     Dashboard [dash-1]
                     Dashboard [dash-2]]
       (letfn [(add-card-to-dash! [dash]
-                (db/insert! DashboardCard :card_id card-id, :dashboard_id (u/the-id dash)))
+                (db/insert! DashboardCard
+                  {:card_id      card-id
+                   :dashboard_id (u/the-id dash)
+                   :row          0
+                   :col          0
+                   :size_x       4
+                   :size_y       4}))
               (get-dashboard-count []
                 (card/dashboard-count (db/select-one Card :id card-id)))]
         (is (= 0
@@ -32,6 +44,30 @@
           (add-card-to-dash! dash-2)
           (is (= 2
                  (get-dashboard-count))))))))
+
+(deftest dropdown-widget-values-usage-count-test
+  (let [hydrated-count (fn [card] (-> card
+                                      (hydrate/hydrate :parameter_usage_count)
+                                      :parameter_usage_count))
+        default-params {:name       "Category Name"
+                        :slug       "category_name"
+                        :id         "_CATEGORY_NAME_"
+                        :type       "category"}
+        card-params    (fn [card-id] (merge default-params {:values_source_type "card"
+                                                            :values_source_config {:card_id card-id}}))]
+    (testing "With no associated cards"
+      (tt/with-temp Card [card]
+        (is (zero? (hydrated-count card)))))
+    (testing "With one"
+      (tt/with-temp* [Card      [{card-id :id :as card}]
+                      Dashboard [_ {:parameters [(card-params card-id)]}]]
+        (is (= 1 (hydrated-count card)))))
+    (testing "With several"
+      (tt/with-temp* [Card      [{card-id :id :as card}]
+                      Dashboard [_ {:parameters [(card-params card-id)]}]
+                      Dashboard [_ {:parameters [(card-params card-id)]}]
+                      Dashboard [_ {:parameters [(card-params card-id)]}]]
+        (is (= 3 (hydrated-count card)))))))
 
 (deftest remove-from-dashboards-when-archiving-test
   (testing "Test that when somebody archives a Card, it is removed from any Dashboards it belongs to"
@@ -73,6 +109,71 @@
       (is (= {:name "another name" :database_id (mt/id)}
              (into {} (db/select-one [Card :name :database_id] :id id)))))))
 
+(deftest disable-implicit-actions-if-needed-test
+  (mt/with-actions-enabled
+    (testing "when updating a model to include any clauses will disable implicit actions if they exist\n"
+      (testing "happy paths\n"
+        (let [query (mt/mbql-query users)]
+          (doseq [query-change [{:limit       1}
+                                {:expressions {"id + 1" [:+ (mt/$ids $users.id) 1]}}
+                                {:filter      [:> (mt/$ids $users.id) 2]}
+                                {:breakout    [(mt/$ids !month.users.last_login)]}
+                                {:aggregation [[:count]]}
+                                {:joins       [{:fields       :all
+                                                :source-table (mt/id :checkins)
+                                                :condition    [:= (mt/$ids $users.id) (mt/$ids $checkins.user_id)]
+                                                :alias        "People"}]}
+                                {:order-by    [[(mt/$ids $users.id) :asc]]}
+                                {:fields      [(mt/$ids $users.id)]}]]
+            (testing (format "when adding %s to the query" (first (keys query-change)))
+              (mt/with-actions [{model-id :id}           {:dataset true :dataset_query query}
+                                {action-id-1 :action-id} {:type :implicit
+                                                          :kind "row/create"}
+                                {action-id-2 :action-id} {:type :implicit
+                                                          :kind "row/update"}]
+                ;; make sure we have thing exists to start with
+                (is (= 2 (t2/count 'Action :id [:in [action-id-1 action-id-2]])))
+                (is (= 1 (t2/update! 'Card :id model-id {:dataset_query (update query :query merge query-change)})))
+                ;; should be gone by now
+                (is (= 0 (t2/count 'Action :id [:in [action-id-1 action-id-2]])))
+                (is (= 0 (t2/count 'ImplicitAction :action_id [:in [action-id-1 action-id-2]])))
+                ;; call it twice to make we don't get delete error if no actions are found
+                (is (= 1 (t2/update! 'Card :id model-id {:dataset_query (update query :query merge query-change)})))))))))
+
+    (testing "unhappy paths\n"
+      (testing "should not attempt to delete if it's not a model"
+        (t2.with-temp/with-temp [Card {id :id} {:dataset       false
+                                                :dataset_query (mt/mbql-query users)}]
+          (with-redefs [card/disable-implicit-action-for-model! (fn [& _args]
+                                                                  (throw (ex-info "Should not be called" {})))]
+            (is (= 1 (t2/update! 'Card :id id {:dataset_query (mt/mbql-query users {:limit 1})}))))))
+
+      (testing "only disable implicit actions, not http and query"
+        (mt/with-actions [{model-id :id}           {:dataset true :dataset_query (mt/mbql-query users)}
+                          {implicit-id :action-id} {:type :implicit}
+                          {http-id :action-id}     {:type :http}
+                          {query-id :action-id}    {:type :query}]
+          ;; make sure we have thing exists to start with
+          (is (= 3 (t2/count 'Action :id [:in [implicit-id http-id query-id]])))
+
+          (t2/update! 'Card :id model-id {:dataset_query (mt/mbql-query users {:limit 1})})
+          (is (not (t2/exists? 'Action :id implicit-id)))
+          (is (t2/exists? 'Action :id http-id))
+          (is (t2/exists? 'Action :id query-id))))
+
+      (testing "should not disable if change source table"
+        (mt/with-actions [{model-id :id}           {:dataset true :dataset_query (mt/mbql-query users)}
+                          {action-id-1 :action-id} {:type :implicit
+                                                    :kind "row/create"}
+                          {action-id-2 :action-id} {:type :implicit
+                                                    :kind "row/update"}]
+          ;; make sure we have thing exists to start with
+          (is (= 2 (t2/count 'Action :id [:in [action-id-1 action-id-2]])))
+          ;; change source from users to categories
+          (t2/update! 'Card :id model-id {:dataset_query (mt/mbql-query categories)})
+          ;; actions still exists
+          (is (= 2 (t2/count 'Action :id [:in [action-id-1 action-id-2]])))
+          (is (= 2 (t2/count 'ImplicitAction :action_id [:in [action-id-1 action-id-2]]))))))))
 
 ;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
 
@@ -256,39 +357,6 @@
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
                (db/update! Card card-id bad-card-data))))))))
 
-(deftest action-creation-test
-  (testing "actions are created when is_write is set"
-    (testing "during create"
-      (mt/with-temp Card [{card-id :id} (assoc (tt/with-temp-defaults Card) :is_write true)]
-        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-          (is (seq qa-rows)
-              "Inserting a card with :is_write true should create QueryAction")
-          (is (seq (db/select Action :id action_id))))))
-    (testing "during update"
-      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
-        (db/update! Card card-id {:is_write true})
-        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-          (is (seq qa-rows) "Updating a card to have :is_write true should create QueryAction")
-          (is (seq (db/select Action :id action_id)))))))
-  (testing "actions are not created when is_write is not set"
-    (testing "during create:"
-      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
-        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-          (is (empty? qa-rows) "Inserting a card with :is_write false should not create QueryAction")
-          (is (empty? (db/select Action :id action_id))))))
-    (testing "during update"
-      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
-        (db/update! Card card-id {:is_write false})
-        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-          (is (empty? qa-rows) "Updating a card to have :is_write false should delete QueryAction")
-          (is (empty? (db/select Action :id action_id)))))))
-  (testing "actions are deleted when is_write is set to false during update"
-    (mt/with-temp Card [{card-id :id} (assoc (tt/with-temp-defaults Card) :is_write true)]
-      (db/update! Card card-id {:is_write false})
-      (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-        (is (empty? qa-rows) "Updating a card to have :is_write false should create a QueryAction")
-        (is (empty? (db/select Action :id action_id)))))))
-
 ;;; ------------------------------------------ Parameters tests ------------------------------------------
 
 (deftest validate-parameters-test
@@ -358,12 +426,141 @@
 
 (deftest identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/" :created_at now}]
-                      Card        [card  {:name "the card" :collection_id (:id coll) :created_at now}]]
+    (let [now #t "2022-09-01T12:34:56"]
+      (mt/with-temp* [Collection [coll  {:name "field-db" :location "/" :created_at now}]
+                      Card       [card  {:name "the card" :collection_id (:id coll) :created_at now}]]
         (is (= "5199edf0"
                (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll) now])
                (serdes.hash/identity-hash card)))))))
+
+(deftest parameter-card-test
+  (let [default-params {:name       "Category Name"
+                        :slug       "category_name"
+                        :id         "_CATEGORY_NAME_"
+                        :type       "category"}]
+    (testing "parameter with source is card create ParameterCard"
+      (tt/with-temp* [Card  [{source-card-id-1 :id}]
+                      Card  [{source-card-id-2 :id}]
+                      Card  [{card-id :id}
+                             {:parameters [(merge default-params
+                                                  {:values_source_type    "card"
+                                                   :values_source_config {:card_id source-card-id-1}})]}]]
+        (is (=? [{:card_id                   source-card-id-1
+                  :parameterized_object_type :card
+                  :parameterized_object_id   card-id
+                  :parameter_id              "_CATEGORY_NAME_"}]
+                (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
+
+        (testing "update values_source_config.card_id will update ParameterCard"
+          (db/update! Card card-id {:parameters [(merge default-params
+                                                        {:values_source_type    "card"
+                                                         :values_source_config {:card_id source-card-id-2}})]})
+          (is (=? [{:card_id                   source-card-id-2
+                    :parameterized_object_type :card
+                    :parameterized_object_id   card-id
+                    :parameter_id              "_CATEGORY_NAME_"}]
+                  (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))
+
+        (testing "delete the card will delete ParameterCard"
+          (db/delete! Card :id card-id)
+          (is (= []
+                 (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))))
+
+    (testing "Delete a card will delete any ParameterCard that linked to it"
+      (tt/with-temp* [Card  [{source-card-id :id}]
+                      Card  [{card-id-1 :id}
+                             {:parameters [(merge default-params
+                                                  {:values_source_type    "card"
+                                                   :values_source_config {:card_id source-card-id}})]}]
+                      Card  [{card-id-2 :id}
+                             {:parameters [(merge default-params
+                                                  {:values_source_type    "card"
+                                                   :values_source_config {:card_id source-card-id}})]}]]
+        ;; makes sure we have ParameterCard to start with
+        (is (=? [{:card_id                   source-card-id
+                  :parameterized_object_type :card
+                  :parameterized_object_id   card-id-1
+                  :parameter_id              "_CATEGORY_NAME_"}
+                 {:card_id                   source-card-id
+                  :parameterized_object_type :card
+                  :parameterized_object_id   card-id-2
+                  :parameter_id              "_CATEGORY_NAME_"}]
+                (db/select 'ParameterCard :card_id source-card-id)))
+        (db/delete! Card :id source-card-id)
+        (is (= []
+               (db/select 'ParameterCard :card_id source-card-id)))))))
+
+(deftest cleanup-parameter-on-card-changes-test
+  (mt/dataset sample-dataset
+    (mt/with-temp*
+      [Card      [{source-card-id :id} (merge (mt/card-with-source-metadata-for-query
+                                                (mt/mbql-query products {:fields [(mt/$ids $products.title)
+                                                                                  (mt/$ids $products.category)]
+                                                                         :limit 5}))
+                                              {:database_id (mt/id)
+                                               :table_id    (mt/id :products)})]
+       Card      [card                 {:parameters [{:name                  "Param 1"
+                                                      :id                    "param_1"
+                                                      :type                  "category"
+                                                      :values_source_type    "card"
+                                                      :values_source_config {:card_id source-card-id
+                                                                             :value_field (mt/$ids $products.title)}}]}]
+       Dashboard [dashboard            {:parameters [{:name       "Param 2"
+                                                      :id         "param_2"
+                                                      :type       "category"
+                                                      :values_source_type    "card"
+                                                      :values_source_config {:card_id source-card-id
+                                                                             :value_field (mt/$ids $products.category)}}]}]]
+      ;; check if we had parametercard to starts with
+      (is (=? [{:card_id                   source-card-id
+                :parameter_id              "param_1"
+                :parameterized_object_type :card
+                :parameterized_object_id   (:id card)}
+               {:card_id                   source-card-id
+                :parameter_id              "param_2"
+                :parameterized_object_type :dashboard
+                :parameterized_object_id   (:id dashboard)}]
+              (db/select ParameterCard :card_id source-card-id)))
+      ;; update card with removing the products.category
+      (testing "on update result_metadata"
+        (db/update! Card source-card-id
+                    (mt/card-with-source-metadata-for-query
+                      (mt/mbql-query products {:fields [(mt/$ids $products.title)]
+                                               :limit 5})))
+
+        (testing "ParameterCard for dashboard is removed"
+          (is (=? [{:card_id                   source-card-id
+                    :parameter_id              "param_1"
+                    :parameterized_object_type :card
+                    :parameterized_object_id   (:id card)}]
+                  (db/select ParameterCard :card_id source-card-id))))
+
+        (testing "update the dashboard parameter and remove values_config of dashboard"
+          (is (=? [{:id   "param_2"
+                    :name "Param 2"
+                    :type :category}]
+                  (db/select-one-field :parameters Dashboard :id (:id dashboard))))
+
+          (testing "but no changes with parameter on card"
+            (is (=? [{:name                 "Param 1"
+                      :id                   "param_1"
+                      :type                 :category
+                      :values_source_type   "card"
+                      :values_source_config {:card_id     source-card-id
+                                             :value_field (mt/$ids $products.title)}}]
+                    (db/select-one-field :parameters Card :id (:id card)))))))
+
+      (testing "on archive card"
+        (db/update! Card source-card-id {:archived true})
+
+        (testing "ParameterCard for card is removed"
+          (is (=? [] (db/select ParameterCard :card_id source-card-id))))
+
+        (testing "update the dashboard parameter and remove values_config of card"
+          (is (=? [{:id   "param_1"
+                    :name "Param 1"
+                    :type :category}]
+                  (db/select-one-field :parameters Card :id (:id card)))))))))
 
 (deftest serdes-descendants-test
   (testing "regular cards don't depend on anything"
@@ -375,6 +572,28 @@
                     Card [card2 {:name "derived card"
                                  :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]]
       (is (empty? (serdes.base/serdes-descendants "Card" (:id card1))))
+      (is (= #{["Card" (:id card1)]}
+             (serdes.base/serdes-descendants "Card" (:id card2))))))
+
+  (testing "cards that has a native template tag"
+    (mt/with-temp* [NativeQuerySnippet [snippet {:name "category" :content "category = 'Gizmo'"}]
+                    Card               [card {:name          "Business Card"
+                                              :dataset_query {:native
+                                                              {:template-tags {:snippet {:name         "snippet"
+                                                                                         :type         :snippet
+                                                                                         :snippet-name "snippet"
+                                                                                         :snippet-id   (:id snippet)}}
+                                                               :query "select * from products where {{snippet}}"}}}]]
+      (is (= #{["NativeQuerySnippet" (:id snippet)]}
+             (serdes.base/serdes-descendants "Card" (:id card))))))
+
+  (testing "cards which have parameter's source is another card"
+    (mt/with-temp* [Card [card1 {:name "base card"}]
+                    Card [card2 {:name       "derived card"
+                                 :parameters [{:id                   "valid-id"
+                                               :type                 "id"
+                                               :values_source_type   "card"
+                                               :values_source_config {:card_id (:id card1)}}]}]]
       (is (= #{["Card" (:id card1)]}
              (serdes.base/serdes-descendants "Card" (:id card2)))))))
 

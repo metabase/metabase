@@ -31,7 +31,6 @@ describe("dashboard reducers", () => {
         loadingStatus: "idle",
       },
       parameterValues: {},
-      parameterValuesSearchCache: {},
       sidebar: { props: {} },
       slowCards: {},
       loadingControls: {},

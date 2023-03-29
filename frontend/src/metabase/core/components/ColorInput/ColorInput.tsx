@@ -8,6 +8,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import _ from "underscore";
 import Color from "color";
 import Input from "metabase/core/components/Input";
 
@@ -58,10 +59,9 @@ const ColorInput = forwardRef(function ColorInput(
 
   return (
     <Input
-      {...props}
+      {..._.omit(props, "size")}
       ref={ref}
       value={isFocused ? inputText : colorText}
-      size="small"
       onFocus={handleFocus}
       onBlur={handleBlur}
       onChange={handleChange}

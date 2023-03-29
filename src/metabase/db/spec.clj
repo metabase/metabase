@@ -2,8 +2,9 @@
   "Functions for creating JDBC DB specs for a given driver.
   Only databases that are supported as application DBs should have functions in this namespace;
   otherwise, similar functions are only needed by drivers, and belong in those namespaces."
-  (:require [clojure.string :as str]
-            [metabase.config :as config]))
+  (:require
+   [clojure.string :as str]
+   [metabase.config :as config]))
 
 (defmulti spec
   "Create a [[clojure.java.jdbc]] spec map from broken-out database `details`."

@@ -1,9 +1,10 @@
 (ns metabase.db.setup-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [metabase.db.data-source :as mdb.data-source]
-            [metabase.db.setup :as mdb.setup]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [metabase.db.data-source :as mdb.data-source]
+   [metabase.db.setup :as mdb.setup]
+   [metabase.test :as mt]))
 
 (deftest verify-db-connection-test
   (testing "Should be able to verify a DB connection"

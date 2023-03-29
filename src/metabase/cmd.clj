@@ -14,16 +14,19 @@
 
   You can see what commands are available by running the command `help`. This command uses the docstrings and arglists
   associated with each command's entrypoint function to generate descriptions for each command."
-  (:refer-clojure :exclude [load])
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [environ.core :as env]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]))
+  (:refer-clojure :exclude [load import])
+  (:require
+   [clojure.string :as str]
+   [environ.core :as env]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (defn- system-exit!
   "Proxy function to System/exit to enable the use of `with-redefs`."
@@ -130,44 +133,67 @@
         (for [[k v] (partition 2 args)]
           [(mbql.u/normalize-token (subs k 2)) v])))
 
-(defn- resolve-enterprise-command [symb]
-  (try
-    (classloader/require (symbol (namespace symb)))
-    (resolve symb)
-    (catch Throwable e
-      (throw (ex-info (trs "The ''{0}'' command is only available in Metabase Enterprise Edition." (name symb))
-                      {:command symb}
-                      e)))))
+(defn- call-enterprise
+  "Resolves enterprise command by symbol and calls with args, or else throws error if not EE"
+  [symb & args]
+  (let [f (try
+            (classloader/require (symbol (namespace symb)))
+            (resolve symb)
+            (catch Throwable e
+              (throw (ex-info (trs "The ''{0}'' command is only available in Metabase Enterprise Edition." (name symb))
+                              {:command symb}
+                              e))))]
+    (apply f args)))
 
-(defn ^:command load
-  "Load serialized metabase instance as created by `dump` command from directory `path`.
+(defn ^:command ^:deprecated load
+  "Deprecated: prefer [[import]] instead.
 
-   `--mode` can be one of `:update` or `:skip` (default). `--on-error` can be `:abort` or `:continue` (default)."
-  ([path] (load path {"--mode" :skip
-                      "--on-error" :continue}))
+  Load serialized metabase instance as created by [[dump]] command from directory `path`.
 
-  ([path & args]
-   (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/load)]
-     (cmd path (->> args
-                    cmd-args->map
-                    (m/map-vals mbql.u/normalize-token))))))
+  `--mode` can be one of `:update` or `:skip` (default). `--on-error` can be `:abort` or `:continue` (default)."
+  [path & options]
+  (log/warn (u/colorize :red (trs "''load'' is deprecated and will be removed in a future release. Please migrate to ''import''.")))
+  (let [opts (merge {:mode     :skip
+                     :on-error :continue}
+                    (m/map-vals mbql.u/normalize-token (cmd-args->map options)))]
+    (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load path opts)))
 
-(defn ^:command dump
-  "Serialized metabase instance into directory `path`. `args` options may contain --state option with one of
+(defn ^:command import
+  "Load serialized Metabase instance as created by the [[export]] command from directory `path`."
+  [path]
+  (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path))
+
+(defn ^:command ^:deprecated dump
+  "Deprecated: prefer [[export]] instead.
+
+  Serialized metabase instance into directory `path`. `args` options may contain --state option with one of
   `active` (default), `all`. With `active` option, do not dump archived entities."
-  ([path] (dump path {"--state" :active}))
-  ([path & args]
-   (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/dump)]
-     (cmd path (cmd-args->map args)))))
+  [path & options]
+  (log/warn (u/colorize :red (trs "''dump'' is deprecated and will be removed in a future release. Please migrate to ''export''.")))
+  (let [options (merge {:mode     :skip
+                        :on-error :continue}
+                       (cmd-args->map options))]
+    (call-enterprise 'metabase-enterprise.serialization.cmd/v1-dump path options)))
+
+(defn- parse-int-list
+  [s]
+  (when-not (str/blank? s)
+    (map #(Integer/parseInt %) (str/split s #","))))
+
+(defn ^:command export
+  "Serialize a Metabase into directory `path`. Replaces the [[dump]] command..
+
+  `options` may contain `--state` option with one of `active` (default), `all`. With `active` option, do not dump
+  archived entities."
+  [path & options]
+  (let [opts (-> options cmd-args->map (update :collections parse-int-list))]
+    (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump path opts)))
 
 (defn ^:command seed-entity-ids
   "Add entity IDs for instances of serializable models that don't already have them."
-  [& options]
-  (let [cmd     (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/seed-entity-ids)
-        options (cmd-args->map options)]
-    (system-exit! (if (cmd options)
-                    0
-                    1))))
+  []
+  (when-not (call-enterprise 'metabase-enterprise.serialization.cmd/seed-entity-ids)
+    (throw (Exception. "Error encountered while seeding entity IDs"))))
 
 (defn ^:command rotate-encryption-key
   "Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to

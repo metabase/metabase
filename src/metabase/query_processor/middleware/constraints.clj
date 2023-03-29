@@ -1,8 +1,9 @@
 (ns metabase.query-processor.middleware.constraints
   "Middleware that adds default constraints to limit the maximum number of rows returned to queries that specify the
   `:add-default-userland-constraints?` `:middleware` option."
-  (:require [metabase.models.setting :as setting]
-            [metabase.util.i18n :refer [deferred-tru]]))
+  (:require
+   [metabase.models.setting :as setting]
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (def ^:private ^:const default-max-results-bare-rows 2000)
 

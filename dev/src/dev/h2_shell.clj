@@ -14,5 +14,7 @@
   (org.h2.tools.Shell/main
    (into-array
     String
-    ["-url" (let [^metabase.db.data_source.DataSource data-source mdb.env/data-source]
-              (.url data-source))])))
+    ["-url" (let [^metabase.db.data_source.DataSource data-source mdb.env/data-source
+                  url                                             (.url data-source)]
+              (println "Connecting to database at URL" url)
+              url)])))

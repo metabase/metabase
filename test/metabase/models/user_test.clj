@@ -20,6 +20,7 @@
    [metabase.models.collection-test :as collection-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.permissions-test :as perms-test]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.user :as user]
    [metabase.test :as mt]
@@ -29,6 +30,8 @@
    [metabase.util.password :as u.password]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
+
+(set! *warn-on-reflection* true)
 
 (comment
   ;; this has to be loaded for the Google Auth tests to work
@@ -40,16 +43,14 @@
   (testing "Make sure the test users have valid permissions sets"
     (doseq [user [:rasta :crowberto :lucky :trashbird]]
       (testing user
-        (is (= true
-               (perms/is-permissions-set? (user/permissions-set (mt/user->id user)))))))))
+        (is (perms-test/is-permissions-set? (user/permissions-set (mt/user->id user))))))))
 
 (deftest group-with-no-permissions-test
   (testing (str "Adding a group with *no* permissions shouldn't suddenly break all the permissions sets (This was a "
                 "bug @tom found where a group with no permissions would cause the permissions set to contain `nil`).")
     (mt/with-temp* [PermissionsGroup           [{group-id :id}]
                     PermissionsGroupMembership [_              {:group_id group-id, :user_id (mt/user->id :rasta)}]]
-      (is (= true
-             (perms/is-permissions-set? (user/permissions-set (mt/user->id :rasta))))))))
+      (is (perms-test/is-permissions-set? (user/permissions-set (mt/user->id :rasta)))))))
 
 (defn- remove-non-collection-perms [perms-set]
   (set (for [perms-path perms-set
@@ -429,8 +430,8 @@
                  (db/select-one-field :locale User :id user-id)))))
       (testing "invalid locale"
         (is (thrown-with-msg?
-             Exception
-             #"Assert failed: \(i18n/available-locale\? locale\)"
+             Throwable
+             #"Assert failed: Invalid locale: \"en_XX\""
              (mt/with-temp User [_ {:locale "en_XX"}])))))
 
     (testing "updating a User"
@@ -441,8 +442,8 @@
                  (db/select-one-field :locale User :id user-id))))
         (testing "invalid locale"
           (is (thrown-with-msg?
-               AssertionError
-               #"Assert failed: \(i18n/available-locale\? locale\)"
+               Throwable
+               #"Assert failed: Invalid locale: \"en_XX\""
                (db/update! User user-id :locale "en_XX"))))))))
 
 (deftest normalize-locale-test

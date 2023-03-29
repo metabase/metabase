@@ -1,22 +1,23 @@
 (ns metabase.api.activity
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [compojure.core :refer [GET]]
-            [medley.core :as m]
-            [metabase.api.common :refer [*current-user-id* defendpoint define-routes]]
-            [metabase.models.activity :refer [Activity]]
-            [metabase.models.app :refer [App]]
-            [metabase.models.bookmark :refer [CardBookmark DashboardBookmark]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.interface :as mi]
-            [metabase.models.query-execution :refer [QueryExecution]]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.view-log :refer [ViewLog]]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [compojure.core :refer [GET]]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.api.common :as api :refer [*current-user-id* define-routes]]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.models.activity :refer [Activity]]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.interface :as mi]
+   [metabase.models.query-execution :refer [QueryExecution]]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.view-log :refer [ViewLog]]
+   [metabase.util.honey-sql-2 :as h2x]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (defn- dashcard-activity? [activity]
   (#{:dashboard-add-cards :dashboard-remove-cards}
@@ -53,18 +54,10 @@
        (cond-> {}
          (seq dataset-ids) (assoc "dataset" (set dataset-ids))
          (seq card-ids')   (assoc "card" (set card-ids')))))
-   (when-let [dashboard-ids (get referenced-objects "dashboard")]
-     (let [id->page?                            (db/select-id->field :is_app_page Dashboard
-                                                                     :id [:in dashboard-ids])
-           {page-ids true dashboard-ids' false} (group-by (comp boolean id->page?)
-                                                          ;; only existing ids go back
-                                                          (keys id->page?))]
-       (cond-> {}
-         (seq page-ids)       (assoc "page" (set page-ids))
-         (seq dashboard-ids') (assoc "dashboard" (set dashboard-ids')))))
-   (into {} (for [[model ids] (dissoc referenced-objects "card" "dashboard")
+   (into {} (for [[model ids] (dissoc referenced-objects "card")
                   :when       (seq ids)]
               [model (case model
+                       "dashboard" (db/select-ids 'Dashboard, :id [:in ids])
                        "metric"    (db/select-ids 'Metric,    :id [:in ids], :archived false)
                        "pulse"     (db/select-ids 'Pulse,     :id [:in ids])
                        "segment"   (db/select-ids 'Segment,   :id [:in ids], :archived false)
@@ -76,15 +69,12 @@
   (let [existing-objects (-> activities activities->referenced-objects referenced-objects->existing-objects)
         model-exists? (fn [model id] (contains? (get existing-objects model) id))
         existing-dataset? (partial model-exists? "dataset")
-        existing-page? (partial model-exists? "page")
         existing-card? (partial model-exists? "card")]
     (for [{:keys [model_id], :as activity} activities]
-      (let [model (cond
-                    (and (= (:model activity) "card")
-                         (existing-dataset? (:model_id activity))) "dataset"
-                    (and (= (:model activity) "dashboard")
-                         (existing-page? (:model_id activity)))    "page"
-                    :else                                          (:model activity))]
+      (let [model (if (and (= (:model activity) "card")
+                           (existing-dataset? (:model_id activity)))
+                    "dataset"
+                    (:model activity))]
         (cond-> (assoc activity
                        :model_exists (model-exists? model model_id)
                        :model model)
@@ -96,7 +86,8 @@
                                 (or (existing-dataset? (:card_id dashcard))
                                     (existing-card? (:card_id dashcard))))))))))))
 
-(defendpoint GET "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/"
   "Get recent activity."
   []
   (filter mi/can-read? (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
@@ -110,12 +101,11 @@
         "card"      [Card
                      :id :name :collection_id :description :display
                      :dataset_query :dataset :archived
-                     (db/qualify Collection :authority_level)]
+                     :collection.authority_level]
         "dashboard" [Dashboard
                      :id :name :collection_id :description
-                     :archived :is_app_page
-                     [(db/qualify App :id) :app_id]
-                     (db/qualify Collection :authority_level)]
+                     :archived
+                     :collection.authority_level]
         "table"     [Table
                      :id :name :db_id
                      :display_name :initial_sync_status
@@ -124,8 +114,7 @@
             self-qualify #(db/qualify model-symb %)]
         (cond-> {:where [:in (self-qualify :id) ids]}
           (not= model "table")
-          (merge {:left-join [Collection [:= (db/qualify Collection :id) (self-qualify :collection_id)]
-                              App [:= (db/qualify App :collection_id) (db/qualify Collection :id)]]})))))
+          (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})))))
 
 (defn- select-items! [model ids]
   (when (seq ids)
@@ -148,7 +137,7 @@
         (group-by :model views)))
 
 (defn- views-and-runs
-  "Common query implementation for `recent_views` and `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
+  "Query implementation for `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
   Cards have a query limit of `card-runs-limit`.
 
   The expected output of the query is a single row per unique model viewed by the current user including a `:max_ts` which
@@ -159,33 +148,40 @@
   from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
   query results for dashboard and table views."
   [views-limit card-runs-limit all-users?]
-  (let [dashboard-and-table-views (db/select [ViewLog :%min.view_log.user_id :model :model_id
-                                              [:%count.* :cnt] [:%max.timestamp :max_ts]]
-                                    {:group-by  [:model :model_id]
-                                     :where     [:and
-                                                 (when-not all-users? [:= (db/qualify ViewLog :user_id) *current-user-id*])
-                                                 [:in :model #{"dashboard" "table"}]
-                                                 [:= :bm.id nil]]
-                                     :order-by  [[:max_ts :desc] [:model :desc]]
-                                     :limit     views-limit
-                                     :left-join [[DashboardBookmark :bm]
-                                                 [:and
-                                                  [:= :model "dashboard"]
-                                                  [:= :bm.user_id *current-user-id*]
-                                                  [:= :model_id :bm.dashboard_id]]]})
-        card-runs                 (->> (db/select [QueryExecution [:%min.executor_id :user_id] [(db/qualify QueryExecution :card_id) :model_id]
-                                                   [:%count.* :cnt] [:%max.started_at :max_ts]]
-                                         {:group-by [(db/qualify QueryExecution :card_id) :context]
-                                          :where    [:and
-                                                     (when-not all-users? [:= :executor_id *current-user-id*])
-                                                     [:= :context (hx/literal :question)]
-                                                     [:= :bm.id nil]]
-                                          :order-by [[:max_ts :desc]]
-                                          :limit    card-runs-limit
-                                          :left-join [[CardBookmark :bm]
-                                                      [:and
-                                                       [:= :bm.user_id *current-user-id*]
-                                                       [:= (db/qualify QueryExecution :card_id) :bm.card_id]]]})
+  (let [dashboard-and-table-views (db/select [ViewLog
+                                              [[:min :view_log.user_id] :user_id]
+                                              :model
+                                              :model_id
+                                              [:%count.* :cnt]
+                                              [:%max.timestamp :max_ts]]
+                                             {:group-by  [:model :model_id]
+                                              :where     [:and
+                                                          (when-not all-users? [:= (db/qualify ViewLog :user_id) *current-user-id*])
+                                                          [:in :model #{"dashboard" "table"}]
+                                                          [:= :bm.id nil]]
+                                              :order-by  [[:max_ts :desc] [:model :desc]]
+                                              :limit     views-limit
+                                              :left-join [[:dashboard_bookmark :bm]
+                                                          [:and
+                                                           [:= :model "dashboard"]
+                                                           [:= :bm.user_id *current-user-id*]
+                                                           [:= :model_id :bm.dashboard_id]]]})
+        card-runs                 (->> (db/select [QueryExecution
+                                                   [:%min.executor_id :user_id]
+                                                   [(db/qualify QueryExecution :card_id) :model_id]
+                                                   [:%count.* :cnt]
+                                                   [:%max.started_at :max_ts]]
+                                                  {:group-by [(db/qualify QueryExecution :card_id) :context]
+                                                   :where    [:and
+                                                              (when-not all-users? [:= :executor_id *current-user-id*])
+                                                              [:= :context (h2x/literal :question)]
+                                                              [:= :bm.id nil]]
+                                                   :order-by [[:max_ts :desc]]
+                                                   :limit    card-runs-limit
+                                                   :left-join [[:card_bookmark :bm]
+                                                               [:and
+                                                                [:= :bm.user_id *current-user-id*]
+                                                                [:= (db/qualify QueryExecution :card_id) :bm.card_id]]]})
                                        (map #(dissoc % :row_count))
                                        (map #(assoc % :model "card")))]
     (->> (concat card-runs dashboard-and-table-views)
@@ -195,10 +191,74 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-(defendpoint GET "/recent_views"
-  "Get the list of 5 things the current user has been viewing most recently."
+(defn- bookmarks-query
+  [user-id]
+  (let [as-null (when (= (mdb.connection/db-type) :postgres) (h2x/->integer nil))]
+    {:select [[:type :model] [:item_id :model_id]]
+     :from   [[{:union-all [{:select [:card_id
+                                      [as-null :dashboard_id]
+                                      [as-null :collection_id]
+                                      [:card_id :item_id]
+                                      [(h2x/literal "card") :type]
+                                      :created_at]
+                             :from   [:card_bookmark]
+                             :where  [:= :user_id [:inline user-id]]}
+                            {:select [[as-null :card_id]
+                                      :dashboard_id
+                                      [as-null :collection_id]
+                                      [:dashboard_id :item_id]
+                                      [(h2x/literal "dashboard") :type]
+                                      :created_at]
+                             :from   [:dashboard_bookmark]
+                             :where  [:= :user_id [:inline user-id]]}]}
+               :bookmarks]]}))
+
+(defn- recent-views-for-user
+  [user-id]
+  (let [bookmarks (bookmarks-query user-id)
+        qe        {:select [[(h2x/literal "qe") :source]
+                            [:executor_id :user_id]
+                            :context
+                            [:started_at :timestamp]
+                            [(h2x/literal "card") :model]
+                            [:card_id :model_id]
+                            [false :dataset]]
+                   :from   :query_execution}
+        vl        {:select    [[(h2x/literal "vl") :source]
+                               :user_id
+                               [(h2x/literal "question") :context]
+                               :timestamp
+                               :model
+                               :model_id
+                               [:report_card.dataset :dataset]]
+                   :from      [:view_log]
+                   :left-join [:report_card
+                               [:and
+                                [:= :view_log.model (h2x/literal "card")]
+                                [:= :view_log.model_id :report_card.id]]]}
+        views     {:union-all [qe vl]}]
+    (t2/query
+     {:select   [[[:max :timestamp] :timestamp]
+                 :model
+                 :model_id]
+      :from     [[views :views]]
+      :where    [[:and
+                  [:= :user_id [:inline user-id]]
+                  [:>= :timestamp (t/minus (t/offset-date-time) (t/days 30))]
+                  [:not= :context (h2x/literal "pulse")]
+                  [:not= :context (h2x/literal "collection")]
+                  [:not= :context (h2x/literal "ad-hoc")]
+                  [:not= [:composite :context :model] [:composite (h2x/literal "dashboard") (h2x/literal "card")]]
+                  [:not= [:composite :source :model :dataset] [:composite (h2x/literal "vl") (h2x/literal "card") [:inline false]]]
+                  [:not-in [:composite :model :model_id] bookmarks]]]
+      :group-by [:model :model_id]
+      :order-by [[:timestamp :desc]]
+      :limit    [:inline 8]})))
+
+(api/defendpoint GET "/recent_views"
+  "Get a list of 5 things the current user has been viewing most recently."
   []
-  (let [views (views-and-runs views-limit card-runs-limit false)
+  (let [views (recent-views-for-user *current-user-id*)
         model->id->items (models-for-views views)]
     (->> (for [{:keys [model model_id] :as view-log} views
                :let [model-object (-> (get-in model->id->items [model model_id])
@@ -209,8 +269,7 @@
                           (not (or (:archived model-object)
                                    (= (:visibility_type model-object) :hidden))))]
            (cond-> (assoc view-log :model_object model-object)
-             (:dataset model-object) (assoc :model "dataset")
-             (:is_app_page model-object) (assoc :model "page")))
+             (:dataset model-object) (assoc :model "dataset")))
          (take 5))))
 
 (defn- official?
@@ -250,7 +309,7 @@
                       (* (/ cnt max-count) views-wt)]]
           (assoc item :score (double (reduce + scores))))))))
 
-(def ^:private model-precedence ["dashboard" "page" "card" "dataset" "table"])
+(def ^:private model-precedence ["dashboard" "card" "dataset" "table"])
 
 (defn- order-items
   [items]
@@ -258,7 +317,8 @@
       (let [groups (group-by :model items)]
         (mapcat #(get groups %) model-precedence))))
 
-(defendpoint GET "/popular_items"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
   finds anything archived, deleted, etc it can hopefully still get 5."
   []
@@ -277,8 +337,7 @@
                                         (not (or (:archived model-object)
                                                  (= (:visibility_type model-object) :hidden))))]
                          (cond-> (assoc view-log :model_object model-object)
-                           (:dataset model-object) (assoc :model "dataset")
-                           (:is_app_page model-object) (assoc :model "page")))
+                           (:dataset model-object) (assoc :model "dataset")))
         scored-views (score-items filtered-views)]
     (->> scored-views
          (sort-by :score)

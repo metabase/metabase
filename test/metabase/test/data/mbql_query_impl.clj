@@ -1,10 +1,13 @@
 (ns metabase.test.data.mbql-query-impl
   "Internal implementation of `data/$ids` and `data/mbql-query` and related macros."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [metabase.models.field :refer [Field]]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [metabase.models.field :refer [Field]]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (defn- token->sigil [token]
   (when-let [[_ sigil] (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (str token))]
@@ -50,8 +53,8 @@
   [_ _ source-table-symb source-token-str dest-token-str]
   ;; recursively parse the destination field, then add `:source-field` to it.
   (let [[_ id-form options] (parse-token-by-sigil source-table-symb (symbol (if (token->sigil dest-token-str)
-                                                             dest-token-str
-                                                             (str \$ dest-token-str))))]
+                                                                             dest-token-str
+                                                                             (str \$ dest-token-str))))]
     [:field id-form (assoc options :source-field (field-id-call source-table-symb source-token-str))]))
 
 (defmethod mbql-field [:raw :normal]
@@ -126,8 +129,8 @@
   [source-table-symb token]
   (if-let [[_ unit token] (re-matches #"^!([^.]+)\.(.+$)" (str token))]
     (let [[_ id-or-name opts] (parse-token-by-sigil source-table-symb (if (token->sigil token)
-                                                                   (symbol token)
-                                                                   (symbol (str \$ token))))]
+                                                                       (symbol token)
+                                                                       (symbol (str \$ token))))]
       [:field id-or-name (assoc opts :temporal-unit (keyword unit))])
     (throw (ex-info "Error parsing token starting with '!'" {:token token}))))
 

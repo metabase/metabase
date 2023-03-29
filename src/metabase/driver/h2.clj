@@ -1,48 +1,62 @@
 (ns metabase.driver.h2
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [java-time :as t]
-            [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
-            [metabase.db.spec :as mdb.spec]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.h2.actions :as h2.actions]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.ssh :as ssh])
-  (:import [java.sql Clob ResultSet ResultSetMetaData]
-           java.time.OffsetTime
-           org.h2.command.Parser
-           org.h2.engine.Session
-           org.h2.engine.SessionRemote))
+  (:require
+   [clojure.math.combinatorics :as math.combo]
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.h2.actions :as h2.actions]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.ssh :as ssh])
+  (:import
+   (java.sql Clob ResultSet ResultSetMetaData)
+   (java.time OffsetTime)
+   (org.h2.command CommandInterface Parser)
+   (org.h2.engine SessionLocal)))
+
+(set! *warn-on-reflection* true)
 
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
 
 (driver/register! :h2, :parent :sql-jdbc)
 
+(defmethod sql.qp/honey-sql-version :h2
+  [_driver]
+  2)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:full-join               false
-                              :regex                   false
-                              :percentile-aggregations false
-                              :actions                 true
-                              :actions/custom          true
-                              :now                     true}]
+(doseq [[feature supported?] {:full-join                 false
+                              :regex                     true
+                              :percentile-aggregations   false
+                              :actions                   true
+                              :actions/custom            true
+                              :datetime-diff             true
+                              :now                       true
+                              :test/jvm-timezone-setting false}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
+
+(defmethod sql.qp/->honeysql [:h2 :regex-match-first]
+  [driver [_ arg pattern]]
+  [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -93,75 +107,118 @@
                   (= user "sa"))        ; "sa" is the default USER
           (throw
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
-             {:type qp.error-type/db})))))))
+                    {:type qp.error-type/db})))))))
 
-(defn- make-h2-parser [h2-db-id]
+(defn- get-field
+  "Returns value of private field. This function is used to bypass field protection to instantiate
+   a low-level H2 Parser object in order to detect DDL statements in queries."
+  ([obj field]
+   (.get (doto (.getDeclaredField (class obj) field)
+           (.setAccessible true))
+         obj))
+  ([obj field or-else]
+   (try (get-field obj field)
+        (catch java.lang.NoSuchFieldException _e
+          ;; when there are no fields: return or-else
+          or-else))))
+
+(defn- make-h2-parser
+  "Returns an H2 Parser object for the given (H2) database ID"
+  ^Parser [h2-db-id]
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-db-id))]
-    (let [inner-field (doto
-                          (.getDeclaredField (class conn) "inner")
-                        (.setAccessible true))
-          h2-jdbc-conn (.get inner-field conn)
-          session-field (doto
-                            (.getDeclaredField (class h2-jdbc-conn) "session")
-                          (.setAccessible true))
-          session (.get session-field h2-jdbc-conn)]
-      (cond
-        (instance? Session session)
-        (Parser. session)
+    ;; The H2 Parser class is created from the H2 JDBC session, but these fields are not public
+    (let [session (-> conn (get-field "inner") (get-field "session"))]
+      ;; Only SessionLocal represents a connection we can create a parser with. Remote sessions and other
+      ;; session types are ignored.
+      (when (instance? SessionLocal session)
+        (Parser. session)))))
 
-        ;; a SessionRemote cannot be used to make a parser
-        (instance? SessionRemote session)
-        ::client-side-session
+(mu/defn ^:private classify-query :- [:maybe
+                                      [:map
+                                       [:command-types [:vector pos-int?]]
+                                       [:remaining-sql [:maybe :string]]]]
+  "Takes an h2 db id, and a query, returns the command-types from `query` and any remaining sql.
+   More info on command types here:
+   https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
 
-        :else
-        (throw (ex-info "Unknown session type" {:session session}))))))
+  If the h2 parser cannot be built, returns `nil`.
 
-(defn- parse
-  ([h2-db-id s]
-   (let [h2-parser (make-h2-parser h2-db-id)]
-     (when-not (= ::client-side-session h2-parser)
-       (let [parse-method (doto (.getDeclaredMethod (class h2-parser)
-                                                    "parse"
-                                                    (into-array Class [java.lang.String]))
-                            (.setAccessible true))
-             parse-index-field (doto (.getDeclaredField (class h2-parser) "parseIndex")
-                                 (.setAccessible true))]
-         ;; parser moves parseIndex, so get-offset will be the index in the string that was parsed "up to"
-         (parse s
-                (fn parser [s]
-                  (try (.invoke parse-method h2-parser (object-array [s]))
-                       ;; need to chew through error scenarios because of a query like:
-                       ;;
-                       ;; vulnerability; abc;
-                       ;;
-                       ;; which would cause this parser to break w/o the error handling here, but this way we
-                       ;; still return the org.h2.command.ddl.* classes.
-                       (catch Throwable _ ::parse-fail)))
-                (fn get-offset [] (.get parse-index-field h2-parser)))))))
-  ([s parser get-offset] (vec (concat
-                               [(parser s)];; this call to parser parses up to the end of the first sql statement
-                               (let [more (apply str (drop (get-offset) s))] ;; more is the unparsed part of s
-                                 (when-not (str/blank? more)
-                                   (parse more parser get-offset)))))))
+  - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands from `query` in order.
+  - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
+    Usually if `remaining-sql` exists we will deny the query."
+  [database query]
+  (when-let [h2-parser (make-h2-parser database)]
+    (try
+      (let [command            (.prepareCommand h2-parser query)
+            first-command-type (.getCommandType command)
+            command-types      (cond-> [first-command-type]
+                                 (not (instance? org.h2.command.CommandContainer command))
+                                 (into
+                                  (map #(.getType ^org.h2.command.Prepared %))
+                                  ;; when there are no fields: return no commands
+                                  (get-field command "commands" [])))]
+        {:command-types command-types
+         ;; when there is no remaining sql: return nil for remaining-sql
+         :remaining-sql (get-field command "remaining" nil)})
+      ;; only valid queries can be classified.
+      (catch org.h2.message.DbException _
+        {:command-types [] :remaining-sql nil}))))
 
-(defn- check-disallow-ddl-commands [{:keys [database] :as query}]
+(defn- every-command-allowed-for-actions? [{:keys [command-types remaining-sql]}]
+  (let [cmd-type-nums command-types]
+    (boolean
+     ;; Command types are organized with all DDL commands listed first, so all ddl commands are before ALTER_SEQUENCE.
+     ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java#L297
+     (and (every? #{CommandInterface/INSERT
+                    CommandInterface/MERGE
+                    CommandInterface/TRUNCATE_TABLE
+                    CommandInterface/UPDATE
+                    CommandInterface/DELETE
+                    ;; Read-only commands might not make sense for actions, but they are allowed
+                    CommandInterface/SELECT ; includes SHOW, TABLE, VALUES
+                    CommandInterface/EXPLAIN
+                    CommandInterface/CALL} cmd-type-nums)
+          (nil? remaining-sql)))))
+
+(defn- check-action-commands-allowed [{:keys [database] {:keys [query]} :native}]
   (when query
-    (let [operations (parse database (-> query :native :query))
-          op-classes (map class operations)]
-      (when (some #(re-find #"org.h2.command.ddl." (str %)) op-classes)
-        (throw (ex-info "DDL commands are not allowed to be used with h2." {:classes op-classes}))))))
+    (when-let [query-classification (classify-query database query)]
+      (when-not (every-command-allowed-for-actions? query-classification)
+        (throw (ex-info "DDL commands are not allowed to be used with H2."
+                        {:classification query-classification}))))))
+
+(defn- read-only-statements? [{:keys [command-types remaining-sql]}]
+  (let [cmd-type-nums command-types]
+    (boolean
+     (and (every? #{CommandInterface/SELECT ; includes SHOW, TABLE, VALUES
+                    CommandInterface/EXPLAIN
+                    CommandInterface/CALL} cmd-type-nums)
+          (nil? remaining-sql)))))
+
+(defn- check-read-only-statements [{:keys [database] {:keys [query]} :native}]
+  (when query
+    (let [query-classification (classify-query database query)]
+      (when-not (read-only-statements? query-classification)
+        (throw (ex-info "Only SELECT statements are allowed in a native query."
+                        {:classification query-classification}))))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
   (check-native-query-not-using-default-user query)
-  (check-disallow-ddl-commands query)
+  (check-read-only-statements query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
+
+(defmethod driver/execute-write-query! :h2
+  [driver query]
+  (check-native-query-not-using-default-user query)
+  (check-action-commands-allowed query)
+  ((get-method driver/execute-write-query! :sql-jdbc) driver query))
 
 (defmethod sql.qp/add-interval-honeysql-form :h2
   [driver hsql-form amount unit]
   (cond
     (= unit :quarter)
-    (recur driver hsql-form (hx/* amount 3) :month)
+    (recur driver hsql-form (h2x/* amount 3) :month)
 
     ;; H2 only supports long ints in the `dateadd` amount field; since we want to support fractional seconds (at least
     ;; for application DB purposes) convert to `:millisecond`
@@ -170,7 +227,12 @@
     (recur driver hsql-form (* amount 1000.0) :millisecond)
 
     :else
-    (hsql/call :dateadd (hx/literal unit) (hx/cast :long amount) hsql-form)))
+    [:dateadd
+     (h2x/literal unit)
+     (h2x/cast :long (if (number? amount)
+                       (sql.qp/inline-num amount)
+                       amount))
+     (h2x/cast :datetime hsql-form)]))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ message]
@@ -178,7 +240,7 @@
     #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
     :implicitly-relative-db-file-path
 
-    #"^Database .* not found .*$"
+    #"^Database .* not found, .*$"
     :db-file-not-found
 
     #"^Wrong user name or password .*$"
@@ -207,13 +269,13 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :h2
   [_]
-  (hx/with-database-type-info :%now :TIMESTAMP))
+  (h2x/with-database-type-info :%now :TIMESTAMP))
 
 (defn- add-to-1970 [expr unit-str]
-  (hsql/call :timestampadd
-    (hx/literal unit-str)
-    expr
-    (hsql/raw "timestamp '1970-01-01T00:00:00Z'")))
+  [:timestampadd
+   (h2x/literal unit-str)
+   expr
+   [:raw "timestamp '1970-01-01T00:00:00Z'"]])
 
 (defmethod sql.qp/unix-timestamp->honeysql [:h2 :seconds] [_ _ expr]
   (add-to-1970 expr "second"))
@@ -226,33 +288,34 @@
 
 (defmethod sql.qp/cast-temporal-string [:h2 :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  (hsql/call :parsedatetime expr (hx/literal "yyyyMMddHHmmss")))
+  [:parsedatetime expr (h2x/literal "yyyyMMddHHmmss")])
 
 (defmethod sql.qp/cast-temporal-byte [:h2 :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
-                               (hsql/call :utf8tostring expr)))
+                               [:utf8tostring expr]))
 
-;; H2 doesn't have date_trunc() we fake it by formatting a date to an appropriate string
-;; and then converting back to a date.
-;; Format strings are the same as those of SimpleDateFormat.
-(defn- format-datetime   [format-str expr] (hsql/call :formatdatetime expr (hx/literal format-str)))
-(defn- parse-datetime    [format-str expr] (hsql/call :parsedatetime expr  (hx/literal format-str)))
-(defn- trunc-with-format [format-str expr] (parse-datetime format-str (format-datetime format-str expr)))
-(defn- extract           [unit expr]       (hsql/call :extract unit (hx/cast :timestamp expr)))
+;; H2 v2 added date_trunc and extract, so we can borrow the Postgres implementation
+(defn- date-trunc [unit expr] [:date_trunc (h2x/literal unit) expr])
+(defn- extract [unit expr] [::h2x/extract unit expr])
 
-(defmethod sql.qp/date [:h2 :minute]          [_ _ expr] (trunc-with-format "yyyyMMddHHmm" expr))
-(defmethod sql.qp/date [:h2 :minute-of-hour]  [_ _ expr] (hx/minute expr))
-(defmethod sql.qp/date [:h2 :hour]            [_ _ expr] (trunc-with-format "yyyyMMddHH" expr))
-(defmethod sql.qp/date [:h2 :hour-of-day]     [_ _ expr] (extract :hour expr))
-(defmethod sql.qp/date [:h2 :day]             [_ _ expr] (hx/->date expr))
-(defmethod sql.qp/date [:h2 :day-of-month]    [_ _ expr] (extract :day expr))
-(defmethod sql.qp/date [:h2 :day-of-year]     [_ _ expr] (extract :day_of_year expr))
-(defmethod sql.qp/date [:h2 :month]           [_ _ expr] (trunc-with-format "yyyyMM" expr))
-(defmethod sql.qp/date [:h2 :month-of-year]   [_ _ expr] (extract :month expr))
-(defmethod sql.qp/date [:h2 :quarter-of-year] [_ _ expr] (extract :quarter expr))
-(defmethod sql.qp/date [:h2 :year]            [_ _ expr] (parse-datetime "yyyy" (extract :year expr)))
-(defmethod sql.qp/date [:h2 :year-of-era]     [_ _ expr] (extract :year expr))
+(def ^:private extract-integer (comp h2x/->integer extract))
+
+(defmethod sql.qp/date [:h2 :default]          [_ _ expr] expr)
+(defmethod sql.qp/date [:h2 :second-of-minute] [_ _ expr] (extract-integer :second expr))
+(defmethod sql.qp/date [:h2 :minute]           [_ _ expr] (date-trunc :minute expr))
+(defmethod sql.qp/date [:h2 :minute-of-hour]   [_ _ expr] (extract-integer :minute expr))
+(defmethod sql.qp/date [:h2 :hour]             [_ _ expr] (date-trunc :hour expr))
+(defmethod sql.qp/date [:h2 :hour-of-day]      [_ _ expr] (extract-integer :hour expr))
+(defmethod sql.qp/date [:h2 :day]              [_ _ expr] (h2x/->date expr))
+(defmethod sql.qp/date [:h2 :day-of-month]     [_ _ expr] (extract-integer :day expr))
+(defmethod sql.qp/date [:h2 :day-of-year]      [_ _ expr] (extract-integer :doy expr))
+(defmethod sql.qp/date [:h2 :month]            [_ _ expr] (date-trunc :month expr))
+(defmethod sql.qp/date [:h2 :month-of-year]    [_ _ expr] (extract-integer :month expr))
+(defmethod sql.qp/date [:h2 :quarter]          [_ _ expr] (date-trunc :quarter expr))
+(defmethod sql.qp/date [:h2 :quarter-of-year]  [_ _ expr] (extract-integer :quarter expr))
+(defmethod sql.qp/date [:h2 :year]             [_ _ expr] (date-trunc :year expr))
+(defmethod sql.qp/date [:h2 :year-of-era]      [_ _ expr] (extract-integer :year expr))
 
 (defmethod sql.qp/date [:h2 :day-of-week]
   [_ _ expr]
@@ -261,108 +324,112 @@
 (defmethod sql.qp/date [:h2 :week]
   [_ _ expr]
   (sql.qp/add-interval-honeysql-form :h2 (sql.qp/date :h2 :day expr)
-                                     (hx/- 1 (sql.qp/date :h2 :day-of-week expr))
+                                     (h2x/- 1 (sql.qp/date :h2 :day-of-week expr))
                                      :day))
 
 (defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (extract :iso_week expr))
 
-;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
-;; *  extract the year and quarter from the date;
-;; *  convert the quarter (1 - 4) to the corresponding starting month (1, 4, 7, or 10).
-;;    (do this by multiplying by 3, giving us [3 6 9 12]. Then subtract 2 to get [1 4 7 10]);
-;; *  concatenate the year and quarter start month together to create a yyyymm date string;
-;; *  parse the string as a date. :sunglasses:
-;;
-;; Postgres DATE_TRUNC('quarter', x)
-;; becomes  PARSEDATETIME(CONCAT(YEAR(x), ((QUARTER(x) * 3) - 2)), 'yyyyMM')
-(defmethod sql.qp/date [:h2 :quarter]
-  [_ _ expr]
-  (parse-datetime "yyyyMM"
-                  (hx/concat (hx/year expr) (hx/- (hx/* (hx/quarter expr)
-                                                        3)
-                                                  2))))
-
 (defmethod sql.qp/->honeysql [:h2 :log]
   [driver [_ field]]
-  (hsql/call :log10 (sql.qp/->honeysql driver field)))
+  [:log10 (sql.qp/->honeysql driver field)])
+
+(defn- datediff
+  "Like H2's `datediff` function but accounts for timestamps with time zones."
+  [unit x y]
+  [:datediff [:raw (name unit)] (h2x/->timestamp x) (h2x/->timestamp y)])
+
+(defn- time-zoned-extract
+  "Like H2's extract but accounts for timestamps with time zones."
+  [unit x]
+  (extract unit (h2x/->timestamp x)))
+
+(defmethod sql.qp/datetime-diff [:h2 :year]    [driver _unit x y] (h2x// (sql.qp/datetime-diff driver :month x y) 12))
+(defmethod sql.qp/datetime-diff [:h2 :quarter] [driver _unit x y] (h2x// (sql.qp/datetime-diff driver :month x y) 3))
+
+(defmethod sql.qp/datetime-diff [:h2 :month]
+  [_driver _unit x y]
+  (h2x/+ (datediff :month x y)
+         ;; datediff counts month boundaries not whole months, so we need to adjust
+         ;; if x<y but x>y in the month calendar then subtract one month
+         ;; if x>y but x<y in the month calendar then add one month
+         [:case
+          [:and [:< x y] [:> (time-zoned-extract :day x) (time-zoned-extract :day y)]]
+          -1
+
+          [:and [:> x y] [:< (time-zoned-extract :day x) (time-zoned-extract :day y)]]
+          1
+
+          :else
+          0]))
+
+(defmethod sql.qp/datetime-diff [:h2 :week] [_driver _unit x y] (h2x// (datediff :day x y) 7))
+(defmethod sql.qp/datetime-diff [:h2 :day]  [_driver _unit x y] (datediff :day x y))
+(defmethod sql.qp/datetime-diff [:h2 :hour] [_driver _unit x y] (h2x// (datediff :millisecond x y) 3600000))
+(defmethod sql.qp/datetime-diff [:h2 :minute] [_driver _unit x y] (datediff :minute x y))
+(defmethod sql.qp/datetime-diff [:h2 :second] [_driver _unit x y] (datediff :second x y))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; Datatype grammar adapted from BNF at https://h2database.com/html/datatypes.html
+
+(defn- expand-grammar
+  "Expands BNF-like grammar to all possible data types"
+  [grammar]
+  (cond
+    (set? grammar)  (mapcat expand-grammar grammar)
+    (list? grammar) (map (partial str/join " ")
+                         (apply math.combo/cartesian-product
+                                (map expand-grammar grammar)))
+    :else           [grammar]))
+
+(def ^:private base-type->db-type-grammar
+  '{:type/Boolean             #{BOOLEAN}
+    :type/Integer             #{TINYINT SMALLINT INTEGER INT}
+    :type/BigInteger          #{BIGINT}
+    :type/Decimal             #{NUMERIC DECIMAL DEC}
+    :type/Float               #{REAL FLOAT "DOUBLE PRECISION" DECFLOAT}
+    :type/Text                #{CHARACTER
+                                CHAR
+                                (NATIONAL #{CHARACTER CHAR})
+                                NCHAR
+                                (#{CHARACTER CHAR} VARYING)
+                                VARCHAR
+                                (#{(NATIONAL #{CHARACTER CHAR}) NCHAR} VARYING)
+                                VARCHAR_CASESENSITIVE
+                                (#{CHARACTER CHAR} LARGE OBJECT)
+                                CLOB
+                                (#{NATIONAL CHARACTER NCHAR} LARGE OBJECT)
+                                NCLOB
+                                UUID}
+    :type/*                   #{ARRAY
+                                BINARY
+                                "BINARY VARYING"
+                                VARBINARY
+                                "BINARY LARGE OBJECT"
+                                BLOB
+                                GEOMETRY
+                                IMAGE}
+    :type/Date                #{DATE}
+    :type/DateTime            #{TIMESTAMP}
+    :type/Time                #{TIME "TIME WITHOUT TIME ZONE"}
+    :type/TimeWithLocalTZ     #{"TIME WITH TIME ZONE"}
+    :type/DateTimeWithLocalTZ #{"TIMESTAMP WITH TIME ZONE"}})
+
 (def ^:private db-type->base-type
-  {:ARRAY                               :type/*
-   :BIGINT                              :type/BigInteger
-   :BINARY                              :type/*
-   :BIT                                 :type/Boolean
-   :BLOB                                :type/*
-   :BOOL                                :type/Boolean
-   :BOOLEAN                             :type/Boolean
-   :BYTEA                               :type/*
-   :CHAR                                :type/Text
-   :CHARACTER                           :type/Text
-   :CLOB                                :type/Text
-   :DATE                                :type/Date
-   :DATETIME                            :type/DateTime
-   :DEC                                 :type/Decimal
-   :DECIMAL                             :type/Decimal
-   :DOUBLE                              :type/Float
-   :FLOAT                               :type/Float
-   :FLOAT4                              :type/Float
-   :FLOAT8                              :type/Float
-   :GEOMETRY                            :type/*
-   :IDENTITY                            :type/Integer
-   :IMAGE                               :type/*
-   :INT                                 :type/Integer
-   :INT2                                :type/Integer
-   :INT4                                :type/Integer
-   :INT8                                :type/BigInteger
-   :INTEGER                             :type/Integer
-   :LONGBLOB                            :type/*
-   :LONGTEXT                            :type/Text
-   :LONGVARBINARY                       :type/*
-   :LONGVARCHAR                         :type/Text
-   :MEDIUMBLOB                          :type/*
-   :MEDIUMINT                           :type/Integer
-   :MEDIUMTEXT                          :type/Text
-   :NCHAR                               :type/Text
-   :NCLOB                               :type/Text
-   :NTEXT                               :type/Text
-   :NUMBER                              :type/Decimal
-   :NUMERIC                             :type/Decimal
-   :NVARCHAR                            :type/Text
-   :NVARCHAR2                           :type/Text
-   :OID                                 :type/*
-   :OTHER                               :type/*
-   :RAW                                 :type/*
-   :REAL                                :type/Float
-   :SIGNED                              :type/Integer
-   :SMALLDATETIME                       :type/DateTime
-   :SMALLINT                            :type/Integer
-   :TEXT                                :type/Text
-   :TIME                                :type/Time
-   :TIMESTAMP                           :type/DateTime
-   :TINYBLOB                            :type/*
-   :TINYINT                             :type/Integer
-   :TINYTEXT                            :type/Text
-   :UUID                                :type/Text
-   :VARBINARY                           :type/*
-   :VARCHAR                             :type/Text
-   :VARCHAR2                            :type/Text
-   :VARCHAR_CASESENSITIVE               :type/Text
-   :VARCHAR_IGNORECASE                  :type/Text
-   :YEAR                                :type/Integer
-   (keyword "DOUBLE PRECISION")         :type/Float
-   (keyword "TIMESTAMP WITH TIME ZONE") :type/DateTimeWithLocalTZ})
+  (into {}
+        (for [[base-type grammar] base-type->db-type-grammar
+              db-type (expand-grammar grammar)]
+          [(keyword db-type) base-type])))
 
 (defmethod sql-jdbc.sync/database-type->base-type :h2
   [_ database-type]
   (db-type->base-type database-type))
 
 ;; These functions for exploding / imploding the options in the connection strings are here so we can override shady
-;; options users might try to put in their connection string. e.g. if someone sets `ACCESS_MODE_DATA` to `rws` we can
-;; replace that and make the connection read-only.
+;; options users might try to put in their connection string, like INIT=...
 
 (defn- file+options->connection-string
   "Implode the results of `connection-string->file+options` back into a connection string."
@@ -379,10 +446,9 @@
                                            (->> options
                                                 ;; Remove INIT=... from options for security reasons (Metaboat #165)
                                                 ;; http://h2database.com/html/features.html#execute_sql_on_connection
-                                                (remove (fn [[k _]] (= (str/lower-case k) "init")))
+                                                (remove (fn [[k _]] (= (u/lower-case-en k) "init")))
                                                 (into {}))
-                                           {"IFEXISTS"         "TRUE"
-                                            "ACCESS_MODE_DATA" "r"}))))
+                                           {"IFEXISTS" "TRUE"}))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
@@ -393,12 +459,18 @@
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
 
+(defmethod sql-jdbc.sync/excluded-schemas :h2
+  [_]
+  #{"INFORMATION_SCHEMA"})
+
 (defmethod sql-jdbc.execute/connection-with-timezone :h2
   [driver database ^String _timezone-id]
   ;; h2 doesn't support setting timezones, or changing the transaction level without admin perms, so we can skip those
   ;; steps that are in the default impl
   (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
+      ;; in H2, setting readOnly to true doesn't prevent writes
+      ;; see https://github.com/h2database/h2database/issues/1163
       (doto conn
         (.setReadOnly true))
       (catch Throwable e

@@ -1,18 +1,26 @@
-(ns metabase.util.schema
-  "Various schemas that are useful throughout the app."
+(ns ^{:deprecated "0.46.0"} metabase.util.schema
+  "Various schemas that are useful throughout the app.
+
+  Schemas defined are deprecated and should be replaced with Malli schema defined in [[metabase.util.malli.schema]].
+  If you update schemas in this ns, please make sure you update the malli schema too. It'll help us makes the transition easier."
   (:refer-clojure :exclude [distinct])
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.types :as types]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as i18n :refer [deferred-tru]]
-            [metabase.util.password :as u.password]
-            [schema.core :as s]
-            [schema.macros :as s.macros]
-            [schema.utils :as s.utils]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.types :as types]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.password :as u.password]
+   [schema.core :as s]
+   [schema.macros :as s.macros]
+   [schema.utils :as s.utils]))
+
+(set! *warn-on-reflection* true)
 
 ;; So the `:type/` hierarchy is loaded.
 (comment types/keep-me)
@@ -35,7 +43,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                     API Schema Validation & Error Messages                                     |
+;;; |                            Plumatic API Schema Validation & Error Messages                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn with-api-error-message
@@ -213,12 +221,6 @@
     (s/constrained s/Int (partial < 0) (deferred-tru "Integer greater than zero"))
     (deferred-tru "value must be an integer greater than zero.")))
 
-(def NonNegativeInt
-  "Schema representing an integer 0 or greater"
-  (with-api-error-message
-    (s/constrained s/Int (partial <= 0) (deferred-tru "Integer greater than or equal to zero"))
-    (deferred-tru "value must be an integer zero or greater.")))
-
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
   (with-api-error-message
@@ -288,6 +290,13 @@
                                   (deferred-tru "Valid field semantic or relation type (keyword or string)"))
     (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
 
+(def Field
+  "Schema for a valid Field for API usage."
+  (with-api-error-message (s/pred
+                            (comp (complement (s/checker mbql.s/Field))
+                                  mbql.normalize/normalize-tokens))
+    (deferred-tru "value must an array with :field id-or-name and an options map")))
+
 (def CoercionStrategyKeywordOrString
   "Like `CoercionStrategy` but accepts either a keyword or string."
   (with-api-error-message (s/pred #(isa? (keyword %) :Coercion/*) (deferred-tru "Valid coercion strategy"))
@@ -338,7 +347,7 @@
 
 (def BooleanString
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
-   Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
+   Something that adheres to this schema is guaranteed to work with `Boolean/parseBoolean`."
   (with-api-error-message (s/constrained s/Str boolean-string?)
     (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
 
@@ -356,20 +365,37 @@
                                                     false)))
     (deferred-tru "value must be a valid JSON string.")))
 
+(def ^:private keyword-or-non-blank-str
+  (s/conditional
+    string?  NonBlankString
+    keyword? s/Keyword))
+
+(def ValuesSourceConfig
+  "Schema for valid source_options within a Parameter"
+  ;; TODO: This should be tighter
+  {;; for source_type = 'static-list'
+   (s/optional-key :values)      (s/cond-pre [s/Any])
+
+   ;; for source_type = 'card'
+   (s/optional-key :card_id)     IntGreaterThanZero
+   (s/optional-key :value_field) Field
+   ;; label_field is optional
+   (s/optional-key :label_field) Field})
+
 (def Parameter
   "Schema for a valid Parameter.
   We're not using [metabase.mbql.schema/Parameter] here because this Parameter is meant to be used for
   Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
-  (with-api-error-message {:id                         NonBlankString
-                           :type                       (s/conditional
-                                                         string?  NonBlankString
-                                                         keyword? s/Keyword)
+  (with-api-error-message {:id                                    NonBlankString
+                           :type                                  keyword-or-non-blank-str
+                           (s/optional-key :values_source_type)   (s/enum "static-list" "card" nil)
+                           (s/optional-key :values_source_config) ValuesSourceConfig
                            ;; Allow blank name and slug #15279
-                           (s/optional-key :name)      s/Str
-                           (s/optional-key :slug)      s/Str
-                           (s/optional-key :default)   s/Any
-                           (s/optional-key :sectionId) NonBlankString
-                           s/Keyword                   s/Any}
+                           (s/optional-key :slug)                 s/Str
+                           (s/optional-key :name)                 s/Str
+                           (s/optional-key :default)              s/Any
+                           (s/optional-key :sectionId)            NonBlankString
+                           s/Keyword                              s/Any}
     (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping
@@ -393,4 +419,9 @@
 (def NanoIdString
   "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
   (with-api-error-message #"^[A-Za-z0-9_\-]{21}$"
+    (deferred-tru "String must be a valid 21-character NanoID string.")))
+
+(def UUIDString
+  "Schema for a UUID string"
+  (with-api-error-message u/uuid-regex
     (deferred-tru "String must be a valid 21-character NanoID string.")))

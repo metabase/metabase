@@ -69,25 +69,22 @@ describe("filtered and summarized query", () => {
     });
   });
   describe("query", () => {
-    it(`should be the full query for data step`, () => {
+    it("should be the full query for data step", () => {
       expect(steps[0].query.query()).toEqual(filteredAndSummarizedQuery);
     });
-    it(`should be the full query for filter step`, () => {
+    it("should be the full query for filter step", () => {
       expect(steps[1].query.query()).toEqual(filteredAndSummarizedQuery);
     });
-    it(`should be the full query for summarize step`, () => {
+    it("should be the full query for summarize step", () => {
       expect(steps[2].query.query()).toEqual(filteredAndSummarizedQuery);
     });
   });
   describe("previewQuery", () => {
-    it(`shouldn't include filter, summarize for data step`, () => {
+    it("shouldn't include filter, summarize for data step", () => {
       expect(steps[0].previewQuery.query()).toEqual(rawDataQuery);
     });
-    it(`shouldn't include summarize for filter step`, () => {
+    it("shouldn't include summarize for filter step", () => {
       expect(steps[1].previewQuery.query()).toEqual(filteredQuery);
-    });
-    it(`shouldn't be the full query for summarize step`, () => {
-      filteredAndSummarizedQuery;
     });
   });
   describe("update", () => {
@@ -125,30 +122,27 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
   });
   describe("query", () => {
-    it(`should be the source-query for data step`, () => {
+    it("should be the source-query for data step", () => {
       expect(steps[0].query.query()).toEqual(filteredAndSummarizedQuery);
     });
-    it(`should be the source-query for filter step`, () => {
+    it("should be the source-query for filter step", () => {
       expect(steps[1].query.query()).toEqual(filteredAndSummarizedQuery);
     });
-    it(`should be the source-query for summarize step`, () => {
+    it("should be the source-query for summarize step", () => {
       expect(steps[2].query.query()).toEqual(filteredAndSummarizedQuery);
     });
-    it(`should be the original query for post-aggregation filter step`, () => {
+    it("should be the original query for post-aggregation filter step", () => {
       expect(steps[3].query.query()).toEqual(postAggregationFilterQuery);
     });
   });
   describe("previewQuery", () => {
-    it(`shouldn't include filter, summarize, or post-aggregrationfilter for data step`, () => {
+    it("shouldn't include filter, summarize, or post-aggregrationfilter for data step", () => {
       expect(steps[0].previewQuery.query()).toEqual(rawDataQuery);
     });
-    it(`shouldn't include summarize or post-aggregrationfilter filter step`, () => {
+    it("shouldn't include summarize or post-aggregrationfilter filter step", () => {
       expect(steps[1].previewQuery.query()).toEqual(filteredQuery);
     });
-    it(`shouldn't include post-aggregrationfilter for summarize step`, () => {
-      filteredAndSummarizedQuery;
-    });
-    it(`should be the original query for post-aggregation filter step`, () => {
+    it("should be the original query for post-aggregation filter step", () => {
       expect(steps[3].previewQuery.query()).toEqual(postAggregationFilterQuery);
     });
   });
@@ -168,7 +162,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
         "source-query": summarizedQuery,
       });
     });
-    it("should remove post-aggregrationfilter when removing summarize", () => {
+    it("should remove post-aggregration filter when removing summarize", () => {
       const newQuery = steps[2].update(
         steps[2].revert(steps[2].query).datasetQuery(),
       );

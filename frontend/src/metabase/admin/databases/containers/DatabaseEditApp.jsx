@@ -12,12 +12,13 @@ import title from "metabase/hoc/Title";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getWritebackEnabled } from "metabase/writeback/selectors";
 
 import { getSetting } from "metabase/selectors/settings";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import DatabaseForm from "metabase/databases/containers/DatabaseForm";
+import ErrorBoundary from "metabase/ErrorBoundary";
+import { GenericError } from "metabase/containers/ErrorPages";
 import Database from "metabase-lib/metadata/Database";
 
 import { getEditingDatabase, getInitializeError } from "../selectors";
@@ -49,7 +50,6 @@ const mapStateToProps = state => {
     database: database ? new Database(database) : undefined,
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
-    isWritebackEnabled: getWritebackEnabled(state),
     isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
   };
 };
@@ -88,7 +88,6 @@ class DatabaseEditApp extends Component {
     selectEngine: PropTypes.func.isRequired,
     location: PropTypes.object,
     isAdmin: PropTypes.bool,
-    isWritebackEnabled: PropTypes.bool,
     isModelPersistenceEnabled: PropTypes.bool,
   };
 
@@ -108,7 +107,6 @@ class DatabaseEditApp extends Component {
       syncDatabaseSchema,
       dismissSyncSpinner,
       isAdmin,
-      isWritebackEnabled,
       isModelPersistenceEnabled,
     } = this.props;
     const editingExistingDatabase = database?.id != null;
@@ -132,31 +130,32 @@ class DatabaseEditApp extends Component {
         <Breadcrumbs className="py4" crumbs={crumbs} />
 
         <DatabaseEditMain>
-          <div>
-            <div className="pt0">
-              <LoadingAndErrorWrapper
-                loading={!database}
-                error={initializeError}
-              >
-                <DatabaseEditContent>
-                  <DatabaseEditForm>
-                    <DatabaseForm
-                      initialValues={database}
-                      isAdvanced
-                      onSubmit={handleSubmit}
-                    />
-                  </DatabaseEditForm>
-                  <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
-                </DatabaseEditContent>
-              </LoadingAndErrorWrapper>
+          <ErrorBoundary errorComponent={GenericError}>
+            <div>
+              <div className="pt0">
+                <LoadingAndErrorWrapper
+                  loading={!database}
+                  error={initializeError}
+                >
+                  <DatabaseEditContent>
+                    <DatabaseEditForm>
+                      <DatabaseForm
+                        initialValues={database}
+                        isAdvanced
+                        onSubmit={handleSubmit}
+                      />
+                    </DatabaseEditForm>
+                    <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
+                  </DatabaseEditContent>
+                </LoadingAndErrorWrapper>
+              </div>
             </div>
-          </div>
+          </ErrorBoundary>
 
           {editingExistingDatabase && (
             <Sidebar
               database={database}
               isAdmin={isAdmin}
-              isWritebackEnabled={isWritebackEnabled}
               isModelPersistenceEnabled={isModelPersistenceEnabled}
               updateDatabase={updateDatabase}
               deleteDatabase={deleteDatabase}

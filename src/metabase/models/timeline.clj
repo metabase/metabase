@@ -1,17 +1,18 @@
 (ns metabase.models.timeline
-  (:require [java-time :as t]
-            [metabase.models.collection :as collection]
-            [metabase.models.permissions :as perms]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.models.timeline-event :as timeline-event]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [java-time :as t]
+   [metabase.models.collection :as collection]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.timeline-event :as timeline-event]
+   [metabase.util.date-2 :as u.date]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models]))
 
 (models/defmodel Timeline :timeline)
 
@@ -53,12 +54,10 @@
     (nil? collection-id) (->> (map hydrate-root-collection))
     events? (timeline-event/include-events options)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Timeline)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:properties (constantly {:timestamped? true
-                             :entity_id    true})}))
+(mi/define-methods
+ Timeline
+ {:properties (constantly {::mi/timestamped? true
+                           ::mi/entity-id true})})
 
 (defmethod serdes.hash/identity-hash-fields Timeline
   [_timeline]

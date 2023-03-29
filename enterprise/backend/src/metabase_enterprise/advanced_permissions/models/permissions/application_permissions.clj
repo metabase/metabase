@@ -1,14 +1,15 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.application-permissions
   "Code for generating and updating the Application Permission graph. See [[metabase.models.permissions]] for more
   details and for the code for generating and updating the *data* permissions graph."
-  (:require [clojure.data :as data]
-            [metabase.models :refer [ApplicationPermissionsRevision Permissions]]
-            [metabase.models.application-permissions-revision :as a-perm-revision]
-            [metabase.models.permissions :as perms]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.data :as data]
+   [metabase.models :refer [ApplicationPermissionsRevision Permissions]]
+   [metabase.models.application-permissions-revision :as a-perm-revision]
+   [metabase.models.permissions :as perms]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
@@ -26,9 +27,9 @@
   Only groups that has at least one application permission enabled will be included."
   []
   (let [application-permissions (db/select Permissions
-                                       {:where [:or
-                                                [:= :object "/"]
-                                                [:like :object (hx/literal "/application/%")]]})]
+                                           {:where [:or
+                                                    [:= :object "/"]
+                                                    [:like :object (h2x/literal "/application/%")]]})]
     (into {} (for [[group-id perms] (group-by :group_id application-permissions)]
                {group-id (set (map :object perms))}))))
 

@@ -28,8 +28,8 @@ describe("CollapseSection", () => {
 
   it("shows header", () => {
     setup({ header: "Header" });
-    expect(screen.queryByText("Header")).toBeInTheDocument();
-    expect(screen.queryByLabelText("chevronright icon")).toBeInTheDocument();
+    expect(screen.getByText("Header")).toBeInTheDocument();
+    expect(screen.getByLabelText("chevronright icon")).toBeInTheDocument();
   });
 
   it("expands content when header is clicked", () => {
@@ -37,8 +37,8 @@ describe("CollapseSection", () => {
 
     fireEvent.click(screen.getByText("Collapse Header"));
 
-    expect(screen.queryByText("Inside Text")).toBeInTheDocument();
-    expect(screen.queryByText("Inside Text")).toBeVisible();
+    expect(screen.getByText("Inside Text")).toBeInTheDocument();
+    expect(screen.getByText("Inside Text")).toBeVisible();
   });
 
   it("expands content when icon is clicked", () => {
@@ -46,8 +46,8 @@ describe("CollapseSection", () => {
 
     fireEvent.click(screen.getByLabelText("chevronright icon"));
 
-    expect(screen.queryByText("Inside Text")).toBeInTheDocument();
-    expect(screen.queryByText("Inside Text")).toBeVisible();
+    expect(screen.getByText("Inside Text")).toBeInTheDocument();
+    expect(screen.getByText("Inside Text")).toBeVisible();
   });
 
   it("collapses content when header is clicked", () => {
@@ -64,13 +64,13 @@ describe("CollapseSection", () => {
 
   it("renders custom header", () => {
     setup({ header: <h1>Custom Header</h1> });
-    expect(screen.queryByText("Custom Header")).toBeInTheDocument();
+    expect(screen.getByText("Custom Header")).toBeInTheDocument();
   });
 
   it("uses different icons for 'up-down' icon variant", () => {
     setup({ iconVariant: "up-down" });
-    expect(screen.queryByLabelText("chevrondown icon")).toBeInTheDocument();
+    expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
     fireEvent.click(screen.queryByLabelText("chevrondown icon"));
-    expect(screen.queryByLabelText("chevronup icon")).toBeInTheDocument();
+    expect(screen.getByLabelText("chevronup icon")).toBeInTheDocument();
   });
 });

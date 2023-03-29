@@ -1,17 +1,16 @@
 (ns change-set.strict
-  (:require change-set.common
-            change.strict
-            [clojure.spec.alpha :as s]
-            [clojure.string :as str]))
+  (:require
+   [change-set.common]
+   [change.strict]
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]))
 
 (comment change-set.common/keep-me
          change.strict/keep-me)
 
 ;; comment is required for strict change set spec
 (s/def ::comment
-  (s/and
-   string?
-   (partial re-find #"Added [\d.x]+")))
+  string?)
 
 (s/def ::changes
   (s/or
@@ -56,7 +55,10 @@
     :renameSequence
     :renameTable
     :renameTrigger
-    :renameView})
+    :renameView
+    ;; assumes all custom changes use the `def-migration` or `define-reversible-migration` in
+    ;; metabase.db.custom-migrations
+    :customChange})
 
 (defn- major-version
   "Returns major version from id string, e.g. 44 from \"v44.00-034\""
@@ -73,9 +75,18 @@
    (some change-types-supporting-rollback (mapcat keys changes))
    (contains? change-set :rollback)))
 
+(defn- disallow-delete-cascade-with-add-column
+  "Returns false if addColumn changeSet uses deleteCascade. See Metabase issue #14321"
+  [{:keys [changes]}]
+  (let [[change-type {:keys [columns]}] (ffirst changes)]
+    (if (= :addColumn change-type)
+      (not-any? #(-> % :column :constraints :deleteCascade) columns)
+      true)))
+
 (s/def ::change-set
   (s/and
    rollback-present-when-required?
+   disallow-delete-cascade-with-add-column
    (s/merge
     :change-set.common/change-set
     (s/keys :req-un [::changes ::comment]))))

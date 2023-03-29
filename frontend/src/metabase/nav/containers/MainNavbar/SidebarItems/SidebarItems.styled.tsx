@@ -4,7 +4,7 @@ import { css } from "@emotion/react";
 
 import Icon from "metabase/components/Icon";
 import { TreeNode } from "metabase/components/tree/TreeNode";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import Link from "metabase/core/components/Link";
 
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";

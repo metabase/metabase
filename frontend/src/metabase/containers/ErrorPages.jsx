@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
+import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
@@ -51,6 +52,17 @@ export const Archived = ({ entityName, linkTo }) => (
       title={t`This ${entityName} has been archived`}
       illustrationElement={<Icon name="view_archive" size={100} />}
       link={linkTo}
+    />
+  </ErrorPageRoot>
+);
+
+export const SmallGenericError = ({ message = t`Something's gone wrong` }) => (
+  <ErrorPageRoot>
+    <Icon
+      name="warning"
+      size={32}
+      color={color("text-light")}
+      tooltip={message}
     />
   </ErrorPageRoot>
 );

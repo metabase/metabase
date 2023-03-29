@@ -170,6 +170,17 @@ Returns a list of all the schemas found for the database `id`.
 
 *  **`id`**
 
+## `GET /api/database/:id/usage_info`
+
+Get usage info for a database.
+  Returns a map with keys are models and values are the number of entities that use this database.
+
+You must be a superuser to do this.
+
+### PARAMS:
+
+*  **`id`** value must be an integer greater than zero.
+
 ## `GET /api/database/:virtual-db/datasets`
 
 Returns a list of all the datasets found for the saved questions virtual database.

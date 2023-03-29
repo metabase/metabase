@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { isSyncAborted, isSyncInProgress } from "metabase/lib/syncing";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import { Database, InitialSyncStatus } from "metabase-types/api";
 import {
   StatusRoot,

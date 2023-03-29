@@ -4,7 +4,7 @@
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import Question from "../Question"; // eslint-disable-line import/order
 import { singularize } from "metabase/lib/formatting";
-import type { TableId } from "metabase-types/types/Table";
+import type { Table as ITable, TableId } from "metabase-types/api";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { getAggregationOperators } from "metabase-lib/operators/utils";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/utils";
@@ -34,6 +34,10 @@ class TableInner extends Base {
   fields: Field[];
   metadata?: Metadata;
   db?: Database | undefined | null;
+
+  getPlainObject(): ITable {
+    return this._plainObject;
+  }
 
   isVirtualCard() {
     return isVirtualCardId(this.id);
@@ -104,7 +108,7 @@ class TableInner extends Base {
 
   // AGGREGATIONS
   aggregationOperators() {
-    return getAggregationOperators(this);
+    return getAggregationOperators(this, this.fields);
   }
 
   aggregationOperatorsLookup() {
@@ -112,12 +116,7 @@ class TableInner extends Base {
   }
 
   aggregationOperator(short) {
-    return this.aggregation_operators_lookup[short];
-  }
-
-  // @deprecated: use aggregationOperatorsLookup
-  get aggregation_operators_lookup() {
-    return this.aggregationOperatorsLookup();
+    return this.aggregationOperatorsLookup()[short];
   }
 
   // FIELDS

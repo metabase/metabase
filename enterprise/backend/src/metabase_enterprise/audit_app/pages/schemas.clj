@@ -1,8 +1,9 @@
 (ns metabase-enterprise.audit-app.pages.schemas
-  (:require [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s]))
+  (:require
+   [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.util.honey-sql-2 :as h2x]
+   [schema.core :as s]))
 
 ;; WITH counts AS (
 ;;     SELECT db."name" AS db_name, t."schema" AS db_schema
@@ -40,7 +41,7 @@
                                                 [:not= :qe.card_id nil]
                                                 [:not= :card.database_id nil]
                                                 [:not= :card.table_id nil]]}]]
-               :select   [[(hx/concat :db_name (hx/literal " ") :db_schema) :schema]
+               :select   [[(h2x/concat :db_name (h2x/literal " ") :db_schema) :schema]
                           [:%count.* :executions]]
                :from     [:counts]
                :group-by [:db_name :db_schema]
@@ -84,8 +85,8 @@
                                                 [:not= :qe.card_id nil]
                                                 [:not= :card.database_id nil]
                                                 [:not= :card.table_id nil]]}]]
-               :select   [[(hx/concat :db_name (hx/literal " ") :db_schema) :schema]
-                          [:%avg.running_time :avg_running_time]]
+               :select   [[(h2x/concat :db_name (h2x/literal " ") :db_schema) :schema]
+                          [[:avg :running_time] :avg_running_time]]
                :from     [:counts]
                :group-by [:db_name :db_schema]
                :order-by [[:avg_running_time :desc]]
@@ -146,7 +147,7 @@
                                         :order-by  [[:db.id :asc] [:t.schema :asc]]}]]
                  :select    [:s.database_id
                              [:s.database_name :database]
-                             [(hx/concat :s.database_id (hx/literal ".") :s.schema) :schema_id]
+                             [(h2x/concat :s.database_id (h2x/literal ".") :s.schema) :schema_id]
                              :s.schema
                              :s.tables
                              [:c.saved_count :saved_queries]]

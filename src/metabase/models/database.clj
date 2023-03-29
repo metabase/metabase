@@ -1,7 +1,5 @@
 (ns metabase.models.database
   (:require
-   [cheshire.generate :refer [add-encoder encode-map]]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
@@ -14,9 +12,12 @@
    [metabase.models.serialization.base :as serdes.base]
    [metabase.models.serialization.hash :as serdes.hash]
    [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [toucan.db :as db]
    [toucan.models :as models]))
 
@@ -59,14 +60,24 @@
     ;; schedule the Database sync & analyze tasks
     (schedule-tasks! database)))
 
-(defn- post-select [{driver :engine, :as database}]
-  (cond-> database
-    ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
-    (driver.impl/registered? driver)
-    (assoc :features (driver.u/features driver database))
+(def ^:private ^:dynamic *normalizing-details*
+  "Track whether we're calling [[driver/normalize-db-details]] already to prevent infinite
+  recursion. [[driver/normalize-db-details]] is actually done for side effects!"
+  false)
 
-    (and (driver.impl/registered? driver) (:details database))
-    (->> (driver/normalize-db-details driver))))
+(defn- post-select [{driver :engine, :as database}]
+  (letfn [(normalize-details [db]
+            (binding [*normalizing-details* true]
+              (driver/normalize-db-details driver db)))]
+    (cond-> database
+      ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
+      (driver.impl/registered? driver)
+      (assoc :features (driver.u/features driver database))
+
+      (and (driver.impl/registered? driver)
+           (:details database)
+           (not *normalizing-details*))
+      normalize-details)))
 
 (defn- delete-orphaned-secrets!
   "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
@@ -92,7 +103,7 @@
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (db/execute! {:delete-from (db/resolve-model 'Permissions)
+  (db/execute! {:delete-from :permissions
                 :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
   (delete-orphaned-secrets! database)
   (try
@@ -145,17 +156,20 @@
   [{new-metadata-schedule    :metadata_sync_schedule,
     new-fieldvalues-schedule :cache_field_values_schedule,
     new-engine               :engine
+    new-settings             :settings
     :as                      database}]
   (let [{is-sample?               :is_sample
          old-metadata-schedule    :metadata_sync_schedule
          old-fieldvalues-schedule :cache_field_values_schedule
+         existing-settings        :settings
          existing-engine          :engine
          existing-name            :name} (db/select-one [Database
                                                          :metadata_sync_schedule
                                                          :cache_field_values_schedule
                                                          :engine
                                                          :name
-                                                         :is_sample] :id (u/the-id database))
+                                                         :is_sample
+                                                         :settings] :id (u/the-id database))
         new-engine                       (some-> new-engine keyword)]
     (if (and is-sample?
              new-engine
@@ -183,7 +197,15 @@
               (schedule-tasks!
                (assoc database
                       :metadata_sync_schedule      new-metadata-schedule
-                      :cache_field_values_schedule new-fieldvalues-schedule)))))))))
+                      :cache_field_values_schedule new-fieldvalues-schedule)))))
+         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
+         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
+         (when (and (:database-enable-actions (or new-settings existing-settings))
+                    (not (driver/database-supports? (or new-engine existing-engine) :actions database)))
+           (throw (ex-info (trs "The database does not support actions.")
+                           {:status-code     400
+                            :existing-engine existing-engine
+                            :new-engine      new-engine})))))))
 
 (defn- pre-insert [{:keys [details], :as database}]
   (-> (cond-> database
@@ -197,22 +219,22 @@
       :read  (perms/data-perms-path db-id)
       :write (perms/db-details-write-perms-path db-id))})
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Database)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:database :db])
-          :types          (constantly {:details                     :encrypted-json
-                                       :options                     :json
-                                       :engine                      :keyword
-                                       :metadata_sync_schedule      :cron-string
-                                       :cache_field_values_schedule :cron-string
-                                       :start_of_week               :keyword
-                                       :settings                    :encrypted-json})
-          :post-insert    post-insert
-          :post-select    post-select
-          :pre-insert     pre-insert
-          :pre-update     pre-update
-          :pre-delete     pre-delete}))
+(mi/define-methods
+ Database
+ {:hydration-keys (constantly [:database :db])
+  :types          (constantly {:details                     :encrypted-json
+                               :options                     :json
+                               :engine                      :keyword
+                               :metadata_sync_schedule      :cron-string
+                               :cache_field_values_schedule :cron-string
+                               :start_of_week               :keyword
+                               :settings                    :encrypted-json
+                               :dbms_version                :json})
+  :post-insert    post-insert
+  :post-select    post-select
+  :pre-insert     pre-insert
+  :pre-update     pre-update
+  :pre-delete     pre-delete})
 
 (defmethod serdes.hash/identity-hash-fields Database
   [_database]
@@ -221,19 +243,12 @@
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
-(defn ^:hydrate tables
+(mi/define-simple-hydration-method tables
+  :tables
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?
   (db/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
-
-(defn schema-names
-  "Return a *sorted set* of schema names (as strings) associated with this `Database`."
-  [{:keys [id]}]
-  (when id
-    (apply sorted-set (db/select-field :schema 'Table
-                        :db_id id
-                        {:modifiers [:DISTINCT]}))))
 
 (defn pk-fields
   "Return all the primary key `Fields` associated with this `database`."
@@ -241,11 +256,6 @@
   (let [table-ids (db/select-ids 'Table, :db_id id, :active true)]
     (when (seq table-ids)
       (db/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
-
-(defn schema-exists?
-  "Does `database` have any tables with `schema`?"
-  ^Boolean [{:keys [id]}, schema]
-  (db/exists? 'Table :db_id id, :schema (some-> schema name)))
 
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
@@ -266,22 +276,29 @@
             driver.u/default-sensitive-fields))
       driver.u/default-sensitive-fields))
 
-;; when encoding a Database as JSON remove the `details` and `settings` for any User without write perms for the DB.
-;; Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
-;; an API response!
-(add-encoder
- #_{:clj-kondo/ignore [:unresolved-symbol]}
- DatabaseInstance
- (fn [db json-generator]
-   (encode-map
-    (if (not (mi/can-write? db))
-      (dissoc db :details :settings)
-      (update db :details (fn [details]
-                            (reduce
-                             #(m/update-existing %1 %2 (constantly protected-password))
-                             details
-                             (sensitive-fields-for-db db)))))
-    json-generator)))
+(methodical/defmethod mi/to-json Database
+  "When encoding a Database as JSON remove the `details` for any User without write perms for the DB.
+  Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
+  an API response!
+
+  Also remove settings that the User doesn't have read perms for."
+  [db json-generator]
+  (next-method
+   (let [db (if (not (mi/can-write? db))
+              (dissoc db :details)
+              (update db :details (fn [details]
+                                    (reduce
+                                     #(m/update-existing %1 %2 (constantly protected-password))
+                                     details
+                                     (sensitive-fields-for-db db)))))]
+     (update db :settings (fn [settings]
+                            (when settings
+                              (into {}
+                                    (filter (fn [[setting-name _v]]
+                                              (setting/can-read-setting? setting-name
+                                                                         (setting/current-user-readable-visibilities))))
+                                    settings)))))
+   json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 

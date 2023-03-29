@@ -1,13 +1,14 @@
 (ns metabase.models.table-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data.one-off-dbs :as one-off-dbs]
-            [toucan.db :as db]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [toucan.db :as db]))
 
 (deftest valid-field-order?-test
   (testing "A valid field ordering is a set IDs  of all active fields in a given table"

@@ -20,7 +20,7 @@ describe("generatePassword", () => {
     expect(generatePassword({ total: 25 }).length).toBe(25);
   });
 
-  it("can enforce ", () => {
+  it("can enforce", () => {
     expect(
       generatePassword({ total: 14, digit: 2 }).match(/([\d])/g).length >= 2,
     ).toBe(true);

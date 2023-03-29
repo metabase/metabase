@@ -35,10 +35,16 @@ class SettingsEmailForm extends Component {
     clearEmailSettings: PropTypes.func.isRequired,
   };
 
+  constructor(props, context) {
+    super(props, context);
+
+    this.formRef = React.createRef();
+  }
+
   clearEmailSettings = async () => {
     await this.props.clearEmailSettings();
     // NOTE: reaching into form component is not ideal
-    this._form.setState({ formData: {}, dirty: false });
+    this.formRef.current.setState({ formData: {}, dirty: false });
   };
 
   sendTestEmail = async e => {
@@ -46,7 +52,7 @@ class SettingsEmailForm extends Component {
 
     this.setState({ sendingEmail: "working" });
     // NOTE: reaching into form component is not ideal
-    this._form.setFormErrors(null);
+    this.formRef.current.setFormErrors(null);
 
     try {
       await this.props.sendTestEmail();
@@ -67,7 +73,9 @@ class SettingsEmailForm extends Component {
       );
       this.setState({ sendingEmail: "default" });
       // NOTE: reaching into form component is not ideal
-      this._form.setFormErrors(this._form.handleFormErrors(error));
+      this.formRef.current.setFormErrors(
+        this.formRef.current.handleFormErrors(error),
+      );
     }
   };
 
@@ -78,7 +86,7 @@ class SettingsEmailForm extends Component {
     return (
       <EmailFormRoot>
         <SettingsBatchForm
-          ref={form => (this._form = form && form.getWrappedInstance())}
+          ref={this.formRef}
           {...this.props}
           elements={visibleElements}
           updateSettings={this.props.updateEmailSettings}

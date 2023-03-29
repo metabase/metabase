@@ -18,8 +18,10 @@ import Toggle from "metabase/core/components/Toggle";
 import ColorRange from "metabase/core/components/ColorRange";
 import ColorSelector from "metabase/core/components/ColorSelector";
 import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
+import Input from "metabase/core/components/Input";
 
 import NumericInput from "metabase/components/NumericInput";
+
 import {
   SortableContainer,
   SortableElement,
@@ -82,7 +84,7 @@ const DEFAULTS_BY_TYPE = {
 // predicate for columns that can be formatted
 export const isFormattable = field => isNumeric(field) || isString(field);
 
-const INPUT_CLASSNAME = "AdminSelect input mt1 full";
+const INPUT_CLASSNAME = "mt1 full";
 
 const getValueForDescription = rule =>
   ["is-null", "not-null"].includes(rule.operator) ? "" : ` ${rule.value}`;
@@ -379,7 +381,7 @@ const RuleEditor = ({
               placeholder="0"
             />
           ) : hasOperand ? (
-            <input
+            <Input
               data-testid="conditional-formatting-value-input"
               className={INPUT_CLASSNAME}
               value={rule.value}

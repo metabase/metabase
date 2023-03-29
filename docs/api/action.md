@@ -14,13 +14,22 @@ summary: |
 
 *  **`action-id`**
 
-## `GET /api/action/`
+## `DELETE /api/action/:id/public_link`
 
-Returns cards that can be used for QueryActions.
+Delete the publicly-accessible link to this Dashboard.
 
 ### PARAMS:
 
-*  **`model-id`** value must be an integer greater than zero.
+*  **`id`** integer greater than 0
+
+## `GET /api/action/`
+
+Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
+  `?model-id=<model-id>` to limit to actions on a particular model.
+
+### PARAMS:
+
+*  **`model-id`** nullable value must be an integer greater than zero.
 
 ## `GET /api/action/:action-id`
 
@@ -28,75 +37,103 @@ Returns cards that can be used for QueryActions.
 
 *  **`action-id`**
 
+## `GET /api/action/public`
+
+Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled.
+
 ## `POST /api/action/`
 
-Create a new HTTP action.
+Create a new action.
 
 ### PARAMS:
 
-*  **`type`** Only http actions are supported at this time.
+*  **`visualization_settings`** nullable map
 
-*  **`name`** value must be a string.
+*  **`parameters`** nullable sequence of map
 
-*  **`template`** value must be a map with schema: (
-  body (optional) : value may be nil, or if non-nil, value must be a string.
-  headers (optional) : value may be nil, or if non-nil, value must be a string.
-  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.
-  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.
-  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.
-  url : value must be a string.
-)
+*  **`description`** nullable string
 
-*  **`response_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`error_handle`** nullable string, and must be a valid json-query, something like '.item.title'
 
-*  **`error_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`database_id`** nullable integer greater than 0
+
+*  **`name`** string
+
+*  **`response_handle`** nullable string, and must be a valid json-query, something like '.item.title'
+
+*  **`template`** nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length >= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys
+
+*  **`type`** nullable Unsupported action type
+
+*  **`dataset_query`** nullable map
+
+*  **`model_id`** integer greater than 0
+
+*  **`kind`** nullable Unsupported implicit action kind
+
+*  **`parameter_mappings`** nullable map
 
 *  **`action`**
 
-## `POST /api/action/:action-namespace/:action-name`
+## `POST /api/action/:id/execute`
 
-Generic API endpoint for executing any sort of Action.
+Execute the Action.
 
-### PARAMS:
-
-*  **`action-namespace`** 
-
-*  **`action-name`**
-
-## `POST /api/action/:action-namespace/:action-name/:table-id`
-
-Generic API endpoint for executing any sort of Action with source Table ID specified as part of the route.
+   `parameters` should be the mapped dashboard parameters with values.
 
 ### PARAMS:
 
-*  **`action-namespace`** 
+*  **`id`** integer greater than 0
 
-*  **`action-name`** 
+*  **`parameters`** nullable map from <keyword> to <anything>
 
-*  **`table-id`**
+*  **`_body`**
+
+## `POST /api/action/:id/public_link`
+
+Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this
+  Action has already been shared, it will return the existing public link rather than creating a new one.) Public
+  sharing must be enabled.
+
+You must be a superuser to do this.
+
+### PARAMS:
+
+*  **`id`** integer greater than 0
 
 ## `PUT /api/action/:id`
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+*  **`visualization_settings`** nullable map
 
-*  **`type`** Only http actions are supported at this time.
+*  **`parameters`** nullable sequence of map
 
-*  **`name`** value may be nil, or if non-nil, value must be a string.
+*  **`description`** nullable string
 
-*  **`template`** value may be nil, or if non-nil, value must be a map with schema: (
-  body (optional) : value may be nil, or if non-nil, value must be a string.
-  headers (optional) : value may be nil, or if non-nil, value must be a string.
-  parameter_mappings (optional) : value may be nil, or if non-nil, value must be a map.
-  parameters (optional) : value may be nil, or if non-nil, value must be an array. Each value must be a map.
-  method : value must be one of: `DELETE`, `GET`, `PATCH`, `POST`, `PUT`.
-  url : value must be a string.
-)
+*  **`archived`** nullable boolean
 
-*  **`response_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`error_handle`** nullable string, and must be a valid json-query, something like '.item.title'
 
-*  **`error_handle`** value may be nil, or if non-nil, must be a valid json-query
+*  **`database_id`** nullable integer greater than 0
+
+*  **`name`** nullable string
+
+*  **`response_handle`** nullable string, and must be a valid json-query, something like '.item.title'
+
+*  **`template`** nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length >= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys
+
+*  **`type`** nullable Unsupported action type
+
+*  **`dataset_query`** nullable map
+
+*  **`model_id`** nullable integer greater than 0
+
+*  **`id`** integer greater than 0
+
+*  **`kind`** nullable Unsupported implicit action kind
+
+*  **`parameter_mappings`** nullable map
 
 *  **`action`**
 

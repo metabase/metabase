@@ -1,9 +1,10 @@
 (ns metabase.api.persist-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.task.persist-refresh :as task.persist-refresh]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 

@@ -21,7 +21,7 @@ Update the `login_attributes` for a User.
 
 *  **`id`** 
 
-*  **`login_attributes`** value must be a valid user attributes map (name -> value)
+*  **`login_attributes`** nullable value must be a valid user attributes map (name -> value)
 
 ---
 

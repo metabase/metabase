@@ -1,5 +1,6 @@
 (ns hooks.metabase.models.setting
-  (:require [clj-kondo.hooks-api :as hooks]))
+  (:require [clj-kondo.hooks-api :as hooks]
+            [hooks.common :as common]))
 
 (defn defsetting
   "Rewrite a [[metabase.models.defsetting]] form like
@@ -38,7 +39,7 @@
     {:node (-> (list
                 (hooks/token-node 'let)
                 ;; include description and the options map so they can get validated as well.
-                (hooks/vector-node (vec (interleave (repeat (hooks/token-node '_))
+                (hooks/vector-node (vec (interleave (repeat (common/with-macro-meta (hooks/token-node '_) node))
                                                     args)))
                 getter-node
                 setter-node)

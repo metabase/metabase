@@ -16,26 +16,29 @@
   6. Metabase parses/validates the SAML response
 
   7. Metabase inits the user session, responds with a redirect to back to the original `url`"
-  (:require [buddy.core.codecs :as codecs]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase-enterprise.sso.api.interface :as sso.i]
-            [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-            [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
-            [metabase.api.common :as api]
-            [metabase.api.session :as api.session]
-            [metabase.integrations.common :as integrations.common]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.server.request.util :as request.u]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [ring.util.response :as response]
-            [saml20-clj.core :as saml]
-            [schema.core :as s])
+  (:require
+   [buddy.core.codecs :as codecs]
+   [clojure.string :as str]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase-enterprise.sso.api.interface :as sso.i]
+   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
+   [metabase.api.common :as api]
+   [metabase.api.session :as api.session]
+   [metabase.integrations.common :as integrations.common]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.server.request.util :as request.u]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [ring.util.response :as response]
+   [saml20-clj.core :as saml]
+   [schema.core :as s])
   (:import [java.util Base64 UUID]))
+
+(set! *warn-on-reflection* true)
 
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"

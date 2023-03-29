@@ -1,76 +1,51 @@
-import { createEntity } from "metabase/lib/entities";
+import { t } from "ttag";
+import { updateIn } from "icepick";
+import _ from "underscore";
+import { createAction } from "redux-actions";
 
-import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
+import { createEntity, undo } from "metabase/lib/entities";
+import * as Urls from "metabase/lib/urls";
+import { ActionsApi } from "metabase/services";
+
+import type {
+  WritebackAction,
+  WritebackActionId,
+  WritebackQueryAction,
+  WritebackImplicitQueryAction,
+} from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
-import { ActionsApi, CardApi, ModelActionsApi } from "metabase/services";
+type BaseCreateActionParams = Pick<
+  WritebackAction,
+  "name" | "description" | "model_id" | "parameters" | "visualization_settings"
+>;
 
-import {
-  removeOrphanSettings,
-  addMissingSettings,
-  setParameterTypesFromFieldSettings,
-  setTemplateTagTypesFromFieldSettings,
-} from "metabase/entities/actions/utils";
-import type Question from "metabase-lib/Question";
-import { saveForm, updateForm } from "./forms";
-
-type ActionParams = {
-  name: string;
-  description?: string;
-  model_id?: number;
-  collection_id?: number;
-  question: Question;
-  formSettings: ActionFormSettings;
+type BaseUpdateActionParams = {
+  id: WritebackAction["id"];
 };
 
-const getAPIFn =
-  (apifn: (args: any) => Promise<any>) =>
-  ({
-    name,
-    description,
-    question,
-    collection_id,
-    formSettings,
-  }: ActionParams) => {
-    question = setTemplateTagTypesFromFieldSettings(formSettings, question);
+export type CreateQueryActionParams = BaseCreateActionParams &
+  Pick<WritebackQueryAction, "type" | "dataset_query">;
 
-    const parameters = setParameterTypesFromFieldSettings(
-      formSettings,
-      question.parameters(),
-    );
-    const settings = removeOrphanSettings(
-      addMissingSettings(formSettings, parameters),
-      parameters,
-    );
+export type UpdateQueryActionParams = Partial<CreateQueryActionParams> &
+  BaseUpdateActionParams;
 
-    return apifn({
-      ...question.card(),
-      name,
-      description,
-      parameters,
-      is_write: true,
-      display: "table",
-      visualization_settings: settings,
-      collection_id,
-    });
-  };
+export type CreateImplicitActionParams = BaseCreateActionParams &
+  Pick<WritebackImplicitQueryAction, "type" | "kind">;
 
-const createAction = getAPIFn(CardApi.create);
-const updateAction = getAPIFn(CardApi.update);
+export type UpdateImplicitActionParams = Omit<
+  Partial<CreateImplicitActionParams>,
+  "type"
+> &
+  BaseUpdateActionParams;
 
-const associateAction = ({
-  model_id,
-  action_id,
-}: {
-  model_id: number;
-  action_id: number;
-}) =>
-  ModelActionsApi.connectActionToModel({
-    card_id: model_id,
-    action_id: action_id,
-    slug: `action_${action_id}`,
-    requires_pk: false,
-  });
+export type CreateActionParams =
+  | CreateQueryActionParams
+  | CreateImplicitActionParams;
+
+export type UpdateActionParams =
+  | UpdateQueryActionParams
+  | UpdateImplicitActionParams;
 
 const defaultImplicitActionCreateOptions = {
   insert: true,
@@ -81,56 +56,130 @@ const defaultImplicitActionCreateOptions = {
 const enableImplicitActionsForModel =
   async (modelId: number, options = defaultImplicitActionCreateOptions) =>
   async (dispatch: Dispatch) => {
-    const methodsToCreate = Object.entries(options)
-      .filter(([, shouldCreate]) => !!shouldCreate)
-      .map(([method]) => method);
+    const requests = [];
 
-    const apiCalls = methodsToCreate.map(method =>
-      ModelActionsApi.createImplicitAction({
-        card_id: modelId,
-        slug: method,
-        requires_pk: method !== "insert",
-      }),
-    );
+    if (options.insert) {
+      requests.push(
+        ActionsApi.create({
+          name: t`Create`,
+          type: "implicit",
+          kind: "row/create",
+          model_id: modelId,
+        }),
+      );
+    }
 
-    await Promise.all(apiCalls);
+    if (options.update) {
+      requests.push(
+        ActionsApi.create({
+          name: t`Update`,
+          type: "implicit",
+          kind: "row/update",
+          model_id: modelId,
+        }),
+      );
+    }
 
-    dispatch({ type: Actions.actionTypes.INVALIDATE_LISTS_ACTION });
+    if (options.delete) {
+      requests.push(
+        ActionsApi.create({
+          name: t`Delete`,
+          type: "implicit",
+          kind: "row/delete",
+          model_id: modelId,
+        }),
+      );
+    }
+
+    await Promise.all(requests);
+
+    dispatch(Actions.actions.invalidateLists());
   };
+
+const CREATE_PUBLIC_LINK = "metabase/entities/actions/CREATE_PUBLIC_LINK";
+const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
 
 const Actions = createEntity({
   name: "actions",
   nameOne: "action",
   path: "/api/action",
   api: {
-    create: async ({ model_id, ...params }: ActionParams) => {
-      const card = await createAction(params);
-      if (card?.action_id && model_id) {
-        const association = await associateAction({
-          model_id,
-          action_id: card.action_id,
-        });
-        return { ...card, association };
-      }
-      return card;
-    },
-    update: updateAction,
-    list: async (params: any) => {
-      const actions = await ActionsApi.list(params);
-
-      return actions.map((action: WritebackAction) => ({
-        ...action,
-        id: action.id ?? `implicit-${action.slug}-${action.model_id}`,
-        name: action.name ?? action.slug,
-      }));
+    create: (params: CreateActionParams) => ActionsApi.create(params),
+    update: (params: UpdateActionParams) => {
+      // Changing action type is not supported
+      const cleanParams = _.omit(params, "type");
+      return ActionsApi.update(cleanParams);
     },
   },
   actions: {
     enableImplicitActionsForModel,
   },
-  forms: {
-    saveForm,
-    updateForm,
+  writableProperties: [
+    "name",
+    "description",
+    "type",
+    "model_id",
+    "database_id",
+    "dataset_query",
+    "parameters",
+    "public_uuid",
+    "visualization_settings",
+    "archived",
+  ],
+  objectActions: {
+    createPublicLink: createAction(
+      CREATE_PUBLIC_LINK,
+      ({ id }: { id: WritebackActionId }) => {
+        return ActionsApi.createPublicLink({ id }).then(
+          ({ uuid }: { uuid: string }) => {
+            return {
+              id,
+              uuid,
+            };
+          },
+        );
+      },
+    ),
+    deletePublicLink: createAction(
+      DELETE_PUBLIC_LINK,
+      ({ id }: { id: WritebackActionId }) => {
+        return ActionsApi.deletePublicLink({ id }).then(() => {
+          return {
+            id,
+          };
+        });
+      },
+    ),
+    setArchived: ({ id }: WritebackAction, archived: boolean) =>
+      Actions.actions.update(
+        { id },
+        { archived },
+        undo({}, t`action`, archived ? t`archived` : t`unarchived`),
+      ),
+  },
+  reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
+    switch (type) {
+      case CREATE_PUBLIC_LINK: {
+        const { id, uuid } = payload;
+        return updateIn(state, [id], action => {
+          return { ...action, public_uuid: uuid };
+        });
+      }
+      case DELETE_PUBLIC_LINK: {
+        const { id } = payload;
+        return updateIn(state, [id], action => {
+          return { ...action, public_uuid: null };
+        });
+      }
+      default: {
+        return state;
+      }
+    }
+  },
+  objectSelectors: {
+    getUrl: (action: WritebackAction) =>
+      Urls.action({ id: action.model_id }, action.id),
+    getIcon: () => ({ name: "bolt" }),
   },
 });
 

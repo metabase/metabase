@@ -1,10 +1,13 @@
 (ns metabase.driver.impl-test
-  (:require [clojure.core.async :as a]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.impl :as driver.impl]
-            [metabase.test.util.async :as tu.async]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.impl :as driver.impl]
+   [metabase.test.util.async :as tu.async]))
+
+(set! *warn-on-reflection* true)
 
 (deftest driver->expected-namespace-test
   (testing "expected namespace for a non-namespaced driver should be `metabase.driver.<driver>`"
@@ -86,7 +89,7 @@
 
                                      ;; two strings that only differ after the point they get truncated
                                      "0123456789abcde" {12 "012_1629bb92"}
-                                     "0123456789abcdE" {12 "012_2d479b5a" }
+                                     "0123456789abcdE" {12 "012_2d479b5a"}
 
                                      ;; Unicode string: 14 characters, 42 bytes
                                      "가나다라마바사아자차카타파하"

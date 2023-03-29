@@ -1,6 +1,9 @@
 (ns metabase.query-processor.middleware.cumulative-aggregations-test
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor.middleware.cumulative-aggregations
+    :as
+    qp.cumulative-aggregations]))
 
 (deftest add-values-from-last-row-test
   (are [expected indecies] (= expected
@@ -30,9 +33,9 @@
 
 (defn- sum-rows [replaced-indecies rows]
   (let [rf (#'qp.cumulative-aggregations/cumulative-ags-xform replaced-indecies (fn
-                                                                               ([] [])
-                                                                               ([acc] acc)
-                                                                               ([acc row] (conj acc row))))]
+                                                                                 ([] [])
+                                                                                 ([acc] acc)
+                                                                                 ([acc row] (conj acc row))))]
     (transduce identity rf rows)))
 
 (deftest transduce-results-test

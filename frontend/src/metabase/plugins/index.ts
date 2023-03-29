@@ -68,6 +68,11 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE = {
   controlled: null,
 };
 
+export const PLUGIN_DATA_PERMISSIONS = {
+  getPermissionsPayloadExtraData: (_state: State) => ({}),
+  hasChanges: (_state: State) => false,
+};
+
 // user form fields, e.x. login attributes
 export const PLUGIN_ADMIN_USER_FORM_FIELDS = [];
 
@@ -167,8 +172,12 @@ export const PLUGIN_CACHING = {
   isEnabled: () => false,
 };
 
-export const PLUGIN_REDUCERS: { applicationPermissionsPlugin: any } = {
+export const PLUGIN_REDUCERS: {
+  applicationPermissionsPlugin: any;
+  sandboxingPlugin: any;
+} = {
   applicationPermissionsPlugin: () => null,
+  sandboxingPlugin: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {

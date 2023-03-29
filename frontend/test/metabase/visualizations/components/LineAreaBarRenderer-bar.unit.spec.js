@@ -244,7 +244,7 @@ describe("LineAreaBarRenderer-bar", () => {
     expect(value).toEqual("(empty)");
 
     const tick = element.querySelector(".axis.x .tick text");
-    expect(tick.textContent).toEqual("(empty)");
+    expect(tick).toHaveTextContent("(empty)");
   });
 
   it(`should render a stacked chart on a logarithmic y scale`, async () => {

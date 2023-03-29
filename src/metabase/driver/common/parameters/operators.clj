@@ -7,11 +7,12 @@
                26
                {:source-field 5}]]
      :value [3 5]}"
-  (:require [metabase.mbql.schema :as mbql.s]
-            [metabase.models.params :as params]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]))
+  (:require
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models.params :as params]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util.i18n :refer [tru]]
+   [schema.core :as s]))
 
 (s/defn ^:private operator-arity :- (s/maybe (s/enum :unary :binary :variadic))
   [param-type]

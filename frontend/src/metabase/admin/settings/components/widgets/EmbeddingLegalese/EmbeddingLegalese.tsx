@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import Button from "metabase/core/components/Button";
 import {
   Header,

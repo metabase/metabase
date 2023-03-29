@@ -1,8 +1,9 @@
 (ns metabase-enterprise.public-settings-test
-  (:require [clojure.test :refer :all]
-            [metabase.public-settings :as public-settings]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.public-settings :as public-settings]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]))
 
 (use-fixtures :once (fixtures/initialize :db))
 

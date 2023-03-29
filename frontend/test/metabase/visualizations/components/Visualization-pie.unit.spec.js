@@ -1,5 +1,5 @@
 import React from "react";
-import { renderWithProviders, fireEvent } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import { NumberColumn, StringColumn } from "../__support__/visualizations";
@@ -13,10 +13,7 @@ const series = rows => {
 };
 
 const setup = series =>
-  renderWithProviders(<Visualization rawSeries={series} />, {
-    withSettings: true,
-    withEmbedSettings: true,
-  });
+  renderWithProviders(<Visualization rawSeries={series} />);
 
 describe("pie chart", () => {
   it("should render correct percentages in legend", () => {
@@ -25,9 +22,11 @@ describe("pie chart", () => {
       ["bar", 2],
       ["baz", 2],
     ];
-    const { getAllByText } = setup(series(rows));
-    getAllByText("20%");
-    getAllByText("40%");
+
+    setup(series(rows));
+
+    expect(screen.getAllByText("20%")).toHaveLength(2);
+    expect(screen.getAllByText("40%")).toHaveLength(4);
   });
 
   it("should use a consistent number of decimals", () => {
@@ -36,10 +35,12 @@ describe("pie chart", () => {
       ["bar", 0.499],
       ["baz", 0.001],
     ];
-    const { getAllByText } = setup(series(rows));
-    getAllByText("50.0%");
-    getAllByText("49.9%");
-    getAllByText("0.1%");
+
+    setup(series(rows));
+
+    expect(screen.getAllByText("50.0%")).toHaveLength(2);
+    expect(screen.getAllByText("49.9%")).toHaveLength(2);
+    expect(screen.getAllByText("0.1%")).toHaveLength(2);
   });
 
   it("should squash small slices into 'Other'", () => {
@@ -49,10 +50,12 @@ describe("pie chart", () => {
       ["baz", 0.002],
       ["qux", 0.008],
     ];
-    const { getAllByText } = setup(series(rows));
-    getAllByText("50%");
-    getAllByText("49%");
-    getAllByText("1%");
+
+    setup(series(rows));
+
+    expect(screen.getAllByText("50%")).toHaveLength(2);
+    expect(screen.getAllByText("49%")).toHaveLength(2);
+    expect(screen.getAllByText("1%")).toHaveLength(2);
   });
 
   it("should not use column formatting in the legend", () => {
@@ -67,9 +70,14 @@ describe("pie chart", () => {
         data: { rows: [["foo", 1]], cols },
       },
     ];
-    const { getAllByText } = setup(series);
-    getAllByText("100%"); // shouldn't multiply legend percent by `scale`
-    getAllByText("123"); // should multiply the count in the center by `scale`
+
+    setup(series);
+
+    // shouldn't multiply legend percent by `scale`
+    expect(screen.getAllByText("100%")).toHaveLength(2);
+
+    // should multiply the count in the center by `scale`
+    expect(screen.getByText("123")).toBeInTheDocument();
   });
 
   it("should obey number separator settings", () => {
@@ -90,8 +98,9 @@ describe("pie chart", () => {
         },
       },
     ];
-    const { getAllByText } = setup(series);
-    getAllByText("50,1%");
+    setup(series);
+
+    expect(screen.getAllByText("50,1%")).toHaveLength(2);
   });
 
   it("should show a condensed tooltip for squashed slices", () => {
@@ -101,17 +110,18 @@ describe("pie chart", () => {
       ["baz", 0.002],
       ["qux", 0.008],
     ];
-    const { container, getAllByText, queryAllByText } = setup(series(rows));
-    const paths = container.querySelectorAll("path");
+    setup(series(rows));
+    const paths = screen.getAllByTestId("slice");
     const otherPath = paths[paths.length - 1];
 
     // condensed tooltips display as "dimension: metric"
-    expect(queryAllByText("baz:").length).toBe(0);
-    expect(queryAllByText("qux:").length).toBe(0);
+    expect(screen.queryByText("baz")).not.toBeInTheDocument();
+    expect(screen.queryByText("qux")).not.toBeInTheDocument();
+
     fireEvent.mouseMove(otherPath);
-    // these appear twice in the dom due to some popover weirdness
-    expect(getAllByText("baz:").length).toBe(2);
-    expect(getAllByText("qux:").length).toBe(2);
+
+    expect(screen.getByText("baz")).toBeInTheDocument();
+    expect(screen.getByText("qux")).toBeInTheDocument();
   });
 
   it("shouldn't show a condensed tooltip for just one squashed slice", () => {
@@ -120,12 +130,13 @@ describe("pie chart", () => {
       ["bar", 0.49],
       ["baz", 0.002],
     ];
-    const { container, queryAllByText } = setup(series(rows));
-    const paths = container.querySelectorAll("path");
+    setup(series(rows));
+    const paths = screen.getAllByTestId("slice");
     const otherPath = paths[paths.length - 1];
 
     fireEvent.mouseMove(otherPath);
+
     // normal tooltips don't use this "dimension: metric" format
-    expect(queryAllByText("baz:").length).toBe(0);
+    expect(screen.queryByText("baz:")).not.toBeInTheDocument();
   });
 });

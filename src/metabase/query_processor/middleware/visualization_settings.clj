@@ -1,10 +1,11 @@
 (ns metabase.query-processor.middleware.visualization-settings
-  (:require [medley.core :as m]
-            [metabase.models.card :refer [Card]]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [toucan.db :as db]))
+  (:require
+   [medley.core :as m]
+   [metabase.models.card :refer [Card]]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [toucan.db :as db]))
 
 (defn- normalize-field-settings
   [id settings]

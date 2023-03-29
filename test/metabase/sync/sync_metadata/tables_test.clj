@@ -1,12 +1,13 @@
-(ns metabase.sync.sync-metadata.tables-test
+(ns ^:mb/once metabase.sync.sync-metadata.tables-test
   "Test for the logic that syncs Table models with the metadata fetched from a DB."
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Database Table]]
-            [metabase.sync.sync-metadata.tables :as sync-tables]
-            [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [Database Table]]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (tx/defdataset db-with-some-cruft
   [["acquired_toucans"

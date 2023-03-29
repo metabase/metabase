@@ -1,21 +1,25 @@
 (ns metabase.sync.analyze.fingerprint.fingerprinters
   "Non-identifying fingerprinters for various field types."
-  (:require [bigml.histogram.core :as hist]
-            [java-time :as t]
-            [kixi.stats.core :as stats]
-            [kixi.stats.math :as math]
-            [medley.core :as m]
-            [metabase.sync.analyze.classifiers.name :as classifiers.name]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [deferred-trs trs]]
-            [redux.core :as redux])
-  (:import com.bigml.histogram.Histogram
-           com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
-           [java.time.chrono ChronoLocalDateTime ChronoZonedDateTime]
-           java.time.temporal.Temporal
-           java.time.ZoneOffset))
+  (:require
+   [bigml.histogram.core :as hist]
+   [java-time :as t]
+   [kixi.stats.core :as stats]
+   [kixi.stats.math :as math]
+   [medley.core :as m]
+   [metabase.sync.analyze.classifiers.name :as classifiers.name]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [deferred-trs trs]]
+   [redux.core :as redux])
+  (:import
+   (com.bigml.histogram Histogram)
+   (com.clearspring.analytics.stream.cardinality HyperLogLogPlus)
+   (java.time ZoneOffset)
+   (java.time.chrono ChronoLocalDateTime ChronoZonedDateTime)
+   (java.time.temporal Temporal)))
+
+(set! *warn-on-reflection* true)
 
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."

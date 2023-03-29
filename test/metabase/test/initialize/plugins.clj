@@ -1,12 +1,15 @@
 (ns metabase.test.initialize.plugins
-  (:require [clojure.java.io :as io]
-            [clojure.tools.logging :as log]
-            [clojure.tools.reader.edn :as edn]
-            [metabase.plugins :as plugins]
-            [metabase.plugins.initialize :as plugins.init]
-            [metabase.test.data.env.impl :as tx.env.impl]
-            [metabase.util :as u]
-            [yaml.core :as yaml]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.tools.reader.edn :as edn]
+   [metabase.plugins :as plugins]
+   [metabase.plugins.initialize :as plugins.init]
+   [metabase.test.data.env.impl :as tx.env.impl]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [yaml.core :as yaml]))
+
+(set! *warn-on-reflection* true)
 
 ;; [[metabase.plugins/load-local-plugin-manifests!]] actually does the same thing as the code below now; the only
 ;; difference is this code also initializes plugins in `test_modules`. Besides that this code isn't needed

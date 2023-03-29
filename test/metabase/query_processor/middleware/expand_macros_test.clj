@@ -1,13 +1,14 @@
 (ns metabase.query-processor.middleware.expand-macros-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.expand-macros :as expand-macros]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.middleware.expand-macros :as expand-macros]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (defn- mbql-query [inner-query]
   {:database 1, :type :query, :query (merge {:source-table 1}

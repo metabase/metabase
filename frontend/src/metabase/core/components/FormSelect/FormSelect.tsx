@@ -13,6 +13,7 @@ export interface FormSelectProps<TValue, TOption = SelectOption<TValue>>
   name: string;
   title?: string;
   description?: ReactNode;
+  optional?: boolean;
 }
 
 const FormSelect = forwardRef(function FormSelect<
@@ -25,6 +26,7 @@ const FormSelect = forwardRef(function FormSelect<
     title,
     description,
     onChange,
+    optional,
     ...props
   }: FormSelectProps<TValue, TOption>,
   ref: Ref<HTMLDivElement>,
@@ -49,6 +51,7 @@ const FormSelect = forwardRef(function FormSelect<
       description={description}
       htmlFor={id}
       error={touched ? error : undefined}
+      optional={optional}
     >
       <Select
         {...props}

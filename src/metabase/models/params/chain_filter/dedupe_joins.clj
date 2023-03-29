@@ -1,6 +1,7 @@
 (ns metabase.models.params.chain-filter.dedupe-joins
-  (:require [clojure.core.logic :as l]
-            [clojure.set :as set]))
+  (:require
+   [clojure.core.logic :as l]
+   [clojure.set :as set]))
 
 (defn- lhso
   "A relation such that the left-hand side (LHS) of `join` is `lhs`."

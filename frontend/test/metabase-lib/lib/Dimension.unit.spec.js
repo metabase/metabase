@@ -395,11 +395,13 @@ describe("Dimension", () => {
         });
       });
       describe("fk()", () => {
-        const fk = dimension.fk();
-        expect(fk).toBeInstanceOf(FieldDimension);
-        expect(fk.mbql()).toEqual(["field", ORDERS.PRODUCT_ID.id, null]);
-        expect(fk.render()).toEqual("Product ID");
-        expect(fk._metadata).toEqual(metadata);
+        it("should return the fk", () => {
+          const fk = dimension.fk();
+          expect(fk).toBeInstanceOf(FieldDimension);
+          expect(fk.mbql()).toEqual(["field", ORDERS.PRODUCT_ID.id, null]);
+          expect(fk.render()).toEqual("Product ID");
+          expect(fk._metadata).toEqual(metadata);
+        });
       });
     });
   });
@@ -455,22 +457,24 @@ describe("Dimension", () => {
       });
 
       describe("temporalUnit()", () => {
-        expect(dimension.getOption("temporal-unit")).toEqual("month");
-        expect(dimension.temporalUnit()).toEqual("month");
+        it("returns the temporal unit", () => {
+          expect(dimension.getOption("temporal-unit")).toEqual("month");
+          expect(dimension.temporalUnit()).toEqual("month");
+        });
       });
 
       describe("withoutTemporalBucketing()", () => {
-        const noBucketing = dimension.withoutTemporalBucketing();
-        expect(noBucketing.getOption("temporal-unit")).toBeFalsy();
-        expect(noBucketing.temporalUnit()).toBeFalsy();
-        expect(noBucketing.mbql()).toEqual([
-          "field",
-          ORDERS.CREATED_AT.id,
-          null,
-        ]);
+        it("returns a dimension without temporal bucketing", () => {
+          const noBucketing = dimension.withoutTemporalBucketing();
+          expect(noBucketing.getOption("temporal-unit")).toBeFalsy();
+          expect(noBucketing.temporalUnit()).toBeFalsy();
+          expect(noBucketing.mbql()).toEqual([
+            "field",
+            ORDERS.CREATED_AT.id,
+            null,
+          ]);
+        });
       });
-
-      // TODO -- withTemporalUnit()
     });
   });
 
@@ -484,10 +488,12 @@ describe("Dimension", () => {
 
     describe("INSTANCE METHODS", () => {
       describe(".field()", () => {
-        expect(dimension.field()).toBeInstanceOf(Field);
-        expect(dimension.field().id).toEqual(PRODUCTS.CREATED_AT.id);
-        expect(dimension.field().metadata).toEqual(metadata);
-        expect(dimension.field().displayName()).toEqual("Created At");
+        it("should return the field", () => {
+          expect(dimension.field()).toBeInstanceOf(Field);
+          expect(dimension.field().id).toEqual(PRODUCTS.CREATED_AT.id);
+          expect(dimension.field().metadata).toEqual(metadata);
+          expect(dimension.field().displayName()).toEqual("Created At");
+        });
       });
     });
 
@@ -566,17 +572,19 @@ describe("Dimension", () => {
       });
 
       describe("column()", () => {
-        expect(dimension.column()).toEqual({
-          id: ORDERS.TOTAL.id,
-          name: "TOTAL",
-          display_name: "Total",
-          base_type: "type/Float",
-          semantic_type: "type/Currency",
-          field_ref: [
-            "field",
-            ORDERS.TOTAL.id,
-            { binning: { strategy: "num-bins", "num-bins": 10 } },
-          ],
+        it("returns the dimension column", () => {
+          expect(dimension.column()).toEqual({
+            id: ORDERS.TOTAL.id,
+            name: "TOTAL",
+            display_name: "Total",
+            base_type: "type/Float",
+            semantic_type: "type/Currency",
+            field_ref: [
+              "field",
+              ORDERS.TOTAL.id,
+              { binning: { strategy: "num-bins", "num-bins": 10 } },
+            ],
+          });
         });
       });
     });
@@ -601,13 +609,15 @@ describe("Dimension", () => {
       });
 
       describe("column()", () => {
-        expect(dimension.column()).toEqual({
-          id: ["expression", "Hello World", null],
-          name: "Hello World",
-          display_name: "Hello World",
-          base_type: "type/Text",
-          semantic_type: "type/Text",
-          field_ref: ["expression", "Hello World", null],
+        it("returns the dimension column", () => {
+          expect(dimension.column()).toEqual({
+            id: ["expression", "Hello World", null],
+            name: "Hello World",
+            display_name: "Hello World",
+            base_type: "type/Text",
+            semantic_type: "type/Text",
+            field_ref: ["expression", "Hello World", null],
+          });
         });
       });
 
@@ -700,13 +710,15 @@ describe("Dimension", () => {
         });
       });
       describe("column()", () => {
-        expect(dimension.column()).toEqual({
-          id: ORDERS.TOTAL.id,
-          name: "TOTAL",
-          display_name: "Total",
-          base_type: "type/Float",
-          semantic_type: "type/Currency",
-          field_ref: ["field", ORDERS.TOTAL.id, { "join-alias": "join1" }],
+        it("returns the dimension column", () => {
+          expect(dimension.column()).toEqual({
+            id: ORDERS.TOTAL.id,
+            name: "TOTAL",
+            display_name: "Total",
+            base_type: "type/Float",
+            semantic_type: "type/Currency",
+            field_ref: ["field", ORDERS.TOTAL.id, { "join-alias": "join1" }],
+          });
         });
       });
       describe("isEqual", () => {
@@ -788,6 +800,62 @@ describe("Dimension", () => {
           ]).field();
           expect(base_type).toBe("type/Integer");
         });
+
+        it.each([
+          {
+            field: ["field", PRODUCTS.CATEGORY.id, null],
+            fieldName: "category",
+            expectedType: "type/Text",
+          },
+          {
+            field: ["field", PRODUCTS.PRICE.id, null],
+            fieldName: "price",
+            expectedType: "type/Float",
+          },
+          {
+            field: [
+              "field",
+              PRODUCTS.CREATED_AT.id,
+              { "temporal-unit": "day" },
+            ],
+            fieldName: "created_at",
+            expectedType: "type/DateTime",
+          },
+        ])(
+          "should return $expectedType for min of $fieldName",
+          ({ field, expectedType }) => {
+            const { base_type } = aggregation(["min", field]).field();
+            expect(base_type).toBe(expectedType);
+          },
+        );
+
+        it.each([
+          {
+            field: ["field", PRODUCTS.CATEGORY.id, null],
+            fieldName: "category",
+            expectedType: "type/Text",
+          },
+          {
+            field: ["field", PRODUCTS.PRICE.id, null],
+            fieldName: "price",
+            expectedType: "type/Float",
+          },
+          {
+            field: [
+              "field",
+              PRODUCTS.CREATED_AT.id,
+              { "temporal-unit": "day" },
+            ],
+            fieldName: "created_at",
+            expectedType: "type/DateTime",
+          },
+        ])(
+          "should return $expectedType for max of $fieldName",
+          ({ field, expectedType }) => {
+            const { base_type } = aggregation(["max", field]).field();
+            expect(base_type).toBe(expectedType);
+          },
+        );
 
         it("should return an int field for count", () => {
           const { base_type } = aggregation(["count"]).field();
@@ -962,7 +1030,7 @@ describe("Dimension", () => {
             expect(missingQueryTemplateTag.dimension()).toBeNull();
           });
 
-          it("should default to null for a TemplateTagDimension without a query", () => {
+          it("should default to null for missing template tag dimension", () => {
             const missingTagTemplateTag = TemplateTagDimension.parseMBQL(
               ["template-tag", "bar"],
               metadata,

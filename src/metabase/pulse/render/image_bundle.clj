@@ -2,10 +2,14 @@
   "Logic related to creating image bundles, and some predefined ones. An image bundle contains the data needed to
   either encode the image inline in a URL (when `render-type` is `:inline`), or create the hashes/references needed
   for an attached image (`render-type` of `:attachment`)"
-  (:require [clojure.java.io :as io])
-  (:import java.util.Arrays
-           org.apache.commons.io.IOUtils
-           org.fit.cssbox.misc.Base64Coder))
+  (:require
+   [clojure.java.io :as io])
+  (:import
+   (java.util Arrays)
+   (org.apache.commons.io IOUtils)
+   (org.fit.cssbox.misc Base64Coder)))
+
+(set! *warn-on-reflection* true)
 
 (defn- hash-bytes
   "Generate a hash to be used in a Content-ID"

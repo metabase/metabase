@@ -1,10 +1,12 @@
 (ns metabase.driver.sql-jdbc.execute.diagnostic-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
-            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.execute.diagnostic
+    :as sql-jdbc.execute.diagnostic]
+   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest diagnostic-info-capture-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)

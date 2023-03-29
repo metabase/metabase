@@ -1,15 +1,15 @@
 (ns metabase.models.timeline-event
-  (:require [metabase.models.interface :as mi]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan.models :as models]))
 
 (models/defmodel TimelineEvent :timeline_event)
 
@@ -34,9 +34,9 @@
 
 ;;;; hydration
 
-(defn timeline
+(mi/define-simple-hydration-method timeline
+  :timeline
   "Attach the parent `:timeline` to this [[TimelineEvent]]."
-  {:hydrate :timeline}
   [{:keys [timeline_id]}]
   (db/select-one 'Timeline :id timeline_id))
 
@@ -66,9 +66,9 @@
                            [:and
                             [:= :time_matters false]
                             (when start
-                              [:<= (hx/->date start) (hx/->date :timestamp)])
+                              [:<= (h2x/->date start) (h2x/->date :timestamp)])
                             (when end
-                              [:<= (hx/->date :timestamp) (hx/->date end)])]])]}]
+                              [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}]
     (hydrate (db/select TimelineEvent clause) :creator)))
 
 (defn include-events
@@ -92,12 +92,9 @@
 
 ;;;; model
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class TimelineEvent)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   ;; todo: add hydration keys??
-   {:properties (constantly {:timestamped? true})}))
+(mi/define-methods
+ TimelineEvent
+ {:properties (constantly {::mi/timestamped? true})})
 
 (defmethod serdes.hash/identity-hash-fields TimelineEvent
   [_timeline-event]

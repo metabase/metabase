@@ -1,6 +1,9 @@
 import moment from "moment-timezone";
 
-import { getClickHoverObject } from "metabase/visualizations/lib/apply_tooltips";
+import {
+  getClickHoverObject,
+  getStackedTooltipModel,
+} from "metabase/visualizations/lib/apply_tooltips";
 import { getDatas } from "metabase/visualizations/lib/renderer_utils";
 
 import {
@@ -78,10 +81,7 @@ describe("getClickHoverObject", () => {
     expect(getFormattedTooltips(obj)).toEqual(["April, 2016", "2"]);
   });
 
-  // This is an ugly test. It's looking at whether we correctly set event and
-  // element properties on the returned object. Those are used to determine how
-  // the tooltips are positioned.
-  it("should return event/element target correctly", () => {
+  describe("event/element target", () => {
     const d = { data: { key: "foobar", value: 123 } };
     const cols = [StringColumn(), NumberColumn()];
     const rows = [["foobar", 123]];
@@ -91,27 +91,44 @@ describe("getClickHoverObject", () => {
       element: "DOM element",
     };
 
-    for (const [eventType, klass, shouldUseMouseLocation] of [
-      ["mousemove", "bar", false],
-      ["click", "bar", true],
-      ["mousemove", "dot", false],
-      ["click", "dot", false],
-      ["mousemove", "area", true],
-      ["click", "area", true],
-    ]) {
-      const { event, element } = getClickHoverObject(d, {
-        ...otherArgs,
-        classList: [klass],
-        event: { type: eventType },
+    describe("with mouse location", () => {
+      [
+        ["click", "bar"],
+        ["mousemove", "area"],
+        ["click", "area"],
+      ].forEach(testCase => {
+        const [eventType, cssClass] = testCase;
+
+        it(`should return correct target for "${eventType}" event with "${cssClass}" class`, () => {
+          const { event, element } = getClickHoverObject(d, {
+            ...otherArgs,
+            classList: [cssClass],
+            event: { type: eventType },
+          });
+          expect(event).toEqual({ type: eventType });
+          expect(element).toEqual(null);
+        });
       });
-      if (shouldUseMouseLocation) {
-        expect(event).toEqual({ type: eventType });
-        expect(element).toEqual(null);
-      } else {
-        expect(event).toEqual(null);
-        expect(element).toEqual("DOM element");
-      }
-    }
+    });
+
+    describe("without mouse location", () => {
+      [
+        ["mousemove", "bar"],
+        ["mousemove", "dot"],
+        ["click", "dot"],
+      ].forEach(testCase => {
+        const [eventType, cssClass] = testCase;
+        it(`should return correct target for "${eventType}" event with "${cssClass}" class`, () => {
+          const { event, element } = getClickHoverObject(d, {
+            ...otherArgs,
+            classList: [cssClass],
+            event: { type: eventType },
+          });
+          expect(event).toEqual(null);
+          expect(element).toEqual("DOM element");
+        });
+      });
+    });
   });
 
   it("should exclude aggregation and query-transform columns from dimensions", () => {
@@ -179,6 +196,108 @@ describe("getClickHoverObject", () => {
 
     const obj = getClickHoverObject(d, otherArgs);
     expect(getFormattedTooltips(obj)).toEqual(["(empty)", "2"]);
+  });
+});
+
+describe("getStackedTooltipModel", () => {
+  const settings = {
+    "series_settings.colors": {
+      "Series 1": "red",
+      "Series 2": "green",
+    },
+    series: () => null,
+  };
+  const dashboard = {
+    ordered_cards: [],
+  };
+  const cols = [StringColumn(), NumberColumn()];
+  const getMockSeries = hasBreakout => [
+    {
+      data: {
+        cols,
+        rows: [["foo", 100]],
+        settings: {},
+        _breakoutColumn: hasBreakout ? StringColumn() : undefined,
+      },
+      card: {
+        name: "Series 1",
+        _breakoutColumn: hasBreakout ? StringColumn() : undefined,
+      },
+    },
+    {
+      data: {
+        cols,
+        rows: [["foo", 200]],
+        settings: {},
+      },
+      card: { name: "Series 2" },
+    },
+  ];
+
+  const hoveredIndex = 0;
+  const xValue = "foo";
+
+  it("sets tooltip model rows", () => {
+    const series = getMockSeries();
+    const datas = getDatas({ series, settings });
+    const { bodyRows, headerRows, headerTitle } = getStackedTooltipModel(
+      series,
+      datas,
+      settings,
+      hoveredIndex,
+      dashboard,
+      xValue,
+    );
+
+    expect(headerTitle).toBe("foo");
+    expect(headerRows).toHaveLength(1);
+    expect(headerRows[0]).toEqual(
+      expect.objectContaining({
+        color: "red",
+        name: "column_display_name",
+        value: 100,
+      }),
+    );
+    expect(bodyRows).toHaveLength(1);
+    expect(bodyRows[0]).toEqual(
+      expect.objectContaining({
+        color: "green",
+        name: "column_display_name",
+        value: 200,
+      }),
+    );
+  });
+
+  it("sets showTotal and showPercentages to true for charts with breakouts", () => {
+    const series = getMockSeries(true);
+    const datas = getDatas({ series, settings });
+    const { showTotal, showPercentages } = getStackedTooltipModel(
+      series,
+      datas,
+      settings,
+      hoveredIndex,
+      dashboard,
+      xValue,
+    );
+
+    expect(showTotal).toBe(true);
+    expect(showPercentages).toBe(true);
+  });
+
+  it("sets showTotal and showPercentages to false for charts without breakouts", () => {
+    const series = getMockSeries();
+    const datas = getDatas({ series, settings });
+    const { showTotal, showPercentages } = getStackedTooltipModel(
+      series,
+      datas,
+      settings,
+      hoveredIndex,
+      dashboard,
+      xValue,
+    );
+
+    expect(showTotal).toBe(false);
+    expect(showPercentages).toBe(false);
   });
 });
 

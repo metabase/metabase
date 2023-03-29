@@ -39,7 +39,13 @@ const HelpModal = ({ onClose }) => {
 HelpModal.propTypes = propTypes;
 
 const getAdminLink = (email, text) => {
-  return email ? <ModalLink href={`mailto:${email}`}>{text}</ModalLink> : text;
+  return email ? (
+    <ModalLink key="admin-link" href={`mailto:${email}`}>
+      {text}
+    </ModalLink>
+  ) : (
+    text
+  );
 };
 
 const getAdminMessage = email => {

@@ -2,15 +2,13 @@ import _ from "underscore";
 
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { slugify } from "metabase/lib/formatting";
-import type {
-  Parameter,
-  ParameterMappingOptions,
-} from "metabase-types/types/Parameter";
+import type { ParameterMappingOptions } from "metabase-types/types/Parameter";
 import type {
   Card,
   Dashboard,
   DashboardParameterMapping,
   DashboardOrderedCard,
+  Parameter,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
@@ -41,13 +39,14 @@ export function createParameter(
     name = (option.combinedName || option.name) + " " + ++nameIndex;
   }
 
-  const parameter = {
+  const parameter: Parameter = {
     name: "",
     slug: "",
     id: generateParameterId(),
     type: option.type,
     sectionId: option.sectionId,
   };
+
   return setParameterName(parameter, name);
 }
 
@@ -118,7 +117,7 @@ export function getDashboardUiParameters(
   metadata: Metadata,
 ): UiParameter[] {
   const { parameters, ordered_cards } = dashboard;
-  const mappings = getMappings(ordered_cards);
+  const mappings = getMappings(ordered_cards as DashboardOrderedCard[]);
   const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
     if (isFieldFilterParameter(parameter)) {
       return buildFieldFilterUiParameter(parameter, mappings, metadata);
@@ -201,7 +200,9 @@ export function hasMatchingParameters({
     return false;
   }
 
-  const mappings = getMappings(dashboard.ordered_cards);
+  const mappings = getMappings(
+    dashboard.ordered_cards as DashboardOrderedCard[],
+  );
   const mappingsForDashcard = mappings.filter(
     mapping => mapping.dashcard_id === dashcardId,
   );
@@ -228,26 +229,4 @@ export function getFilteringParameterValuesMap(
   );
 
   return filteringParameterValues;
-}
-
-export function getParameterValuesSearchKey({
-  dashboardId,
-  parameterId,
-  query = null,
-  filteringParameterValues = {},
-}: {
-  dashboardId: number;
-  parameterId: string;
-  query: string | null;
-  filteringParameterValues: { [parameterId: string]: unknown };
-}) {
-  const BY_PARAMETER_ID = "0";
-  // sorting the filteringParameterValues map by its parameter id key to ensure entry order doesn't affect the outputted cache key
-  const sortedParameterValues = _.sortBy(
-    Object.entries(filteringParameterValues),
-    BY_PARAMETER_ID,
-  );
-  const stringifiedParameterValues = JSON.stringify(sortedParameterValues);
-
-  return `dashboardId: ${dashboardId}, parameterId: ${parameterId}, query: ${query}, filteringParameterValues: ${stringifiedParameterValues}`;
 }

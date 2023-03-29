@@ -1,12 +1,13 @@
 (ns metabase-enterprise.advanced-config.models.pulse-channel-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.models :refer [Pulse PulseChannel]]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.models :refer [Pulse PulseChannel]]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (deftest validate-email-domains-test
   (mt/with-temp Pulse [{pulse-id :id}]

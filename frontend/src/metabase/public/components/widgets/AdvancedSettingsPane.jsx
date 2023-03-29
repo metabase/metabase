@@ -31,8 +31,6 @@ const AdvancedSettingsPane = ({
   displayOptions,
   onChangeDisplayOptions,
   onUnpublish,
-  pane,
-  onChangePane,
   previewParameters,
   parameterValues,
   onChangeParameterValue,
@@ -73,6 +71,9 @@ const AdvancedSettingsPane = ({
               />
               <h3>{parameter.name}</h3>
               <Select
+                buttonProps={{
+                  "aria-label": parameter.name,
+                }}
                 className="ml-auto bg-white"
                 value={embeddingParams[parameter.slug] || "disabled"}
                 onChange={e =>

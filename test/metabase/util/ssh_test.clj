@@ -1,22 +1,26 @@
-(ns metabase.util.ssh-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.models.database :refer [Database]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [metabase.util.ssh :as ssh])
-  (:import [java.io BufferedReader InputStreamReader PrintWriter]
-           [java.net InetSocketAddress ServerSocket Socket]
-           org.apache.sshd.server.forward.AcceptAllForwardingFilter
-           org.apache.sshd.server.SshServer
-           org.h2.tools.Server))
+(ns ^:mb/once metabase.util.ssh-test
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.models.database :refer [Database]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.ssh :as ssh])
+  (:import
+   (java.io BufferedReader InputStreamReader PrintWriter)
+   (java.net InetSocketAddress ServerSocket Socket)
+   (org.apache.sshd.server SshServer)
+   (org.apache.sshd.server.forward AcceptAllForwardingFilter)
+   (org.h2.tools Server)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ssh-username "jsmith")
 (def ^:private ssh-password "supersecret")

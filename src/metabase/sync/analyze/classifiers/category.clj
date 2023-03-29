@@ -10,13 +10,14 @@
   A value of `list` now means the values should be cached. Deciding whether a Field should be a `list` Field is still
   determined by the cardinality of the Field, like Category status. Thus it is entirely possibly for a Field to be
   both a Category and a `list` Field."
-  (:require [clojure.tools.logging :as log]
-            [metabase.models.field :as field]
-            [metabase.models.field-values :as field-values]
-            [metabase.sync.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.models.field :as field]
+   [metabase.models.field-values :as field-values]
+   [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (defn- cannot-be-category-or-list?
   [{:keys [base_type semantic_type]}]

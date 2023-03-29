@@ -11,19 +11,21 @@
   ## Quartz JavaDoc
 
   Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite.scheduler :as qs]
-            [environ.core :as env]
-            [metabase.db :as mdb]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]
-            [toucan.db :as db])
+  (:require
+   [clojure.string :as str]
+   [clojurewerkz.quartzite.scheduler :as qs]
+   [environ.core :as env]
+   [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [schema.core :as s])
   (:import
    (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger TriggerKey)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SCHEDULER INSTANCE                                               |
@@ -101,7 +103,7 @@
     ;; in a perfect world we could just check whether we're creating a new Connection or not, and if using an existing
     ;; Connection, wrap it in a delegating proxy wrapper that makes `.close()` a no-op but forwards all other methods.
     ;; Now that would be a useful macro!
-    (some-> @@#'db/default-db-connection jdbc/get-connection))
+    (.getConnection mdb.connection/*application-db*))
   (shutdown [_]))
 
 (when-not *compile-files*
@@ -141,7 +143,7 @@
   (when (= (mdb/db-type) :postgres)
     (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))
 
-(defn init-scheduler!
+(defn- init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
   []
@@ -160,15 +162,13 @@
   (some-> (env/env :mb-disable-scheduler) Boolean/parseBoolean))
 
 (defn start-scheduler!
-  "Start an initialized scheduler. Tasks do not run before calling this function. It is an error to call this function
-  when [[*quartz-scheduler*]] has not been set. The function [[init-scheduler!]] will initialize this correctly."
+  "Start the task scheduler. Tasks do not run before calling this function."
   []
   (if (disable-scheduler?)
     (log/warn (trs "Metabase task scheduler disabled. Scheduled tasks will not be ran."))
-    (if-let [scheduler (scheduler)]
-      (do (qs/start scheduler)
-          (log/info (trs "Task scheduler started")))
-      (throw (trs "Scheduler not initialized but `start-scheduler!` called. Please call `init-scheduler!` before attempting to start.")))))
+    (do (init-scheduler!)
+        (qs/start (scheduler))
+        (log/info (trs "Task scheduler started")))))
 
 (defn stop-scheduler!
   "Stop our Quartzite scheduler and shutdown any running executions."

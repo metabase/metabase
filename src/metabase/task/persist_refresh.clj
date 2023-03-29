@@ -1,32 +1,39 @@
 (ns metabase.task.persist-refresh
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite.conversion :as qc]
-            [clojurewerkz.quartzite.jobs :as jobs]
-            [clojurewerkz.quartzite.schedule.cron :as cron]
-            [clojurewerkz.quartzite.triggers :as triggers]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.db :as mdb]
-            [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.email.messages :as messages]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
-            [metabase.models.task-history :refer [TaskHistory]]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor.middleware.limit :as limit]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.task :as task]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [potemkin.types :as p]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
-  (:import java.util.TimeZone
-           [org.quartz ObjectAlreadyExistsException Trigger]))
+  (:require
+   [clojure.string :as str]
+   [clojurewerkz.quartzite.conversion :as qc]
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.schedule.cron :as cron]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.db :as mdb]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.email.messages :as messages]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.persisted-info
+    :as persisted-info
+    :refer [PersistedInfo]]
+   [metabase.models.task-history :refer [TaskHistory]]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.middleware.limit :as limit]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.task :as task]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [potemkin.types :as p]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
+  (:import
+   (java.util TimeZone)
+   (org.quartz ObjectAlreadyExistsException Trigger)))
+
+(set! *warn-on-reflection* true)
 
 (defn- job-context->job-type
   [job-context]
@@ -152,34 +159,34 @@
   after a sufficient delay to ensure no queries are running against them and to allow changing mind. Also selects
   persisted info records pointing to cards that are no longer models and archived cards/models."
   []
-  (->> (db/query {:select    [:p.*]
-                  :from      [[PersistedInfo :p]]
-                  :left-join [[Card :c] [:= :c.id :p.card_id]]
-                  :where     [:or
-                              [:and
-                               [:in :state prunable-states]
-                               ;; Buffer deletions for an hour if the
-                               ;; prune job happens soon after setting state.
-                               ;; 1. so that people have a chance to change their mind.
-                               ;; 2. if a query is running against the cache, it doesn't get ripped out.
-                               [:< :state_change_at
-                                (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
-                              [:= :c.dataset false]
-                              [:= :c.archived true]]})
-       (db/do-post-select PersistedInfo)))
+  (t2/select PersistedInfo
+             {:select    [:p.*]
+              :from      [[:persisted_info :p]]
+              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+              :where     [:or
+                          [:and
+                           [:in :state prunable-states]
+                           ;; Buffer deletions for an hour if the
+                           ;; prune job happens soon after setting state.
+                           ;; 1. so that people have a chance to change their mind.
+                           ;; 2. if a query is running against the cache, it doesn't get ripped out.
+                           [:< :state_change_at
+                            (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
+                          [:= :c.dataset false]
+                          [:= :c.archived true]]}))
 
 (defn- refreshable-models
   "Returns refreshable models for a database id. Must still be models and not archived."
   [database-id]
-  (->> (db/query {:select    [:p.* :c.dataset :c.archived :c.name]
-                  :from      [[PersistedInfo :p]]
-                  :left-join [[Card :c] [:= :c.id :p.card_id]]
-                  :where     [:and
-                              [:= :p.database_id database-id]
-                              [:in :p.state refreshable-states]
-                              [:= :c.archived false]
-                              [:= :c.dataset true]]})
-       (db/do-post-select PersistedInfo)))
+  (t2/select PersistedInfo
+             {:select    [:p.* :c.dataset :c.archived :c.name]
+              :from      [[:persisted_info :p]]
+              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+              :where     [:and
+                          [:= :p.database_id database-id]
+                          [:in :p.state refreshable-states]
+                          [:= :c.archived false]
+                          [:= :c.dataset true]]}))
 
 (defn- prune-all-deletable!
   "Prunes all deletable PersistInfos, should not be called from tests as
@@ -298,10 +305,10 @@
         hours 1]
 
      (if (= 24 hours)
-                            (format "0 %d %d * * ? *" start-minute start-hour)
-                            (format "0 %d %d/%d * * ? *" start-minute start-hour hours)))
+         (format "0 %d %d * * ? *" start-minute start-hour)
+         (format "0 %d %d/%d * * ? *" start-minute start-hour hours))))
 
-  )
+
 
 (def ^:private prune-scheduled-trigger
   (triggers/build
@@ -319,7 +326,7 @@
     (triggers/for-job (jobs/key prune-job-key))
     (triggers/start-now)))
 
-(defn- database-trigger [database cron-spec]
+(defn- database-trigger ^org.quartz.CronTrigger [database cron-spec]
   (triggers/build
    (triggers/with-description (format "Refresh models for database %d" (u/the-id database)))
    (triggers/with-identity (database-trigger-key database))
@@ -370,9 +377,9 @@
            (log/info
             (u/format-color 'green "Persistence already present for model %d"
                             (:card_id persisted-info)
-                            (.. ^Trigger tggr getKey getName))))
+                            (.. ^Trigger tggr getKey getName)))))))
          ;; other errors?
-         )))
+
 
 (defn job-info-by-db-id
   "Fetch all database-ids that have a refresh job scheduled."
@@ -382,6 +389,7 @@
            :triggers
            (m/index-by (comp #(get % "db-id") qc/from-job-data :data))))
 
+;;; TODO -- this is only used in [[metabase.api.card-test]] now
 (defn job-info-for-individual-refresh
   "Return a set of PersistedInfo ids of all jobs scheduled for individual refreshes."
   []

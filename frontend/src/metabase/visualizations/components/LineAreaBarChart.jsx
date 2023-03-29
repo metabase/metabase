@@ -20,8 +20,9 @@ import {
   validateDatasetRows,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
-import { findSeriesByKey } from "metabase/visualizations/lib/series";
+import { getOrderedSeries } from "metabase/visualizations/lib/series";
 import { getAccentColors } from "metabase/lib/colors/groups";
+import { isEmpty } from "metabase/lib/validate";
 import {
   isNumeric,
   isDate,
@@ -274,7 +275,8 @@ export default class LineAreaBarChart extends Component {
     const hasMultipleSeries = series.length > 1;
     const canChangeSeries = onAddSeries || onEditSeries || onRemoveSeries;
     const hasLegendButtons = !hasTitle && actionButtons;
-    const hasLegend = hasMultipleSeries || canChangeSeries || hasLegendButtons;
+    const hasLegend =
+      hasMultipleSeries || canChangeSeries || hasLegendButtons || hasBreakout;
 
     const seriesSettings =
       settings.series && series.map(single => settings.series(single));
@@ -349,12 +351,10 @@ export default class LineAreaBarChart extends Component {
       settings,
     } = this.props;
 
-    const orderedSeries =
-      (settings["graph.dimensions"]?.length > 1 &&
-        settings["graph.series_order"]
-          ?.filter(orderedItem => orderedItem.enabled)
-          .map(orderedItem => findSeriesByKey(series, orderedItem.key))) ||
-      series;
+    // Note (EmmadUsmani): Stacked charts should be reversed so series are stacked
+    // from top to bottom, matching the sidebar (metabase#28772).
+    const isReversed = !isEmpty(settings["stackable.stack_type"]);
+    const orderedSeries = getOrderedSeries(series, settings, isReversed);
 
     const {
       title,
@@ -396,6 +396,7 @@ export default class LineAreaBarChart extends Component {
           onHoverChange={onHoverChange}
           onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}
           onSelectSeries={this.handleSelectSeries}
+          isReversed={isReversed}
         >
           <CardRenderer
             {...this.props}

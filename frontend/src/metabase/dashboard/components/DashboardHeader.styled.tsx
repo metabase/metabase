@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
-import { alpha, color } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
@@ -70,6 +70,13 @@ export const HeaderLastEditInfoLabel = styled(LastEditInfoLabel)`
   ${breakpointMaxSmall} {
     margin-top: 4px;
   }
+`;
+
+export const EditWarning = styled.div`
+  display: flex;
+  align-items: center;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 `;
 
 interface HeaderContentProps {

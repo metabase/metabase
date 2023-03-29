@@ -1,32 +1,34 @@
 (ns metabase-enterprise.serialization.upsert
   "Upsert-or-skip functionality for our models."
-  (:require [cheshire.core :as json]
-            [clojure.data :as data]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase-enterprise.serialization.names :refer [name-for-logging]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.database :as database :refer [Database]]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :refer [FieldValues]]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.pulse-channel :refer [PulseChannel]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.setting :as setting :refer [Setting]]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :refer [User]]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [trs]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.data :as data]
+   [medley.core :as m]
+   [metabase-enterprise.serialization.names :refer [name-for-logging]]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.field-values :refer [FieldValues]]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.models.pulse-channel :refer [PulseChannel]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.setting :as setting :refer [Setting]]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.user :refer [User]]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
+   [toucan.db :as db]
+   [toucan2.tools.after :as t2.after]))
 
 (def ^:private identity-condition
   {Database            [:name :engine]
@@ -62,7 +64,7 @@
 
 (defn- has-post-insert?
   [model]
-  (not= (find-protocol-method models/IModel :post-insert model) identity))
+  (not (methodical/is-default-primary-method? t2.after/each-row-fn [:toucan.query-type/insert.* model])))
 
 (defmacro with-error-handling
   "Execute body and catch and log any exceptions doing so throws."

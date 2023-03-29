@@ -13,6 +13,8 @@ import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/param
 import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
 import DashboardGrid from "../DashboardGrid";
+import { SIDEBAR_NAME } from "../../constants";
+
 import {
   CardsContainer,
   DashboardStyled,
@@ -87,7 +89,9 @@ class Dashboard extends Component {
       name: PropTypes.string,
       props: PropTypes.object,
     }).isRequired,
+    toggleSidebar: PropTypes.func.isRequired,
     closeSidebar: PropTypes.func.isRequired,
+    closeNavbar: PropTypes.func.isRequired,
     embedOptions: PropTypes.object,
   };
 
@@ -115,8 +119,8 @@ class Dashboard extends Component {
   );
 
   // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
-  componentDidMount() {
-    this.loadDashboard(this.props.dashboardId);
+  async componentDidMount() {
+    await this.loadDashboard(this.props.dashboardId);
 
     const main = getMainElement();
     main.addEventListener("scroll", this.throttleParameterWidgetStickiness, {
@@ -127,9 +131,9 @@ class Dashboard extends Component {
     });
   }
 
-  componentDidUpdate(prevProps) {
+  async componentDidUpdate(prevProps) {
     if (prevProps.dashboardId !== this.props.dashboardId) {
-      this.loadDashboard(this.props.dashboardId);
+      await this.loadDashboard(this.props.dashboardId);
       this.throttleParameterWidgetStickiness();
     } else if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
@@ -200,6 +204,12 @@ class Dashboard extends Component {
     this.props.setSharing(true);
   };
 
+  onAddQuestion = () => {
+    const { dashboard } = this.props;
+    this.setEditing(dashboard);
+    this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
+  };
+
   render() {
     const {
       addParameter,
@@ -264,7 +274,6 @@ class Dashboard extends Component {
               <HeaderContainer
                 isFullscreen={isFullscreen}
                 isNightMode={shouldRenderAsNightMode}
-                isDataApp={false}
               >
                 <DashboardHeader
                   {...this.props}
@@ -314,8 +323,9 @@ class Dashboard extends Component {
                     />
                   ) : (
                     <DashboardEmptyState
-                      isDataApp={false}
                       isNightMode={shouldRenderAsNightMode}
+                      addQuestion={this.onAddQuestion}
+                      closeNavbar={this.props.closeNavbar}
                     />
                   )}
                 </CardsContainer>

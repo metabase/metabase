@@ -2,11 +2,12 @@
   "Fetch metadata functions fetch 'snapshots' of the schema for a data warehouse database, including information about
   tables, schemas, and fields, and their types. For example, with SQL databases, these functions use the JDBC
   DatabaseMetaData to get this information."
-  (:require [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.util :as driver.u]
-            [metabase.sync.interface :as i]
-            [schema.core :as s]))
+  (:require
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.util :as driver.u]
+   [metabase.sync.interface :as i]
+   [schema.core :as s]))
 
 (s/defn db-metadata :- i/DatabaseMetadata
   "Get basic Metadata about a `database` and its Tables. Doesn't include information about the Fields."

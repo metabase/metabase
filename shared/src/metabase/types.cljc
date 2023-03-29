@@ -49,15 +49,16 @@
   ### Entity Types -- keys starting with `:entity/`
 
   These are used to record the semantic purpose of a Table."
-  #?@(:clj
-      [(:require
-        [clojure.set :as set]
-        [metabase.types.coercion-hierarchies :as coercion-hierarchies])]
-      :cljs
-      [(:require
-        [clojure.set :as set]
-        [metabase.shared.util :as shared.u]
-        [metabase.types.coercion-hierarchies :as coercion-hierarchies])]))
+  #?@
+   (:clj
+    [(:require
+      [clojure.set :as set]
+      [metabase.types.coercion-hierarchies :as coercion-hierarchies])]
+    :cljs
+    [(:require
+      [clojure.set :as set]
+      [metabase.types.coercion-hierarchies :as coercion-hierarchies]
+      [metabase.util :as u])]))
 
 ;;; Table (entity) Types
 
@@ -346,7 +347,7 @@
 
          {\"Temporal\" \"type/Temporal\", ...}"
      (clj->js (into {} (for [tyype (distinct (mapcat descendants [:type/* :Semantic/* :Relation/*]))]
-                         [(name tyype) (shared.u/qualified-name tyype)])))))
+                         [(name tyype) (u/qualified-name tyype)])))))
 
 (coercion-hierarchies/define-types! :Coercion/UNIXMicroSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
 (coercion-hierarchies/define-types! :Coercion/UNIXMilliSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)

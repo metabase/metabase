@@ -1,20 +1,23 @@
 (ns metabase.driver.sqlite-test
-  (:require [clojure.java.io :as io]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
+
+(set! *warn-on-reflection* true)
 
 (deftest timezone-id-test
   (mt/test-driver :sqlite
@@ -144,7 +147,8 @@
                                    :database-type "TIMESTAMP"
                                    :base-type :type/DateTime
                                    :database-position 0
-                                   :database-required false}}}
+                                   :database-required false
+                                   :database-is-auto-increment false}}}
                        (driver/describe-table driver db (db/select-one Table :id (mt/id :timestamp_table)))))))))))))
 
 (deftest select-query-datetime
@@ -182,14 +186,14 @@
                                        {:fields [$col_timestamp $col_date $col_datetime]
                                         :filter [:= $test_case "epoch"]})))))
           (testing "select datetime stored as string with milliseconds"
-            (is (= [["2021-08-25 04:18:24.111"    ; TIMESTAMP (raw string)
+            (is (= [["2021-08-25T04:18:24.111Z"   ; TIMESTAMP (raw string)
                      "2021-08-25T04:18:24.111Z"]] ; DATETIME
                    (qp.test/rows
                     (mt/run-mbql-query datetime_table
                                        {:fields [$col_timestamp $col_datetime]
                                         :filter [:= $test_case "iso8601-ms"]})))))
           (testing "select datetime stored as string without milliseconds"
-            (is (= [["2021-08-25 04:18:24"    ; TIMESTAMP (raw string)
+            (is (= [["2021-08-25T04:18:24Z"   ; TIMESTAMP (raw string)
                      "2021-08-25T04:18:24Z"]] ; DATETIME
                    (qp.test/rows
                     (mt/run-mbql-query datetime_table
@@ -213,18 +217,11 @@
     (mt/test-driver :sqlite
       (mt/dataset sample-dataset
         (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
-                            count (*)         AS count]
-                 :from     [{:select [products.id              AS id
-                                      products.ean             AS ean
-                                      products.title           AS title
-                                      products.category        AS category
-                                      products.vendor          AS vendor
-                                      products.price           AS price
-                                      products.rating          AS rating
-                                      products.created_at      AS created_at
-                                      (products.category || ?) AS CATEGORY_2]
+                            COUNT (*)         AS count]
+                 :from     [{:select [products.category       AS category
+                                      products.category || ?  AS CATEGORY_2]
                              :from   [products]}
-                            source]
+                            AS source]
                  :group-by [source.CATEGORY_2]
                  :order-by [source.CATEGORY_2 ASC]
                  :limit    [1]}

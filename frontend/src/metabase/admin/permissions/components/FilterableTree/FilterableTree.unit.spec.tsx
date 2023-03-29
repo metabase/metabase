@@ -1,5 +1,5 @@
 import React from "react";
-import { render, fireEvent, act } from "@testing-library/react";
+import { render, fireEvent, act, screen } from "@testing-library/react";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { FilterableTree } from "./FilterableTree";
@@ -41,7 +41,7 @@ const itemGroups = [
 const placeholder = "Search for an item";
 
 const setup = () => {
-  const { getAllByRole, getByPlaceholderText, queryByText } = render(
+  render(
     <FilterableTree
       itemGroups={itemGroups}
       placeholder={placeholder}
@@ -49,9 +49,9 @@ const setup = () => {
     />,
   );
 
-  const filterInput = getByPlaceholderText(placeholder);
+  const filterInput = screen.getByPlaceholderText(placeholder);
 
-  return { filterInput, getAllByRole, queryByText };
+  return { filterInput };
 };
 
 describe("FilterableTree", () => {
@@ -61,28 +61,28 @@ describe("FilterableTree", () => {
   });
 
   it("allows to filter tree items", () => {
-    const { filterInput, getAllByRole, queryByText } = setup();
+    const { filterInput } = setup();
 
     fireEvent.change(filterInput, { target: { value: "Item 1" } });
 
     act(() => {
       jest.advanceTimersByTime(SEARCH_DEBOUNCE_DURATION);
     });
-    expect(getAllByRole("menuitem")).toHaveLength(2);
+    expect(screen.getAllByRole("menuitem")).toHaveLength(2);
 
-    expect(queryByText("Item 1 in Group 1")).not.toBeNull();
-    expect(queryByText("Item 1 in Group 2")).not.toBeNull();
+    expect(screen.getByText("Item 1 in Group 1")).toBeInTheDocument();
+    expect(screen.getByText("Item 1 in Group 2")).toBeInTheDocument();
   });
 
   it("allows to filter nested tree items", () => {
-    const { filterInput, getAllByRole, queryByText } = setup();
+    const { filterInput } = setup();
 
     fireEvent.change(filterInput, { target: { value: "Item 3" } });
 
     act(() => {
       jest.advanceTimersByTime(SEARCH_DEBOUNCE_DURATION);
     });
-    expect(getAllByRole("menuitem")).toHaveLength(1);
-    expect(queryByText("Child Item 3 in Group 3")).not.toBeNull();
+    expect(screen.getByRole("menuitem")).toBeInTheDocument();
+    expect(screen.getByText("Child Item 3 in Group 3")).toBeInTheDocument();
   });
 });

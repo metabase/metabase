@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 
 const series = (value = 1.23) => [
@@ -16,7 +16,7 @@ const settings = {
 
 describe("MetricForm", () => {
   it("should render title on dashboards", () => {
-    const { getByText } = render(
+    render(
       <Scalar
         series={series()}
         settings={settings}
@@ -24,11 +24,11 @@ describe("MetricForm", () => {
         visualizationIsClickable={() => false}
       />,
     );
-    getByText("Scalar Title");
+    expect(screen.getByText("Scalar Title")).toBeInTheDocument();
   });
 
   it("shouldn't render compact if normal formatting is <=6 characters", () => {
-    const { getByText } = render(
+    render(
       <Scalar
         series={series(12345)}
         settings={settings}
@@ -36,11 +36,11 @@ describe("MetricForm", () => {
         width={230}
       />,
     );
-    getByText("12,345"); // with compact formatting, we'd have 1
+    expect(screen.getByText("12,345")).toBeInTheDocument(); // with compact formatting, we'd have 1
   });
 
   it("should render compact if normal formatting is >6 characters", () => {
-    const { getByText } = render(
+    render(
       <Scalar
         series={series(12345.6)}
         settings={settings}
@@ -48,11 +48,11 @@ describe("MetricForm", () => {
         width={230}
       />,
     );
-    getByText("12.3k");
+    expect(screen.getByText("12.3k")).toBeInTheDocument();
   });
 
   it("should render null", () => {
-    const { getByText } = render(
+    render(
       <Scalar
         isDashboard // displays title
         series={series(null)}
@@ -60,6 +60,6 @@ describe("MetricForm", () => {
         visualizationIsClickable={() => false}
       />,
     );
-    getByText("Scalar Title"); // just confirms that it rendered
+    expect(screen.getByText("Scalar Title")).toBeInTheDocument(); // just confirms that it rendered
   });
 });

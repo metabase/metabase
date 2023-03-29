@@ -12,6 +12,10 @@ export const createMockRecentItem = (
 ): RecentItem => ({
   model: "table",
   model_object: createMockModelObject(),
+  cnt: 1,
+  model_id: 1,
+  max_ts: "2021-03-01T00:00:00.000Z",
+  user_id: 1,
   ...opts,
 });
 

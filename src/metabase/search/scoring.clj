@@ -1,50 +1,13 @@
 (ns metabase.search.scoring
-  (:require [cheshire.core :as json]
-            [clojure.core.memoize :as memoize]
-            [clojure.string :as str]
-            [java-time :as t]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.public-settings.premium-features :refer [defenterprise]]
-            [metabase.search.config :as search-config]
-            [metabase.util :as u]
-            [schema.core :as s]))
-
-;;; Utility functions
-
-(s/defn normalize :- s/Str
-  "Normalize a `query` to lower-case."
-  [query :- s/Str]
-  (str/lower-case query))
-
-(s/defn tokenize :- [s/Str]
-  "Break a search `query` into its constituent tokens"
-  [query :- s/Str]
-  (filter seq
-          (str/split query #"\s+")))
-
-(def ^:private largest-common-subseq-length
-  (memoize/fifo
-   (fn
-     ([eq xs ys]
-      (largest-common-subseq-length eq xs ys 0))
-     ([eq xs ys tally]
-      (if (or (zero? (count xs))
-              (zero? (count ys)))
-        tally
-        (max
-         (if (eq (first xs)
-                 (first ys))
-           (largest-common-subseq-length eq (rest xs) (rest ys) (inc tally))
-           tally)
-         (largest-common-subseq-length eq xs (rest ys) 0)
-         (largest-common-subseq-length eq (rest xs) ys 0)))))
-   ;; Uses O(n*m) space (the lengths of the two lists) with k≤2, so napkin math suggests this gives us caching for at
-   ;; least a 31*31 search (or 50*20, etc) which sounds like more than enough. Memory is cheap and the items are
-   ;; small, so we may as well skew high.
-   ;; As a precaution, the scorer that uses this limits the number of tokens (see the `take` call below)
-   :fifo/threshold 2000))
-
-;;; Scoring
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.search.config :as search-config]
+   [metabase.search.util :as search-util]
+   [metabase.util :as u]))
 
 (defn- matches?
   [search-token match-token]
@@ -92,7 +55,7 @@
                      :let        [matched-text (-> search-result
                                                    (get column)
                                                    (search-config/column->string (:model search-result) column))
-                                  match-tokens (some-> matched-text normalize tokenize)
+                                  match-tokens (some-> matched-text search-util/normalize search-util/tokenize)
                                   raw-score (scorer query-tokens match-tokens)]
                      :when       (and matched-text (pos? raw-score))]
                  {:score               raw-score
@@ -107,7 +70,7 @@
 
 (defn- consecutivity-scorer
   [query-tokens match-tokens]
-  (/ (largest-common-subseq-length
+  (/ (search-util/largest-common-subseq-length
       matches?
       ;; See comment on largest-common-subseq-length re. its cache. This is a little conservative, but better to under- than over-estimate
       (take 30 query-tokens)
@@ -163,8 +126,8 @@
 (defn prefix-scorer
   "How much does the search query match the beginning of the result? "
   [query-tokens match-tokens]
-  (let [query (str/lower-case (str/join " " query-tokens))
-        match (str/lower-case (str/join " " match-tokens))]
+  (let [query (u/lower-case-en (str/join " " query-tokens))
+        match (u/lower-case-en (str/join " " match-tokens))]
     (/ (prefix-counter query match)
        (count-token-chars query-tokens))))
 
@@ -187,7 +150,7 @@
   [raw-search-string result]
   (if (seq raw-search-string)
     (text-scores-with match-based-scorers
-                      (tokenize (normalize raw-search-string))
+                      (search-util/tokenize (search-util/normalize raw-search-string))
                       result)
     [{:score 0 :weight 0}]))
 
@@ -195,7 +158,7 @@
   [{:keys [model collection_position]}]
   ;; We experimented with favoring lower collection positions, but it wasn't good
   ;; So instead, just give a bonus for items that are pinned at all
-  (if (and (#{"card" "dashboard" "pulse"} model)
+  (if (and (#{"card" "dashboard"} model)
            ((fnil pos? 0) collection_position))
     1
     0))
@@ -230,8 +193,7 @@
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
   [result all-scores relevant-scores]
-  (let [{:keys [name display_name collection_id collection_name collection_authority_level
-                collection_app_id]} result
+  (let [{:keys [name display_name collection_id collection_name collection_authority_level]} result
         matching-columns            (into #{} (remove nil? (map :column relevant-scores)))
         match-context-thunk         (first (keep :match-context-thunk relevant-scores))]
     (-> result
@@ -245,14 +207,12 @@
                            (match-context-thunk))
          :collection     {:id              collection_id
                           :name            collection_name
-                          :authority_level collection_authority_level
-                          :app_id          collection_app_id}
+                          :authority_level collection_authority_level}
          :scores          all-scores)
         (update :dataset_query #(some-> % json/parse-string mbql.normalize/normalize))
         (dissoc
          :collection_id
          :collection_name
-         :collection_app_id
          :display_name))))
 
 (defn weights-and-scores

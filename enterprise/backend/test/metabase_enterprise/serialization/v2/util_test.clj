@@ -1,11 +1,13 @@
 (ns metabase-enterprise.serialization.v2.util-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase.models :refer [Database Field Table]]
-            [metabase.models.serialization.util :as serdes.util]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase.models :refer [Database Field Table]]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.test :as mt]))
 
 (deftest mbql-deserialize-test
-  (ts/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [Database   [{db-id      :id} {:name "Metabase Store"}]
                        Table      [{crm-id     :id} {:name  "crm_survey_response"
                                                      :db_id db-id

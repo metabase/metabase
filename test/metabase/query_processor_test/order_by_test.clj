@@ -1,8 +1,10 @@
 (ns metabase.query-processor-test.order-by-test
   "Tests for the `:order-by` clause."
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.test :as mt]
+   [schema.core :as s]))
 
 (deftest order-by-test
   (mt/test-drivers (mt/normal-drivers)
@@ -61,7 +63,7 @@
                   :order-by    [[:asc [:aggregation 0]]]})))))
 
     (testing :avg
-      (let [driver-floors-average? (#{:h2 :redshift :sqlserver} driver/*driver*)]
+      (let [driver-floors-average? (#{:redshift :sqlserver} driver/*driver*)]
         (is (= [[3 22.0]
                 [2 (if driver-floors-average? 28.0 28.3)]
                 [1 (if driver-floors-average? 32.0 32.8)]
@@ -74,14 +76,20 @@
 
   (testing :stddev
     (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
-      ;; standard deviation calculations are always NOT EXACT (normal behavior) so round results to nearest whole
-      ;; number.
-      (is (= [[3 25.0]
-              [1 24.0]
-              [2 21.0]
-              [4 14.0]]
-             (mt/formatted-rows [int 0.0]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:stddev $category_id]]
-                  :breakout    [$price]
-                  :order-by    [[:desc [:aggregation 0]]]})))))))
+      ;; standard deviation calculations are always NOT EXACT (normal behavior) so just test that the results are in a
+      ;; certain RANGE.
+      (letfn [(row-schema [price lower-bound upper-bound]
+                (s/one [(s/one (s/eq price)
+                               (format "price = %d" price))
+                        (s/one (s/pred #(< lower-bound % upper-bound))
+                               (format "%.1f < value < %.1f" lower-bound upper-bound))]
+                       "row"))]
+        (is (schema= [(row-schema 3 23.0 27.0)
+                      (row-schema 1 22.0 26.0)
+                      (row-schema 2 19.0 23.0)
+                      (row-schema 4 12.0 16.0)]
+                     (mt/formatted-rows [int 1.0]
+                       (mt/run-mbql-query venues
+                         {:aggregation [[:stddev $category_id]]
+                          :breakout    [$price]
+                          :order-by    [[:desc [:aggregation 0]]]}))))))))

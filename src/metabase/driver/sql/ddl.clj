@@ -1,8 +1,9 @@
 (ns metabase.driver.sql.ddl
-  (:require [clojure.java.jdbc :as jdbc]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.public-settings :as public-settings]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.public-settings :as public-settings]))
 
 (defn- quote-fn [driver]
   (fn quote [ident entity]

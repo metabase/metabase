@@ -21,26 +21,28 @@ export const CardRoot = styled.div<CardRootProps>`
   }
 `;
 
+export const CardIconAndDateContainer = styled.div`
+  display: flex;
+`;
+
 export const CardIcon = styled(Icon)`
-  color: ${color("brand")};
+  margin: 0.25rem 0.25rem 0 0;
   width: 1rem;
   height: 1rem;
 `;
 
-export const CardIconContainer = styled.div`
+export const CardCheckboxContainer = styled.div`
   display: flex;
   flex: 0 0 auto;
   justify-content: center;
   align-items: center;
   width: 2rem;
   height: 2rem;
-  border: 1px solid ${color("border")};
-  border-radius: 1rem;
 `;
 
 export const CardBody = styled.div`
   flex: 1 1 auto;
-  padding: 0.25rem 0.75rem 0;
+  padding: 0.125rem 0.75rem 0 0.125rem;
   min-width: 0;
 `;
 
@@ -59,7 +61,6 @@ export const CardDescription = styled(Markdown)`
 `;
 
 export const CardDateInfo = styled.div`
-  color: ${color("brand")};
   font-size: 0.75rem;
   line-height: 1.5rem;
   font-weight: bold;

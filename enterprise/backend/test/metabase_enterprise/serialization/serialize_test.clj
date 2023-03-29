@@ -1,10 +1,11 @@
 (ns metabase-enterprise.serialization.serialize-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase-enterprise.serialization.serialize :as serialize]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase.models :refer [Card Collection Dashboard Database Field Metric NativeQuerySnippet
-                                     Segment Table]]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.serialization.serialize :as serialize]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase.models :refer [Card Collection Dashboard Database Field Metric NativeQuerySnippet
+                            Segment Table]]))
 
 (defn- all-ids-are-fully-qualified-names?
   [m]

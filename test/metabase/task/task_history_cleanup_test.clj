@@ -1,13 +1,14 @@
-(ns metabase.task.task-history-cleanup-test
-  (:require [clojure.set :as set]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.models.task-history :refer [TaskHistory]]
-            [metabase.models.task-history-test :as tht]
-            [metabase.task.task-history-cleanup :as cleanup-task]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+(ns ^:mb/once metabase.task.task-history-cleanup-test
+  (:require
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.models.task-history :refer [TaskHistory]]
+   [metabase.models.task-history-test :as tht]
+   [metabase.task.task-history-cleanup :as cleanup-task]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (deftest cleanup-test
   (let [task-1   (u/qualified-name ::task-1)

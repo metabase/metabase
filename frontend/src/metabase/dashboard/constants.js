@@ -1,7 +1,6 @@
 export const SIDEBAR_NAME = {
   addQuestion: "addQuestion",
-  addActionButton: "addActionButton",
-  addActionForm: "addActionForm",
+  action: "action",
   clickBehavior: "clickBehavior",
   editParameter: "editParameter",
   sharing: "sharing",

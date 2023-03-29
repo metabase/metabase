@@ -1,33 +1,36 @@
 (ns metabase.api.session
   "/api/session endpoints"
-  (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [DELETE GET POST]]
-            [java-time :as t]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.common :as api]
-            [metabase.api.ldap :as api.ldap]
-            [metabase.config :as config]
-            [metabase.email.messages :as messages]
-            [metabase.events :as events]
-            [metabase.integrations.google :as google]
-            [metabase.integrations.ldap :as ldap]
-            [metabase.models.login-history :refer [LoginHistory]]
-            [metabase.models.session :refer [Session]]
-            [metabase.models.setting :as setting]
-            [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.server.request.util :as request.u]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.password :as u.password]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [throttle.core :as throttle]
-            [toucan.db :as db]
-            [toucan.models :as models])
-  (:import com.unboundid.util.LDAPSDKException
-           java.util.UUID))
+  (:require
+   [compojure.core :refer [DELETE GET POST]]
+   [java-time :as t]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
+   [metabase.api.ldap :as api.ldap]
+   [metabase.config :as config]
+   [metabase.email.messages :as messages]
+   [metabase.events :as events]
+   [metabase.integrations.google :as google]
+   [metabase.integrations.ldap :as ldap]
+   [metabase.models.login-history :refer [LoginHistory]]
+   [metabase.models.session :refer [Session]]
+   [metabase.models.setting :as setting]
+   [metabase.models.user :as user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.server.request.util :as request.u]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.password :as u.password]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [throttle.core :as throttle]
+   [toucan.db :as db])
+  (:import
+   (com.unboundid.util LDAPSDKException)
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (s/defn ^:private record-login-history!
   [session-id :- UUID user-id :- su/IntGreaterThanZero device-info :- request.u/DeviceInfo]
@@ -50,12 +53,9 @@
 (s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
   [_ user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
   (let [session-uuid (UUID/randomUUID)
-        session      (or
-                      (db/insert! Session
-                        :id      (str session-uuid)
-                        :user_id (u/the-id user))
-                      ;; HACK !!! For some reason `db/insert` doesn't seem to be working correctly for Session.
-                      (models/post-insert (db/select-one Session :id (str session-uuid))))]
+        session      (db/insert! Session
+                                 :id      (str session-uuid)
+                                 :user_id (u/the-id user))]
     (assert (map? session))
     (events/publish-event! :user-login
       {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
@@ -161,7 +161,8 @@
   [& body]
   `(do-http-401-on-error (fn [] ~@body)))
 
-(api/defendpoint POST "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
   "Login."
   [:as {{:keys [username password]} :body, :as request}]
   {username su/NonBlankString
@@ -179,7 +180,8 @@
                                   (login-throttlers :username)   username]
            (do-login))))))
 
-(api/defendpoint DELETE "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema DELETE "/"
   "Logout."
   [:as {:keys [metabase-session-id]}]
   (api/check-exists? Session metabase-session-id)
@@ -216,7 +218,8 @@
           (log/info password-reset-url)
           (messages/send-password-reset-email! email false false password-reset-url is-active?))))))
 
-(api/defendpoint POST "/forgot_password"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
   [:as {{:keys [email]} :body, :as request}]
   {email su/Email}
@@ -247,7 +250,8 @@
             (when (< token-age reset-token-ttl-ms)
               user)))))))
 
-(api/defendpoint POST "/reset_password"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body, :as request}]
   {token    su/NonBlankString
@@ -265,23 +269,21 @@
           (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
-(api/defendpoint GET "/password_reset_token_valid"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/password_reset_token_valid"
   "Check is a password reset token is valid and isn't expired."
   [token]
   {token s/Str}
   {:valid (boolean (valid-reset-token->user token))})
 
-(api/defendpoint GET "/properties"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/properties"
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
-  (merge
-   (setting/user-readable-values-map :public)
-   (when @api/*current-user*
-     (setting/user-readable-values-map :authenticated))
-   (when api/*is-superuser?*
-     (setting/user-readable-values-map :admin))))
+  (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
-(api/defendpoint POST "/google_auth"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/google_auth"
   "Login with Google Auth."
   [:as {{:keys [token]} :body, :as request}]
   {token su/NonBlankString}

@@ -1,24 +1,26 @@
 (ns metabase.query-processor.middleware.annotate
   "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.mbql.predicates :as mbql.preds]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.mbql.util.match :as mbql.match]
-            [metabase.models.humanization :as humanization]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.mbql.predicates :as mbql.preds]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.mbql.util.match :as mbql.match]
+   [metabase.models.humanization :as humanization]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def ^:private Col
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -694,12 +696,19 @@
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [{query-type :type, :as query
-    {:keys [:metadata/dataset-metadata]} :info} rff]
+    {:keys [:metadata/dataset-metadata :alias/escaped->original]} :info} rff]
   (fn add-column-info-rff* [metadata]
-    (if (= query-type :query)
-      (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
-             (seq dataset-metadata)
-             (update :cols qp.util/combine-metadata dataset-metadata)))
+    (if (and (= query-type :query)
+             ;; we should have type metadata eiter in the query fields
+             ;; or in the result metadata for the following code to work
+             (or (->> query :query keys (some #{:aggregation :breakout :fields}))
+                 (every? :base_type (:cols metadata))))
+      (let [query (cond-> query
+                    (seq escaped->original) ;; if we replaced aliases, restore them
+                    (escape-join-aliases/restore-aliases escaped->original))]
+        (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
+               (seq dataset-metadata)
+               (update :cols qp.util/combine-metadata dataset-metadata))))
       ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
       ;; queries...
       (let [metadata (cond-> (update metadata :cols annotate-native-cols)

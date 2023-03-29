@@ -1,43 +1,48 @@
 (ns metabase.email.messages
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
-  (:require [clojure.core.cache :as cache]
-            [clojure.java.io :as io]
-            [clojure.tools.logging :as log]
-            [hiccup.core :refer [html]]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.email :as email]
-            [metabase.models.collection :as collection]
-            [metabase.models.permissions :as perms]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.pulse.markdown :as markdown]
-            [metabase.pulse.parameters :as params]
-            [metabase.pulse.render :as render]
-            [metabase.pulse.render.body :as body]
-            [metabase.pulse.render.image-bundle :as image-bundle]
-            [metabase.pulse.render.js-svg :as js-svg]
-            [metabase.pulse.render.style :as style]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.query-processor.streaming.interface :as qp.si]
-            [metabase.query-processor.streaming.xlsx :as qp.xlsx]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as i18n :refer [deferred-trs trs tru]]
-            [metabase.util.urls :as urls]
-            [stencil.core :as stencil]
-            [stencil.loader :as stencil-loader]
-            [toucan.db :as db])
-  (:import [java.io File IOException OutputStream]
-           java.time.format.DateTimeFormatter
-           java.time.LocalTime))
+  (:require
+   [clojure.core.cache :as cache]
+   [clojure.java.io :as io]
+   [hiccup.core :refer [html]]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.email :as email]
+   [metabase.models.collection :as collection]
+   [metabase.models.permissions :as perms]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.pulse.markdown :as markdown]
+   [metabase.pulse.parameters :as params]
+   [metabase.pulse.render :as render]
+   [metabase.pulse.render.body :as body]
+   [metabase.pulse.render.image-bundle :as image-bundle]
+   [metabase.pulse.render.js-svg :as js-svg]
+   [metabase.pulse.render.style :as style]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.query-processor.streaming.xlsx :as qp.xlsx]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.urls :as urls]
+   [stencil.core :as stencil]
+   [stencil.loader :as stencil-loader]
+   [toucan.db :as db])
+  (:import
+   (java.io File IOException OutputStream)
+   (java.time LocalTime)
+   (java.time.format DateTimeFormatter)))
+
+(set! *warn-on-reflection* true)
 
 (defn- app-name-trs
   "Return the user configured application name, or Metabase translated
@@ -96,23 +101,6 @@
    :colorTextDark             style/color-text-dark
    :notificationManagementUrl (urls/notification-management-url)
    :siteUrl                   (public-settings/site-url)})
-
-(def ^:private notification-context
-  {:emailType  "notification"
-   :logoHeader true})
-
-(defn- abandonment-context []
-  {:heading      (trs "We’d love your feedback.")
-   :callToAction (str (deferred-trs "It looks like Metabase wasn’t quite a match for you.")
-                      " "
-                      (deferred-trs "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"))
-   :link         "https://metabase.com/feedback/inactive"})
-
-(defn- follow-up-context []
-  {:heading      (trs "We hope you''ve been enjoying Metabase.")
-   :callToAction (trs "Would you mind taking a fast 6 question survey to tell us how it’s going?")
-   :link         "https://metabase.com/feedback/active"})
-
 
 ;;; ### Public Interface
 
@@ -241,7 +229,7 @@
                                                       [:= :p.group_id :pg.id]
                                                       [:= :p.object db-details]]}]]
                          :group-by [:pgm.user_id]}
-                        db/query
+                        mdb.query/query
                         (mapv :user_id)))]
     (into
       []
@@ -288,22 +276,19 @@
 
 (defn send-follow-up-email!
   "Format and send an email to the system admin following up on the installation."
-  [email msg-type]
-  {:pre [(u/email? email) (contains? #{"abandon" "follow-up"} msg-type)]}
-  (let [subject      (str (if (= "abandon" msg-type)
-                            (trs "[{0}] Help make [{1}] better." (app-name-trs) (app-name-trs))
-                            (trs "[{0}] Tell us how things are going." (app-name-trs))))
-        context      (merge notification-context
-                            (if (= "abandon" msg-type)
-                              (abandonment-context)
-                              (follow-up-context)))
-        message-body (stencil/render-file "metabase/email/follow_up_email"
-                                          (merge (common-context) context))]
-    (email/send-message!
-     :subject      subject
-     :recipients   [email]
-     :message-type :html
-     :message      message-body)))
+  [email]
+  {:pre [(u/email? email)]}
+  (let [context (merge (common-context)
+                       {:emailType    "notification"
+                        :logoHeader   true
+                        :heading      (trs "We hope you''ve been enjoying Metabase.")
+                        :callToAction (trs "Would you mind taking a quick 5 minute survey to tell us how it’s going?")
+                        :link         "https://metabase.com/feedback/active"})
+        email {:subject      (trs "[{0}] Tell us how things are going." (app-name-trs))
+               :recipients   [email]
+               :message-type :html
+               :message      (stencil/render-file "metabase/email/follow_up_email" context)}]
+    (email/send-message! email)))
 
 (defn- make-message-attachment [[content-id url]]
   {:type         :inline
@@ -355,10 +340,10 @@
   "Should this `card` and `results` include a CSV attachment?"
   [{include-csv? :include_csv, include-xls? :include_xls, card-name :name, :as card} {:keys [cols rows], :as result-data}]
   (letfn [(yes [reason & args]
-            (log/tracef "Including CSV attachement for Card %s because %s" (pr-str card-name) (apply format reason args))
+            (log/tracef "Including CSV attachment for Card %s because %s" (pr-str card-name) (apply format reason args))
             true)
           (no [reason & args]
-            (log/tracef "NOT including CSV attachement for Card %s because %s" (pr-str card-name) (apply format reason args))
+            (log/tracef "NOT including CSV attachment for Card %s because %s" (pr-str card-name) (apply format reason args))
             false)]
     (cond
       include-csv?

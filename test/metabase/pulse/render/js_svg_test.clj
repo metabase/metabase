@@ -1,19 +1,23 @@
-(ns metabase.pulse.render.js-svg-test
+(ns ^:mb/once metabase.pulse.render.js-svg-test
   "Testing of the svgs produced by the graal js engine and the static-viz bundle. The model is
 
   query-results -> js engine with bundle -> svg-string -> svg png renderer
 
   the svg png renderer does not understand nested html elements so we ensure that there are no divs, spans, etc in the
   resulting svg."
-  (:require [cheshire.core :as json]
-            [clojure.set :as set]
-            [clojure.spec.alpha :as s]
-            [clojure.test :refer :all]
-            [metabase.pulse.render.js-engine :as js]
-            [metabase.pulse.render.js-svg :as js-svg])
-  (:import org.apache.batik.anim.dom.SVGOMDocument
-           [org.graalvm.polyglot Context Value]
-           [org.w3c.dom Element Node]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.set :as set]
+   [clojure.spec.alpha :as s]
+   [clojure.test :refer :all]
+   [metabase.pulse.render.js-engine :as js]
+   [metabase.pulse.render.js-svg :as js-svg])
+  (:import
+   (org.apache.batik.anim.dom SVGOMDocument)
+   (org.graalvm.polyglot Context Value)
+   (org.w3c.dom Element Node)))
+
+(set! *warn-on-reflection* true)
 
 (def parse-svg #'js-svg/parse-svg-string)
 
@@ -79,7 +83,7 @@
   (letfn [(tree [^Node node]
             (into [(.getNodeName node)]
                   (if (instance? org.apache.batik.dom.GenericText node)
-                    [(.getWholeText node)]
+                    [(.getWholeText ^org.apache.batik.dom.GenericText node)]
                     (map tree
                          (when (instance? Element node)
                            (let [children (.getChildNodes node)]
@@ -163,7 +167,10 @@
                                               :format {:date_style "YYYY/MM/DD"}}
                      :y                      {:type   "linear"
                                               :format {:prefix   "prefix"
-                                                       :decimals 4}}
+                                                       :decimals 4
+                                                       :minimum-fraction-digits 4
+                                                       :maximum-fraction-digits 4}}
+
                      :labels                 {:bottom ""
                                               :left   ""
                                               :right  ""}

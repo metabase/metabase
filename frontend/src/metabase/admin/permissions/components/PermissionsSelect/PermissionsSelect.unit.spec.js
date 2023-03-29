@@ -1,9 +1,9 @@
 import React from "react";
-import { render, fireEvent, screen } from "@testing-library/react";
+import { render, fireEvent, screen, getIcon } from "__support__/ui";
 
 import { PermissionsSelect } from "./PermissionsSelect";
 
-export const options = [
+const options = [
   {
     label: "Allowed",
     value: "all",
@@ -26,27 +26,20 @@ export const options = [
 
 describe("PermissionSelect", () => {
   it("shows selected option", () => {
-    const { queryByText } = render(
-      <PermissionsSelect options={options} value="all" />,
-    );
-
-    const selected = queryByText("Allowed");
-    expect(selected).not.toBeNull();
+    render(<PermissionsSelect options={options} value="all" />);
+    expect(screen.getByText("Allowed")).toBeInTheDocument();
   });
 
   it("when clicked shows options except selected", () => {
-    const { queryByText, getByRole, getAllByRole } = render(
-      <PermissionsSelect options={options} value="all" />,
-    );
+    render(<PermissionsSelect options={options} value="all" />);
 
-    const selected = queryByText("Allowed");
-    fireEvent.click(selected);
+    fireEvent.click(screen.getByText("Allowed"));
 
-    const optionsList = getByRole("listbox");
-    expect(optionsList).not.toBeNull();
+    const optionsList = screen.getByRole("listbox");
+    expect(optionsList).toBeInTheDocument();
 
-    const [limited, noAccess, ...rest] = getAllByRole("option");
-    expect(rest).toHaveLength(0);
+    const [limited, noAccess, ...rest] = screen.getAllByRole("option");
+    expect(rest).toEqual([]);
 
     expect(limited).toHaveTextContent("Limited");
     expect(noAccess).toHaveTextContent("No access");
@@ -54,7 +47,7 @@ describe("PermissionSelect", () => {
 
   it("selects an option", () => {
     const onChangeMock = jest.fn();
-    const { queryByText, getByRole, getAllByRole } = render(
+    render(
       <PermissionsSelect
         options={options}
         value="all"
@@ -62,44 +55,43 @@ describe("PermissionSelect", () => {
       />,
     );
 
-    const selected = queryByText("Allowed");
+    const selected = screen.queryByText("Allowed");
     fireEvent.click(selected);
 
-    const optionsList = getByRole("listbox");
-    expect(optionsList).not.toBeNull();
+    const optionsList = screen.getByRole("listbox");
+    expect(optionsList).toBeInTheDocument();
 
-    const [limited] = getAllByRole("option");
+    const [limited] = screen.getAllByRole("option");
     fireEvent.click(limited);
 
     expect(onChangeMock).toHaveBeenCalledWith("controlled", null);
   });
 
   it("does not show options after click when disabled", () => {
-    const { queryByText, queryByRole } = render(
+    render(
       <PermissionsSelect options={options} value="all" isDisabled={true} />,
     );
 
-    const selected = queryByText("Allowed");
+    const selected = screen.queryByText("Allowed");
     fireEvent.click(selected);
 
-    const optionsList = queryByRole("listbox");
-    expect(optionsList).toBeNull();
+    const optionsList = screen.queryByRole("listbox");
+    expect(optionsList).not.toBeInTheDocument();
 
     fireEvent.mouseEnter(selected);
   });
 
   it("shows warning", () => {
     const WARNING = "warning test";
-    const { container } = render(
+    render(
       <PermissionsSelect options={options} value="all" warning={WARNING} />,
     );
 
-    const warning = container.querySelector(".Icon-warning");
-    expect(warning).not.toBeNull();
+    expect(getIcon("warning")).toBeInTheDocument();
 
-    fireEvent.mouseEnter(warning);
+    fireEvent.mouseEnter(getIcon("warning"));
     const warningTooltip = screen.queryByText(WARNING);
 
-    expect(warningTooltip).not.toBeNull();
+    expect(warningTooltip).toBeInTheDocument();
   });
 });

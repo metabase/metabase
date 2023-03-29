@@ -1,7 +1,8 @@
 (ns metabase.sync.schedules-test
-  (:require [clojure.test :refer :all]
-            [metabase.sync.schedules :as sync.schedules]
-            [metabase.util.cron :as u.cron]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.sync.schedules :as sync.schedules]
+   [metabase.util.cron :as u.cron]))
 
 (deftest schedule-map->cron-strings-test
   (is (= {} (sync.schedules/schedule-map->cron-strings {})))

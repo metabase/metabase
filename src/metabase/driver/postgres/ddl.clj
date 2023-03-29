@@ -1,14 +1,17 @@
 (ns metabase.driver.postgres.ddl
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [java-time :as t]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql.ddl :as sql.ddl]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor :as qp]
-            [metabase.util.i18n :refer [trs]]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [honey.sql :as sql]
+   [java-time :as t]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql.ddl :as sql.ddl]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor :as qp]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (defn- set-statement-timeout!
   "Must be called within a transaction.
@@ -17,17 +20,19 @@
 
    This helps to address unexpectedly large/long running queries."
   [tx]
-  (let [existing-timeout (->> (hsql/format {:select [:setting]
-                                            :from [:pg_settings]
-                                            :where [:= :name "statement_timeout"]})
+  (let [existing-timeout (->> #_{:clj-kondo/ignore [:discouraged-var]}
+                              (sql/format {:select [:setting]
+                                           :from   [:pg_settings]
+                                           :where  [:= :name "statement_timeout"]}
+                                          {:quoted false})
                               (sql.ddl/jdbc-query tx)
                               first
                               :setting
                               parse-long)
-        ten-minutes (.toMillis (t/minutes 10))
-        new-timeout (if (zero? existing-timeout)
-                      ten-minutes
-                      (min ten-minutes existing-timeout))]
+        ten-minutes      (.toMillis (t/minutes 10))
+        new-timeout      (if (zero? existing-timeout)
+                           ten-minutes
+                           (min ten-minutes existing-timeout))]
     ;; Can't use a prepared parameter with these statements
     (sql.ddl/execute! tx [(format "SET LOCAL statement_timeout TO '%s'" (str new-timeout))])))
 
@@ -71,7 +76,7 @@
                      [:persist.check/read-table
                       (fn read-table [conn]
                         (sql.ddl/jdbc-query conn [(format "select * from %s.%s"
-                                             schema-name table-name)]))]
+                                                   schema-name table-name)]))]
                      [:persist.check/delete-table
                       (fn delete-table [conn]
                         (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database table-name)]))]]]

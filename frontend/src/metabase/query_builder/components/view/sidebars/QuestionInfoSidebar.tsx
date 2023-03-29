@@ -1,19 +1,26 @@
 import React from "react";
 import { t } from "ttag";
 
+import EditableText from "metabase/core/components/EditableText";
+
 import { PLUGIN_MODERATION, PLUGIN_CACHING } from "metabase/plugins";
 
 import MetabaseSettings from "metabase/lib/settings";
+import * as Urls from "metabase/lib/urls";
 
 import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
 
-import { Card } from "metabase-types/types/Card";
+import type { Card } from "metabase-types/types/Card";
 
-import EditableText from "metabase/core/components/EditableText";
 import Question from "metabase-lib/Question";
 
 import ModelCacheManagementSection from "./ModelCacheManagementSection";
-import { Root, ContentSection, Header } from "./QuestionInfoSidebar.styled";
+import {
+  Root,
+  ContentSection,
+  HeaderContainer,
+  HeaderLink,
+} from "./QuestionInfoSidebar.styled";
 
 interface QuestionInfoSidebarProps {
   question: Question;
@@ -48,7 +55,14 @@ export const QuestionInfoSidebar = ({
   return (
     <Root>
       <ContentSection>
-        <Header>{t`About`}</Header>
+        <HeaderContainer>
+          <h3>{t`About`}</h3>
+          {question.isDataset() && (
+            <HeaderLink
+              to={Urls.modelDetail(question.card())}
+            >{t`Model details`}</HeaderLink>
+          )}
+        </HeaderContainer>
         <EditableText
           initialValue={description}
           placeholder={

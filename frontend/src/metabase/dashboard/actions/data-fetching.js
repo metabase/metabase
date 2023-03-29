@@ -108,11 +108,7 @@ const loadingComplete = createThunkAction(
         dispatch(setShowLoadingCompleteFavicon(false));
       }, 3000);
     } else {
-      const dashboard = getDashboardComplete(getState());
-      const message = dashboard.is_app_age
-        ? t`Your page is ready`
-        : t`Your dashboard is ready`;
-      dispatch(setDocumentTitle(message));
+      dispatch(setDocumentTitle(t`Your dashboard is ready`));
       document.addEventListener(
         "visibilitychange",
         () => {

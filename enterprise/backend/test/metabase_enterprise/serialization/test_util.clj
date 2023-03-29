@@ -1,21 +1,22 @@
 (ns metabase-enterprise.serialization.test-util
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [metabase-enterprise.serialization.names :as names]
-            [metabase.db :as mdb]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.db.data-source :as mdb.data-source]
-            [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
-                                     Field Metric NativeQuerySnippet Pulse PulseCard Segment Table User]]
-            [metabase.models.collection :as collection]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [metabase-enterprise.serialization.names :as names]
+   [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.data-source :as mdb.data-source]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
+                            Field Metric NativeQuerySnippet Pulse PulseCard Segment Table User]]
+   [metabase.models.collection :as collection]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
+
+(set! *warn-on-reflection* true)
 
 (def root-card-name "My Root Card \\ with a/nasty: (*) //n`me ' * ? \" < > | ŠĐž")
 (def temp-db-name "Fingerprint test-data copy")
@@ -49,20 +50,6 @@
   [model-bindings & body]
   `(binding [collection/*allow-deleting-personal-collections* true]
      (tt/with-temp* ~model-bindings ~@body)))
-
-(defmacro with-empty-h2-app-db
-  "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been
-  created via Liquibase schema migrations. After `body` is finished, the original app DB bindings are restored.
-
-  Makes use of functionality in the [[metabase.db.schema-migrations-test.impl]] namespace since that already does what
-  we need."
-  [& body]
-  `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
-     (schema-migrations-test.impl/run-migrations-in-range! conn# [0 "v99.00-000"]) ; this should catch all migrations)
-     ;; since the actual group defs are not dynamic, we need with-redefs to change them here
-     (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
-                   perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
-       ~@body)))
 
 (defn create! [model & {:as properties}]
   (db/insert! model (merge (tt/with-temp-defaults model) properties)))
@@ -125,14 +112,14 @@
           (when (.exists (io/file dump-dir))
             (.delete (io/file dump-dir))))))))
 
-(defmacro with-random-dump-dir {:style/indent 2} [[dump-dir-binding prefix] & body]
+(defmacro with-random-dump-dir {:style/indent 1} [[dump-dir-binding prefix] & body]
   `(do-with-random-dump-dir ~prefix (fn [~dump-dir-binding] ~@body)))
 
 (defmacro with-world
   "Run test in the context of a minimal Metabase instance connected to our test database."
+  {:style/indent 0}
   [& body]
-  `(with-temp-dpc [Database   [{~'db-id :id} (into {:name temp-db-name} (-> (data/id)
-                                                                            Database
+  `(with-temp-dpc [Database   [{~'db-id :id} (into {:name temp-db-name} (-> (data/db)
                                                                             (dissoc :id :features :name)))]
                    Table      [{~'table-id :id :as ~'table} (temp-table (data/id :venues) ~'db-id)]
                    Table      [{~'table-id-categories :id}  (temp-table (data/id :categories) ~'db-id)]
@@ -329,8 +316,7 @@
                    PulseCard           [{~'pulsecard-root-id :id} {:pulse_id ~'pulse-id
                                                                    :card_id  ~'card-id-root}]
                    PulseCard           [{~'pulsecard-collection-id :id} {:pulse_id ~'pulse-id
-                                                                         :card_id  ~'card-id}
-                                                         :query {:source-table (str "card__" ~'card-id-root)}]
+                                                                         :card_id  ~'card-id}]
                    Card                [{~'card-id-template-tags :id}
                                         {:query_type    :native
                                          :name          "My Native Card With Template Tags"

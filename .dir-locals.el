@@ -19,15 +19,22 @@
  (clojure-mode
   ;; Specify which arg is the docstring for certain macros
   ;; (Add more as needed)
+  (eval . (put 'defendpoint-schema 'clojure-doc-string-elt 3))
   (eval . (put 'defendpoint 'clojure-doc-string-elt 3))
   (eval . (put 'defendpoint-async 'clojure-doc-string-elt 3))
   (eval . (put 'define-premium-feature 'clojure-doc-string-elt 2))
+  (eval . (put 'api/defendpoint-schema 'clojure-doc-string-elt 3))
   (eval . (put 'api/defendpoint 'clojure-doc-string-elt 3))
   (eval . (put 'api/defendpoint-async 'clojure-doc-string-elt 3))
   (eval . (put 'defsetting 'clojure-doc-string-elt 2))
   (eval . (put 'setting/defsetting 'clojure-doc-string-elt 2))
   (eval . (put 's/defn 'clojure-doc-string-elt 2))
   (eval . (put 'p.types/defprotocol+ 'clojure-doc-string-elt 2))
+  (eval . (put 'methodical/defmethod 'clojure-doc-string-elt 3))
+  (eval . (put 'methodical/defmulti 'clojure-doc-string-elt 2))
+  (eval . (put 'mi/define-simple-hydration-method 'clojure-doc-string-elt 3))
+  (eval . (put 'mi/define-batched-hydration-method 'clojure-doc-string-elt 3))
+  (eval . (put 'mu/defn 'clojure-doc-string-elt 2))
   ;; Define custom indentation for functions inside metabase.
   ;; This list isn't complete; add more forms as we come across them.
   ;;
@@ -35,8 +42,6 @@
   ;; instead of one call to `define-clojure-indent'
   (eval . (put-clojure-indent 'api/let-404 1))
   (eval . (put-clojure-indent 'c/step 1))
-  (eval . (put-clojure-indent 'db/insert-many! 1))
-  (eval . (put-clojure-indent 'db/update! 2))
   (eval . (put-clojure-indent 'impl/test-migrations 2))
   (eval . (put-clojure-indent 'let-404 0))
   (eval . (put-clojure-indent 'macros/case 0))
@@ -45,6 +50,8 @@
   (eval . (put-clojure-indent 'mbql.match/match-one 1))
   (eval . (put-clojure-indent 'mbql.match/replace 1))
   (eval . (put-clojure-indent 'mbql.match/replace-in 2))
+  (eval . (put-clojure-indent 'mbql.u/replace 1))
+  (eval . (put-clojure-indent 'mi/define-methods '(:form)))
   (eval . (put-clojure-indent 'mt/dataset 1))
   (eval . (put-clojure-indent 'mt/format-rows-by 1))
   (eval . (put-clojure-indent 'mt/query 1))
@@ -54,8 +61,8 @@
   (eval . (put-clojure-indent 'qp.streaming/streaming-response 1))
   (eval . (put-clojure-indent 'u/prog1 1))
   (eval . (put-clojure-indent 'u/select-keys-when 1))
-  (eval . (put-clojure-indent 'u/strict-extend 1))
   (eval . (put-clojure-indent 'with-meta '(:form)))
+  (eval . (put-clojure-indent 'tc/quick-check 1))
   ;; these ones have to be done with `define-clojure-indent' for now because of upstream bug
   ;; https://github.com/clojure-emacs/clojure-mode/issues/600 once that's resolved we should use `put-clojure-indent'
   ;; instead. Please don't add new entries unless they don't work with `put-clojure-indent'
@@ -85,4 +92,4 @@
 
  ("bin"
   (clojure-mode
-   (cider-clojure-cli-aliases . "dev"))))
+   (cider-clojure-cli-aliases . "dev:drivers:build:build-dev"))))

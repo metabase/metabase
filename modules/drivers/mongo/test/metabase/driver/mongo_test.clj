@@ -19,7 +19,8 @@
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.mongo :as tdm]
-            [monger.collection :as mc]
+            [metabase.util.log :as log]
+            [monger.collection :as mcoll]
             [taoensso.nippy :as nippy]
             [toucan.db :as db])
   (:import org.bson.types.ObjectId))
@@ -75,26 +76,18 @@
 (deftest database-supports?-test
  (mt/test-driver
     :mongo
-    (doseq [{:keys [details expected]} [{:details  {:host    "localhost"
-                                                    :port    3000
-                                                    :user   "metabase"
-                                                    :pass   "metasample123"
-                                                    :dbname  "bad-db-name"
-                                                    :version "5.0.0"}
-                                         :expected true}
-                                        {:details  {}
-                                         :expected false}
-                                        {:details  {:version nil}
-                                         :expected false}
-                                        {:details  {:host    "localhost"
-                                                    :port    27017
-                                                    :dbname  "metabase-test"
-                                                    :version "2.2134234.lol"}
-                                         :expected false}]
-            :let [ssl-details (tdm/conn-details details)]]
-      (testing (str "connect with " details)
+    (doseq [{:keys [dbms_version expected]}
+            [{:dbms_version {:semantic-version [5 0 0 0]}
+              :expected true}
+             {:dbms_version  {}
+              :expected false}
+             {:dbms_version  {:semantic-version []}
+              :expected false}
+             {:dbms_version  {:semantic-version [2 2134234]}
+              :expected false}]]
+      (testing (str "supports with " dbms_version)
         (is (= expected
-               (let [db (db/insert! Database {:name "dummy", :engine "mongo", :details ssl-details})]
+               (let [db (db/insert! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version})]
                  (driver/database-supports? :mongo :expressions db))))))))
 
 
@@ -196,7 +189,7 @@
     [["House Finch" nil]
      ["Mourning Dove" nil]]]])
 
-(deftest all-num-columns-test
+(deftest all-null-columns-test
   (mt/test-driver :mongo
     (mt/dataset all-null-columns
       ;; do a full sync on the DB to get the correct semantic type info
@@ -210,20 +203,46 @@
                 :table_id (mt/id :bird_species)
                 {:order-by [:name]})))))))
 
+(deftest new-rows-take-precedence-when-collecting-metadata-test
+  (mt/test-driver :mongo
+    (with-redefs [metadata-queries/nested-field-sample-limit 2]
+      (binding [tdm/*remove-nil?* true]
+        (mt/with-temp-test-data
+          ["bird_species"
+           [{:field-name "name", :base-type :type/Text}
+            {:field-name "favorite_snack", :base-type :type/Text}
+            {:field-name "max_wingspan", :base-type :type/Integer}]
+           [["Sharp-shinned Hawk" nil 68]
+            ["Tropicbird" nil 112]
+            ["House Finch" nil nil]
+            ["Mourning Dove" nil nil]
+            ["Common Blackbird" "earthworms" nil]
+            ["Silvereye" "cherries" nil]]]
+          ;; do a full sync on the DB to get the correct semantic type info
+          (sync/sync-database! (mt/db))
+          (is (= #{{:name "_id", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type :type/PK}
+                   {:name "favorite_snack", :database_type "java.lang.String", :base_type :type/Text, :semantic_type :type/Category}
+                   {:name "name", :database_type "java.lang.String", :base_type :type/Text, :semantic_type :type/Name}
+                   {:name "max_wingspan", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type nil}}
+                 (into #{}
+                       (map (partial into {}))
+                       (db/select [Field :name :database_type :base_type :semantic_type]
+                         :table_id (mt/id :bird_species)
+                         {:order-by [:name]})))))))))
+
 (deftest table-rows-sample-test
   (mt/test-driver :mongo
-    (driver/sync-in-context :mongo (mt/db)
-      (fn []
-        (is (= [[1 "Red Medicine"]
-                [2 "Stout Burgers & Beers"]
-                [3 "The Apple Pan"]
-                [4 "Wurstküche"]
-                [5 "Brite Spot Family Restaurant"]]
-               (vec (take 5 (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
-                              [(db/select-one Field :id (mt/id :venues :id))
-                               (db/select-one Field :id (mt/id :venues :name))]
-                              (constantly conj))))))))))
-
+    (testing "Should return the latest `nested-field-sample-limit` rows"
+      (let [table (db/select-one Table :id (mt/id :venues))
+            fields (map #(db/select-one Field :id (mt/id :venues %)) [:name :category_id])
+            rff (constantly conj)]
+        (with-redefs [metadata-queries/nested-field-sample-limit 5]
+          (is (= [["Mohawk Bend" 46]
+                  ["Golden Road Brewing" 10]
+                  ["Lucky Baldwin's Pub" 7]
+                  ["Barney's Beanery" 46]
+                  ["Busby's West" 48]]
+                 (driver/table-rows-sample :mongo table fields rff {}))))))))
 
 ;; ## Big-picture tests for the way data should look post-sync
 (deftest table-sync-test
@@ -418,13 +437,13 @@
             (doseq [[i row] (map-indexed vector row-maps)
                     :let    [row (assoc row :_id (inc i))]]
               (try
-                (mc/insert conn collection-name row)
+                (mcoll/insert conn collection-name row)
                 (catch Throwable e
                   (throw (ex-info (format "Error inserting row: %s" (ex-message e))
                                   {:database database-name, :collection collection-name, :details details, :row row}
                                   e)))))
-            (println (format "Inserted %d rows into %s collection %s."
-                             (count row-maps) (pr-str database-name) (pr-str collection-name))))
+            (log/infof "Inserted %d rows into %s collection %s."
+                       (count row-maps) (pr-str database-name) (pr-str collection-name)))
           ;; now sync the Database.
           (let [db (db/insert! Database {:name database-name, :engine "mongo", :details details})]
             (sync/sync-database! db)
@@ -452,3 +471,20 @@
                                  [:= $list_field "value_lf_a"]]
                    :aggregation [[:count]]
                    :breakout    [$coll.metas.group_field]}))))))))
+
+;; Make sure that simple `_` columns can be queried (#4647)
+(tx/defdataset underscore-column
+  [["bird_species"
+    [{:field-name "name", :base-type :type/Text}
+     {:field-name "_", :base-type :type/Text}]
+    [["House Finch" "sunflower seeds, ants, nettle, dandelion"]
+     ["Mourning Dove" "millet seeds, breadcrumbs, ice cream"]]]])
+
+(deftest underscore-filter-test
+  (testing "Simple `_` columns should be possible to query (#4647)"
+    (mt/test-driver :mongo
+      (mt/dataset underscore-column
+        (is (= [[1 "House Finch" "sunflower seeds, ants, nettle, dandelion"]]
+               (mt/rows
+                (mt/run-mbql-query bird_species
+                  {:filter [:contains $bird_species._ "nett"]}))))))))

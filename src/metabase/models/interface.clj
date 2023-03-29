@@ -1,27 +1,40 @@
 (ns metabase.models.interface
-  (:require [buddy.core.codecs :as codecs]
-            [cheshire.core :as json]
-            [clojure.core.memoize :as memoize]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models.dispatch :as models.dispatch]
-            [metabase.models.json-migration :as jm]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.cron :as u.cron]
-            [metabase.util.encryption :as encryption]
-            [metabase.util.i18n :refer [trs tru]]
-            [potemkin :as p]
-            [schema.core :as s]
-            [taoensso.nippy :as nippy]
-            [toucan.db :as db]
-            [toucan.models :as models])
-  (:import [java.io BufferedInputStream ByteArrayInputStream DataInputStream]
-           java.sql.Blob
-           java.util.zip.GZIPInputStream))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [camel-snake-kebab.core :as csk]
+   [cheshire.core :as json]
+   [cheshire.generate :as json.generate]
+   [clojure.core.memoize :as memoize]
+   [clojure.spec.alpha :as s]
+   [clojure.walk :as walk]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models.dispatch :as models.dispatch]
+   [metabase.models.json-migration :as jm]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.cron :as u.cron]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
+   [potemkin :as p]
+   [schema.core :as schema]
+   [taoensso.nippy :as nippy]
+   [toucan.db :as db]
+   [toucan.models :as models]
+   [toucan2.core :as t2]
+   [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.hydrate :as t2.hydrate]
+   [toucan2.util :as t2.u])
+  (:import
+   (java.io BufferedInputStream ByteArrayInputStream DataInputStream)
+   (java.sql Blob)
+   (java.util.zip GZIPInputStream)
+   (toucan2.instance Instance)))
+
+(set! *warn-on-reflection* true)
 
 (p/import-vars
  [models.dispatch
@@ -114,12 +127,12 @@
   :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization))
 
 (def ^:private MetricSegmentDefinition
-  {(s/optional-key :filter)      (s/maybe mbql.s/Filter)
-   (s/optional-key :aggregation) (s/maybe [mbql.s/Aggregation])
-   s/Keyword                     s/Any})
+  {(schema/optional-key :filter)      (schema/maybe mbql.s/Filter)
+   (schema/optional-key :aggregation) (schema/maybe [mbql.s/Aggregation])
+   schema/Keyword                     schema/Any})
 
 (def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
-  (s/validator MetricSegmentDefinition))
+  (schema/validator MetricSegmentDefinition))
 
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]
@@ -132,9 +145,10 @@
   :in  (comp json-in normalize-metric-segment-definition)
   :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization))
 
-(defn- normalize-visualization-settings [viz-settings]
-  ;; frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`; we need to normalize them
-  ;; to modern MBQL clauses so things work correctly
+(defn normalize-visualization-settings
+  "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
+   to modern MBQL clauses so things work correctly."
+  [viz-settings]
   (letfn [(normalize-column-settings-key [k]
             (some-> k u/qualified-name json/parse-string mbql.normalize/normalize json/generate-string))
           (normalize-column-settings [column-settings]
@@ -233,7 +247,7 @@
   :out decompress)
 
 (defn- validate-cron-string [s]
-  (s/validate (s/maybe u.cron/CronScheduleString) s))
+  (schema/validate (schema/maybe u.cron/CronScheduleString) s))
 
 (models/add-type! :cron-string
   :in  validate-cron-string
@@ -260,20 +274,24 @@
   (cond-> obj
     (not (:created_at obj)) (assoc :created_at (now))))
 
-(defn- add-updated-at-timestamp [obj & _]
-  (cond-> obj
-    (not (:updated_at obj)) (assoc :updated_at (now))))
+(defn- add-updated-at-timestamp [obj]
+  ;; don't stomp on `:updated_at` if it's already explicitly specified.
+  (let [changes-already-include-updated-at? (if (t2/instance? obj)
+                                              (:updated_at (t2/changes obj))
+                                              (:updated_at obj))]
+    (cond-> obj
+      (not changes-already-include-updated-at?) (assoc :updated_at (now)))))
 
-(models/add-property! :timestamped?
+(models/add-property! ::timestamped?
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)
   :update add-updated-at-timestamp)
 
 ;; like `timestamped?`, but for models that only have an `:created_at` column
-(models/add-property! :created-at-timestamped?
+(models/add-property! ::created-at-timestamped?
   :insert add-created-at-timestamp)
 
 ;; like `timestamped?`, but for models that only have an `:updated_at` column
-(models/add-property! :updated-at-timestamped?
+(models/add-property! ::updated-at-timestamped?
   :insert add-updated-at-timestamp
   :update add-updated-at-timestamp)
 
@@ -285,17 +303,84 @@
     obj
     (assoc obj :entity_id (u/generate-nano-id))))
 
-(models/add-property! :entity_id
+(models/add-property! ::entity-id
   :insert add-entity-id)
+
+(methodical/prefer-method! #'t2.before-insert/before-insert ::timestamped? ::entity-id)
+
+;;;; [[define-simple-hydration-method]] and [[define-batched-hydration-method]]
+
+(s/def ::define-hydration-method
+  (s/cat :fn-name       symbol?
+         :hydration-key keyword?
+         :docstring     string?
+         :fn-tail       (s/alt :arity-1 :clojure.core.specs.alpha/params+body
+                               :arity-n (s/+ (s/spec :clojure.core.specs.alpha/params+body)))))
+
+(defonce ^:private defined-hydration-methods
+  (atom {}))
+
+(defn- define-hydration-method [hydration-type fn-name hydration-key fn-tail]
+  {:pre [(#{:hydrate :batched-hydrate} hydration-type)]}
+  ;; Let's be EXTRA nice and make sure there are no duplicate hydration keys!
+  (let [fn-symb (symbol (str (ns-name *ns*)) (name fn-name))]
+    (when-let [existing-fn-symb (get @defined-hydration-methods hydration-key)]
+      (when (not= fn-symb existing-fn-symb)
+        (throw (ex-info (format "Hydration key %s already exists at %s" hydration-key existing-fn-symb)
+                        {:hydration-key       hydration-key
+                         :existing-definition existing-fn-symb}))))
+    (swap! defined-hydration-methods assoc hydration-key fn-symb))
+  `(do
+     (defn ~fn-name
+       ~@fn-tail)
+     ~(case hydration-type
+        :hydrate
+        `(methodical/defmethod t2.hydrate/simple-hydrate
+           [:default ~hydration-key]
+           [~'_model k# row#]
+           (assoc row# k# (~fn-name row#)))
+
+        :batched-hydrate
+        `(methodical/defmethod t2.hydrate/batched-hydrate
+           [:default ~hydration-key]
+           [~'_model ~'_k rows#]
+           (~fn-name rows#)))))
+
+(defmacro define-simple-hydration-method
+  "Define a Toucan hydration function (Toucan 1) or method (Toucan 2) to do 'simple' hydration (this function is called
+  for each individual object that gets hydrated). This helper is in place to make the switch to Toucan 2 easier to
+  accomplish. Toucan 2 uses multimethods instead of regular functions with `:hydrate` metadata. When we switch to
+  Toucan 2, we won't need to rewrite all of our hydration methods at once -- we can just change the implementation of
+  this function, and eventually remove it entirely."
+  {:style/indent :defn}
+  [fn-name hydration-key & fn-tail]
+  (define-hydration-method :hydrate fn-name hydration-key fn-tail))
+
+(s/fdef define-simple-hydration-method
+  :args ::define-hydration-method
+  :ret  any?)
+
+(defmacro define-batched-hydration-method
+  "Like [[define-simple-hydration-method]], but defines a Toucan 'batched' hydration function (Toucan 1) or
+  method (Toucan 2). 'Batched' hydration means this function can be used to hydrate a sequence of objects in one call.
+
+  See docstring for [[define-simple-hydration-method]] for more information as to why this macro exists."
+  {:style/indent :defn}
+  [fn-name hydration-key & fn-tail]
+  (define-hydration-method :batched-hydrate fn-name hydration-key fn-tail))
+
+(s/fdef define-batched-hydration-method
+  :args ::define-hydration-method
+  :ret  any?)
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn dispatch-on-model
+(def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
-  [x & _args]
-  (models.dispatch/model x))
+  t2.u/dispatch-on-first-arg)
 
 (defmulti perms-objects-set
   "Return a set of permissions object paths that a user must have access to in order to access this object. This should be
@@ -333,8 +418,15 @@
   *  `(partial current-user-has-full-permissions? :write)` (you must also implement [[perms-objects-set]] to use this)
   *  `(partial current-user-has-partial-permissions? :write)` (you must also implement [[perms-objects-set]] to use
       this)"
-  {:arglists '([instance] [model pk]), :hydrate :can_write}
+  {:arglists '([instance] [model pk])}
   dispatch-on-model)
+
+#_{:clj-kondo/ignore [:unused-private-var]}
+(define-simple-hydration-method ^:private hydrate-can-write
+  :can_write
+  "Hydration method for `:can_write`."
+  [instance]
+  (can-write? instance))
 
 (defmulti can-create?
   "NEW! Check whether or not current user is allowed to CREATE a new instance of `model` with properties in map
@@ -465,28 +557,39 @@
   [_model _m]
   (superuser?))
 
+;;;; [[define-methods]]
 
-;;;; redefs
+(defn define-methods
+  "Helper for defining Toucan 2 methods using a Toucan-1-style `IModel` method map. This should be considered deprecated
+  and will be removed at some point in the future."
+  {:style/indent [:form]}
+  [model method-map]
+  (models/define-methods-with-IModel-method-map model method-map))
 
-;;; swap out [[models/defmodel]] with a special magical version that avoids redefining stuff if the definition has not
-;;; changed at all. This is important to make the stuff in [[models.dispatch]] work properly, since we're dispatching
-;;; off of the model objects themselves e.g. [[metabase.models.user/User]] -- it is important that they do not change
-;;;
-;;; This code is temporary until the switch to Toucan 2.
+;;;; [[to-json]]
 
-(defonce ^:private original-defmodel @(resolve `models/defmodel))
+(methodical/defmulti to-json
+  "Serialize an `instance` to JSON."
+  {:arglists            '([instance json-generator])
+   :defmethod-arities   #{2}
+   :dispatch-value-spec (some-fn keyword? symbol?)} ; dispatch value should be either keyword model name or symbol
+  t2.u/dispatch-on-first-arg)
 
-(defmacro ^:private defmodel [model & args]
-  (let [varr           (ns-resolve *ns* model)
-        existing-hash  (some-> varr meta ::defmodel-hash)
-        has-same-hash? (= existing-hash (hash &form))]
-    (when has-same-hash?
-      (println model "has not changed, skipping redefinition"))
-    (when-not has-same-hash?
-      `(do
-         ~(apply original-defmodel &form &env model args)
-         (alter-meta! (var ~model) assoc ::defmodel-hash ~(hash &form))))))
+(methodical/defmethod to-json :default
+  "Default method for encoding instances of a Toucan model to JSON."
+  [instance json-generator]
+  (json.generate/encode-map instance json-generator))
 
-(alter-var-root #'models/defmodel (constantly @#'defmodel))
-(alter-meta! #'models/defmodel (fn [mta]
-                                 (merge mta (select-keys (meta #'defmodel) [:file :line :column :ns]))))
+(json.generate/add-encoder
+ Instance
+ #'to-json)
+
+;;;; etc
+
+;;; Trigger errors when hydrate encounters a key that has no corresponding method defined.
+(reset! t2.hydrate/global-error-on-unknown-key true)
+
+(methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration :default
+  "In Metabase the FK key used for automagic hydration should use underscores (work around unstream Toucan 2 issue)."
+  [_original-model dest-key _hydrated-key]
+  [(csk/->snake_case (keyword (str (name dest-key) "_id")))])

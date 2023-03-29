@@ -1,12 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getIn } from "icepick";
 
-import { useOnMount } from "metabase/hooks/use-on-mount";
-import { usePrevious } from "metabase/hooks/use-previous";
+import { useMount, usePrevious } from "react-use";
 
 import Sidebar from "metabase/dashboard/components/Sidebar";
-
-import { isMappedExplicitActionButton } from "metabase/writeback/utils";
 
 import type {
   Dashboard,
@@ -157,11 +154,8 @@ function ClickBehaviorSidebar({
     onReplaceAllDashCardVisualizationSettings,
   ]);
 
-  useOnMount(() => {
-    if (
-      !isMappedExplicitActionButton(dashcard) &&
-      shouldShowTypeSelector(clickBehavior)
-    ) {
+  useMount(() => {
+    if (shouldShowTypeSelector(clickBehavior)) {
       setTypeSelectorVisible(true);
     }
     if (dashcard) {
@@ -191,9 +185,7 @@ function ClickBehaviorSidebar({
     <Sidebar
       onClose={hideClickBehaviorSidebar}
       onCancel={handleCancel}
-      closeIsDisabled={
-        !isValidClickBehavior && !isMappedExplicitActionButton(dashcard)
-      }
+      closeIsDisabled={!isValidClickBehavior}
     >
       <ClickBehaviorSidebarHeader
         dashcard={dashcard}

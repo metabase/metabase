@@ -1,5 +1,6 @@
 import { dashboard } from "./dashboards";
-import { question, dataset, tableRowsQuery } from "./questions";
+import { model } from "./models";
+import { question, tableRowsQuery } from "./questions";
 import { pulse } from "./pulses";
 
 export const exportFormats = ["csv", "xlsx", "json"];
@@ -25,10 +26,8 @@ export function modelToUrl(item) {
     case "card":
       return question(modelData);
     case "dataset":
-      return dataset(modelData, { isModelDetail: true });
+      return model(modelData);
     case "dashboard":
-      return dashboard(modelData);
-    case "page":
       return dashboard(modelData);
     case "pulse":
       return pulse(modelData.id);

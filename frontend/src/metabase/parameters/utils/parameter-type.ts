@@ -1,9 +1,8 @@
-import _ from "underscore";
-import { Parameter } from "metabase-types/types/Parameter";
+import { Parameter } from "metabase-types/api";
 import { SINGLE_OR_MULTI_SELECTABLE_TYPES } from "metabase-lib/parameters/constants";
 import {
-  getParameterType,
   getParameterSubType,
+  getParameterType,
 } from "metabase-lib/parameters/utils/parameter-type";
 
 export function isSingleOrMultiSelectable(parameter: Parameter): boolean {

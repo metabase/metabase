@@ -1,20 +1,28 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
-  (:require [clojure.spec.alpha :as s]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [compojure.core :as compojure]
-            [honeysql.types :as htypes]
-            [medley.core :as m]
-            [metabase.api.common.internal
-             :refer
-             [add-route-param-regexes auto-parse route-dox route-fn-name validate-params wrap-response-if-needed]]
-            [metabase.models.interface :as mi]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as schema]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]
+   [compojure.core :as compojure]
+   [medley.core :as m]
+   [metabase.api.common.internal
+    :refer [add-route-param-regexes
+            auto-parse
+            malli-route-dox
+            malli-validate-params
+            route-dox
+            route-fn-name
+            validate-params
+            wrap-response-if-needed]]
+   [metabase.config :as config]
+   [metabase.models.interface :as mi]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as schema]
+   [toucan.db :as db]))
 
 (declare check-403 check-404)
 
@@ -161,12 +169,6 @@
   [arg]
   (check arg generic-400))
 
-(defmacro let-400
-  "Bind a form as with `let`; throw a 400 if it is `nil` or `false`."
-  {:style/indent 1}
-  [& body]
-  `(do-api-let ~generic-400 ~@body))
-
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def ^:private generic-404
   [404 (deferred-tru "Not found.")])
@@ -192,12 +194,6 @@
   [arg]
   (check arg (generic-403)))
 
-(defmacro let-403
-  "Bind a form as with `let`; throw a 403 if it is `nil` or `false`."
-  {:style/indent 1}
-  [bindings & body]
-  `(do-api-let (generic-403) ~bindings ~@body))
-
 (defn throw-403
   "Throw a generic 403 (no permissions) error response."
   ([]
@@ -216,12 +212,6 @@
   [arg]
   (check arg generic-500))
 
-(defmacro let-500
-  "Bind a form as with `let`; throw a 500 if it is `nil` or `false`."
-  {:style/indent 1}
-  [bindings & body]
-  `(do-api-let ~generic-500 ~bindings ~@body))
-
 (def generic-204-no-content
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})
@@ -235,10 +225,29 @@
    :route       (some-fn string? sequential?)
    :docstr      (s/? string?)
    :args        vector?
-   :arg->schema (s/? (s/map-of symbol? any?))
+   :arg->schema (s/? (s/map-of symbol? any?)) ;; any? is either a plumatic or malli schema
    :body        (s/* any?)))
 
 (defn- parse-defendpoint-args [args]
+  (let [parsed (s/conform ::defendpoint-args args)]
+    (when (= parsed ::s/invalid)
+      (throw (ex-info (str "Invalid defendpoint-schema args: " (s/explain-str ::defendpoint-args args))
+                      (s/explain-data ::defendpoint-args args))))
+    (let [{:keys [method route docstr args arg->schema body]} parsed
+          fn-name                                             (route-fn-name method route)
+          route                                               (add-route-param-regexes route)
+          ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
+          ;; their API error messages
+          docstr                                              (route-dox method route docstr args
+                                                                         (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
+                                                                         body)]
+      ;; Don't i18n this, it's dev-facing only
+      (when-not docstr
+        (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
+                                  (ns-name *ns*) fn-name)))
+      (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
+
+(defn- malli-parse-defendpoint-args [args]
   (let [parsed (s/conform ::defendpoint-args args)]
     (when (= parsed ::s/invalid)
       (throw (ex-info (str "Invalid defendpoint args: " (s/explain-str ::defendpoint-args args))
@@ -248,26 +257,91 @@
           route                                               (add-route-param-regexes route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
-          docstr                                              (route-dox method route docstr args (m/map-vals eval arg->schema) body)]
+          docstr                                              (malli-route-dox method route docstr args
+                                                                               (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
+                                                                               body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
                                   (ns-name *ns*) fn-name)))
       (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
 
+(defn validate-param-values
+  "Log a warning if the request body contains any parameters not included in `expected-params` (which is presumably
+  populated by the defendpoint schema)"
+  [{route :compojure/route body :body} expected-params]
+  (when (and (not config/is-prod?)
+             (map? body))
+    (let [extraneous-params (set/difference (set (keys body))
+                                            (set expected-params))]
+      (when (seq extraneous-params)
+        (log/warnf "Unexpected parameters at %s: %s\nPlease add them to the schema or remove them from the API client"
+                   route (vec extraneous-params))))))
+
+
+(defn method-symbol->keyword
+  "Convert Compojure-style HTTP method symbols (PUT, POST, etc.) to the keywords used internally by
+  Compojure (:put, :post, ...)"
+  [method-symbol]
+  (-> method-symbol
+      name
+      u/lower-case-en
+      keyword))
+
 (defmacro defendpoint*
   "Impl macro for [[defendpoint]]; don't use this directly."
-  [{:keys [method route fn-name docstr args body]}]
+  [{:keys [method route fn-name docstr args body arg->schema]}]
   {:pre [(or (string? route) (vector? route))]}
-  `(def ~(vary-meta fn-name
-                    assoc
-                    :doc          docstr
-                    :is-endpoint? true)
-     (~(symbol "compojure.core" (name method)) ~route ~args
-      ~@body)))
+  (let [method-kw      (method-symbol->keyword method)
+        allowed-params (keys arg->schema)
+        prep-route     #'compojure/prepare-route]
+    `(def ~(vary-meta fn-name
+                      assoc
+                      :doc          docstr
+                      :is-endpoint? true)
+       ;; The next form is a copy of `compojure/compile-route`, with the sole addition of the call to
+       ;; `validate-param-values`. This is because to validate the request body we need to intercept the request
+       ;; before the destructuring takes place. I.e., we need to validate the value of `(:body request#)`, and that's
+       ;; not available if we called `compile-route` ourselves.
+       (compojure/make-route
+        ~method-kw
+        ~(prep-route route)
+        (fn [request#]
+          (validate-param-values request# (quote ~allowed-params))
+          (compojure/let-request [~args request#]
+            ~@body))))))
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 ;; e.g. `auto-parse`
+(defmacro defendpoint-schema
+  "Define an API function with Plumatic Schema.
+   This automatically does several things:
+
+   -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
+      `Integer/parseInt`
+
+   -  converts `route` from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
+
+   -  sequentially applies specified annotation functions on args to validate them.
+
+   -  automatically calls `wrap-response-if-needed` on the result of `body`
+
+   -  tags function's metadata in a way that subsequent calls to `define-routes` (see below) will automatically include
+      the function in the generated `defroutes` form.
+
+   -  Generates a super-sophisticated Markdown-formatted docstring.
+
+  DEPRECATED: use `defendpoint` instead where we use Malli to define the schema."
+  {:arglists   '([method route docstr? args schemas-map? & body])
+   :deprecated "0.46.0"}
+  [& defendpoint-args]
+  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
+    `(defendpoint* ~(assoc defendpoint-args
+                           :body `((auto-parse ~args
+                                     ~@(validate-params arg->schema)
+                                     (wrap-response-if-needed
+                                      (do ~@body))))))))
+
 (defmacro defendpoint
   "Define an API function.
    This automatically does several things:
@@ -287,12 +361,26 @@
    -  Generates a super-sophisticated Markdown-formatted docstring"
   {:arglists '([method route docstr? args schemas-map? & body])}
   [& defendpoint-args]
-  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
+  (let [{:keys [args body arg->schema], :as defendpoint-args} (malli-parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
                            :body `((auto-parse ~args
+                                               ~@(malli-validate-params arg->schema)
+                                               (wrap-response-if-needed
+                                                (do ~@body))))))))
+
+(defmacro defendpoint-async-schema
+  "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params.
+
+  DEPRECATED: use `defendpoint-async` instead where we use Malli to define the schema."
+  {:arglists   '([method route docstr? args schemas-map? & body])
+   :deprecated "0.46.0"}
+  [& defendpoint-args]
+  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
+    `(defendpoint* ~(assoc defendpoint-args
+                           :args []
+                           :body `((fn ~args
                                      ~@(validate-params arg->schema)
-                                     (wrap-response-if-needed
-                                      (do ~@body))))))))
+                                     ~@body))))))
 
 (defmacro defendpoint-async
   "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."
@@ -302,7 +390,7 @@
     `(defendpoint* ~(assoc defendpoint-args
                            :args []
                            :body `((fn ~args
-                                     ~@(validate-params arg->schema)
+                                     ~@(malli-validate-params arg->schema)
                                      ~@body))))))
 
 (defn- namespace->api-route-fns
@@ -371,7 +459,7 @@
    obj)
 
   ([entity id]
-   (read-check (entity id)))
+   (read-check (db/select-one entity :id id)))
 
   ([entity id & other-conditions]
    (read-check (apply db/select-one entity :id id other-conditions))))
@@ -386,7 +474,7 @@
    (check-403 (mi/can-write? obj))
    obj)
   ([entity id]
-   (write-check (entity id)))
+   (write-check (db/select-one entity :id id)))
   ([entity id & other-conditions]
    (write-check (apply db/select-one entity :id id other-conditions))))
 
@@ -419,13 +507,6 @@
     (check-404 object)
     (check (not (:archived object))
       [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
-
-(defn check-is-readonly
-  "Check that the object has `:is_write` = false, or throw a `405`. Returns `object` as-is if check passes."
-  [object]
-  (u/prog1 object
-    (check (not (:is_write object))
-      [405 {:message (tru "Write queries are only executable via the Actions API."), :error_code "is_not_readonly"}])))
 
 (defn check-valid-page-params
   "Check on paginated stuff that, if the limit exists, the offset exists, and vice versa."
@@ -461,7 +542,7 @@
                      (doseq [model '[Card Dashboard Pulse]]
                        (db/update-where! model {:collection_id       collection-id
                                                 :collection_position position-update-clause}
-                         :collection_position (htypes/call plus-or-minus :collection_position 1))))]
+                         :collection_position [plus-or-minus :collection_position 1])))]
     (when (not= new-position old-position)
       (cond
         (and (nil? new-position)
@@ -522,22 +603,6 @@
        (do
          (reconcile-position-for-collection! old-collection-id old-position nil)
          (reconcile-position-for-collection! new-collection-id nil new-position))))))
-
-(defmacro catch-and-raise
-  "Catches exceptions thrown in `body` and passes them along to the `raise` function. Meant for writing async
-  endpoints.
-
-  You only need to `raise` Exceptions that happen outside the initial thread of the API endpoint function; things like
-  normal permissions checks are usually done within the same thread that called the endpoint, meaning the middleware
-  that catches Exceptions will automatically handle them."
-  {:style/indent 1}
-  ;; using 2+ args so we can catch cases where people forget to pass in `raise`
-  [raise body & more]
-  `(try
-     ~body
-     ~@more
-     (catch Throwable e#
-       (~raise e#))))
 
 (defn bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."

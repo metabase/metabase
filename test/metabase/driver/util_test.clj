@@ -1,14 +1,18 @@
 (ns metabase.driver.util-test
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.driver.util :as driver.u]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures])
-  (:import java.nio.charset.StandardCharsets
-           java.util.Base64
-           javax.net.ssl.SSLSocketFactory))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.driver.util :as driver.u]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures])
+  (:import
+   (java.nio.charset StandardCharsets)
+   (java.util Base64)
+   (javax.net.ssl SSLSocketFactory)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :plugins :test-drivers))
 
@@ -233,3 +237,20 @@
              (select-keys transformed [:host :password-value :keystore-password-value :use-keystore])))
       ;; the keystore-value should have been base64 decoded because of treat-before-posting being base64 (see above)
       (is (mt/secret-value-equals? ks-val (:keystore-value transformed))))))
+
+(deftest semantic-version-gte-test
+  (testing "semantic-version-gte works as expected"
+    (is (true? (driver.u/semantic-version-gte [5 0] [4 0])))
+    (is (true? (driver.u/semantic-version-gte [5 0 1] [4 0])))
+    (is (true? (driver.u/semantic-version-gte [5 0] [4 0 1])))
+    (is (true? (driver.u/semantic-version-gte [5 0] [4 1])))
+    (is (true? (driver.u/semantic-version-gte [4 1] [4 1])))
+    (is (true? (driver.u/semantic-version-gte [4 1] [4])))
+    (is (true? (driver.u/semantic-version-gte [4] [4])))
+    (is (true? (driver.u/semantic-version-gte [4] [4 0 0])))
+    (is (false? (driver.u/semantic-version-gte [3] [4])))
+    (is (false? (driver.u/semantic-version-gte [4] [4 1])))
+    (is (false? (driver.u/semantic-version-gte [4 0] [4 0 1])))
+    (is (false? (driver.u/semantic-version-gte [4 0 1] [4 1])))
+    (is (false? (driver.u/semantic-version-gte [3 9] [4 0])))
+    (is (false? (driver.u/semantic-version-gte [3 1] [4])))))

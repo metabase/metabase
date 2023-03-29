@@ -1,11 +1,11 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import Settings from "metabase/lib/settings";
+import { mockSettings } from "__support__/settings";
 import HelpModal from "./HelpModal";
 
 describe("HelpModal", () => {
   it("should render with admin email", () => {
-    Settings.set("admin-email", "admin@example.com");
+    mockSettings({ "admin-email": "admin@example.com" });
 
     render(<HelpModal adminEmail={"admin@example.com"} />);
 
@@ -14,11 +14,13 @@ describe("HelpModal", () => {
   });
 
   it("should render without admin email", () => {
-    Settings.set("admin-email", null);
+    mockSettings({ "admin-email": null });
 
     render(<HelpModal />);
 
-    screen.getByText("administrator", { exact: false });
+    expect(
+      screen.getByText("administrator", { exact: false }),
+    ).toBeInTheDocument();
   });
 
   it("should close on button click", () => {

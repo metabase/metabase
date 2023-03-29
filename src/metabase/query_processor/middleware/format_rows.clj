@@ -1,13 +1,15 @@
 (ns metabase.query-processor.middleware.format-rows
   "Middleware that formats the results of a query.
    Currently, the only thing this does is convert datetime types to ISO-8601 strings in the appropriate timezone."
-  (:require [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]]
-            [potemkin.types :as p.types])
-  (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneId]))
+  (:require
+   [java-time :as t]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [potemkin.types :as p.types])
+  (:import
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneId)))
 
 (p.types/defprotocol+ FormatValue
   "Protocol for determining how QP results of various classes are serialized. Drivers can add implementations to support

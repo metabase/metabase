@@ -1,10 +1,12 @@
 (ns metabase.test.data.dataset-definitions
   "Definitions of various datasets for use in tests with `data/dataset` and the like."
-  (:require [java-time :as t]
-            [medley.core :as m]
-            [metabase.test.data.interface :as tx]
-            [metabase.util.date-2 :as u.date])
-  (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
+  (:require
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.test.data.interface :as tx]
+   [metabase.util.date-2 :as u.date])
+  (:import
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Various Datasets                                                |

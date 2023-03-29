@@ -1,12 +1,15 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import { extractQueryParams } from "metabase/lib/urls";
 
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
+import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
+import { getCardKey } from "metabase/visualizations/lib/utils";
 import { FormButton } from "./DownloadButton.styled";
 
 function colorForType(type) {
@@ -17,6 +20,8 @@ function colorForType(type) {
       return color("summarize");
     case "json":
       return color("bg-dark");
+    case "png":
+      return color("accent0");
     default:
       return color("brand");
   }
@@ -79,7 +84,34 @@ const handleSubmit = async (
     .catch(() => onDownloadRejected());
 };
 
-const DownloadButton = ({
+export const DownloadButtonBase = ({ format, onClick, ...rest }) => {
+  return (
+    <FormButton
+      className="hover-parent hover--inherit"
+      onClick={onClick}
+      {...rest}
+    >
+      <Icon name={format} size={32} mr={1} color={colorForType(format)} />
+      <Label my={0}>.{format}</Label>
+    </FormButton>
+  );
+};
+
+const getFileName = card =>
+  `${card.name ?? t`New question`}-${new Date().toLocaleString()}.png`;
+
+export const SaveAsPngButton = ({ card, onSave }) => {
+  const handleSave = async () => {
+    const cardNodeSelector = `[data-card-key='${getCardKey(card)}']`;
+    const name = getFileName(card);
+    await saveChartImage(cardNodeSelector, name);
+    onSave?.();
+  };
+
+  return <DownloadButtonBase onClick={handleSave} format="png" />;
+};
+
+export const DownloadButton = ({
   children,
   method,
   url,
@@ -104,8 +136,8 @@ const DownloadButton = ({
       }
     >
       {params && extractQueryParams(params).map(getInput)}
-      <FormButton
-        className="hover-parent hover--inherit"
+      <DownloadButtonBase
+        format={children}
         onClick={e => {
           if (window.OSX) {
             // prevent form from being submitted normally
@@ -115,10 +147,7 @@ const DownloadButton = ({
           }
         }}
         {...props}
-      >
-        <Icon name={children} size={32} mr={1} color={colorForType(children)} />
-        <Label my={0}>.{children}</Label>
-      </FormButton>
+      />
     </form>
   </div>
 );
@@ -142,5 +171,3 @@ DownloadButton.defaultProps = {
   params: {},
   extensions: [],
 };
-
-export default DownloadButton;

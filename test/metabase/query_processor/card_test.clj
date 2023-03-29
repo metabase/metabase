@@ -1,15 +1,16 @@
 (ns metabase.query-processor.card-test
   "There are more e2e tests in [[metabase.api.card-test]]."
-  (:require [clojure.test :refer :all]
-            [metabase.api.common :as api]
-            [metabase.models :refer [Card Dashboard Database]]
-            [metabase.models.query :as query]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.card :as qp.card]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.models :refer [Card Dashboard Database]]
+   [metabase.models.query :as query]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.card :as qp.card]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]))
 
 (defn run-query-for-card
   "Run query for Card synchronously."

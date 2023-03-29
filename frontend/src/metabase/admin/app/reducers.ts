@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import { combineReducers, handleActions } from "metabase/lib/redux";
 import Settings from "metabase/lib/settings";
-import { User } from "metabase-types/api";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_ADMIN_NAV_ITEMS,

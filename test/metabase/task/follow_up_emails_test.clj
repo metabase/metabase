@@ -1,10 +1,10 @@
-(ns metabase.task.follow-up-emails-test
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.email-test :refer [inbox with-fake-inbox]]
-            [metabase.task.follow-up-emails :as follow-up-emails]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]))
+(ns ^:mb/once metabase.task.follow-up-emails-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase.email-test :refer [inbox with-fake-inbox]]
+   [metabase.task.follow-up-emails :as follow-up-emails]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -18,23 +18,3 @@
       (#'follow-up-emails/send-follow-up-email!)
       (is (= 1
              (-> @inbox vals first count))))))
-
-(deftest should-send-abandoment-email-test
-  (testing "Make sure zero-arity version works (#12068)"
-    (testing `(follow-up-emails/should-send-abandoment-email?)
-      (is (boolean? (#'follow-up-emails/should-send-abandoment-email?)))))
-  (testing "Conditions where abandonment emails should be sent"
-    (doseq [now               [(t/zoned-date-time) (t/offset-date-time) (t/instant)]
-            instance-creation [0 1 5 nil]
-            last-user         [0 1 3 nil]
-            last-activity     [0 1 3 nil]
-            last-view         [0 1 3 nil]]
-      (testing (format "classes = %s, instance creation = %d weeks ago, last-user = %d weeks ago, last-activity = %d weeks ago, last-view = %d weeks ago"
-                       (.getName (class now)) instance-creation last-user last-activity last-view)
-        (is (= (and (= instance-creation 5)
-                    (every? #(contains? #{nil 3} %) [last-user last-activity last-view]))
-               (#'follow-up-emails/should-send-abandoment-email?
-                (when instance-creation (t/minus now (t/weeks instance-creation)))
-                (when last-user         (t/minus now (t/weeks last-user)))
-                (when last-activity     (t/minus now (t/weeks last-activity)))
-                (when last-view         (t/minus now (t/weeks last-view))))))))))

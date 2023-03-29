@@ -1,22 +1,26 @@
 (ns metabase.query-processor.streaming.xlsx
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [java-time :as t]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor.streaming.common :as common]
-            [metabase.query-processor.streaming.interface :as qp.si]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.shared.util.currency :as currency]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]])
-  (:import java.io.OutputStream
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           [org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook]
-           org.apache.poi.ss.util.CellRangeAddress
-           [org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [java-time :as t]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.shared.util.currency :as currency]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]])
+  (:import
+   (java.io OutputStream)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook)
+   (org.apache.poi.ss.util CellRangeAddress)
+   (org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Format string generation                                               |
@@ -209,7 +213,7 @@
 
 (defn- date-format
   [format-settings unit]
-  (let [base-style (str/lower-case (::mb.viz/date-style format-settings "mmmm d, yyyy"))
+  (let [base-style (u/lower-case-en (::mb.viz/date-style format-settings "mmmm d, yyyy"))
         unit-style (case unit
                      :month (month-style base-style)
                      :year "yyyy"

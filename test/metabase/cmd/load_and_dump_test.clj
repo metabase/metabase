@@ -1,19 +1,22 @@
 (ns metabase.cmd.load-and-dump-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [metabase.cmd.compare-h2-dbs :as compare-h2-dbs]
-            [metabase.cmd.copy.h2 :as copy.h2]
-            [metabase.cmd.dump-to-h2 :as dump-to-h2]
-            [metabase.cmd.load-from-h2 :as load-from-h2]
-            [metabase.cmd.test-util :as cmd.test-util]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.db.spec :as mdb.spec]
-            [metabase.db.test-util :as mdb.test-util]
-            [metabase.driver :as driver]
-            [metabase.models.setting :as setting]
-            [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
-            [metabase.util.i18n.impl :as i18n.impl]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [metabase.cmd.compare-h2-dbs :as compare-h2-dbs]
+   [metabase.cmd.copy.h2 :as copy.h2]
+   [metabase.cmd.dump-to-h2 :as dump-to-h2]
+   [metabase.cmd.load-from-h2 :as load-from-h2]
+   [metabase.cmd.test-util :as cmd.test-util]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.spec :as mdb.spec]
+   [metabase.db.test-util :as mdb.test-util]
+   [metabase.driver :as driver]
+   [metabase.models.setting :as setting]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [metabase.util.i18n.impl :as i18n.impl]))
+
+(set! *warn-on-reflection* true)
 
 (defn- abs-path
   [path]

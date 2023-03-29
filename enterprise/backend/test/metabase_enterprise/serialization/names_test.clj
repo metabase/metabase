@@ -1,11 +1,12 @@
 (ns metabase-enterprise.serialization.names-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.serialization.names :as names]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase.models :refer [Card Collection Dashboard Database Field Metric NativeQuerySnippet Segment Table]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.serialization.names :as names]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase.models :refer [Card Collection Dashboard Database Field Metric NativeQuerySnippet Segment Table]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (deftest safe-name-test
   (are [s expected] (= (names/safe-name {:name s}) expected)

@@ -1,18 +1,21 @@
 (ns metabase.query-processor.pivot-test
   "Tests for pivot table actions for the query processor"
-  (:require [clj-time.core :as time]
-            [clojure.set :as set]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.api.pivots :as api.pivots]
-            [metabase.models :refer [Card Collection]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]))
+  (:require
+   [clj-time.core :as time]
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.pivots :as api.pivots]
+   [metabase.models :refer [Card Collection]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 (deftest group-bitmask-test
   (doseq [[indices expected] {[0]     6
@@ -318,3 +321,33 @@
                 [nil 1 200]]
                (mt/rows
                 (qp.pivot/run-pivot-query query))))))))
+
+(deftest pivot-with-order-by-metric-test
+  (testing "Pivot queries should allow ordering by aggregation (#22872)"
+    (mt/dataset sample-dataset
+      (let  [query (mt/mbql-query reviews
+                     {:breakout [$rating [:field (mt/id :reviews :created_at) {:temporal-unit :year}]]
+                      :aggregation [[:count]]
+                      :order-by [[:asc [:aggregation 0 nil]]]
+                      :filter [:between $created_at "2019-01-01" "2021-01-01"]})]
+        (mt/with-native-query-testing-context query
+          (is (= [[1 "2020-01-01T00:00:00Z" 0 5]
+                  [2 "2020-01-01T00:00:00Z" 0 13]
+                  [3 "2020-01-01T00:00:00Z" 0 14]
+                  [1 "2019-01-01T00:00:00Z" 0 15]
+                  [3 "2019-01-01T00:00:00Z" 0 29]
+                  [2 "2019-01-01T00:00:00Z" 0 35]
+                  [5 "2020-01-01T00:00:00Z" 0 45]
+                  [4 "2020-01-01T00:00:00Z" 0 78]
+                  [5 "2019-01-01T00:00:00Z" 0 137]
+                  [4 "2019-01-01T00:00:00Z" 0 236]
+                  [nil "2020-01-01T00:00:00Z" 1 155]
+                  [nil "2019-01-01T00:00:00Z" 1 452]
+                  [1 nil 2 20]
+                  [3 nil 2 43]
+                  [2 nil 2 48]
+                  [5 nil 2 182]
+                  [4 nil 2 314]
+                  [nil nil 3 607]]
+                 (mt/rows
+                   (qp.pivot/run-pivot-query query)))))))))

@@ -1,13 +1,16 @@
 (ns metabase.query-processor.middleware.parameters.mbql
   "Code for handling parameter substitution in MBQL queries."
-  (:require [metabase.driver.common.parameters.dates :as params.dates]
-            [metabase.driver.common.parameters.operators :as params.ops]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.params :as params]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.params :as params]
+   [schema.core :as s]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (s/defn ^:private to-numeric :- s/Num
   "Returns either a double or a long. Possible to use the edn reader but we would then have to worry about biginters

@@ -5,8 +5,9 @@
 
   Drivers can derive from this abstract driver to use an alternate implementation(s) of SQL QP method(s) that treat
   empty strings as `nil`."
-  (:require [metabase.driver :as driver]
-            [metabase.driver.sql.query-processor :as sql.qp]))
+  (:require
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]))
 
 (driver/register! ::empty-string-is-null, :abstract? true)
 

@@ -6,7 +6,7 @@ import { RevisionTitle, RevisionBatchedDescription } from "./components";
 describe("RevisionTitle", () => {
   it("renders correctly", () => {
     render(<RevisionTitle username="Alex" message="added a description" />);
-    expect(screen.queryByText("Alex added a description")).toBeInTheDocument();
+    expect(screen.getByText("Alex added a description")).toBeInTheDocument();
   });
 });
 
@@ -28,7 +28,7 @@ describe("RevisionBatchedDescription", () => {
       />,
     );
     expect(
-      screen.queryByText("Added a description and archived this"),
+      screen.getByText("Added a description and archived this"),
     ).toBeInTheDocument();
   });
 
@@ -39,7 +39,7 @@ describe("RevisionBatchedDescription", () => {
       />,
     );
     expect(
-      screen.queryByText("Renamed this, added a description and archived this"),
+      screen.getByText("Renamed this, added a description and archived this"),
     ).toBeInTheDocument();
   });
 
@@ -49,7 +49,8 @@ describe("RevisionBatchedDescription", () => {
         changes={["renamed this", ["moved to", <p key="1">Our analytics</p>]]}
       />,
     );
-    expect(screen.queryByText("Renamed this and moved to Our analytics"));
+    expect(screen.getByText("Renamed this and moved to")).toBeInTheDocument();
+    expect(screen.getByText("Our analytics")).toBeInTheDocument();
   });
 
   it("should handle nested messages (metabase#20414)", () => {

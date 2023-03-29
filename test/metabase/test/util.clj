@@ -10,11 +10,14 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [colorize.core :as colorize]
    [environ.core :as env]
+   [hawk.parallel]
    [java-time :as t]
+   [metabase.db.query :as mdb.query]
    [metabase.models
     :refer [Card
             Collection
             Dashboard
+            DashboardCard
             DashboardCardSeries
             Database
             Dimension
@@ -48,16 +51,19 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
-   [metabase.test-runner.parallel :as test-runner.parallel]
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log :as tu.log]
+   [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [methodical.core :as methodical]
    [toucan.db :as db]
    [toucan.models :as models]
-   [toucan.util.test :as tt])
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io File FileInputStream)
    (java.net ServerSocket)
@@ -66,33 +72,13 @@
    (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
+(set! *warn-on-reflection* true)
+
 (comment tu.log/keep-me
          test-runner.assert-exprs/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(defn- random-uppercase-letter []
-  (char (+ (int \A) (rand-int 26))))
-
-(defn random-name
-  "Generate a random string of 20 uppercase letters."
-  []
-  (str/join (repeatedly 20 random-uppercase-letter)))
-
-(defn random-hash
-  "Generate a random hash of 44 characters to simulate a base64 encoded sha. Eg,
-  \"y6dkn65bbhRZkXj9Yyp0awCKi3iy/xeVIGa/eFfsszM=\""
-  []
-  (let [chars (concat (map char (range (int \a) (+ (int \a) 25)))
-                      (map char (range (int \A) (+ (int \A) 25)))
-                      (range 10)
-                      [\/ \+])]
-    (str (apply str (repeatedly 43 #(rand-nth chars))) "=")))
-
-(defn random-email
-  "Generate a random email address."
-  []
-  (str (u/lower-case-en (random-name)) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
   "Useful for unit test comparisons. Converts map keys found in `data` satisfying `pred` with booleans when not nil."
@@ -130,16 +116,22 @@
             :database_id            (data/id)
             :dataset_query          {}
             :display                :table
-            :name                   (random-name)
+            :name                   (tu.random/random-name)
             :visualization_settings {}})
 
    Collection
-   (fn [_] {:name  (random-name)
+   (fn [_] {:name  (tu.random/random-name)
             :color "#ABCDEF"})
 
    Dashboard
    (fn [_] {:creator_id (rasta-id)
-            :name       (random-name)})
+            :name       (tu.random/random-name)})
+
+   DashboardCard
+   (fn [_] {:row    0
+            :col    0
+            :size_x 4
+            :size_y 4})
 
    DashboardCardSeries
    (constantly {:position 0})
@@ -148,16 +140,16 @@
    (fn [_] {:details   {}
             :engine    :h2
             :is_sample false
-            :name      (random-name)})
+            :name      (tu.random/random-name)})
 
    Dimension
-   (fn [_] {:name (random-name)
+   (fn [_] {:name (tu.random/random-name)
             :type "internal"})
 
    Field
    (fn [_] {:database_type "VARCHAR"
             :base_type     :type/Text
-            :name          (random-name)
+            :name          (tu.random/random-name)
             :position      1
             :table_id      (data/id :checkins)})
 
@@ -175,17 +167,17 @@
 
    NativeQuerySnippet
    (fn [_] {:creator_id (user-id :crowberto)
-            :name       (random-name)
+            :name       (tu.random/random-name)
             :content    "1 = 1"})
 
    PersistedInfo
-   (fn [_] {:question_slug (random-name)
-            :query_hash    (random-hash)
-            :definition    {:table-name (random-name)
+   (fn [_] {:question_slug (tu.random/random-name)
+            :query_hash    (tu.random/random-hash)
+            :definition    {:table-name (tu.random/random-name)
                             :field-definitions (repeatedly
-                                                 4
-                                                 #(do {:field-name (random-name) :base-type "type/Text"}))}
-            :table_name    (random-name)
+                                                4
+                                                #(do {:field-name (tu.random/random-name) :base-type "type/Text"}))}
+            :table_name    (tu.random/random-name)
             :active        true
             :state         "persisted"
             :refresh_begin (t/zoned-date-time)
@@ -193,11 +185,11 @@
             :creator_id    (rasta-id)})
 
    PermissionsGroup
-   (fn [_] {:name (random-name)})
+   (fn [_] {:name (tu.random/random-name)})
 
    Pulse
    (fn [_] {:creator_id (rasta-id)
-            :name       (random-name)})
+            :name       (tu.random/random-name)})
 
    PulseCard
    (fn [_] {:position    0
@@ -227,14 +219,14 @@
    Table
    (fn [_] {:db_id  (data/id)
             :active true
-            :name   (random-name)})
+            :name   (tu.random/random-name)})
 
    TaskHistory
    (fn [_]
      (let [started (t/zoned-date-time)
            ended   (t/plus started (t/millis 10))]
        {:db_id      (data/id)
-        :task       (random-name)
+        :task       (tu.random/random-name)
         :started_at started
         :ended_at   ended
         :duration   (.toMillis (t/duration started ended))}))
@@ -256,49 +248,21 @@
       :creator_id   (rasta-id)})
 
    User
-   (fn [_] {:first_name (random-name)
-            :last_name  (random-name)
-            :email      (random-email)
-            :password   (random-name)})})
+   (fn [_] {:first_name (tu.random/random-name)
+            :last_name  (tu.random/random-name)
+            :email      (tu.random/random-email)
+            :password   (tu.random/random-name)})})
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
-    ;; make sure we have the latest version of the class in case it was redefined since we imported it
-    (extend (Class/forName (.getCanonicalName (class model)))
-      tt/WithTempDefaults
-      {:with-temp-defaults defaults-fn})))
+    ;; TODO -- we shouldn't need to ignore this, but it's a product of the custom hook defined for Methodical
+    ;; `defmethod`. Fix the hook upstream
+    #_{:clj-kondo/ignore [:redundant-fn-wrapper]}
+    (methodical/defmethod t2.with-temp/with-temp-defaults model
+      [model]
+      (defaults-fn model))))
 
 (set-with-temp-defaults!)
-
-;; if any of the models get redefined, reload the `with-temp-defaults` so they apply to the new version of the model
-(doseq [model-var [#'Card
-                   #'Collection
-                   #'Dashboard
-                   #'DashboardCardSeries
-                   #'Database
-                   #'Dimension
-                   #'Field
-                   #'Metric
-                   #'NativeQuerySnippet
-                   #'Permissions
-                   #'PermissionsGroup
-                   #'Pulse
-                   #'PulseCard
-                   #'PulseChannel
-                   #'Revision
-                   #'Segment
-                   #'Table
-                   #'TaskHistory
-                   #'Timeline
-                   #'User]]
-  (remove-watch model-var ::reload)
-  (add-watch
-   model-var
-   ::reload
-   (fn [_key _reference _old-state _new-state]
-     (println (format "%s changed, reloading with-temp-defaults" model-var))
-     (set-with-temp-defaults!))))
-
 
 ;;; ------------------------------------------------- Other Util Fns -------------------------------------------------
 
@@ -315,13 +279,13 @@
 (defn- ->lisp-case-keyword [s]
   (-> (name s)
       (str/replace #"_" "-")
-      str/lower-case
+      u/lower-case-en
       keyword))
 
 (defn do-with-temp-env-var-value
   "Impl for [[with-temp-env-var-value]] macro."
   [env-var-keyword value thunk]
-  (test-runner.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
+  (hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
   (let [value (str value)]
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try
@@ -423,8 +387,8 @@
                        (catch Exception e
                          (when-not raw-setting?
                            (throw e))))]
-    (if-let [env-var-value (and (not raw-setting?) (#'setting/env-var-value setting-k))]
-      (do-with-temp-env-var-value setting env-var-value thunk)
+    (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
+      (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (db/select-one-field :value Setting :key setting-k)
                              (#'setting/get setting-k))]
@@ -463,7 +427,7 @@
   To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (test-runner.parallel/assert-test-is-not-parallel "with-temporary-setting-vales")
+  (hawk.parallel/assert-test-is-not-parallel "with-temporary-setting-vales")
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
@@ -476,7 +440,7 @@
   using [[metabase.models.setting/defsetting]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (test-runner.parallel/assert-test-is-not-parallel "with-temporary-raw-setting-values")
+  (hawk.parallel/assert-test-is-not-parallel "with-temporary-raw-setting-values")
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
@@ -507,13 +471,13 @@
 (defn do-with-temp-vals-in-db
   "Implementation function for [[with-temp-vals-in-db]] macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
-  (test-runner.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
+  (hawk.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
   (let [model                    (db/resolve-model model)
-        [original-column->value] (db/query {:select (keys column->temp-value)
-                                            :from   [model]
-                                            :where  [:= :id (u/the-id object-or-id)]})]
+        [original-column->value] (mdb.query/query {:select (keys column->temp-value)
+                                                   :from   [(t2/table-name model)]
+                                                   :where  [:= :id (u/the-id object-or-id)]})]
     (assert original-column->value
             (format "%s %d not found." (name model) (u/the-id object-or-id)))
     (try
@@ -522,7 +486,7 @@
       (f)
       (finally
         (db/execute!
-         {:update model
+         {:update (t2/table-name model)
           :set    original-column->value
           :where  [:= :id (u/the-id object-or-id)]})))))
 
@@ -655,7 +619,7 @@
 
 (defn do-with-model-cleanup [models f]
   {:pre [(sequential? models) (every? models/model? models)]}
-  (test-runner.parallel/assert-test-is-not-parallel "with-model-cleanup")
+  (hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
                                      [model (:max-id (db/select-one [model [(keyword (str "%max." (name (models/primary-key model))))
@@ -671,7 +635,7 @@
                        max-id-condition      [:> (models/primary-key model) old-max-id]
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (db/execute!
-           {:delete-from model
+           {:delete-from (t2/table-name model)
             :where       (if (seq additional-conditions)
                            [:and max-id-condition additional-conditions]
                            max-id-condition)}))))))
@@ -695,7 +659,7 @@
   (testing "Make sure the with-model-cleanup macro actually works as expected"
     (tt/with-temp Card [other-card]
       (let [card-count-before (db/count Card)
-            card-name         (random-name)]
+            card-name         (tu.random/random-name)]
         (with-model-cleanup [Card]
           (db/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
           (testing "Card count should have increased by one"
@@ -767,7 +731,7 @@
         readwrite-path              (perms/collection-readwrite-path collection-or-id)
         groups-with-read-perms      (db/select-field :group_id Permissions :object read-path)
         groups-with-readwrite-perms (db/select-field :group_id Permissions :object readwrite-path)]
-    (test-runner.parallel/assert-test-is-not-parallel "with-discarded-collections-perms-changes")
+    (hawk.parallel/assert-test-is-not-parallel "with-discarded-collections-perms-changes")
     (try
       (f)
       (finally
@@ -783,7 +747,7 @@
   `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
 
 (defn do-with-non-admin-groups-no-collection-perms [collection f]
-  (test-runner.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
+  (hawk.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
   (try
     (do-with-discarded-collections-perms-changes
      collection
@@ -821,6 +785,25 @@
            :namespace (name ~collection-namespace))
     (fn [] ~@body)))
 
+(defn do-with-all-users-permission
+  "Call `f` without arguments in a context where the ''All Users'' group
+  is granted the permission specified by `permission-path`.
+
+  For most use cases see the macro [[with-all-users-permission]]."
+  [permission-path f]
+  (tt/with-temp Permissions [_ {:group_id (:id (perms-group/all-users))
+                                :object permission-path}]
+    (f)))
+
+(defmacro with-all-users-permission
+  "Run `body` with the ''All Users'' group being granted the permission
+  specified by `permission-path`.
+
+  (mt/with-all-users-permission (perms/app-root-collection-permission :read)
+    ...)"
+  [permission-path & body]
+  `(do-with-all-users-permission ~permission-path (fn [] ~@body)))
+
 (defn doall-recursive
   "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.
   Useful for tests when you need the entire object to be realized in the body of a `binding`, `with-redefs`, or
@@ -850,7 +833,7 @@
 (defn call-with-locale
   "Sets the default locale temporarily to `locale-tag`, then invokes `f` and reverts the locale change"
   [locale-tag f]
-  (test-runner.parallel/assert-test-is-not-parallel "with-locale")
+  (hawk.parallel/assert-test-is-not-parallel "with-locale")
   (let [current-locale (Locale/getDefault)]
     (try
       (Locale/setDefault (Locale/forLanguageTag locale-tag))
@@ -889,15 +872,24 @@
                                      remap)
                              remap)]
             (fn []
-              (tt/with-temp* [Dimension   [_ {:field_id (:id original)
-                                              :name     (format "%s [internal remap]" (:display_name original))
-                                              :type     :internal}]
-                              FieldValues [_ {:field_id              (:id original)
-                                              :values                (keys values-map)
-                                              :human_readable_values (vals values-map)}]]
-                (testing (format "With human readable values remapping %s -> %s\n"
-                                 (describe-field original) (pr-str values-map))
-                  (thunk)))))))))
+              (let [preexisting-id (db/select-one-id FieldValues
+                                                     :field_id (:id original)
+                                                     :type :full)
+                    testing-thunk (fn []
+                                    (testing (format "With human readable values remapping %s -> %s\n"
+                                                     (describe-field original) (pr-str values-map))
+                                      (thunk)))]
+                (tt/with-temp* [Dimension   [_ {:field_id (:id original)
+                                                :name     (format "%s [internal remap]" (:display_name original))
+                                                :type     :internal}]]
+                  (if preexisting-id
+                    (with-temp-vals-in-db FieldValues preexisting-id {:values (keys values-map)
+                                                                      :human_readable_values (vals values-map)}
+                      (testing-thunk))
+                    (tt/with-temp* [FieldValues [_ {:field_id              (:id original)
+                                                    :values                (keys values-map)
+                                                    :human_readable_values (vals values-map)}]]
+                      (testing-thunk)))))))))))
    orig->remapped))
 
 (defn- col-remappings-arg [x]
@@ -992,7 +984,7 @@
   {:pre [(or (string? filename) (nil? filename))]}
   (let [filename (if (string? filename)
                    filename
-                   (random-name))
+                   (tu.random/random-name))
         filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") filename))]
     ;; delete file if it already exists
     (io/delete-file (io/file filename) :silently)

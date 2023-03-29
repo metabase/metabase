@@ -158,7 +158,7 @@ const Tables = createEntity({
 
     if (type === Questions.actionTypes.UPDATE && !error) {
       const card = payload.question;
-      const virtualQuestionId = getQuestionVirtualTableId(card);
+      const virtualQuestionId = getQuestionVirtualTableId(card.id);
 
       if (card.archived && state[virtualQuestionId]) {
         delete state[virtualQuestionId];

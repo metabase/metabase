@@ -49,7 +49,6 @@ export const createMockQueryBuilderState = (
   zoomedRowObjectId: null,
   tableForeignKeyReferences: null,
 
-  visibleTimelineIds: [],
   selectedTimelineEventIds: [],
 
   metadataDiff: {},

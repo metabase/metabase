@@ -1,25 +1,39 @@
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import { getFocusColor } from "metabase/lib/colors";
+import { InputSize } from "./types";
 
-export const inputPadding = css`
-  padding: 0.625rem 0.75rem;
-`;
+const inputPaddingBySize = {
+  small: css`
+    padding: 0.5rem 0.625rem;
+  `,
+  medium: css`
+    padding: 0.625rem 0.75rem;
+  `,
+  large: css`
+    padding: 0.75rem;
+  `,
+} as const;
 
-export const inputTypography = css`
-  font-size: 0.875rem;
-  font-weight: 700;
-`;
+export const inputPadding = (size: InputSize = "medium") =>
+  inputPaddingBySize[size];
 
-export const inputFocusOutline = () => css`
-  &:focus {
-    border-color: ${color("brand")};
-    outline: 2px solid ${color("focus")};
-  }
+const inputTypographyBySize = {
+  small: css`
+    font-size: 0.875rem;
+    font-weight: 700;
+  `,
+  medium: css`
+    font-size: 0.875rem;
+    font-weight: 700;
+  `,
+  large: css`
+    font-size: 1rem;
+    font-weight: 700;
+  `,
+} as const;
 
-  &:focus:not(:focus-visible) {
-    outline: none;
-  }
-`;
+export const inputTypography = (size: InputSize = "medium") =>
+  inputTypographyBySize[size];
 
 export const numericInputReset = () => css`
   &::-webkit-outer-spin-button,
@@ -30,5 +44,15 @@ export const numericInputReset = () => css`
 
   &[type="number"] {
     -moz-appearance: textfield;
+  }
+`;
+
+export const focusOutlineStyle = (color: string) => css`
+  &:focus {
+    outline: 2px solid ${getFocusColor(color)};
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
   }
 `;

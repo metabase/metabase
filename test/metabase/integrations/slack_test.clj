@@ -1,16 +1,20 @@
 (ns metabase.integrations.slack-test
-  (:require [cheshire.core :as json]
-            [clj-http.fake :as http-fake]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.email.messages :as messages]
-            [metabase.integrations.slack :as slack]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]
-            [schema.core :as s])
-  (:import java.nio.charset.Charset
-           org.apache.http.client.utils.URLEncodedUtils
-           org.apache.http.NameValuePair))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.fake :as http-fake]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.email.messages :as messages]
+   [metabase.integrations.slack :as slack]
+   [metabase.test :as mt]
+   [metabase.test.util :as tu]
+   [schema.core :as s])
+  (:import
+   (java.nio.charset Charset)
+   (org.apache.http NameValuePair)
+   (org.apache.http.client.utils URLEncodedUtils)))
+
+(set! *warn-on-reflection* true)
 
 (defn- parse-query-string [query-string]
   (into {} (for [^NameValuePair pair (URLEncodedUtils/parse (str query-string) (Charset/forName "UTF-8"))]

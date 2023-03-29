@@ -5,11 +5,14 @@
   Note that logic for automatically parsing temporal values lives in the `wrap-values-literals` middleware for
   historic reasons. When time permits it should be moved into this middleware since it's really a separate
   transformation from wrapping the value literals themselves."
-  (:require [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 (s/defn ^:private parse-value-for-base-type [v :- s/Str, base-type :- su/FieldType]
   {:pre [(string? v)]}

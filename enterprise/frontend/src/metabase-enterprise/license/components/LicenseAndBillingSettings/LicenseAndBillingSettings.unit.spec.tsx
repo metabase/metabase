@@ -1,8 +1,11 @@
-import { act, fireEvent, screen } from "@testing-library/react";
 import React from "react";
-import xhrMock from "xhr-mock";
-import { renderWithProviders } from "__support__/ui";
-import LicenseAndBillingSettings from ".";
+import fetchMock from "fetch-mock";
+import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen } from "__support__/ui";
+import { createMockAdminState } from "metabase-types/store/mocks";
+
+import LicenseAndBillingSettings from "./LicenseAndBillingSettings";
 
 const setupState = ({
   token,
@@ -14,13 +17,7 @@ const setupState = ({
   env_name?: string;
   features?: string[];
 }) => {
-  const settings = {
-    values: {
-      "token-features": {},
-    },
-  };
-
-  const admin = {
+  const admin = createMockAdminState({
     settings: {
       settings: [
         {
@@ -31,65 +28,34 @@ const setupState = ({
         },
       ],
     },
-  };
+  });
+
   return {
     storeInitialState: {
       admin,
-      settings,
-    },
-    reducers: {
-      settings: () => settings,
-      admin: () => admin,
     },
   };
 };
 
 const mockTokenStatus = (valid: boolean, features: string[] = []) => {
-  xhrMock.get("/api/premium-features/token/status", {
-    body: JSON.stringify({
-      valid,
-      "valid-thru": "2099-12-31T12:00:00",
-      features,
-    }),
+  fetchMock.get("path:/api/premium-features/token/status", {
+    valid,
+    "valid-thru": "2099-12-31T12:00:00",
+    features,
   });
 };
 
 const mockTokenNotExist = () => {
-  xhrMock.get("/api/premium-features/token/status", {
-    status: 404,
-  });
+  fetchMock.get("path:/api/premium-features/token/status", 404);
 };
 
 const mockUpdateToken = (valid: boolean) => {
-  if (valid) {
-    xhrMock.put("/api/setting/premium-embedding-token", {
-      status: 200,
-    });
-  } else {
-    xhrMock.put("/api/setting/premium-embedding-token", {
-      status: 400,
-    });
-  }
+  fetchMock.put("path:/api/setting/premium-embedding-token", valid ? 200 : 400);
 };
 
 describe("LicenseAndBilling", () => {
-  const originalLocation = window.location;
-
-  beforeEach(() => {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    delete window.location;
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    window.location = { reload: jest.fn() };
-    xhrMock.setup();
-  });
-
   afterEach(() => {
-    xhrMock.teardown();
     jest.restoreAllMocks();
-
-    window.location = originalLocation;
   });
 
   it("renders settings for store managed billing with a valid token", async () => {
@@ -177,14 +143,8 @@ describe("LicenseAndBilling", () => {
       ),
     ).toBeInTheDocument();
 
-    const licenseInput = screen.getByTestId("license-input");
-    const activateButton = screen.getByTestId("activate-button");
-
-    const token = "invalid";
-    await act(async () => {
-      await fireEvent.change(licenseInput, { target: { value: token } });
-      await fireEvent.click(activateButton);
-    });
+    userEvent.type(screen.getByTestId("license-input"), "invalid");
+    userEvent.click(screen.getByTestId("activate-button"));
 
     expect(
       await screen.findByText(
@@ -194,8 +154,6 @@ describe("LicenseAndBilling", () => {
   });
 
   it("refreshes the page when license is accepted", async () => {
-    window.location.reload = jest.fn();
-
     mockTokenNotExist();
     mockUpdateToken(true);
     renderWithProviders(<LicenseAndBillingSettings />, setupState({}));
@@ -206,15 +164,7 @@ describe("LicenseAndBilling", () => {
       ),
     ).toBeInTheDocument();
 
-    const licenseInput = screen.getByTestId("license-input");
-    const activateButton = screen.getByTestId("activate-button");
-
-    const token = "valid";
-    await act(async () => {
-      await fireEvent.change(licenseInput, { target: { value: token } });
-      await fireEvent.click(activateButton);
-    });
-
-    expect(window.location.reload).toHaveBeenCalled();
+    userEvent.type(screen.getByTestId("license-input"), "valid");
+    userEvent.click(screen.getByTestId("activate-button"));
   });
 });

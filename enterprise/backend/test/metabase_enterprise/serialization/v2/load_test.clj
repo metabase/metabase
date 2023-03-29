@@ -1,16 +1,35 @@
-(ns metabase-enterprise.serialization.v2.load-test
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase-enterprise.serialization.v2.extract :as serdes.extract]
-            [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
-            [metabase-enterprise.serialization.v2.load :as serdes.load]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues Metric
-                                     Segment Table Timeline TimelineEvent User]]
-            [metabase.models.serialization.base :as serdes.base]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.time.OffsetDateTime))
+(ns ^:mb/once metabase-enterprise.serialization.v2.load-test
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.extract :as serdes.extract]
+   [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
+   [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase.models
+    :refer [Action
+            Card
+            Collection
+            Dashboard
+            DashboardCard
+            Database
+            Field
+            FieldValues
+            Metric
+            NativeQuerySnippet
+            Segment
+            Table
+            Timeline
+            TimelineEvent
+            User]]
+   [metabase.models.action :as action]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.time OffsetDateTime)))
 
 (defn- no-labels [path]
   (mapv #(dissoc % :label) path))
@@ -184,7 +203,6 @@
           db2d       (atom nil)
           table2d    (atom nil)
           field2d    (atom nil)]
-
 
       (ts/with-source-and-dest-dbs
         (testing "serializing the original database, table, field and card"
@@ -763,7 +781,7 @@
           field3d    (atom nil)]
 
       (testing "serializing the original database, table, field and fieldvalues"
-        (ts/with-empty-h2-app-db
+        (mt/with-empty-h2-app-db
           (reset! db1s     (ts/create! Database :name "my-db"))
           (reset! table1s  (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
           (reset! field1s  (ts/create! Field :name "STATE" :table_id (:id @table1s)))
@@ -800,7 +818,7 @@
                           set)))))))
 
       (testing "deserializing finds existing FieldValues properly"
-        (ts/with-empty-h2-app-db
+        (mt/with-empty-h2-app-db
           ;; A different database and tables, so the IDs don't match.
           (reset! db2d    (ts/create! Database :name "other-db"))
           (reset! table2d (ts/create! Table    :name "ORDERS" :db_id (:id @db2d)))
@@ -847,7 +865,7 @@
         table1s    (atom nil)]
 
     (testing "loading a bare card"
-      (ts/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db
         (reset! db1s    (ts/create! Database :name "my-db"))
         (reset! table1s (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
         (ts/create! Field :name "STATE" :table_id (:id @table1s))
@@ -884,3 +902,79 @@
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"Failed to read file"
                                   (serdes.load/load-metabase ingestion)))))))))
+
+(deftest card-with-snippet-test
+  (let [db1s       (atom nil)
+        table1s    (atom nil)
+        snippet1s  (atom nil)
+        card1s     (atom nil)
+        extracted  (atom nil)]
+    (testing "snippets referenced by native cards must be deserialized"
+      (mt/with-empty-h2-app-db
+        (reset! db1s      (ts/create! Database :name "my-db"))
+        (reset! table1s   (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
+        (reset! snippet1s (ts/create! NativeQuerySnippet :name "some snippet"))
+        (reset! card1s    (ts/create! Card
+                                      :name "the query"
+                                      :dataset_query {:database (:id @db1s)
+                                                      :native {:template-tags {"snippet: things"
+                                                                               {:id "e2d15f07-37b3-01fc-3944-2ff860a5eb46",
+                                                                                :name "snippet: filtered data",
+                                                                                :display-name "Snippet: Filtered Data",
+                                                                                :type :snippet,
+                                                                                :snippet-name "filtered data",
+                                                                                :snippet-id (:id @snippet1s)}}}}))
+        (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
+
+        (testing "on extraction"
+          (reset! extracted (serdes.base/extract-one "Card" {} @card1s))
+          (is (= (:entity_id @snippet1s)
+                 (-> @extracted :dataset_query :native :template-tags (get "snippet: things") :snippet-id))))
+
+        (testing "when loading"
+          (let [new-eid   (u/generate-nano-id)
+                ingestion (ingestion-in-memory [(assoc @extracted :entity_id new-eid)])]
+            (is (some? (serdes.load/load-metabase ingestion)))
+            (is (= (:id @snippet1s)
+                   (-> (db/select-one Card :entity_id new-eid)
+                       :dataset_query
+                       :native
+                       :template-tags
+                       (get "snippet: things")
+                       :snippet-id)))))))))
+
+(deftest load-action-test
+  (let [serialized (atom nil)
+        eid (u/generate-nano-id)]
+    (ts/with-source-and-dest-dbs
+      (testing "extraction succeeds"
+        (ts/with-source-db
+          (let [db       (ts/create! Database :name "my-db")
+                card     (ts/create! Card
+                                     :name "the query"
+                                     :query_type :native
+                                     :dataset true
+                                     :database_id (:id db)
+                                     :dataset_query {:database (:id db)
+                                                     :native {:type   :native
+                                                              :native {:query "wow"}}})
+                _action-id (action/insert! {:entity_id     eid
+                                            :name          "the action"
+                                            :model_id      (:id card)
+                                            :type          :query
+                                            :dataset_query "wow"
+                                            :database_id   (:id db)})]
+            (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+            (let [action-serialized (first (filter (fn [{[{:keys [model id]}] :serdes/meta}]
+                                                     (and (= model "Action") (= id eid)))
+                                                   @serialized))]
+              (is (some? action-serialized))
+              (testing ":type should be a string"
+                (is (string? (:type action-serialized))))))))
+      (testing "loading succeeds"
+        (ts/with-dest-db
+          (serdes.load/load-metabase (ingestion-in-memory @serialized))
+          (let [action (db/select-one Action :entity_id eid)]
+            (is (some? action))
+            (testing ":type should be a keyword again"
+              (is (keyword? (:type action))))))))))

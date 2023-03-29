@@ -19,6 +19,8 @@ export default class SelectionModule extends Component {
     // a selection module can be told to be open on initialization but otherwise is closed
     const isInitiallyOpen = props.isInitiallyOpen || false;
 
+    this.rootRef = React.createRef();
+
     this.state = {
       open: isInitiallyOpen,
       expanded: false,
@@ -210,6 +212,7 @@ export default class SelectionModule extends Component {
 
       return (
         <Popover
+          target={this.rootRef.current}
           className={"SelectionModule " + this.props.className}
           onClose={this.onClose}
         >
@@ -254,7 +257,10 @@ export default class SelectionModule extends Component {
     }
 
     return (
-      <div className={moduleClasses + " " + this.props.className}>
+      <div
+        className={moduleClasses + " " + this.props.className}
+        ref={this.rootRef}
+      >
         <div className="SelectionModule-trigger flex align-center">
           <a
             className="QueryOption p1 flex align-center"

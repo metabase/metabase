@@ -1,12 +1,13 @@
-(ns metabase.sync.sync-metadata.sync-database-type-test
+(ns ^:mb/once metabase.sync.sync-metadata.sync-database-type-test
   "Tests to make sure the newly added Field.database_type field gets populated, even for existing Fields."
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Database Field Table]]
-            [metabase.sync :as sync]
-            [metabase.sync.util-test :as sync.util-test]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [Database Field Table]]
+   [metabase.sync :as sync]
+   [metabase.sync.util-test :as sync.util-test]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (deftest update-database-type-test
   (testing "make sure that if a driver reports back a different database-type the Field gets updated accordingly"
@@ -26,9 +27,9 @@
             (is (= #{{:name "PRICE",       :database_type "INTEGER"}
                      {:name "CATEGORY_ID", :database_type "INTEGER"}
                      {:name "ID",          :database_type "BIGINT"}
-                     {:name "LATITUDE",    :database_type "DOUBLE"}
-                     {:name "LONGITUDE",   :database_type "DOUBLE"}
-                     {:name "NAME",        :database_type "VARCHAR"}}
+                     {:name "LATITUDE",    :database_type "DOUBLE PRECISION"}
+                     {:name "LONGITUDE",   :database_type "DOUBLE PRECISION"}
+                     {:name "NAME",        :database_type "CHARACTER VARYING"}}
                    (set (mt/derecordize
                          (db/select [Field :name :database_type] :table_id (u/the-id venues-table))))))))))))
 

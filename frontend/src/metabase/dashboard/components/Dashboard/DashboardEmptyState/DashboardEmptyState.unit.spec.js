@@ -3,10 +3,21 @@ import { render, screen } from "@testing-library/react";
 
 import DashboardEmptyState from "./DashboardEmptyState";
 
-it("renders", () => {
-  render(<DashboardEmptyState isNightMode={false} />);
+describe("DashboardEmptyState", () => {
+  it("renders", () => {
+    render(
+      <DashboardEmptyState
+        isNightMode={false}
+        addQuestion={jest.fn()}
+        closeNavbar={jest.fn()}
+      />,
+    );
 
-  screen.getByText("?");
-  screen.getByText("This dashboard is looking empty.");
-  screen.getByText("Add a question to start making it useful!");
+    expect(screen.getByText("?")).toBeInTheDocument();
+    expect(
+      screen.getByText("This dashboard is looking empty."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Add a saved question")).toBeInTheDocument();
+    expect(screen.getByText("ask a new one")).toBeInTheDocument();
+  });
 });

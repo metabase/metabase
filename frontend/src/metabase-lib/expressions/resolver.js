@@ -144,12 +144,18 @@ export function resolve(expression, type = "expression", fn = undefined) {
     if (!clause) {
       throw new ResolverError(t`Unknown function ${op}`, expression.node);
     }
-    const { displayName, args, multiple, hasOptions } = clause;
+    const { displayName, args, multiple, hasOptions, validator } = clause;
     if (!isCompatible(type, clause.type)) {
       throw new ResolverError(
         t`Expecting ${type} but found function ${displayName} returning ${clause.type}`,
         expression.node,
       );
+    }
+    if (validator) {
+      const validationError = validator(...operands);
+      if (validationError) {
+        throw new ResolverError(validationError, expression.node);
+      }
     }
     if (!multiple) {
       const expectedArgsLength = args.length;

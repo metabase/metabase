@@ -1,16 +1,19 @@
 (ns metabase.models.setting.cache
   "Settings cache. Cache is a 1:1 mapping of what's in the DB. Cached lookup time is ~60µs, compared to ~1800µs for DB
   lookup."
-  (:require [clojure.core :as core]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db])
-  (:import java.util.concurrent.locks.ReentrantLock))
+  (:require
+   [clojure.core :as core]
+   [clojure.java.jdbc :as jdbc]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [toucan.db :as db])
+  (:import
+   (java.util.concurrent.locks ReentrantLock)))
+
+(set! *warn-on-reflection* true)
 
 (defmulti call-on-change
   "Whenever something changes in the Settings cache it will invoke
@@ -70,8 +73,8 @@
   []
   (log/debug (trs "Updating value of settings-last-updated in DB..."))
   ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
-  (let [current-timestamp-as-string-honeysql (hx/cast (if (= (mdb.connection/db-type) :mysql) :char :text)
-                                                      (hsql/raw "current_timestamp"))]
+  (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb.connection/db-type) :mysql) :char :text)
+                                                       [:raw "current_timestamp"])]
     ;; attempt to UPDATE the existing row. If no row exists, `update-where!` will return false...
     (or (db/update-where! 'Setting {:key settings-last-updated-key} :value current-timestamp-as-string-honeysql)
         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both
@@ -83,7 +86,7 @@
           (db/simple-insert! 'Setting :key settings-last-updated-key, :value current-timestamp-as-string-honeysql)
           (catch java.sql.SQLException e
             ;; go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
-            (log/error (trs "Error inserting a new Setting: {0}"
+            (log/error (trs "Error updating Settings last updated value: {0}"
                             (with-out-str (jdbc/print-sql-exception-chain e))))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes

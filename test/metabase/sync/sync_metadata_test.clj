@@ -1,11 +1,12 @@
-(ns metabase.sync.sync-metadata-test
-  (:require [clojure.test :refer :all]
-            [metabase.sync.sync-metadata.fields :as sync-fields]
-            [metabase.sync.sync-metadata.fks :as sync-fks]
-            [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
-            [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
-            [metabase.sync.sync-metadata.tables :as sync-tables]
-            [metabase.test.sync :refer [sync-survives-crash?]]))
+(ns ^:mb/once metabase.sync.sync-metadata-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.sync.sync-metadata.fks :as sync-fks]
+   [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
+   [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
+   [metabase.test.sync :refer [sync-survives-crash?]]))
 
 (deftest survive-metadata-errors
   (testing "Make sure we survive metadata sync failing"

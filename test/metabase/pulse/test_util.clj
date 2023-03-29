@@ -1,15 +1,18 @@
 (ns metabase.pulse.test-util
-  (:require [clojure.walk :as walk]
-            [medley.core :as m]
-            [metabase.integrations.slack :as slack]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.pulse :as pulse]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.util :as u]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.integrations.slack :as slack]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.pulse :as pulse]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.util :as u]
+   [toucan.util.test :as tt]))
+
+(set! *warn-on-reflection* true)
 
 (defn send-pulse-created-by-user!
   "Create a Pulse with `:creator_id` of `user-kw`, and simulate sending it, executing it and returning the results."

@@ -329,7 +329,7 @@ describe("getRevisionDescription | dashboards", () => {
     expect(getRevisionDescription(revision)).toBe("added a card");
   });
 
-  it("handles removed cards revision", () => {
+  it("handles removed card revision", () => {
     const revision = getSimpleRevision({
       field: "cards",
       before: [1, 2],

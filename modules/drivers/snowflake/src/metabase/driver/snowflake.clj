@@ -1,41 +1,47 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.sql-jdbc :as sql-jdbc]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.driver.sync :as driver.s]
-            [metabase.models.secret :as secret]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]]
-            [ring.util.codec :as codec])
-  (:import [java.sql ResultSet Types]
-           [java.time OffsetDateTime ZonedDateTime]
-           java.io.File
-           metabase.util.honeysql_extensions.Identifier
-           java.nio.charset.StandardCharsets))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.driver.sync :as driver.s]
+   [metabase.models.secret :as secret]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [ring.util.codec :as codec])
+  (:import
+   (java.io File)
+   (java.nio.charset StandardCharsets)
+   (java.sql ResultSet Types)
+   (java.time OffsetDateTime ZonedDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/database-supports? [:snowflake :datetime-diff] [_ _ _] true)
 
 (defmethod driver/database-supports? [:snowflake :now] [_driver _feat _db] true)
 
@@ -169,23 +175,27 @@
     :OBJECT                     :type/Dictionary
     :ARRAY                      :type/*} base-type))
 
-(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] (hsql/call :to_timestamp expr))
-(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] (hsql/call :to_timestamp expr 3))
-(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] (hsql/call :to_timestamp expr 6))
+(defmethod sql.qp/honey-sql-version :snowflake
+  [_driver]
+  2)
+
+(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp expr])
+(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp expr 3])
+(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] [:to_timestamp expr 6])
 
 (defmethod sql.qp/current-datetime-honeysql-form :snowflake
   [_]
-  (hx/with-database-type-info :%current_timestamp :TIMESTAMPTZ))
+  (h2x/with-database-type-info :%current_timestamp :TIMESTAMPTZ))
 
 (defmethod sql.qp/add-interval-honeysql-form :snowflake
   [_ hsql-form amount unit]
-  (hsql/call :dateadd
-    (hsql/raw (name unit))
-    (hsql/raw (int amount))
-    (hx/->timestamp hsql-form)))
+  [:dateadd
+   [:raw (name unit)]
+   [:raw (int amount)]
+   (h2x/->timestamp hsql-form)])
 
-(defn- extract    [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
-(defn- date-trunc [unit expr] (hsql/call :date_trunc unit (hx/->timestamp expr)))
+(defn- extract    [unit expr] [:date_part  unit (h2x/->timestamp expr)])
+(defn- date-trunc [unit expr] [:date_trunc unit (h2x/->timestamp expr)])
 
 (defmethod sql.qp/date [:snowflake :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:snowflake :minute]          [_ _ expr] (date-trunc :minute expr))
@@ -225,9 +235,78 @@
   [_driver _unit expr]
   (extract :dayofweek expr))
 
+(defn- time-zoned-datediff
+  "Same as snowflake's `datediff` but converts the args to the results time zone
+   before calculating date boundaries. This is needed when an argument could be of
+   timestamptz type and the unit is day, week, month, quarter or year."
+  [unit x y]
+  (let [x (if (h2x/is-of-type? x "timestamptz")
+            [:convert_timezone (qp.timezone/results-timezone-id) x]
+            x)
+        y (if (h2x/is-of-type? y "timestamptz")
+            [:convert_timezone (qp.timezone/results-timezone-id) y]
+            y)]
+    [:datediff [:raw (name unit)] x y]))
+
+(defn- time-zoned-extract
+  "Same as `extract` but converts the arg to the results time zone if it's a timestamptz."
+  [unit x]
+  (let [x (if (h2x/is-of-type? x "timestamptz")
+            [:convert_timezone (qp.timezone/results-timezone-id) x]
+            x)]
+    (extract unit x)))
+
+(defn- sub-day-datediff
+  "Same as snowflake's `datediff`, but accurate to the millisecond for sub-day units."
+  [unit x y]
+  (let [milliseconds [:datediff [:raw "milliseconds"] x y]]
+    ;; millseconds needs to be cast to float because division rounds incorrectly with large integers
+    [:trunc (h2x// (h2x/cast :float milliseconds)
+                   (case unit :hour 3600000 :minute 60000 :second 1000))]))
+
+(defmethod sql.qp/datetime-diff [:snowflake :year]
+  [driver _unit x y]
+  [:trunc (h2x// (sql.qp/datetime-diff driver :month x y) 12)])
+
+(defmethod sql.qp/datetime-diff [:snowflake :quarter]
+  [driver _unit x y]
+  [:trunc (h2x// (sql.qp/datetime-diff driver :month x y) 3)])
+
+(defmethod sql.qp/datetime-diff [:snowflake :month]
+  [_driver _unit x y]
+  (h2x/+ (time-zoned-datediff :month x y)
+         ;; datediff counts month boundaries not whole months, so we need to adjust
+         ;; if x<y but x>y in the month calendar then subtract one month
+         ;; if x>y but x<y in the month calendar then add one month
+         [:case
+          [:and
+           [:< x y]
+           [:> (time-zoned-extract :day x) (time-zoned-extract :day y)]]
+          -1
+
+          [:and
+           [:> x y]
+           [:< (time-zoned-extract :day x) (time-zoned-extract :day y)]]
+          1
+
+          :else
+          0]))
+
+(defmethod sql.qp/datetime-diff [:snowflake :week]
+  [_driver _unit x y]
+  [:trunc (h2x// (time-zoned-datediff :day x y) 7)])
+
+(defmethod sql.qp/datetime-diff [:snowflake :day]
+  [_driver _unit x y]
+  (time-zoned-datediff :day x y))
+
+(defmethod sql.qp/datetime-diff [:snowflake :hour] [_driver _unit x y] (sub-day-datediff :hour x y))
+(defmethod sql.qp/datetime-diff [:snowflake :minute] [_driver _unit x y] (sub-day-datediff :minute x y))
+(defmethod sql.qp/datetime-diff [:snowflake :second] [_driver _unit x y] (sub-day-datediff :second x y))
+
 (defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+  [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod sql.qp/->honeysql [:snowflake :median]
   [driver [_ arg]]
@@ -259,13 +338,16 @@
 
 ;; This takes care of Table identifiers. We handle Field identifiers in the [[sql.qp/->honeysql]] method for `[:sql
 ;; :field]` below.
-(defmethod sql.qp/->honeysql [:snowflake Identifier]
-  [_ {:keys [identifier-type], :as identifier}]
+(defn- qualify-identifier [[_identifier identifier-type components, :as identifier]]
+  {:pre [(h2x/identifier? identifier)]}
+  (apply h2x/identifier identifier-type (query-db-name) components))
+
+(defmethod sql.qp/->honeysql [:snowflake ::h2x/identifier]
+  [_driver [_identifier identifier-type :as identifier]]
   (let [qualify? (and (seq (query-db-name))
                       (= identifier-type :table))]
     (cond-> identifier
-      qualify?
-      (update :components (partial cons (query-db-name))))))
+      qualify? qualify-identifier)))
 
 (defmethod sql.qp/->honeysql [:snowflake :field]
   [driver [_ _ {::add/keys [source-table]} :as field-clause]]
@@ -278,35 +360,33 @@
                        (integer? source-table))
         identifier (parent-method driver field-clause)]
     (cond-> identifier
-      qualify? (update :components (partial cons (query-db-name))))))
+      (and qualify? (h2x/identifier? identifier))
+      qualify-identifier)))
 
 (defmethod sql.qp/->honeysql [:snowflake :time]
   [driver [_ value _unit]]
-  (hx/->time (sql.qp/->honeysql driver value)))
+  (h2x/->time (sql.qp/->honeysql driver value)))
 
 (defmethod sql.qp/->honeysql [:snowflake :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [hsql-form    (sql.qp/->honeysql driver arg)
-        timestamptz? (hx/is-of-type? hsql-form "timestamptz")]
+        timestamptz? (h2x/is-of-type? hsql-form "timestamptz")]
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
-          (hsql/call :convert_timezone target-timezone hsql-form)
-          (->> hsql-form
-               (hsql/call :convert_timezone (or source-timezone (qp.timezone/results-timezone-id)) target-timezone)
-               (hsql/call :to_timestamp_ntz)))
-        (hx/with-database-type-info "timestampntz"))))
+          [:convert_timezone target-timezone hsql-form]
+          [:to_timestamp_ntz
+           [:convert_timezone (or source-timezone (qp.timezone/results-timezone-id)) target-timezone hsql-form]])
+        (h2x/with-database-type-info "timestampntz"))))
 
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
   (sql-jdbc/query driver database {:select [:*]
-                                   :from   [(qp.store/with-store
-                                              (qp.store/fetch-and-store-database! (u/the-id database))
-                                              (sql.qp/->honeysql driver table))]}))
+                                   :from   [[(qp.store/with-store
+                                               (qp.store/fetch-and-store-database! (u/the-id database))
+                                               (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+                                                 (sql.qp/->honeysql driver table)))]]}))
 
-(defmethod driver/describe-database :snowflake
-  [driver database]
-  ;; using the JDBC `.getTables` method seems to be pretty buggy -- it works sometimes but other times randomly
-  ;; returns nothing
+(defmethod driver/describe-database :snowflake [driver database]
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
     (qp.store/with-store
@@ -341,7 +421,7 @@
       (->> (assoc (select-keys table [:name :schema])
                   :fields (sql-jdbc.sync/describe-table-fields driver conn table (db-name database)))
            ;; find PKs and mark them
-           (sql-jdbc.sync/add-table-pks (.getMetaData conn))))))
+           (sql-jdbc.sync/add-table-pks driver conn (db-name database))))))
 
 (defmethod driver/describe-table-fks :snowflake
   [driver database table]

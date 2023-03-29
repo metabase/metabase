@@ -5,7 +5,7 @@ import cx from "classnames";
 import styled from "@emotion/styled";
 import { isObscured } from "metabase/lib/dom";
 
-import Tooltip from "./Tooltip";
+import Tooltip from "../core/components/Tooltip";
 
 const Trigger = styled.a``;
 
@@ -138,33 +138,35 @@ const Triggerable = ComposedComponent =>
       }
 
       return (
-        <Trigger
-          as={as}
-          id={triggerId}
-          ref={this.trigger}
-          onClick={event => {
-            event.preventDefault();
-            !this.props.disabled && this.toggle();
-          }}
-          className={cx(
-            triggerClasses,
-            isOpen && triggerClassesOpen,
-            !isOpen && triggerClassesClose,
-            "no-decoration",
-            {
-              "cursor-default": this.props.disabled,
-            },
-          )}
-          aria-disabled={this.props.disabled}
-          style={triggerStyle}
-        >
-          {typeof triggerElement === "function"
-            ? triggerElement({
-                isTriggeredComponentOpen: isOpen,
-                open: this.open,
-                close: this.close,
-              })
-            : triggerElement}
+        <>
+          <Trigger
+            as={as}
+            id={triggerId}
+            ref={this.trigger}
+            onClick={event => {
+              event.preventDefault();
+              !this.props.disabled && this.toggle();
+            }}
+            className={cx(
+              triggerClasses,
+              isOpen && triggerClassesOpen,
+              !isOpen && triggerClassesClose,
+              "no-decoration",
+              {
+                "cursor-default": this.props.disabled,
+              },
+            )}
+            aria-disabled={this.props.disabled}
+            style={triggerStyle}
+          >
+            {typeof triggerElement === "function"
+              ? triggerElement({
+                  isTriggeredComponentOpen: isOpen,
+                  open: this.open,
+                  close: this.close,
+                })
+              : triggerElement}
+          </Trigger>
           <ComposedComponent
             {...this.props}
             isOpen={isOpen}
@@ -174,7 +176,7 @@ const Triggerable = ComposedComponent =>
           >
             {children}
           </ComposedComponent>
-        </Trigger>
+        </>
       );
     }
   };

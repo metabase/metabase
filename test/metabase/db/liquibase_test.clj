@@ -1,11 +1,12 @@
 (ns metabase.db.liquibase-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.db.liquibase :as liquibase]
-            [metabase.db.test-util :as mdb.test-util]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.db.liquibase :as liquibase]
+   [metabase.db.test-util :as mdb.test-util]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.test :as mt]))
 
 (deftest mysql-engine-charset-test
   (mt/test-driver :mysql

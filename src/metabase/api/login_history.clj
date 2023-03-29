@@ -1,9 +1,10 @@
 (ns metabase.api.login-history
-  (:require [compojure.core :refer [GET]]
-            [metabase.api.common :as api]
-            [metabase.models.login-history :as login-history :refer [LoginHistory]]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [compojure.core :refer [GET]]
+   [metabase.api.common :as api]
+   [metabase.models.login-history :as login-history :refer [LoginHistory]]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn login-history
   "Return complete login history (sorted by most-recent -> least-recent) for `user-or-id`"
@@ -16,7 +17,8 @@
               :user_id (u/the-id user-or-id)
               {:order-by [[:timestamp :desc]]})))
 
-(api/defendpoint GET "/current"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/current"
   "Fetch recent logins for the current user."
   []
   (login-history api/*current-user-id*))

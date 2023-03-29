@@ -1,12 +1,14 @@
 (ns metabase-enterprise.content-management.api.review
-  (:require [compojure.core :refer [POST]]
-            [metabase.api.common :as api]
-            [metabase.models.moderation-review :as moderation-review]
-            [metabase.moderation :as moderation]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+  (:require
+   [compojure.core :refer [POST]]
+   [metabase.api.common :as api]
+   [metabase.models.moderation-review :as moderation-review]
+   [metabase.moderation :as moderation]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
-(api/defendpoint POST "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
   "Create a new `ModerationReview`."
   [:as {{:keys [text moderated_item_id moderated_item_type status]} :body}]
   {text                (s/maybe s/Str)

@@ -1,9 +1,10 @@
 (ns metabase.events.last-login-test
-  (:require [clojure.test :refer :all]
-            [metabase.events.last-login :as last-login]
-            [metabase.models.user :refer [User]]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.events.last-login :as last-login]
+   [metabase.models.user :refer [User]]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 (deftest user-login-test
   (testing "`:user-login` event"

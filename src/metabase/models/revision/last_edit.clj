@@ -7,13 +7,13 @@
   This constructs `:last-edit-info`, a map with keys `:timestamp`, `:id`, `:first_name`, `:last_name`, and
   `:email`. It is not a full User object (missing some superuser metadata, last login time, and a common name). This
   was done to prevent another db call and hooking up timestamps to users but this can be added if preferred."
-  (:require [clj-time.core :as time]
-            [clojure.set :as set]
-            [honeysql.core :as hsql]
-            [medley.core :as m]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clj-time.core :as time]
+   [clojure.set :as set]
+   [medley.core :as m]
+   [metabase.db.query :as mdb.query]
+   [metabase.util.schema :as su]
+   [schema.core :as s]))
 
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 
@@ -36,14 +36,14 @@
   `:card`. Gets the last edited information from the revisions table. If you need this information from a put route,
   use `@api/*current-user*` and a current timestamp since revisions are events and asynchronous."
   [{:keys [id] :as item} model :- (s/enum :dashboard :card)]
-  (if-let [[updated-info] (seq (db/query {:select [:u.id :u.email :u.first_name :u.last_name :r.timestamp]
-                                          :from [[:revision :r]]
-                                          :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-                                          :where [:and
-                                                  [:= :r.model (model->db-model model)]
-                                                  [:= :r.model_id id]]
-                                          :order-by [[:r.id :desc]]
-                                          :limit 1}))]
+  (if-let [[updated-info] (seq (mdb.query/query {:select    [:u.id :u.email :u.first_name :u.last_name :r.timestamp]
+                                                 :from      [[:revision :r]]
+                                                 :left-join [[:core_user :u] [:= :u.id :r.user_id]]
+                                                 :where     [:and
+                                                             [:= :r.model (model->db-model model)]
+                                                             [:= :r.model_id id]]
+                                                 :order-by  [[:r.id :desc]]
+                                                 :limit     1}))]
     (assoc item :last-edit-info updated-info)
     item))
 
@@ -77,16 +77,16 @@
                                          [:and [:= :model model-name] [:in :model_id ids]])))
                                [["Card" card-ids]
                                 ["Dashboard" dashboard-ids]])
-          latest-changes (db/query {:select    [:u.id :u.email :u.first_name :u.last_name
-                                                :r.model :r.model_id :r.timestamp]
-                                    :from      [[:revision :r]]
-                                    :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-                                    :where     [:in :r.id
-                                                ;; subselect for the max revision id for each item
-                                                {:select   [[(hsql/call :max :id) :latest-revision-id]]
-                                                 :from     [:revision]
-                                                 :where    where-clause
-                                                 :group-by [:model :model_id]}]})]
+          latest-changes (mdb.query/query {:select    [:u.id :u.email :u.first_name :u.last_name
+                                                       :r.model :r.model_id :r.timestamp]
+                                           :from      [[:revision :r]]
+                                           :left-join [[:core_user :u] [:= :u.id :r.user_id]]
+                                           :where     [:in :r.id
+                                                       ;; subselect for the max revision id for each item
+                                                       {:select   [[:%max.id :latest-revision-id]]
+                                                        :from     [:revision]
+                                                        :where    where-clause
+                                                        :group-by [:model :model_id]}]})]
       (->> latest-changes
            (group-by :model)
            (m/map-vals (fn [model-changes]

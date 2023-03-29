@@ -1,23 +1,27 @@
 (ns metabase-enterprise.sandbox.api.user
   "Endpoint(s)for setting user attributes."
-  (:require [clojure.set :as set]
-            [compojure.core :refer [GET PUT]]
-            [metabase.api.common :as api]
-            [metabase.models.user :refer [User]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.set :as set]
+   [compojure.core :refer [GET PUT]]
+   [metabase.api.common :as api]
+   [metabase.models.user :refer [User]]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
+   [toucan.db :as db]))
 
 (def ^:private UserAttributes
-  (su/with-api-error-message (s/maybe {su/NonBlankString s/Any})
-    "value must be a valid user attributes map (name -> value)"))
+  (mu/with-api-error-message
+    [:map-of
+     :keyword
+     :any]
+    (deferred-tru "value must be a valid user attributes map (name -> value)")))
 
 ;; TODO - not sure we need this endpoint now that we're just letting you edit from the regular `PUT /api/user/:id
 ;; endpoint
 (api/defendpoint PUT "/:id/attributes"
   "Update the `login_attributes` for a User."
   [id :as {{:keys [login_attributes]} :body}]
-  {login_attributes UserAttributes}
+  {login_attributes [:maybe UserAttributes]}
   (api/check-404 (db/select-one User :id id))
   (db/update! User id :login_attributes login_attributes))
 
@@ -32,6 +36,5 @@
      (set (keys login-attributes)))
    ;; combine all the sets of attribute keys into a single set
    (reduce set/union)))
-
 
 (api/define-routes api/+check-superuser)

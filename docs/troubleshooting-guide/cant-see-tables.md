@@ -65,6 +65,13 @@ Be sure to log in to the database using the same credentials that Metabase uses.
 
 If the administrator's account can see the tables but an individual person cannot, see [Troubleshooting data permissions](./data-permissions.md).
 
+## MongoDB
+
+MongoDB lets you "successfully connect" to any collection name, even the collection doesn't exist. If you don't see a MongoDB collection in Metabase, make sure that:
+
+- you have the correct collection name, and
+- the collection is non-empty.
+
 ## Related problems
 
 - [My data sandboxes aren't working](./sandboxing.md).

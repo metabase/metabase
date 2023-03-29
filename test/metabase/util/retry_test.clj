@@ -1,8 +1,10 @@
-(ns metabase.util.retry-test
-  (:require [clojure.test :refer [deftest is testing]]
-            [metabase.test.util :as tu]
-            [metabase.util.retry :as retry])
-  (:import clojure.lang.ExceptionInfo))
+(ns ^:mb/once metabase.util.retry-test
+  (:require
+   [clojure.test :refer [deftest is testing]]
+   [metabase.test.util :as tu]
+   [metabase.util.retry :as retry])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (deftest retrying-on-exception-test
   (testing "recovery possible"

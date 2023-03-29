@@ -1,17 +1,20 @@
-(ns metabase.task-test
-  (:require [clojure.test :refer :all]
-            [clojurewerkz.quartzite.jobs :as jobs]
-            [clojurewerkz.quartzite.schedule.cron :as cron]
-            [clojurewerkz.quartzite.scheduler :as qs]
-            [clojurewerkz.quartzite.triggers :as triggers]
-            [metabase.task :as task]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
+(ns ^:mb/once metabase.task-test
+  (:require
+   [clojure.test :refer :all]
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.schedule.cron :as cron]
+   [clojurewerkz.quartzite.scheduler :as qs]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.task :as task]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util.schema :as su]
+   [schema.core :as s])
   (:import
    (org.quartz CronTrigger JobDetail)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 

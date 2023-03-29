@@ -1,4 +1,4 @@
-(ns metabase.setup-test
+(ns ^:mb/once metabase.setup-test
   (:require
    [clojure.test :refer :all]
    [metabase.db :as mdb]

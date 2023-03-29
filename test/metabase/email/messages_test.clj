@@ -9,19 +9,21 @@
   (:import
    (java.io IOException)))
 
-; (deftest new-user-email
-;  (is (= [{:from    "notifications@metabase.com",
-;          :to      ["test@test.com"],
-;           :subject "You're invited to join Metabase Test's Metabase",
-;           :body    [{:type "text/html; charset=utf-8"}]}]
-;         (tu/with-temporary-setting-values [site-name "Metabase Test"]
-;           (et/with-fake-inbox
-;             (messages/send-new-user-email! {:first_name "test" :email "test@test.com"}
-;                                            {:first_name "invitor" :email "invited_by@test.com"}
-;                                           "http://localhost/some/url"
-;                                            false)
-;             (-> (@et/inbox "test@test.com")
-;                 (update-in [0 :body 0] dissoc :content)))))))
+(set! *warn-on-reflection* true)
+
+;; (deftest new-user-email
+;;   (is (= [{:from    "notifications@metabase.com",
+;;            :to      ["test@test.com"],
+;;            :subject "You're invited to join Metabase Test's Metabase",
+;;            :body    [{:type "text/html; charset=utf-8"}]}]
+;;          (tu/with-temporary-setting-values [site-name "Metabase Test"]
+;;            (et/with-fake-inbox
+;;              (messages/send-new-user-email! {:first_name "test" :email "test@test.com"}
+;;                                             {:first_name "invitor" :email "invited_by@test.com"}
+;;                                             "http://localhost/some/url"
+;;                                             false)
+;;              (-> (@et/inbox "test@test.com")
+;;                  (update-in [0 :body 0] dissoc :content)))))))
 
 (deftest password-reset-email
   (testing "password reset email can be sent successfully"

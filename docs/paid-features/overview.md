@@ -48,6 +48,12 @@ Send different groups of people the contents of the dashboard with different fil
 
 - [Customizing filter values for each dashboard subscription](../dashboards/subscriptions.md)
 
+## Restrict which domains people can send alerts and subscriptions to
+
+As an additional security layer, you can whitelist domains, which restricts people from sending alerts and subscriptions to email addresses that don't use an approved domain.
+
+- [Approved domains for notifications](../configuring-metabase/settings.md#approved-domains-for-notifications)
+
 ## Official collections
 
 You can mark certain collections as [official](../exploration-and-organization/collections.md#official-collections), which helps people find your most important questions, dashboards, and models.

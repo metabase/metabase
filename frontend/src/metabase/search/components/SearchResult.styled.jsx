@@ -46,19 +46,36 @@ export const Title = styled("h3")`
   color: ${props => color(props.active ? "text-dark" : "text-medium")};
 `;
 
+export const ResultButton = styled.button`
+  ${props => resultStyles(props)}
+  padding-right: 0.5rem;
+  text-align: left;
+  cursor: pointer;
+  &:hover {
+    ${Title} {
+      color: ${color("brand")};
+    }
+  }
+`;
+
 export const ResultLink = styled(Link)`
+  ${props => resultStyles(props)}
+`;
+
+const resultStyles = props => `
   display: block;
-  background-color: ${props =>
-    props.isSelected ? lighten("brand", 0.63) : "transparent"};
-  min-height: ${props => (props.compact ? "36px" : "54px")};
+  background-color: ${
+    props.isSelected ? lighten("brand", 0.63) : "transparent"
+  };
+  min-height: ${props.compact ? "36px" : "54px"};
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
   padding-left: 14px;
-  padding-right: ${props => (props.compact ? "20px" : space(3))};
-  cursor: ${props => (props.active ? "pointer" : "default")};
+  padding-right: ${props.compact ? "20px" : space(3)};
+  cursor: ${props.active ? "pointer" : "default"};
 
   &:hover {
-    background-color: ${props => (props.acitve ? lighten("brand", 0.63) : "")};
+    background-color: ${props.acitve ? lighten("brand", 0.63) : ""};
 
     h3 {
       color: ${props =>
@@ -72,8 +89,8 @@ export const ResultLink = styled(Link)`
     text-decoration-style: dashed;
 
     &:hover {
-      color: ${props => (props.active ? color("brand") : "")};
-      text-decoration-color: ${props => (props.active ? color("brand") : "")};
+      color: ${props.active ? color("brand") : ""};
+      text-decoration-color: ${props.active ? color("brand") : ""};
     }
   }
 
@@ -85,11 +102,11 @@ export const ResultLink = styled(Link)`
   }
 
   h3 {
-    font-size: ${props => (props.compact ? "14px" : "16px")};
+    font-size: ${props.compact ? "14px" : "16px"};
     line-height: 1.2em;
     overflow-wrap: anywhere;
     margin-bottom: 0;
-    color: ${props => (props.active && props.isSelected ? color("brand") : "")};
+    color: ${props.active && props.isSelected ? color("brand") : ""};
   }
 
   .Icon-info {

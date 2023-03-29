@@ -1,21 +1,24 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
-  (:require [clojure.test :as t]
-            [medley.core :as m]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.http-client :as client]
-            [metabase.models.permissions-group :refer [PermissionsGroup]]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.user :refer [User]]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test.initialize :as initialize]
-            [metabase.util :as u]
-            [metabase.util.password :as u.password]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
-  (:import clojure.lang.ExceptionInfo
-           metabase.models.user.UserInstance))
+  (:require
+   [clojure.test :as t]
+   [medley.core :as m]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.http-client :as client]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions-group :refer [PermissionsGroup]]
+   [metabase.models.permissions-group-membership
+    :refer [PermissionsGroupMembership]]
+   [metabase.models.user :refer [User]]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test.initialize :as initialize]
+   [metabase.util :as u]
+   [metabase.util.password :as u.password]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.util.test :as tt])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 ;;; ------------------------------------------------ User Definitions ------------------------------------------------
 
@@ -77,7 +80,7 @@
               :is_qbnewb    true
               :is_active    active)))))
 
-(s/defn fetch-user :- UserInstance
+(s/defn fetch-user :- (mi/InstanceOf User)
   "Fetch the User object associated with `username`. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
@@ -184,13 +187,13 @@
       (when-not user-email
         (throw (ex-info "User does not exist" {:user user})))
       (try
-        (db/execute! {:update User
+        (db/execute! {:update :core_user
                       :set    {:password      (u.password/hash-bcrypt user-email)
                                :password_salt ""}
                       :where  [:= :id user-id]})
         (apply client/client {:username user-email, :password user-email} args)
         (finally
-          (db/execute! {:update User
+          (db/execute! {:update :core_user
                         :set    old-password-info
                         :where  [:= :id user-id]}))))))
 

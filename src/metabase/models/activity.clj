@@ -1,15 +1,15 @@
 (ns metabase.models.activity
-  (:require [metabase.api.common :as api]
-            [metabase.events :as events]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.interface :as mi]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [metabase.api.common :as api]
+   [metabase.events :as events]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.interface :as mi]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.segment :refer [Segment]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 ;;; ------------------------------------------------- Perms Checking -------------------------------------------------
 
@@ -52,11 +52,10 @@
                   :details   {}}]
     (merge defaults activity)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Activity)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types      (constantly {:details :json, :topic :keyword})
-          :pre-insert pre-insert}))
+(mi/define-methods
+ Activity
+ {:types      (constantly {:details :json, :topic :keyword})
+  :pre-insert pre-insert})
 
 (defmethod mi/can-read? Activity
   [& args]

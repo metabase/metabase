@@ -168,7 +168,10 @@ describe("DatePicker", () => {
         render(<DatePickerStateWrapper filter={filter} />);
 
         userEvent.click(screen.getByText(new RegExp(type, "i")));
-        await screen.findAllByTestId(`${type}-date-picker`);
+
+        expect(
+          (await screen.findAllByTestId(`${type}-date-picker`)).length,
+        ).not.toBe(0);
       });
     });
 
@@ -276,11 +279,11 @@ describe("DatePicker", () => {
         userEvent.click(screen.getByText(/specific/i));
         userEvent.click(screen.getByText("On"));
 
-        await screen.findByText("May 2020");
-        userEvent.click(await screen.getByLabelText(/chevronright/i));
-        await screen.findByText("June 2020");
-        userEvent.click(await screen.getByLabelText(/chevronright/i));
-        await screen.findByText("July 2020");
+        expect(await screen.findByText("May 2020")).toBeInTheDocument();
+        userEvent.click(screen.getByLabelText(/chevronright/i));
+        expect(await screen.findByText("June 2020")).toBeInTheDocument();
+        userEvent.click(screen.getByLabelText(/chevronright/i));
+        expect(await screen.findByText("July 2020")).toBeInTheDocument();
       });
     });
 
@@ -351,6 +354,35 @@ describe("DatePicker", () => {
             unit,
           ]);
         });
+      });
+    });
+
+    describe("Exclude", () => {
+      it("should correctly update exclude filter when value is 0 even though it is falsy", async () => {
+        const onChangeMock = jest.fn();
+
+        render(
+          <DatePickerStateWrapper filter={filter} onChange={onChangeMock} />,
+        );
+
+        userEvent.click(screen.getByText("Exclude..."));
+        userEvent.click(screen.getByText("Hours of the day..."));
+
+        const midnightCheckbox = screen.getByRole("checkbox", {
+          name: /12 AM/i,
+        });
+
+        expect(midnightCheckbox).toBeChecked();
+
+        userEvent.click(midnightCheckbox);
+
+        expect(onChangeMock).toHaveBeenCalledWith([
+          "!=",
+          ["field", 1, { "temporal-unit": "hour-of-day" }],
+          0,
+        ]);
+
+        expect(midnightCheckbox).not.toBeChecked();
       });
     });
   });

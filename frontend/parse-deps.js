@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-const fs = require("fs");
-const path = require("path");
+import { readFileSync, existsSync, lstatSync } from "fs";
+import { createInterface } from "readline";
+import { dirname, sep, normalize } from "path";
 
-const glob = require("glob");
-const minimatch = require("minimatch");
-const babel = require("@babel/core");
-const readline = require("readline");
+import { sync } from "glob";
+import minimatch from "minimatch";
+import { transformSync, traverse } from "@babel/core";
 
 const PATTERN = "{enterprise/,}frontend/src/**/*.{js,jsx,ts,tsx}";
 
@@ -19,23 +19,23 @@ const ALIAS = {
 };
 
 function files() {
-  return glob.sync(PATTERN);
+  return sync(PATTERN);
 }
 
 function dependencies() {
   const deps = files().map(filename => {
-    const contents = fs.readFileSync(filename, "utf-8");
+    const contents = readFileSync(filename, "utf-8");
 
     const importList = [];
     try {
-      const file = babel.transformSync(contents, {
+      const file = transformSync(contents, {
         filename,
         presets: ["@babel/preset-typescript"],
         ast: true,
         code: false,
       });
 
-      babel.traverse(file.ast, {
+      traverse(file.ast, {
         enter(path) {
           if (path.node.type === "ImportDeclaration") {
             importList.push(path.node.source.value);
@@ -54,16 +54,15 @@ function dependencies() {
     } catch (e) {
       console.error(filename, e.toString());
       process.exit(-1);
-      n;
     }
-    const base = path.dirname(filename) + path.sep;
+    const base = dirname(filename) + sep;
     const absoluteImportList = importList
       .map(name => {
-        const absName = name[0] === "." ? path.normalize(base + name) : name;
-        const parts = absName.split(path.sep);
+        const absName = name[0] === "." ? normalize(base + name) : name;
+        const parts = absName.split(sep);
         const realPath = ALIAS[parts[0]];
         parts[0] = realPath ? realPath : parts[0];
-        const realName = parts.join(path.sep);
+        const realName = parts.join(sep);
         return realName;
       })
       .map(getFilePathFromImportPath)
@@ -78,20 +77,20 @@ function getFilePathFromImportPath(name) {
   const scriptsExtensions = ["js", "ts"];
   const scriptsExtensionsWithJsx = [...scriptsExtensions, "jsx", "tsx"];
 
-  for (let extension of scriptsExtensionsWithJsx) {
+  for (const extension of scriptsExtensionsWithJsx) {
     const path = `${name}.${extension}`;
 
-    if (fs.existsSync(path)) {
+    if (existsSync(path)) {
       return path;
     }
   }
 
-  const isDirectory = fs.existsSync(name) && fs.lstatSync(name).isDirectory();
+  const isDirectory = existsSync(name) && lstatSync(name).isDirectory();
 
-  for (let extension of scriptsExtensions) {
+  for (const extension of scriptsExtensions) {
     const indexScriptPath = `${name}/index.${extension}`;
 
-    if (isDirectory && fs.existsSync(indexScriptPath)) {
+    if (isDirectory && existsSync(indexScriptPath)) {
       return indexScriptPath;
     }
   }
@@ -100,7 +99,7 @@ function getFilePathFromImportPath(name) {
 }
 
 function dependents() {
-  let dependents = {};
+  const dependents = {};
   dependencies().forEach(dep => {
     const { source, dependencies } = dep;
     dependencies.forEach(d => {
@@ -115,7 +114,7 @@ function dependents() {
 
 function getDependents(sources) {
   const allDependents = dependents();
-  let filteredDependents = [];
+  const filteredDependents = [];
 
   sources.forEach(name => {
     const list = allDependents[name];
@@ -128,10 +127,10 @@ function getDependents(sources) {
 }
 
 function filterDependents() {
-  const rl = readline.createInterface({ input: process.stdin });
+  const rl = createInterface({ input: process.stdin });
 
   const start = async () => {
-    let sources = [];
+    const sources = [];
     for await (const line of rl) {
       const name = line.trim();
       if (name.length > 0) {
@@ -145,17 +144,17 @@ function filterDependents() {
 }
 
 function filterAllDependents() {
-  const rl = readline.createInterface({ input: process.stdin });
+  const rl = createInterface({ input: process.stdin });
 
   const start = async () => {
-    let sources = [];
+    const sources = [];
     for await (const line of rl) {
       const name = line.trim();
       if (name.length > 0) {
         sources.push(name);
       }
     }
-    let filteredDependents = getDependents(sources);
+    const filteredDependents = getDependents(sources);
 
     const allDependents = dependents();
     for (let i = 0; i < filteredDependents.length; ++i) {
@@ -261,7 +260,7 @@ function main(args) {
   }
 }
 
-let args = process.argv;
+const args = process.argv;
 args.shift();
 args.shift();
 main(args);

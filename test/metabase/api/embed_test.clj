@@ -1,30 +1,35 @@
-(ns metabase.api.embed-test
+(ns ^:mb/once metabase.api.embed-test
   "Tests for /api/embed endpoints."
-  (:require [buddy.sign.jwt :as jwt]
-            [buddy.sign.util :as buddy-util]
-            [clj-time.core :as time]
-            [clojure.data.csv :as csv]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [crypto.random :as crypto-random]
-            [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [metabase.api.dashboard-test :as api.dashboard-test]
-            [metabase.api.embed :as api.embed]
-            [metabase.api.pivots :as api.pivots]
-            [metabase.api.public-test :as public-test]
-            [metabase.http-client :as client]
-            [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
-            [metabase.models.interface :as mi]
-            [metabase.models.params.chain-filter-test :as chain-filer-test]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.io.ByteArrayInputStream))
+  (:require
+   [buddy.sign.jwt :as jwt]
+   [buddy.sign.util :as buddy-util]
+   [clj-time.core :as time]
+   [clojure.data.csv :as csv]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [crypto.random :as crypto-random]
+   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.api.card-test :as api.card-test]
+   [metabase.api.dashboard-test :as api.dashboard-test]
+   [metabase.api.embed :as api.embed]
+   [metabase.api.pivots :as api.pivots]
+   [metabase.api.public-test :as public-test]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+   [metabase.models.interface :as mi]
+   [metabase.models.params.chain-filter-test :as chain-filer-test]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (java.io ByteArrayInputStream)))
 
 (defn random-embedding-secret-key [] (crypto-random/hex 32))
 
@@ -128,8 +133,9 @@
        (is (= [{:col "Count"} {:col 100.0}]
               actual))))))
 
-(defn dissoc-id-and-name {:style/indent 0} [obj]
-  (dissoc obj :id :name))
+(defn dissoc-id-and-name [obj]
+  (cond-> obj
+    (map? obj) (dissoc :id :name)))
 
 (def successful-card-info
   "Data that should be returned if `GET /api/embed/card/:token` completes successfully (minus `:id` and `:name`).
@@ -191,14 +197,60 @@
       (with-temp-card [card {:enable_embedding true
                              :dataset_query    {:database (mt/id)
                                                 :type     :native
-                                                :native   {:template-tags {:a {:type "date", :name "a", :display_name "a"}
-                                                                           :b {:type "date", :name "b", :display_name "b"}
-                                                                           :c {:type "date", :name "c", :display_name "c"}
-                                                                           :d {:type "date", :name "d", :display_name "d"}}}}
+                                                :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a"}
+                                                                           :b {:type "date", :name "b", :display_name "b" :id "b"}
+                                                                           :c {:type "date", :name "c", :display_name "c" :id "c"}
+                                                                           :d {:type "date", :name "d", :display_name "d" :id "d"}}}}
                              :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}}]
-        (is (= [{:id nil, :type "date/single", :target ["variable" ["template-tag" "d"]], :name "d", :slug "d", :default nil}]
-               (:parameters (client/client :get 200 (card-url card {:params {:c 100}})))))))))
+        (is (=? {:parameters [{:id      "d"
+                               :type    "date/single"
+                               :target  ["variable" ["template-tag" "d"]]
+                               :name    "d"
+                               :slug    "d"
+                               :default nil}]}
+                (client/client :get 200 (card-url card {:params {:c 100}}))))))))
 
+(deftest parameters-should-include-template-tags
+  (testing "parameters should get from both template-tags and card.parameters"
+    ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
+    ;; because doing such migration is costly.
+    ;; so there are cards where some parameters in template-tags does not exist in card.parameters
+    ;; that why we need to keep concat both of them then dedupe by id
+    (with-embedding-enabled-and-new-secret-key
+      (with-temp-card [card {:enable_embedding true
+                             :dataset_query    {:database (mt/id)
+                                                :type     :native
+                                                :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a" :default "A TAG"}
+                                                                           :b {:type "date", :name "b", :display_name "b" :id "b" :default "B TAG"}
+                                                                           :c {:type "date", :name "c", :display_name "c" :id "c" :default "C TAG"}
+                                                                           :d {:type "date", :name "d", :display_name "d" :id "d" :default "D TAG"}}}}
+                             :parameters       [{:type "date", :name "a", :display_name "a" :id "a" :default "A param"}
+                                                {:type "date", :name "b", :display_name "b" :id "b" :default "B param"}
+                                                {:type "date", :name "c", :display_name "c" :id "c" :default "C param"
+                                                 :values_source_type "static-list"  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
+                             :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}}]
+        (let [parameters (:parameters (client/client :get 200 (card-url card)))]
+          (is (= [;; the parmeter with id = "c" exists in both card.parameters and tempalte-tags should have info
+                  ;; merge of both places
+                  {:id "c",
+                   :type "date/single",
+                   :display_name "c",
+                   :target ["variable" ["template-tag" "c"]],
+                   :name "c",
+                   :slug "c",
+                   ;; order importance: the default from template-tag is in the final result
+                   :default "C TAG"
+                   :values_source_type    "static-list"
+                   :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}
+                  ;; the parameter id = "d" is in template-tags, but not card.parameters,
+                  ;; when fetching card we should get it returned
+                  {:id "d",
+                   :type "date/single",
+                   :target ["variable" ["template-tag" "d"]],
+                   :name "d",
+                   :slug "d",
+                   :default "D TAG"}]
+                 parameters)))))))
 
 ;;; ------------------------- GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants) --------------------------
 
@@ -384,7 +436,7 @@
     (mt/with-temp Dashboard [dash {:enable_embedding true}]
       (is (= successful-dashboard-info
              (dissoc-id-and-name
-               (client/client :get 200 (dashboard-url dash))))))))
+              (client/client :get 200 (dashboard-url dash))))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token-2
   (with-embedding-enabled-and-new-secret-key
@@ -422,8 +474,8 @@
                                                         {:id "_b", :slug "b", :name "b", :type "date"}
                                                         {:id "_c", :slug "c", :name "c", :type "date"}
                                                         {:id "_d", :slug "d", :name "d", :type "date"}]}]
-        (is (= [{:id "_d", :slug "d", :name "d", :type "date"}]
-               (:parameters (client/client :get 200 (dashboard-url dash {:params {:c 100}})))))))))
+        (is (=? [{:id "_d", :slug "d", :name "d", :type "date"}]
+                (:parameters (client/client :get 200 (dashboard-url dash {:params {:c 100}})))))))))
 
 (deftest locked-params-are-substituted-into-text-cards
   (testing "check that locked params are substituted into text cards with mapped variables on the backend"
@@ -635,6 +687,53 @@
            (db/update! Card (u/the-id card) :enable_embedding false)
            (client/client :get 400 (field-values-url card (mt/id :venues :name)))))))
 
+(deftest card-param-values
+  (letfn [(search [card param-key prefix]
+            (client/client :get 200 (format "embed/card/%s/params/%s/search/%s"
+                                            (card-token card) param-key prefix)))
+          (dropdown [card param-key]
+            (client/client :get 200 (format "embed/card/%s/params/%s/values"
+                                            (card-token card) param-key)))]
+    (mt/with-temporary-setting-values [enable-embedding true]
+      (with-new-secret-key
+        (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
+          (db/update! Card (:id field-filter-card)
+                      {:enable_embedding true
+                       :embedding_params (zipmap (map :slug (:parameters field-filter-card))
+                                                 (repeat "enabled"))})
+          (db/update! Card (:id card)
+                      {:enable_embedding true
+                       :embedding_params (zipmap (map :slug (:parameters card))
+                                                 (repeat "enabled"))})
+          (testing "field filter based param"
+            (let [response (dropdown field-filter-card (:field-values param-keys))]
+              (is (false? (:has_more_values response)))
+              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                               (-> response :values set))))
+            (let [response (search field-filter-card (:field-values param-keys) "bar")]
+              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                               (-> response :values set)))
+              (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))
+          (testing "static based param"
+            (let [response (dropdown card (:static-list param-keys))]
+              (is (= {:has_more_values false,
+                      :values          ["African" "American" "Asian"]}
+                     response)))
+            (let [response (search card (:static-list param-keys) "af")]
+              (is (= {:has_more_values false,
+                      :values          ["African"]}
+                     response))))
+          (testing "card based param"
+            (let [response (dropdown card (:card param-keys))]
+              (is (= {:values          ["Brite Spot Family Restaurant" "Red Medicine"
+                                        "Stout Burgers & Beers" "The Apple Pan" "Wurstküche"]
+                      :has_more_values false}
+                     response)))
+            (let [response (search card (:card param-keys) "red")]
+              (is (= {:has_more_values false,
+                      :values          ["Red Medicine"]}
+                     response)))))))))
+
 ;;; ----------------------------- GET /api/embed/dashboard/:token/field/:field/values nil -----------------------------
 
 (defn- do-with-embedding-enabled-and-temp-dashcard-referencing {:style/indent 2} [table-kw field-kw f]
@@ -797,10 +896,12 @@
       (db/update! Dashboard (u/the-id dashboard) :enable_embedding true)
       (letfn [(token [params]
                 (dash-token dashboard (when params {:params params})))
-              (values-url [& [params]]
-                (format "embed/dashboard/%s/params/_CATEGORY_ID_/values" (token params)))
-              (search-url [& [params]]
-                (format "embed/dashboard/%s/params/_CATEGORY_NAME_/search/food" (token params)))]
+              (values-url [& [params param-key]]
+                (format "embed/dashboard/%s/params/%s/values"
+                        (token params) (or param-key "_CATEGORY_ID_")))
+              (search-url [& [params param-key query]]
+                (format "embed/dashboard/%s/params/%s/search/%s"
+                        (token params) (or param-key "_CATEGORY_NAME_") (or query "food")))]
         (f (assoc m
                   :token token
                   :values-url values-url
@@ -829,6 +930,21 @@
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
         (is (= "Cannot search for values: \"category_name\" is not an enabled parameter."
                (client/client :get 400 (search-url))))))))
+
+(deftest params-with-static-list-test
+  (testing "embedding with parameter that has source is a static list"
+    (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+      (db/update! Dashboard (:id dashboard)
+        :embedding_params {"static_category" "enabled", "static_category_label" "enabled"})
+      (testing "Should work if the param we're fetching values for is enabled"
+        (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
+          (is (= {:values          ["African" "American" "Asian"]
+                  :has_more_values false}
+                 (client/client :get 200 (values-url {} "_STATIC_CATEGORY_")))))
+        (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
+          (is (= {:values          [["African" "Af"]]
+                  :has_more_values false}
+                 (client/client :get 200 (search-url {} "_STATIC_CATEGORY_LABEL_" "AF")))))))))
 
 (deftest chain-filter-enabled-params-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]

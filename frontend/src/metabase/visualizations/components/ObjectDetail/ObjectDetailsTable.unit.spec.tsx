@@ -54,8 +54,8 @@ describe("ObjectDetailsTable", () => {
       />,
     );
 
-    screen.getByText("Small Marble Shoes");
-    screen.getByText("Doohickey");
+    expect(screen.getByText("Small Marble Shoes")).toBeInTheDocument();
+    expect(screen.getByText("Doohickey")).toBeInTheDocument();
   });
 
   describe("json field rendering", () => {
@@ -70,8 +70,8 @@ describe("ObjectDetailsTable", () => {
         />,
       );
 
-      screen.getByText(/"hey"/i);
-      screen.getByText(/"yo"/i);
+      expect(screen.getByText(/"hey"/i)).toBeInTheDocument();
+      expect(screen.getByText(/"yo"/i)).toBeInTheDocument();
     });
 
     it("should not crash rendering invalid JSON", () => {
@@ -85,7 +85,7 @@ describe("ObjectDetailsTable", () => {
         />,
       );
 
-      screen.getByText(/i am not json/i);
+      expect(screen.getByText(/i am not json/i)).toBeInTheDocument();
     });
   });
 });

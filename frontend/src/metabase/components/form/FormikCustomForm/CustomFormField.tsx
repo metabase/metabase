@@ -1,12 +1,10 @@
 import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 
+import { useMount, useUnmount } from "react-use";
 import { isCustomWidget } from "metabase-types/guards";
 import FormField from "metabase/components/form/FormikFormField";
 import FormWidget from "metabase/components/form/FormWidget";
-
-import { useOnMount } from "metabase/hooks/use-on-mount";
-import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 
 import {
   BaseFieldDefinition,
@@ -54,13 +52,13 @@ function RawCustomFormField(
   const field = fields[name];
   const formField = formFieldsByName[name];
 
-  useOnMount(() => {
+  useMount(() => {
     registerFormField?.(
       getFieldDefinition(props as StandardFormFieldDefinition),
     );
   });
 
-  useOnUnmount(() => {
+  useUnmount(() => {
     unregisterFormField?.(
       getFieldDefinition(props as StandardFormFieldDefinition),
     );

@@ -24,8 +24,8 @@ describe("CategoricalDonutChart", () => {
       <CategoricalDonutChart data={data} colors={colors} settings={settings} />,
     );
 
-    screen.getByText("$5,100.00");
-    screen.getAllByText("TOTAL");
+    expect(screen.getByText("$5,100.00")).toBeInTheDocument();
+    expect(screen.getAllByText("TOTAL")).toHaveLength(2);
   });
 
   it("should render data labels when percent_visibility=inside", () => {
@@ -36,8 +36,8 @@ describe("CategoricalDonutChart", () => {
         settings={{ percent_visibility: "inside" }}
       />,
     );
-    screen.getByText("39.22 %");
-    screen.getByText("60.78 %");
+    expect(screen.getByText("39.22 %")).toBeInTheDocument();
+    expect(screen.getByText("60.78 %")).toBeInTheDocument();
   });
 
   it("should render data labels when percent_visibility is `off` or `legend`", () => {

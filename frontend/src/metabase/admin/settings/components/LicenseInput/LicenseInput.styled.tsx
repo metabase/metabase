@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import TextInput from "metabase/components/TextInput";
+import Input from "metabase/core/components/Input";
 import { color } from "metabase/lib/colors";
 
 export const LicenseInputContainer = styled.div`
@@ -9,7 +9,7 @@ export const LicenseInputContainer = styled.div`
   width: 680px;
 `;
 
-export const LicenseTextInput = styled(TextInput)`
+export const LicenseTextInput = styled(Input)`
   flex-grow: 1;
   margin-right: 8px;
 `;

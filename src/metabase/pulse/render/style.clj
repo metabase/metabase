@@ -1,10 +1,13 @@
 (ns metabase.pulse.render.style
   "CSS styles and related helper code for Pulse rendering."
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.public-settings :as public-settings]
-            [metabase.util.i18n :refer [trs]]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [metabase.public-settings :as public-settings]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 ;; TODO - we should move other CSS definitions from `metabase.pulse.render` namespaces into this one, so they're all
 ;; in one place.
@@ -19,14 +22,6 @@
                       :when (seq v)]
                   (str (name k) ": " v ";"))))
 
-(def ^:const color-brand
-  "Classic Metabase blue."
-  "#2D86D4")
-
-(def ^:const color-purple
-  "Used as background color for cells in bar chart tables."
-  "#875DAF")
-
 (def ^:const color-gold
   "Used as color for 'We were unable to display this Pulse' messages."
   "#F9D45C")
@@ -34,10 +29,6 @@
 (def ^:const color-error
   "Color for error messages."
   "#EF8C8C")
-
-(def ^:const color-gray-1
-  "~97% gray."
-  "#F8F8F8")
 
 (def ^:const color-gray-2
   "~75% gray."

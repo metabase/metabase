@@ -1,10 +1,11 @@
 (ns metabase.events.persisted-info-test
-  (:require [clojure.test :refer [deftest is]]
-            [metabase.events.persisted-info :as events.persisted-info]
-            [metabase.models :refer [Card Database PersistedInfo]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer [deftest is]]
+   [metabase.events.persisted-info :as events.persisted-info]
+   [metabase.models :refer [Card Database PersistedInfo]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (deftest event-test
   (mt/with-temporary-setting-values [persisted-models-enabled true]

@@ -86,6 +86,59 @@ const orders_metric_filter_card = {
   },
 };
 
+const orders_filter_card = {
+  id: 2,
+  name: "# orders data",
+  display: "line",
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+      filter: [">", ["field", ORDERS.TOTAL.id, null], 10],
+    },
+  },
+};
+
+const orders_join_card = {
+  id: 2,
+  name: "# orders data",
+  display: "line",
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+      joins: [
+        {
+          fields: "all",
+          "source-table": PRODUCTS.id,
+          condition: [
+            "=",
+            ["field-id", ORDERS.PRODUCT_ID.id],
+            ["joined-field", "Products", ["field-id", PRODUCTS.ID.id]],
+          ],
+          alias: "Products",
+        },
+      ],
+    },
+  },
+};
+
+const orders_expression_card = {
+  id: 2,
+  name: "# orders data",
+  display: "line",
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-table": ORDERS.id,
+      expressions: { double_total: ["+", 1, 1] },
+    },
+  },
+};
+
 const orders_multi_stage_card = {
   id: 2,
   name: "# orders data",
@@ -445,7 +498,7 @@ describe("Question", () => {
 
     describe("pivot(...)", () => {
       const ordersCountQuestion = new Question(orders_count_card, metadata);
-      it("works with a datetime dimension ", () => {
+      it("works with a datetime dimension", () => {
         const pivoted = ordersCountQuestion.pivot([
           ["field", ORDERS.CREATED_AT.id, null],
         ]);
@@ -1221,6 +1274,7 @@ describe("Question", () => {
         "starts-with",
         ["field", PRODUCTS.CATEGORY.id, null],
         "abc",
+        { "case-sensitive": false },
       ]);
     });
   });
@@ -1518,6 +1572,43 @@ describe("Question", () => {
       const newQuestion = question.omitTransientCardIds();
 
       expect(newQuestion).toBe(question);
+    });
+  });
+
+  describe("Question.prototype.supportsImplicitActions", () => {
+    it("should allow to create implicit actions for a raw model", () => {
+      const question = new Question(orders_raw_card, metadata);
+      expect(question.supportsImplicitActions()).toBeTruthy();
+    });
+
+    it("should not allow to create implicit actions for a model with aggregations", () => {
+      const question = new Question(orders_count_card, metadata);
+      expect(question.supportsImplicitActions()).toBeFalsy();
+    });
+
+    it("should not allow to create implicit actions for a model with filters", () => {
+      const question = new Question(orders_filter_card, metadata);
+      expect(question.supportsImplicitActions()).toBeFalsy();
+    });
+
+    it("should not allow to create implicit actions for a model with joins", () => {
+      const question = new Question(orders_join_card, metadata);
+      expect(question.supportsImplicitActions()).toBeFalsy();
+    });
+
+    it("should not allow to create implicit actions for a model with expressions", () => {
+      const question = new Question(orders_expression_card, metadata);
+      expect(question.supportsImplicitActions()).toBeFalsy();
+    });
+
+    it("should not allow to create implicit actions for a model with multiple stages", () => {
+      const question = new Question(orders_multi_stage_card, metadata);
+      expect(question.supportsImplicitActions()).toBeFalsy();
+    });
+
+    it("should allow to create implicit actions for a native model", () => {
+      const question = new Question(native_orders_count_card, metadata);
+      expect(question.supportsImplicitActions()).toBeFalsy();
     });
   });
 });

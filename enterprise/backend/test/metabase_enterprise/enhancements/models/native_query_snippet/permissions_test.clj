@@ -1,12 +1,13 @@
 (ns metabase-enterprise.enhancements.models.native-query-snippet.permissions-test
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Collection NativeQuerySnippet]]
-            [metabase.models.collection :as collection]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models :refer [Collection NativeQuerySnippet]]
+   [metabase.models.collection :as collection]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]))
 
 (def ^:private root-collection (assoc collection/root-collection :name "Root Collection", :namespace "snippets"))
 

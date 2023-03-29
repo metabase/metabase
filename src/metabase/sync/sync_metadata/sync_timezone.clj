@@ -1,11 +1,15 @@
 (ns metabase.sync.sync-metadata.sync-timezone
-  (:require [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.database :refer [Database]]
-            [metabase.sync.interface :as i]
-            [schema.core :as s]
-            [toucan.db :as db])
-  (:import org.joda.time.DateTime))
+  (:require
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.database :refer [Database]]
+   [metabase.sync.interface :as i]
+   [schema.core :as s]
+   [toucan.db :as db])
+  (:import
+   (org.joda.time DateTime)))
+
+(set! *warn-on-reflection* true)
 
 ;; TIMEZONE FIXME - no Joda Time
 (defn- extract-time-zone [^DateTime dt]

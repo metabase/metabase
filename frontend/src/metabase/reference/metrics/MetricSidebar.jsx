@@ -32,7 +32,7 @@ const MetricSidebar = ({ metric, user, style, className }) => (
         <SidebarItem
           key={`/reference/metrics/${metric.id}/questions`}
           href={`/reference/metrics/${metric.id}/questions`}
-          icon="all"
+          icon="folder"
           name={t`Questions about ${metric.name}`}
         />
         {MetabaseSettings.get("enable-xrays") && (

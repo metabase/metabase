@@ -1,8 +1,9 @@
 (ns metabase.query-processor.async-test
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor.async :as qp.async]
-            [metabase.test :as mt]
-            [metabase.test.util.async :as tu.async]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor.async :as qp.async]
+   [metabase.test :as mt]
+   [metabase.test.util.async :as tu.async]))
 
 (deftest async-result-metadata-test
   (testing "Should be able to get result metadata async"

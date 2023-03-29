@@ -1,20 +1,21 @@
-(ns ^:deprecated metabase.sync-test
+(ns ^:deprecated ^:mb/once metabase.sync-test
   "Tests for sync behavior that use a imaginary `SyncTestDriver`. These are kept around mainly because they've already
   been written. For newer sync tests see `metabase.sync.*` test namespaces.
 
   Your new tests almost certainly do not belong in this namespace. Please put them in ones mirroring the location of
   the specific part of sync you're testing."
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.mock.util :as mock.util]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.mock.util :as mock.util]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        End-to-end 'MovieDB' Sync Tests                                         |
@@ -30,15 +31,18 @@
                         :database-type     "SERIAL"
                         :base-type         :type/Integer
                         :semantic-type     :type/PK
+                        :database-is-auto-increment true
                         :database-position 0}
                        {:name              "title"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
                         :semantic-type     :type/Title
+                        :database-is-auto-increment false
                         :database-position 1}
                        {:name              "studio"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
+                        :database-is-auto-increment false
                         :database-position 2}}
              :description nil}
    "studio" {:name   "studio"
@@ -47,10 +51,12 @@
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
                         :semantic-type     :type/PK
+                        :database-is-auto-increment false
                         :database-position 0}
                        {:name              "name"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
+                        :database-is-auto-increment false
                         :database-position 1}}
              :description ""}})
 
@@ -109,6 +115,7 @@
     :fingerprint         false
     :fingerprint_version false
     :fk_target_field_id  false
+    :database_is_auto_increment false
     :id                  true
     :last_analyzed       false
     :parent_id           false
@@ -132,6 +139,7 @@
     :effective_type    :type/Integer
     :semantic_type     :type/PK
     :database_position 0
+    :database_is_auto_increment true
     :position          0}))
 
 (defn- field:movie-studio []

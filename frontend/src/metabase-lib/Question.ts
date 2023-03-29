@@ -26,15 +26,12 @@ import { memoizeClass, sortObject } from "metabase-lib/utils";
 import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
-  DashboardApi,
   CardApi,
+  DashboardApi,
   maybeUsePivotEndpoint,
   MetabaseApi,
 } from "metabase/services";
-import {
-  Parameter as ParameterObject,
-  ParameterValues,
-} from "metabase-types/types/Parameter";
+import { ParameterValues } from "metabase-types/types/Parameter";
 import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
 import { Column, Dataset, Value } from "metabase-types/types/Dataset";
@@ -46,13 +43,20 @@ import {
 } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId } from "metabase-types/api";
+import {
+  CollectionId,
+  Parameter as ParameterObject,
+  ParameterId,
+} from "metabase-types/api";
 
 import {
-  normalizeParameterValue,
   getParameterValuesBySlug,
+  normalizeParameters,
 } from "metabase-lib/parameters/utils/parameter-values";
-import { remapParameterValuesToTemplateTags } from "metabase-lib/parameters/utils/template-tags";
+import {
+  getTemplateTagParametersFromCard,
+  remapParameterValuesToTemplateTags,
+} from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
@@ -271,10 +275,6 @@ class QuestionInner {
     return this._card && this._card.persisted;
   }
 
-  isAction() {
-    return false;
-  }
-
   setPersisted(isPersisted) {
     return this.setCard(assoc(this.card(), "persisted", isPersisted));
   }
@@ -287,10 +287,6 @@ class QuestionInner {
     return this.setCard(
       assoc(this.card(), "collection_position", pinned ? 1 : null),
     );
-  }
-
-  setIsAction(isAction) {
-    return this.card();
   }
 
   // locking the display prevents auto-selection
@@ -455,6 +451,13 @@ class QuestionInner {
   }
 
   /**
+   * How many filters or other widgets are this question's values used for?
+   */
+  getParameterUsageCount(): number {
+    return this.card().parameter_usage_count || 0;
+  }
+
+  /**
    * Question is valid (as far as we know) and can be executed
    */
   canRun(): boolean {
@@ -463,6 +466,22 @@ class QuestionInner {
 
   canWrite(): boolean {
     return this._card && this._card.can_write;
+  }
+
+  canWriteActions(): boolean {
+    const database = this.database();
+
+    return (
+      this.canWrite() &&
+      database != null &&
+      database.canWrite() &&
+      database.hasActionsEnabled()
+    );
+  }
+
+  supportsImplicitActions(): boolean {
+    const query = this.query();
+    return query instanceof StructuredQuery && !query.hasAnyClauses();
   }
 
   canAutoRun(): boolean {
@@ -527,7 +546,10 @@ class QuestionInner {
     return filter(this, operator, column, value) || this;
   }
 
-  pivot(breakouts = [], dimensions = []): Question {
+  pivot(
+    breakouts: (Breakout | Dimension | Field)[] = [],
+    dimensions = [],
+  ): Question {
     return pivot(this, breakouts, dimensions) || this;
   }
 
@@ -588,7 +610,7 @@ class QuestionInner {
           type: "query",
           database: this.databaseId(),
           query: {
-            "source-table": getQuestionVirtualTableId(this.card()),
+            "source-table": getQuestionVirtualTableId(this.id()),
           },
         },
       };
@@ -605,7 +627,7 @@ class QuestionInner {
       type: "query",
       database: this.databaseId(),
       query: {
-        "source-table": getQuestionVirtualTableId(this.card()),
+        "source-table": getQuestionVirtualTableId(this.id()),
       },
     });
   }
@@ -675,19 +697,31 @@ class QuestionInner {
     );
 
     const graphMetrics = this.setting("graph.metrics");
+
     if (
       graphMetrics &&
-      addedColumnNames.length > 0 &&
-      removedColumnNames.length === 0
+      (addedColumnNames.length > 0 || removedColumnNames.length > 0)
     ) {
       const addedMetricColumnNames = addedColumnNames.filter(
         name =>
           query.columnDimensionWithName(name) instanceof AggregationDimension,
       );
 
-      if (addedMetricColumnNames.length > 0) {
+      const removedMetricColumnNames = removedColumnNames.filter(
+        name =>
+          previousQuery.columnDimensionWithName(name) instanceof
+          AggregationDimension,
+      );
+
+      if (
+        addedMetricColumnNames.length > 0 ||
+        removedMetricColumnNames.length > 0
+      ) {
         return this.updateSettings({
-          "graph.metrics": [...graphMetrics, ...addedMetricColumnNames],
+          "graph.metrics": [
+            ..._.difference(graphMetrics, removedMetricColumnNames),
+            ...addedMetricColumnNames,
+          ],
         });
       }
     }
@@ -707,7 +741,7 @@ class QuestionInner {
             const dimension = query.columnDimensionWithName(name);
             return {
               name: name,
-              field_ref: getBaseDimensionReference(dimension.mbql()),
+              fieldRef: getBaseDimensionReference(dimension.mbql()),
               enabled: true,
             };
           }),
@@ -906,6 +940,10 @@ class QuestionInner {
     return table ? table.id : null;
   }
 
+  isArchived(): boolean {
+    return this._card && this._card.archived;
+  }
+
   getUrl({
     originalQuestion,
     clean = true,
@@ -1013,7 +1051,7 @@ class QuestionInner {
     if (this.isDataset() && this.isSaved()) {
       dependencies.push({
         type: "table",
-        id: getQuestionVirtualTableId(this.card()),
+        id: getQuestionVirtualTableId(this.id()),
       });
     }
 
@@ -1074,19 +1112,7 @@ class QuestionInner {
   } = {}): Promise<[Dataset]> {
     // TODO Atte Keinänen 7/5/17: Should we clean this query with Query.cleanQuery(query) before executing it?
     const canUseCardApiEndpoint = !isDirty && this.isSaved();
-    const parameters = this.parameters()
-      // include only parameters that have a value applied
-      .filter(param => _.has(param, "value"))
-      // only the superset of parameters object that API expects
-      .map(param => _.pick(param, "type", "target", "value", "id"))
-      .map(({ type, value, target, id }) => {
-        return {
-          type,
-          value: normalizeParameterValue(type, value),
-          target,
-          id,
-        };
-      });
+    const parameters = normalizeParameters(this.parameters());
 
     if (canUseCardApiEndpoint) {
       const dashboardId = this._card.dashboardId;
@@ -1131,6 +1157,14 @@ class QuestionInner {
       );
       return Promise.all(datasetQueries.map(getDatasetQueryResult));
     }
+  }
+
+  setParameter(id: ParameterId, parameter: ParameterObject) {
+    const newParameters = this.parameters().map(oldParameter =>
+      oldParameter.id === id ? parameter : oldParameter,
+    );
+
+    return this.setParameters(newParameters);
   }
 
   setParameters(parameters) {
@@ -1178,7 +1212,7 @@ class QuestionInner {
       return (
         q &&
         new Question(q.card(), this.metadata())
-          .setParameters([])
+          .setParameters(getTemplateTagParametersFromCard(q.card()))
           .setDashboardProps({
             dashboardId: undefined,
             dashcardId: undefined,

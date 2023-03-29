@@ -20,11 +20,15 @@ import {
 
 interface Props {
   model: Question;
+  hasEditMetadataLink: boolean;
 }
 
-function ModelSchemaDetails({ model }: Props) {
-  const baseModelUrl = Urls.question(model.card());
-  const metadataEditorUrl = `${baseModelUrl}/metadata`;
+function ModelSchemaDetails({ model, hasEditMetadataLink }: Props) {
+  const canWrite = model.canWrite();
+
+  const metadataEditorUrl = Urls.modelEditor(model.card(), {
+    type: "metadata",
+  });
 
   const fields = useMemo(() => model.table()?.fields || [], [model]);
 
@@ -48,7 +52,9 @@ function ModelSchemaDetails({ model }: Props) {
     <>
       <SchemaHeader>
         <span>{fieldsCount}</span>
-        <Button as={Link} to={metadataEditorUrl}>{t`Edit metadata`}</Button>
+        {hasEditMetadataLink && canWrite && (
+          <Button as={Link} to={metadataEditorUrl}>{t`Edit metadata`}</Button>
+        )}
       </SchemaHeader>
       <FieldList>{fields.map(renderField)}</FieldList>
     </>

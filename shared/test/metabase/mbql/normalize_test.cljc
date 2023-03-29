@@ -1,7 +1,8 @@
 (ns metabase.mbql.normalize-test
-  (:require [clojure.set :as set]
-            [clojure.test :as t]
-            [metabase.mbql.normalize :as mbql.normalize]))
+  (:require
+   [clojure.set :as set]
+   [clojure.test :as t]
+   [metabase.mbql.normalize :as mbql.normalize]))
 
 (defn- tests {:style/indent 2} [f-symb f group->input->expected]
   (doseq [[group input->expected] group->input->expected]
@@ -612,6 +613,15 @@
     "We should remove empty options maps"
     {[:field 2 {}]
      [:field 2 nil]}))
+
+(t/deftest ^:parallel canonicalize-substring-test
+  (canonicalize-tests
+   "substring index 0 -> 1"
+   {[:substring "foo" 0 1]
+    [:substring "foo" 1 1]
+
+    [:substring "foo" 0 1 3]
+    [:substring "foo" 1 1 3]}))
 
 
 ;;; ------------------------------------------------ binning strategy ------------------------------------------------

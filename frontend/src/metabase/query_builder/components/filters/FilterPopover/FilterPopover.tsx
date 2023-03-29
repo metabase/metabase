@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { t } from "ttag";
 
-import { usePrevious } from "metabase/hooks/use-previous";
+import { usePrevious } from "react-use";
 
 import { color } from "metabase/lib/colors";
 
@@ -46,12 +46,6 @@ type Props = {
   isNew?: boolean;
   isTopLevel?: boolean;
   checkedColor?: string;
-};
-
-type State = {
-  filter: Filter | null;
-  choosingField: boolean;
-  editingFilter: boolean;
 };
 
 export default function FilterPopover({

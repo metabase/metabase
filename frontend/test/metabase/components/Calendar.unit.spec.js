@@ -1,7 +1,9 @@
 import React from "react";
 import moment from "moment-timezone";
 import mockDate from "mockdate";
-import { render, screen, fireEvent } from "@testing-library/react";
+
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import Calendar from "metabase/components/Calendar";
 
@@ -17,11 +19,13 @@ describe("Calendar", () => {
     const PREVIOUS = screen.getByRole("img", { name: /chevronleft icon/i });
     const NEXT = screen.getByRole("img", { name: /chevronright icon/i });
 
-    screen.getByText("January 2018");
-    fireEvent.click(PREVIOUS);
-    screen.getByText("December 2017");
-    fireEvent.click(NEXT);
-    fireEvent.click(NEXT);
-    screen.getByText("February 2018");
+    expect(screen.getByText("January 2018")).toBeInTheDocument();
+
+    userEvent.click(PREVIOUS);
+    expect(screen.getByText("December 2017")).toBeInTheDocument();
+
+    userEvent.click(NEXT);
+    userEvent.click(NEXT);
+    expect(screen.getByText("February 2018")).toBeInTheDocument();
   });
 });

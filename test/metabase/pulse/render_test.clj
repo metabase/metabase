@@ -1,12 +1,14 @@
 (ns metabase.pulse.render-test
-  (:require [clojure.test :refer :all]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
-            [metabase.pulse :as pulse]
-            [metabase.pulse.render :as render]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models
+    :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+   [metabase.pulse :as pulse]
+   [metabase.pulse.render :as render]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 ;; Let's make sure rendering Pulses actually works
 
@@ -119,18 +121,18 @@
                                                      {:base_type :type/Number}]
                                               :rows [[#t "2020" 2]
                                                      [#t "2021" 3]]}))))
-        (is (= :multiple
-           (mt/with-temp* [Card                [card1 {:display :line}]
-                           Card                [card2 {:display :funnel}]
-                           Dashboard           [dashboard]
-                           DashboardCard       [dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}]
-                           DashboardCardSeries [_   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]]
-             (render/detect-pulse-chart-type card1
-                                             dc1
-                                             {:cols [{:base_type :type/Temporal}
-                                                     {:base_type :type/Number}]
-                                              :rows [[#t "2020" 2]
-                                                     [#t "2021" 3]]}))))))
+    (is (= :multiple
+         (mt/with-temp* [Card                [card1 {:display :line}]
+                         Card                [card2 {:display :funnel}]
+                         Dashboard           [dashboard]
+                         DashboardCard       [dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}]
+                         DashboardCardSeries [_   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]]
+           (render/detect-pulse-chart-type card1
+                                           dc1
+                                           {:cols [{:base_type :type/Temporal}
+                                                   {:base_type :type/Number}]
+                                            :rows [[#t "2020" 2]
+                                                   [#t "2021" 3]]}))))))
 
 (deftest make-description-if-needed-test
   (testing "Use Visualization Settings's description if it exists"

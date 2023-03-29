@@ -1,7 +1,8 @@
 (ns metabase.test.util.i18n
-  (:require [clojure.test :as t]
-            [metabase.util.i18n :as i18n]
-            [metabase.util.i18n.impl :as i18n.impl]))
+  (:require
+   [clojure.test :as t]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n.impl :as i18n.impl]))
 
 (defn do-with-mock-i18n-bundles [bundles thunk]
   (t/testing (format "\nwith mock i18n bundles %s\n" (pr-str bundles))

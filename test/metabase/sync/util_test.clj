@@ -1,20 +1,23 @@
-(ns metabase.sync.util-test
+(ns ^:mb/once metabase.sync.util-test
   "Tests for the utility functions shared by all parts of sync, such as the duplicate ops guard."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.models.database :as database :refer [Database]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.task-history :refer [TaskHistory]]
-            [metabase.sync :as sync]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.sync.util :as sync-util]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.models.database :as database :refer [Database]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.task-history :refer [TaskHistory]]
+   [metabase.sync :as sync]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.util :as sync-util]
+   [metabase.test :as mt]
+   [metabase.test.util :as tu]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Duplicate Sync Prevention                                            |
@@ -37,8 +40,8 @@
 
 (deftest concurrent-sync-test
   (testing "only one sync process be going on at a time"
-    ;; describe-database gets called twice during a single sync process, once for syncing tables and a second time for
-    ;; syncing the _metabase_metadata table
+    ;; describe-database gets called once during a single sync process, and the results are used for syncing tables
+    ;; and syncing the _metabase_metadata table.
     (tt/with-temp* [Database [db {:engine ::concurrent-sync-test}]]
       (reset! calls-to-describe-database 0)
       ;; start a sync processes in the background. It should take 1000 ms to finish
@@ -54,9 +57,7 @@
         ;; make sure both of the futures have finished
         (deref f1)
         (deref f2)
-        ;; Check the number of syncs that took place. Should be 2 (just the first)
-        (is (= 2
-               @calls-to-describe-database))))))
+        (is (= 1 @calls-to-describe-database))))))
 
 (defn- call-with-operation-info
   "Call `f` with `log-sync-summary` and `store-sync-summary!` redef'd. For `log-sync-summary`, it intercepts the step
@@ -109,9 +110,9 @@
     (tu/boolean-ids-and-timestamps (dissoc task-history :duration))))
 
 (deftest task-history-test
-  (let [process-name (tu/random-name)
-        step-1-name  (tu/random-name)
-        step-2-name  (tu/random-name)
+  (let [process-name (mt/random-name)
+        step-1-name  (mt/random-name)
+        step-2-name  (mt/random-name)
         sync-steps   [(sync-util/create-sync-step step-1-name (fn [_] (Thread/sleep 10) {:foo "bar"}))
                       (sync-util/create-sync-step step-2-name (fn [_] (Thread/sleep 10)))]
         mock-db      (mi/instance Database {:name "test", :id 1, :engine :h2})
@@ -145,12 +146,12 @@
                               :log-summary-fn log-summary-fn}]]}))
 
 (deftest log-summary-message-test
-  (let [operation (tu/random-name)
-        db-name   (tu/random-name)
-        step-name (tu/random-name)]
+  (let [operation (mt/random-name)
+        db-name   (mt/random-name)
+        step-name (mt/random-name)]
     (testing (str "Test that we can create the log summary message. This is a big string blob, so validate that it"
                   " contains the important parts and it doesn't throw an exception")
-      (let [step-log-text (tu/random-name)
+      (let [step-log-text (mt/random-name)
             results       (#'sync-util/make-log-sync-summary-str operation
                                                                  (mi/instance Database {:name db-name})
                                                                  (create-test-sync-summary step-name
@@ -285,9 +286,10 @@
    (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
             db (db/select-one Database :id (:id (mt/db)))]
-        (with-redefs [sync-metadata/sync-steps [(sync-util/create-sync-step
-                                                 "fake-step"
-                                                 (fn [_] (throw (java.net.ConnectException.))))]]
+        (with-redefs [sync-metadata/make-sync-steps (fn [_]
+                                                      [(sync-util/create-sync-step
+                                                        "fake-step"
+                                                        (fn [_] (throw (java.net.ConnectException.))))])]
           (sync/sync-database! db)
           (is (= "aborted" (db/select-one-field :initial_sync_status Database :id (:id db)))))))
 

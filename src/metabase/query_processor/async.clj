@@ -1,17 +1,19 @@
 (ns metabase.query-processor.async
   "Mostly legacy namespace that these days is reduced to a single util function, `result-metadata-for-query-async`. TODO
   -- Consider whether there's a place to put this to consolidate things."
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
-            [metabase.api.common :as api]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel))
+  (:require
+   [clojure.core.async :as a]
+   [metabase.api.common :as api]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [schema.core :as s])
+  (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)))
 
 (defn- query-for-result-metadata [query]
   ;; for purposes of calculating the actual Fields & types returned by this query we really only need the first

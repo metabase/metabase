@@ -1,14 +1,17 @@
 (ns metabase.models.metric-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.metric :as metric :refer [Metric]]
-            [metabase.models.revision :as revision]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.table :refer [Table]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db])
-  (:import java.time.LocalDateTime))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.metric :as metric :refer [Metric]]
+   [metabase.models.revision :as revision]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.table :refer [Table]]
+   [metabase.test :as mt]
+   [toucan.db :as db])
+  (:import
+   (java.time LocalDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private metric-defaults
   {:description             nil
@@ -20,41 +23,18 @@
    :entity_id               true
    :definition              nil})
 
-(defn- user-details
-  [username]
-  (dissoc (mt/fetch-user username) :date_joined :last_login))
-
-(deftest retrieve-metrics-test
-  (mt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id-1 :id} {:db_id database-id}]
-                  Table    [{table-id-2 :id} {:db_id database-id}]
-                  Metric   [segment-1        {:table_id table-id-1, :name "Metric 1", :description nil}]
-                  Metric   [_                {:table_id table-id-2}]
-                  Metric   [_                {:table_id table-id-1, :archived true}]]
-    (is (= [(merge
-             metric-defaults
-             {:creator_id (mt/user->id :rasta)
-              :creator    (user-details :rasta)
-              :entity_id  (:entity_id segment-1)
-              :name       "Metric 1"})]
-           (for [metric (u/prog1 (metric/retrieve-metrics table-id-1)
-                                 (assert (= 1 (count <>))))]
-             (update (dissoc (into {} metric) :id :table_id :created_at :updated_at)
-                     :creator dissoc :date_joined :last_login))))))
-
-
 (deftest update-test
   (testing "Updating"
     (mt/with-temp Metric [{:keys [id]} {:creator_id (mt/user->id :rasta)}]
       (testing "you should not be able to change the creator_id of a Metric"
         (is (thrown-with-msg?
-             UnsupportedOperationException
+             Exception
              #"You cannot update the creator_id of a Metric"
              (db/update! Metric id {:creator_id (mt/user->id :crowberto)}))))
 
       (testing "you shouldn't be able to set it to `nil` either"
         (is (thrown-with-msg?
-             UnsupportedOperationException
+             Exception
              #"You cannot update the creator_id of a Metric"
              (db/update! Metric id {:creator_id nil}))))
 

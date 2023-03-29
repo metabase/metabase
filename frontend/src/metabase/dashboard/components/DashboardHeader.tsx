@@ -8,15 +8,15 @@ import React, {
 import { t } from "ttag";
 import cx from "classnames";
 
-import { useOnMount } from "metabase/hooks/use-on-mount";
+import { useMount } from "react-use";
 
 import { getScrollY } from "metabase/lib/dom";
 import { Dashboard } from "metabase-types/api";
 
 import EditBar from "metabase/components/EditBar";
-import EditWarning from "metabase/components/EditWarning";
 import HeaderModal from "metabase/components/HeaderModal";
 import {
+  EditWarning,
   HeaderRoot,
   HeaderBadges,
   HeaderContent,
@@ -106,14 +106,12 @@ const DashboardHeader = ({
     [setDashboardAttribute, onSave, isEditing],
   );
 
-  useOnMount(() => {
+  useMount(() => {
     const timerId = setTimeout(() => {
       setShowSubHeader(false);
     }, 4000);
     return () => clearTimeout(timerId);
   });
-
-  const isDataApp = false;
 
   return (
     <div>
@@ -124,7 +122,11 @@ const DashboardHeader = ({
           buttons={editingButtons}
         />
       )}
-      {editWarning && <EditWarning title={editWarning} />}
+      {editWarning && (
+        <EditWarning className="wrapper">
+          <span>{editWarning}</span>
+        </EditWarning>
+      )}
       <HeaderModal
         isOpen={!!headerModalMessage}
         height={headerHeight}
@@ -137,7 +139,7 @@ const DashboardHeader = ({
         className={cx("QueryBuilder-section", headerClassName)}
         ref={header}
       >
-        <HeaderContent hasSubHeader={!isDataApp} showSubHeader={showSubHeader}>
+        <HeaderContent hasSubHeader showSubHeader={showSubHeader}>
           <HeaderCaptionContainer>
             <HeaderCaption
               key={dashboard.name}

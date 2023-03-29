@@ -7,13 +7,13 @@ import Warnings from "metabase/query_builder/components/Warnings";
 describe("Warnings", () => {
   it("should render a warning icon", () => {
     render(<Warnings warnings={["foo"]} />);
-    expect(screen.getByLabelText("warning icon"));
+    expect(screen.getByLabelText("warning icon")).toBeInTheDocument();
   });
 
   it("should render a warning message tooltip on hover", () => {
     render(<Warnings warnings={["test warning message"]} />);
     userEvent.hover(screen.getByLabelText("warning icon"));
-    screen.getByText("test warning message");
+    expect(screen.getByText("test warning message")).toBeInTheDocument();
   });
 
   it("should render multiple warnings", () => {
@@ -22,7 +22,7 @@ describe("Warnings", () => {
     userEvent.hover(screen.getByLabelText("warning icon"));
 
     warningMessages.forEach(message => {
-      screen.getByText(message);
+      expect(screen.getByText(message)).toBeInTheDocument();
     });
   });
 });

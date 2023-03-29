@@ -1,16 +1,20 @@
 (ns metabase.server.middleware.security
   "Ring middleware for adding security-related headers to API responses."
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [java-time :as t]
-            [metabase.analytics.snowplow :as snowplow]
-            [metabase.config :as config]
-            [metabase.models.setting :refer [defsetting]]
-            [metabase.public-settings :as public-settings]
-            [metabase.server.request.util :as request.u]
-            [metabase.util.i18n :refer [deferred-tru]]
-            [ring.util.codec :refer [base64-encode]])
-  (:import java.security.MessageDigest))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.config :as config]
+   [metabase.models.setting :refer [defsetting]]
+   [metabase.public-settings :as public-settings]
+   [metabase.server.request.util :as request.u]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [ring.util.codec :refer [base64-encode]])
+  (:import
+   (java.security MessageDigest)))
+
+(set! *warn-on-reflection* true)
 
 (defonce ^:private ^:const inline-js-hashes
   (letfn [(file-hash [resource-filename]

@@ -1,11 +1,12 @@
 (ns metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
-  (:require [clojure.string :as str]
-            [metabase.api.common :as api]
-            [metabase.models.permissions :as perms]
-            [metabase.models.query.permissions :as query-perms]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util.i18n :refer [tru]]))
+  (:require
+   [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.models.permissions :as perms]
+   [metabase.models.query.permissions :as query-perms]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util.i18n :refer [tru]]))
 
 (def ^:private max-rows-in-limited-downloads 10000)
 

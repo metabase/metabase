@@ -3,8 +3,6 @@ import React, { useCallback, useMemo } from "react";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
-import { isActionDashCard } from "metabase/writeback/utils";
-
 import type { DashboardOrderedCard, ClickBehavior } from "metabase-types/api";
 import type { UiParameter } from "metabase-lib/parameters/types";
 
@@ -67,11 +65,8 @@ function TypeSelector({
   moveToNextPage,
 }: TypeSelectorProps) {
   const options = useMemo(() => {
-    if (isActionDashCard(dashcard)) {
-      return clickBehaviorOptions;
-    }
     return clickBehaviorOptions.filter(option => option.value !== "action");
-  }, [dashcard]);
+  }, []);
 
   const handleSelect = useCallback(
     value => {

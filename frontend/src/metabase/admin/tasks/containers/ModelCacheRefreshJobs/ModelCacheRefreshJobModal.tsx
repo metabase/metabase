@@ -3,12 +3,12 @@ import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
+import { usePrevious } from "react-use";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 
 import PersistedModels from "metabase/entities/persisted-models";
-import { usePrevious } from "metabase/hooks/use-previous";
 
 import { ModelCacheRefreshStatus } from "metabase-types/api";
 

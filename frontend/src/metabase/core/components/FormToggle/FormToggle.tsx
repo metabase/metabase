@@ -8,6 +8,7 @@ export interface FormToggleProps extends Omit<ToggleProps, "value" | "onBlur"> {
   name: string;
   title?: string;
   description?: ReactNode;
+  optional?: boolean;
 }
 
 const FormToggle = forwardRef(function FormToggle(
@@ -18,6 +19,7 @@ const FormToggle = forwardRef(function FormToggle(
     title,
     description,
     onChange,
+    optional,
     ...props
   }: FormToggleProps,
   ref: Ref<HTMLDivElement>,
@@ -43,6 +45,7 @@ const FormToggle = forwardRef(function FormToggle(
       orientation="horizontal"
       htmlFor={id}
       error={touched ? error : undefined}
+      optional={optional}
     >
       <Toggle
         {...props}

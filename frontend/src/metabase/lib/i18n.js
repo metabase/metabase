@@ -2,6 +2,7 @@ import { addLocale, useLocale } from "ttag";
 import moment from "moment-timezone";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
 
 // note this won't refresh strings that are evaluated at load time
 export async function loadLocalization(locale) {
@@ -26,23 +27,15 @@ export async function loadLocalization(locale) {
 }
 
 // Tell Moment.js to use the value of the start-of-week Setting for its current locale
-function updateMomentStartOfWeek() {
+export function updateMomentStartOfWeek() {
   const startOfWeekDayName = MetabaseSettings.get("start-of-week");
   if (!startOfWeekDayName) {
     return;
   }
 
-  const START_OF_WEEK_DAYS = [
-    "sunday",
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday",
-    "saturday",
-  ];
-
-  const startOfWeekDayNumber = START_OF_WEEK_DAYS.indexOf(startOfWeekDayName);
+  const startOfWeekDayNumber = DAY_OF_WEEK_OPTIONS.findIndex(
+    ({ id }) => id === startOfWeekDayName,
+  );
   if (startOfWeekDayNumber === -1) {
     return;
   }

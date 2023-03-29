@@ -19,7 +19,6 @@ const HoursMinutesInput = ({
   <div className="flex align-center">
     <NumericInput
       data-testid="hours-input"
-      className="input"
       style={{ height: 36 }}
       size={2}
       maxLength={2}

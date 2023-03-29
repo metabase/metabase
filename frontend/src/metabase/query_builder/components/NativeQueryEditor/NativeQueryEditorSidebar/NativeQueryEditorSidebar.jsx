@@ -7,6 +7,7 @@ import { isMac } from "metabase/lib/browser";
 import DataReferenceButton from "metabase/query_builder/components/view/DataReferenceButton";
 import NativeVariablesButton from "metabase/query_builder/components/view/NativeVariablesButton";
 import SnippetSidebarButton from "metabase/query_builder/components/view/SnippetSidebarButton";
+import PreviewQueryButton from "metabase/query_builder/components/view/PreviewQueryButton";
 
 import {
   Container,
@@ -14,6 +15,7 @@ import {
 } from "./NativeQueryEditorSidebar.styled";
 
 const propTypes = {
+  question: PropTypes.object,
   cancelQuery: PropTypes.func,
   isResultDirty: PropTypes.bool,
   isRunnable: PropTypes.bool,
@@ -28,6 +30,7 @@ const ICON_SIZE = 18;
 
 const NativeQueryEditorSidebar = props => {
   const {
+    question,
     cancelQuery,
     isResultDirty,
     isRunnable,
@@ -64,6 +67,9 @@ const NativeQueryEditorSidebar = props => {
       <NativeVariablesButton {...props} size={ICON_SIZE} className="mt3" />
       {showSnippetSidebarButton && (
         <SnippetSidebarButton {...props} size={ICON_SIZE} className="mt3" />
+      )}
+      {PreviewQueryButton.shouldRender({ question }) && (
+        <PreviewQueryButton {...props} />
       )}
       {!!canRunQuery && (
         <RunButtonWithTooltipStyled

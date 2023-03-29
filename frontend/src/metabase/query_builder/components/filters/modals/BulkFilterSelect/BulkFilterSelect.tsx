@@ -80,6 +80,7 @@ export const BulkFilterSelect = ({
               </SelectFilterButton>
             )
       }
+      maxWidth={370}
       popoverContent={({ closePopover }) => (
         <SelectFilterPopover
           query={query}

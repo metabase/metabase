@@ -12,6 +12,7 @@ export interface HomeContentProps {
   databases?: Database[];
   recentItems?: RecentItem[];
   popularItems?: PopularItem[];
+  isXrayEnabled: boolean;
 }
 
 const HomeContent = (props: HomeContentProps): JSX.Element | null => {
@@ -69,8 +70,11 @@ const isRecentSection = ({
   return user.has_question_and_dashboard && recentItems.length > 0;
 };
 
-const isXraySection = ({ databases = [] }: HomeContentProps): boolean => {
-  return databases.some(isSyncCompleted);
+const isXraySection = ({
+  databases = [],
+  isXrayEnabled,
+}: HomeContentProps): boolean => {
+  return databases.some(isSyncCompleted) && isXrayEnabled;
 };
 
 export default HomeContent;

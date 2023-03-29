@@ -1,21 +1,22 @@
 (ns metabase-enterprise.sandbox.test-util
   "Shared test utilities for sandbox tests."
-  (:require [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.table :refer [Table]]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.test.data :as data]
-            [metabase.test.data.impl :as data.impl]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+  (:require
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.table :refer [Table]]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.test.data :as data]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.util.test :as tt]))
 
 (defn do-with-user-attributes [test-user-name-or-user-id attributes-map thunk]
   (let [user-id (test.users/test-user-name-or-user-id->user-id test-user-name-or-user-id)]
@@ -89,7 +90,7 @@
 (defmacro with-gtaps-for-user
   "Like `with-gtaps`, but for an arbitrary User. `test-user-name-or-user-id` can be a predefined test user e.g. `:rasta`
   or an arbitrary User ID."
-  {:style/indent 2}
+  {:style/indent :defn}
   [test-user-name-or-user-id gtaps-and-attributes-map & body]
   `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) ~test-user-name-or-user-id (fn [~'&group] ~@body)))
 
@@ -107,13 +108,13 @@
 
   *  `:remappings`, if specified, is saved as the `:attribute_remappings` property of the GTAP.
 
-    (mt/with-gtaps {:gtaps      {:checkins {:query      {:database (data/id), ...}
-                                            :remappings {:user_category [\"variable\" ...]}}}
-                    :attributes {\"user_category\" 1}}
+    (met/with-gtaps {:gtaps      {:checkins {:query      {:database (data/id), ...}
+                                             :remappings {:user_category [\"variable\" ...]}}}
+                     :attributes {\"user_category\" 1}}
       (mt/run-mbql-query checkins {:limit 2}))
 
   Introduces `&group` anaphor, bound to the PermissionsGroup associated with this GTAP."
-  {:style/indent 1}
+  {:style/indent :defn}
   [gtaps-and-attributes-map & body]
   `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) :rasta (fn [~'&group] ~@body)))
 

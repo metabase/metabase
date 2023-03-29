@@ -8,13 +8,17 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Full-app embedding" %}
 
-Metabase offers several [types of embedding](./introduction.md) with different levels of customization and security.
+**Full-app embedding** is what you want if you want to offer [multi-tenant, self-service analytics](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics).
 
-**Full-app embedding** is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/learn/questions/drill-through) into your data.
+Full-app embedding is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/learn/questions/drill-through) into your data.
 
-If you only want to set up a fixed number of filters and drill-down views into your data (i.e., prevent people from creating their own [questions](https://www.metabase.com/glossary/question)), you might prefer [Signed embedding](./signed-embedding.md).
+## Full-app embedding demo
 
-## Prerequisites
+To get a feel for what you can do with full-app embedding, check out our [full-app embedding demo](https://www.metabase.com/embedding-demo).
+
+To see the query builder in action, click on **Reports** > **+ New** > **Question**.
+
+## Prerequisites for full-app embedding
 
 1. Make sure you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [paid plan](https://store.metabase.com/checkout/login-details).
 2. Organize people into Metabase [groups](../people-and-groups/start.md).
@@ -40,8 +44,8 @@ If you're dealing with a [multi-tenant](https://www.metabase.com/learn/customer-
    - [Embed Metabase in a different domain](#embedding-metabase-in-a-different-domain).
    - [Secure your full-app embed](#securing-full-app-embeds).
 3. Optional: Enable communication to and from the embedded Metabase using supported [`postMessage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) messages:
-    - [From Metabase](#supported-postmessage-messages-from-embedded-metabase)
-    - [To Metabase](#supported-postmessage-messages-to-embedded-metabase)
+   - [From Metabase](#supported-postmessage-messages-from-embedded-metabase)
+   - [To Metabase](#supported-postmessage-messages-to-embedded-metabase)
 4. Optional: Set parameters to [show or hide Metabase UI components](#showing-or-hiding-metabase-ui-components).
 
 Once you're ready to roll out your full-app embed, make sure that people **allow** browser cookies from Metabase, otherwise they won't be able to log in.
@@ -62,16 +66,16 @@ To embed a specific Metabase dashboard, use the dashboard's URL, such as:
 
 Use this option if you want to send people directly to your SSO login screen (i.e., skip over the Metabase login screen with an SSO button), and redirect to Metabase automatically upon authentication.
 
-You'll need to set the `src` attribute to your auth endpoint, with a parameter containing the encoded Metabase URL. For example, to send people to your SSO login page and automatically redirect them to `http://metabase.yourcompany.com/dashboard/1`:
+You'll need to set the `src` attribute to your auth endpoint, with a `return_to` parameter pointing to the encoded Metabase URL. For example, to send people to your SSO login page and automatically redirect them to `http://metabase.yourcompany.com/dashboard/1`:
 
 ```
-https://metabase.example.com/auth/sso?redirect=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1
+https://metabase.example.com/auth/sso?return_to=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1
 ```
 
 If you're using [JWT](../people-and-groups/authenticating-with-jwt.md), you can use the relative path for the redirect (i.e., your Metabase URL without the [site URL](../configuring-metabase/settings.md#site-url)). For example, to send people to a Metabase page at `/dashboard/1`:
 
 ```
-https://metabase.example.com/auth/sso?jwt=<token>&redirect=%2Fdashboard%2F1
+https://metabase.example.com/auth/sso?jwt=<token>&return_to=%2Fdashboard%2F1
 ```
 
 You must URL encode (or double encode, depending on your web setup) all of the parameters in your redirect link, including parameters for filters (e.g., `filter=value`) and [UI settings](#showing-or-hiding-metabase-ui-components) (e.g., `top_nav=true`). For example, if you added two filter parameters to the JWT example shown above, your `src` link would become:
@@ -146,43 +150,15 @@ For example, you can disable Metabase's [top nav bar](#top_nav) and [side nav me
 
 ![Top nav and side nav disabled](./images/no-top-no-side.png)
 
-### top_nav
+### action_buttons
 
-Hidden by default. To show the top navigation bar:
+Visible by default on question pages when the [header](#header) is enabled.
 
-`top_nav=true`
+To hide the action buttons such as **Filter**, **Summarize**, the query builder button, and so on:
 
-![Top nav bar](./images/top-nav.png)
+`header=false&action_buttons=false`
 
-### search
-
-Hidden by default. To show the search box in the top nav:
-
-`top_nav=true&search=true`
-
-### new_button
-
-Hidden by default. To show the **+ New** button used to create queries or dashboards:
-
-`top_nav=true&new_button=true`
-
-### side_nav
-
-The navigation sidebar is shown on `/collection` and home page routes, and hidden everywhere else by default.
-
-To allow people to minimize the sidebar:
-
-`top_nav=true&side_nav=true`
-
-![Side nav](./images/side-nav.png)
-
-### header
-
-Visible by default on question and dashboard pages.
-
-To hide a question or dashboard's title, [additional info](#additional_info), and [action buttons](#action_buttons):
-
-`header=false`
+![Action buttons](./images/action-buttons.png)
 
 ### additional_info
 
@@ -194,15 +170,65 @@ To hide the gray text "Edited X days ago by FirstName LastName", as well as the 
 
 ![Additional info](./images/additional-info.png)
 
-### action_buttons
+### breadcrumbs
 
-Visible by default on question pages when the [header](#header) is enabled.
+Shown by default in the top nav bar. Collection breadcrumbs show the path to the item (i.e., the collection(s) the item is in). To hide the breadcrumbs:
 
-To hide the action buttons such as **Filter**, **Summarize**, the query builder button, and so on:
+`breadcrumbs=false`
 
-`header=false&action_buttons=false`
+### header
 
-![Action buttons](./images/action-buttons.png)
+Visible by default on question and dashboard pages.
+
+To hide a question or dashboard's title, [additional info](#additional_info), and [action buttons](#action_buttons):
+
+`header=false`
+
+### logo
+
+Whether to show the logo that opens and closes the sidebar nav. Default is true. How Metabase displays the logo depends on the `side_nav` setting. Here's a rough breakdown of how these two parameters interact:
+
+If `logo=true` and:
+
+- `side_nav=true`: Looks like regular Metabase (with whatever logo you have set).
+- `side_nav=false`: There is no sidebar, so nothing happens when you hover over the logo.
+
+If `logo=false` and:
+
+- `side_nav=true`: Metabase shows the generic sidebar icon, with a gray color in normal state, and a brand color on hover.
+- `side_nav=false`: There is no side nav nor logo, so the breadcrumbs move all the way to the left of the screen.
+
+### new_button
+
+Hidden by default. To show the **+ New** button used to create queries or dashboards:
+
+`top_nav=true&new_button=true`
+
+### search
+
+Hidden by default. To show the search box in the top nav:
+
+`top_nav=true&search=true`
+
+### side_nav
+
+The navigation sidebar is shown on `/collection` and home page routes, and hidden everywhere else by default.
+
+To allow people to minimize the sidebar:
+
+`top_nav=true&side_nav=true`
+
+![Side nav](./images/side-nav.png)
+
+### top_nav
+
+Shown by default. To hide the top navigation bar:
+
+`top_nav=false`
+
+![Top nav bar](./images/top-nav.png)
+
+`search`, `new_button`, and `breadcrumbs` all depend on `top_nav` being set to `true`. If these three children (`search`, `new_button`, and `breadcrumbs`) are all false, Metabase will hide the top nav bar.
 
 ## Reference app
 

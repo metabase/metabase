@@ -1,13 +1,14 @@
 (ns metabase.cmd.env-var-dox
   "Code to generate docs for environment variables. You can generate
   docs by running: `clojure -M:ee:run environment-variables-documentation`"
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.namespace.find :as ns.find]
-            [clojure.tools.reader.edn :as edn]
-            [metabase.models.setting :as setting]
-            [metabase.util :as u]))
+  (:require
+   [clojure.java.classpath :as classpath]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.namespace.find :as ns.find]
+   [clojure.tools.reader.edn :as edn]
+   [metabase.models.setting :as setting]
+   [metabase.util :as u]))
 
 (def env-vars-not-to-mess-with
   "Flamber advises that people avoid touching these environment variables."

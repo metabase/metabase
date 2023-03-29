@@ -1,6 +1,9 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import EditableText from "metabase/core/components/EditableText";
+import Link from "metabase/core/components/Link";
+
+import { color } from "metabase/lib/colors";
 
 export const Root = styled.div`
   padding: 1rem 1.5rem 0;
@@ -36,6 +39,13 @@ export const ContentSection = styled.div<ContentSectionProps>`
   }
 `;
 
-export const Header = styled.h3`
+export const HeaderContainer = styled.div`
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   margin-top: 0.5rem;
+`;
+
+export const HeaderLink = styled(Link)`
+  color: ${color("brand")};
 `;

@@ -28,7 +28,7 @@ It's always a good idea to start with a quick sanity check:
    - creating a "contains" filter for string columns, or
    - asking your database admin.
 3. Ask your Metabase admin to help you check if:
-   - Metabase is [up to date](../databases/connecting.md#manually-syncing-tables-and-columns) with your database,
+   - Metabase is [up to date](../databases/sync-scan.md) with your database,
    - the column is [visible](../data-modeling/metadata-editing.md#column-visibility) in Metabase,
    - you have the correct [data permissions](../permissions/data.md) to access the column.
 
@@ -37,7 +37,7 @@ It's always a good idea to start with a quick sanity check:
 If you're having trouble filtering on a:
 
 - [Custom column](../questions/query-builder/introduction.md#creating-custom-columns): check if the custom expression is working as expected. For example, your custom expression might be returning blank values when you expect numbers.
-- [SQL field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type): make sure you're using the correct [field filter syntax](../questions/native-editor/sql-parameters.md#field-filter-syntax), then see [Troubleshooting SQL variables](./sql.md#field-filter-variables).
+- [SQL field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type): make sure you're using the correct [field filter syntax](../questions/native-editor/sql-parameters.md#field-filter-syntax), then see [Troubleshooting SQL variables](./sql.md#sql-variables-and-field-filters).
 
 **Explanation**
 
@@ -63,7 +63,7 @@ If you're not a Metabase admin, you might have to ask your admin to help you wit
    - directly from the database.
 2. Cast the column to a data type that matches the desired [filter type](../questions/query-builder/introduction.md#filter-types). You can:
    - [cast strings or numbers to dates](../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page, or
-   - change the data type of the column in your database, and [re-sync](../databases/connecting.md#manually-syncing-tables-and-columns) the database schema.
+   - change the data type of the column in your database, and [re-sync](../databases/sync-scan.md#manually-syncing-tables-and-columns) the database schema.
 
 **Explanation**
 
@@ -74,11 +74,11 @@ Timestamps, in particular, are the root of all evil, so please be patient with y
 ## Related topics
 
 - [Troubleshooting linked filters](./linked-filters.md)
-- [Troubleshooting SQL variables](./sql.md#field-filter-variables)
+- [Troubleshooting SQL variables and field filters](./sql.md#sql-variables-and-field-filters)
 - [Troubleshooting dates and times](./timezones.md)
 - [Creating dropdown filters](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter)
-- [Creating SQL filters](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type)
-- [Field filter gotchas](../questions/native-editor/sql-parameters.md#field-filter-gotchas)
+- [Creating SQL filters](../questions/native-editor/sql-parameters.md)
+
 
 ## Are you still stuck?
 

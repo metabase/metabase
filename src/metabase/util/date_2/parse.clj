@@ -1,13 +1,17 @@
 (ns metabase.util.date-2.parse
-  (:require [clojure.string :as str]
-            [java-time :as t]
-            [metabase.util.date-2.common :as u.date.common]
-            [metabase.util.date-2.parse.builder :as b]
-            [metabase.util.i18n :refer [tru]]
-            [schema.core :as s])
-  (:import [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset]
-           java.time.format.DateTimeFormatter
-           [java.time.temporal Temporal TemporalAccessor TemporalField TemporalQueries]))
+  (:require
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.util.date-2.common :as u.date.common]
+   [metabase.util.date-2.parse.builder :as b]
+   [metabase.util.i18n :refer [tru]]
+   [schema.core :as s])
+  (:import
+   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
+   (java.time.format DateTimeFormatter)
+   (java.time.temporal Temporal TemporalAccessor TemporalField TemporalQueries)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^{:arglists '([temporal-accessor query])} query
   (let [queries {:local-date  (TemporalQueries/localDate)

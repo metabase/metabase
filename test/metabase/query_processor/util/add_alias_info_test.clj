@@ -1,14 +1,16 @@
 (ns metabase.query-processor.util.add-alias-info-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [metabase.driver :as driver]
-            [metabase.driver.h2 :as h2]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.fix-bad-references
+    :as fix-bad-refs]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.test :as mt]))
 
 (comment h2/keep-me)
 
@@ -341,7 +343,7 @@
                                                                           ::add/position      0}]
                                               [:value 1 {:base_type         :type/Text
                                                          :coercion_strategy nil
-                                                         :database_type     "VARCHAR"
+                                                         :database_type     "CHARACTER VARYING"
                                                          :effective_type    :type/Text
                                                          :name              "CATEGORY"
                                                          :semantic_type     :type/Category}]]}]
@@ -531,7 +533,7 @@
                                             "Doohickey"
                                             {:base_type         :type/Text
                                              :coercion_strategy nil
-                                             :database_type     "VARCHAR"
+                                             :database_type     "CHARACTER VARYING"
                                              :effective_type    :type/Text
                                              :name              "CATEGORY"
                                              :semantic_type     :type/Category}]]}
@@ -643,25 +645,26 @@
 
 (deftest fuzzy-field-info-test
   (testing "[[add/alias-from-join]] should match Fields in the Join source query even if they have temporal units"
-    (mt/dataset sample-dataset
-      (mt/with-everything-store
-        (is (= {:field-name              "CREATED_AT"
-                :join-is-this-level?     "Q2"
-                :alias-from-join         "Products__CREATED_AT"
-                :alias-from-source-query nil}
-               (#'add/expensive-field-info
-                (mt/$ids nil
-                  {:source-table $$reviews
-                   :joins        [{:source-query {:source-table $$reviews
-                                                  :breakout     [[:field %products.created_at
-                                                                  {::add/desired-alias "Products__CREATED_AT"
-                                                                   ::add/position      0
-                                                                   ::add/source-alias  "CREATED_AT"
-                                                                   ::add/source-table  "Products"
-                                                                   :join-alias         "Products"
-                                                                   :temporal-unit      :month}]]}
-                                   :alias        "Q2"}]})
-                [:field (mt/id :products :created_at) {:join-alias "Q2"}])))))))
+    (mt/with-driver :h2
+      (mt/dataset sample-dataset
+        (mt/with-everything-store
+          (is (= {:field-name              "CREATED_AT"
+                  :join-is-this-level?     "Q2"
+                  :alias-from-join         "Products__CREATED_AT"
+                  :alias-from-source-query nil}
+                 (#'add/expensive-field-info
+                  (mt/$ids nil
+                    {:source-table $$reviews
+                     :joins        [{:source-query {:source-table $$reviews
+                                                    :breakout     [[:field %products.created_at
+                                                                    {::add/desired-alias "Products__CREATED_AT"
+                                                                     ::add/position      0
+                                                                     ::add/source-alias  "CREATED_AT"
+                                                                     ::add/source-table  "Products"
+                                                                     :join-alias         "Products"
+                                                                     :temporal-unit      :month}]]}
+                                     :alias        "Q2"}]})
+                  [:field (mt/id :products :created_at) {:join-alias "Q2"}]))))))))
 
 (deftest ^:parallel expression-from-source-query-alias-test
   (testing "Make sure we use the exported alias from the source query for expressions (#21131)"

@@ -99,22 +99,20 @@ describe("TableInfo", () => {
   });
 
   describe("after metadata has been fetched", () => {
-    beforeEach(() => {
-      setup({
-        id: PRODUCTS.id,
-        table: productsTable,
-      });
-    });
-
     it("should display the given table's description", () => {
-      expect(screen.getByText(PRODUCTS.description)).toBeInTheDocument();
+      setup({ id: PRODUCTS.id, table: productsTable });
+      expect(
+        screen.getByText(PRODUCTS.description as string),
+      ).toBeInTheDocument();
     });
 
     it("should show a count of columns on the table", () => {
+      setup({ id: PRODUCTS.id, table: productsTable });
       expect(screen.getByText("3 columns")).toBeInTheDocument();
     });
 
     it("should list connected tables", () => {
+      setup({ id: PRODUCTS.id, table: productsTable });
       expect(screen.getByText("Connected Table")).toBeInTheDocument();
     });
   });

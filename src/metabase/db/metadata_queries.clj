@@ -3,17 +3,19 @@
 
   TODO -- these have nothing to do with the application database. This namespace should be renamed something like
   `metabase.driver.util.metadata-queries`."
-  (:require [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.sync.interface :as i]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.schema.helpers :as helpers]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.sync.interface :as i]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (defn- qp-query [db-id mbql-query]
   {:pre [(integer? db-id)]}
@@ -32,19 +34,6 @@
             ;; this seeming useless `merge` statement IS in fact doing something important. `ql/query` is a threading
             ;; macro for building queries. Do not remove
             (assoc mbql-query :source-table table-id)))
-
-(defn table-row-count
-  "Fetch the row count of `table` via the query processor."
-  [table]
-  {:pre  [(map? table)]
-   :post [(integer? %)]}
-  (let [results (qp-query (:db_id table) {:source-table (u/the-id table)
-                                          :aggregation  [[:count]]})]
-    (try (-> results first first long)
-         (catch Throwable e
-           (log/error "Error fetching table row count. Query returned:\n"
-                      (u/pprint-to-str results))
-           (throw e)))))
 
 (def ^Integer absolute-max-distinct-values-limit
   "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or
@@ -94,10 +83,16 @@
   inferring semantic types and what-not; we don't want to scan millions of values at any rate."
   10000)
 
+(def nested-field-sample-limit
+  "Number of rows to sample for tables with nested (e.g., JSON) columns."
+  500)
+
 (def TableRowsSampleOptions
   "Schema for `table-rows-sample` options"
-  (s/maybe {(s/optional-key :truncation-size) s/Int
-            (s/optional-key :rff)             s/Any}))
+  (s/maybe {(s/optional-key :truncation-size)  s/Int
+            (s/optional-key :limit)            s/Int
+            (s/optional-key :order-by)         (helpers/distinct (helpers/non-empty [mbql.s/OrderBy]))
+            (s/optional-key :rff)              s/Any}))
 
 (defn- text-field?
   "Identify text fields which can accept our substring optimization.
@@ -110,22 +105,27 @@
 
 (defn- table-rows-sample-query
   "Returns the mbql query to query a table for sample rows"
-  [table fields {:keys [truncation-size] :as _opts}]
-  (let [driver             (-> table table/database driver.u/database->driver)
+  [table
+   fields
+   {:keys [truncation-size limit order-by] :or {limit max-sample-rows} :as _opts}]
+  (let [database           (table/database table)
+        driver             (driver.u/database->driver database)
         text-fields        (filter text-field? fields)
-        field->expressions (when (and truncation-size (driver/supports? driver :expressions))
+        field->expressions (when (and truncation-size (driver/database-supports? driver :expressions database))
                              (into {} (for [field text-fields]
                                         [field [(str (gensym "substring"))
-                                                [:substring [:field (u/the-id field) nil] 1 truncation-size]]])))]
+                                                [:substring [:field (u/the-id field) nil]
+                                                 1 truncation-size]]])))]
     {:database   (:db_id table)
      :type       :query
-     :query      {:source-table (u/the-id table)
-                  :expressions  (into {} (vals field->expressions))
-                  :fields       (vec (for [field fields]
-                                       (if-let [[expression-name _] (get field->expressions field)]
-                                         [:expression expression-name]
-                                         [:field (u/the-id field) nil])))
-                  :limit        max-sample-rows}
+     :query      (cond-> {:source-table (u/the-id table)
+                          :expressions  (into {} (vals field->expressions))
+                          :fields       (vec (for [field fields]
+                                               (if-let [[expression-name _] (get field->expressions field)]
+                                                 [:expression expression-name]
+                                                 [:field (u/the-id field) nil])))
+                          :limit        limit}
+                   order-by (assoc :order-by order-by))
      :middleware {:format-rows?           false
                   :skip-results-metadata? true}}))
 
@@ -140,6 +140,10 @@
   ([table :- i/TableInstance, fields :- [i/FieldInstance], rff]
    (table-rows-sample table fields rff nil))
   ([table :- i/TableInstance, fields :- [i/FieldInstance], rff, opts :- TableRowsSampleOptions]
-   (let [query   (table-rows-sample-query table fields opts)
-         qp      (resolve 'metabase.query-processor/process-query)]
+   (let [query (table-rows-sample-query table fields opts)
+         qp    (resolve 'metabase.query-processor/process-query)]
      (qp query {:rff rff}))))
+
+(defmethod driver/table-rows-sample :default
+  [_driver table fields rff opts]
+  (table-rows-sample table fields rff opts))

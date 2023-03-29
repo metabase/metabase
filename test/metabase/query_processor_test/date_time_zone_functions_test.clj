@@ -1,12 +1,18 @@
 (ns metabase.query-processor-test.date-time-zone-functions-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Card]]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test :as mt]
-            [metabase.util.date-2 :as u.date]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.models :refer [Card]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Date extract tests                                              |
@@ -112,7 +118,7 @@
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
             (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
 
-     ;; mongo doesn't supports cast string to date
+    ;; mongo doesn't support casting string to date
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with date columns"
         (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
@@ -120,71 +126,85 @@
                 {:keys [expected-fn query-fn]}
                 extraction-test-cases]
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-            (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
+            (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))))
 
-    (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
-      (testing "works with literal value"
-        (let [ops [:get-year :get-quarter :get-month :get-day
-                   :get-day-of-week :get-hour :get-minute :get-second]]
-          (is (= {:get-day         3
-                  :get-day-of-week 2
-                  :get-hour        7
-                  :get-minute      10
-                  :get-month       10
-                  :get-quarter     4
-                  :get-second      20
-                  :get-year        2022}
-                 (->> (mt/run-mbql-query times
-                                         {:expressions (into {} (for [op ops]
-                                                                  [(name op) [op "2022-10-03T07:10:20"]]))
-                                          :fields      (into [] (for [op ops] [:expression (name op)]))})
-                      (mt/formatted-rows (repeat int))
-                      first
-                      (zipmap ops)))))))
+(deftest extraction-function-literal-value-test
+  (mt/with-temporary-setting-values [start-of-week   :sunday
+                                     report-timezone "UTC"]
+    (mt/dataset times-mixed
+      (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
+        (let [ops   [:get-year :get-quarter :get-month :get-day
+                     :get-day-of-week :get-hour :get-minute :get-second]
+              query (mt/mbql-query times
+                      {:expressions (into {} (for [op ops]
+                                               [(name op) [op "2022-10-03T07:10:20"]]))
+                       :fields      (into [] (for [op ops] [:expression (name op)]))})]
+          (mt/with-native-query-testing-context query
+            (is (= {:get-day         3
+                    :get-day-of-week 2
+                    :get-hour        7
+                    :get-minute      10
+                    :get-month       10
+                    :get-quarter     4
+                    :get-second      20
+                    :get-year        2022}
+                   (->> (qp/process-query query)
+                        (mt/formatted-rows (repeat int))
+                        first
+                        (zipmap ops))))))))))
 
-    (testing "with timestamptz columns"
-      (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :temporal-extract))
-        (mt/with-report-timezone-id "Asia/Kabul"
-          (is (= (if (or (= driver/*driver* :sqlserver)
-                         (driver/supports? driver/*driver* :set-timezone))
-                     {:get-year        2004,
-                      :get-quarter     1,
-                      :get-month       1,
-                      :get-day         1,
-                      :get-day-of-week 5,
+(deftest extraction-function-timestamp-with-time-zone-test
+  (mt/dataset times-mixed
+    (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :temporal-extract))
+      (mt/with-temporary-setting-values [start-of-week   :sunday
+                                         report-timezone "Asia/Kabul"]
+        (let [ops   [:get-year :get-quarter :get-month :get-day
+                     :get-day-of-week :get-hour :get-minute :get-second]
+              query (mt/mbql-query times {:expressions (into {"shifted-day"  [:datetime-subtract $dt_tz 78 :day]
+                                                              ;; the idea is to extract a column with value =
+                                                              ;; 2004-01-01 02:49:09 +04:30 this way the UTC value is
+                                                              ;; 2003-12-31 22:19:09 +00:00 which will make sure the
+                                                              ;; year, quarter, month, day, week is extracted
+                                                              ;; correctly TODO: it's better to use a literal for
+                                                              ;; this, but the function is not working properly with
+                                                              ;; OffsetDatetime for all drivers, so we'll go wit this
+                                                              ;; for now
+                                                              "shifted-hour" [:datetime-subtract
+                                                                              [:expression "shifted-day"]
+                                                                              4
+                                                                              :hour]}
+                                                             (for [op ops]
+                                                               [(name op) [op [:expression "shifted-hour"]]]))
+                                          :fields      (into [] (for [op ops] [:expression (name op)]))
+                                          :filter      [:= $index 1]
+                                          :limit       1})]
+          (mt/with-native-query-testing-context query
+            (is (= (if (or (= driver/*driver* :sqlserver)
+                           (driver/database-supports? driver/*driver* :set-timezone (mt/db)))
+                     {:get-year        2004
+                      :get-quarter     1
+                      :get-month       1
+                      :get-day         1
+                      :get-day-of-week 5
                       ;; TIMEZONE FIXME these drivers are returning the extracted hours in
                       ;; the timezone that they were inserted in
                       ;; maybe they need explicit convert-timezone to the report-tz before extraction?
                       :get-hour        (case driver/*driver*
-                                         (:sqlserver :presto :presto-jdbc :snowflake :oracle) 5
-                                         2),
+                                         (:sqlserver :presto-jdbc :snowflake :oracle) 5
+                                         2)
                       :get-minute      (case driver/*driver*
-                                         (:sqlserver :presto :presto-jdbc :snowflake :oracle) 19
-                                         49),
+                                         (:sqlserver :presto-jdbc :snowflake :oracle) 19
+                                         49)
                       :get-second      9}
-                     {:get-year        2003,
-                      :get-quarter     4,
-                      :get-month       12,
-                      :get-day         31,
-                      :get-day-of-week 4,
-                      :get-hour        22,
-                      :get-minute      19,
+                     {:get-year        2003
+                      :get-quarter     4
+                      :get-month       12
+                      :get-day         31
+                      :get-day-of-week 4
+                      :get-hour        22
+                      :get-minute      19
                       :get-second      9})
-                 (let [ops [:get-year :get-quarter :get-month :get-day
-                            :get-day-of-week :get-hour :get-minute :get-second]]
-                    (->> (mt/mbql-query times {:expressions (into {"shifted-day"  [:datetime-subtract $dt_tz 78 :day]
-                                                                   ;; the idea is to extract a column with value = 2004-01-01 02:49:09 +04:30
-                                                                   ;; this way the UTC value is 2003-12-31 22:19:09 +00:00 which will make sure
-                                                                   ;; the year, quarter, month, day, week is extracted correctly
-                                                                   ;; TODO: it's better to use a literal for this, but the function is not working properly
-                                                                   ;; with OffsetDatetime for all drivers, so we'll go wit this for now
-                                                                   "shifted-hour" [:datetime-subtract [:expression "shifted-day"] 4 :hour]}
-                                                                  (for [op ops]
-                                                                    [(name op) [op [:expression "shifted-hour"]]]))
-                                               :fields      (into [] (for [op ops] [:expression (name op)]))
-                                               :filter      [:= $index 1]
-                                               :limit       1})
-                        mt/process-query
+                   (->> (mt/process-query query)
                         (mt/formatted-rows (repeat int))
                         first
                         (zipmap ops))))))))))
@@ -223,7 +243,7 @@
           (is (= expected (test-temporal-extract query))))))))
 
 (deftest temporal-extraction-with-datetime-arithmetic-expression-tests
-  (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract :expressions :date-arithmetics)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
               [{:title    "Nested interval addition expression"
@@ -250,52 +270,48 @@
        (map first)))
 
 (deftest extract-week-tests
-  (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
-    (mt/dataset times-mixed
-      ;; the native get week of sqlite is not iso, and it's not easy
-      ;; to implement in raw sql, so skips it for now
-      (when-not (#{:sqlite} driver/*driver*)
-        (testing "iso8601 week"
-          (is (= [52 52 1 1 1 1 1 1 1 53]
-                 (test-extract-week (mt/id :weeks :d) :iso)))
-          (testing "shouldn't change if start-of-week settings change"
-            (mt/with-temporary-setting-values [start-of-week :monday]
-              (is (= [52 52 1 1 1 1 1 1 1 53]
-                     (test-extract-week (mt/id :weeks :d) :iso)))))))
+  (mt/with-temporary-setting-values [start-of-week :sunday]
+    (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
+      (mt/dataset times-mixed
+        ;; the native get week of sqlite is not iso, and it's not easy
+        ;; to implement in raw sql, so skips it for now
+        (when-not (#{:sqlite} driver/*driver*)
+          (testing "iso8601 week"
+            (is (= [52 52 1 1 1 1 1 1 1 53]
+                   (test-extract-week (mt/id :weeks :d) :iso)))
+            (testing "shouldn't change if start-of-week settings change"
+              (mt/with-temporary-setting-values [start-of-week :monday]
+                (is (= [52 52 1 1 1 1 1 1 1 53]
+                       (test-extract-week (mt/id :weeks :d) :iso)))))))
 
         ;; check the (defmethod sql.qp/date [:snowflake :week-of-year-us]) for why we skip snowflake
-      (when-not (#{:snowflake} driver/*driver*)
-        (testing "us week"
+        (when-not (#{:snowflake} driver/*driver*)
+          (testing "us week"
+            (is (= [1 2 2 2 2 2 2 2 3 1]
+                   (test-extract-week (mt/id :weeks :d) :us)))
+            (testing "shouldn't change if start-of-week settings change"
+              (mt/with-temporary-setting-values [start-of-week :monday]
+                (is (= [1 2 2 2 2 2 2 2 3 1]
+                       (test-extract-week (mt/id :weeks :d) :us)))))))
+
+        (testing "instance week"
           (is (= [1 2 2 2 2 2 2 2 3 1]
-                 (test-extract-week (mt/id :weeks :d) :us)))
-          (testing "shouldn't change if start-of-week settings change"
-            (mt/with-temporary-setting-values [start-of-week :monday]
-              (is (= [1 2 2 2 2 2 2 2 3 1]
-                     (test-extract-week (mt/id :weeks :d) :us)))))))
+                 (test-extract-week (mt/id :weeks :d) :instance)))
 
-      (testing "instance week"
-        (is (= [1 2 2 2 2 2 2 2 3 1]
-               (test-extract-week (mt/id :weeks :d) :instance)))
-
-        (mt/with-temporary-setting-values [start-of-week :monday]
-          (is (= [1 1 2 2 2 2 2 2 2 1]
-                 (test-extract-week (mt/id :weeks :d) :instance))))))))
+          (mt/with-temporary-setting-values [start-of-week :monday]
+            (is (= [1 1 2 2 2 2 2 2 2 1]
+                   (test-extract-week (mt/id :weeks :d) :instance)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Date arithmetics tests                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn datetime-math
-  [op x amount unit col-type]
+  [op x amount unit]
   (let [amount (if (= op :datetime-add)
                  amount
                  (- amount))
         fmt    (cond
-                 ;; the :date column of :presto should have this format too,
-                 ;; but the test data we created for presto is datetime even if we define it as date
-                 (and (= driver/*driver* :presto) (#{:text-as-date} col-type))
-                 "yyyy-MM-dd"
-
                  (= unit :millisecond)
                  "yyyy-MM-dd HH:mm:ss.SSS"
 
@@ -328,54 +344,60 @@
          (map first))))
 
 (deftest datetime-math-tests
-  (mt/dataset times-mixed
-    ;; mongo doesn't supports coercion yet so we exclude it here, Tests for it are in [[metabase.driver.mongo.query-processor-test]]
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
-      (testing "date arithmetic with datetime columns"
-        (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
-                op                  [:datetime-add :datetime-subtract]
-                unit                [:year :quarter :month :day :hour :minute :second]
+  (mt/with-temporary-setting-values [start-of-week   :sunday
+                                     report-timezone "UTC"]
+    (mt/dataset times-mixed
+      (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
+        (testing "date arithmetic with datetime columns"
+          (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
+                  op                  [:datetime-add :datetime-subtract]
+                  unit                [:year :quarter :month :day :hour :minute :second]
 
-                {:keys [expected query]}
-                [{:expected [(datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type) (datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                             (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type) (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]
-                  :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                             :fields      [[:expression "expr"]]}}
-                 {:expected (into [] (frequencies
-                                       [(datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type) (datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                                        (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type) (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
-                  :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                             :aggregation [[:count]]
-                             :breakout    [[:expression "expr"]]}}]]
-          (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-            (is (= (set expected) (set (test-datetime-math query)))))))
+                  {:keys [expected query]}
+                  [{:expected [(datetime-math op #t "2004-03-19 09:19:09" 2 unit) (datetime-math op #t "2008-06-20 10:20:10" 2 unit)
+                               (datetime-math op #t "2012-11-21 11:21:11" 2 unit) (datetime-math op #t "2012-11-21 11:21:11" 2 unit)]
+                    :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                               :fields      [[:expression "expr"]]}}
+                   {:expected (into [] (frequencies
+                                        [(datetime-math op #t "2004-03-19 09:19:09" 2 unit) (datetime-math op #t "2008-06-20 10:20:10" 2 unit)
+                                         (datetime-math op #t "2012-11-21 11:21:11" 2 unit) (datetime-math op #t "2012-11-21 11:21:11" 2 unit)]))
+                    :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                               :aggregation [[:count]]
+                               :breakout    [[:expression "expr"]]}}]]
+            (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
+              (is (= (set expected) (set (test-datetime-math query))))))))
 
-      (testing "date arithmetic with datetime columns"
-        (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
-                op                  [:datetime-add :datetime-subtract]
-                unit                [:year :quarter :month :day]
+      ;; mongo doesn't support casting string to date so we exclude it here
+      ;; tests for it are in [[metabase.driver.mongo.query-processor-test]]
+      (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
+        (testing "date arithmetic with date columns"
+          (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
+                  op                  [:datetime-add :datetime-subtract]
+                  unit                [:year :quarter :month :day]
 
-                {:keys [expected query]}
-                [{:expected [(datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type) (datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                             (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type) (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]
-                  :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                             :fields      [[:expression "expr"]]}}
-                 {:expected (into [] (frequencies
-                                       [(datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type) (datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                                        (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type) (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
-                  :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                             :aggregation [[:count]]
-                             :breakout    [[:expression "expr"]]}}]]
-          (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-            (is (= (set expected) (set (test-datetime-math query)))))))
-      (testing "date arithmetics with literal date"
-        (is (= ["2008-08-20 00:00:00" "2008-04-20 00:00:00"]
-               (->> (mt/run-mbql-query times
-                                       {:expressions {"add" [:datetime-add "2008-06-20T00:00:00" 2 :month]
-                                                      "sub" [:datetime-subtract "2008-06-20T00:00:00" 2 :month]}
-                                        :fields      [[:expression "add"] [:expression "sub"]]})
-                    (mt/formatted-rows [normalize-timestamp-str normalize-timestamp-str])
-                    first)))))))
+                  {:keys [expected query]}
+                  [{:expected [(datetime-math op #t "2004-03-19 00:00:00" 2 unit) (datetime-math op #t "2008-06-20 00:00:00" 2 unit)
+                               (datetime-math op #t "2012-11-21 00:00:00" 2 unit) (datetime-math op #t "2012-11-21 00:00:00" 2 unit)]
+                    :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                               :fields      [[:expression "expr"]]}}
+                   {:expected (into [] (frequencies
+                                        [(datetime-math op #t "2004-03-19 00:00:00" 2 unit) (datetime-math op #t "2008-06-20 00:00:00" 2 unit)
+                                         (datetime-math op #t "2012-11-21 00:00:00" 2 unit) (datetime-math op #t "2012-11-21 00:00:00" 2 unit)]))
+                    :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                               :aggregation [[:count]]
+                               :breakout    [[:expression "expr"]]}}]]
+            (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
+              (is (= (set expected) (set (test-datetime-math query))))))))
+
+      (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
+        (testing "date arithmetics with literal date"
+          (is (= ["2008-08-20 00:00:00" "2008-04-20 00:00:00"]
+                 (->> (mt/run-mbql-query times
+                        {:expressions {"add" [:datetime-add "2008-06-20T00:00:00" 2 :month]
+                                       "sub" [:datetime-subtract "2008-06-20T00:00:00" 2 :month]}
+                         :fields      [[:expression "add"] [:expression "sub"]]})
+                      (mt/formatted-rows [normalize-timestamp-str normalize-timestamp-str])
+                      first))))))))
 
 (defn- close? [t1 t2 period]
   (and (t/before? (t/instant t1) (t/plus (t/instant t2) period))
@@ -401,7 +423,7 @@
     (testing "should work as an argument to datetime-add and datetime-subtract"
       (is (= true
              (-> (mt/run-mbql-query venues
-                   {:expressions {"1" [:datetime-subtract [:datetime-add [:now] 1 :month] 1 :month]}
+                   {:expressions {"1" [:datetime-subtract [:datetime-add [:now] 1 :day] 1 :day]}
                     :fields [[:expression "1"]]
                     :limit  1})
                  mt/rows
@@ -420,22 +442,24 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :now :datetime-diff)
     (testing "should work as an argument to datetime-diff"
       (is (= 0
-             (-> (mt/run-mbql-query venues
-                   {:expressions {"1" [:datetime-diff [:now] [:now] :month]}
-                    :fields [[:expression "1"]]
-                    :limit  1})
-                 mt/rows ffirst)))))
+             (->> (mt/run-mbql-query venues
+                    {:expressions {"1" [:datetime-diff [:now] [:now] :month]}
+                     :fields [[:expression "1"]]
+                     :limit  1})
+                  (mt/formatted-rows [int])
+                  ffirst)))))
   (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics :datetime-diff)
     (testing "should work in combination with datetime-diff and date-arithmetics"
       (is (= [1 1]
-             (-> (mt/run-mbql-query venues
-                   {:expressions {"1" [:datetime-diff [:now] [:datetime-add [:now] 1 :month] :month]
-                                  "2" [:now]
-                                  "3" [:datetime-diff [:expression "2"] [:datetime-add [:expression "2"] 1 :month] :month]}
-                    :fields [[:expression "1"]
-                             [:expression "3"]]
-                    :limit  1})
-                 mt/rows first))))))
+             (->> (mt/run-mbql-query venues
+                    {:expressions {"1" [:datetime-diff [:now] [:datetime-add [:now] 1 :day] :day]
+                                   "2" [:now]
+                                   "3" [:datetime-diff [:expression "2"] [:datetime-add [:expression "2"] 1 :day] :day]}
+                     :fields [[:expression "1"]
+                              [:expression "3"]]
+                     :limit  1})
+                  (mt/formatted-rows [int int])
+                  first))))))
 
 (defn- close-minute?
   "Tests whether two minute integers are within 1 minute of each other on the clock.
@@ -466,29 +490,31 @@
                                    first)
                 results-timezone (mt/with-everything-store (qp.timezone/results-timezone-id))
                 now              (t/local-date-time (t/zone-id results-timezone))]
-            (is (true? (close-minute? minute (.getMinute now)))
-            (is (true? (close-hour? hour (.getHour now)))))))))))
+            (is (true? (close-minute? minute (.getMinute now))))
+            (is (true? (close-hour? hour (.getHour now))))))))))
 
 (deftest datetime-math-with-extract-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
-    (mt/dataset times-mixed
-      (doseq [{:keys [title expected query]}
-              [{:title    "Nested date math then extract"
-                :expected [2006 2010 2014]
-                :query    {:expressions {"expr" [:get-year [:datetime-add [:field (mt/id :times :dt) nil] 2 :year]]}
-                           :fields [[:expression "expr"]]}}
+  (mt/with-temporary-setting-values [start-of-week   :sunday
+                                     report-timezone "UTC"]
+    (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
+      (mt/dataset times-mixed
+        (doseq [{:keys [title expected query]}
+                [{:title    "Nested date math then extract"
+                  :expected [2006 2010 2014]
+                  :query    {:expressions {"expr" [:get-year [:datetime-add [:field (mt/id :times :dt) nil] 2 :year]]}
+                             :fields      [[:expression "expr"]]}}
 
-               {:title   "Nested date math twice"
-                :expected ["2006-05-19 09:19:09" "2010-08-20 10:20:10" "2015-01-21 11:21:11"]
-                :query    {:expressions {"expr" [:datetime-add [:datetime-add [:field (mt/id :times :dt) nil] 2 :year] 2 :month]}
-                           :fields [[:expression "expr"]]}}
+                 {:title    "Nested date math twice"
+                  :expected ["2006-05-19 09:19:09" "2010-08-20 10:20:10" "2015-01-21 11:21:11"]
+                  :query    {:expressions {"expr" [:datetime-add [:datetime-add [:field (mt/id :times :dt) nil] 2 :year] 2 :month]}
+                             :fields      [[:expression "expr"]]}}
 
-               {:title    "filter with date math"
-                :expected [1]
-                :query   {:filter [:= [:get-year [:datetime-add [:field (mt/id :times :dt) nil] 2 :year]] 2006]
-                          :fields [[:field (mt/id :times :index)]]}}]]
-        (testing title
-          (is (= (set expected) (set (test-datetime-math query)))))))))
+                 {:title    "filter with date math"
+                  :expected [1]
+                  :query    {:filter [:= [:get-year [:datetime-add [:field (mt/id :times :dt) nil] 2 :year]] 2006]
+                             :fields [[:field (mt/id :times :index)]]}}]]
+          (testing title
+            (is (= (set expected) (set (test-datetime-math query))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -698,115 +724,303 @@
 ;;; |                                            Datetime diff tests                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest datetime-diff-base-test
+(deftest ^:parallel datetime-diff-base-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
     (mt/dataset sample-dataset
       (letfn [(query [x y unit]
-                (->> (mt/run-mbql-query orders
-                       {:limit 1
-                        :expressions {"diff"     [:datetime-diff x y unit]
-                                      "diff-rev" [:datetime-diff y x unit]}
-                        :fields [[:expression "diff"]
-                                 [:expression "diff-rev"]]})
-                     (mt/formatted-rows [int int])
-                     first))]
-        (doseq [[unit cases] [[:year [["2021-10-03T09:18:09" "2022-10-02T09:18:09" 0 "day under a year"]
+                (mt/mbql-query orders
+                  {:limit 1
+                   :expressions {"diff"     [:datetime-diff x y unit]
+                                 "diff-rev" [:datetime-diff y x unit]}
+                   :fields [[:expression "diff"]
+                            [:expression "diff-rev"]]}))
+              (results [a-query]
+                (first (mt/formatted-rows [int int]
+                         (qp/process-query a-query))))]
+        (doseq [[unit cases] [[:year [["2021-10-03T09:00:00" "2021-10-03T09:00:00" 0 "same time"]
+                                      ["2021-10-03T09:18:09" "2022-10-02T09:18:09" 0 "day under a year"]
                                       ["2021-10-03T09:19:09" "2022-10-03T09:18:09" 1 "ignores time"]
                                       ["2016-02-03T09:19:09" "2017-02-02T09:19:09" 0 "starts in leap year before leap day"]
                                       ["2016-10-03T09:19:09" "2017-10-03T09:19:09" 1 "starts in leap year after leap day"]
-                                      ["2017-06-10T08:30:00" "2019-07-10T08:30:00" 2 "multiple years"]]]
-                              [:month [["2022-10-03T09:18:09" "2022-11-02T09:18:09" 0  "day under a month"]
+                                      ["2017-06-10T08:30:00" "2019-07-10T08:30:00" 2 "multiple years"]
+                                      ["2017-06-10" "2019-07-10" 2 "dates"]]]
+                              [:quarter [["2021-10-03T09:00:00" "2021-10-03T09:00:00" 0 "same time"]
+                                         ["2021-10-03T09:18:09" "2022-01-02T09:18:09" 0 "day under a quarter"]
+                                         ["2021-10-03T09:19:09" "2022-01-03T09:18:09" 1 "ignores time"]
+                                         ["2017-06-10T08:30:00" "2019-07-10T08:30:00" 8 "multiple years"]
+                                         ["2017-06-10" "2019-07-10" 8 "dates"]]]
+                              [:month [["2021-10-03T09:00:00" "2021-10-03T09:00:00" 0  "same time"]
+                                       ["2022-10-03T09:18:09" "2022-11-02T09:18:09" 0  "day under a month"]
                                        ["2022-10-02T09:19:09" "2022-11-02T09:18:09" 1  "minute under a month"]
-                                       ["2022-10-02T09:18:09" "2023-10-03T09:18:09" 12 "over a year"]]]
-                              [:week [["2022-10-01T09:18:09" "2022-10-04T09:18:09" 0   "under 7 days across week boundary"]
-                                      ["2022-10-02T09:19:09" "2022-10-09T09:18:09" 1   "ignores time"]
-                                      ["2022-10-02T09:18:09" "2023-10-03T09:18:09" 52 "over a year"]]]
-                              [:day [["2022-10-02T08:30:00" "2022-10-02T10:30:00" 0   "<24h same day"]
+                                       ["2022-10-02T09:18:09" "2023-10-03T09:18:09" 12 "over a year"]
+                                       ["2022-10-02" "2023-10-03" 12 "dates"]]]
+                              [:week [["2021-10-03T09:00:00" "2021-10-03T09:00:00" 0  "same time"]
+                                      ["2022-10-01T09:18:09" "2022-10-04T09:18:09" 0  "under 7 days across week boundary"]
+                                      ["2022-10-02T09:19:09" "2022-10-09T09:18:09" 1  "ignores time"]
+                                      ["2022-10-02T09:18:09" "2023-10-03T09:18:09" 52 "over a year"]
+                                      ["2022-10-02" "2023-10-03" 52 "dates"]]]
+                              [:day [["2021-10-03T09:00:00" "2021-10-03T09:00:00" 0   "same time"]
+                                     ["2022-10-02T08:30:00" "2022-10-02T10:30:00" 0   "<24h same day"]
                                      ["2022-10-02T09:19:09" "2022-10-03T09:18:09" 1   "<24h consecutive days"]
-                                     ["2021-10-02T08:30:00" "2022-10-05T10:30:00" 368 "over a year"]]]
-                              [:hour [["2022-10-02T08:30:00" "2022-10-02T08:34:00" 0     "minutes"]
+                                     ["2021-10-02T08:30:00" "2022-10-05T10:30:00" 368 "over a year"]
+                                     ["2021-10-02" "2022-10-05" 368 "dates"]]]
+                              [:hour [["2021-10-03T09:00:00" "2021-10-03T09:00:00" 0     "same time"]
+                                      ["2022-10-02T08:30:00" "2022-10-02T08:34:00" 0     "minutes"]
                                       ["2022-10-02T08:30:00" "2022-10-02T09:29:59.999" 0 "millisecond under an hour"]
                                       ["2022-10-02T08:30:00" "2022-10-05T08:34:00" 72    "hours"]
-                                      ["2021-10-02T08:30:00" "2022-10-02T08:34:00" 8760  "over a year"]]]
-                              [:minute [["2022-10-02T08:30:00" "2022-10-02T08:30:59.999" 0  "millisecond under a minute"]
+                                      ["2021-10-02T08:30:00" "2022-10-02T08:34:00" 8760  "over a year"]
+                                      ["2021-10-02" "2022-10-02" 8760  "dates"]]]
+                              [:minute [["2021-10-03T09:00:00" "2021-10-03T09:00:00" 0      "same time"]
+                                        ["2022-10-02T08:30:00" "2022-10-02T08:30:59.999" 0  "millisecond under a minute"]
                                         ["2022-10-02T08:30:00" "2022-10-02T08:34:00" 4      "minutes"]
                                         ["2022-10-02T08:30:00" "2022-10-02T10:30:00" 120    "hours"]
-                                        ["2021-10-02T08:30:00" "2022-10-02T08:34:00" 525604 "over a year"]]]
-                              [:second [["2022-10-02T08:30:00" "2022-10-02T08:30:00.999" 0    "millisecond under a second"]
+                                        ["2021-10-02T08:30:00" "2022-10-02T08:34:00" 525604 "over a year"]
+                                        ["2021-10-02" "2022-10-02" 525600  "dates"]]]
+                              [:second [["2021-10-03T09:00:00" "2021-10-03T09:00:00" 0        "same time"]
+                                        ["2022-10-02T08:30:00" "2022-10-02T08:30:00.999" 0    "millisecond under a second"]
                                         ["2022-10-02T08:30:00" "2022-10-02T08:34:00" 240      "minutes"]
                                         ["2022-10-02T08:30:00" "2022-10-02T10:30:00" 7200     "hours"]
-                                        ["2021-10-02T08:30:00" "2022-10-02T08:34:00" 31536240 "over a year"]]]]
-
+                                        ["2021-10-02T08:30:00" "2022-10-02T08:34:00" 31536240 "over a year"]
+                                        ["2021-10-02" "2022-10-02" 31536000 "dates"]
+                                        ["2021-10-02" "2022-10-02T08:34:00" 31566840 "dates and datetimes"]]]]
                 [x y expected description] cases]
           (testing (name unit)
             (testing description
-              (is (= [expected (- expected)] (query x y unit))))))))
-    (mt/dataset times-mixed
-      (testing "Can compare across dates, datetimes, and with timezones from a table"
-        ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
-        (is (= [25200 -8349 33549]
-               (->> (mt/run-mbql-query times
-                      {:fields [[:expression "tz,dt"]
-                                [:expression "tz,d"]
-                                [:expression "d,dt"]]
-                       :limit 1
-                       :expressions
-                       {"tz,dt" [:datetime-diff $dt_tz $dt :second]
-                        "tz,d"  [:datetime-diff $dt_tz $d :second]
-                        "d,dt"  [:datetime-diff $d $dt :second]}})
-                    (mt/formatted-rows [int int int])
-                    first)))))))
+              (let [query (query x y unit)]
+                (mt/with-native-query-testing-context query
+                  (is (= [expected (- expected)]
+                         (results query))))))))))))
 
-(mt/defdataset diff-time-zone-cases
+(deftest datetime-diff-mixed-types-test
+  (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :datetime-diff))
+    (mt/dataset times-mixed
+      (testing "Can compare across dates, datetimes with timezones from a table"
+        ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
+        (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+          (is (= [25200 -8349]
+                 (->> (mt/run-mbql-query times
+                        {:fields [[:expression "tz,dt"]
+                                  [:expression "tz,d"]]
+                         :limit 1
+                         :expressions
+                         {"tz,dt" [:datetime-diff $dt_tz $dt :second]
+                          "tz,d"  [:datetime-diff $dt_tz $d :second]}})
+                      (mt/formatted-rows [int int])
+                      first)))))))
+  ;; Athena needs special treatment. It supports the `timestamp with time zone` type in query expressions
+  ;; but not in tables. So we create a native query that returns a `timestamp with time zone` type and then
+  ;; run another query with `datetime-diff` against it.
+  (mt/test-driver :athena
+    (testing "datetime-diff can compare `date`, `timestamp`, and `timestamp with time zone` args with Athena"
+      (mt/with-temp*
+        [Card [card (qp.test-util/card-with-source-metadata-for-query
+                     (mt/native-query {:query (str "select"
+                                                   " date '2022-01-01' as d,"
+                                                   " timestamp '2022-01-01 00:00:00.000' as dt,"
+                                                   " with_timezone(timestamp '2022-01-01 00:00:00.000', 'Africa/Lagos') as dt_tz")}))]]
+        (let [d       [:field "d" {:base-type :type/Date}]
+              dt      [:field "dt" {:base-type :type/DateTime}]
+              dt_tz   [:field "dt_tz" {:base-type :type/DateTimeWithZoneID}]
+              results (mt/process-query
+                       {:database (mt/id)
+                        :type     :query
+                        :query    {:fields   [[:expression "tz,dt"]
+                                              [:expression "tz,d"]]
+                                   :expressions
+                                   {"tz,dt" [:datetime-diff dt_tz dt :second]
+                                    "tz,d"  [:datetime-diff dt_tz d :second]}
+                                   :source-table (str "card__" (u/the-id card))}})]
+          (is (= [3600 3600]
+                 (->> results
+                      (mt/formatted-rows [int int])
+                      first))))))))
+
+(mt/defdataset diff-time-zones-cases
   [["times"
-    [{:field-name "a_dt",            :base-type :type/DateTime}
-     {:field-name "a_dt_ltz",        :base-type :type/DateTimeWithLocalTZ}
-     {:field-name "a_dt_tz",         :base-type :type/DateTimeWithTZ}
-     {:field-name "a_dt_tz_offset",  :base-type :type/DateTimeWithZoneOffset}
-     {:field-name "a_dt_tz_id",      :base-type :type/DateTimeWithZoneID}
-     {:field-name "a_dt_tz_text",    :base-type :type/Text}
-     {:field-name "a_dt_tz_id_text", :base-type :type/Text}
-     {:field-name "b_dt",            :base-type :type/DateTime}
-     {:field-name "b_dt_ltz",        :base-type :type/DateTimeWithLocalTZ}
-     {:field-name "b_dt_tz",         :base-type :type/DateTimeWithTZ}
-     {:field-name "b_dt_tz_offset",  :base-type :type/DateTimeWithZoneOffset}
-     {:field-name "b_dt_tz_id",      :base-type :type/DateTimeWithZoneID}
-     {:field-name "b_dt_tz_text",    :base-type :type/Text}
-     {:field-name "b_dt_tz_id_text", :base-type :type/Text}]
-    (let [times ["2022-10-02T01:00:00+01:00[Africa/Lagos]"
-                 "2022-10-02T00:00:00Z[UTC]"
-                 "2022-10-02T01:00:00+01:00[Africa/Lagos]"
-                 "2022-10-03T00:00:00Z[UTC]"
-                 "2022-10-03T00:00:00+01:00[Africa/Lagos]"
-                 "2022-10-09T00:00:00Z[UTC]"
-                 "2022-10-09T00:00:00+01:00[Africa/Lagos]"
-                 "2022-11-02T00:00:00Z[UTC]"
-                 "2022-11-02T00:00:00+01:00[Africa/Lagos]"
-                 "2023-10-02T00:00:00Z[UTC]"
-                 "2023-10-02T00:00:00+01:00[Africa/Lagos]"]]
-      (for [a times b times]
-        [(t/local-date-time (u.date/parse a))              ; a_dt
-         (t/offset-date-time (u.date/parse a))             ; a_dt_ltz
-         (u.date/parse a)                                  ; a_dt_tz
-         (t/offset-date-time (u.date/parse a))             ; a_dt_tz_offset
-         (u.date/parse a)                                  ; a_dt_tz_id
-         (t/format :iso-offset-date-time (u.date/parse a)) ; a_dt_tz_text
-         a                                                 ; a_dt_tz_id_text
-         (t/local-date-time (u.date/parse b))              ; b_dt
-         (t/offset-date-time (u.date/parse b))             ; b_dt_ltz
-         (u.date/parse b)                                  ; b_dt_tz
-         (t/offset-date-time (u.date/parse b))             ; b_dt_tz_offset
-         (u.date/parse b)                                  ; b_dt_tz_id
-         (t/format :iso-offset-date-time (u.date/parse b)) ; b_dt_tz_text
-         b]))]])                                           ; b_dt_tz_id_text
+    [{:field-name "a_dt_tz",      :base-type :type/DateTimeWithTZ}
+     {:field-name "b_dt_tz",      :base-type :type/DateTimeWithTZ}
+     {:field-name "a_dt_tz_text", :base-type :type/Text}
+     {:field-name "b_dt_tz_text", :base-type :type/Text}]
+    (let [times [#t "2022-10-02T00:00:00Z[UTC]"
+                 #t "2022-10-02T01:00:00+01:00[Africa/Lagos]"
+                 #t "2022-10-03T00:00:00Z[UTC]"
+                 #t "2022-10-03T00:00:00+01:00[Africa/Lagos]"
+                 #t "2022-10-09T00:00:00Z[UTC]"
+                 #t "2022-10-09T00:00:00+01:00[Africa/Lagos]"
+                 #t "2022-11-02T00:00:00Z[UTC]"
+                 #t "2022-11-02T00:00:00+01:00[Africa/Lagos]"
+                 #t "2023-01-02T00:00:00Z[UTC]"
+                 #t "2023-01-02T00:00:00+01:00[Africa/Lagos]"
+                 #t "2023-10-02T00:00:00Z[UTC]"
+                 #t "2023-10-02T00:00:00+01:00[Africa/Lagos]"]]
+      (for [a times
+            b times
+            :when (and (t/before? a b)
+                       (not= (t/zone-id a) (t/zone-id b)))]
+        [a                                        ; a_dt_tz
+         b                                        ; b_dt_tz
+         (t/format :iso-offset-date-time a)       ; a_dt_tz_text
+         (t/format :iso-offset-date-time b)]))]]) ; b_dt_tz_text
+
+(mt/defdataset diff-time-zones-athena-cases
+  ;; This dataset contains the same set of values as [[diff-time-zones-cases]], but without the time zones.
+  ;; It is needed to test `datetime-diff` with Athena, since Athena supports `timestamp with time zone`
+  ;; in query expressions but not in a table. [[diff-time-zones-athena-cases-query]] uses this dataset
+  ;; to recreate [[diff-time-zones-cases]] for Athena as a query.
+  [["times"
+    [{:field-name "dt",      :base-type :type/DateTime}
+     {:field-name "dt_text", :base-type :type/Text}]
+    (for [dt [#t "2022-10-02T00:00:00"
+              #t "2022-10-02T01:00:00"
+              #t "2022-10-03T00:00:00"
+              #t "2022-10-09T00:00:00"
+              #t "2022-11-02T00:00:00"
+              #t "2023-01-02T00:00:00"
+              #t "2023-10-02T00:00:00"]]
+      [dt (u.date/format dt)])]])
+
+(def diff-time-zones-athena-cases-query
+  ;; This query recreates [[diff-time-zones-cases]] for Athena from [[diff-time-zones-athena-cases]].
+  "with x as (
+     select
+     with_timezone(dt, 'UTC') as dt
+     , concat(dt_text, 'Z') as dt_text -- e.g. 2022-10-02T00:00:00Z
+     , 'UTC' as time_zone
+   from diff_time_zones_athena_cases.times
+   union
+   select
+     with_timezone(dt, 'Africa/Lagos') as dt
+     , concat(dt_text, '+01:00') as dt_text -- e.g. 2022-10-02T00:00:00+01:00
+     , 'Africa/Lagos' as time_zone
+   from diff_time_zones_athena_cases.times
+   )
+   select
+     a.dt as a_dt_tz
+     , a.dt_text as a_dt_tz_text
+     , b.dt as b_dt_tz
+     , b.dt_text as b_dt_tz_text
+   from x a
+   join x b on a.dt < b.dt and a.time_zone <> b.time_zone")
+
+(defn run-datetime-diff-time-zone-tests
+  "Runs all the test cases for datetime-diff clauses with :type/DateTimeWithTZ types.
+
+   `diffs` is a function that executes a query with the `datetimeDiff` function applied to its two arguments.
+   Its args are strings in the format `:iso-offset-date-time`. It returns a map of all the valid
+   `datetimeDiff` units and the results.
+
+   For example:
+   (diffs \"2022-10-02T01:00:00+01:00\" \"2022-10-03T00:00:00Z\")
+    => `{:second 86400 :minute 1440 :hour 24 :day 1 :quarter 0 :month 0 :year 0}`)."
+  [diffs]
+  (testing "a day"
+    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"] ; UTC-1 all year
+      (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
+                    (diffs "2022-10-02T01:00:00+01:00"  ; 2022-10-01T23:00:00-01:00 <- datetime in report-timezone offset
+                           "2022-10-03T00:00:00Z"))))   ; 2022-10-02T23:00:00-01:00
+    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+      (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
+                           "2022-10-03T00:00:00Z"))))) ; 2022-10-03T00:00:00Z
+  (testing "hour under a day"
+    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+      (is (partial= (if (driver/supports? driver/*driver* :set-timezone)
+                      {:second 82800 :minute 1380 :hour 23 :day 1}
+                      {:second 82800 :minute 1380 :hour 23 :day 0})
+                    (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
+                           "2022-10-03T00:00:00+01:00")))) ; 2022-10-02T22:00:00-01:00
+    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+      (is (partial= {:second 82800 :minute 1380 :hour 23 :day 0}
+                    (diffs "2022-10-02T00:00:00Z"           ; 2022-10-02T00:00:00Z
+                           "2022-10-03T00:00:00+01:00"))))) ; 2022-10-02T23:00:00Z
+  (testing "hour under a week"
+    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+      (is (partial= (if (driver/supports? driver/*driver* :set-timezone)
+                      {:hour 167 :day 7 :week 1}
+                      {:hour 167 :day 6 :week 0})
+                    (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
+                           "2022-10-09T00:00:00+01:00")))) ; 2022-10-08T22:00:00-01:00
+    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+      (is (partial= {:hour 167 :day 6 :week 0}
+                    (diffs "2022-10-02T00:00:00Z"           ; 2022-10-02T00:00:00Z
+                           "2022-10-09T00:00:00+01:00"))))) ; 2022-10-08T23:00:00Z
+  (testing "week"
+    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+      (is (partial= {:hour 168 :day 7 :week 1}
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-01T23:00:00-01:00
+                           "2022-10-09T00:00:00Z"))))  ; 2022-10-08T23:00:00-01:00
+    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+      (is (partial= {:hour 168 :day 7 :week 1}
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
+                           "2022-10-09T00:00:00Z"))))) ; 2022-10-09T00:00:00Z
+  (testing "hour under a month"
+    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+      (is (partial= (if (driver/supports? driver/*driver* :set-timezone)
+                      {:hour 743 :day 31 :week 4 :month 1}
+                      {:hour 743 :day 30 :week 4 :month 0})
+                    (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
+                           "2022-11-02T00:00:00+01:00")))) ; 2022-11-01T22:00:00-01:00
+    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+      (is (partial= {:hour 743 :day 30 :week 4 :month 0}
+                    (diffs "2022-10-02T00:00:00Z"           ; 2022-10-02T00:00:00Z
+                           "2022-11-02T00:00:00+01:00"))))) ; 2022-11-01T23:00:00Z
+  (testing "month"
+    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+      (is (partial= {:hour 744 :day 31 :month 1 :year 0}
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-01T23:00:00-01:00
+                           "2022-11-02T00:00:00Z"))))  ; 2022-11-01T23:00:00-01:00
+    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+      (is (partial= {:hour 744 :day 31 :month 1 :year 0}
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
+                           "2022-11-02T00:00:00Z"))))) ; 2022-11-02T00:00:00Z
+  (testing "hour under a quarter"
+    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+      (is (partial= (if (driver/supports? driver/*driver* :set-timezone)
+                      {:month 3 :quarter 1}
+                      {:month 2 :quarter 0})
+                    (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
+                           "2023-01-02T00:00:00+01:00")))) ; 2023-01-01T22:00:00-01:00
+    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+      (is (partial= {:month 2 :quarter 0}
+                    (diffs "2022-10-02T00:00:00Z"           ; 2022-10-02T00:00:00Z
+                           "2023-01-02T00:00:00+01:00"))))) ; 2023-01-01T23:00:00Z
+  (testing "quarter"
+    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+      (is (partial= {:month 3 :quarter 1}
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-01T23:00:00-01:00
+                           "2023-01-02T00:00:00Z"))))  ; 2023-01-01T23:00:00-01:00
+    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+      (is (partial= {:month 3 :quarter 1}
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
+                           "2023-01-02T00:00:00Z"))))) ; 2023-01-02T00:00:00Z
+  (testing "year"
+    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+      (is (partial= {:day 365, :week 52, :month 12, :year 1}
+                    (diffs "2022-10-02T01:00:00+01:00"     ; 2022-10-01T23:00:00-01:00
+                           "2023-10-02T00:00:00Z"))))      ; 2023-10-01T23:00:00-01:00
+    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+      (is (partial= {:day 365, :week 52, :month 12, :year 1}
+                    (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
+                           "2023-10-02T00:00:00Z"))))) ; 2023-10-02T00:00:00Z
+  (testing "hour under a year"
+    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+      (is (partial= (if (driver/supports? driver/*driver* :set-timezone)
+                      {:day 365 :month 12 :year 1}
+                      {:day 364 :month 11 :year 0})
+                    (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
+                           "2023-10-02T00:00:00+01:00")))) ; 2023-10-01T22:00:00-01:00
+    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+      (is (partial= {:day 364 :month 11 :year 0}
+                    (diffs "2022-10-02T00:00:00Z"            ; 2022-10-02T00:00:00Z
+                           "2023-10-02T00:00:00+01:00")))))) ; 2023-10-01T23:00:00Z
 
 (deftest datetime-diff-time-zones-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
-    (mt/dataset diff-time-zone-cases
-      (let [diffs (fn [x y]
-                    (let [units [:second :minute :hour :day :week :month :year]]
+  (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :datetime-diff))
+    (mt/dataset diff-time-zones-cases
+      (let [diffs (fn [a-str b-str]
+                    (let [units [:second :minute :hour :day :week :month :quarter :year]]
                       (->> (mt/run-mbql-query times
-                             {:filter [:and [:= x $a_dt_tz_text] [:= y $b_dt_tz_text]]
+                             {:filter [:and [:= a-str $a_dt_tz_text] [:= b-str $b_dt_tz_text]]
                               :expressions (into {} (for [unit units]
                                                       [(name unit) [:datetime-diff $a_dt_tz $b_dt_tz unit]]))
                               :fields (into [] (for [unit units]
@@ -814,85 +1028,44 @@
                            (mt/formatted-rows (repeat (count units) int))
                            first
                            (zipmap units))))]
-        (testing "a day"
-          (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"] ; UTC-1 all year
-            (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
-                          (diffs "2022-10-02T01:00:00+01:00"     ; 2022-10-01T23:00:00-01:00 <- datetime in report-timezone offset
-                                 "2022-10-03T00:00:00Z"))))      ; 2022-10-02T23:00:00-01:00
-          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
-            (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
-                          (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00Z
-                                 "2022-10-03T00:00:00Z")))))      ; 2022-10-03T00:00:00Z
-        (testing "hour under a day"
-          (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-            (is (partial= {:second 82800 :minute 1380 :hour 23 :day 1}
-                          (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
-                                 "2022-10-03T00:00:00+01:00")))) ; 2022-10-02T22:00:00-01:00
-          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
-            (is (partial= {:second 82800 :minute 1380 :hour 23 :day 0}
-                          (diffs "2022-10-02T00:00:00Z"           ; 2022-10-02T00:00:00Z
-                                 "2022-10-03T00:00:00+01:00"))))) ; 2022-10-02T23:00:00Z
-        (testing "hour under a week"
-          (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-            (is (partial= {:hour 167 :day 7 :week 1}
-                          (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
-                                 "2022-10-09T00:00:00+01:00")))) ; 2022-10-08T22:00:00-01:00
-          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
-            (is (partial= {:hour 167 :day 6 :week 0}
-                          (diffs "2022-10-02T00:00:00Z"           ; 2022-10-02T00:00:00Z
-                                 "2022-10-09T00:00:00+01:00"))))) ; 2022-10-08T23:00:00Z
-        (testing "week"
-          (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-            (is (partial= {:hour 168 :day 7 :week 1}
-                          (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-01T23:00:00-01:00
-                                 "2022-10-09T00:00:00Z"))))       ; 2022-10-08T23:00:00-01:00
-          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
-            (is (partial= {:hour 168 :day 7 :week 1}
-                          (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00Z
-                                 "2022-10-09T00:00:00Z")))))      ; 2022-10-09T00:00:00Z
-        (testing "hour under a month"
-          (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-            (is (partial= {:hour 743 :day 31 :week 4 :month 1}
-                          (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
-                                 "2022-11-02T00:00:00+01:00")))) ; 2022-11-01T22:00:00-01:00
-          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
-            (is (partial= {:hour 743 :day 30 :week 4 :month 0}
-                          (diffs "2022-10-02T00:00:00Z"           ; 2022-10-02T00:00:00Z
-                                 "2022-11-02T00:00:00+01:00"))))) ; 2022-11-01T23:00:00Z
-        (testing "month"
-          (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-            (is (partial= {:hour 744 :day 31 :month 1 :year 0}
-                          (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-01T23:00:00-01:00
-                                 "2022-11-02T00:00:00Z"))))       ; 2022-11-01T23:00:00-01:00
-          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
-            (is (partial= {:hour 744 :day 31 :month 1 :year 0}
-                          (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00Z
-                                 "2022-11-02T00:00:00Z")))))      ; 2022-11-02T00:00:00Z
-        (testing "year"
-          (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-            (is (partial= {:day 365, :week 52, :month 12, :year 1}
-                          (diffs "2022-10-02T01:00:00+01:00"     ; 2022-10-01T23:00:00-01:00
-                                 "2023-10-02T00:00:00Z"))))      ; 2023-10-01T23:00:00-01:00
-          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
-            (is (partial= {:day 365, :week 52, :month 12, :year 1}
-                          (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00Z
-                                 "2023-10-02T00:00:00Z")))))      ; 2023-10-02T00:00:00Z
-        (testing "hour under a year"
-          (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-            (is (partial= {:day 365 :month 12 :year 1}
-                          (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
-                                 "2023-10-02T00:00:00+01:00")))) ; 2023-10-01T22:00:00-01:00
-          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
-            (is (partial= {:day 364 :month 11 :year 0}
-                          (diffs "2022-10-02T00:00:00Z"               ; 2022-10-02T00:00:00Z
-                                 "2023-10-02T00:00:00+01:00"))))))))) ; 2023-10-01T23:00:00Z
+        (run-datetime-diff-time-zone-tests diffs))))
+  ;; Athena needs special treatment. It supports the `timestamp with time zone` type in query expressions
+  ;; but not at rest. Here we create a native query that returns a `timestamp with time zone` type and then
+  ;; run another query with `datetime-diff` against it.
+  (mt/test-driver :athena
+    (mt/dataset diff-time-zones-athena-cases
+      (mt/with-temp* [Card [card (qp.test-util/card-with-source-metadata-for-query
+                                  (mt/native-query {:query diff-time-zones-athena-cases-query}))]]
+        (let [diffs
+              (fn [a-str b-str]
+                (let [units   [:second :minute :hour :day :week :month :quarter :year]
+                      results (mt/process-query
+                               {:database (mt/id)
+                                :type     :query
+                                :query    {:filter [:and
+                                                    [:= a-str [:field "a_dt_tz_text" {:base-type :type/Text}]]
+                                                    [:= b-str [:field "b_dt_tz_text" {:base-type :type/Text}]]]
+                                           :expressions  (into {}
+                                                               (for [unit units]
+                                                                 [(name unit) [:datetime-diff
+                                                                               [:field "a_dt_tz" {:base-type :type/Text}]
+                                                                               [:field "b_dt_tz" {:base-type :type/Text}]
+                                                                               unit]]))
+                                           :fields       (into [] (for [unit units]
+                                                                    [:expression (name unit)]))
+                                           :source-table (str "card__" (u/the-id card))}})]
+                  (->> results
+                       (mt/formatted-rows (repeat (count units) int))
+                       first
+                       (zipmap units))))]
+          (run-datetime-diff-time-zone-tests diffs))))))
 
 (deftest datetime-diff-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
     (mt/dataset sample-dataset
       (testing "Args can be expressions that return datetime values"
         (let [diffs (fn [x y]
-                      (let [units [:second :minute :hour :day :week :month :year]]
+                      (let [units [:second :minute :hour :day :week :month :quarter :year]]
                         (->> (mt/run-mbql-query orders
                                {:limit 1
                                 :expressions (into {} (for [unit units]
@@ -902,7 +1075,7 @@
                              (mt/formatted-rows (repeat (count units) int))
                              first
                              (zipmap units))))]
-          (is (= {:second 31795200, :minute 529920, :hour 8832, :day 368, :week 52, :month 12, :year 1}
+          (is (= {:second 31795200, :minute 529920, :hour 8832, :day 368, :week 52, :month 12, :quarter 4, :year 1}
                  (diffs [:datetime-add #t "2022-10-03T00:00:00" 1 "day"] [:datetime-add #t "2023-10-03T00:00:00" 4 "day"])))))
       (testing "Result works in arithmetic expressions"
         (let [start "2021-10-03T09:19:09"
@@ -922,16 +1095,13 @@
                       first))))))))
 
 (deftest datetime-diff-type-test
-  ;; FIXME — The excluded drivers below don't have TIME types. These shouldn't be hard-coded with #26807
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :datetime-diff)
-                         :oracle :presto :redshift :sparksql :snowflake)
+  (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers-with-feature :datetime-diff))
     (testing "Cannot datetime-diff against time column"
-      (mt/dataset attempted-murders
+      (mt/dataset test-data-with-time
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Only datetime, timestamp, or date types allowed. Found .*"
-             (mt/rows
-              (mt/run-mbql-query attempts
-                {:limit 1
-                 :fields      [[:expression "diff-day"]]
-                 :expressions {"diff-day" [:datetime-diff $time_tz $datetime_tz :day]}}))))))))
+             #"datetimeDiff only allows datetime, timestamp, or date types. Found .*"
+             (mt/run-mbql-query users
+               {:limit 1
+                :fields      [[:expression "diff-day"]]
+                :expressions {"diff-day" [:datetime-diff $last_login_time $last_login_date :day]}})))))))

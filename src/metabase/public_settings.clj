@@ -1,20 +1,26 @@
 (ns metabase.public-settings
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.core.memoize :as memoize]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.config :as config]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.fonts :as u.fonts]
-            [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
-            [metabase.util.password :as u.password]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
+   [java-time :as t]
+   [metabase.config :as config]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.fonts :as u.fonts]
+   [metabase.util.i18n
+    :as i18n
+    :refer [available-locales-with-names deferred-tru trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.password :as u.password]
+   [toucan.db :as db])
+  (:import
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 ;; These modules register settings but are otherwise unused. They still must be imported.
 (comment metabase.public-settings.premium-features/keep-me)
@@ -66,7 +72,8 @@
 
 (defsetting site-name
   (deferred-tru "The name used for this instance of Metabase.")
-  :default "Metabase")
+  :default    "Metabase"
+  :visibility :settings-manager)
 
 ;; `::uuid-nonce` is a Setting that sets a site-wide random UUID value the first time it is fetched.
 (defmethod setting/get-value-of-type ::uuid-nonce
@@ -212,14 +219,15 @@
 
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
-  :type    :boolean
-  :default true
+  :type       :boolean
+  :default    true
   :visibility :authenticated)
 
 (defsetting enable-query-caching
   (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
-  :type    :boolean
-  :default false)
+  :type       :boolean
+  :default    false
+  :visibility :authenticated)
 
 (defsetting persisted-models-enabled
   (deferred-tru "Allow persisting models into the source database.")
@@ -532,7 +540,18 @@
          "although it is used to set the WEEK_START session variable in Snowflake."))
   :visibility :public
   :type       :keyword
-  :default    :sunday)
+  :default    :sunday
+  :getter     (fn []
+                ;; if something invalid is somehow in the DB just fall back to Sunday
+                (when-let [value (setting/get-value-of-type :keyword :start-of-week)]
+                  (if (#{:monday :tuesday :wednesday :thursday :friday :saturday :sunday} value)
+                    value
+                    :sunday)))
+  :setter      (fn [new-value]
+                 (when new-value
+                   (assert (#{:monday :tuesday :wednesday :thursday :friday :saturday :sunday} (keyword new-value))
+                           (trs "Invalid day of week: {0}" (pr-str new-value))))
+                 (setting/set-value-of-type! :keyword :start-of-week new-value)))
 
 (defsetting ssh-heartbeat-interval-sec
   (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")

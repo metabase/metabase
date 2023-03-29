@@ -1,7 +1,8 @@
 (ns metabase-enterprise.api.routes.common
   "Shared stuff used by various EE-only API routes."
-  (:require [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util.i18n :refer [tru]]))
+  (:require
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util.i18n :refer [tru]]))
 
 (defn +require-premium-feature
   "Wraps Ring `handler`. Check that we have a premium token with `feature` (a keyword; see [[metabase.public-settings.premium-features]] for a

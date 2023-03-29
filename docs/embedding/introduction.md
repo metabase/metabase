@@ -8,28 +8,43 @@ redirect_from:
 
 You can embed Metabase tables, charts, and dashboards—even Metabase's query builder—in your website or application.
 
-[Signed embedding](./signed-embedding.md) (also known as standalone embedding) and [full-app embedding](./full-app-embedding.md) are _secure_ ways to share your data with specific groups of people outside of your organization.
+## Different ways to embed
 
-If you'd like to share your data with the good people of the internet, you can create a [public link](../questions/sharing/public-links.md) and embed that directly on your website.
+There are three ways to embed Metabase in your app:
 
-## How embedding works
+- [Full-app embedding](#full-app-embedding)
+- [Signed embedding](#signed-embedding)
+- [Public links and embeds](#public-links-and-embeds)
 
-You'll need to put an iframe on your website to act as a window to your Metabase app. Different configurations of that embedded iframe will let you:
+## Full-app embedding
 
-- [set up public access](../questions/sharing/public-links.md) to charts and dashboards,
-- [require sign-in](./signed-embedding.md) to view personalized versions of those charts and dashboards, or
-- [integrate with SSO and data permissions](./full-app-embedding.md) to enable self-service access to the underlying data.
+Full-app embedding is the only kind of embedding that [integrates with SSO and data permissions](./full-app-embedding.md) to enable true self-service access to the underlying data.
+
+**When to use full-app embedding**: when you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding). With full-app embedding, people can create their own questions, dashboards, models, and more, all in their own data sandbox.
+
+## Signed embedding
+
+Also known as standalone embedding, signed embedding is a secure way to embed charts and dashboards.
+
+**When to use signed embedding**: you don’t want to give people ad hoc query access to their data for whatever reason, or you want to present data that applies to all of your tenants at once. For example, say you want to showcase some benchmarking stats: if you just want to make those stats available exclusively to your customers, you could use a signed embed.
+
+## Public links and embeds
+
+If you'd like to share your data with the good people of the internet, you can create a [public link](../questions/sharing/public-links.md) or embed a question or dashboard directly in your website.
+
+**When to use public links and embeds**: public links and embeds are good for one-off charts and dashboards. Use them when you just need to show someone a chart or dashboard without giving people access to your Metabase. And you don't care who sees the data; you want to make those stats available to everyone.
 
 ## Comparison of embedding types
 
-|                                                                                                          | [Public](../questions/sharing/public-links.md) | [Signed](./signed-embedding.md) | [Full-app](./full-app-embedding.md) |
-| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------- | ----------------------------------- |
-| Display charts and dashboards                                                                            | ✅                                             | ✅                              | ✅                                  |
-| Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                    | ✅                                             | ✅                              | ✅                                  |
-| Restrict data with [locked filters](./signed-embedding-parameters.md#restricting-data-in-a-signed-embed) | ❌                                             | ✅                              | ❌                                  |
-| Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                         | ❌                                             | ❌                              | ✅                                  |
-| Drill-down using the [action menu](https://www.metabase.com/learn/questions/drill-through)               | ❌                                             | ❌                              | ✅                                  |
-| Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                          | ❌                                             | ❌                              | ✅                                  |
+| Action                                                                                                   | [Full-app](./full-app-embedding.md) | [Signed](./signed-embedding.md) | [Public](../questions/sharing/public-links.md) |
+|----------------------------------------------------------------------------------------------------------|-------------------------------------|---------------------------------|------------------------------------------------|
+| Display charts and dashboards                                                                            | ✅                                  | ✅                              | ✅                                             |
+| Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                    | ✅                                  | ✅                              | ✅                                             |
+| Restrict data with [locked filters](./signed-embedding-parameters.md#restricting-data-in-a-signed-embed) | ❌                                  | ✅                              | ❌                                             |
+| Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                         | ✅                                  | ❌                              | ❌                                             |
+| Use the [drill-through menu](https://www.metabase.com/learn/questions/drill-through)               | ✅                                  | ❌                              | ❌                                             |
+| Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                          | ✅                                  | ❌                              | ❌                                             |
+| View usage of embeds with [auditing tools](../usage-and-performance-tools/audit.md)                      | ✅                                  | ❌                              | ❌                                             |
 
 ## Further reading
 

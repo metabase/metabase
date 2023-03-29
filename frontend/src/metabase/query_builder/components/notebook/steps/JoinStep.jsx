@@ -6,39 +6,40 @@ import { t } from "ttag";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { DATA_BUCKET } from "metabase/query_builder/components/DataSelector/constants";
 import FieldList from "metabase/query_builder/components/FieldList";
 import Select from "metabase/core/components/Select";
 import { isDateTimeField } from "metabase-lib/queries/utils/field-ref";
 import Join from "metabase-lib/queries/structured/Join";
 
-import { NotebookCellItem, NotebookCellAdd } from "../NotebookCell";
+import { NotebookCellAdd, NotebookCellItem } from "../NotebookCell";
 import {
-  FieldsPickerIcon,
   FieldPickerContentContainer,
   FIELDS_PICKER_STYLES,
+  FieldsPickerIcon,
 } from "../FieldsPickerIcon";
 import FieldsPicker from "./FieldsPicker";
 import {
   DimensionContainer,
   DimensionSourceName,
-  JoinStepRoot,
-  JoinClausesContainer,
-  JoinClauseRoot,
   JoinClauseContainer,
-  JoinStrategyIcon,
-  JoinTypeSelectRoot,
-  JoinTypeOptionRoot,
-  JoinTypeIcon,
-  JoinDimensionControlsContainer,
-  JoinWhereConditionLabelContainer,
-  JoinWhereConditionLabel,
+  JoinClauseRoot,
+  JoinClausesContainer,
   JoinConditionLabel,
+  JoinDimensionControlsContainer,
+  JoinOperatorButton,
+  JoinStepRoot,
+  JoinStrategyIcon,
+  JoinTypeIcon,
+  JoinTypeOptionRoot,
+  JoinTypeSelectRoot,
+  JoinWhereConditionLabel,
+  JoinWhereConditionLabelContainer,
+  PrimaryJoinCell,
   RemoveDimensionIcon,
   RemoveJoinIcon,
   Row,
-  PrimaryJoinCell,
   SecondaryJoinCell,
-  JoinOperatorButton,
 } from "./JoinStep.styled";
 
 const stepShape = {
@@ -64,6 +65,7 @@ const joinStepPropTypes = {
   color: PropTypes.string,
   isLastOpened: PropTypes.bool,
   updateQuery: PropTypes.func.isRequired,
+  sourceQuestion: PropTypes.object,
 };
 
 const JOIN_OPERATOR_OPTIONS = [
@@ -81,6 +83,7 @@ export default function JoinStep({
   step,
   updateQuery,
   isLastOpened,
+  sourceQuestion,
 }) {
   const isSingleJoinStep = step.itemIndex != null;
   let joins = query.joins();
@@ -110,6 +113,7 @@ export default function JoinStep({
                 showRemove={joins.length > 1}
                 updateQuery={updateQuery}
                 isLastOpened={isLastOpened && isLast}
+                sourceQuestion={sourceQuestion}
               />
             </JoinClauseContainer>
           );
@@ -131,11 +135,12 @@ JoinStep.propTypes = joinStepPropTypes;
 const joinClausePropTypes = {
   color: PropTypes.string,
   join: PropTypes.object,
-  updateQuery: PropTypes.func,
+  sourceQuestion: PropTypes.object,
   showRemove: PropTypes.bool,
+  updateQuery: PropTypes.func,
 };
 
-function JoinClause({ color, join, updateQuery, showRemove }) {
+function JoinClause({ color, join, sourceQuestion, updateQuery, showRemove }) {
   const joinDimensionPickersRef = useRef([]);
   const parentDimensionPickersRef = useRef([]);
 
@@ -230,6 +235,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
           query={query}
           joinedTable={joinedTable}
           color={color}
+          sourceQuestion={sourceQuestion}
           updateQuery={updateQuery}
           onSourceTableSet={onSourceTableSet}
         />
@@ -394,6 +400,7 @@ const joinTablePickerPropTypes = {
   query: PropTypes.object,
   joinedTable: PropTypes.object,
   color: PropTypes.string,
+  sourceQuestion: PropTypes.object,
   updateQuery: PropTypes.func,
   onSourceTableSet: PropTypes.func.isRequired,
 };
@@ -403,6 +410,7 @@ function JoinTablePicker({
   query,
   joinedTable,
   color,
+  sourceQuestion,
   updateQuery,
   onSourceTableSet,
 }) {
@@ -410,6 +418,12 @@ function JoinTablePicker({
     query.database(),
     query.database().savedQuestionsDatabase(),
   ].filter(Boolean);
+
+  const sourceDataBucketId =
+    sourceQuestion != null && sourceQuestion.isDataset()
+      ? DATA_BUCKET.DATASETS
+      : undefined;
+  const hasSourceTable = join.joinSourceTableId() != null;
 
   function onChange(tableId) {
     const newJoin = join
@@ -442,10 +456,11 @@ function JoinTablePicker({
         canChangeDatabase={false}
         databases={databases}
         tableFilter={table => table.db_id === query.database().id}
+        selectedDataBucketId={hasSourceTable ? undefined : sourceDataBucketId}
         selectedDatabaseId={query.databaseId()}
         selectedTableId={join.joinSourceTableId()}
         setSourceTableFn={onChange}
-        isInitiallyOpen={join.joinSourceTableId() == null}
+        isInitiallyOpen={!hasSourceTable}
         triggerElement={
           <FieldPickerContentContainer>
             {joinedTable ? joinedTable.displayName() : t`Pick a table...`}

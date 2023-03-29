@@ -14,33 +14,44 @@ import {
 
 interface TableFooterProps {
   className?: string;
+  "data-testid"?: string;
   start: number;
   end: number;
   total: number;
   limit?: number;
   onPreviousPage: () => void;
   onNextPage: () => void;
+  singleItem?: boolean;
 }
 
 const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
   function TableFooter(
     {
       className,
+      "data-testid": dataTestId = "TableFooter",
       start,
       end,
       limit,
       total,
       onPreviousPage,
       onNextPage,
+      singleItem,
     }: TableFooterProps,
     ref,
   ) {
     const paginateMessage = useMemo(() => {
-      if (limit === undefined && total >= HARD_ROW_LIMIT) {
-        return t`Rows ${start + 1}-${end + 1} of first ${total}`;
+      const isOverLimit = limit === undefined && total >= HARD_ROW_LIMIT;
+
+      if (singleItem) {
+        return isOverLimit
+          ? t`Item ${start + 1} of first ${total}`
+          : t`Item ${start + 1} of ${total}`;
       }
-      return t`Rows ${start + 1}-${end + 1} of ${total}`;
-    }, [total, start, end, limit]);
+
+      return isOverLimit
+        ? t`Rows ${start + 1}-${end + 1} of first ${total}`
+        : t`Rows ${start + 1}-${end + 1} of ${total}`;
+    }, [total, start, end, limit, singleItem]);
 
     const handlePreviousPage = useCallback(
       (event: MouseEvent) => {
@@ -64,6 +75,7 @@ const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
           className,
           "fullscreen-normal-text fullscreen-night-text",
         )}
+        data-testid={dataTestId}
         ref={ref}
       >
         <PaginationMessage>{paginateMessage}</PaginationMessage>

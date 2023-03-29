@@ -1,13 +1,14 @@
 (ns metabase-enterprise.audit-app.pages.dashboard-subscriptions-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase-enterprise.audit-app.pages.dashboard-subscriptions :as audit.dashboard-subscriptions]
-            [metabase.models :refer [Collection Dashboard Pulse PulseChannel PulseChannelRecipient]]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.audit-app.pages.dashboard-subscriptions :as audit.dashboard-subscriptions]
+   [metabase.models :refer [Collection Dashboard Pulse PulseChannel PulseChannelRecipient]]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
 
 (defn- dashboard-subscriptions [dashboard-name]
   (mt/with-test-user :crowberto

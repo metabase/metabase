@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 export const DISPLAY_QUOTES = {
   identifierQuoteDefault: "",
   literalQuoteDefault: "",
@@ -83,6 +85,12 @@ export const MBQL_CLAUSES = {
     requiresFeature: "standard-deviation-aggregations",
   },
   avg: { displayName: `Average`, type: "aggregation", args: ["number"] },
+  median: {
+    displayName: `Median`,
+    type: "aggregation",
+    args: ["number"],
+    requiresFeature: "percentile-aggregations",
+  },
   min: { displayName: `Min`, type: "aggregation", args: ["expression"] },
   max: { displayName: `Max`, type: "aggregation", args: ["expression"] },
   share: { displayName: `Share`, type: "aggregation", args: ["boolean"] },
@@ -102,12 +110,6 @@ export const MBQL_CLAUSES = {
     args: ["number"],
     requiresFeature: "standard-deviation-aggregations",
   },
-  median: {
-    displayName: `Median`,
-    type: "aggregation",
-    args: ["number"],
-    requiresFeature: "percentile-aggregations",
-  },
   percentile: {
     displayName: `Percentile`,
     type: "aggregation",
@@ -121,6 +123,11 @@ export const MBQL_CLAUSES = {
     displayName: `substring`,
     type: "string",
     args: ["string", "number", "number"],
+    validator: function (_arg, start, _length) {
+      if (start <= 0) {
+        return t`Expected positive integer but found ${start}`;
+      }
+    },
   },
   "regex-match-first": {
     displayName: `regexextract`,
@@ -437,11 +444,11 @@ export const AGGREGATION_FUNCTIONS = new Set([
   "distinct",
   "stddev",
   "avg",
+  "median",
   "min",
   "max",
   "share",
   "var",
-  "median",
   "percentile",
 ]);
 
@@ -498,6 +505,9 @@ export const EXPRESSION_FUNCTIONS = new Set([
 export const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
 export const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
 
+// operators in which order of operands doesn't matter
+export const EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY = new Set(["+", "*"]);
+
 export const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);
 export const LOGICAL_AND_OPERATOR = new Set(["and"]);
 export const LOGICAL_OR_OPERATOR = new Set(["or"]);
@@ -547,4 +557,5 @@ export const STANDARD_AGGREGATIONS = new Set([
   "avg",
   "min",
   "max",
+  "median",
 ]);

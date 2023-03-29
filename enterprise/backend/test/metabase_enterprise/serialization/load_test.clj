@@ -1,32 +1,50 @@
 (ns metabase-enterprise.serialization.load-test
   (:refer-clojure :exclude [load])
-  (:require [clojure.data :as data]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.test :refer [deftest is testing use-fixtures]]
-            [metabase-enterprise.serialization.cmd :refer [dump load]]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
-                                     Dimension Field FieldValues Metric NativeQuerySnippet Pulse PulseCard PulseChannel
-                                     Segment Table User]]
-            [metabase.models.interface :as mi]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.shared.models.visualization-settings-test :as mb.viz-test]
-            [metabase.shared.util.log :as log]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db])
-  (:import org.apache.commons.io.FileUtils))
+  (:require
+   [clojure.data :as data]
+   [clojure.java.io :as io]
+   [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.serialization.cmd :refer [v1-dump v1-load]]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            DashboardCard
+            DashboardCardSeries
+            Database
+            Dimension
+            Field
+            FieldValues
+            Metric
+            NativeQuerySnippet
+            Pulse
+            PulseCard
+            PulseChannel
+            Segment
+            Table
+            User]]
+   [metabase.models.interface :as mi]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.shared.models.visualization-settings-test :as mb.viz-test]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [toucan.db :as db])
+  (:import
+   (org.apache.commons.io FileUtils)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once
-              mb.viz-test/with-spec-instrumentation-fixture
-              (fixtures/initialize :test-users-personal-collections))
+  mb.viz-test/with-spec-instrumentation-fixture
+  (fixtures/initialize :test-users-personal-collections))
 
 (defn- delete-directory!
   [file-or-filename]
@@ -131,14 +149,14 @@
           (is (some? (:column_settings vs)))
           (is (integer? field-id))
           (is (= "latitude" (-> (db/select-one-field :name Field :id field-id)
-                              str/lower-case)))
+                              u/lower-case-en)))
           (is (= {:show_mini_bar true
                   :column_title "Parallel"} col-val))
           (is (= "Venue Category" col-name))
           (is (true? col-enabled))
           (is (integer? col-field-id) "fieldRef within table.columns was properly serialized and loaded")
           (is (= "category_id" (-> (db/select-one-field :name Field :id col-field-id)
-                                   str/lower-case))))))
+                                   u/lower-case-en))))))
     card))
 
 (defn- collection-parent-name [collection]
@@ -284,7 +302,6 @@
                          ;; same native form on one database, then it's likely they would on any, since that is
                          ;; orthogonal to the issues that serialization has when performing this roundtrip).
                          (disj :oracle    ; no bare table names allowed
-                               :presto    ; no bare table names allowed
                                :redshift  ; bare table name doesn't work; it's test_data_venues instead of venues
                                :snowflake ; bare table name doesn't work; it's test_data_venues instead of venues
                                :sqlserver ; ORDER BY not allowed not allowed in derived tables (subselects)
@@ -292,17 +309,15 @@
                                :sqlite    ; foreign-keys is not supported by this driver
                                :sparksql  ; foreign-keys is not supported by this driver
                                ;; foreign-keys is not supported by the below driver even though it has joins
-                               :bigquery-cloud-sdk
-                               ))
-
+                               :bigquery-cloud-sdk))
       (let [fingerprint (ts/with-world
                           (qp.store/fetch-and-store-database! db-id)
                           (qp.store/fetch-and-store-tables! [table-id
                                                              table-id-categories
                                                              table-id-users
                                                              table-id-checkins])
-                          (dump dump-dir {:user        (:email (test.users/fetch-user :crowberto))
-                                          :only-db-ids #{db-id}})
+                          (v1-dump dump-dir {:user        (:email (test.users/fetch-user :crowberto))
+                                             :only-db-ids #{db-id}})
                           {:query-results (gather-orig-results [card-id
                                                                 card-arch-id
                                                                 card-id-root
@@ -378,7 +393,7 @@
                                            [Card               (db/select-one Card :id card-id-with-native-snippet)]
                                            [Card               (db/select-one Card :id card-join-card-id)]]})]
         (with-world-cleanup
-          (load dump-dir {:on-error :continue :mode :skip})
+          (v1-load dump-dir {:on-error :continue :mode :skip})
           (mt/with-db (db/select-one Database :name ts/temp-db-name)
             (doseq [[model entity] (:entities fingerprint)]
               (testing (format "%s \"%s\"" (type model) (:name entity))

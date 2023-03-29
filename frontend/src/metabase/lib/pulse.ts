@@ -102,7 +102,10 @@ export function recipientIsValid(recipient: NotificationRecipient) {
 
   const recipientDomain = MetabaseUtils.getEmailDomain(recipient.email);
   const allowedDomains = MetabaseSettings.subscriptionAllowedDomains();
-  return _.isEmpty(allowedDomains) || allowedDomains.includes(recipientDomain);
+  return (
+    _.isEmpty(allowedDomains) ||
+    (recipientDomain && allowedDomains.includes(recipientDomain))
+  );
 }
 
 export function pulseIsValid(pulse: Pulse, channelSpecs: ChannelSpecs) {

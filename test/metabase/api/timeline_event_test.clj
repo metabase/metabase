@@ -1,14 +1,17 @@
 (ns metabase.api.timeline-event-test
   "Tests for /api/timeline-event endpoints"
-  (:require [clojure.test :refer :all]
-            [metabase.http-client :as client]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.timeline :refer [Timeline]]
-            [metabase.models.timeline-event :refer [TimelineEvent]]
-            [metabase.server.middleware.util :as mw.util]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.http-client :as client]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.timeline :refer [Timeline]]
+   [metabase.models.timeline-event :refer [TimelineEvent]]
+   [metabase.server.middleware.util :as mw.util]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (deftest auth-tests
   (testing "Authentication"

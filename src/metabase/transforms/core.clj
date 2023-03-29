@@ -1,21 +1,25 @@
 (ns metabase.transforms.core
-  (:require [medley.core :as m]
-            [metabase.domain-entities.core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
-            [metabase.domain-entities.specs :refer [domain-entity-specs DomainEntitySpec]]
-            [metabase.driver :as driver]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.interface :as mi]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.transforms.materialize :as tf.materialize]
-            [metabase.transforms.specs :refer [Step transform-specs TransformSpec]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [medley.core :as m]
+   [metabase.domain-entities.core
+    :as de
+    :refer [Bindings DimensionBindings SourceEntity SourceName]]
+   [metabase.domain-entities.specs
+    :refer [domain-entity-specs DomainEntitySpec]]
+   [metabase.driver :as driver]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.transforms.materialize :as tf.materialize]
+   [metabase.transforms.specs :refer [Step transform-specs TransformSpec]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (s/defn ^:private add-bindings :- Bindings
   [bindings :- Bindings, source :- SourceName, new-bindings :- (s/maybe DimensionBindings)]

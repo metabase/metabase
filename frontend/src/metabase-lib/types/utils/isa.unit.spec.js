@@ -94,6 +94,15 @@ describe("isa", () => {
       ).toEqual(STRING);
     });
 
+    it("should know a bool regardless of semantic_type", () => {
+      expect(
+        getFieldType({
+          base_type: TYPE.Boolean,
+          semantic_type: TYPE.Category,
+        }),
+      ).toEqual(BOOLEAN);
+    });
+
     it("should know what it doesn't know", () => {
       expect(getFieldType({ base_type: "DERP DERP DERP" })).toEqual(undefined);
     });

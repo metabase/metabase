@@ -19,4 +19,5 @@ export const Avatar = styled.div<AvatarProps>`
   font-weight: 900;
   line-height: 1;
   background-color: ${({ bg = brandColor("brand") }) => bg};
+  flex-shrink: 0;
 `;

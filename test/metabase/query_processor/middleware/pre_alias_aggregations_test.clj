@@ -2,10 +2,12 @@
   "Tests for the `pre-alias-aggregations` middleware. For the most part we don't need to test the actual pre-alias
   logic, as that comes from the MBQL library and is tested thoroughly there -- we just need to test that it gets
   applied in the correct places."
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.query-processor.middleware.pre-alias-aggregations :as qp.pre-alias-aggregations]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.query-processor.middleware.pre-alias-aggregations
+    :as qp.pre-alias-aggregations]
+   [metabase.test :as mt]))
 
 (defn- pre-alias [query]
   (driver/with-driver (or driver/*driver* :h2)
@@ -14,8 +16,8 @@
 (deftest pre-alias-aggregations-test
   (is (= (mt/mbql-query checkins
            {:source-table $$checkins
-            :aggregation  [[:aggregation-options [:sum $user_id]  {:name "sum"} ]
-                           [:aggregation-options [:sum $venue_id] {:name "sum_2"} ]]})
+            :aggregation  [[:aggregation-options [:sum $user_id]  {:name "sum"}]
+                           [:aggregation-options [:sum $venue_id] {:name "sum_2"}]]})
          (pre-alias
           (mt/mbql-query checkins
             {:source-table $$checkins

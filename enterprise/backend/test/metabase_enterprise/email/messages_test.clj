@@ -1,10 +1,11 @@
 (ns metabase-enterprise.email.messages-test
-  (:require [clojure.test :refer :all]
-            [metabase.email.messages :as messages]
-            [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.email.messages :as messages]
+   [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 

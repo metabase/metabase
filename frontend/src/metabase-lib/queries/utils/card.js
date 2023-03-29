@@ -117,24 +117,24 @@ export function applyParameters(
     const options =
       deriveFieldOperatorFromParameter(parameter)?.optionsDefaults;
 
+    const queryParameter = {
+      type,
+      value: normalizeParameterValue(type, value),
+      id: parameter.id,
+    };
+
+    if (options) {
+      queryParameter.options = options;
+    }
+
     if (mapping) {
       // mapped target, e.x. on a dashboard
-      datasetQuery.parameters.push({
-        type,
-        value: normalizeParameterValue(type, value),
-        target: mapping.target,
-        options,
-        id: parameter.id,
-      });
+      queryParameter.target = mapping.target;
+      datasetQuery.parameters.push(queryParameter);
     } else if (parameter.target) {
       // inline target, e.x. on a card
-      datasetQuery.parameters.push({
-        type,
-        value: normalizeParameterValue(type, value),
-        target: parameter.target,
-        options,
-        id: parameter.id,
-      });
+      queryParameter.target = parameter.target;
+      datasetQuery.parameters.push(queryParameter);
     }
   }
 

@@ -4,11 +4,7 @@ import { createSelector } from "reselect";
 import { getMetadata } from "metabase/selectors/metadata";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
-import {
-  getDashboardUiParameters,
-  getFilteringParameterValuesMap,
-  getParameterValuesSearchKey,
-} from "metabase/parameters/utils/dashboards";
+import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
@@ -132,6 +128,10 @@ export const getIsDirty = createSelector(
     ),
 );
 
+export const getEditingDashcardId = createSelector([getSidebar], sidebar => {
+  return sidebar?.props?.dashcardId;
+});
+
 export const getEditingParameterId = createSelector([getSidebar], sidebar => {
   return sidebar.name === SIDEBAR_NAME.editParameter
     ? sidebar.props?.parameterId
@@ -178,15 +178,12 @@ export const getParameters = createSelector(
   },
 );
 
-export const makeGetParameterMappingOptions = () => {
-  const getParameterMappingOptions = createSelector(
-    [getMetadata, getEditingParameter, getCard, getDashCard],
-    (metadata, parameter, card, dashcard) => {
-      return _getParameterMappingOptions(metadata, parameter, card, dashcard);
-    },
-  );
-  return getParameterMappingOptions;
-};
+export const getParameterMappingOptions = createSelector(
+  [getMetadata, getEditingParameter, getCard, getDashCard],
+  (metadata, parameter, card, dashcard) => {
+    return _getParameterMappingOptions(metadata, parameter, card, dashcard);
+  },
+);
 
 export const getDefaultParametersById = createSelector(
   [getDashboard],
@@ -199,34 +196,6 @@ export const getDefaultParametersById = createSelector(
       return map;
     }, {}),
 );
-
-export const getDashboardParameterValuesSearchCache = state =>
-  state.dashboard.parameterValuesSearchCache;
-
-export const getDashboardParameterValuesCache = state => {
-  return {
-    get: ({ dashboardId, parameter, parameters, query }) => {
-      if (!parameter) {
-        return undefined;
-      }
-
-      const { parameterValuesSearchCache } = state.dashboard;
-
-      const filteringParameterValues = getFilteringParameterValuesMap(
-        parameter,
-        parameters,
-      );
-
-      const cacheKey = getParameterValuesSearchKey({
-        dashboardId,
-        parameterId: parameter.id,
-        query,
-        filteringParameterValues,
-      });
-      return parameterValuesSearchCache[cacheKey];
-    },
-  };
-};
 
 export const getIsHeaderVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],

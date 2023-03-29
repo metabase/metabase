@@ -1,18 +1,24 @@
 (ns metabase.models.dashboard-card-test
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.card-test :as card-test]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.interface-test :as i.test]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db])
-  (:import java.time.LocalDateTime))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.card-test :as card-test]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard] :as dashboard]
+   [metabase.models.dashboard-card
+    :as dashboard-card
+    :refer [DashboardCard]]
+   [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+   [metabase.models.interface-test :as i.test]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan.db :as db])
+  (:import
+   (java.time LocalDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (defn remove-ids-and-timestamps [m]
   (let [f (fn [v]
@@ -32,8 +38,8 @@
     (mt/with-temp* [Dashboard     [{dashboard-id :id}]
                     Card          [{card-id :id}]
                     DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id, :parameter_mappings [{:foo "bar"}]}]]
-      (is (= {:size_x                 2
-              :size_y                 2
+      (is (= {:size_x                 4
+              :size_y                 4
               :col                    0
               :row                    0
               :parameter_mappings     [{:foo "bar"}]
@@ -50,8 +56,8 @@
                     DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                     DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
                     DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
-      (is (= {:size_x                 2
-              :size_y                 2
+      (is (= {:size_x                 4
+              :size_y                 4
               :col                    0
               :row                    0
               :parameter_mappings     []
@@ -150,52 +156,37 @@
                 "ensure the card_id cannot be changed 4. ensure the dashboard_id cannot be changed")
     (mt/with-temp* [Dashboard     [{dashboard-id :id}]
                     Card          [{card-id :id}]
-                    DashboardCard [{dashcard-id :id} {:dashboard_id       dashboard-id
-                                                      :card_id            card-id
-                                                      :parameter_mappings [{:foo "bar"}]}]
+                    DashboardCard [{dashcard-id :id
+                                    :as dashboard-card} {:dashboard_id       dashboard-id
+                                                         :card_id            card-id
+                                                         :parameter_mappings [{:foo "bar"}]}]
                     Card          [{card-id-1 :id}   {:name "Test Card 1"}]
                     Card          [{card-id-2 :id}   {:name "Test Card 2"}]]
       (testing "unmodified dashcard"
-        (is (= {:size_x                 2
-                :size_y                 2
+        (is (= {:size_x                 4
+                :size_y                 4
                 :col                    0
                 :row                    0
                 :parameter_mappings     [{:foo "bar"}]
                 :visualization_settings {}
                 :series                 []}
                (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))
-      (testing "return value from the update call"
-        (is (= {:size_x                 4
-                :size_y                 3
-                :col                    1
-                :row                    1
-                :parameter_mappings     [{:foo "barbar"}]
-                :visualization_settings {}
-                :series                 [{:name                   "Test Card 2"
-                                          :description            nil
-                                          :display                :table
-                                          :dataset_query          {}
-                                          :visualization_settings {}}
-                                         {:name                   "Test Card 1"
-                                          :description            nil
-                                          :display                :table
-                                          :dataset_query          {}
-                                          :visualization_settings {}}]}
-               (remove-ids-and-timestamps
-                (dashboard-card/update-dashboard-card!
-                 {:id                     dashcard-id
-                  :actor_id               (mt/user->id :rasta)
-                  :dashboard_id           nil
-                  :card_id                nil
-                  :size_x                 4
-                  :size_y                 3
-                  :row                    1
-                  :col                    1
-                  :parameter_mappings     [{:foo "barbar"}]
-                  :visualization_settings {}
-                  :series                 [card-id-2 card-id-1]})))))
+      (testing "return value from the update call should be nil"
+        (is (nil? (dashboard-card/update-dashboard-card!
+                   {:id                     dashcard-id
+                    :actor_id               (mt/user->id :rasta)
+                    :dashboard_id           nil
+                    :card_id                nil
+                    :size_x                 5
+                    :size_y                 3
+                    :row                    1
+                    :col                    1
+                    :parameter_mappings     [{:foo "barbar"}]
+                    :visualization_settings {}
+                    :series                 [card-id-2 card-id-1]}
+                   dashboard-card))))
       (testing "validate db captured everything"
-        (is (= {:size_x                 4
+        (is (= {:size_x                 5
                 :size_y                 3
                 :col                    1
                 :row                    1
@@ -212,6 +203,45 @@
                                           :dataset_query          {}
                                           :visualization_settings {}}]}
                (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id))))))))
+
+(deftest update-dashboard-card!-call-count-test
+  (testing "This tracks the call count of update-dashcards! for the purpose of optimizing the
+            PUT /api/dashboard/:id/cards handler"
+    (mt/with-temp* [Dashboard     [{dashboard-id :id :as dashboard}]
+                    Card          [{card-id :id}]
+                    DashboardCard [dashcard-1 {:dashboard_id dashboard-id, :card_id card-id}]
+                    DashboardCard [dashcard-2 {:dashboard_id dashboard-id, :card_id card-id}]
+                    DashboardCard [dashcard-3 {:dashboard_id dashboard-id, :card_id card-id}]
+                    Card          [{series-id-1 :id} {:name "Series Card 1"}]
+                    Card          [{series-id-2 :id} {:name "Series Card 2"}]]
+      (testing "Should have fewer DB calls if there are no changes to the dashcards"
+        (db/with-call-counting [call-count]
+          (dashboard/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])
+          (is (= 6 (call-count)))))
+      (testing "Should have more calls if there are changes to the dashcards"
+        (db/with-call-counting [call-count]
+          (dashboard/update-dashcards! dashboard [{:id     (:id dashcard-1)
+                                                   :cardId card-id
+                                                   :row    1
+                                                   :col    2
+                                                   :size_x 3
+                                                   :size_y 4
+                                                   :series [{:id series-id-1}]}
+                                                  {:id     (:id dashcard-2)
+                                                   :cardId card-id
+                                                   :row    1
+                                                   :col    2
+                                                   :size_x 3
+                                                   :size_y 4
+                                                   :series [{:id series-id-2}]}
+                                                  {:id     (:id dashcard-3)
+                                                   :cardId card-id
+                                                   :row    1
+                                                   :col    2
+                                                   :size_x 3
+                                                   :size_y 4
+                                                   :series []}])
+          (is (= 15 (call-count))))))))
 
 (deftest normalize-parameter-mappings-test
   (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"
@@ -277,3 +307,28 @@
         (is (= "1311d6dc"
                (serdes.hash/raw-hash [(serdes.hash/identity-hash card) (serdes.hash/identity-hash dash) {} 6 3 now])
                (serdes.hash/identity-hash dashcard)))))))
+
+(deftest from-decoded-json-test
+  (testing "Dashboard Cards should remain the same if they are serialized to JSON,
+            deserialized, and finally transformed with `from-parsed-json`."
+    (mt/with-temp* [Dashboard     [dash     {:name "my dashboard"}]
+                    Card          [card     {:name "some question"}]
+                    DashboardCard [dashcard {:card_id (:id card)
+                                             :dashboard_id (:id dash)
+                                             :visualization_settings {:click_behavior {:type         "link",
+                                                                                       :linkType     "url",
+                                                                                       :linkTemplate "/dashboard/1?year={{column:Year}}"}}
+                                             :parameter_mappings     [{:card_id (:id card)
+                                                                       :parameter_id "-1419866742"
+                                                                       :target [:dimension [:field 1 nil]]}]
+                                             :row                    4
+                                             :col                    3}]]
+      ;; NOTE: we need to remove `:created_at` and `:updated_at` because they are not
+      ;; transformed by `from-parsed-json`
+      (let [dashcard     (dissoc (db/select-one DashboardCard :id (u/the-id dashcard))
+                                 :created_at :updated_at)
+            serialized   (json/generate-string dashcard)
+            deserialized (json/parse-string serialized true)
+            transformed  (dashboard-card/from-parsed-json deserialized)]
+        (is (= dashcard
+               transformed))))))

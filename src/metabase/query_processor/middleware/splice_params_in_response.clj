@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.splice-params-in-response
-  (:require [metabase.driver :as driver]))
+  (:require
+   [metabase.driver :as driver]))
 
 (defn- splice-params-in-metadata [{{:keys [params]} :native_form, :as metadata}]
   ;; no need to i18n this since this message is something only developers who break the QP by changing middleware

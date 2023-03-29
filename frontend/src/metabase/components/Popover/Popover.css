@@ -44,6 +44,10 @@
   padding: 10px 12px;
 }
 
+.tippy-box[data-theme~="no-padding"] .tippy-content {
+  padding: 0;
+}
+
 .tippy-box[data-theme~="popover"] {
   font-size: inherit;
   background-color: var(--color-bg-white);

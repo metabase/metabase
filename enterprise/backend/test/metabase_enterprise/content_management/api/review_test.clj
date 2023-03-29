@@ -1,10 +1,11 @@
 (ns metabase-enterprise.content-management.api.review-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.moderation-review :as moderation-review :refer [ModerationReview]]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.moderation-review :as moderation-review :refer [ModerationReview]]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 (defn- normalized-response
   [moderation-review]
@@ -82,7 +83,6 @@
             (testing "Only allows for valid status"
               (doseq [status moderation-review/statuses]
                 (is (= status (:status (moderate! status "good")))))
-              ;; i wish this was better. Should have a better error message and honestly shouldn't be a 500
               (mt/user-http-request :crowberto :post 400 "moderation-review"
                                     {:text                "not a chance this works"
                                      :status              "invalid status"

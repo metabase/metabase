@@ -1,17 +1,23 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor.context.default :as context.default]
-            [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.dimension :refer [Dimension]]
+   [metabase.models.field :refer [Field]]
+   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.middleware.add-dimension-projections
+    :as qp.add-dimension-projections]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
 
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
+
+(defn- add-fk-remaps [query]
+  (mt/with-everything-store
+    (#'qp.add-dimension-projections/add-fk-remaps query)))
 
 (def ^:private remapped-field
   (delay
@@ -38,16 +44,17 @@
                                         {:source-field                                (mt/id :venues :category_id)
                                          ::qp.add-dimension-projections/new-field-dimension-id 1000}]
                 :dimension             @remapped-field}]
-              (#'qp.add-dimension-projections/remap-column-infos
-               [[:field (mt/id :venues :price) nil]
-                [:field (mt/id :venues :longitude) nil]
-                [:field (mt/id :venues :category_id) nil]])))))))
+              (mt/with-everything-store
+                (#'qp.add-dimension-projections/remap-column-infos
+                 [[:field (mt/id :venues :price) nil]
+                  [:field (mt/id :venues :longitude) nil]
+                  [:field (mt/id :venues :category_id) nil]]))))))))
 
 (deftest add-fk-remaps-add-fields-test
   (do-with-fake-remappings-for-category-id
    (fn []
      (testing "make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]"
-       (let [{:keys [remaps query]} (#'qp.add-dimension-projections/add-fk-remaps
+       (let [{:keys [remaps query]} (add-fk-remaps
                                      (mt/mbql-query venues
                                        {:fields [$price $longitude $category_id]}))]
          (is (= [@remapped-field]
@@ -75,7 +82,7 @@
                                         {:source-field               %category_id
                                          ::some-other-namespaced-key true}])]
          (testing (format "\ncategories.name field options = %s" (pr-str category-name-options))
-           (let [{:keys [remaps query]} (#'qp.add-dimension-projections/add-fk-remaps
+           (let [{:keys [remaps query]} (add-fk-remaps
                                          (mt/mbql-query venues
                                            {:fields [$price
                                                      $category_id
@@ -98,13 +105,13 @@
 
              (testing "Preprocessing query again should not result in duplicate columns being added"
                (is (query= query
-                           (:query (#'qp.add-dimension-projections/add-fk-remaps query))))))))))))
+                           (:query (add-fk-remaps query))))))))))))
 
 (deftest add-fk-remaps-replace-order-bys-test
   (testing "adding FK remaps should replace any existing order-bys for a field with order bys for the FK remapping Field"
     (do-with-fake-remappings-for-category-id
      (fn []
-       (let [{:keys [remaps query]} (#'qp.add-dimension-projections/add-fk-remaps
+       (let [{:keys [remaps query]} (add-fk-remaps
                                      (mt/mbql-query venues
                                        {:fields   [$price $longitude $category_id]
                                         :order-by [[:asc $category_id]]}))]
@@ -130,7 +137,7 @@
   (testing "adding FK remaps should replace any existing breakouts for a field with order bys for the FK remapping Field"
     (do-with-fake-remappings-for-category-id
      (fn []
-       (let [{:keys [remaps query]} (#'qp.add-dimension-projections/add-fk-remaps
+       (let [{:keys [remaps query]} (add-fk-remaps
                                      (mt/mbql-query venues
                                        {:breakout    [$category_id]
                                         :aggregation [[:count]]}))]
@@ -151,7 +158,7 @@
   (testing "make sure FK remaps work with nested queries"
     (do-with-fake-remappings-for-category-id
      (fn []
-       (let [{:keys [remaps query]} (#'qp.add-dimension-projections/add-fk-remaps
+       (let [{:keys [remaps query]} (add-fk-remaps
                                      (mt/mbql-query venues
                                        {:source-query {:source-table $$venues
                                                        :fields       [$price $longitude $category_id]}}))]
@@ -309,7 +316,8 @@
                                                                                  :human_readable_field_id   (mt/id :products :title)
                                                                                  :field_name                "PRODUCT_ID"
                                                                                  :human_readable_field_name "TITLE"}]))
-                     (#'qp.add-dimension-projections/add-remapped-columns query))))))))))
+                     (mt/with-everything-store
+                       (#'qp.add-dimension-projections/add-remapped-columns query)))))))))))
 
 (deftest fk-remaps-with-multiple-columns-with-same-name-test
   (testing "Make sure we remap to the correct column when some of them have duplicate names"
@@ -318,7 +326,7 @@
                                                         {:fields   [$name $category_id]
                                                          :order-by [[:asc $name]]
                                                          :limit    4})
-            {remap-info :remaps, preprocessed :query} (#'qp.add-dimension-projections/add-fk-remaps query)
+            {remap-info :remaps, preprocessed :query} (add-fk-remaps query)
             dimension-id                              (db/select-one-id Dimension
                                                         :field_id                (mt/id :venues :category_id)
                                                         :human_readable_field_id (mt/id :categories :name))]
@@ -377,7 +385,7 @@
               receiver-dimension-id                     (db/select-one-id Dimension
                                                           :field_id                (mt/id :messages :receiver_id)
                                                           :human_readable_field_id (mt/id :users :name))
-              {remap-info :remaps, preprocessed :query} (#'qp.add-dimension-projections/add-fk-remaps query)]
+              {remap-info :remaps, preprocessed :query} (add-fk-remaps query)]
           (testing "Pre-processing"
             (testing "Remap info"
               (is (query= (mt/$ids messages
@@ -460,7 +468,7 @@
                                  &PRODUCTS__via__PRODUCT_ID.orders.product_id->products.title]
                         :limit  2})
                      (:query
-                      (#'qp.add-dimension-projections/add-fk-remaps
+                      (add-fk-remaps
                        (mt/mbql-query products
                          {:joins  [{:strategy     :left-join
                                     :source-query {:source-table $$orders}

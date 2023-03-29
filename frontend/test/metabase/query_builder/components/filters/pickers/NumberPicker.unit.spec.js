@@ -7,7 +7,7 @@ describe("NumberPicker", () => {
   it("should display provided values", () => {
     const spy = jest.fn();
     render(<NumberPicker values={[16, 17]} onValuesChange={spy} />);
-    screen.getByDisplayValue("16, 17");
+    expect(screen.getByDisplayValue("16, 17")).toBeInTheDocument();
   });
 
   it("should fire onValuesChange function on change", async () => {
@@ -34,6 +34,6 @@ describe("NumberPicker", () => {
     const spy = jest.fn();
     render(<NumberPicker values={["foo", "bar"]} onValuesChange={spy} />);
 
-    expect(screen.queryByTestId("input-prefix")).toBeNull();
+    expect(screen.queryByTestId("input-prefix")).not.toBeInTheDocument();
   });
 });

@@ -1,3 +1,6 @@
+import _ from "underscore";
+import { StackedTooltipModel } from "metabase/visualizations/components/ChartTooltip/types";
+
 export function getMaxLabelDimension(
   d3Arc: d3.svg.Arc<d3.svg.arc.Arc>,
   slice: d3.svg.arc.Arc,
@@ -25,3 +28,40 @@ export function getMaxLabelDimension(
 
   return Math.min(innerRadiusArcDistance, donutWidth);
 }
+
+interface SliceData {
+  key: string;
+  value: number;
+  color: string;
+}
+
+export const getTooltipModel = (
+  slices: SliceData[],
+  hoveredIndex: number | null,
+  dimensionColumnName: string,
+  dimensionFormatter: (value: unknown) => string,
+  metricFormatter: (value: unknown) => string,
+  grandTotal?: number,
+): StackedTooltipModel => {
+  const rows = slices.map(slice => ({
+    name: dimensionFormatter(slice.key),
+    value: slice.value,
+    color: slice.color,
+    formatter: metricFormatter,
+  }));
+
+  const [headerRows, bodyRows] = _.partition(
+    rows,
+    (_, index) => index === hoveredIndex,
+  );
+
+  return {
+    headerTitle: dimensionColumnName,
+    headerRows,
+    bodyRows,
+    totalFormatter: metricFormatter,
+    grandTotal,
+    showTotal: true,
+    showPercentages: true,
+  };
+};

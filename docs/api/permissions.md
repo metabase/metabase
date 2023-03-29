@@ -32,7 +32,13 @@ You must be a superuser to do this.
 
 ## `GET /api/permissions/graph`
 
-Fetch a graph of all Permissions.
+Fetch a graph of all v1 Permissions (excludes v2 query and data permissions).
+
+You must be a superuser to do this.
+
+## `GET /api/permissions/graph-v2`
+
+Fetch a graph of all v2 Permissions (excludes v1 data permissions).
 
 You must be a superuser to do this.
 
@@ -80,7 +86,7 @@ Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging 
 
 *  **`user_id`** value must be an integer greater than zero.
 
-*  **`is_group_manager`** value may be nil, or if non-nil, value must be a boolean.
+*  **`is_group_manager`** nullable boolean
 
 ## `PUT /api/permissions/execution/graph`
 
@@ -108,11 +114,16 @@ Do a batch update of Permissions by passing in a modified graph. This should ret
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
   409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that.
 
+  The optional `sandboxes` key contains a list of sandboxes that should be created or modified in conjunction with
+  this permissions graph update. Since data sandboxing is an Enterprise Edition-only feature, a 402 (Payment Required)
+  response will be returned if this key is present and the server is not running the Enterprise Edition, and/or the
+  `:sandboxes` feature flag is not present.
+
 You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`body`** value must be a map.
+*  **`body`** map
 
 ## `PUT /api/permissions/group/:group-id`
 
@@ -124,6 +135,14 @@ Update the name of a `PermissionsGroup`.
 
 *  **`name`** value must be a non-blank string.
 
+## `PUT /api/permissions/membership/:group-id/clear`
+
+Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group.
+
+### PARAMS:
+
+*  **`group-id`**
+
 ## `PUT /api/permissions/membership/:id`
 
 Update a Permission Group membership. Returns the updated record.
@@ -132,7 +151,7 @@ Update a Permission Group membership. Returns the updated record.
 
 *  **`id`** 
 
-*  **`is_group_manager`** value must be a boolean.
+*  **`is_group_manager`** boolean
 
 ---
 

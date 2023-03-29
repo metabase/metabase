@@ -9,7 +9,7 @@ jobs:
   create_pull_request:
     name: Creates a pull request
     if: contains(github.event.comment.body, '@metabase-bot backport')
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: tibdex/github-app-token@v1.6.0
         id: generate-token
@@ -111,7 +111,7 @@ jobs:
           if [[ $(hub pr list -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -s "open") ]]; then
               echo "PR already exists"
           else
-              BACKPORT_PR_URL=$(hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "auto-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
+              BACKPORT_PR_URL=$(hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "was-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
 
               #${ORIGINAL_PULL_REQUEST_NUMBER}")
 
@@ -145,7 +145,7 @@ jobs:
           merge-method: squash
 
   notify_when_failed:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Notify about failure
     needs: create_pull_request
     if: ${{ failure() }}

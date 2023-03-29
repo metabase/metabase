@@ -5,20 +5,21 @@
   Currently, this is only used by the Sample Database, but theoretically in the future we could add additional sample
   datasets and preconfigure them by populating this Table; or 3rd-party applications or users can add this table to
   their database for an enhanced Metabase experience out-of-the box."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync.fetch-metadata :as fetch-metadata]
-            [metabase.sync.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
+   [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (def ^:private KeypathComponents
   {:table-name (s/maybe su/NonBlankString)
@@ -83,21 +84,23 @@
 (s/defn is-metabase-metadata-table? :- s/Bool
   "Is this TABLE the special `_metabase_metadata` table?"
   [table :- i/DatabaseMetadataTable]
-  (= "_metabase_metadata" (str/lower-case (:name table))))
+  (= "_metabase_metadata" (u/lower-case-en (:name table))))
 
 (s/defn sync-metabase-metadata!
   "Sync the `_metabase_metadata` table, a special table with Metabase metadata, if present.
    This table contains information about type information, descriptions, and other properties that
    should be set for Metabase objects like Tables and Fields."
-  [database :- i/DatabaseInstance]
-  (sync-util/with-error-handling (format "Error syncing _metabase_metadata table for %s"
-                                         (sync-util/name-for-logging database))
-    (let [driver (driver.u/database->driver database)]
-      ;; `sync-metabase-metadata-table!` relies on `driver/table-rows-seq` being defined
-      (when (get-method driver/table-rows-seq driver)
-        ;; If there's more than one metabase metadata table (in different schemas) we'll sync each one in turn.
-        ;; Hopefully this is never the case.
-        (doseq [table (:tables (fetch-metadata/db-metadata database))]
-          (when (is-metabase-metadata-table? table)
-            (sync-metabase-metadata-table! driver database table))))
-      {})))
+  ([database :- i/DatabaseInstance]
+   (sync-metabase-metadata! database (fetch-metadata/db-metadata database)))
+  ([database :- i/DatabaseInstance db-metadata]
+   (sync-util/with-error-handling (format "Error syncing _metabase_metadata table for %s"
+                                          (sync-util/name-for-logging database))
+     (let [driver (driver.u/database->driver database)]
+       ;; `sync-metabase-metadata-table!` relies on `driver/table-rows-seq` being defined
+       (when (get-method driver/table-rows-seq driver)
+         ;; If there's more than one metabase metadata table (in different schemas) we'll sync each one in turn.
+         ;; Hopefully this is never the case.
+         (doseq [table (:tables db-metadata)]
+           (when (is-metabase-metadata-table? table)
+             (sync-metabase-metadata-table! driver database table))))
+       {}))))

@@ -6,19 +6,20 @@
   All nested Fields recursion is handled in one place, by the main entrypoint (`sync-instances!`) and helper
   functions `sync-nested-field-instances!` and `sync-nested-fields-of-one-field!`. All other functions in this
   namespace should ignore nested fields entirely; the will be invoked with those Fields as appropriate."
-  (:require [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.humanization :as humanization]
-            [metabase.sync.interface :as i]
-            [metabase.sync.sync-metadata.fields.common :as common]
-            [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
-            [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [medley.core :as m]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.humanization :as humanization]
+   [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata.fields.common :as common]
+   [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
+   [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
@@ -40,7 +41,7 @@
   [table :- i/TableInstance, new-field-metadatas :- [i/TableMetadataField], parent-id :- common/ParentID]
   (when (seq new-field-metadatas)
     (db/insert-many! Field
-      (for [{:keys [database-type database-required base-type effective-type coercion-strategy
+      (for [{:keys [database-type database-is-auto-increment database-required base-type effective-type coercion-strategy
                     field-comment database-position nfc-path visibility-type], field-name :name :as field} new-field-metadatas]
         (do
          (when (and effective-type
@@ -54,22 +55,23 @@
                                      field-name
                                      effective-type
                                      base-type)))
-         {:table_id          (u/the-id table)
-          :name              field-name
-          :display_name      (humanization/name->human-readable-name field-name)
-          :database_type     (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
-          :base_type         base-type
+         {:table_id                  (u/the-id table)
+          :name                      field-name
+          :display_name              (humanization/name->human-readable-name field-name)
+          :database_type             (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
+          :base_type                 base-type
           ;; todo test this?
-          :effective_type    (if (and effective-type coercion-strategy) effective-type base-type)
-          :coercion_strategy (when effective-type coercion-strategy)
-          :semantic_type     (common/semantic-type field)
-          :parent_id         parent-id
-          :nfc_path          nfc-path
-          :description       field-comment
-          :position          database-position
-          :database_position database-position
-          :database_required (or database-required false)
-          :visibility_type   (or visibility-type :normal)})))))
+          :effective_type            (if (and effective-type coercion-strategy) effective-type base-type)
+          :coercion_strategy         (when effective-type coercion-strategy)
+          :semantic_type             (common/semantic-type field)
+          :parent_id                 parent-id
+          :nfc_path                  nfc-path
+          :description               field-comment
+          :position                  database-position
+          :database_position         database-position
+          :database_is_auto_increment (or database-is-auto-increment false)
+          :database_required         (or database-required false)
+          :visibility_type           (or visibility-type :normal)})))))
 
 (s/defn ^:private create-or-reactivate-fields! :- (s/maybe [i/FieldInstance])
   "Create (or reactivate) Metabase Field object(s) for any Fields in `new-field-metadatas`. Does *NOT* recursively

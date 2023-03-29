@@ -23,7 +23,7 @@ describe("DatabaseListApp", () => {
     await setup({ hasSampleDatabase: false, isAdmin: true });
 
     expect(
-      screen.queryByText(CREATE_SAMPLE_DATABASE_BUTTON_LABEL),
+      screen.getByText(CREATE_SAMPLE_DATABASE_BUTTON_LABEL),
     ).toBeInTheDocument();
   });
 

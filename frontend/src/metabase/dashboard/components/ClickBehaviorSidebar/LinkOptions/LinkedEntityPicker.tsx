@@ -9,7 +9,6 @@ import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
 import DashboardPicker from "metabase/containers/DashboardPicker";
-import DataAppPagePicker from "metabase/containers/DataAppPagePicker";
 import QuestionPicker from "metabase/containers/QuestionPicker";
 
 import ClickMappings, {
@@ -24,7 +23,6 @@ import type {
   CardId,
   ClickBehavior,
   EntityCustomDestinationClickBehavior,
-  CustomDestinationClickBehaviorEntity,
 } from "metabase-types/api";
 
 import { SidebarItem } from "../SidebarItem";
@@ -49,13 +47,6 @@ const LINK_TARGETS = {
     pickerIcon: "dashboard",
     getModalTitle: () => t`Pick a dashboard to link to`,
     getPickerButtonLabel: () => t`Pick a dashboard…`,
-  },
-  page: {
-    Entity: Dashboards,
-    PickerComponent: DataAppPagePicker,
-    pickerIcon: "document",
-    getModalTitle: () => t`Pick a page to link to`,
-    getPickerButtonLabel: () => t`Pick a page…`,
   },
 };
 
@@ -198,7 +189,7 @@ function LinkedEntityPicker({
       </div>
       {hasSelectedTarget && (
         <TargetClickMappings
-          isDash={linkType === "dashboard" || linkType === "page"}
+          isDash={linkType === "dashboard"}
           clickBehavior={clickBehavior}
           dashcard={dashcard}
           updateSettings={updateSettings}

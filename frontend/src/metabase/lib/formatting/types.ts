@@ -28,4 +28,5 @@ export interface OptionsType {
   time_style?: string;
   type?: string;
   view_as?: string | null;
+  weekday_enabled?: boolean;
 }

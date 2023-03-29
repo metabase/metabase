@@ -1,7 +1,9 @@
 (ns metabase.query-processor.middleware.add-default-temporal-unit-test
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.add-default-temporal-unit :as add-default-temporal-unit]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor.middleware.add-default-temporal-unit
+    :as add-default-temporal-unit]
+   [metabase.test :as mt]))
 
 (defn- add-default-temporal-unit [query]
   (mt/with-everything-store

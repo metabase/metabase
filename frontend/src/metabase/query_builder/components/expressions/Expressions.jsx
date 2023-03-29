@@ -4,7 +4,7 @@ import _ from "underscore";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import { format } from "metabase-lib/expressions/format";
 

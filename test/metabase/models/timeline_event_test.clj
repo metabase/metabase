@@ -1,11 +1,14 @@
 (ns metabase.models.timeline-event-test
   "Tests for TimelineEvent model namespace."
-  (:require [clojure.test :refer :all]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.timeline :refer [Timeline]]
-            [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.timeline :refer [Timeline]]
+   [metabase.models.timeline-event
+    :as timeline-event
+    :refer [TimelineEvent]]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (defn- names [timelines]
   (into #{} (comp (mapcat :events) (map :name)) timelines))

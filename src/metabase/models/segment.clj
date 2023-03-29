@@ -1,20 +1,18 @@
 (ns metabase.models.segment
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
-  (:require [clojure.set :as set]
-            [medley.core :as m]
-            [metabase.models.interface :as mi]
-            [metabase.models.revision :as revision]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [clojure.set :as set]
+   [medley.core :as m]
+   [metabase.models.interface :as mi]
+   [metabase.models.revision :as revision]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel Segment :segment)
 
@@ -36,15 +34,13 @@
                   (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Segment)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:types          (constantly {:definition :metric-segment-definition})
-    :properties     (constantly {:timestamped? true
-                                 :entity_id    true})
-    :hydration-keys (constantly [:segment])
-    :pre-update     pre-update}))
+(mi/define-methods
+ Segment
+ {:types          (constantly {:definition :metric-segment-definition})
+  :properties     (constantly {::mi/timestamped? true
+                               ::mi/entity-id    true})
+  :hydration-keys (constantly [:segment])
+  :pre-update     pre-update})
 
 (defmethod serdes.hash/identity-hash-fields Segment
   [_segment]
@@ -103,17 +99,3 @@
         (concat ["segments" (serdes.base/storage-leaf-file-name id label)]))))
 
 (serdes.base/register-ingestion-path! "Segment" (serdes.base/ingestion-matcher-collected "databases" "Segment"))
-
-;;; ------------------------------------------------------ Etc. ------------------------------------------------------
-
-(s/defn retrieve-segments :- [(mi/InstanceOf Segment)]
-  "Fetch all `Segments` for a given `Table`. Optional second argument allows filtering by active state by providing
-   one of 3 keyword values: `:active`, `:deleted`, `:all`. Default filtering is for `:active`."
-  ([table-id :- su/IntGreaterThanZero]
-   (retrieve-segments table-id :active))
-
-  ([table-id :- su/IntGreaterThanZero state :- (s/enum :active :deleted :all)]
-   (-> (if (= :all state)
-         (db/select Segment, :table_id table-id, {:order-by [[:name :asc]]})
-         (db/select Segment, :table_id table-id, :archived (= :deleted state), {:order-by [[:name :asc]]}))
-       (hydrate :creator))))

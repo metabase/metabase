@@ -1,18 +1,19 @@
 (ns metabase.query-processor.middleware.results-metadata-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Card Collection Dimension Field]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.sync.analyze.query-results :as qr]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models :refer [Card Collection Dimension Field]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.sync.analyze.query-results :as qr]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (defn- card-metadata [card]
   (db/select-one-field :result_metadata Card :id (u/the-id card)))
@@ -179,8 +180,8 @@
                    :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :year}]]}
         :info     {:card-id    (u/the-id card)
                    :query-hash (qp.util/query-hash {})}})
-      (is (= [{:base_type    :type/DateTime
-               :effective_type    :type/DateTime
+      (is (= [{:base_type    :type/Date
+               :effective_type    :type/Date
                :visibility_type :normal
                :coercion_strategy nil
                :display_name "Date"
@@ -225,26 +226,28 @@
     ;; H2 `date_trunc` returns a column of SQL type `NULL` -- so initially the `base_type` will be `:type/*`
     ;; (unknown). However, the `annotate` middleware will scan the values of the column and determine that the column
     ;; is actually a `:type/DateTime`. The query results metadata should come back with the correct type info.
+    ;; PS: the above comment is likely outdated with H2 v2
+    ;; TODO: is this still relevant? -jpc
     (let [results (:data
                    (qp/process-query
                     {:type     :native
                      :native   {:query "select date_trunc('day', checkins.\"DATE\") as d FROM checkins"}
                      :database (mt/id)}))]
       (testing "Sanity check: annotate should infer correct type from `:cols`"
-        (is (= {:base_type    :type/DateTime,
-                :effective_type :type/DateTime
+        (is (= {:base_type    :type/Date,
+                :effective_type :type/Date
                 :display_name "D" :name "D"
                 :source       :native
-                :field_ref    [:field "D" {:base-type :type/DateTime}]}
+                :field_ref    [:field "D" {:base-type :type/Date}]}
                (first (:cols results)))))
 
       (testing "Results metadata should have the same type info")
-      (is (= {:base_type    :type/DateTime
-              :effective_type :type/DateTime
+      (is (= {:base_type    :type/Date
+              :effective_type :type/Date
               :display_name "D"
               :name         "D"
               :semantic_type nil
-              :field_ref    [:field "D" {:base-type :type/DateTime}]}
+              :field_ref    [:field "D" {:base-type :type/Date}]}
              (-> results :results_metadata :columns first (dissoc :fingerprint)))))))
 
 (deftest results-metadata-should-have-field-refs-test

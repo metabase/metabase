@@ -13,7 +13,7 @@ describe("NewsletterForm", () => {
 
     await waitFor(() => {
       expect(onSubscribe).toHaveBeenCalledWith(email);
-      expect(screen.getByText(/You're subscribed/)).toBeInTheDocument();
     });
+    expect(screen.getByText(/You're subscribed/)).toBeInTheDocument();
   });
 });

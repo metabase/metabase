@@ -88,7 +88,7 @@ describe("metabase-lib/expressions/typeinferencer", () => {
   it("should infer the result of string functions", () => {
     expect(type("Ltrim([Name])")).toEqual("string");
     expect(type("Concat(Upper([LastN]), [FirstN])")).toEqual("string");
-    expect(type("SUBSTRING([Product], 0, 3)")).toEqual("string");
+    expect(type("SUBSTRING([Product], 1, 3)")).toEqual("string");
     expect(type("Length([Category])")).toEqual("number");
     expect(type("Length([Category]) > 0")).toEqual("boolean");
   });

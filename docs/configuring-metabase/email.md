@@ -27,6 +27,8 @@ You should see this form:
 
 ![Email Credentials](images/EmailCredentials.png)
 
+You might also want to specify [approved domains for notifications](./settings.md#approved-domains-for-notifications).
+
 ## Google Apps
 
 1. In the **SMTP host** field, enter smtp.gmail.com
@@ -60,3 +62,12 @@ Check if [email quotas](https://docs.aws.amazon.com/ses/latest/dg/quotas.html) a
 
 * SSL is strongly recommended because it’s more secure and gives your account extra protection from threats.
 * If your email service has a whitelist of email addresses that are allowed to send email, be sure to whitelist the email address that you put in the **From Address** field to ensure you and your teammates receive all emails from Metabase.
+
+## Further reading
+
+- [Alerts](../questions/sharing/alerts.md)
+- [Dashboard subscriptions](../dashboards/subscriptions.md)
+- [Notification permissions](../permissions/notifications.md)
+- [Setting up Slack](./slack.md)
+- [Auditing Metabase](../usage-and-performance-tools/audit.md)
+

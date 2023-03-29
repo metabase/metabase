@@ -3,17 +3,19 @@
 
   See the detailed descriptions of the (de)serialization processes in [[metabase.models.serialization.base]]."
   (:require
-    [clojure.set :as set]
-    [clojure.string :as str]
-    [clojure.tools.logging :as log]
-    [medley.core :as m]
-    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-    [metabase-enterprise.serialization.v2.models :as serdes.models]
-    [metabase.models :refer [Card Collection Dashboard DashboardCard]]
-    [metabase.models.collection :as collection]
-    [metabase.models.serialization.base :as serdes.base]
-    [toucan.db :as db]
-    [toucan.hydrate :refer [hydrate]]))
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
+   [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard]]
+   [metabase.models.collection :as collection]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.util.log :as log]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
+
+(set! *warn-on-reflection* true)
 
 (defn collection-set-for-user
   "Given an optional user ID, find the transitive set of all Collection IDs which are either:
@@ -132,25 +134,25 @@
   "Given the analysis map from [[escape-analysis]], report the results in a human-readable format with Card titles etc."
   [{:keys [escaped-dashcards escaped-questions]}]
   (when-not (empty? escaped-dashcards)
-    (println "Dashboard cards outside the collection")
-    (println "======================================")
+    (log/info "Dashboard cards outside the collection")
+    (log/info "======================================")
     (doseq [[dash-id card-ids] escaped-dashcards
             :let [dash-name (db/select-one-field :name Dashboard :id dash-id)]]
-      (printf "Dashboard %d: %s\n" dash-id dash-name)
+      (log/infof "Dashboard %d: %s\n" dash-id dash-name)
       (doseq [card_id card-ids
               :let [card (db/select-one [Card :collection_id :name] :id card_id)]]
-        (printf "          \tCard %d: %s\n"    card_id (:name card))
-        (printf "        from collection %s\n" (collection-label (:collection_id card))))))
+        (log/infof "          \tCard %d: %s\n"    card_id (:name card))
+        (log/infof "        from collection %s\n" (collection-label (:collection_id card))))))
 
   (when-not (empty? escaped-questions)
-    (println "Questions based on outside questions")
-    (println "====================================")
+    (log/info "Questions based on outside questions")
+    (log/info "====================================")
     (doseq [[curated-id alien-id] escaped-questions
             :let [curated-card (db/select-one [Card :collection_id :name] :id curated-id)
                   alien-card   (db/select-one [Card :collection_id :name] :id alien-id)]]
-      (printf "%-4d      %s    (%s)\n  -> %-4d %s    (%s)\n"
-              curated-id (:name curated-card) (collection-label (:collection_id curated-card))
-              alien-id   (:name alien-card)   (collection-label (:collection_id alien-card))))))
+      (log/infof "%-4d      %s    (%s)\n  -> %-4d %s    (%s)\n"
+                 curated-id (:name curated-card) (collection-label (:collection_id curated-card))
+                 alien-id   (:name alien-card)   (collection-label (:collection_id alien-card))))))
 
 (defn extract-subtrees
   "Extracts the targeted entities and all their descendants into a reducible stream of extracted maps.
@@ -160,28 +162,20 @@
   [[serdes.base/serdes-descendants]] is recursively called on these entities and all their descendants, until the
   complete transitive closure of all descendants is found. This produces a set of `[\"ModelName\" id]` pairs, which
   entities are then extracted the same way as [[extract-metabase]].
-
-  If the `:selected-collections` option is set, this function will emit warnings if any transitive descendants belong to
-  Collections not in the `:selected-collections` set. If `:on-error` is `\"abort\"` (the default) this will throw an
-  exception that stops the serialization process. If `:on-error` is `\"continue\"` it will keep emitting warnings, and
-  simply skip over the offending entities (recursively). Eg. if Dashboard B includes a Card A that is derived from a
+Eg. if Dashboard B includes a Card A that is derived from a
   Card C that's in an alien collection, warnings will be emitted for C, A and B, and all three will be excluded from the
   serialized output."
-  [{:keys [selected-collections targets] :as opts}]
+  [{:keys [targets] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (let [selected-collections (or selected-collections (->> targets
-                                                           (filter #(= (first %) "Collection"))
-                                                           (map second)
-                                                           set))]
-    (serdes.backfill/backfill-ids)
-    (if-let [analysis (escape-analysis selected-collections)]
+  (serdes.backfill/backfill-ids)
+  (if-let [analysis (escape-analysis (set (for [[model id] targets :when (= model "Collection")] id)))]
       ;; If that is non-nil, emit the report.
-      (escape-report analysis)
+    (escape-report analysis)
       ;; If it's nil, there are no errors, and we can proceed to do the dump.
-      (let [closure  (descendants-closure opts targets)
-            by-model (->> closure
-                          (group-by first)
-                          (m/map-vals #(set (map second %))))]
-        (eduction cat (for [[model ids] by-model]
-                        (eduction (map #(serdes.base/extract-one model opts %))
-                                  (db/select-reducible (symbol model) :id [:in ids]))))))))
+    (let [closure  (descendants-closure opts targets)
+          by-model (->> closure
+                        (group-by first)
+                        (m/map-vals #(set (map second %))))]
+      (eduction cat (for [[model ids] by-model]
+                      (eduction (map #(serdes.base/extract-one model opts %))
+                                (db/select-reducible (symbol model) :id [:in ids])))))))

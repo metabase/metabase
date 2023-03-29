@@ -1,6 +1,9 @@
+import { UserId } from "./user";
+import { CardDisplayType } from "./card";
+
 export type RegularCollectionId = number;
 
-export type CollectionId = RegularCollectionId | "root";
+export type CollectionId = RegularCollectionId | "root" | "personal";
 
 export type CollectionContentModel = "card" | "dataset";
 
@@ -25,7 +28,7 @@ export interface Collection {
   authority_level?: "official" | null;
 
   parent_id?: CollectionId;
-  personal_owner_id?: number;
+  personal_owner_id?: UserId;
 
   location?: string;
   effective_ancestors?: Collection[];
@@ -36,22 +39,27 @@ export interface Collection {
   // Assigned on FE
   originalName?: string;
   path?: CollectionId[];
-
-  // If collection is associated to a data app, it will get an app_id
-  // Data apps are technically collections with extended features
-  // and `app_id` is used to differentiate them from regular collections
-  app_id?: number;
 }
 
-export interface CollectionItem {
+type CollectionItemModel =
+  | "card"
+  | "dataset"
+  | "dashboard"
+  | "pulse"
+  | "collection";
+
+export interface CollectionItem<T = CollectionItemModel> {
   id: number;
-  model: string;
+  model: T;
   name: string;
   description: string | null;
   copy?: boolean;
   collection_position?: number | null;
   collection_preview?: boolean | null;
   fully_parametrized?: boolean | null;
+  collection?: Collection;
+  display?: CardDisplayType;
+  personal_owner_id?: UserId;
   getIcon: () => { name: string };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;

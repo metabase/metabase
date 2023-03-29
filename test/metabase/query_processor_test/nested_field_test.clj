@@ -1,7 +1,8 @@
 (ns metabase.query-processor-test.nested-field-test
   "Tests for nested field access."
-  (:require [clojure.test :refer :all]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.test :as mt]))
 
 (deftest filter-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)

@@ -1,6 +1,6 @@
 import React from "react";
-import { within } from "@testing-library/dom";
-import { renderWithProviders } from "__support__/ui";
+import { within } from "@testing-library/react";
+import { renderWithProviders, screen } from "__support__/ui";
 
 // these tests use ChartSettings directly, but logic we're testing logic in ChartSettingFieldPicker
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
@@ -46,18 +46,14 @@ const setup = seriesDisplay => {
   const series = getSeries(seriesDisplay);
   return renderWithProviders(
     <ChartSettings series={series} initial={{ section: "Data" }} />,
-    {
-      withSettings: true,
-      withEmbedSettings: true,
-    },
   );
 };
 
-describe("ChartSettinFieldPicker", () => {
+describe("ChartSettingFieldPicker", () => {
   it("should not show ellipsis when a colum has no settings", () => {
-    const { getAllByTestId } = setup();
+    setup();
 
-    const fields = getAllByTestId("chartsettings-field-picker");
+    const fields = screen.getAllByTestId("chartsettings-field-picker");
 
     expect(fields[0]).toHaveTextContent("FOO");
     expect(fields[1]).toHaveTextContent("BAR");
@@ -67,11 +63,11 @@ describe("ChartSettinFieldPicker", () => {
     ).not.toBeInTheDocument();
 
     expect(
-      within(fields[1]).queryByRole("img", { name: /ellipsis/i }),
+      within(fields[1]).getByRole("img", { name: /ellipsis/i }),
     ).toBeInTheDocument();
   });
 
-  it("Should handle 'hasColumnSettings' check when dealing with currency", () => {
-    setup({ semantic_type: "type/Currency" });
+  it("should handle 'hasColumnSettings' check when dealing with currency", () => {
+    expect(() => setup({ semantic_type: "type/Currency" })).not.toThrow();
   });
 });

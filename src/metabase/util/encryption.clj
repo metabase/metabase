@@ -1,16 +1,19 @@
 (ns metabase.util.encryption
   "Utility functions for encrypting and decrypting strings using AES256 CBC + HMAC SHA512 and the
   `MB_ENCRYPTION_SECRET_KEY` env var."
-  (:require [buddy.core.codecs :as codecs]
-            [buddy.core.crypto :as crypto]
-            [buddy.core.kdf :as kdf]
-            [buddy.core.nonce :as nonce]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [environ.core :as env]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [ring.util.codec :as codec]))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.crypto :as crypto]
+   [buddy.core.kdf :as kdf]
+   [buddy.core.nonce :as nonce]
+   [clojure.string :as str]
+   [environ.core :as env]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [ring.util.codec :as codec]))
+
+(set! *warn-on-reflection* true)
 
 (defn secret-key->hash
   "Generate a 64-byte byte array hash of `secret-key` using 100,000 iterations of PBKDF2+SHA512."

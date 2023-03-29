@@ -1,10 +1,13 @@
 (ns metabase.query-processor-test.implicit-joins-test
   "Tests for joins that are created automatically when an `:fk->` column is present."
-  (:require [clj-time.core :as time]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]))
+  (:require
+   [clj-time.core :as time]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
 
 (deftest breakout-on-fk-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
@@ -22,11 +25,11 @@
                 ["Irvine"       11]
                 ["Lakeland"     11]]
                (mt/formatted-rows [str int]
-                 (mt/run-mbql-query sightings
-                   {:aggregation [[:count]]
-                    :breakout    [$city_id->cities.name]
-                    :order-by    [[:desc [:aggregation 0]]]
-                    :limit       10}))))))))
+                                  (mt/run-mbql-query sightings
+                                                     {:aggregation [[:count]]
+                                                      :breakout    [$city_id->cities.name]
+                                                      :order-by    [[:desc [:aggregation 0]]]
+                                                      :limit       10}))))))))
 
 (deftest filter-by-fk-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)

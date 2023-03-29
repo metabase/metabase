@@ -72,7 +72,6 @@ describe("parameters/utils/targets", () => {
 
   describe("getParameterTargetField", () => {
     it("should return null when the target is not a dimension", () => {
-      // @ts-expect-error - SAMPLE_DATABASE is defined
       const question = SAMPLE_DATABASE.nativeQuestion({
         query: "select * from PRODUCTS where CATEGORY = {{foo}}",
         "template-tags": {
@@ -96,7 +95,6 @@ describe("parameters/utils/targets", () => {
         "dimension",
         ["template-tag", "foo"],
       ];
-      // @ts-expect-error - SAMPLE_DATABASE is defined
       const question = SAMPLE_DATABASE.nativeQuestion({
         query: "select * from PRODUCTS where {{foo}}",
         "template-tags": {
@@ -119,7 +117,6 @@ describe("parameters/utils/targets", () => {
         "dimension",
         ["field", PRODUCTS.CATEGORY.id, null],
       ];
-      // @ts-expect-error - SAMPLE_DATABASE is defined
       const question = SAMPLE_DATABASE.question({
         "source-table": PRODUCTS.id,
       });

@@ -82,7 +82,7 @@ describe("saved question helpers", () => {
 
   describe("getQuestionVirtualTableId", () => {
     it("returns question prefixed question ID", () => {
-      expect(getQuestionVirtualTableId({ id: 7 })).toBe("card__7");
+      expect(getQuestionVirtualTableId(7)).toBe("card__7");
     });
   });
 

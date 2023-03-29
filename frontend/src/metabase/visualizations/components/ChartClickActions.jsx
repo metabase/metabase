@@ -7,7 +7,7 @@ import _ from "underscore";
 import cx from "classnames";
 import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import "./ChartClickActions.css";
 

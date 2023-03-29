@@ -2,26 +2,38 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
 import EmptyState from "metabase/components/EmptyState";
-import { Container } from "./DashboardEmptyState.styled";
+import { Container, BrandLink } from "./DashboardEmptyState.styled";
 
 const propTypes = {
-  isDataApp: PropTypes.bool,
   isNightMode: PropTypes.bool.isRequired,
+  addQuestion: PropTypes.func.isRequired,
+  closeNavbar: PropTypes.func.isRequired,
 };
 
 const questionCircle = <span className="QuestionCircle">?</span>;
 
-const DashboardEmptyState = ({ isDataApp, isNightMode }) => (
+const DashboardEmptyState = ({ isNightMode, addQuestion, closeNavbar }) => (
   <Container isNightMode={isNightMode}>
     <EmptyState
       illustrationElement={questionCircle}
-      title={
-        isDataApp
-          ? t`This page is looking empty.`
-          : t`This dashboard is looking empty.`
+      title={t`This dashboard is looking empty.`}
+      message={
+        <>
+          <Button onlyText onClick={addQuestion}>
+            {t`Add a saved question`}
+          </Button>
+          {t`, or `}
+          <BrandLink
+            to="/question/new"
+            className="text-bold text-brand"
+            onClick={closeNavbar}
+          >
+            {t`ask a new one`}
+          </BrandLink>
+        </>
       }
-      message={t`Add a question to start making it useful!`}
     />
   </Container>
 );

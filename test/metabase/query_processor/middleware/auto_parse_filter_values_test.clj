@@ -1,7 +1,11 @@
 (ns metabase.query-processor.middleware.auto-parse-filter-values-test
-  (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.auto-parse-filter-values :as auto-parse-filter-values]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.query-processor.middleware.auto-parse-filter-values
+    :as auto-parse-filter-values]
+   [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
 
 (deftest parse-value-for-base-type-test
   (testing "Should throw an Exception with a useful error message if parsing fails"

@@ -1,11 +1,18 @@
 (ns metabase.pulse.render.color
   "Namespaces that uses the Nashorn javascript engine to invoke some shared javascript code that we use to determine
   the background color of pulse table cells"
-  (:require [cheshire.core :as json]
-            [clojure.java.io :as io]
-            [metabase.pulse.render.js-engine :as js]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.java.io :as io]
+   [metabase.pulse.render.common :as common]
+   [metabase.pulse.render.js-engine :as js]
+   [metabase.util.i18n :refer [trs]]
+   [schema.core :as s])
+  (:import
+    (metabase.pulse.render.common NumericWrapper)))
+
+
+(set! *warn-on-reflection* true)
 
 (def ^:private js-file-path "frontend_shared/color_selector.js")
 
@@ -45,10 +52,12 @@
                       rows
                       (json/generate-string cols)
                       (json/generate-string viz-settings)))
-
 (defn get-background-color
   "Get the correct color for a cell in a pulse table. Returns color as string suitable for use CSS, e.g. a hex string or
   `rgba()` string. This is intended to be invoked on each cell of every row in the table. See `make-color-selector`
   for more info."
   ^String [color-selector cell-value column-name row-index]
-  (.asString (js/execute-fn color-selector cell-value row-index column-name)))
+  (let [cell-value (if (instance? NumericWrapper cell-value)
+                     (:num-value cell-value)
+                     cell-value)]
+    (.asString (js/execute-fn color-selector cell-value row-index column-name))))

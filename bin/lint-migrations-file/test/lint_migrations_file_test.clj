@@ -1,11 +1,15 @@
 (ns lint-migrations-file-test
-  (:require [clojure.test :refer :all]
-            [lint-migrations-file :as lint-migrations-file]))
+  (:require
+   [clojure.spec.alpha :as s]
+   [clojure.test :refer :all]
+   [lint-migrations-file :as lint-migrations-file]))
 
-(defn mock-change-set [& keyvals]
+(defn mock-change-set
+  "Returns a \"strict\" migration (id > switch to strict). If you want a non-strict migration send :id 1 in `keyvals`. "
+  [& keyvals]
   {:changeSet
    (merge
-    {:id      1
+    {:id      1000
      :author  "camsaul"
      :comment "Added x.37.0"
      :changes [{:whatever {}}]}
@@ -29,6 +33,10 @@
 (defn- validate [& changes]
   (lint-migrations-file/validate-migrations
    {:databaseChangeLog changes}))
+
+(defn- validate-ex-info [& changes]
+  (try (lint-migrations-file/validate-migrations {:databaseChangeLog changes})
+       (catch Exception e (ex-data e))))
 
 (deftest require-unique-ids-test
   (testing "Make sure all migration IDs are unique"
@@ -69,22 +77,17 @@
   (testing "[strict only] only allow one change per change set"
     (is (= :ok
            (validate
-            (mock-change-set :changes [(mock-add-column-changes) (mock-add-column-changes)]))))
+            (mock-change-set :id 1 :changes [(mock-add-column-changes) (mock-add-column-changes)]))))
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Extra input"
          (validate
-          (mock-change-set :id 200
-                           :changes [(mock-add-column-changes) (mock-add-column-changes)]))))))
+          (mock-change-set :changes [(mock-add-column-changes) (mock-add-column-changes)]))))))
 
 (deftest require-comment-test
-  (testing "[strict only] require a 'Added <version>' comment for a change set"
+  (testing "[strict only] require a comment for a change set"
     (is (= :ok
            (validate (dissoc (mock-change-set) :comment))))
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"clojure.core/re-find"
-         (validate (mock-change-set :id 200, :comment "Bad comment"))))
     (is (= :ok
            (validate (mock-change-set :id 200, :comment "Added x.38.0"))))))
 
@@ -209,3 +212,39 @@
                                             :rollback {:sql {:sql "select 1"}}))))))
   (testing "change types with automatic rollback support are allowed"
     (is (= :ok (validate (mock-change-set :id "v45.12-345" :changes [(mock-add-column-changes)]))))))
+
+(deftest disallow-deletecascade-in-addcolumn-test
+  (testing "addColumn with deleteCascade fails"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"disallow-delete-cascade"
+         (validate (mock-change-set :id "v45.12-345"
+                                    :changes [(mock-add-column-changes
+                                               :columns [(mock-column :constraints {:deleteCascade true})])]))))))
+
+(deftest custom-changes-test
+  (let [change-set (mock-change-set
+                    :changes
+                    [{:customChange {:class "metabase.db.custom_migrations.ReversibleUppercaseCards"}}])]
+    (is (= :ok
+           (validate change-set))))
+  (testing "missing value"
+    (let [change-set (mock-change-set
+                      :changes
+                      [{:customChange {}}])
+          ex-info    (validate-ex-info change-set)]
+      (is (not= :ok ex-info))))
+  (testing "invalid values"
+    (doseq [bad-value [nil 3 ""]]
+      (let [change-set (mock-change-set
+                        :changes
+                        [{:customChange {:class bad-value}}])
+            ex-info    (validate-ex-info change-set)
+            specific   (->> ex-info
+                            ::s/problems
+                            (some (fn [problem]
+                                    (when (= (:val problem) bad-value)
+                                      problem))))]
+        (is (not= :ok ex-info))
+        (is (= (take-last 2 (:via specific))
+               [:change.strict/customChange :custom-change/class]))))))

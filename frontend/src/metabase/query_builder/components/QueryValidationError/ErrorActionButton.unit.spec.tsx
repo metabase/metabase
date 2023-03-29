@@ -12,29 +12,32 @@ import {
   ErrorActionButtonProps,
 } from "./ErrorActionButton";
 
-let props: ErrorActionButtonProps;
-describe("ErrorActionButton", () => {
-  beforeEach(() => {
-    props = {
-      error: new ValidationError(
-        "oof",
-        VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION,
-      ),
-      uiControls: {
-        isShowingTemplateTagsEditor: false,
-      },
-      toggleTemplateTagsEditor: jest.fn(),
-    };
-  });
+function setup({
+  error = new ValidationError(
+    "oof",
+    VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION,
+  ),
+  uiControls = { isShowingTemplateTagsEditor: false },
+  toggleTemplateTagsEditor = jest.fn(),
+  ...props
+}: Partial<ErrorActionButtonProps> = {}) {
+  render(
+    <ErrorActionButton
+      error={error}
+      uiControls={uiControls}
+      toggleTemplateTagsEditor={toggleTemplateTagsEditor}
+      {...props}
+    />,
+  );
+  return { toggleTemplateTagsEditor };
+}
 
+describe("ErrorActionButton", () => {
   describe("when using an error that does not have an associated action", () => {
     const errorWithoutType = new ValidationError("oof"); // undefined action type
-    beforeEach(() => {
-      props.error = errorWithoutType;
-      render(<ErrorActionButton {...props} />);
-    });
 
     it("should not render an action button", () => {
+      setup({ error: errorWithoutType });
       expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
   });
@@ -43,16 +46,10 @@ describe("ErrorActionButton", () => {
     const [buttonLabel] =
       BUTTON_ACTIONS[VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION];
 
-    beforeEach(() => {
-      render(<ErrorActionButton {...props} />);
-    });
-
     it("should render an action button using the button label it is mapped to", () => {
-      expect(
-        screen.getByRole("button", {
-          name: buttonLabel,
-        }),
-      ).toBeInTheDocument();
+      setup();
+      const button = screen.getByRole("button", { name: buttonLabel });
+      expect(button).toBeInTheDocument();
     });
   });
 
@@ -65,35 +62,33 @@ describe("ErrorActionButton", () => {
       BUTTON_ACTIONS[VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION];
 
     describe("when `isShowingTemplateTagsEditor` is falsy", () => {
-      beforeEach(() => {
-        props.error = validationError;
-        render(<ErrorActionButton {...props} />);
-      });
-
       it("should call the toggleTemplateTagsEditor action", () => {
+        const { toggleTemplateTagsEditor } = setup({ error: validationError });
+
         userEvent.click(
           screen.getByRole("button", {
             name: buttonLabel,
           }),
         );
-        expect(props.toggleTemplateTagsEditor).toHaveBeenCalled();
+
+        expect(toggleTemplateTagsEditor).toHaveBeenCalled();
       });
     });
 
     describe("when `isShowingTemplateTagsEditor` is true", () => {
-      beforeEach(() => {
-        props.error = validationError;
-        props.uiControls.isShowingTemplateTagsEditor = true;
-        render(<ErrorActionButton {...props} />);
-      });
-
       it("should not call the toggleTemplateTagsEditor action", () => {
+        const { toggleTemplateTagsEditor } = setup({
+          error: validationError,
+          uiControls: { isShowingTemplateTagsEditor: true },
+        });
+
         userEvent.click(
           screen.getByRole("button", {
             name: buttonLabel,
           }),
         );
-        expect(props.toggleTemplateTagsEditor).not.toHaveBeenCalled();
+
+        expect(toggleTemplateTagsEditor).not.toHaveBeenCalled();
       });
     });
   });

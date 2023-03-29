@@ -33,10 +33,10 @@ describe("NumberInputWidget", () => {
 
       const button = screen.getByRole("button", { name: "Update filter" });
       expect(button).toBeInTheDocument();
-      expect(button).toHaveAttribute("disabled");
+      expect(button).toBeDisabled();
 
       userEvent.type(screen.getByRole("textbox"), "456");
-      expect(button).not.toHaveAttribute("disabled");
+      expect(button).toBeEnabled();
     });
 
     it("should let you update the input with a new value", () => {
@@ -91,7 +91,7 @@ describe("NumberInputWidget", () => {
       const [textbox1] = screen.getAllByRole("textbox");
       userEvent.clear(textbox1);
       const button = screen.getByRole("button", { name: "Update filter" });
-      expect(button).toHaveAttribute("disabled");
+      expect(button).toBeDisabled();
     });
 
     it("should be settable", () => {
@@ -144,7 +144,7 @@ describe("NumberInputWidget", () => {
       );
 
       const values = screen.getAllByRole("list")[0];
-      expect(values.textContent).toEqual("1234");
+      expect(values).toHaveTextContent("1234");
     });
 
     it("should correctly parse number inputs", () => {
@@ -160,7 +160,7 @@ describe("NumberInputWidget", () => {
       userEvent.type(input, "foo{enter}123abc{enter}456{enter}");
 
       const values = screen.getAllByRole("list")[0];
-      expect(values.textContent).toEqual("123456");
+      expect(values).toHaveTextContent("123456");
 
       const button = screen.getByRole("button", { name: "Add filter" });
       userEvent.click(button);

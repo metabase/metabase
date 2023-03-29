@@ -1,13 +1,25 @@
 (ns metabase.dashboard-subscription-test
-  (:require [clojure.test :refer :all]
-            [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
-            [metabase.models.pulse :as pulse]
-            metabase.pulse
-            [metabase.pulse.render.body :as body]
-            [metabase.pulse.test-util :as pulse.test-util]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models
+    :refer [Card
+            Dashboard
+            DashboardCard
+            Pulse
+            PulseCard
+            PulseChannel
+            PulseChannelRecipient
+            User]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.pulse :as pulse]
+   [metabase.pulse]
+   [metabase.pulse.render.body :as body]
+   [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- do-with-dashboard-sub-for-card
   "Creates a Pulse, Dashboard, and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if
@@ -439,4 +451,40 @@
                                       :dashboard_id       dashboard-id
                                       :visualization_settings {:text "{{foo}}"}}]]
       (is (= [{:text "Doohickey and Gizmo"}]
+             (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
+
+(deftest no-native-perms-test
+  (testing "A native query on a dashboard executes succesfully even if the subscription creator does not have native
+           query permissions (#28947)"
+    (let [native-perm-path     [:groups (u/the-id (perms-group/all-users)) (mt/id) :data :native]
+          original-native-perm (get-in (perms/data-perms-graph) native-perm-path)]
+      (try
+        (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:name "Dashboard"}]
+                        Card      [{card-id :id} {:name          "Products (SQL)"
+                                                  :dataset_query (mt/native-query
+                                                                  {:query "SELECT * FROM venues LIMIT 1"})}]
+                        DashboardCard [_ {:dashboard_id dashboard-id
+                                          :card_id      card-id}]]
+          (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path :none))
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
+                 (-> (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
+                     first :result :data :rows))))
+        (finally
+          (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path original-native-perm)))))))
+
+(deftest link-cards-and-actions-are-skipped-test
+  (testing "Actions and link cards should be filtered out"
+    (t2.with-temp/with-temp
+      [Dashboard     {dashboard-id :id
+                      :as dashboard}   {:name "Dashboard"}
+       DashboardCard _                 {:dashboard_id           dashboard-id
+                                        :visualization_settings {:text "Markdown"}}
+       DashboardCard _                 {:dashboard_id           dashboard-id
+                                        :visualization_settings {:virtual_card {:display "link"}
+                                                                 :link         {:entity {:id    dashboard-id
+                                                                                         :model "dashboard"}}}}
+       DashboardCard _                 {:dashboard_id           dashboard-id
+                                        :visualization_settings {:virtual_card {:display "action"}}}]
+
+      (is (= [{:text "Markdown"}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))

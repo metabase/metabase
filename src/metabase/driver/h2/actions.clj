@@ -1,6 +1,7 @@
 (ns metabase.driver.h2.actions
   "Method impls for [[metabase.driver.sql-jdbc.actions]] for `:h2`."
-  (:require [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]))
+  (:require
+   [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]))
 
 (defmethod sql-jdbc.actions/base-type->sql-type-map :h2
   [_driver]

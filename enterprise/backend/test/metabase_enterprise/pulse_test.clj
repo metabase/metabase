@@ -1,7 +1,8 @@
 (ns metabase-enterprise.pulse-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.pulse :as pulse]
-            [metabase.public-settings.premium-features :as premium-features]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.pulse :as pulse]
+   [metabase.public-settings.premium-features :as premium-features]))
 
 (deftest parameters-test
   (is (= [{:id "1" :v "a"}

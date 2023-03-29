@@ -1,11 +1,12 @@
 (ns metabase.server.request.util-test
-  (:require [clojure.test :refer :all]
-            [clojure.tools.reader.edn :as edn]
-            [java-time :as t]
-            [metabase.server.request.util :as request.u]
-            [metabase.test :as mt]
-            [ring.mock.request :as ring.mock]
-            [schema.core :as s]))
+  (:require
+   [clojure.test :refer :all]
+   [clojure.tools.reader.edn :as edn]
+   [java-time :as t]
+   [metabase.server.request.util :as request.u]
+   [metabase.test :as mt]
+   [ring.mock.request :as ring.mock]
+   [schema.core :as s]))
 
 ;; don't run these tests when running driver tests (i.e., `DRIVERS` is set) because they tend to flake
 (use-fixtures :each (fn [thunk]

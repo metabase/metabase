@@ -11,13 +11,13 @@ export const getScrollY = () =>
 
 // denotes whether the current page is loaded in an iframe or not
 // Cypress renders the whole app within an iframe, but we want to exlude it from this check to avoid certain components (like Nav bar) not rendering
-export const IFRAMED = (function () {
+export const isWithinIframe = function () {
   try {
     return !isCypressActive && window.self !== window.top;
   } catch (e) {
     return true;
   }
-})();
+};
 
 // add a global so we can check if the parent iframe is Metabase
 window.METABASE = true;
@@ -247,6 +247,8 @@ export function constrainToScreen(element, direction, padding) {
   return false;
 }
 
+const isAbsoluteUrl = url => url.startsWith("/");
+
 function getWithSiteUrl(url) {
   const siteUrl = MetabaseSettings.get("site-url");
   return url.startsWith("/") ? siteUrl + url : url;
@@ -302,12 +304,17 @@ export function open(
     ...options
   } = {},
 ) {
+  const isOriginalUrlAbsolute = isAbsoluteUrl(url);
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);
   } else if (isSameOrigin(url)) {
-    openInSameOrigin(url, getLocation(url));
+    if (isOriginalUrlAbsolute) {
+      clickLink(url, false);
+    } else {
+      openInSameOrigin(url, getLocation(url));
+    }
   } else {
     openInSameWindow(url);
   }
@@ -433,7 +440,7 @@ export function clipPathReference(id) {
 }
 
 export function initializeIframeResizer(readyCallback = () => {}) {
-  if (!IFRAMED) {
+  if (!isWithinIframe()) {
     return;
   }
 

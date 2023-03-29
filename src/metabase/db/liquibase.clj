@@ -1,20 +1,24 @@
 (ns metabase.db.liquibase
   "High-level Clojure wrapper around relevant parts of the Liquibase API."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.config :as config]
-            [metabase.db.liquibase.h2 :as liquibase.h2]
-            [metabase.db.liquibase.mysql :as liquibase.mysql]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s])
-  (:import java.io.StringWriter
-           [liquibase Contexts LabelExpression Liquibase]
-           [liquibase.database Database DatabaseFactory]
-           liquibase.database.jvm.JdbcConnection
-           liquibase.exception.LockException
-           liquibase.resource.ClassLoaderResourceAccessor))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [metabase.config :as config]
+   [metabase.db.liquibase.h2 :as liquibase.h2]
+   [metabase.db.liquibase.mysql :as liquibase.mysql]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [schema.core :as s])
+  (:import
+   (java.io StringWriter)
+   (liquibase Contexts LabelExpression Liquibase)
+   (liquibase.database Database DatabaseFactory)
+   (liquibase.database.jvm JdbcConnection)
+   (liquibase.exception LockException)
+   (liquibase.resource ClassLoaderResourceAccessor)))
+
+(set! *warn-on-reflection* true)
 
 ;; register our custom MySQL SQL generators
 (liquibase.mysql/register-mysql-generators!)

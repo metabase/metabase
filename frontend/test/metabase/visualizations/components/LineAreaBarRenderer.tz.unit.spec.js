@@ -97,8 +97,8 @@ describe("LineAreaBarRenderer-bar", () => {
     );
     sharedMonthTests(rows, "all months");
 
-    sharedIntervalTests("hour", "MMMM D, YYYY, h:mm A");
-    sharedIntervalTests("day", "MMMM D, YYYY");
+    sharedIntervalTests("hour", "ddd, MMMM D, YYYY, h:mm A");
+    sharedIntervalTests("day", "ddd, MMMM D, YYYY");
     // sharedIntervalTests("week", "wo - gggg"); // weeks have differing formats for ticks and tooltips, disable this test for now
     sharedIntervalTests("month", "MMMM, YYYY");
     sharedIntervalTests("quarter", "[Q]Q - YYYY");
@@ -106,35 +106,59 @@ describe("LineAreaBarRenderer-bar", () => {
 
     function sharedMonthTests(rows, description) {
       describe(`with ${description}`, () => {
-        beforeAll(() => {
+        beforeEach(() => {
           setupFixture();
           onHoverChange = jest.fn();
+        });
+
+        afterEach(teardownFixture);
+
+        // eslint-disable-next-line jest/expect-expect
+        it("should have sequential months in labels", () => {
           renderTimeseries(element, "month", reportTz, rows, {
             onHoverChange,
           });
           // hover each bar to trigger onHoverChange
           activateTooltips();
-        });
-        afterAll(teardownFixture);
 
-        it("should have sequential months in labels", () => {
           // check that the labels are sequential months
           assertSequentialMonths(getXAxisLabelsText());
         });
+
         it("should have sequential months in tooltips", () => {
+          renderTimeseries(element, "month", reportTz, rows, {
+            onHoverChange,
+          });
+          // hover each bar to trigger onHoverChange
+          activateTooltips();
+
           // check that the resulting tooltips are sequential
           assertSequentialMonths(getTooltipDimensionValueText());
           // check that the number of tooltips matches the number of rows
           expect(getTooltipDimensionValueText().length).toBe(rows.length);
         });
+
         it("should have tooltips that match source data", () => {
+          renderTimeseries(element, "month", reportTz, rows, {
+            onHoverChange,
+          });
+          // hover each bar to trigger onHoverChange
+          activateTooltips();
+
           expect(getTooltipDimensionValueText()).toEqual(
             rows.map(([timestamp]) =>
               moment.tz(timestamp, reportTz).format("MMMM, YYYY"),
             ),
           );
         });
+
         it("should have labels that match tooltips", () => {
+          renderTimeseries(element, "month", reportTz, rows, {
+            onHoverChange,
+          });
+          // hover each bar to trigger onHoverChange
+          activateTooltips();
+
           expect(qsa(".bar").map(getClosestLabelText)).toEqual(
             getTooltipDimensionValueText(),
           );
@@ -155,26 +179,38 @@ describe("LineAreaBarRenderer-bar", () => {
             1,
           ],
         ];
-        beforeAll(() => {
+
+        beforeEach(() => {
           setupFixture();
           onHoverChange = jest.fn();
+        });
+
+        afterEach(teardownFixture);
+
+        it("should have tooltips that match source data", () => {
           renderTimeseries(element, interval, reportTz, rows, {
             onHoverChange,
           });
           // hover each bar to trigger onHoverChange
           activateTooltips();
-        });
-        afterAll(teardownFixture);
-        it("should have tooltips that match source data", () => {
+
           expect(getTooltipDimensionValueText()).toEqual(
             rows.map(([timestamp]) =>
               moment.tz(timestamp, reportTz).format(expectedFormat),
             ),
           );
         });
+
         it("should have labels that match tooltips", () => {
-          expect(qsa(".bar").map(getClosestLabelText)).toEqual(
-            getTooltipDimensionValueText(),
+          renderTimeseries(element, interval, reportTz, rows, {
+            onHoverChange,
+          });
+          // hover each bar to trigger onHoverChange
+          activateTooltips();
+
+          const labels = qsa(".bar").map(getClosestLabelText);
+          getTooltipDimensionValueText().map((tooltipValue, index) =>
+            expect(tooltipValue).toContain(labels[index]),
           );
         });
       });

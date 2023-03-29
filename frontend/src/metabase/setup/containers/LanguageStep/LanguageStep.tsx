@@ -14,7 +14,7 @@ import {
 
 const mapStateToProps = (state: State) => ({
   locale: getLocale(state),
-  localeData: Settings.get("available-locales"),
+  localeData: Settings.get("available-locales") || [],
   isStepActive: isStepActive(state, LANGUAGE_STEP),
   isStepCompleted: isStepCompleted(state, LANGUAGE_STEP),
   isSetupCompleted: isSetupCompleted(state),

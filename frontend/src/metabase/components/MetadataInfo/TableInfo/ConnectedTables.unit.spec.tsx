@@ -14,7 +14,7 @@ describe("ConnectedTables", () => {
     const table = new Table();
     const { container } = setup(table);
 
-    expect(container.firstChild).toBeNull();
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("should show a label for each connected table", () => {

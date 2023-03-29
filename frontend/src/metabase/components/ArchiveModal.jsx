@@ -33,7 +33,7 @@ class ArchiveModal extends React.Component {
       <ModalContent
         title={title || t`Archive this?`}
         footer={[
-          error ? <FormMessage formError={error} /> : null,
+          error ? <FormMessage key="message" formError={error} /> : null,
           <Button key="cancel" onClick={onClose}>
             {t`Cancel`}
           </Button>,

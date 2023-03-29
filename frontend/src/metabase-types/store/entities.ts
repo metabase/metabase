@@ -1,18 +1,30 @@
 import {
+  Card,
+  CardId,
   Collection,
   CollectionId,
-  DataApp,
-  DataAppId,
+  Dashboard,
+  DashboardId,
   Database,
+  Field,
+  FieldId,
   NativeQuerySnippet,
   NativeQuerySnippetId,
   Table,
+  User,
+  UserId,
+  WritebackAction,
+  WritebackActionId,
 } from "metabase-types/api";
 
 export interface EntitiesState {
-  collections?: Record<CollectionId, Collection>;
-  dataApps?: Record<DataAppId, DataApp>;
+  actions?: Record<WritebackActionId, WritebackAction>;
+  collections?: Partial<Record<CollectionId, Collection>>;
+  dashboards?: Record<DashboardId, Dashboard>;
   databases?: Record<number, Database>;
+  fields?: Record<FieldId, Field>;
   tables?: Record<number | string, Table>;
   snippets?: Record<NativeQuerySnippetId, NativeQuerySnippet>;
+  users?: Record<UserId, User>;
+  questions?: Record<CardId, Card>;
 }

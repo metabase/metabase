@@ -67,7 +67,7 @@ The if-you're-interested reason is that Java's JDBC `DriverManager` won't use JD
 
 ## Building the driver
 
-To build a driver as a plugin JAR, check out the [Build-driver scripts README](https://github.com/metabase/metabase/tree/master/bin/build-drivers).
+To build a driver as a plugin JAR, check out the [Build-driver scripts README](https://github.com/metabase/metabase/tree/master/bin/build-drivers.md).
 
 Place the JAR you built in your Metabase's `/plugins` directory, and you're off to the races.
 
@@ -197,10 +197,6 @@ driver:
     - merge:
       - port
       - placeholder: 1433
-
-  # You can also tell Metabase to include SSL tunnel configuration options with
-  # connection-properties-include-tunnel-config (default: false)
-  connection-properties-include-tunnel-config: true
 
 # Steps to take to initialize the plugin. For lazy-load drivers, this
 # is delayed until the driver is initialized the first time we connect

@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
@@ -6,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Aggregation from "metabase-lib/queries/structured/Aggregation";
@@ -64,6 +63,8 @@ export default class AggregationPopover extends Component {
     showRawData: PropTypes.bool,
 
     width: PropTypes.number,
+    maxHeight: PropTypes.number,
+    alwaysExpanded: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -146,7 +147,7 @@ export default class AggregationPopover extends Component {
     return (
       aggregationOperators ||
       dimension?.aggregationOperators() ||
-      query.table().aggregationOperators()
+      query.aggregationOperators()
     ).filter(
       aggregationOperator =>
         showRawData || aggregationOperator.short !== "rows",
@@ -355,7 +356,9 @@ export default class AggregationPopover extends Component {
           />
         </ExpressionPopoverRoot>
       );
-    } else if (choosingField) {
+    }
+
+    if (choosingField) {
       const [agg, fieldId] = aggregation;
       return (
         <div style={{ minWidth: 300 }}>
@@ -383,27 +386,27 @@ export default class AggregationPopover extends Component {
           />
         </div>
       );
-    } else {
-      return (
-        <AggregationItemList
-          width={this.props.width}
-          maxHeight={this.props.maxHeight}
-          alwaysExpanded={this.props.alwaysExpanded}
-          sections={sections}
-          onChange={this.onPickAggregation}
-          itemIsSelected={this.itemIsSelected.bind(this)}
-          renderSectionIcon={section => <Icon name={section.icon} size={18} />}
-          renderItemExtra={this.renderItemExtra.bind(this)}
-          getItemClassName={item =>
-            item.metric?.archived ? "text-medium" : null
-          }
-          onChangeSection={(section, sectionIndex) => {
-            if (section.custom) {
-              this.onPickAggregation({ custom: true });
-            }
-          }}
-        />
-      );
     }
+
+    return (
+      <AggregationItemList
+        width={this.props.width}
+        maxHeight={this.props.maxHeight}
+        alwaysExpanded={this.props.alwaysExpanded}
+        sections={sections}
+        onChange={this.onPickAggregation}
+        itemIsSelected={this.itemIsSelected.bind(this)}
+        renderSectionIcon={section => <Icon name={section.icon} size={18} />}
+        renderItemExtra={this.renderItemExtra.bind(this)}
+        getItemClassName={item =>
+          item.metric?.archived ? "text-medium" : null
+        }
+        onChangeSection={(section, sectionIndex) => {
+          if (section.custom) {
+            this.onPickAggregation({ custom: true });
+          }
+        }}
+      />
+    );
   }
 }

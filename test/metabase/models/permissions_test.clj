@@ -1,14 +1,20 @@
 (ns metabase.models.permissions-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
-            [metabase.models.table :refer [Table]]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [malli.generator :as mg]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.permissions :as perms :refer [Permissions]]
+   [metabase.models.permissions-group
+    :as perms-group
+    :refer [PermissionsGroup]]
+   [metabase.models.table :refer [Table]]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan.db :as db]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
@@ -49,6 +55,8 @@
    "/data-model/db/1/schema/PUBLIC/table/1/"
    ;; db details permissions
    "/details/db/1/"
+   ;; execution permissions
+   "/execute/"
    ;; full admin (everything) root permissions
    "/"])
 
@@ -393,6 +401,16 @@
 
 ;;; ---------------------------------------------- is-permissions-set? -----------------------------------------------
 
+;;; This originally lived in [[metabase.models.permissions]] but it is only used in tests these days so I moved it here.
+(defn is-permissions-set?
+  "Is `permissions-set` a valid set of permissions object paths?"
+  ^Boolean [permissions-set]
+  (and (set? permissions-set)
+       (every? (fn [path]
+                 (or (= path "/")
+                     (perms/valid-path? path)))
+               permissions-set)))
+
 (deftest is-permissions-set?-test
   (testing "valid permissions sets"
     (doseq [perms-set [#{}
@@ -407,9 +425,9 @@
                        #{"/db/1/schema/" "/db/2/schema/public/"}
                        #{"/db/1/schema/public/" "/db/2/schema/public/table/3/"}
                        #{"/db/1/schema/public/table/2/" "/db/3/schema/public/table/4/"}]]
-      (testing (pr-str (list 'perms/is-permissions-set? perms-set))
+      (testing (pr-str (list 'is-permissions-set? perms-set))
         (is (= true
-               (perms/is-permissions-set? perms-set))))))
+               (is-permissions-set? perms-set))))))
 
   (testing "invalid permissions sets"
     (doseq [[group sets] {"things that aren't sets"
@@ -424,9 +442,9 @@
                            #{"/db/1/schema/public/table/1/" "/ocean/"}]}]
       (testing group
         (doseq [perms-set sets]
-          (testing (pr-str (list 'perms/is-permissions-set? perms-set))
+          (testing (pr-str (list 'is-permissions-set? perms-set))
             (is (= false
-                   (perms/is-permissions-set? perms-set)))))))))
+                   (is-permissions-set? perms-set)))))))))
 
 
 ;;; ------------------------------------------- set-has-full-permissions? --------------------------------------------
@@ -680,7 +698,7 @@
                        :details    :yes}}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
-                   (select-keys [db-id]))))))))
+                   (select-keys [db-id :execute]))))))))
 
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"
@@ -709,8 +727,8 @@
                    (set-perms! {:schemas :none}))))
           (testing "disallow schemas :none + :native :write"
             (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"DB permissions with a valid combination of values for :native and :schemas"
+                 Exception
+                 #"Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."
                  (set-perms! {:schemas :none, :native :write})))
             (is (= nil
                    (perms)))))))))
@@ -737,7 +755,7 @@
   (testing "Partial permission graphs with no changes to the existing graph do not error when run repeatedly (#25221)"
     (mt/with-temp PermissionsGroup [group]
       ;; Bind *current-user* so that permission revisions are written, which was the source of the original error
-      (mt/with-current-user 1
+      (mt/with-current-user (mt/user->id :rasta)
         (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :none :schemas :none}}}}
                                                    :revision (:revision (perms/data-perms-graph))})))
         (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :none :schemas :none}}}}
@@ -841,3 +859,141 @@
         (testing (format "Able to revoke `%s` permission" (name perm-type))
           (perms/revoke-application-permissions! group-id perm-type)
           (is (not (= (perms) #{perm-path}))))))))
+
+(deftest permission-classify-path
+  (is (= :admin           (perms/classify-path "/")))
+  (is (= :block           (perms/classify-path "/block/db/0/")))
+  (is (= :collection      (perms/classify-path "/collection/7/")))
+  (is (= :data            (perms/classify-path "/db/3/")))
+  (is (= :data-model      (perms/classify-path "/data-model/db/0/schema/\\/\\/\\/񊏱\\\\\\\\\\\\򍕦/table/4/")))
+  (is (= :db-conn-details (perms/classify-path "/details/db/6/")))
+  (is (= :download        (perms/classify-path "/download/db/7/")))
+  (is (= :execute         (perms/classify-path "/execute/")))
+  (is (= :non-scoped      (perms/classify-path "/application/monitoring/")))
+
+  (is (= :query-v2        (perms/classify-path "/query/db/0/native/")))
+  (is (= :data-v2         (perms/classify-path "/data/db/3/schema/something/table/3/"))))
+
+
+(deftest data-permissions-classify-path
+  (is (= :data (perms/classify-path "/db/3/")))
+  (is (= :data (perms/classify-path "/db/3/native/")))
+  (is (= :data (perms/classify-path "/db/3/schema/")))
+  (is (= :data (perms/classify-path "/db/3/schema//")))
+  (is (= :data (perms/classify-path "/db/3/schema/secret_base/")))
+  (is (= :data (perms/classify-path "/db/3/schema/secret_base/table/3/")))
+  (is (= :data (perms/classify-path "/db/3/schema/secret_base/table/3/read/")))
+  (is (= :data (perms/classify-path "/db/3/schema/secret_base/table/3/query/")))
+  (is (= :data (perms/classify-path "/db/3/schema/secret_base/table/3/query/segmented/"))))
+
+(deftest data-permissions-v2-migration-data-perm-classification-test
+  (is (= :dk/db                                 (perms/classify-data-path "/db/3/")))
+  (is (= :dk/db-native                          (perms/classify-data-path "/db/3/native/")))
+  (is (= :dk/db-schema                          (perms/classify-data-path "/db/3/schema/")))
+  (is (= :dk/db-schema-name                     (perms/classify-data-path "/db/3/schema//")))
+  (is (= :dk/db-schema-name                     (perms/classify-data-path "/db/3/schema/secret_base/")))
+  (is (= :dk/db-schema-name-and-table           (perms/classify-data-path "/db/3/schema/secret_base/table/3/")))
+  (is (= :dk/db-schema-name-table-and-read      (perms/classify-data-path "/db/3/schema/secret_base/table/3/read/")))
+  (is (= :dk/db-schema-name-table-and-query     (perms/classify-data-path "/db/3/schema/secret_base/table/3/query/")))
+  (is (= :dk/db-schema-name-table-and-segmented (perms/classify-data-path "/db/3/schema/secret_base/table/3/query/segmented/"))))
+
+(deftest idempotent-move-test
+  (let [;; all v1 paths:
+        v1-paths ["/db/3/" "/db/3/native/" "/db/3/schema/" "/db/3/schema//" "/db/3/schema/secret_base/"
+                  "/db/3/schema/secret_base/table/3/" "/db/3/schema/secret_base/table/3/read/"
+                  "/db/3/schema/secret_base/table/3/query/" "/db/3/schema/secret_base/table/3/query/segmented/"]
+        ;; cooresponding v2 paths:
+        v2-paths ["/data/db/3/" "/query/db/3/" "/data/db/3/" "/query/db/3/" "/data/db/3/" "/query/db/3/schema/"
+                  "/data/db/3/schema//" "/query/db/3/schema//" "/data/db/3/schema/secret_base/"
+                  "/query/db/3/schema/secret_base/" "/data/db/3/schema/secret_base/table/3/"
+                  "/query/db/3/schema/secret_base/table/3/" "/data/db/3/schema/secret_base/table/3/"
+                  "/query/db/3/schema/secret_base/table/3/" "/data/db/3/schema/secret_base/table/3/"
+                  "/query/db/3/schema/secret_base/table/3/"]]
+    (is (= v2-paths (mapcat #'perms/->v2-path v1-paths)))
+    (is (= v2-paths (mapcat #'perms/->v2-path v2-paths)))
+    (let [w (partial mapcat #'perms/->v2-path)]
+      (is (= v2-paths (->
+                                    v1-paths
+                          w w                       w w;
+                          w w                       w w;
+                          w w w w w w w w w w w w w w w;
+                          w w w w w w w w w w w w w w w;
+                          w w w                   w w w;
+                          w w      w         w      w w
+                          w w     w w       w w     w w
+                          w w           w           w w
+                          w w           w           w w
+                          w w w w w w w w w w w w w w w;
+                              w w w w w w w w w w w;;;;
+                              w w w w w w w w w w w;;
+                                  w w w w w w w;
+                                      w   w;
+                                      w   w
+                                    w w   w w))))));
+
+
+(deftest data-permissions-v2-migration-move-test
+  (testing "move admin"
+    (is (= ["/"] (#'perms/->v2-path "/"))))
+  (testing "move block"
+    (is (= []
+           (#'perms/->v2-path "/block/db/1/"))))
+  (testing "move data"
+    (is (= ["/data/db/1/" "/query/db/1/"]
+           (#'perms/->v2-path "/db/1/")))
+    (is (= ["/data/db/1/" "/query/db/1/"]
+           (#'perms/->v2-path "/db/1/native/")))
+    (is (= ["/data/db/1/" "/query/db/1/schema/"]
+           (#'perms/->v2-path "/db/1/schema/")))
+    (is (= ["/data/db/1/schema//" "/query/db/1/schema//"]
+           (#'perms/->v2-path "/db/1/schema//")))
+    (is (= ["/data/db/1/schema/PUBLIC/" "/query/db/1/schema/PUBLIC/"]
+           (#'perms/->v2-path "/db/1/schema/PUBLIC/")))
+    (is (= ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]
+           (#'perms/->v2-path "/db/1/schema/PUBLIC/table/1/")))
+    (is (= []
+           (#'perms/->v2-path "/db/1/schema/PUBLIC/table/1/read/")))
+    (is (= ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]
+           (#'perms/->v2-path "/db/1/schema/PUBLIC/table/1/query/")))
+    (is (= ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]
+           (#'perms/->v2-path "/db/1/schema/PUBLIC/table/1/query/segmented/")))))
+
+(defn- check-fn! [fn-var & [iterations]]
+  (let [iterations (or iterations 5000)]
+    (if-let [result ((mg/function-checker (:schema (meta fn-var)) {::mg/=>iterations iterations}) @fn-var)]
+      result
+      {:pass? true :iterations iterations})))
+
+(deftest quickcheck-perm-path-classification-test
+  (is (:pass? (check-fn! #'perms/classify-path))))
+
+(deftest quickcheck-data-path-classification-test
+  (is (:pass? (check-fn! #'perms/classify-data-path))))
+
+(deftest quickcheck-->v2-path-test
+  (is (:pass? (check-fn! #'perms/->v2-path))))
+
+(deftest generate-graph-test
+  (is (= {1 {2 {:data {:native :write, :schemas :all}}}}
+         (#'perms/generate-graph #{2} {1 ["/db/2/"]})))
+
+  (is (= {1 {2 {:data {:native :write}}}}
+         (#'perms/generate-graph #{2} {1 ["/data/db/2/"]})))
+
+  (is (= {1 {2 {:query {:schemas :all, :native :none}}}}
+         (#'perms/generate-graph #{2} {1 ["/query/db/2/schema/"]})))
+
+  (is (= {1 {2 {:query {:schemas {"PUBLIC" :all}}}}}
+         (#'perms/generate-graph #{2} {1 ["/query/db/2/schema/PUBLIC/"]})))
+
+  (is (= {1 {2 {:query {:schemas {"" :all}}}}}
+         (#'perms/generate-graph #{2} {1 ["/query/db/2/schema//"]})))
+
+  (is (= {1 {2 {:data {:schemas :all}}}}
+         (#'perms/generate-graph #{2} {1 ["/db/2/schema/"]})))
+
+  (is (= {1 {2 {:query {:schemas :all}, :data {:native :write}}}}
+         (#'perms/generate-graph #{2} {1 ["/query/db/2/schema/" "/data/db/2/"]})))
+
+  (is (= {1 {2 {:data {:native :write, :schemas :all}}}}
+         (#'perms/generate-graph #{2} {1 ["/db/2/"]}))))

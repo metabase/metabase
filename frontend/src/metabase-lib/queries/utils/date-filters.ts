@@ -377,15 +377,15 @@ export function getInitialDayOfWeekFilter(filter: Filter) {
 }
 
 export function getInitialMonthOfYearFilter(filter: Filter) {
-  return ["!=", getDateTimeFieldRef(filter[1], "day-of-week")];
+  return ["!=", getDateTimeFieldRef(filter[1], "month-of-year")];
 }
 
 export function getInitialQuarterOfYearFilter(filter: Filter) {
-  return ["!=", getDateTimeFieldRef(filter[1], "day-of-week")];
+  return ["!=", getDateTimeFieldRef(filter[1], "quarter-of-year")];
 }
 
 export function getInitialHourOfDayFilter(filter: Filter) {
-  return ["!=", getDateTimeFieldRef(filter[1], "day-of-week")];
+  return ["!=", getDateTimeFieldRef(filter[1], "hour-of-day")];
 }
 
 export const isDayOfWeekDateFilter = testTemporalUnit("day-of-week");

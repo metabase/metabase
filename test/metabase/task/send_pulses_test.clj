@@ -1,15 +1,16 @@
-(ns metabase.task.send-pulses-test
-  (:require [clojure.test :refer :all]
-            [metabase.email :as email]
-            [metabase.email-test :as et]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.pulse-channel :refer [PulseChannel]]
-            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-            [metabase.pulse.test-util :refer [checkins-query-card]]
-            [metabase.task.send-pulses :as send-pulses]
-            [metabase.test :as mt]))
+(ns ^:mb/once metabase.task.send-pulses-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase.email :as email]
+   [metabase.email-test :as et]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.pulse :refer [Pulse]]
+   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.models.pulse-channel :refer [PulseChannel]]
+   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.pulse.test-util :refer [checkins-query-card]]
+   [metabase.task.send-pulses :as send-pulses]
+   [metabase.test :as mt]))
 
 (deftest send-pulses-test
   (mt/with-temp* [Card                 [{card-id :id}  (assoc (checkins-query-card {:breakout [[:field (mt/id :checkins :date) {:temporal-unit :day}]]})
