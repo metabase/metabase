@@ -26,7 +26,6 @@
          old-database-position          :database-position
          old-database-name              :name
          old-database-is-auto-increment :database-is-auto-increment
-         old-json-unfolding             :json-unfolding
          old-db-required                :database-required} metabase-field
         {new-database-type              :database-type
          new-base-type                  :base-type
@@ -34,9 +33,7 @@
          new-database-position          :database-position
          new-database-name              :name
          new-database-is-auto-increment :database-is-auto-increment
-         new-json-unfolding             :json-unfolding
          new-db-required                :database-required} field-metadata
-        new-json-unfolding                         (boolean new-json-unfolding)
         new-database-is-auto-increment             (boolean new-database-is-auto-increment)
         new-db-required                            (boolean new-db-required)
         new-database-type                          (or new-database-type "NULL")
@@ -76,12 +73,6 @@
                           old-database-type
                           new-database-type))
            {:database_type new-database-type})
-         (when (not= old-json-unfolding new-json-unfolding)
-           (log/info (trs "JSON unfolding setting of {0} has changed from ''{1}'' to ''{2}''."
-                          (common/field-metadata-name-for-logging table metabase-field)
-                          old-json-unfolding
-                          new-json-unfolding))
-           {:json_unfolding new-json-unfolding})
          (when new-base-type?
            (log/info (trs "Base type of {0} has changed from ''{1}'' to ''{2}''."
                           (common/field-metadata-name-for-logging table metabase-field)
