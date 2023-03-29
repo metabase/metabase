@@ -9,7 +9,6 @@ export const Container = styled.div`
   display: flex;
   margin-left: auto;
   padding-right: ${space(1)};
-  min-height: 3rem;
 `;
 
 export const Span = styled.span`

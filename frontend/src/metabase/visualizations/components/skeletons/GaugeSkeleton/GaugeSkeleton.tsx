@@ -1,19 +1,21 @@
-import React from "react";
-import { SharedChartSkeletonProps } from "../ChartSkeleton/types";
+import React, { HTMLAttributes } from "react";
 import SkeletonCaption from "../SkeletonCaption";
 import { SkeletonImage, SkeletonRoot } from "./GaugeSkeleton.styled";
+
+export interface GaugeSkeletonProps extends HTMLAttributes<HTMLDivElement> {
+  name?: string | null;
+  description?: string | null;
+}
 
 const GaugeSkeleton = ({
   name,
   description,
-  isStatic,
   ...props
-}: SharedChartSkeletonProps): JSX.Element => {
+}: GaugeSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
       <SkeletonCaption name={name} description={description} />
       <SkeletonImage
-        isStatic={isStatic}
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 169 143"
         preserveAspectRatio="xMidYMid"

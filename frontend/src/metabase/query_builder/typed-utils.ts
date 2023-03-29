@@ -21,11 +21,6 @@ export function getQueryBuilderModeFromLocation(
       datasetEditorTab: pathname.endsWith("/query") ? "query" : "metadata",
     };
   }
-  if (pathname?.endsWith("metabot")) {
-    return {
-      queryBuilderMode: "metabot",
-    };
-  }
   return {
     queryBuilderMode: "view",
   };

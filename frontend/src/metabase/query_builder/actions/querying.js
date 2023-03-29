@@ -6,7 +6,6 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
-import { MetabotApi } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
@@ -23,11 +22,8 @@ import {
   getQuestion,
   getTimeoutId,
   getIsResultDirty,
-  getCard,
 } from "../selectors";
 
-import { updateQuestion } from "./core";
-import { setIsNativeEditorOpen } from "./native";
 import { updateUrl } from "./navigation";
 
 export const SET_DOCUMENT_TITLE = "metabase/qb/SET_DOCUMENT_TITLE";
@@ -149,48 +145,6 @@ export const runQuestionQuery = ({
 
     dispatch.action(RUN_QUERY, { cancelQueryDeferred });
   };
-};
-
-const queryMetabot = async (query, databaseId, modelId) => {
-  const cancelQueryDeferred = defer();
-
-  if (modelId) {
-    return await MetabotApi.modelPrompt(
-      { modelId, question: query },
-      { cancelled: cancelQueryDeferred.promise },
-    );
-  }
-
-  return await MetabotApi.databasePrompt(
-    { databaseId, question: query },
-    { cancelled: cancelQueryDeferred.promise },
-  );
-};
-
-export const runMetabotQuery = query => async (dispatch, getState) => {
-  const card = getCard(getState());
-  const originalQuestion = getOriginalQuestion(getState());
-  const modelId = originalQuestion?.id();
-  const databaseId = card?.dataset_query.database;
-
-  const cancelQueryDeferred = defer();
-  dispatch.action(RUN_QUERY, { cancelQueryDeferred });
-
-  try {
-    const newCard = await queryMetabot(query, databaseId, modelId);
-    let newQuestion = new Question(newCard, getMetadata(getState()));
-    newQuestion = newQuestion
-      .query()
-      .setQueryText(newQuestion.query().queryText())
-      .question()
-      .lockDisplay();
-
-    await dispatch(updateQuestion(newQuestion));
-    await dispatch(setIsNativeEditorOpen(false));
-    await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
-  } catch (error) {
-    dispatch(queryErrored(0, error));
-  }
 };
 
 const loadStartUIControls = createThunkAction(

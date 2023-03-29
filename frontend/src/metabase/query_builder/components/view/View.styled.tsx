@@ -71,9 +71,3 @@ export const StyledSyncedParametersList = styled(SyncedParametersList)`
   margin-top: 1rem;
   margin-left: 1.5rem;
 `;
-
-export const MetabotEmptyState = styled.div`
-  width: 100%;
-  height: 100%;
-  background-image: url("app/img/metabot-empty-state.svg");
-`;

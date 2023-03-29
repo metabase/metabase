@@ -217,7 +217,6 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
-    initOptions,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -291,7 +290,7 @@ function QueryBuilder(props) {
   );
 
   useMount(() => {
-    initializeQB(location, params, initOptions);
+    initializeQB(location, params);
   }, []);
 
   useMount(() => {

@@ -36,7 +36,6 @@ import ViewFooter from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
 import NewQuestionView from "./View/NewQuestionView";
 import QueryViewNotebook from "./View/QueryViewNotebook";
-import MetabotHeader from "./MetabotHeader";
 
 import {
   BorderedViewTitleHeader,
@@ -47,7 +46,6 @@ import {
   QueryBuilderViewRoot,
   StyledDebouncedFrame,
   StyledSyncedParametersList,
-  MetabotEmptyState,
 } from "./View.styled";
 
 const DEFAULT_POPOVER_STATE = {
@@ -270,7 +268,7 @@ class View extends React.Component {
       : this.getRightSidebarForNativeQuery();
   };
 
-  renderRegularHeader = () => {
+  renderHeader = () => {
     const { query } = this.props;
     const isStructured = query instanceof StructuredQuery;
 
@@ -294,14 +292,6 @@ class View extends React.Component {
           </QueryBuilderViewHeaderContainer>
         )}
       </Motion>
-    );
-  };
-
-  renderMetabotHeader = () => {
-    return (
-      <QueryBuilderViewHeaderContainer>
-        <MetabotHeader />
-      </QueryBuilderViewHeaderContainer>
     );
   };
 
@@ -437,7 +427,6 @@ class View extends React.Component {
 
   render() {
     const {
-      results,
       question,
       query,
       databases,
@@ -490,40 +479,28 @@ class View extends React.Component {
       ? SIDEBAR_SIZES.TIMELINE
       : SIDEBAR_SIZES.NORMAL;
 
-    const shouldShowMetabotZeroState =
-      queryBuilderMode === "metabot" && results == null;
-
     return (
       <div className="full-height">
         <QueryBuilderViewRoot className="QueryBuilder">
-          {isHeaderVisible &&
-            (queryBuilderMode === "metabot"
-              ? this.renderMetabotHeader()
-              : this.renderRegularHeader())}
+          {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
-            {shouldShowMetabotZeroState ? (
-              <MetabotEmptyState />
-            ) : (
-              <>
-                {isStructured && (
-                  <QueryViewNotebook
-                    isNotebookContainerOpen={isNotebookContainerOpen}
-                    {...this.props}
-                  />
-                )}
-                <ViewSidebar side="left" isOpen={!!leftSidebar}>
-                  {leftSidebar}
-                </ViewSidebar>
-                {this.renderMain({ leftSidebar, rightSidebar })}
-                <ViewSidebar
-                  side="right"
-                  isOpen={!!rightSidebar}
-                  width={rightSidebarWidth}
-                >
-                  {rightSidebar}
-                </ViewSidebar>
-              </>
+            {isStructured && (
+              <QueryViewNotebook
+                isNotebookContainerOpen={isNotebookContainerOpen}
+                {...this.props}
+              />
             )}
+            <ViewSidebar side="left" isOpen={!!leftSidebar}>
+              {leftSidebar}
+            </ViewSidebar>
+            {this.renderMain({ leftSidebar, rightSidebar })}
+            <ViewSidebar
+              side="right"
+              isOpen={!!rightSidebar}
+              width={rightSidebarWidth}
+            >
+              {rightSidebar}
+            </ViewSidebar>
           </QueryBuilderContentContainer>
         </QueryBuilderViewRoot>
 

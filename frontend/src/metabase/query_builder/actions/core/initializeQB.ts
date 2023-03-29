@@ -40,18 +40,11 @@ import {
   getParameterValuesForQuestion,
 } from "./parameterUtils";
 
-type InitOptions = {
-  type?: QueryType;
-};
-
-type QueryType = "query" | "native";
-
 type BlankQueryOptions = {
   db?: string;
   table?: string;
   segment?: string;
   metric?: string;
-  type?: QueryType;
 };
 
 type QueryParams = BlankQueryOptions & {
@@ -80,12 +73,11 @@ function getCardForBlankQuestion({
   table,
   segment,
   metric,
-  type = "query",
 }: BlankQueryOptions) {
   const databaseId = db ? parseInt(db) : undefined;
   const tableId = table ? parseInt(table) : undefined;
 
-  let question = Question.create({ databaseId, tableId, type });
+  let question = Question.create({ databaseId, tableId });
 
   if (databaseId && tableId) {
     if (segment) {
@@ -247,12 +239,7 @@ async function handleQBInit(
   {
     location,
     params,
-    initOptions,
-  }: {
-    location: LocationDescriptorObject;
-    params: QueryParams;
-    initOptions?: InitOptions;
-  },
+  }: { location: LocationDescriptorObject; params: QueryParams },
 ) {
   dispatch(resetQB());
   dispatch(cancelQuery());
@@ -270,10 +257,7 @@ async function handleQBInit(
   let { card, originalCard } = await resolveCards({
     cardId,
     deserializedCard,
-    options: {
-      ...options,
-      ...initOptions,
-    },
+    options,
     dispatch,
     getState,
   });
@@ -357,8 +341,7 @@ async function handleQBInit(
     },
   });
 
-  const { queryBuilderMode } = uiControls;
-  if (queryBuilderMode !== "notebook" && queryBuilderMode !== "metabot") {
+  if (uiControls.queryBuilderMode !== "notebook") {
     if (question.canRun() && (question.isSaved() || question.isStructured())) {
       // Timeout to allow Parameters widget to set parameterValues
       setTimeout(
@@ -377,14 +360,10 @@ async function handleQBInit(
 }
 
 export const initializeQB =
-  (
-    location: LocationDescriptorObject,
-    params: QueryParams,
-    initOptions: InitOptions,
-  ) =>
+  (location: LocationDescriptorObject, params: QueryParams) =>
   async (dispatch: Dispatch, getState: GetState) => {
     try {
-      await handleQBInit(dispatch, getState, { location, params, initOptions });
+      await handleQBInit(dispatch, getState, { location, params });
     } catch (error) {
       console.warn("initializeQB failed because of an error:", error);
       dispatch(setErrorPage(error));

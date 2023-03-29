@@ -1,5 +1,4 @@
-import React from "react";
-import { SharedChartSkeletonProps } from "../ChartSkeleton/types";
+import React, { HTMLAttributes } from "react";
 import {
   SkeletonBottomImage,
   SkeletonCenterCaption,
@@ -7,19 +6,20 @@ import {
   SkeletonTopImage,
 } from "./SmartScalarSkeleton.styled";
 
+export interface SmartScalarSkeletonProps
+  extends HTMLAttributes<HTMLDivElement> {
+  name?: string | null;
+  description?: string | null;
+}
+
 const SmartScalarSkeleton = ({
   name,
   description,
-  isStatic,
   ...props
-}: SharedChartSkeletonProps): JSX.Element => {
+}: SmartScalarSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
-      <SkeletonTopImage
-        isStatic={isStatic}
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 103 32"
-      >
+      <SkeletonTopImage xmlns="http://www.w3.org/2000/svg" viewBox="0 0 103 32">
         <rect width="103" height="32" rx="16" fill="currentColor" />
       </SkeletonTopImage>
       <SkeletonCenterCaption
@@ -28,7 +28,6 @@ const SmartScalarSkeleton = ({
         size="large"
       />
       <SkeletonBottomImage
-        isStatic={isStatic}
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 182 8"
       >

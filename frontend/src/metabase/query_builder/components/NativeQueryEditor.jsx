@@ -519,7 +519,6 @@ class NativeQueryEditor extends Component {
       resizable,
       editorContext = "question",
       setDatasetQuery,
-      canChangeDatabase = true,
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -538,18 +537,16 @@ class NativeQueryEditor extends Component {
       <NativeQueryEditorRoot className="NativeQueryEditor bg-light full">
         {hasTopBar && (
           <div className="flex align-center" data-testid="native-query-top-bar">
-            {canChangeDatabase ? (
-              <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
-                <DataSourceSelectors
-                  isNativeEditorOpen={isNativeEditorOpen}
-                  query={query}
-                  readOnly={readOnly}
-                  setDatabaseId={this.setDatabaseId}
-                  setTableId={this.setTableId}
-                  editorContext={editorContext}
-                />
-              </div>
-            ) : null}
+            <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
+              <DataSourceSelectors
+                isNativeEditorOpen={isNativeEditorOpen}
+                query={query}
+                readOnly={readOnly}
+                setDatabaseId={this.setDatabaseId}
+                setTableId={this.setTableId}
+                editorContext={editorContext}
+              />
+            </div>
             {hasParametersList && (
               <ResponsiveParametersList
                 question={question}

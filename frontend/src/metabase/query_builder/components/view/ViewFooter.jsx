@@ -3,17 +3,23 @@ import React, { useCallback } from "react";
 
 import { t } from "ttag";
 import cx from "classnames";
+import styled from "@emotion/styled";
+import { color, darken } from "metabase/lib/colors";
+
+import Icon from "metabase/components/Icon";
 
 import ButtonBar from "metabase/components/ButtonBar";
+
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget, {
   QuestionEmbedWidgetTrigger,
 } from "metabase/query_builder/containers/QuestionEmbedWidget";
-
+import { getIconForVisualizationType } from "metabase/visualizations";
 import ViewButton from "./ViewButton";
+
 import QuestionAlertWidget from "./QuestionAlertWidget";
 import QuestionTimelineWidget from "./QuestionTimelineWidget";
-import QuestionTableToggle from "./QuestionTableToggle";
+
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionLastUpdated from "./QuestionLastUpdated";
 import { ViewFooterRoot, FooterButtonGroup } from "./ViewFooter.styled";
@@ -101,12 +107,12 @@ const ViewFooter = ({
         ]}
         center={
           isVisualized && (
-            <QuestionTableToggle
+            <VizTableToggle
               key="viz-table-toggle"
               className="mx1"
               question={question}
               isShowingRawTable={isShowingRawTable}
-              onToggleRawTable={isShowingRawTable => {
+              onShowTable={isShowingRawTable => {
                 setUIControls({ isShowingRawTable });
               }}
             />
@@ -182,6 +188,49 @@ const ViewFooter = ({
         ]}
       />
     </ViewFooterRoot>
+  );
+};
+
+const Well = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  border-radius: 99px;
+  background-color: ${color("bg-medium")};
+  &:hover {
+    background-color: ${darken(color("bg-medium"), 0.05)};
+  }
+  transition: background 300ms linear;
+`;
+
+const ToggleIcon = styled.div`
+  display: flex;
+  padding: 4px 8px;
+  cursor: pointer;
+  background-color: ${props => (props.active ? color("brand") : "transparent")};
+  color: ${props => (props.active ? "white" : "inherit")};
+  border-radius: 99px;
+`;
+
+const VizTableToggle = ({
+  className,
+  question,
+  isShowingRawTable,
+  onShowTable,
+}) => {
+  const vizIcon = getIconForVisualizationType(question.display());
+  return (
+    <Well className={className} onClick={() => onShowTable(!isShowingRawTable)}>
+      <ToggleIcon active={isShowingRawTable} aria-label={t`Switch to data`}>
+        <Icon name="table2" />
+      </ToggleIcon>
+      <ToggleIcon
+        active={!isShowingRawTable}
+        aria-label={t`Switch to visualization`}
+      >
+        <Icon name={vizIcon} />
+      </ToggleIcon>
+    </Well>
   );
 };
 

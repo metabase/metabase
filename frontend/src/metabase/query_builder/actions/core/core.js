@@ -1,5 +1,5 @@
 import { createAction } from "redux-actions";
-import { assocIn } from "icepick";
+
 import _ from "underscore";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard } from "metabase/lib/card";
@@ -16,7 +16,6 @@ import { openUrl } from "metabase/redux/app";
 import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
@@ -311,10 +310,3 @@ async function reduxUpdateQuestion(
   );
   return question.setCard(Questions.HACK_getObjectFromAction(action));
 }
-
-export const setQueryDatabase = databaseId => async (dispatch, getState) => {
-  const card = getCard(getState());
-  const updatedCard = assocIn(card, ["dataset_query", "database"], databaseId);
-  const newQuestion = new Question(updatedCard, getMetadata(getState()));
-  await dispatch(updateQuestion(newQuestion));
-};

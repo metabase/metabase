@@ -1,19 +1,21 @@
-import React from "react";
-import { SharedChartSkeletonProps } from "../ChartSkeleton/types";
+import React, { HTMLAttributes } from "react";
 import SkeletonCaption from "../SkeletonCaption";
 import { SkeletonRoot, SkeletonImage } from "./LineSkeleton.styled";
+
+export interface LineSkeletonProps extends HTMLAttributes<HTMLDivElement> {
+  name?: string | null;
+  description?: string | null;
+}
 
 const LineSkeleton = ({
   name,
   description,
-  isStatic,
   ...props
-}: SharedChartSkeletonProps): JSX.Element => {
+}: LineSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
       <SkeletonCaption name={name} description={description} />
       <SkeletonImage
-        isStatic={isStatic}
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 371 113"
         fill="none"
