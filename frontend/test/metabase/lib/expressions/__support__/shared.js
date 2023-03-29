@@ -222,12 +222,12 @@ const filter = [
     "filter function with OR",
   ],
   [
-    'NOT contains([User → Name], "John")',
+    'doesNotContain([User → Name], "John")',
     ["does-not-contain", userName, "John"],
     "not contains",
   ],
-  ["NOT isnull([Tax])", ["not-null", tax], "not null"],
-  ["NOT isempty([Total])", ["not-empty", total], "not empty"],
+  ["notnull([Tax])", ["not-null", tax], "not null"],
+  ["notempty([Total])", ["not-empty", total], "not empty"],
 ];
 
 export default [

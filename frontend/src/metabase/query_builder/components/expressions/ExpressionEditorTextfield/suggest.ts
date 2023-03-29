@@ -1,28 +1,55 @@
 import _ from "underscore";
 
 import {
-  partialMatch,
   enclosingFunction,
+  partialMatch,
 } from "metabase-lib/expressions/completer";
 import {
-  EXPRESSION_FUNCTIONS,
   AGGREGATION_FUNCTIONS,
-  MBQL_CLAUSES,
-  getMBQLName,
   EDITOR_FK_SYMBOLS,
+  EXPRESSION_FUNCTIONS,
+  getMBQLName,
+  MBQL_CLAUSES as MBQL_CLAUSES_CONFIG,
 } from "metabase-lib/expressions/config";
 import {
-  getDimensionName,
   formatDimensionName,
   formatMetricName,
   formatSegmentName,
-} from "metabase-lib/expressions/index";
+  getDimensionName,
+} from "metabase-lib/expressions";
+import {
+  HelpText,
+  MBQLClauseFunctionConfig,
+  MBQLClauseMap,
+} from "metabase-lib/expressions/types";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { getHelpText } from "./helper-text-strings";
 
-const suggestionText = func => {
+const MBQL_CLAUSES = MBQL_CLAUSES_CONFIG as MBQLClauseMap;
+
+export type Suggestion = {
+  type: string;
+  name: string;
+  text: string;
+  alternates?: string[];
+  index: number;
+  icon: string | null | undefined;
+  order: number;
+  range?: [number, number];
+};
+
+const suggestionText = (func: MBQLClauseFunctionConfig) => {
   const { displayName, args } = func;
   const suffix = args.length > 0 ? "(" : " ";
   return displayName + suffix;
+};
+
+type SuggestArgs = {
+  source: string;
+  query: StructuredQuery;
+  reportTimezone?: string;
+  startRule: string;
+  targetOffset?: number;
 };
 
 export function suggest({
@@ -31,8 +58,11 @@ export function suggest({
   reportTimezone,
   startRule,
   targetOffset = source.length,
-} = {}) {
-  let suggestions = [];
+}: SuggestArgs): {
+  helpText?: HelpText;
+  suggestions?: Suggestion[];
+} {
+  let suggestions: Suggestion[] = [];
 
   const partialSource = source.slice(0, targetOffset);
   const matchPrefix = partialMatch(partialSource);
@@ -41,13 +71,14 @@ export function suggest({
     // no keystroke to match? show help text for the enclosing function
     const functionDisplayName = enclosingFunction(partialSource);
     if (functionDisplayName) {
-      const helpText = getHelpText(
-        getMBQLName(functionDisplayName),
-        query.database(),
-        reportTimezone,
-      );
-      if (helpText) {
-        return { suggestions, helpText };
+      const name = getMBQLName(functionDisplayName);
+      const database = query.database();
+
+      if (name && database) {
+        const helpText = getHelpText(name, database, reportTimezone);
+        if (helpText) {
+          return { suggestions, helpText };
+        }
       }
     }
     return { suggestions };
@@ -85,7 +116,9 @@ export function suggest({
     suggestions.push(
       ...Array.from(EXPRESSION_FUNCTIONS)
         .map(name => MBQL_CLAUSES[name])
-        .filter(clause => clause && database.hasFeature(clause.requiresFeature))
+        .filter(
+          clause => clause && database?.hasFeature(clause.requiresFeature),
+        )
         .map(func => ({
           type: "functions",
           name: func.displayName,
@@ -100,7 +133,7 @@ export function suggest({
         ...Array.from(AGGREGATION_FUNCTIONS)
           .map(name => MBQL_CLAUSES[name])
           .filter(
-            clause => clause && database.hasFeature(clause.requiresFeature),
+            clause => clause && database?.hasFeature(clause.requiresFeature),
           )
           .map(func => ({
             type: "aggregations",
@@ -132,27 +165,35 @@ export function suggest({
           dimension,
         })),
     );
-    suggestions.push(
-      ...query.table().segments.map(segment => ({
-        type: "segments",
-        name: segment.name,
-        text: formatSegmentName(segment),
-        index: targetOffset,
-        icon: "segment",
-        order: 3,
-      })),
-    );
-    if (startRule === "aggregation") {
+
+    const segments = query.table()?.segments;
+    if (segments) {
       suggestions.push(
-        ...query.table().metrics.map(metric => ({
-          type: "metrics",
-          name: metric.name,
-          text: formatMetricName(metric),
+        ...segments.map(segment => ({
+          type: "segments",
+          name: segment.name,
+          text: formatSegmentName(segment),
           index: targetOffset,
-          icon: "insight",
-          order: 4,
+          icon: "segment",
+          order: 3,
         })),
       );
+    }
+
+    if (startRule === "aggregation") {
+      const metrics = query.table()?.metrics;
+      if (metrics) {
+        suggestions.push(
+          ...metrics.map(metric => ({
+            type: "metrics",
+            name: metric.name,
+            text: formatMetricName(metric),
+            index: targetOffset,
+            icon: "insight",
+            order: 4,
+          })),
+        );
+      }
     }
   }
 
@@ -180,6 +221,7 @@ export function suggest({
       }
     }
   }
+
   suggestions = suggestions.filter(suggestion => suggestion.range);
 
   // deduplicate suggestions and sort by type then name
@@ -193,13 +235,15 @@ export function suggest({
   if (suggestions.length === 1 && matchPrefix) {
     const { icon } = suggestions[0];
     if (icon === "function") {
-      const helpText = getHelpText(
-        getMBQLName(matchPrefix),
-        query.database(),
-        reportTimezone,
-      );
-      if (helpText) {
-        return { helpText };
+      const name = getMBQLName(matchPrefix);
+      const database = query.database();
+
+      if (name && database) {
+        const helpText = getHelpText(name, database, reportTimezone);
+
+        if (helpText) {
+          return { helpText };
+        }
       }
     }
   }
