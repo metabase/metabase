@@ -9,6 +9,8 @@ redirect_from:
 
 # Metabase documentation
 
+![Metabase dashboard](./images/metabase-product-screenshot.svg)
+
 Metabase is an open-source business intelligence platform. You can use Metabase to ask questions about your data, or embed Metabase in your app to let your customers explore their data on their own.
 
 ## First steps
