@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import EmptyState from "metabase/components/EmptyState";
 import { VisualizationRunningState } from "metabase/query_builder/components/QueryVisualization";
 
 export const QueryBuilderRoot = styled.div`
@@ -8,7 +9,6 @@ export const QueryBuilderRoot = styled.div`
   flex-direction: column;
   flex: 1 0 auto;
   overflow: hidden;
-  border-top: 1px solid ${color("border")};
 `;
 
 export const IdleStateRoot = styled.div`
@@ -27,4 +27,16 @@ export const IdleStateIcon = styled(Icon)`
 
 export const RunningStateRoot = styled(VisualizationRunningState)`
   flex: 1 0 auto;
+`;
+
+export const ErrorStateRoot = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 0 auto;
+`;
+
+export const ErrorStateMessage = styled(EmptyState)`
+  max-width: 25rem;
+  padding: 1rem;
 `;
