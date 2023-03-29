@@ -12,8 +12,8 @@ export interface MetabotPromptProps {
   placeholder: string;
   user: User | null;
   isLoading?: boolean;
-  onChangeQuery: (prompt: string) => void;
-  onSubmitQuery: () => void;
+  onChangePrompt: (prompt: string) => void;
+  onSubmitPrompt: () => void;
 }
 
 const MetabotPrompt = ({
@@ -21,23 +21,23 @@ const MetabotPrompt = ({
   placeholder,
   user,
   isLoading = false,
-  onChangeQuery,
-  onSubmitQuery,
+  onChangePrompt,
+  onSubmitPrompt,
 }: MetabotPromptProps) => {
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      onChangeQuery(event.target.value);
+      onChangePrompt(event.target.value);
     },
-    [onChangeQuery],
+    [onChangePrompt],
   );
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
-        onSubmitQuery();
+        onSubmitPrompt();
       }
     },
-    [onSubmitQuery],
+    [onSubmitPrompt],
   );
 
   return (
@@ -55,7 +55,7 @@ const MetabotPrompt = ({
           isRunning={isLoading}
           compact
           isDirty
-          onRun={onSubmitQuery}
+          onRun={onSubmitPrompt}
         />
       ) : null}
     </PromptSection>

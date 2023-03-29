@@ -41,8 +41,8 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onChangeQuery: (prompt: string) => void;
-  onSubmitQuery: () => void;
+  onChangePrompt: (prompt: string) => void;
+  onSubmitPrompt: () => void;
   onDatabaseChange: (databaseId: DatabaseId) => void;
 }
 
@@ -57,8 +57,8 @@ const mapStateToProps = (state: State): StateProps => ({
 });
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onChangeQuery: prompt => dispatch(setPrompt(prompt)),
-  onSubmitQuery: () => dispatch(runPromptQuery()),
+  onChangePrompt: prompt => dispatch(setPrompt(prompt)),
+  onSubmitPrompt: () => dispatch(runPromptQuery()),
   onDatabaseChange: databaseId => push(Urls.databaseMetabot(databaseId)),
 });
 
@@ -70,8 +70,8 @@ const MetabotHeader = ({
   database,
   databases = [],
   user,
-  onChangeQuery,
-  onSubmitQuery,
+  onChangePrompt,
+  onSubmitPrompt,
   onDatabaseChange,
 }: MetabotHeaderProps) => {
   const title = getTitle(
@@ -92,8 +92,8 @@ const MetabotHeader = ({
         placeholder={placeholder}
         user={user}
         isLoading={queryStatus === "running"}
-        onChangeQuery={onChangeQuery}
-        onSubmitQuery={onSubmitQuery}
+        onChangePrompt={onChangePrompt}
+        onSubmitPrompt={onSubmitPrompt}
       />
     </MetabotHeaderRoot>
   );

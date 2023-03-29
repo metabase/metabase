@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { jt, t } from "ttag";
@@ -65,10 +65,7 @@ const MetabotWidget = ({
   const initialDatabaseId = model?.databaseId() ?? databases[0]?.id;
   const [databaseId, setDatabaseId] = useState(initialDatabaseId);
   const [prompt, setPrompt] = useState("");
-
-  const handleSubmitQuery = useCallback(() => {
-    onSubmitQuery(databaseId, prompt);
-  }, [databaseId, prompt, onSubmitQuery]);
+  const handleSubmitPrompt = () => onSubmitQuery(databaseId, prompt);
 
   return (
     <MetabotHeader>
@@ -88,8 +85,8 @@ const MetabotWidget = ({
         prompt={prompt}
         placeholder={getPromptPlaceholder(model)}
         user={user}
-        onChangeQuery={setPrompt}
-        onSubmitQuery={handleSubmitQuery}
+        onChangePrompt={setPrompt}
+        onSubmitPrompt={handleSubmitPrompt}
       />
     </MetabotHeader>
   );
