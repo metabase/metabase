@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.parameters.native-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver :as driver]
    [metabase.models.card :refer [Card]]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.test :as mt]
