@@ -1,4 +1,4 @@
-import * as ML from "cljs/metabase.lib.core";
+import * as ML from "cljs/metabase.lib.limit";
 import type { Query, Limit } from "./types";
 
 export function currentLimit(query: Query): Limit {
