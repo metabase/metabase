@@ -55,9 +55,9 @@ init:
 
 ## Loading namespaces
 
-You'll need to add one or more `load-namespace` steps to your driver manifest to tell Metabase which namespaces contain your driver method implementations. In the example above, the namespace is `metabase.driver.sqlite`. `load-namespace` calls `require` the [normal Clojure way, meaning it will load other namespaces listed in the `:require` section of its namespace declaration as needed. If your driver's method implementations are split across multiple namespaces, make sure they'll get loaded as well -- you can either have the main namespace handle this (e.g., by including them in the `:require` form in the namespace declaration) or by adding additional `load-namespace` steps.
+You'll need to add one or more `load-namespace` steps to your driver manifest to tell Metabase which namespaces contain your driver method implementations. In the example above, the namespace is `metabase.driver.sqlite`. `load-namespace` calls `require` the [normal Clojure way](https://clojuredocs.org/clojure.core/require), meaning it will load other namespaces listed in the `:require` section of its namespace declaration as needed. If your driver's method implementations are split across multiple namespaces, make sure they'll get loaded as well -- you can either have the main namespace handle this (e.g., by including them in the `:require` form in the namespace declaration) or by adding additional `load-namespace` steps.
 
-For some background on namespaces, see [Clojure namespaces][clojure-namespace].
+For some background on namespaces, see [Clojure namespaces](https://clojure.org/guides/learn/namespaces).
 
 ## Registering JDBC Drivers
 
