@@ -65,4 +65,4 @@
 
 (defn ^:export orderable-columns
   [query stage-number]
-  (map clj->js (lib.order-by/orderable-columns query stage-number)))
+  (clj->js (lib.order-by/orderable-columns query stage-number)))
