@@ -28,7 +28,8 @@
   {:base-type   keyword
    :type        keyword
    :lib/type    keyword
-   :lib/options normalize})
+   :lib/options normalize
+   :field_ref   normalize})
 
 (defn normalize-map
   ([m]

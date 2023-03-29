@@ -1,7 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
-import * as ML_OrderBy from "cljs/metabase.lib.order_by";
 
 import _ from "underscore";
 
@@ -28,8 +27,6 @@ const createQuery = () => {
 describe("orderableColumns", () => {
   const query = createQuery();
   const orderableColumns = ML.orderable_columns(query);
-
-  console.log("orderableColumns:", orderableColumns); // NOCOMMIT
 
   it("returns an array", () => {
     expect(orderableColumns).toBeInstanceOf(Array);
@@ -67,10 +64,10 @@ describe("orderableColumns", () => {
 describe("add order by", () => {
   const query = createQuery();
 
-  const orderBys = ML_OrderBy.order_bys(query);
+  const orderBys = ML.order_bys(query);
 
   it("should not have order bys yet", () => {
-    expect(orderBys).toHaveLength(0);
+    expect(orderBys).toBeNull();
   });
 
   const orderableColumns = ML.orderable_columns(query);
@@ -82,13 +79,14 @@ describe("add order by", () => {
 
   it("should update the query", () => {
     const updatedQuery = ML.order_by(query, productsTitle);
-    expect(ML.suggestedName(query)).toBe("OK");
+    // This name isn't GREAT but it's ok for now, we can update this if we improve MLv2.
+    expect(ML.suggestedName(updatedQuery)).toBe("Orders, Sorted by Title ascending");
 
-    const updatedOrderBys = ML_OrderBy.order_bys(query);
+    const updatedOrderBys = ML.order_bys(updatedQuery);
 
     expect(updatedOrderBys).toHaveLength(1);
     const orderBy = updatedOrderBys[0];
 
-    expect(ML_MetadataCalculation.display_name(query, orderBy)).toBe("Wow");
+    expect(ML_MetadataCalculation.display_name(query, orderBy)).toBe("Title ascending");
   });
 });

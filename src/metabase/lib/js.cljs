@@ -6,6 +6,7 @@
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -102,8 +103,8 @@
   ([a-query]
    (orderable-columns a-query -1))
   ([a-query stage-number]
-   (clj->js (lib.order-by/orderable-columns a-query stage-number)
-            :keyword-fn u/qualified-name)))
+   (-> (lib.order-by/orderable-columns a-query stage-number)
+       (clj->js :keyword-fn u/qualified-name))))
 
 (defn ^:export order-by
   "Add an `order-by` clause to `a-query`. Returns updated query."
@@ -114,4 +115,18 @@
    (order-by a-query -1 x direction))
 
   ([a-query stage-number x direction]
-   (lib.order-by/order-by a-query stage-number (js->clj x :keywordize-keys true) (js->clj direction))))
+   (lib.order-by/order-by
+    a-query
+    stage-number
+    (lib.normalize/normalize (js->clj x :keywordize-keys true))
+    (js->clj direction))))
+
+(defn ^:export order-bys
+  "Get the order-by clauses (as an array of opaque objects) in `a-query` at a given `stage-number`. Returns `nil` if
+  there are no order bys in the query."
+  ([a-query]
+   (order-bys a-query -1))
+  ([a-query stage-number]
+   (some-> (lib.order-by/order-bys a-query stage-number)
+           not-empty
+           to-array)))
