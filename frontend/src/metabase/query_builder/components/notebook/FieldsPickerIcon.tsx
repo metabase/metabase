@@ -19,7 +19,11 @@ const propTypes = {
   isTriggeredComponentOpen: PropTypes.bool,
 };
 
-export function FieldsPickerIcon({ isTriggeredComponentOpen }) {
+export function FieldsPickerIcon({
+  isTriggeredComponentOpen,
+}: {
+  isTriggeredComponentOpen?: boolean;
+}) {
   return (
     <Tooltip
       tooltip={<span>{t`Pick columns`}</span>}
