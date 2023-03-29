@@ -66,11 +66,11 @@
   (assoc (vec clause) 0 direction))
 
 (mu/defn order-by
-  "And an MBQL order-by clause (i.e., `:asc` or `:desc`) from something that you can theoretically sort by -- maybe a
+  "Add an MBQL order-by clause (i.e., `:asc` or `:desc`) from something that you can theoretically sort by -- maybe a
   Field, or `:field` clause, or expression of some sort, etc.
 
   You can teach Metabase lib how to generate order by clauses for different things by implementing the
-  underlying [[->order-by]] multimethod."
+  underlying [[->order-by-clause]] multimethod."
   ([query x]
    (order-by query -1 x nil))
 
