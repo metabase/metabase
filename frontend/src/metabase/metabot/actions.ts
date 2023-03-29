@@ -18,7 +18,6 @@ import {
   getPrompt,
   getQuestion,
 } from "./selectors";
-import { maybeFixTemplateTags } from "./utils";
 
 export interface InitPayload {
   entityId: MetabotEntityId;
@@ -100,8 +99,7 @@ export const FETCH_QUERY_RESULTS = "metabase/metabot/FETCH_QUERY_RESULTS";
 export const fetchQueryResults =
   () => async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
-    const newQuestion = question && maybeFixTemplateTags(question);
-    const payload = await newQuestion?.apiGetResults();
+    const payload = await question?.apiGetResults();
     dispatch({ type: FETCH_QUERY_RESULTS, payload });
   };
 
