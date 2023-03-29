@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import { push } from "react-router-redux";
+import * as Urls from "metabase/lib/urls";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
@@ -40,14 +40,13 @@ const TOGGLE_MODEL_PERSISTENCE_TESTID = "toggle-persistence";
 const CLONE_TESTID = "clone-button";
 const ARCHIVE_TESTID = "archive-button";
 
-const mapStateToProps = (state: State, props: Props) => ({
+const mapStateToProps = (state: State) => ({
   isModerator: getUserIsAdmin(state),
-  isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
+  isMetabotEnabled: getSetting(state, "metabot-enabled"),
 });
 
 const mapDispatchToProps = {
   softReloadCard,
-  push,
 };
 
 interface Props {
@@ -66,7 +65,6 @@ interface Props {
   onModelPersistenceChange: () => void;
   isModerator: boolean;
   softReloadCard: () => void;
-  push: (url: string) => void;
 }
 
 const QuestionActions = ({
@@ -82,7 +80,6 @@ const QuestionActions = ({
   onModelPersistenceChange,
   isModerator,
   softReloadCard,
-  push,
 }: Props) => {
   const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
 
@@ -120,17 +117,13 @@ const QuestionActions = ({
     onOpenModal(modal);
   }, [onOpenModal, question]);
 
-  const handleAskMetabot = useCallback(() => {
-    push(`/metabot/model/${question.id()}`);
-  }, [push, question]);
-
   const extraButtons = [];
 
   extraButtons.push(
     PLUGIN_MODERATION.getMenuItems(question, isModerator, softReloadCard),
   );
 
-  if (isMetabotEnabled && isDataset) {
+  if (isDataset) {
     extraButtons.push(
       {
         title: t`Edit query definition`,
@@ -146,12 +139,15 @@ const QuestionActions = ({
         icon: "label",
         action: handleEditMetadata,
       },
-      {
+    );
+
+    if (isMetabotEnabled) {
+      extraButtons.push({
         title: t`Ask Metabot`,
         icon: "insight",
-        action: handleAskMetabot,
-      },
-    );
+        link: Urls.modelMetabot(question.id()),
+      });
+    }
   }
 
   if (canPersistDataset) {

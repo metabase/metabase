@@ -7,7 +7,7 @@ import HomeLayout from "../../components/HomeLayout";
 
 const mapStateToProps = (state: State) => ({
   showIllustration: getSetting(state, "show-lighthouse-illustration"),
-  isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
+  isMetabotEnabled: getSetting(state, "metabot-enabled"),
 });
 
 export default _.compose(
