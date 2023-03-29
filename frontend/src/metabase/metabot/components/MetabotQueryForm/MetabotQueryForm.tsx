@@ -6,7 +6,7 @@ import Button from "metabase/core/components/Button";
 import { MetabotFeedbackType } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
-import { submitFeedbackType, setCard, submitFeedback } from "../../actions";
+import { setCard, submitFeedbackType, submitQueryForm } from "../../actions";
 import { getOriginalQuestion, getQuestion } from "../../selectors";
 import MetabotQueryEditor from "../MetabotQueryEditor";
 import {
@@ -37,7 +37,7 @@ const mapStateToProps = (state: State): StateProps => ({
 const mapDispatchToProps: DispatchProps = {
   onChangeFeedbackType: submitFeedbackType,
   onChangeQuery: setCard,
-  onSubmitQuery: submitFeedback,
+  onSubmitQuery: submitQueryForm,
 };
 
 export const MetabotQueryForm = ({
