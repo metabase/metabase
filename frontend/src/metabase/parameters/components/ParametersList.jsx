@@ -48,7 +48,7 @@ function ParametersList({
 
   setParameterValue,
   setParameterIndex,
-  removeParameter,
+  // XXX: Unused
   setEditingParameter,
 }) {
   const handleSortStart = () => {
