@@ -1,9 +1,12 @@
 import React from "react";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import { jt, t } from "ttag";
+import * as Urls from "metabase/lib/urls";
 import { getUser } from "metabase/selectors/user";
 import { DatabaseId, MetabotFeedbackType, User } from "metabase-types/api";
 import {
+  Dispatch,
   MetabotFeedbackStatus,
   MetabotQueryStatus,
   State,
@@ -53,11 +56,11 @@ const mapStateToProps = (state: State): StateProps => ({
   user: getUser(state),
 });
 
-const mapDispatchToProps: DispatchProps = {
-  onChangeQuery: setPrompt,
-  onSubmitQuery: runPromptQuery,
-  onDatabaseChange: () => undefined,
-};
+const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
+  onChangeQuery: prompt => dispatch(setPrompt(prompt)),
+  onSubmitQuery: () => dispatch(runPromptQuery()),
+  onDatabaseChange: databaseId => push(Urls.databaseMetabot(databaseId)),
+});
 
 const MetabotHeader = ({
   prompt,

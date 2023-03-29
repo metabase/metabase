@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
+import * as Urls from "metabase/lib/urls";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Search from "metabase/entities/search";
@@ -51,10 +52,7 @@ const mapStateToProps = (
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
   onSubmitQuery: (databaseId, prompt) =>
     dispatch(
-      push({
-        pathname: `/metabot/database/${databaseId}`,
-        query: { prompt },
-      }),
+      push({ pathname: Urls.databaseMetabot(databaseId), query: { prompt } }),
     ),
 });
 
