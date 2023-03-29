@@ -5,7 +5,8 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 ;;; Column vs Field?
 ;;;
@@ -89,7 +90,9 @@
 
 (def MetadataProvider
   "Schema for something that satisfies the [[lib.metadata.protocols/MetadataProvider]] protocol."
-  [:fn lib.metadata.protocols/metadata-provider?])
+  [:fn
+   {:error/message "valid MetadataProvider"}
+   #'lib.metadata.protocols/metadata-provider?])
 
 (defmulti ^:private ->metadata-provider*
   {:arglists '([x])}
@@ -171,7 +174,8 @@
 
 ;;;; Stage metadata
 
-(def StageMetadata
+;; Deprecated, use `::stage-metadata` instead.
+(def ^:deprecated StageMetadata
   "Metadata about the columns returned by a particular stage of a pMBQL query. For example a single-stage native query
   like
 
@@ -202,6 +206,9 @@
   [:map
    [:lib/type [:= :metadata/results]]
    [:columns [:sequential ColumnMetadata]]])
+
+(mr/def ::stage-metadata
+  StageMetadata)
 
 (mu/defn stage :- [:maybe StageMetadata]
   "Get metadata associated with a particular `stage-number` of the query, if any. `stage-number` can be a negative

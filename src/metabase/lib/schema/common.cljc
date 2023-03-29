@@ -1,4 +1,5 @@
 (ns metabase.lib.schema.common
+  (:refer-clojure :exclude [distinct])
   (:require
    [clojure.string :as str]
    [metabase.types]
@@ -37,3 +38,14 @@
    [:operator [:or :string :keyword]]
    [:options {:optional true} ::options]
    [:args [:sequential :any]]])
+
+(defn distinct
+  "Restrain a schema so all values must be distinct."
+  [schema]
+  [:and
+   schema
+   [:fn
+    {:error/message "values must be distinct"}
+    (fn [xs]
+      (or (empty? xs)
+          (apply distinct? xs)))]])

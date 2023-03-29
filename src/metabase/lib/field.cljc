@@ -6,6 +6,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -18,6 +19,24 @@
    [metabase.util.malli :as mu]))
 
 (comment metabase.lib.schema.ref/keep-me)
+
+(defn normalize-binning-options [opts]
+  (lib.normalize/normalize-map
+   opts
+   keyword
+   {:strategy keyword}))
+
+(defn normalize-field-options [opts]
+  (lib.normalize/normalize-map
+   opts
+   keyword
+   {:temporal-unit keyword
+    :binning       normalize-binning-options}))
+
+(defmethod lib.normalize/normalize :field
+  [[tag opts id-or-name]]
+  [(keyword tag) (normalize-field-options opts) id-or-name])
+
 
 (mu/defn ^:private resolve-field-id :- lib.metadata/ColumnMetadata
   "Integer Field ID: get metadata from the metadata provider. This is probably not 100% the correct thing to do if

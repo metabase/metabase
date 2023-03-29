@@ -4,7 +4,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.query-processor :as qp]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (defn- metadata-provider []
   (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
@@ -25,12 +26,20 @@
 (def ^:private ^{:arglists '([query stage-number])} $price
   (lib/field (mt/id :venues :price)))
 
-(deftest pipeline-queries-test
+(deftest ^:parallel pipeline-queries-test
   (testing "Ensure that the QP can handle pMBQL `:pipeline` queries"
-    (is (= [[6]]
-           (mt/rows (mt/run-mbql-query venues
-                      {:aggregation [[:count]]
-                       :filter      [:= $price 4]}))
-           (mt/rows (run-pmbql-query :venues
-                      (lib/aggregate (lib/count))
-                      (lib/filter (lib/= $price 4))))))))
+    (is (= [6]
+           (mt/first-row (run-pmbql-query :venues
+                           (lib/aggregate (lib/count))
+                           (lib/filter (lib/= $price 4))))))))
+
+(deftest ^:parallel denormalized-pipeline-queries-test
+  (testing "Ensure that the QP can handle pMBQL `:pipeline` queries as they'd come in from the REST API or application database"
+    (let [query (mt/obj->json->obj
+                  (-> (pmbql-query :venues
+                        (lib/aggregate (lib/count))
+                        (lib/filter (lib/= $price 4)))
+                      (dissoc :lib/metadata)))]
+      (testing (format "Query =\n%s" (u/pprint-to-str query))
+        (is (= [6]
+               (mt/first-row (qp/process-query query))))))))

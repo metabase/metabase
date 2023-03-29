@@ -4,10 +4,7 @@
 (defn- mbql-clause-type [x]
   (when (and (vector? x)
              (keyword? (first x)))
-    (if (and (map? (second x))
-             (:lib/aggregation-options (second x)))
-      :mbql/aggregation-options
-      (first x))))
+    (first x)))
 
 (defn dispatch-value
   "Dispatch value for a clause, map, or other object. Dispatch rules are as follows:

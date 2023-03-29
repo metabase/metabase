@@ -7,7 +7,6 @@
   `process-userland-query` (see documentation below)."
   (:refer-clojure :exclude [compile])
   (:require
-   [metabase.query-processor.middleware.unwind-pipeline-queries :as unwind-pipeline-queries]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -96,7 +95,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [metabase.lib.convert :as lib.convert]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -128,6 +128,13 @@
    #'qp.persistence/substitute-persisted-query
    #'qp.add-implicit-clauses/add-implicit-clauses
    #'qp.add-dimension-projections/add-remapped-columns
+
+   ;; ↑↑↑↑↑ UPDATED TO UNDERSTAND pMBQL ↑↑↑↑↑
+
+   #'lib.convert/->legacy-MBQL
+
+   ;; ↓↓↓↓↓ NOT YET UPDATED TO UNDERSTAND pMBQL ↓↓↓↓↓
+
    #'qp.resolve-fields/resolve-fields
    #'binning/update-binning-strategy
    #'desugar/desugar
@@ -226,7 +233,6 @@
    ;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
    ;; It doesn't really need to be 'around' middleware tho.
    #'normalize/normalize
-   #'unwind-pipeline-queries/unwind-pipeline-queries
    (resolve 'ee.audit/handle-internal-queries)])
 
 ;; query -> preprocessed = around + pre-process

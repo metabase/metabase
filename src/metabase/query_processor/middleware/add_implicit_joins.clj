@@ -15,7 +15,8 @@
     :as qp.add-implicit-clauses]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.lib.util :as lib.util]))
 
 (defn- implicitly-joined-fields [x]
   (set (mbql.u/match x [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))] &match)))
@@ -139,7 +140,7 @@
 
     :else
     (let [form (cond-> form
-                 (empty? source-query-fields) (update :source-query qp.add-implicit-clauses/add-implicit-mbql-clauses))]
+                 (empty? source-query-fields) (update :source-query qp.add-implicit-clauses/add-implicit-clauses))]
       (if (empty? (get-in form [:source-query :fields]))
         form
         (-> form
@@ -211,6 +212,7 @@
       (seq required-joins) (update :joins topologically-sort-joins))))
 
 (defn- resolve-implicit-joins [query]
+  (lib.util/update-stages)
   (walk/postwalk
    (fn [form]
      (if (and (map? form)
@@ -232,7 +234,10 @@
 
   This middleware also adds `:join-alias` info to all `:field` forms with `:source-field`s."
   [query]
-  (if (mbql.u/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
+  (if (mbql.u/match-one (:query query)
+        [:field
+         (_opts :guard (every-pred :source-field (complement :join-alias)))
+         _id-or-name])
     (do
       (when-not (driver/database-supports? driver/*driver* :foreign-keys (qp.store/database))
         (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)

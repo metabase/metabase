@@ -34,7 +34,9 @@
    [:lib/type [:= :mbql.stage/native]]
    [:lib/options ::common/options]
    [:native any?]
-   [:args {:optional true} [:sequential any?]]])
+   [:args {:optional true} [:sequential any?]]
+   ;; TODO
+   [:template-tags {:optional true} any?]])
 
 (mr/def ::breakouts
   [:sequential {:min 1} [:ref ::ref/ref]])

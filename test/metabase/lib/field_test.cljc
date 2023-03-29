@@ -6,7 +6,8 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [metabase.lib.normalize :as lib.normalize]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -140,3 +141,11 @@
               (lib.metadata.calculation/metadata query -1 field)))
       (is (= "Date (year)"
              (lib.metadata.calculation/display-name query -1 field))))))
+
+(deftest ^:parallel normalize-field-test
+  (testing :temporal-unit
+    (is (= [:field {:temporal-unit :day} 2]
+           (lib.normalize/normalize [:field {"temporal-unit" "day"} 2]))))
+  (testing :binning
+    (is (= [:field {:binning {:strategy :default}} 2]
+           (lib.normalize/normalize [:field {"binning" {"strategy" "default"}} 2])))))

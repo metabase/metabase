@@ -14,6 +14,7 @@
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metric :as lib.metric]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.segment :as lib.segment]
@@ -32,6 +33,7 @@
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metric/keep-me
+         lib.normalize/keep-me
          lib.order-by/keep-me
          lib.query/keep-me
          lib.segment/keep-me
@@ -143,6 +145,8 @@
    order-by-clause
    order-bys
    orderable-columns]
+  [lib.normalize
+   normalize]
   [lib.query
    native-query
    query

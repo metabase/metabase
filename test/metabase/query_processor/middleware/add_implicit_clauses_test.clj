@@ -13,7 +13,10 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.query-processor.store :as qp.store]))
 
 (deftest ordering-test
   (testing "check we fetch Fields in the right order"
@@ -245,7 +248,7 @@
                                  $venues.price]
                       :order-by [[:asc $venues.name]]
                       :limit    3}))
-                  (qp.add-implicit-clauses/add-implicit-mbql-clauses
+                  (qp.add-implicit-clauses/add-implicit-clauses
                    (add-source-metadata/add-source-metadata-for-source-queries
                     (mt/mbql-query venues
                       {:source-table $$venues

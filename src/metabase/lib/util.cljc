@@ -207,3 +207,44 @@
            ","
            conjunction
            (last coll)))))))
+
+(defn update-stages-ignore-joins
+  "Like [[update-stages]], but does not recurse into the stages inside joins.
+
+  `f` has the signature
+
+    (f query stage-number stage)
+
+  As a convenience, if `f` returns nil, the original stage will be used without changes."
+  [query f]
+  (letfn [(update-stages* [stages]
+            (into []
+                  (map-indexed (fn [stage-number stage]
+                                 (or (f query stage-number stage)
+                                     stage)))
+                  stages))]
+    (update query :stages update-stages*)))
+
+(defn update-stages
+  "Apply function `f` to every stage of a query, depth-first. Also applied to all query stages.
+
+  `f` has the signature
+
+    (f query stage-number stage)
+
+  As a convenience, if `f` returns nil, the original stage will be used without changes."
+  [query f]
+  (letfn [(update-join [join]
+            (-> query
+                (assoc :stages (:stages join))
+                (update-stages f)
+                :stages))
+          (update-joins [joins]
+            (mapv update-join joins))]
+    (update-stages-ignore-joins
+     query
+     (fn [query stage-number stage]
+       (let [stage (cond-> stage
+                     (:joins stage)
+                     update-joins)]
+         (f query stage-number stage))))))

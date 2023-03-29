@@ -8,6 +8,7 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -19,6 +20,14 @@
    [metabase.util.malli :as mu]))
 
 (declare stage-metadata)
+
+(defmethod lib.normalize/normalize :mbql.stage/mbql
+  [stage]
+  (lib.normalize/normalize-map
+   stage
+   keyword
+   {:aggregation (partial mapv lib.normalize/normalize)
+    :filter      lib.normalize/normalize}))
 
 (mu/defn ^:private fields-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   [query        :- ::lib.schema/query
@@ -52,7 +61,7 @@
                          {:lib/uuid (str (random-uuid)), :base-type (:base_type field-metadata)}
                          ((some-fn :id :name) field-metadata)]))))
 
-(mu/defn ^:private source-table-default-fields :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+(mu/defn source-table-default-fields :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Determine the Fields we'd normally return for a source Table.
   See [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]]."
   [query    :- ::lib.schema/query

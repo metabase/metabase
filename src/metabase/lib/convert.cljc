@@ -1,5 +1,6 @@
 (ns metabase.lib.convert
   (:require
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.options :as lib.options]
