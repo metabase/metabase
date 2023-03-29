@@ -28,7 +28,7 @@
             (try (baz)
                  (catch Exception e (ex-data e)))))
         "when baz returns an invalid form um/defn throws")
-    (is (= "Inputs: []\n  Return: [:map [:x int?] [:y int?]]" (:doc (meta #'baz))))
+    (is (= "Input:  []\n  Return: [:map [:x int?] [:y int?]]" (:doc (meta #'baz))))
     (ns-unmap *ns* 'baz)))
 
 (deftest mu-defn-docstrings
@@ -39,12 +39,12 @@
 
   (testing "no schemas given should work"
     (mu/defn qux [])
-    (is (= "Inputs: []\n  Return: :any"
+    (is (= "Input:  []\n  Return: :any"
            (:doc (meta #'qux))))
     (ns-unmap *ns* 'qux)
     (mu/defn qux "Original docstring." [])
     (is (= (str/join "\n"
-                     [  "Inputs: []"
+                     [  "Input:  []"
                       "  Return: :any"
                       "          "
                       ""
@@ -54,12 +54,12 @@
 
   (testing "no return schemas given should work"
     (mu/defn qux [x :- :int] x)
-    (is (= "Inputs: [x :- :int]\n  Return: :any"
+    (is (= "Input:  [x :- :int]\n  Return: :any"
            (:doc (meta #'qux))))
     (ns-unmap *ns* 'qux)
     (mu/defn qux "Original docstring." [x :- :int] x)
     (is (= (str/join "\n"
-                     [  "Inputs: [x :- :int]"
+                     [  "Input:  [x :- :int]"
                       "  Return: :any"
                       "          "
                       ""
@@ -69,14 +69,14 @@
 
   (testing "no input schemas given should work"
     (mu/defn qux :- :int [])
-    (is (= "Inputs: []\n  Return: :int"
+    (is (= "Input:  []\n  Return: :int"
            (:doc (meta #'qux))))
     (ns-unmap *ns* 'qux)
     (mu/defn qux :- :int
       "Original docstring."
       [x :- :int] x)
     (is (= (str/join "\n"
-                     [  "Inputs: [x :- :int]"
+                     [  "Input:  [x :- :int]"
                       "  Return: :int"
                       "          "
                       ""
@@ -158,11 +158,3 @@
 
         (is (= "map where {:ltf-key -> <Special Number that has to be less than four>}"
                (umd/describe special-lt-4-schema)))))))
-
-(deftest ->malli-io-link-test
-  (is (= nil
-         (#'mu/->malli-io-link nil nil)))
-  (is (= nil
-         (#'mu/->malli-io-link nil :string)))
-  (is (= "https://malli.io?schema=%3Astring%0A&value=nil%0A"
-         (#'mu/->malli-io-link :string nil))))

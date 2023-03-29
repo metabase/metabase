@@ -5,7 +5,6 @@
    [malli.core :as mc]
    [malli.destructure]
    [malli.error :as me]
-   [malli.generator :as mg]
    [malli.util :as mut]
    [metabase.shared.util.i18n :refer [tru]]
    [metabase.util :as u]
@@ -20,27 +19,6 @@
 (core/defn- encode-uri [fragment]
   (#?(:clj codec/url-encode :cljs js/encodeURI) fragment))
 
-(core/defn- ->malli-io-link
-  ([schema]
-   (->malli-io-link schema (try
-                             ;; try to make a sample value
-                             (mg/generate schema {:seed 1 :size 1})
-                             ;; not all schemas can generate values
-                             (catch #?(:clj Exception :cljs js/Error) _ ::none))))
-  ([schema value]
-   (when schema
-     (let [url-schema (encode-uri (u/pprint-to-str (mc/form schema)))
-           url-value (if (= ::none value)
-                       ""
-                       (encode-uri (u/pprint-to-str value)))
-           url (str "https://malli.io?schema=" url-schema "&value=" url-value)]
-       (cond
-         ;; functions are not going to work
-         (re-find #"#function" url) nil
-         ;; cant be too long
-         (<= 2000 (count url)) nil
-         :else url)))))
-
 (core/defn humanize-include-value
   "Pass into mu/humanize to include the value received in the error message."
   [{:keys [value message]}]
@@ -52,67 +30,58 @@
   [type data]
   (let [{:keys [input args output value]} data
         humanized (cond input  (me/humanize (mc/explain input args) {:wrap humanize-include-value})
-                        output (me/humanize (mc/explain output value) {:wrap humanize-include-value}))
-        link (cond input (->malli-io-link input args)
-                   output (->malli-io-link output value))]
+                        output (me/humanize (mc/explain output value) {:wrap humanize-include-value}))]
     (throw (ex-info
             (pr-str humanized)
             (cond-> {:type type :data data}
-              data (assoc :humanized humanized)
-              (and data link) (assoc :link link))))))
+              data (assoc :humanized humanized))))))
+
+(defn- annotate-docstring [single parglists return doc]
+  (str/trim
+   (str (if single "Input:  " "Inputs: ")
+        (if single
+          (pr-str (first (mapv :raw-arglist parglists)))
+          (str "(" (str/join "\n           " (map (comp pr-str :raw-arglist) parglists)) ")"))
+        "\n  Return: " (str/replace (u/pprint-to-str (:schema return :any))
+                                    "\n"
+                                    (str "\n          "))
+        (when (not-empty doc) (str "\n\n  " doc)))))
 
 #?(:clj
-   (clojure.core/defn instrument!
-     "Instrument a [[metabase.util.malli/defn]]."
-     [id]
-     (minst/instrument! {:filters [(minst/-filter-var #(-> % meta :validate! (= id)))]
-                         :report  explain-fn-fail!}))
-   :cljs
-   (clojure.core/defn instrument!
-     "Instrument a [[metabase.util.malli/defn]]. No-op for ClojureScript. Instrumentation currently only works in
-     Clojure AFAIK. [[malli.instrument]] is a Clj-only namespace."
-     [_id]))
-
-#?(:clj
-   (core/defn- -defn [target schema args]
-     (let [{:keys [name return doc meta arities] :as parsed} (mc/parse schema args)
+   (core/defn defn* [target schema args]
+     (let [{:keys [name return doc arities] body-meta :meta :as parsed} (mc/parse schema args)
+           var-meta (meta name)
            _ (when (= ::mc/invalid parsed) (mc/-fail! ::parse-error {:schema schema, :args args}))
            parse (fn [{:keys [args] :as parsed}] (merge (malli.destructure/parse args) parsed))
            ->schema (fn [{:keys [schema]}] [:=> schema (:schema return :any)])
            single (= :single (key arities))
-           parglists (if single
-                       (->> arities val parse vector)
-                       (->> arities val :arities (map parse)))
+           parglists (if single (->> arities val parse vector) (->> arities val :arities (map parse)))
            raw-arglists (map :raw-arglist parglists)
            schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
-           annotated-doc (str/trim
-                           (str "Inputs: " (if single
-                                             (pr-str (first (mapv :raw-arglist parglists)))
-                                             (str "(" (str/join "\n           " (map (comp pr-str :raw-arglist) parglists)) ")"))
-                                "\n  Return: " (str/replace (u/pprint-to-str (:schema return :any))
-                                                            "\n"
-                                                            (str "\n          "))
-                                (when (not-empty doc) (str "\n\n  " doc))))
-           id (str (gensym "id"))
-           inner-defn `(core/defn
-                         ~name
-                         ~@(some-> annotated-doc vector)
-                         ~(assoc meta
-                                 :raw-arglists (list 'quote raw-arglists)
-                                 :schema schema
-                                 :validate! id)
-                         ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
-                         ~@(when-not single (some->> arities val :meta vector)))]
-       (case target
-         :clj  `(let [defn# ~inner-defn]
-                  (mc/=> ~name ~schema)
-                  ;; instrument the defn we just registered, via ~id
-                  (instrument! ~id)
-                  defn#)
-         ;; Vars aren't real in CLJS, so wrapping the inner `defn` in a `let` doesn't work like in does in CLJ.
-         ;; In CLJS `mu/defn` is just `cljs.core/defn` with some extra metadata and augmented docstring;
-         ;; [[mc/=>]] is not called, nor is [[instrument!]].
-         :cljs inner-defn))))
+           bodies (map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
+           validate? (= target :clj)
+           doc (annotate-docstring single parglists return doc)
+           enriched-meta (assoc body-meta
+                                :raw-arglists (list 'quote raw-arglists)
+                                :schema schema
+                                :doc doc)]
+       `(let [defn# ~(if validate?
+                       `(def
+                          ~(with-meta name (merge var-meta
+                                                  enriched-meta
+                                                  {:arglists (list 'quote (map :arglist parglists))}))
+                          ~@(some-> doc vector)
+                          ;; replace defn body with instrumented function:
+                          (mc/-instrument {:schema ~schema :report explain-fn-fail!}
+                                          (fn ~(gensym (str name "-instrumented")) ~@bodies)))
+                       `(c/defn
+                          ~name
+                          ~@(some-> doc vector)
+                          ~enriched-meta
+                          ~@bodies
+                          ~@(when-not single (some->> arities val :meta vector))))]
+          (mc/=> ~name ~schema)
+          defn#))))
 
 #?(:clj
    (defmacro defn
@@ -121,8 +90,7 @@
      [& args]
      ;; [[macros/case]] only works properly in a `defmacro`, not in a helper function called by a `defmacro`.
      ;; So we use it here and pass :clj or :cljs to [[-defn]].
-     (-defn (macros/case :clj :clj :cljs :cljs)
-            mx/SchematizedParams args)))
+     (defn* (macros/case :clj :clj :cljs :cljs) mx/SchematizedParams args)))
 
 (def ^:private Schema
   [:and any?
