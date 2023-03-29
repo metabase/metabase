@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
    [metabase.db.connection :as mdb.connection]
+   [metabase.events.view-log :as view-log]
    [metabase.models.activity :refer [Activity]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -258,11 +259,17 @@
 (api/defendpoint GET "/recent_views"
   "Get a list of 5 things the current user has been viewing most recently."
   []
-  (let [views (recent-views-for-user *current-user-id*)
+  (let [views            (reverse (view-log/user-recent-views))
+        views            (if (seq views)
+                           views
+                           (let [views (recent-views-for-user api/*current-user-id*)]
+                             (view-log/user-recent-views! (mapv #(select-keys % [:model :model_id]) views))
+                             views))
         model->id->items (models-for-views views)]
     (->> (for [{:keys [model model_id] :as view-log} views
-               :let [model-object (-> (get-in model->id->items [model model_id])
-                                      (dissoc :dataset_query))]
+
+               :let  [model-object (-> (get-in model->id->items [model model_id])
+                                       (dissoc :dataset_query))]
                :when (and model-object
                           (mi/can-read? model-object)
                           ;; hidden tables, archived cards/dashboards
