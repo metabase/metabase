@@ -244,7 +244,7 @@ There's quite a bit you can do in this tab, but the options available will depen
 - **Change the style of your lines** for Line and Area charts, and choose whether to display dots on the lines.
 - **Specify how to handle missing values**. Use the "Replace missing values with…" setting to change how your chart deals with missing values. You can use linear interpolation, or display those points as zero or as nothing.
 - **Add a goal line**. Goal lines can be used in conjunction with [alerts](./alerts.md) to send an email or a Slack message when your metric cross this line.
-- **Add a trend line**. If you're looking at a time series chart, you can turn on a trend line to show where things are heading. Trend lines won't work if you have more than one time field grouping.
+- **Add a trend line**. If you're looking at a time series chart, you can turn on a trend line to show where things are heading. The trend line option will appear once you've chosen exactly one time field from **Summarize** > **Group by**. For example, you can add a trend line to the aggregate result "Count of Orders by Month", but not to "Orders".
   ![Trend lines](../images/trend-lines.png)
 - **Show values on data points**. The default setting will try and fit as many values on your chart as will fit nicely, but you can also force Metabase to show the values for each and every data point, which it will do begrudgingly. Showing values also works with multi-series charts, but be aware that the more data points you add, the more crowded with values the charts will become.
 

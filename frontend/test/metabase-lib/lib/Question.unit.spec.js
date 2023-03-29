@@ -620,7 +620,7 @@ describe("Question", () => {
             filter: [
               "and",
               ["=", ["field", ORDERS.ID.id, null], 1],
-              [">", ORDERS.TOTAL.id, 50],
+              [">", ["field", ORDERS.TOTAL.id, null], 50],
             ],
           },
         });
@@ -645,7 +645,7 @@ describe("Question", () => {
             filter: [
               "and",
               ["=", ["field", ORDERS.ID.id, null], 1],
-              [">", ORDERS.TOTAL.id, 20],
+              [">", ["field", ORDERS.TOTAL.id, null], 20],
             ],
           },
         });

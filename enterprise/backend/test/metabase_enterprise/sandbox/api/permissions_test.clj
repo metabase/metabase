@@ -15,7 +15,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- db-graph-keypath [group]
@@ -142,14 +141,14 @@
 
 (defn- fake-persist-card! [card]
   (let [persisted-info (persisted-info/turn-on-model! (mt/user->id :rasta) card)]
-    (db/update-where! PersistedInfo {:card_id (u/the-id card)}
-                      :definition (json/encode
-                                    (persisted-info/metadata->definition
-                                      (:result_metadata card)
-                                      (:table_name persisted-info)))
-                      :active true
-                      :state "persisted"
-                      :query_hash (persisted-info/query-hash (:dataset_query card)))))
+    (t2/update! PersistedInfo {:card_id (u/the-id card)}
+                {:definition (json/encode
+                               (persisted-info/metadata->definition
+                                 (:result_metadata card)
+                                 (:table_name persisted-info)))
+                 :active true
+                 :state "persisted"
+                 :query_hash (persisted-info/query-hash (:dataset_query card))})))
 
 (deftest persistence-and-permissions
   (mt/with-model-cleanup [PersistedInfo]

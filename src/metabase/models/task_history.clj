@@ -15,7 +15,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -37,9 +36,9 @@
   ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
   ;; disk.
   (when-let [clean-before-date (t2/select-one-fn :ended_at TaskHistory {:limit    1
-                                                                           :offset   num-rows-to-keep
-                                                                           :order-by [[:ended_at :desc]]})]
-    (db/simple-delete! TaskHistory :ended_at [:<= clean-before-date])))
+                                                                        :offset   num-rows-to-keep
+                                                                        :order-by [[:ended_at :desc]]})]
+    (t2/delete! (t2/table-name TaskHistory) :ended_at [:<= clean-before-date])))
 
 ;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
 ;;; monitoring permissions, Otherwise it requires superusers.

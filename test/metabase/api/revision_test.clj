@@ -10,7 +10,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
 
@@ -128,7 +127,7 @@
                                                             :col    0))]
         (is (=? {:id id}
                 (create-dashboard-revision! dash false :rasta)))
-        (is (true? (db/simple-delete! DashboardCard, :id (:id dashcard)))))
+        (is (pos? (t2/delete! (t2/table-name DashboardCard) :id (:id dashcard)))))
       (is (=? {:id id}
               (create-dashboard-revision! dash false :rasta)))
       (testing "Revert to the previous revision, allowed because rasta has permissions on parent collection"
