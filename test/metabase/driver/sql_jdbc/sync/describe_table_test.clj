@@ -177,12 +177,13 @@
       (is (= types (#'sql-jdbc.describe-table/row->types row)))))
   (testing "JSON row->types handles bigint that comes in and gets interpreted as Java bigint OK (#22732)"
     (let [int-row   {:zlob {"blob" (java.math.BigInteger. "123124124312134235234235345344324352")}}]
-      (is (= #{{:name "zlob → blob",
-                :database-type "decimal",
-                :base-type :type/BigInteger,
+      (is (= #{{:name              "zlob → blob",
+                :database-type     "decimal",
+                :base-type         :type/BigInteger,
                 :database-position 0,
-                :visibility-type :normal,
-                :nfc-path [:zlob "blob"]}}
+                :json-unfolding    false
+                :visibility-type   :normal,
+                :nfc-path          [:zlob "blob"]}}
              (-> int-row
                  (#'sql-jdbc.describe-table/row->types)
                  (#'sql-jdbc.describe-table/field-types->fields)))))))
