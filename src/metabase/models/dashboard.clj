@@ -283,6 +283,21 @@
       (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
         (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
+(defn add-dashcards!
+  "Add Cards to a Dashboard.
+   This function is provided for convenience and also makes sure various cleanup steps are performed when finished,
+   for example updating FieldValues for On-Demand DBs.
+   Returns newly created DashboardCards."
+  {:style/indent 2}
+  [dashboard-or-id & dashcards]
+  (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
+        dashboard-cards     (map (fn [dashcard]
+                                   (-> (assoc dashcard :dashboard_id (u/the-id dashboard-or-id))
+                                       (update :series #(filter identity (map u/the-id %))))) dashcards)]
+    (u/prog1 (map dashboard-card/create-dashboard-card! dashboard-cards)
+      (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
+        (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
+
 (defn update-dashcards!
   "Update the `dashcards` belonging to `dashboard`.
    This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
