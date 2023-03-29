@@ -19,6 +19,11 @@
   :visibility :authenticated
   :default true)
 
+(defsetting openai-model
+  (deferred-tru "The OpenAI Model (e.g. 'gpt-4', 'gpt-3.5-turbo')")
+  :visibility :settings-manager
+  :default "gpt-4")
+
 (defsetting openai-api-key
   (deferred-tru "The OpenAI API Key.")
   :visibility :settings-manager)
@@ -50,7 +55,7 @@
          (openai-api-key)
          (openai-organization))
     (let [resp (openai.api/create-chat-completion
-                {:model    "gpt-4"
+                {:model    (openai-model)
                  ;; Just produce a single result
                  :n        num-choices
                  ; Note - temperature of 0 is deterministic, so n > 1 will return n identical items
