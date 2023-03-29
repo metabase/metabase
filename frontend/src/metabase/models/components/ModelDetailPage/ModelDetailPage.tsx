@@ -2,6 +2,7 @@ import React from "react";
 import { t } from "ttag";
 
 import TabContent from "metabase/core/components/TabContent";
+import TabRow from "metabase/core/components/TabRow";
 import TabLink from "metabase/core/components/TabLink";
 
 import * as Urls from "metabase/lib/urls";
@@ -18,7 +19,6 @@ import ModelUsageDetails from "./ModelUsageDetails";
 import {
   RootLayout,
   ModelMain,
-  TabList,
   TabPanel,
   TabPanelContent,
 } from "./ModelDetailPage.styled";
@@ -58,7 +58,7 @@ function ModelDetailPage({
           onChangeCollection={onChangeCollection}
         />
         <TabContent value={tab}>
-          <TabList>
+          <TabRow>
             <TabLink
               value="usage"
               to={Urls.modelDetail(modelCard, "usage")}
@@ -73,7 +73,7 @@ function ModelDetailPage({
                 to={Urls.modelDetail(modelCard, "actions")}
               >{t`Actions`}</TabLink>
             )}
-          </TabList>
+          </TabRow>
           <TabPanel value="usage">
             <TabPanelContent>
               <ModelUsageDetails
