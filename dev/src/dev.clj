@@ -2,6 +2,7 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
+   [dev.model-tracking :as model-tracking]
    [dev.debug-qp :as debug-qp]
    [honeysql.core :as hsql]
    [malli.dev :as malli-dev]
@@ -26,16 +27,27 @@
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan.db :as db]
+   [toucan2.core :as t2]
    [toucan2.connection :as t2.connection]
    [toucan2.pipeline :as t2.pipeline]))
 
-(comment debug-qp/keep-me)
+(set! *warn-on-reflection* true)
+
+(comment
+  debug-qp/keep-me
+  model-tracking/keep-me)
 
 (defn tap>-spy [x]
   (doto x tap>))
 
 (p/import-vars
- [debug-qp process-query-debug])
+ [debug-qp process-query-debug]
+ [model-tracking
+  track!
+  untrack!
+  untrack-all!
+  reset-changes!
+  changes])
 
 (def initialized?
   (atom nil))
@@ -200,13 +212,14 @@
   "Add the application database as a Database. Currently only works if your app DB uses broken-out details!"
   []
   (binding [t2.connection/*current-connectable* nil]
-    (or (db/select-one Database :name "Application Database")
+    (or (t2/select-one Database :name "Application Database")
         (let [details (#'metabase.db.env/broken-out-details
                        (mdb.connection/db-type)
                        @#'metabase.db.env/env)
-              app-db  (db/insert! Database {:name    "Application Database"
-                                            :engine  (mdb.connection/db-type)
-                                            :details details})]
+              app-db  (first (t2/insert-returning-instances! Database
+                                                             {:name    "Application Database"
+                                                              :engine  (mdb.connection/db-type)
+                                                              :details details}))]
           (sync/sync-database! app-db)
           app-db))))
 

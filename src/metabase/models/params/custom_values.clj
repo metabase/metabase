@@ -16,7 +16,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
 (defn- query-matches
@@ -102,7 +102,7 @@
   "Given a param and query returns the values."
   [{config :values_source_config :as _param} query]
   (let [card-id (:card_id config)
-        card    (db/select-one Card :id card-id)]
+        card    (t2/select-one Card :id card-id)]
     (values-from-card card (:value_field config) query)))
 
 (defn- can-get-card-values?
@@ -116,19 +116,19 @@
 (defn parameter->values
   "Given a parameter with a custom-values source, return the values.
 
-  `default-case-fn` is a 0-arity function that returns values list when:
+  `default-case-thunk` is a 0-arity function that returns values list when:
   - :values_source_type = card but the card is archived or the card no longer contains the value-field.
   - :values_source_type = nil."
-  [parameter query default-case-fn]
+  [parameter query default-case-thunk]
   (case (:values_source_type parameter)
     "static-list" (static-list-values parameter query)
-    "card"        (let [card (db/select-one Card :id (get-in parameter [:values_source_config :card_id]))]
+    "card"        (let [card (t2/select-one Card :id (get-in parameter [:values_source_config :card_id]))]
                     (when-not (mi/can-read? card)
                       (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
                     (if (can-get-card-values? card (get-in parameter [:values_source_config :value_field]))
                       (card-values parameter query)
-                      (default-case-fn)))
-    nil           (default-case-fn)
+                      (default-case-thunk)))
+    nil           (default-case-thunk)
     (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
                     {:status-code 400
                      :parameter parameter}))))

@@ -559,10 +559,9 @@
 
      (pprint-to-str 'green some-obj)"
   (^String [x]
-   (when x
-     (with-out-str
-       #_{:clj-kondo/ignore [:discouraged-var]}
-       (pprint/pprint x))))
+   (with-out-str
+     #_{:clj-kondo/ignore [:discouraged-var]}
+     (pprint/pprint x)))
 
   (^String [color-symb x]
    (u.format/colorize color-symb (pprint-to-str x))))
@@ -690,3 +689,50 @@
       (if (pred x)
         [x (concat prefix xs)]
         (recur xs (conj prefix x))))))
+
+;;; Clj doesn't have `regexp?`, but Cljs does
+#?(:clj (defn- regexp? [x]
+          (instance? java.util.regex.Pattern x)))
+
+(derive :dispatch-type/nil        :dispatch-type/*)
+(derive :dispatch-type/boolean    :dispatch-type/*)
+(derive :dispatch-type/string     :dispatch-type/*)
+(derive :dispatch-type/keyword    :dispatch-type/*)
+(derive :dispatch-type/number     :dispatch-type/*)
+(derive :dispatch-type/integer    :dispatch-type/number)
+(derive :dispatch-type/map        :dispatch-type/*)
+(derive :dispatch-type/sequential :dispatch-type/*)
+(derive :dispatch-type/set        :dispatch-type/*)
+(derive :dispatch-type/symbol     :dispatch-type/*)
+(derive :dispatch-type/fn         :dispatch-type/*)
+(derive :dispatch-type/regex      :dispatch-type/*)
+
+(defn dispatch-type-keyword
+  "In Cljs `(type 1) is `js/Number`, but `(isa? 1 js/Number)` isn't truthy, so dispatching off of [[clojure.core/type]]
+  doesn't really work the way we'd want. Also, type names are different between Clojure and ClojureScript.
+
+  This function exists as a workaround: use it as a multimethod dispatch function for Cljc multimethods that would
+  have dispatched on `type` if they were written in pure Clojure.
+
+  Returns `:dispatch-type/*` if there is no mapping for the current type, but you can add more as needed if
+  appropriate. All type keywords returned by this method also derive from `:dispatch-type/*`, meaning you can write an
+  implementation for `:dispatch-type/*` and use it as a fallback method.
+
+  Think of `:dispatch-type/*` as similar to how you would use `Object` if you were dispatching
+  off of `type` in pure Clojure."
+  [x]
+  (cond
+    (nil? x)        :dispatch-type/nil
+    (boolean? x)    :dispatch-type/boolean
+    (string? x)     :dispatch-type/string
+    (keyword? x)    :dispatch-type/keyword
+    (integer? x)    :dispatch-type/integer
+    (number? x)     :dispatch-type/number
+    (map? x)        :dispatch-type/map
+    (sequential? x) :dispatch-type/sequential
+    (set? x)        :dispatch-type/set
+    (symbol? x)     :dispatch-type/symbol
+    (fn? x)         :dispatch-type/fn
+    (regexp? x)     :dispatch-type/regex
+    ;; we should add more mappings here as needed
+    :else           :dispatch-type/*))

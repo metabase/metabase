@@ -147,7 +147,7 @@
             :failed-cases  ["1" -1 1.5]
             :success-cases [0 1]}
            {:plumatic      su/IntGreaterThanZero
-            :malli         ms/IntGreaterThanZero
+            :malli         ms/PositiveInt
             :failed-cases  ["1" 0 1.5]
             :success-cases [1 2]}
            {:plumatic      su/PositiveNum

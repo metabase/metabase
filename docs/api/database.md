@@ -179,7 +179,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`id`** integer greater than or equal to 1
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/database/:virtual-db/datasets`
 

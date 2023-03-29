@@ -87,14 +87,14 @@ class VisualizationError extends Component {
   }
   static propTypes = {
     via: PropTypes.object.isRequired,
-    card: PropTypes.object.isRequired,
+    question: PropTypes.object.isRequired,
     duration: PropTypes.number.isRequired,
     error: PropTypes.object.isRequired,
     className: PropTypes.string,
   };
 
   render() {
-    const { via, card, duration, error, className } = this.props;
+    const { via, question, duration, error, className } = this.props;
     console.log("error", error);
 
     if (error && typeof error.status === "number") {
@@ -131,11 +131,7 @@ class VisualizationError extends Component {
           </div>
         </div>
       );
-    } else if (
-      card &&
-      card.dataset_query &&
-      card.dataset_query.type === "native"
-    ) {
+    } else if (question?.isNative()) {
       // always show errors for native queries
       let processedError = error;
       const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);

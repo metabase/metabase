@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
@@ -47,23 +48,26 @@ export const MenuIcon = styled(Icon)`
   }
 `;
 
-export const ActionCard = styled.div`
-  display: block;
+export const ActionCardContainer = styled.div`
   position: relative;
-
-  padding: 1rem;
   margin-top: 0.75rem;
-  border-radius: 6px;
+`;
 
-  color: ${color("text-white")};
-  background-color: ${color("text-dark")};
+const baseActionCardStyles = css`
+  padding: 1rem;
+  border-radius: 6px;
 `;
 
 export const CodeBlock = styled.pre`
+  ${baseActionCardStyles}
+
   font-family: Monaco, monospace;
   font-size: 0.7rem;
   white-space: pre-wrap;
   margin: 0;
+
+  color: ${color("text-white")};
+  background-color: ${color("text-dark")};
 `;
 
 export const ActionRunButtonContainer = styled.div`
@@ -78,13 +82,13 @@ export const ActionRunButton = styled(Button)`
 `;
 
 export const ImplicitActionCardContentRoot = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-`;
+  ${baseActionCardStyles};
 
-export const ImplicitActionMessage = styled.span`
-  display: block;
-  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+
+  color: ${color("text-medium")};
+  background-color: ${color("bg-medium")};
+
+  font-weight: 400;
 `;

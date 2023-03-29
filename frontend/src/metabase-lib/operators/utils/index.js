@@ -102,9 +102,9 @@ function populateFields(aggregationOperator, fields) {
   };
 }
 
-export function getAggregationOperators(table) {
+export function getAggregationOperators(table, fields) {
   return getSupportedAggregationOperators(table)
-    .map(operator => populateFields(operator, table.fields))
+    .map(operator => populateFields(operator, fields))
     .filter(
       aggregation =>
         !aggregation.requiresField ||

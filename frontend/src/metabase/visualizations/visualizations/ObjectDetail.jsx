@@ -1,20 +1,13 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import ObjectDetail from "metabase/visualizations/components/ObjectDetail";
 
-import ChartSettingColumnEditor from "metabase/visualizations/components/settings/ChartSettingColumnEditor";
-import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
-
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import {
+  columnSettings,
+  tableColumnSettings,
+} from "metabase/visualizations/lib/settings/column";
 
 import { formatColumn } from "metabase/lib/formatting";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import {
-  findColumnIndexForColumnSetting,
-  findColumnForColumnSetting,
-} from "metabase-lib/queries/utils/dataset";
 
 const ObjectDetailProperties = {
   uiName: t`Detail`,
@@ -22,96 +15,12 @@ const ObjectDetailProperties = {
   iconName: "document",
   noun: t`object`,
   hidden: false,
+  canSavePng: false,
   disableClickBehavior: true,
   settings: {
     ...columnSettings({ hidden: true }),
-    "table.columns": {
-      section: t`Columns`,
-      title: t`Columns`,
-      widget: ChartSettingOrderedSimple,
-      getHidden: () => false,
-      isValid: ([{ card, data }], _vizSettings, extra = {}) =>
-        // If "table.columns" happened to be an empty array,
-        // it will be treated as "all columns are hidden",
-        // This check ensures it's not empty,
-        // otherwise it will be overwritten by `getDefault` below
-        card.visualization_settings["table.columns"].length !== 0 &&
-        (extra.isQueryRunning ||
-          _.all(
-            card.visualization_settings["table.columns"],
-            columnSetting =>
-              !columnSettings.enabled ||
-              findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-          )),
-      getDefault: ([
-        {
-          data: { cols },
-        },
-      ]) =>
-        cols.map(col => ({
-          name: col.name,
-          fieldRef: col.field_ref,
-          enabled: col.visibility_type !== "hidden",
-        })),
-      getProps: ([
-        {
-          data: { cols },
-        },
-      ]) => ({
-        columns: cols,
-        hasOnEnable: false,
-        paddingLeft: "0",
-        hideOnDisabled: true,
-        getPopoverProps: columnSetting => ({
-          id: "column_settings",
-          props: {
-            initialKey: getColumnKey(
-              findColumnForColumnSetting(cols, columnSetting),
-            ),
-          },
-        }),
-        extraButton: {
-          text: t`Add or remove columns`,
-          key: "detail.columns_visibility",
-        },
-        getItemTitle: columnSetting =>
-          getFriendlyName(
-            findColumnForColumnSetting(cols, columnSetting) || {
-              display_name: "[Unknown]",
-            },
-          ),
-      }),
-    },
-    "detail.columns_visibility": {
-      hidden: true,
-      writeSettingId: "table.columns",
-      readDependencies: ["table.columns"],
-      widget: ChartSettingColumnEditor,
-      getValue: (_series, vizSettings) => vizSettings["table.columns"],
-      getProps: (
-        [
-          {
-            data: { cols },
-          },
-        ],
-        _settings,
-        _onChange,
-        extra,
-      ) => ({
-        columns: cols,
-        isDashboard: extra.isDashboard,
-        metadata: extra.metadata,
-        isQueryRunning: extra.isQueryRunning,
-      }),
-    },
-    "detail.showHeader": {
-      section: t`Options`,
-      title: t`Show Header`,
-      widget: "toggle",
-      default: false,
-    },
+    ...tableColumnSettings,
   },
-
   columnSettings: column => {
     const settings = {
       column_title: {

@@ -2,10 +2,10 @@
 
 #### Building the backend pot file
 
-Building the backend pot file can be done from the command line:
+Building the backend pot file can be done from the command line (from the project root directory):
 
 ```shell
-❯ clojure -M -m i18n.enumerate cli.pot
+❯ clojure -X:build:build/i18n
 Created pot file at  cli.pot
 Found 1393 forms for translations
 Grouped into 1313 distinct pot entries

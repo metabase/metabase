@@ -23,8 +23,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.models :as models])
+   [toucan.models :as models]
+   [toucan2.core :as t2])
   (:import
    (org.quartz CronTrigger JobDetail JobKey TriggerKey)))
 
@@ -69,7 +69,7 @@
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
     (log/info (trs "Starting sync task for Database {0}." database-id))
-    (when-let [database (or (db/select-one Database :id database-id)
+    (when-let [database (or (t2/select-one Database :id database-id)
                             (do
                               (unschedule-tasks-for-db! (mi/instance Database {:id database-id}))
                               (log/warn (trs "Cannot sync Database {0}: Database does not exist." database-id))))]
@@ -90,7 +90,7 @@
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
     (log/info (trs "Update Field values task triggered for Database {0}." database-id))
-    (when-let [database (or (db/select-one Database :id database-id)
+    (when-let [database (or (t2/select-one Database :id database-id)
                             (do
                               (unschedule-tasks-for-db! (mi/instance Database {:id database-id}))
                               (log/warn "Cannot update Field values for Database {0}: Database does not exist." database-id)))]
@@ -279,7 +279,7 @@
                 counter)
                ([counter db]
                 (try
-                  (db/update! Database (u/the-id db)
+                  (t2/update! Database (u/the-id db)
                     (sync.schedules/schedule-map->cron-strings
                      (sync.schedules/default-randomized-schedule)))
                   (inc counter)

@@ -1,4 +1,3 @@
-import nock from "nock";
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
@@ -19,10 +18,6 @@ async function setup({
 }
 
 describe("ActionCreator > Sharing", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe.each([
     ["query", createMockQueryAction],
     ["implicit", createMockImplicitQueryAction],

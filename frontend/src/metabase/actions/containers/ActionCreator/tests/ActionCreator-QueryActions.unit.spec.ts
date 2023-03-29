@@ -1,5 +1,3 @@
-import nock from "nock";
-
 import { screen, getIcon, queryIcon } from "__support__/ui";
 
 import {
@@ -10,10 +8,6 @@ import {
 import { setup } from "./common";
 
 describe("ActionCreator > Query Actions", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("new action", () => {
     it("renders correctly", async () => {
       await setup();
@@ -81,7 +75,7 @@ describe("ActionCreator > Query Actions", () => {
         }),
       });
 
-      expect(screen.getByText("FooBar")).toBeInTheDocument();
+      expect(screen.getAllByText("FooBar")).toHaveLength(2);
     });
 
     it("blocks editing if the user doesn't have write permissions for the collection", async () => {

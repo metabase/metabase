@@ -1,1 +1,1 @@
-export * from "./ToolbarUpsell";
+export { default } from "./ToolbarUpsell";

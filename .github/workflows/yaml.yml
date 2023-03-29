@@ -10,7 +10,7 @@ on:
 jobs:
   files-changed:
     name: Check which files changed
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
       yaml: ${{ steps.changes.outputs.yaml }}
@@ -24,7 +24,7 @@ jobs:
           filters: .github/file-paths.yaml
 
   yaml-linter:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     if: needs.files-changed.outputs.yaml == 'true'
     timeout-minutes: 10
     steps:

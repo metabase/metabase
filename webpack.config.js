@@ -22,9 +22,11 @@ const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
-const CLJS_SRC_PATH = __dirname + "/frontend/src/cljs";
+const CLJS_SRC_PATH = __dirname + "/frontend/src/cljs_release";
+const CLJS_SRC_PATH_DEV = __dirname + "/frontend/src/cljs";
 const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
+const E2E_PATH = __dirname + "/e2e";
 
 // default WEBPACK_BUNDLE to development
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
@@ -109,6 +111,12 @@ const config = (module.exports = {
           { loader: "postcss-loader" },
         ],
       },
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        enforce: "pre",
+        use: ["source-map-loader"],
+      },
     ],
   },
   resolve: {
@@ -130,8 +138,9 @@ const config = (module.exports = {
       "metabase-enterprise": ENTERPRISE_SRC_PATH,
       "metabase-types": TYPES_SRC_PATH,
       "metabase-dev": `${SRC_PATH}/dev${devMode ? "" : "-noop"}.js`,
-      cljs: CLJS_SRC_PATH,
+      cljs: devMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
       __support__: TEST_SUPPORT_PATH,
+      e2e: E2E_PATH,
       style: SRC_PATH + "/css/core/index",
       ace: __dirname + "/node_modules/ace-builds/src-min-noconflict",
       // NOTE @kdoh - 7/24/18
@@ -309,7 +318,7 @@ if (WEBPACK_BUNDLE !== "production") {
   // by default enable "cheap" source maps for fast re-build speed
   // with BETTER_SOURCE_MAPS we switch to sourcemaps that work with breakpoints and makes stacktraces readable
   config.devtool = process.env.BETTER_SOURCE_MAPS
-    ? "inline-source-map"
+    ? "eval-source-map"
     : "cheap-module-source-map";
 
   // helps with source maps

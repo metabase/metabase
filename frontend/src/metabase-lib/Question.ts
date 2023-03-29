@@ -5,6 +5,7 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
+import * as MLv2 from "cljs/metabase.lib.js";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/queries/StructuredQuery";
@@ -13,7 +14,7 @@ import NativeQuery, {
 } from "metabase-lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/queries/InternalQuery";
-import Query from "metabase-lib/queries/Query";
+import BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
@@ -22,12 +23,16 @@ import { AggregationDimension, FieldDimension } from "metabase-lib/Dimension";
 import { isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/utils";
 
+import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
+import * as FILTER from "metabase-lib/queries/utils/filter";
+import * as QUERY from "metabase-lib/queries/utils/query";
+
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
-  DashboardApi,
   CardApi,
+  DashboardApi,
   maybeUsePivotEndpoint,
   MetabaseApi,
 } from "metabase/services";
@@ -79,6 +84,8 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/Alert";
 import { getBaseDimensionReference } from "metabase-lib/references";
+
+import { Query } from "./types";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -148,6 +155,10 @@ class QuestionInner {
   }
 
   card() {
+    return this._doNotCallSerializableCard();
+  }
+
+  _doNotCallSerializableCard() {
     return this._card;
   }
 
@@ -209,11 +220,19 @@ class QuestionInner {
     return this.query() instanceof StructuredQuery;
   }
 
+  setEnableEmbedding(enabled: boolean): Question {
+    return this.setCard(assoc(this._card, "enable_embedding", enabled));
+  }
+
+  setEmbeddingParams(params: Record<string, any> | null): Question {
+    return this.setCard(assoc(this._card, "embedding_params", params));
+  }
+
   /**
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
    */
-  setQuery(newQuery: Query): Question {
+  setQuery(newQuery: BaseQuery): Question {
     if (this._card.dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
@@ -271,16 +290,16 @@ class QuestionInner {
     return this._card && this._card.dataset;
   }
 
+  setDataset(dataset) {
+    return this.setCard(assoc(this.card(), "dataset", dataset));
+  }
+
   isPersisted() {
     return this._card && this._card.persisted;
   }
 
   setPersisted(isPersisted) {
     return this.setCard(assoc(this.card(), "persisted", isPersisted));
-  }
-
-  setDataset(dataset) {
-    return this.setCard(assoc(this.card(), "dataset", dataset));
   }
 
   setPinned(pinned: boolean) {
@@ -470,8 +489,18 @@ class QuestionInner {
 
   canWriteActions(): boolean {
     const database = this.database();
-    const hasActionsEnabled = database != null && database.hasActionsEnabled();
-    return this.canWrite() && hasActionsEnabled;
+
+    return (
+      this.canWrite() &&
+      database != null &&
+      database.canWrite() &&
+      database.hasActionsEnabled()
+    );
+  }
+
+  supportsImplicitActions(): boolean {
+    const query = this.query();
+    return query instanceof StructuredQuery && !query.hasAnyClauses();
   }
 
   canAutoRun(): boolean {
@@ -592,6 +621,25 @@ class QuestionInner {
     return distribution(this, column) || this;
   }
 
+  usesMetric(metricId): boolean {
+    return (
+      this.isStructured() &&
+      _.any(
+        QUERY.getAggregations(this.query().query()),
+        aggregation => AGGREGATION.getMetric(aggregation) === metricId,
+      )
+    );
+  }
+
+  usesSegment(segmentId): boolean {
+    return (
+      this.isStructured() &&
+      QUERY.getFilters(this.query().query()).some(
+        filter => FILTER.isSegment(filter) && filter[1] === segmentId,
+      )
+    );
+  }
+
   composeThisQuery(): Question | null | undefined {
     if (this.id()) {
       const card = {
@@ -664,7 +712,10 @@ class QuestionInner {
     return resultedQuery.question();
   }
 
-  _syncStructuredQueryColumnsAndSettings(previousQuestion, previousQuery) {
+  private _syncStructuredQueryColumnsAndSettings(
+    previousQuestion,
+    previousQuery,
+  ) {
     const query = this.query();
 
     if (
@@ -687,19 +738,31 @@ class QuestionInner {
     );
 
     const graphMetrics = this.setting("graph.metrics");
+
     if (
       graphMetrics &&
-      addedColumnNames.length > 0 &&
-      removedColumnNames.length === 0
+      (addedColumnNames.length > 0 || removedColumnNames.length > 0)
     ) {
       const addedMetricColumnNames = addedColumnNames.filter(
         name =>
           query.columnDimensionWithName(name) instanceof AggregationDimension,
       );
 
-      if (addedMetricColumnNames.length > 0) {
+      const removedMetricColumnNames = removedColumnNames.filter(
+        name =>
+          previousQuery.columnDimensionWithName(name) instanceof
+          AggregationDimension,
+      );
+
+      if (
+        addedMetricColumnNames.length > 0 ||
+        removedMetricColumnNames.length > 0
+      ) {
         return this.updateSettings({
-          "graph.metrics": [...graphMetrics, ...addedMetricColumnNames],
+          "graph.metrics": [
+            ..._.difference(graphMetrics, removedMetricColumnNames),
+            ...addedMetricColumnNames,
+          ],
         });
       }
     }
@@ -742,14 +805,13 @@ class QuestionInner {
 
     let addedColumns = cols.filter(col => {
       const hasVizSettings =
-        findColumnSettingIndexForColumn(vizSettings, col, false) >= 0;
+        findColumnSettingIndexForColumn(vizSettings, col) >= 0;
       return !hasVizSettings;
     });
     const validVizSettings = vizSettings.filter(colSetting => {
-      const hasColumn =
-        findColumnIndexForColumnSetting(cols, colSetting, false) >= 0;
+      const hasColumn = findColumnIndexForColumnSetting(cols, colSetting) >= 0;
       const isMutatingColumn =
-        findColumnIndexForColumnSetting(addedColumns, colSetting, false) >= 0;
+        findColumnIndexForColumnSetting(addedColumns, colSetting) >= 0;
       return hasColumn && !isMutatingColumn;
     });
     const noColumnsRemoved = validVizSettings.length === vizSettings.length;
@@ -853,6 +915,10 @@ class QuestionInner {
     return this._card && this._card.id;
   }
 
+  setId(id: number | undefined): Question {
+    return this.setCard(assoc(this.card(), "id", id));
+  }
+
   markDirty(): Question {
     return this.setCard(
       dissoc(assoc(this.card(), "original_card_id", this.id()), "id"),
@@ -895,6 +961,10 @@ class QuestionInner {
 
   publicUUID(): string {
     return this._card && this._card.public_uuid;
+  }
+
+  setPublicUUID(public_uuid: string | null): Question {
+    return this.setCard({ ...this._card, public_uuid });
   }
 
   database(): Database | null | undefined {
@@ -1242,7 +1312,7 @@ class QuestionInner {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  convertParametersToMbql() {
+  private _convertParametersToMbql() {
     if (!this.isStructured()) {
       return this;
     }
@@ -1267,6 +1337,40 @@ class QuestionInner {
     return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
+  _getMLv2Query(metadata = this._metadata): Query {
+    // cache the metadata provider we create for our metadata.
+    if (metadata === this._metadata) {
+      if (!this.__mlv2MetadataProvider) {
+        this.__mlv2MetadataProvider = MLv2.metadataProvider(
+          this.databaseId(),
+          metadata,
+        );
+      }
+      metadata = this.__mlv2MetadataProvider;
+    }
+
+    if (this.__mlv2QueryMetadata !== metadata) {
+      this.__mlv2QueryMetadata = null;
+      this.__mlv2Query = null;
+    }
+
+    if (!this.__mlv2Query) {
+      this.__mlv2QueryMetadata = metadata;
+      this.__mlv2Query = MLv2.query(
+        this.databaseId(),
+        metadata,
+        this.datasetQuery(),
+      );
+    }
+
+    return this.__mlv2Query;
+  }
+
+  generateQueryDescription() {
+    const query = this._getMLv2Query();
+    return MLv2.suggestedName(query);
+  }
+
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
     const includeDisplayIsLocked = true;
 
@@ -1276,7 +1380,7 @@ class QuestionInner {
       if (!this.query().readOnly()) {
         return questionWithParameters
           .setParameterValues(parameterValues)
-          .convertParametersToMbql()
+          ._convertParametersToMbql()
           .getUrl({
             clean,
             originalQuestion: this,

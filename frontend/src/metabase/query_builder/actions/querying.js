@@ -116,9 +116,7 @@ export const runQuestionQuery = ({
         question.isDataset() &&
         isAdHocModelQuestion(question, originalQuestion);
 
-      dispatch(
-        updateUrl(question.card(), { dirty: !isAdHocModel && cardIsDirty }),
-      );
+      dispatch(updateUrl(question, { dirty: !isAdHocModel && cardIsDirty }));
     }
 
     const startTime = new Date();
@@ -137,7 +135,7 @@ export const runQuestionQuery = ({
           MetabaseAnalytics.trackStructEvent(
             "QueryBuilder",
             "Run Query",
-            question.query().datasetQuery().type,
+            question.type(),
             duration,
           ),
         );
@@ -145,7 +143,7 @@ export const runQuestionQuery = ({
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
 
-    dispatch.action(RUN_QUERY, { cancelQueryDeferred });
+    dispatch({ type: RUN_QUERY, payload: { cancelQueryDeferred } });
   };
 };
 
@@ -210,10 +208,13 @@ export const queryCompleted = (question, queryResults) => {
       ? preserveModelMetadata(queryResults, originalQuestion)
       : undefined;
 
-    dispatch.action(QUERY_COMPLETED, {
-      card,
-      queryResults,
-      modelMetadata,
+    dispatch({
+      type: QUERY_COMPLETED,
+      payload: {
+        card,
+        queryResults,
+        modelMetadata,
+      },
     });
     dispatch(loadCompleteUIControls());
   };

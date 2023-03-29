@@ -19,7 +19,7 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;; TODO - I don't think we different QP test util namespaces? We should roll this namespace into
 ;; `metabase.query-processor-test`
@@ -118,8 +118,8 @@
     (fk-table-alias-name (data/id :categories) (data/id :venues :category_id)) ;; -> \"CATEGORIES__via__CATEGORY_ID\""
   [table-or-id field-or-id]
   (#'qp.add-implicit-joins/join-alias
-   (db/select-one-field :name Table :id (u/the-id table-or-id))
-   (db/select-one-field :name Field :id (u/the-id field-or-id))))
+   (t2/select-one-fn :name Table :id (u/the-id table-or-id))
+   (t2/select-one-fn :name Field :id (u/the-id field-or-id))))
 
 
 ;;; ------------------------------------------------- Timezone Stuff -------------------------------------------------

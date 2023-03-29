@@ -1,6 +1,6 @@
 import React from "react";
 import { Route } from "react-router";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 
 import {
   renderWithProviders,
@@ -34,14 +34,13 @@ async function setup({
   route = pathname,
   user = createMockUser(),
 }: SetupOpts = {}) {
-  const scope = nock(location.origin);
   const hasContentToFetch = !!user;
   const isAdminApp = pathname.startsWith("/admin");
 
   if (hasContentToFetch) {
-    setupCollectionsEndpoints(scope, []);
-    setupDatabasesEndpoints(scope, [createMockDatabase()]);
-    scope.get("/api/bookmark").reply(200, []);
+    setupCollectionsEndpoints([]);
+    setupDatabasesEndpoints([createMockDatabase()]);
+    fetchMock.get("path:/api/bookmark", []);
   }
 
   const storeInitialState = createMockState({
@@ -65,10 +64,6 @@ async function setup({
 }
 
 describe("nav > containers > Navbar > Core App", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("should be open when isOpen is true", async () => {
     await setup({ isOpen: true });
     const navbar = screen.getByTestId("main-navbar-root");

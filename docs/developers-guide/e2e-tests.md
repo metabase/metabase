@@ -8,7 +8,7 @@ Metabase uses Cypress for “end-to-end testing”, that is, tests that are exec
 
 ## Getting Started
 
-Metabase’s Cypress tests are located in the `frontend/test/metabase/scenarios` source tree, in a structure that roughly mirrors Metabase’s URL structure. For example, tests for the admin “datamodel” pages are located in `frontend/test/metabase/scenarios/admin/datamodel`.
+Metabase’s Cypress tests are located in the `e2e/test/scenarios` source tree, in a structure that roughly mirrors Metabase’s URL structure. For example, tests for the admin “datamodel” pages are located in `e2e/test/scenarios/admin/datamodel`.
 
 During development you will want to run `yarn build-hot` to continuously build the frontend, and `yarn test-cypress-open` to open the Cypress application where you can execute the tests you are working on.
 
@@ -17,7 +17,7 @@ To run all Cypress tests programmatically in the terminal:
 yarn run test-cypress-run
 ```
 
-You can run a specific set of scenarios by using the `--folder` flag, which will pick up the chosen scenarios under `frontend/test/metabase/scenarios/`.
+You can run a specific set of scenarios by using the `--folder` flag, which will pick up the chosen scenarios under `e2e/test/scenarios/`.
 
 ```
 yarn run test-cypress-run --folder sharing
@@ -26,7 +26,7 @@ yarn run test-cypress-run --folder sharing
 You can quickly test a single file only by using the `--spec` flag.
 
 ```
-yarn test-cypress-run --spec frontend/test/metabase/scenarios/question/new.cy.spec.js
+yarn test-cypress-run --spec e2e/test/scenarios/question/new.cy.spec.js
 ```
 
 Cypress test files are structured like Mocha tests, where `describe` blocks are used to group related tests, and `it` blocks are the tests themselves.

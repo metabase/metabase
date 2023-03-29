@@ -5,7 +5,7 @@
    [environ.core :as env]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
@@ -15,7 +15,7 @@
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -86,12 +86,12 @@
 (defn db-fetch-setting
   "Fetch `Setting` value from the DB to verify things work as we expect."
   [setting-name]
-  (db/select-one-field :value Setting, :key (name setting-name)))
+  (t2/select-one-fn :value Setting, :key (name setting-name)))
 
 (defn setting-exists-in-db?
   "Returns a boolean indicating whether a setting has a value stored in the application DB."
   [setting-name]
-  (boolean (db/select-one Setting :key (name setting-name))))
+  (boolean (t2/select-one Setting :key (name setting-name))))
 
 (defn- test-assert-setting-has-tag [setting-var expected-tag]
   (let [{:keys [tag arglists]} (meta setting-var)]
@@ -413,7 +413,7 @@
 
 (defn- set-and-fetch-csv-setting-value! [v]
   (test-csv-setting! v)
-  {:db-value     (db/select-one-field :value setting/Setting :key "test-csv-setting")
+  {:db-value     (t2/select-one-fn :value setting/Setting :key "test-csv-setting")
    :parsed-value (test-csv-setting)})
 
 (deftest csv-setting-test
@@ -513,12 +513,12 @@
 (defn clear-settings-last-updated-value-in-db!
   "Deletes the timestamp for the last updated setting from the DB."
   []
-  (db/simple-delete! Setting {:key setting.cache/settings-last-updated-key}))
+  (t2/delete! (t2/table-name Setting) :key setting.cache/settings-last-updated-key))
 
 (defn settings-last-updated-value-in-db
   "Fetches the timestamp of the last updated setting."
   []
-  (db/select-one-field :value Setting :key setting.cache/settings-last-updated-key))
+  (t2/select-one-fn :value Setting :key setting.cache/settings-last-updated-key))
 
 (defsetting uncached-setting
   "A test setting that should *not* be cached."
@@ -534,8 +534,8 @@
 
     (testing "make sure that fetching the Setting always fetches the latest value from the DB"
       (uncached-setting! "ABCDEF")
-      (db/update-where! Setting {:key "uncached-setting"}
-                        :value "123456")
+      (t2/update! Setting {:key "uncached-setting"}
+                  {:value "123456"})
       (is (= "123456"
              (uncached-setting))))
 
@@ -570,11 +570,11 @@
 (deftest cache-sync-test
   (testing "make sure that if for some reason the cache gets out of sync it will reset so we can still set new settings values (#4178)"
     ;; clear out any existing values of `toucan-name`
-    (db/simple-delete! setting/Setting {:key "toucan-name"})
+    (t2/delete! (t2/table-name setting/Setting) :key "toucan-name")
     ;; restore the cache
     (setting.cache/restore-cache-if-needed!)
     ;; now set a value for the `toucan-name` setting the wrong way
-    (db/insert! setting/Setting {:key "toucan-name", :value "Reggae"})
+    (t2/insert! setting/Setting {:key "toucan-name", :value "Reggae"})
     ;; ok, now try to set the Setting the correct way
     (toucan-name! "Banana Beak")
     ;; ok, make sure the setting was set
@@ -680,14 +680,14 @@
                                            ;; Set the setting directly instead of using
                                            ;; [[mt/with-temporary-setting-values]] because that blows up when the
                                            ;; Setting is Database-local-only
-                                           (db/delete! Setting :key (name setting-name))
+                                           (t2/delete! Setting :key (name setting-name))
                                            (when site-wide-value
-                                             (db/insert! Setting :key (name setting-name), :value (str site-wide-value)))
+                                             (t2/insert! Setting :key (name setting-name), :value (str site-wide-value)))
                                            (setting.cache/restore-cache!)
                                            (try
                                              (thunk)
                                              (finally
-                                               (db/delete! Setting :key (name setting-name))
+                                               (t2/delete! Setting :key (name setting-name))
                                                (setting.cache/restore-cache!)))))
                                        (fn [thunk]
                                          (tu/do-with-temp-env-var-value
@@ -859,8 +859,8 @@
     (mt/with-temporary-setting-values [test-setting-1 "123"
                                        test-setting-2 "123"]
       (is (= "5f7f150c"
-             (serdes.hash/raw-hash ["test-setting-1"])
-             (serdes.hash/identity-hash (db/select-one Setting :key "test-setting-1")))))))
+             (serdes/raw-hash ["test-setting-1"])
+             (serdes/identity-hash (t2/select-one Setting :key "test-setting-1")))))))
 
 (deftest enabled?-test
   (testing "Settings can be disabled"

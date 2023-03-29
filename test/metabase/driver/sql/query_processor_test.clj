@@ -433,15 +433,9 @@
                           DATE_TRUNC ("year" source.CREATED_AT) AS CREATED_AT
                           source.pivot-grouping AS pivot-grouping
                           COUNT (*) AS count]
-               :from     [{:select    [ORDERS.ID                          AS ID
-                                       ORDERS.USER_ID                     AS USER_ID
+               :from     [{:select    [ORDERS.USER_ID                     AS USER_ID
                                        ORDERS.PRODUCT_ID                  AS PRODUCT_ID
-                                       ORDERS.SUBTOTAL                    AS SUBTOTAL
-                                       ORDERS.TAX                         AS TAX
-                                       ORDERS.TOTAL                       AS TOTAL
-                                       ORDERS.DISCOUNT                    AS DISCOUNT
                                        ORDERS.CREATED_AT                  AS CREATED_AT
-                                       ORDERS.QUANTITY                    AS QUANTITY
                                        ABS (0)                            AS pivot-grouping
                                        ;; TODO -- I'm not sure if the order here is deterministic
                                        PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
@@ -452,15 +446,15 @@
                            :left-join [PRODUCTS AS PRODUCTS__via__PRODUCT_ID
                                        ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID
                                        PEOPLE AS PEOPLE__via__USER_ID
-                                       ON ORDERS.USER_ID = PEOPLE__via__USER_ID.ID]}
+                                       ON ORDERS.USER_ID = PEOPLE__via__USER_ID.ID]
+                           :where     [((PEOPLE__via__USER_ID.SOURCE = ?) OR (PEOPLE__via__USER_ID.SOURCE = ?))
+                                       AND
+                                       ((PRODUCTS__via__PRODUCT_ID.CATEGORY = ?) OR (PRODUCTS__via__PRODUCT_ID.CATEGORY = ?))
+                                       AND
+                                       (ORDERS.CREATED_AT >= DATE_TRUNC ("year" DATEADD ("year" CAST (-2 AS long) CAST (NOW () AS datetime))))
+                                       AND
+                                       (ORDERS.CREATED_AT < DATE_TRUNC ("year" NOW ()))]}
                           AS source]
-               :where    [((source.PEOPLE__via__USER_ID__SOURCE = ?) OR (source.PEOPLE__via__USER_ID__SOURCE = ?))
-                           AND
-                           ((source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ?) OR (source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ?))
-                           AND
-                           (source.CREATED_AT >= DATE_TRUNC ("year" DATEADD ("year" CAST (-2 AS long) CAST (NOW () AS datetime))))
-                           AND
-                           (source.CREATED_AT < DATE_TRUNC ("year" NOW ()))]
                :group-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY
                           source.PEOPLE__via__USER_ID__SOURCE
                           DATE_TRUNC ("year" source.CREATED_AT)
@@ -585,12 +579,7 @@
         (testing "Generated SQL"
           (is (= '{:select [source.PRICE AS PRICE
                             source.test  AS test]
-                   :from   [{:select [VENUES.ID                                                             AS ID
-                                      VENUES.NAME                                                           AS NAME
-                                      VENUES.CATEGORY_ID                                                    AS CATEGORY_ID
-                                      VENUES.LATITUDE                                                       AS LATITUDE
-                                      VENUES.LONGITUDE                                                      AS LONGITUDE
-                                      TIMESTAMPADD ("second" VENUES.PRICE timestamp "1970-01-01T00:00:00Z") AS PRICE
+                   :from   [{:select [TIMESTAMPADD ("second" VENUES.PRICE timestamp "1970-01-01T00:00:00Z") AS PRICE
                                       1 * 1 AS test]
                              :from   [VENUES]}
                             AS source]
@@ -732,14 +721,7 @@
     (mt/dataset sample-dataset
       (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
                           COUNT (*)         AS count]
-               :from     [{:select [PRODUCTS.ID                  AS ID
-                                    PRODUCTS.EAN                 AS EAN
-                                    PRODUCTS.TITLE               AS TITLE
-                                    PRODUCTS.CATEGORY            AS CATEGORY
-                                    PRODUCTS.VENDOR              AS VENDOR
-                                    PRODUCTS.PRICE               AS PRICE
-                                    PRODUCTS.RATING              AS RATING
-                                    PRODUCTS.CREATED_AT          AS CREATED_AT
+               :from     [{:select [PRODUCTS.CATEGORY            AS CATEGORY
                                     CONCAT (PRODUCTS.CATEGORY ?) AS CATEGORY_2]
                            :from   [PRODUCTS]}
                           AS source]
@@ -819,10 +801,6 @@
   (testing "Make sure FLOATING POINT division is done when dividing by expressions/fields"
     (is (= '{:select   [source.my_cool_new_field AS my_cool_new_field]
              :from     [{:select [VENUES.ID          AS ID
-                                  VENUES.NAME        AS NAME
-                                  VENUES.CATEGORY_ID AS CATEGORY_ID
-                                  VENUES.LATITUDE    AS LATITUDE
-                                  VENUES.LONGITUDE   AS LONGITUDE
                                   VENUES.PRICE       AS PRICE
                                   VENUES.PRICE + 2   AS big_price
                                   CAST
@@ -849,24 +827,12 @@
         (testing (format "hx/*honey-sql-version* = %d" hx/*honey-sql-version*)
           (is (= (case hx/*honey-sql-version*
                    1 '{:select [source.my_cool_new_field AS my_cool_new_field]
-                       :from   [{:select [VENUES.ID AS ID
-                                          VENUES.NAME AS NAME
-                                          VENUES.CATEGORY_ID AS CATEGORY_ID
-                                          VENUES.LATITUDE AS LATITUDE
-                                          VENUES.LONGITUDE AS LONGITUDE
-                                          VENUES.PRICE AS PRICE
-                                          2.0 / 4.0 AS my_cool_new_field]
+                       :from   [{:select [2.0 / 4.0 AS my_cool_new_field]
                                  :from   [VENUES]}
                                 AS source]
                        :limit  [1]}
                    2 '{:select [source.my_cool_new_field AS my_cool_new_field]
-                       :from   [{:select [VENUES.ID AS ID
-                                          VENUES.NAME AS NAME
-                                          VENUES.CATEGORY_ID AS CATEGORY_ID
-                                          VENUES.LATITUDE AS LATITUDE
-                                          VENUES.LONGITUDE AS LONGITUDE
-                                          VENUES.PRICE AS PRICE
-                                          2.0 / 4.0 AS my_cool_new_field]
+                       :from   [{:select [2.0 / 4.0 AS my_cool_new_field]
                                  :from   [VENUES]}
                                 AS source]
                        :limit  [1]})

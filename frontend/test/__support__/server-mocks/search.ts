@@ -1,41 +1,22 @@
-import { Scope } from "nock";
-import type {
-  Card,
-  Dashboard,
-  Collection,
-  Table,
-  Database,
-  SearchModelType,
-} from "metabase-types/api";
+import fetchMock from "fetch-mock";
+import type { CollectionItem } from "metabase-types/api";
 
-type SearchItem =
-  | Card
-  | Dashboard
-  | Collection
-  | Table
-  | (Database & {
-      collection: Record<string, any>;
-    });
+export function setupSearchEndpoints(items: CollectionItem[]) {
+  const availableModels = items.map(({ model }) => model);
 
-export function setupSearchEndpoints(
-  scope: Scope,
-  items: SearchItem[],
-  models: SearchModelType[] = [],
-) {
-  scope.get(/\/api\/search+/).reply(200, {
-    available_models: [
-      "dashboard",
-      "card",
-      "dataset",
-      "collection",
-      "table",
-      "database",
-    ],
-    data: items,
-    total: items.length,
-    models, // this should reflect what is in the query param
-    limit: null,
-    offset: null,
-    table_db_id: null,
+  fetchMock.get("path:/api/search", uri => {
+    const url = new URL(uri);
+    const models = url.searchParams.getAll("models");
+    const matchedItems = items.filter(({ model }) => models.includes(model));
+
+    return {
+      data: matchedItems,
+      total: matchedItems.length,
+      models, // this should reflect what is in the query param
+      available_models: availableModels,
+      limit: null,
+      offset: null,
+      table_db_id: null,
+    };
   });
 }

@@ -74,6 +74,7 @@ export default _.compose(
     query: (_state, props) => ({
       q: props.searchText,
       limit: DEFAULT_SEARCH_LIMIT,
+      models: props.models,
     }),
   }),
 )(SearchResults);

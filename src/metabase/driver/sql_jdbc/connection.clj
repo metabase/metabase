@@ -15,7 +15,7 @@
    [metabase.util.schema :as su]
    [metabase.util.ssh :as ssh]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 DataSources)
    (javax.sql DataSource)))
@@ -218,7 +218,7 @@
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
           db          (or (when (mi/instance-of? Database db-or-id-or-spec)
                             db-or-id-or-spec) ; passed in
-                          (db/select-one [Database :id :engine :details] :id database-id)     ; look up by ID
+                          (t2/select-one [Database :id :engine :details] :id database-id)     ; look up by ID
                           (throw (ex-info (tru "Database {0} does not exist." database-id)
                                    {:status-code 404
                                     :type        qp.error-type/invalid-query
@@ -233,7 +233,7 @@
                                 ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
                                 ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
                                 ;; our app DB, and see if it STILL doesn't match
-                                (not= curr-hash (-> (db/select-one [Database :id :engine :details] :id database-id)
+                                (not= curr-hash (-> (t2/select-one [Database :id :engine :details] :id database-id)
                                                     jdbc-spec-hash))))
                             (if log-invalidation?
                               (log-jdbc-spec-hash-change-msg! db-id)

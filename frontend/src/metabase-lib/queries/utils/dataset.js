@@ -45,11 +45,7 @@ export function normalizeFieldRef(fieldRef) {
   return dimension && dimension.mbql();
 }
 
-export function findColumnIndexForColumnSetting(
-  columns,
-  columnSetting,
-  useName = true,
-) {
+export function findColumnIndexForColumnSetting(columns, columnSetting) {
   // NOTE: need to normalize field refs because they may be old style [fk->, 1, 2]
   const fieldRef = normalizeFieldRef(columnSetting.fieldRef);
   // first try to find by fieldRef
@@ -62,30 +58,20 @@ export function findColumnIndexForColumnSetting(
     }
   }
   // if that fails, find by column name
-  return useName
-    ? _.findIndex(columns, col => col.name === columnSetting.name)
-    : -1;
+  return _.findIndex(columns, col => col.name === columnSetting.name);
 }
 
-export function findColumnSettingIndexForColumn(
-  columnSettings,
-  column,
-  useName = true,
-) {
+export function findColumnSettingIndexForColumn(columnSettings, column) {
   const fieldRef = normalizeFieldRef(fieldRefForColumn(column));
-  if (fieldRef !== null) {
-    const index = columnSettings.findIndex(columnSetting =>
-      _.isEqual(fieldRef, normalizeFieldRef(columnSetting.fieldRef)),
+  if (fieldRef == null) {
+    return columnSettings.findIndex(
+      columnSetting => columnSetting.name === column.name,
     );
-    if (index >= 0) {
-      return index;
-    }
   }
-  return useName
-    ? columnSettings.findIndex(
-        columnSetting => columnSetting.name === column.name,
-      )
-    : -1;
+  const index = columnSettings.findIndex(columnSetting =>
+    _.isEqual(fieldRef, normalizeFieldRef(columnSetting.fieldRef)),
+  );
+  return index;
 }
 
 export function syncTableColumnsToQuery(question) {

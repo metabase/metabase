@@ -34,10 +34,22 @@
     :cljs
     `(js-i18n ~format-string ~@args)))
 
+(defmacro trun
+  "i18n a string with both singular and plural forms, using the current user's locale. The appropriate plural form will
+  be returned based on the value of `n`. `n` can be interpolated into the format strings using the `{0}`
+  syntax. (Other placeholders are not supported)."
+  [format-string format-string-pl n]
+  (macros/case
+    :clj
+    `(i18n/trun ~format-string ~format-string-pl ~n)
+
+    :cljs
+    `(js-i18n-n ~format-string ~format-string-pl ~n)))
+
 (defmacro trsn
   "i18n a string with both singular and plural forms, using the site's locale. The appropriate plural form will be
   returned based on the value of `n`. `n` can be interpolated into the format strings using the `{0}` syntax. (Other
-  placeholders are not supported). "
+  placeholders are not supported)."
   [format-string format-string-pl n]
   (macros/case
     :clj

@@ -1,3 +1,4 @@
+import "cross-fetch/polyfill";
 import "raf/polyfill";
 import "jest-localstorage-mock";
 import "jest-canvas-mock";

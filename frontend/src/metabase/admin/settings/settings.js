@@ -13,7 +13,7 @@ import {
 } from "metabase/services";
 import { refreshSiteSettings } from "metabase/redux/settings";
 
-// ACITON TYPES AND ACTION CREATORS
+// ACTION TYPES AND ACTION CREATORS
 
 export const reloadSettings = () => async (dispatch, getState) => {
   await Promise.all([

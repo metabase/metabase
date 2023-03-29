@@ -32,9 +32,34 @@
     (seq joined-fields) (update :fields (fn [fields]
                                           (m/distinct-by add/normalize-clause (concat fields joined-fields))))))
 
+(defn- keep-source+alias-props [field]
+  (update field 2 select-keys [::add/source-alias ::add/source-table :join-alias]))
+
+(defn- nfc-root [[_ field-id]]
+  (when-let [field (and (int? field-id) (qp.store/field field-id))]
+    (when-let [nfc-root (first (:nfc_path field))]
+      {:table_id (:table_id field)
+       :name nfc-root})))
+
+(defn- field-id-props [[_ field-id]]
+  (when-let [field (and (int? field-id) (qp.store/field field-id))]
+    (select-keys field [:table_id :name])))
+
+(defn- remove-unused-fields [inner-query source]
+  (let [used-fields (-> #{}
+                        (into (map keep-source+alias-props) (mbql.u/match inner-query :field))
+                        (into (map keep-source+alias-props) (mbql.u/match inner-query :expression)))
+        nfc-roots (into #{} (keep nfc-root) used-fields)]
+    (update source :fields (fn [fields]
+                             (filterv #(or (-> % keep-source+alias-props used-fields)
+                                           (-> % field-id-props nfc-roots))
+                                      fields)))))
+
 (defn- nest-source [inner-query]
   (classloader/require 'metabase.query-processor)
-  (let [source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
+  (let [filter-clause (:filter inner-query)
+        keep-filter? (nil? (mbql.u/match-one filter-clause :expression))
+        source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
                  ;; preprocess this without a current user context so it's not subject to permissions checks. To get
                  ;; here in the first place we already had to do perms checks to make sure the query we're transforming
                  ;; is itself ok, so we don't need to run another check
@@ -45,10 +70,14 @@
                  (add/add-alias-info source)
                  (:query source)
                  (dissoc source :limit)
-                 (add-joined-fields-to-fields (joined-fields inner-query) source))]
+                 (add-joined-fields-to-fields (joined-fields inner-query) source)
+                 (remove-unused-fields inner-query source)
+                 (cond-> source
+                   keep-filter? (assoc :filter filter-clause)))]
     (-> inner-query
         (dissoc :source-table :source-metadata :joins)
-        (assoc :source-query source))))
+        (assoc :source-query source)
+        (cond-> keep-filter? (dissoc :filter)))))
 
 (defn- raise-source-query-expression-ref
   "Convert an `:expression` reference from a source query into an appropriate `:field` clause for use in the surrounding

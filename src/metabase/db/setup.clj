@@ -134,14 +134,11 @@
 
 (s/defn ^:private run-data-migrations!
   "Do any custom code-based migrations now that the db structure is up to date."
-  [db-type     :- s/Keyword
-   data-source :- javax.sql.DataSource]
+  []
   ;; TODO -- check whether we can remove the circular ref busting here.
   (when-not *disable-data-migrations*
     (classloader/require 'metabase.db.data-migrations)
-    (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool.
-              setting/*disable-cache*         true]
-      ((resolve 'metabase.db.data-migrations/run-all!)))))
+    ((resolve 'metabase.db.data-migrations/run-all!))))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 ;;
@@ -154,9 +151,11 @@
    auto-migrate? :- (s/maybe s/Bool)]
   (u/profile (trs "Database setup")
     (u/with-us-locale
-      (verify-db-connection   db-type data-source)
-      (run-schema-migrations! db-type data-source auto-migrate?)
-      (run-data-migrations!   db-type data-source)))
+       (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+                 setting/*disable-cache*         true]
+         (verify-db-connection   db-type data-source)
+         (run-schema-migrations! db-type data-source auto-migrate?)
+         (run-data-migrations!))))
   :done)
 
 ;;;; Toucan Setup.

@@ -4,7 +4,7 @@
    [metabase.models :refer [Card Collection]]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;;; --------------------------------------------- source=card ----------------------------------------------
 
@@ -22,14 +22,14 @@
               (is (=? {:has_more_values true,
                        :values          ["20th Century Cafe" "25°" "33 Taps"]}
                       (custom-values/values-from-card
-                        (db/select-one Card :id card-id)
+                        (t2/select-one Card :id card-id)
                         (mt/$ids $venues.name)))))
 
             (testing "case in-sensitve search test"
               (is (=? {:has_more_values false
                        :values          ["Liguria Bakery" "Noe Valley Bakery"]}
                       (custom-values/values-from-card
-                        (db/select-one Card :id card-id)
+                        (t2/select-one Card :id card-id)
                         (mt/$ids $venues.name)
                         "bakery"))))))
 
@@ -47,21 +47,21 @@
               (is (=? {:has_more_values true,
                        :values          ["American" "Artisan" "Asian"]}
                       (custom-values/values-from-card
-                        (db/select-one Card :id card-id)
+                        (t2/select-one Card :id card-id)
                         (mt/$ids $categories.name)))))
 
             (testing "get values from aggregation column"
               (is (=? {:has_more_values true,
                        :values          [1 2 3]}
                       (custom-values/values-from-card
-                        (db/select-one Card :id card-id)
+                        (t2/select-one Card :id card-id)
                         [:field "sum" {:base-type :type/Float}]))))
 
             (testing "can search on aggregation column"
               (is (=? {:has_more_values false,
                        :values          [2]}
                       (custom-values/values-from-card
-                        (db/select-one Card :id card-id)
+                        (t2/select-one Card :id card-id)
                         [:field "sum" {:base-type :type/Float}]
                         2))))
 
@@ -69,7 +69,7 @@
               (is (=? {:has_more_values false
                        :values          ["Bakery"]}
                       (custom-values/values-from-card
-                        (db/select-one Card :id card-id)
+                        (t2/select-one Card :id card-id)
                         [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]
                         "bakery"))))))
 
@@ -87,7 +87,7 @@
                 (is (=? {:has_more_values true,
                          :values          [2 3 4]}
                         (custom-values/values-from-card
-                          (db/select-one Card :id card-id)
+                          (t2/select-one Card :id card-id)
                           (mt/$ids $venues.category_id)))))
 
 
@@ -95,7 +95,7 @@
                 (is (=? {:has_more_values false,
                          :values          [2]}
                         (custom-values/values-from-card
-                          (db/select-one Card :id card-id)
+                          (t2/select-one Card :id card-id)
                           (mt/$ids $venues.category_id)
                           2)))))))))))
 
@@ -113,7 +113,7 @@
             (is (=? {:has_more_values false,
                      :values          ["Fred 62" "Red Medicine"]}
                     (custom-values/values-from-card
-                      (db/select-one Card :id card-id)
+                      (t2/select-one Card :id card-id)
                       [:field "NAME" {:base-type :type/Text}]))))
 
 
@@ -121,7 +121,7 @@
             (is (=? {:has_more_values false
                      :values          ["Red Medicine"]}
                     (custom-values/values-from-card
-                      (db/select-one Card :id card-id)
+                      (t2/select-one Card :id card-id)
                       [:field "NAME" {:base-type :type/Text}]
                       "medicine")))))))))
 
@@ -136,7 +136,7 @@
             (is (=? {:has_more_values false,
                      :values          ["Affiliate" "Facebook" "Google" "Organic" "Twitter"]}
                     (custom-values/values-from-card
-                      (db/select-one Card :id card-id)
+                      (t2/select-one Card :id card-id)
                       [:field "SOURCE" {:base-type :type/Text}]))))
 
 
@@ -144,7 +144,7 @@
             (is (=? {:has_more_values false
                      :values          ["Facebook" "Google"]}
                     (custom-values/values-from-card
-                      (db/select-one Card :id card-id)
+                      (t2/select-one Card :id card-id)
                       [:field "SOURCE" {:base-type :type/Text}]
                       "oo"))))))
 
@@ -156,7 +156,7 @@
             (is (=? {:has_more_values false,
                      :values          ["Affiliate" "Facebook" "Google" "Organic" "Twitter"]}
                     (custom-values/values-from-card
-                      (db/select-one Card :id card-id)
+                      (t2/select-one Card :id card-id)
                       (mt/$ids $people.source)))))
 
 
@@ -164,7 +164,7 @@
             (is (=? {:has_more_values false
                      :values          ["Facebook" "Google"]}
                     (custom-values/values-from-card
-                      (db/select-one Card :id card-id)
+                      (t2/select-one Card :id card-id)
                       (mt/$ids $people.source)
                       "oo")))))))))
 

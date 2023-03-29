@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import { isNotNull } from "metabase/core/utils/types";
 import { Collection, CollectionId, CollectionItem } from "metabase-types/api";
 
 export function nonPersonalOrArchivedCollection(
@@ -64,6 +65,10 @@ export function isItemPinned(item: CollectionItem) {
 
 export function isItemQuestion(item: CollectionItem) {
   return item.model === "card";
+}
+
+export function isItemModel(item: CollectionItem) {
+  return item.model === "dataset";
 }
 
 export function isItemCollection(item: CollectionItem) {
@@ -147,14 +152,14 @@ function isPersonalOrPersonalChild(
 
 export function canManageCollectionAuthorityLevel(
   collection: Partial<Collection>,
-  collectionMap: Record<CollectionId, Collection>,
+  collectionMap: Partial<Record<CollectionId, Collection>>,
 ) {
   if (isPersonalCollection(collection)) {
     return false;
   }
   const parentId = coerceCollectionId(collection.parent_id);
   const parentCollection = collectionMap[parentId];
-  const collections = Object.values(collectionMap);
+  const collections = Object.values(collectionMap).filter(isNotNull);
   return (
     parentCollection &&
     !isPersonalOrPersonalChild(parentCollection, collections)

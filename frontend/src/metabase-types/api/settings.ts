@@ -128,6 +128,15 @@ export interface TokenStatus {
   status?: TokenStatusStatus;
 }
 
+export type DayOfWeekId =
+  | "sunday"
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday";
+
 export interface TokenFeatures {
   advanced_config: boolean;
   advanced_permissions: boolean;
@@ -153,6 +162,7 @@ export interface SettingDefinition {
 }
 
 export interface Settings {
+  "active-users-count"?: number;
   "admin-email": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;
@@ -211,6 +221,7 @@ export interface Settings {
   "slack-files-channel": string | null;
   "slack-token": string | null;
   "slack-token-valid?": boolean;
+  "start-of-week"?: DayOfWeekId;
   "subscription-allowed-domains": string | null;
   "token-features": TokenFeatures;
   "token-status": TokenStatus | null;
@@ -221,4 +232,3 @@ export interface Settings {
 }
 
 export type SettingKey = keyof Settings;
-0;

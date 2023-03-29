@@ -1,10 +1,11 @@
 import React from "react";
 import { t } from "ttag";
 
+import Ellipsified from "metabase/core/components/Ellipsified";
+import Icon from "metabase/components/Icon";
+
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
-import Icon from "metabase/components/Icon";
-import Ellipsified from "metabase/core/components/Ellipsified";
 import { StyledButton, StyledButtonContent } from "./ActionButton.styled";
 
 interface ActionButtonViewProps extends Pick<VisualizationProps, "settings"> {
@@ -37,13 +38,14 @@ function ActionButtonView({
     <StyledButton
       disabled={!!disabled}
       onClick={onClick}
+      fullWidth
       isFullHeight={isFullHeight}
       focus={focus}
       aria-label={tooltip}
       {...variantProps}
     >
       <StyledButtonContent>
-        {icon && <Icon name={icon} tooltip={tooltip} />}
+        {icon && <Icon name={icon} />}
         <Ellipsified>{label ?? t`Click me`}</Ellipsified>
       </StyledButtonContent>
     </StyledButton>

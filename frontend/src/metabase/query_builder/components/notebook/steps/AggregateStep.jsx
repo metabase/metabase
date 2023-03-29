@@ -22,7 +22,7 @@ export default function AggregateStep({
   query,
   updateQuery,
   isLastOpened,
-  ...props
+  readOnly,
 }) {
   return (
     <ClauseStep
@@ -30,7 +30,9 @@ export default function AggregateStep({
       color={color}
       initialAddText={t`Pick the metric you want to see`}
       items={query.aggregations()}
+      renderName={item => item.displayName()}
       tetherOptions={aggTetherOptions}
+      readOnly={readOnly}
       renderPopover={aggregation => (
         <AggregationPopover
           query={query}

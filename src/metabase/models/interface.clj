@@ -8,6 +8,7 @@
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.util :as mdb.u]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
@@ -16,15 +17,12 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
    [schema.core :as schema]
    [taoensso.nippy :as nippy]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.tools.before-insert :as t2.before-insert]
@@ -147,9 +145,10 @@
   :in  (comp json-in normalize-metric-segment-definition)
   :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization))
 
-(defn- normalize-visualization-settings [viz-settings]
-  ;; frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`; we need to normalize them
-  ;; to modern MBQL clauses so things work correctly
+(defn normalize-visualization-settings
+  "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
+   to modern MBQL clauses so things work correctly."
+  [viz-settings]
   (letfn [(normalize-column-settings-key [k]
             (some-> k u/qualified-name json/parse-string mbql.normalize/normalize json/generate-string))
           (normalize-column-settings [column-settings]
@@ -269,8 +268,7 @@
   max (nanosecond) resolution)."
   []
   (classloader/require 'metabase.driver.sql.query-processor)
-  (binding [hx/*honey-sql-version* 2]
-    ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type))))
+  ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
 
 (defn- add-created-at-timestamp [obj & _]
   (cond-> obj
@@ -451,7 +449,7 @@
   "NEW! Check whether or not the current user is allowed to update an object and by updating properties to values in
    the `changes` map. This is equivalent to checking whether you're allowed to perform
 
-    (toucan.db/update! model id changes)
+    (toucan2.core/update! model id changes)
 
   This method is appropriate for powering `PUT` API endpoints. Like [[can-create?]] this method was added YEARS after
   most of the current API endpoints were written, so it is used in very few places, and this logic is determined ad-hoc
@@ -481,7 +479,7 @@
 (defn- check-perms-with-fn
   ([fn-symb read-or-write a-model object-id]
    (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (db/select-one a-model (models/primary-key a-model) object-id))))
+       (check-perms-with-fn fn-symb read-or-write (t2/select-one a-model (mdb.u/primary-key a-model) object-id))))
 
   ([fn-symb read-or-write object]
    (and object

@@ -181,6 +181,7 @@ class PublicQuestion extends Component {
         uuid={uuid}
         token={token}
         result={result}
+        card={card}
       />
     );
 

@@ -10,6 +10,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
+   [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.interface :as tx]
@@ -17,9 +18,28 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk]
+                      ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
+                      ;;    can debug it. This is much less confusing when trying to fix broken tests.
+                      ;;
+                      ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
+                      ;;    tests.
+                      (binding [sync-util/*log-exceptions-and-continue?* false
+                                hx/*honey-sql-version*                   2]
+                        (thunk))))
+
+(deftest sanity-check-test
+  (mt/test-driver :snowflake
+    (is (= [100]
+           (mt/first-row
+            (mt/run-mbql-query venues
+              {:aggregation [[:count]]}))))))
 
 (deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
@@ -97,7 +117,7 @@
             ;; now take a look at the Tables in the database, there should be an entry for the view
             (is (= [{:name "example_view"}]
                    (map (partial into {})
-                        (db/select [Table :name] :db_id (u/the-id database)))))))))))
+                        (t2/select [Table :name] :db_id (u/the-id database)))))))))))
 
 (deftest describe-table-test
   (mt/test-driver :snowflake
@@ -109,13 +129,15 @@
                          :base-type         :type/Number
                          :pk?               true
                          :database-position 0
+                         :database-is-auto-increment true
                          :database-required false}
                         {:name              "name"
                          :database-type     "VARCHAR"
                          :base-type         :type/Text
                          :database-position 1
+                         :database-is-auto-increment false
                          :database-required true}}}
-             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (db/select-one Table :id (mt/id :categories))))))))
+             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one Table :id (mt/id :categories))))))))
 
 (deftest describe-table-fks-test
   (mt/test-driver :snowflake
@@ -123,7 +145,7 @@
       (is (= #{{:fk-column-name   "category_id"
                 :dest-table       {:name "categories", :schema "PUBLIC"}
                 :dest-column-name "id"}}
-             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (db/select-one Table :id (mt/id :venues))))))))
+             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (t2/select-one Table :id (mt/id :venues))))))))
 
 (defn- format-env-key ^String [env-key]
   (let [[_ header body footer]

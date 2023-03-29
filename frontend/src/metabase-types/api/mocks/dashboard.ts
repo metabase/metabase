@@ -50,7 +50,7 @@ export const createMockActionDashboardCard = (
 ): ActionDashboardCard => ({
   ...createMockDashboardOrderedCard(),
   action: undefined,
-  card: createMockCard(),
+  card: createMockCard({ display: "action" }),
   visualization_settings: {
     "button.label": "Please click me",
     "button.variant": "primary",

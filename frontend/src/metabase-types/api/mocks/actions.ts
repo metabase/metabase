@@ -4,6 +4,8 @@ import {
   WritebackParameter,
   WritebackQueryAction,
   WritebackImplicitQueryAction,
+  ActionFormSettings,
+  FieldSettings,
 } from "metabase-types/api";
 import { createMockNativeDatasetQuery } from "./query";
 import { createMockParameter } from "./parameters";
@@ -35,6 +37,7 @@ export const createMockQueryAction = ({
     name: "Query Action Mock",
     description: null,
     model_id: 1,
+    database_id: 1,
     parameters: [],
     creator_id: creator.id,
     creator,
@@ -56,6 +59,7 @@ export const createMockImplicitQueryAction = ({
   name: "Create",
   description: "",
   model_id: 1,
+  database_id: 1,
   parameters: [],
   visualization_settings: undefined,
   creator_id: creator.id,
@@ -97,5 +101,26 @@ export const createMockPublicAction = (
   id: 1,
   name: "Public Action",
   parameters: [],
+  ...opts,
+});
+
+export const createMockActionFormSettings = (
+  opts?: Partial<ActionFormSettings>,
+): ActionFormSettings => ({ ...opts });
+
+export const createMockFieldSettings = (
+  opts?: Partial<FieldSettings>,
+): FieldSettings => ({
+  id: "",
+  name: "",
+  title: "",
+  description: "",
+  placeholder: "",
+  order: 0,
+  fieldType: "string",
+  inputType: "string",
+  required: true,
+  hidden: false,
+  width: "medium",
   ...opts,
 });

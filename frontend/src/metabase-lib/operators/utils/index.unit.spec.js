@@ -181,6 +181,17 @@ describe("metabase-lib/operators/utils", () => {
         }),
       ]);
     });
+
+    it('returns "median" aggregation operator if "percentile-aggregations" driver feature is supported', () => {
+      const table = getTable(["percentile-aggregations"]);
+      const operators = getSupportedAggregationOperators(table);
+      expect(operators).toEqual([
+        expect.objectContaining({
+          short: "median",
+          requiredDriverFeature: "percentile-aggregations",
+        }),
+      ]);
+    });
   });
 
   describe("getAggregationOperators", () => {
@@ -191,7 +202,7 @@ describe("metabase-lib/operators/utils", () => {
           features: ["basic-aggregations", "standard-deviation-aggregations"],
         },
       };
-      const fullOperators = getAggregationOperators(table);
+      const fullOperators = getAggregationOperators(table, fields);
       return {
         fullOperators,
         operators: fullOperators.map(operator => operator.short),

@@ -353,3 +353,27 @@
                 {:source-query
                  {:source-table $$checkins
                   :filter       [:= [:field %date {:temporal-unit :month}] [:relative-datetime -1 :month]]}})))))))
+
+(deftest optimize-filter-with-nested-compatible-field
+  (testing "Should optimize fields when starting n :temporal-unit ago (#25378)"
+    (mt/$ids users
+      (is (= (mt/mbql-query users
+                            {:filter [:and
+                                      [:>=
+                                       [:+ [:field %last_login {:temporal-unit :default}] [:interval 3 :month]]
+                                       [:relative-datetime -12 :month]]
+                                      [:<
+                                       [:+ [:field %last_login {:temporal-unit :default}] [:interval 3 :month]]
+                                       [:relative-datetime 1 :month]]]
+                             :source-query {:source-table $$users
+                                            :aggregation [[:count]]
+                                            :breakout [[:field %last_login {:temporal-unit :month}]]}})
+             (optimize-temporal-filters/optimize-temporal-filters
+               (mt/mbql-query users
+                              {:filter [:between
+                                        [:+ [:field %last_login {:temporal-unit :month}] [:interval 3 :month]]
+                                        [:relative-datetime -12 :month]
+                                        [:relative-datetime 0 :month]]
+                               :source-query {:source-table $$users
+                                              :aggregation [[:count]]
+                                              :breakout [[:field %last_login {:temporal-unit :month}]]}})))))))

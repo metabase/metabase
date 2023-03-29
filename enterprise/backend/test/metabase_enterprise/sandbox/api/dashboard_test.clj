@@ -5,29 +5,33 @@
    [metabase-enterprise.test :as met]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.models :refer [Card Dashboard DashboardCard FieldValues]]
+   [metabase.models.params.chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest chain-filter-sandboxed-field-values-test
   (testing "When chain filter endpoints would normally return cached FieldValues (#13832), make sure sandboxing is respected"
     (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
-      (mt/with-temp-vals-in-db FieldValues (u/the-id (db/select-one-id FieldValues :field_id (mt/id :categories :name))) {:values ["Good" "Bad"]}
+      (mt/with-temp-vals-in-db FieldValues (u/the-id (t2/select-one-pk FieldValues :field_id (mt/id :categories :name))) {:values ["Good" "Bad"]}
         (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
-          (testing "GET /api/dashboard/:id/params/:param-key/values"
-            (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-values-url dashboard "_CATEGORY_NAME_")]
-              (is (= {:values          ["African" "American"]
-                      :has_more_values false}
-                     (chain-filter-test/take-n-values 2 (mt/user-http-request :rasta :get 200 url))))))
-          (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
-            (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-search-url dashboard "_CATEGORY_NAME_" "a")]
-              (is (= {:values          ["African" "American"]
-                      :has_more_values false}
-                     (mt/user-http-request :rasta :get 200 url))))))))))
+          (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
+            (testing "GET /api/dashboard/:id/params/:param-key/values"
+              (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-values-url dashboard "_CATEGORY_NAME_")]
+                                          (is (= {:values          ["African" "American"]
+                                                  :has_more_values false}
+                                                 (->> url
+                                                      (mt/user-http-request :rasta :get 200)
+                                                      (chain-filter-test/take-n-values 2))))))
+            (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
+              (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-search-url dashboard "_CATEGORY_NAME_" "a")]
+                                          (is (= {:values          ["African" "American"]
+                                                  :has_more_values false}
+                                                 (mt/user-http-request :rasta :get 200 url)))))))))))
 
 (deftest add-card-parameter-mapping-permissions-test
   (testing "POST /api/dashboard/:id/cards"
@@ -62,7 +66,7 @@
              (is (= {:status "ok"}
                     (update-mappings! 200)))
              (is (= new-mappings
-                    (db/select-one-field :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))))))))
+                    (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))))))))
 
 (deftest parameters-with-source-is-card-test
   (testing "dashboard with a parameter that has source is a card, it should respects sandboxing"

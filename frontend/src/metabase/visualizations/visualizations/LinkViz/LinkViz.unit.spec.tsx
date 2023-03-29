@@ -1,5 +1,4 @@
 import React from "react";
-import nock from "nock";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -8,7 +7,10 @@ import {
   fireEvent,
   getIcon,
 } from "__support__/ui";
-import { setupSearchEndpoints } from "__support__/server-mocks";
+import {
+  setupSearchEndpoints,
+  setupRecentViewsEndpoints,
+} from "__support__/server-mocks";
 
 import type {
   DashboardOrderedCard,
@@ -16,7 +18,11 @@ import type {
 } from "metabase-types/api";
 import {
   createMockDashboardCardWithVirtualCard,
-  createMockCard,
+  createMockCollectionItem,
+  createMockCollection,
+  createMockRecentItem,
+  createMockTable,
+  createMockDashboard,
 } from "metabase-types/api/mocks";
 
 import LinkViz, { LinkVizProps } from "./LinkViz";
@@ -103,15 +109,13 @@ const searchingDashcard = createMockDashboardCardWithVirtualCard({
   },
 });
 
-const searchCardItem = {
+const searchCardItem = createMockCollectionItem({
+  id: 1,
   model: "card",
-  collection: {},
-  ...createMockCard({
-    name: "Question Uno",
-    id: 1,
-    display: "pie",
-  }),
-};
+  name: "Question Uno",
+  display: "pie",
+  collection: createMockCollection(),
+});
 
 const setup = (options?: Partial<LinkVizProps>) => {
   const changeSpy = jest.fn();
@@ -201,28 +205,8 @@ describe("LinkViz", () => {
       expect(screen.getByText("Table Uno")).toBeInTheDocument();
     });
 
-    it("should be able to search for questions", async () => {
-      const scope = nock(location.origin);
-      setupSearchEndpoints(scope, [searchCardItem]);
-
-      setup({
-        isEditing: true,
-        dashcard: searchingDashcard,
-        settings:
-          searchingDashcard.visualization_settings as LinkCardVizSettings,
-      });
-
-      const searchInput = screen.getByPlaceholderText("https://example.com");
-
-      userEvent.click(searchInput);
-
-      expect(await screen.findByLabelText("pie icon")).toBeInTheDocument();
-      expect(await screen.findByText("Question Uno")).toBeInTheDocument();
-    });
-
     it("clicking a search item should update the entity", async () => {
-      const scope = nock(location.origin);
-      setupSearchEndpoints(scope, [searchCardItem]);
+      setupSearchEndpoints([searchCardItem]);
 
       const { changeSpy } = setup({
         isEditing: true,
@@ -234,6 +218,11 @@ describe("LinkViz", () => {
       const searchInput = screen.getByPlaceholderText("https://example.com");
 
       userEvent.click(searchInput);
+      // There's a race here: as soon the search input is clicked into the text
+      // "Loading..." appears and is then replaced by "Question Uno". On CI,
+      // `findByText` was sometimes running while "Loading..." was still
+      // visible, so the extra expectation ensures good timing
+      expect(await screen.findByText("Loading...")).toBeInTheDocument();
       userEvent.click(await screen.findByText("Question Uno"));
 
       expect(changeSpy).toHaveBeenCalledWith({
@@ -243,6 +232,58 @@ describe("LinkViz", () => {
             name: "Question Uno",
             model: "card",
             display: "pie",
+          }),
+        },
+      });
+    });
+
+    it("clicking a recent item should update the entity", async () => {
+      const recentTableItem = createMockRecentItem({
+        cnt: 20,
+        user_id: 20,
+        model: "table",
+        model_id: 121,
+        model_object: createMockTable({
+          id: 121,
+          name: "Table Uno",
+          display_name: "Table Uno",
+          db_id: 20,
+        }),
+      });
+
+      const recentDashboardItem = createMockRecentItem({
+        cnt: 20,
+        user_id: 20,
+        model: "dashboard",
+        model_id: 131,
+        model_object: createMockDashboard({
+          id: 131,
+          name: "Dashboard Uno",
+        }),
+      });
+
+      setupRecentViewsEndpoints([recentTableItem, recentDashboardItem]);
+
+      const { changeSpy } = setup({
+        isEditing: true,
+        dashcard: emptyLinkDashcard,
+        settings:
+          emptyLinkDashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      const searchInput = screen.getByPlaceholderText("https://example.com");
+
+      userEvent.click(searchInput);
+
+      await screen.findByText("Dashboard Uno");
+      userEvent.click(await screen.findByText("Table Uno"));
+
+      expect(changeSpy).toHaveBeenCalledWith({
+        link: {
+          entity: expect.objectContaining({
+            id: 121,
+            name: "Table Uno",
+            model: "table",
           }),
         },
       });

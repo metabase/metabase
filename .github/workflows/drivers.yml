@@ -15,7 +15,7 @@ concurrency:
 jobs:
   files-changed:
     name: Check which files changed
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
       backend_all: ${{ steps.changes.outputs.backend_all }}
@@ -31,8 +31,8 @@ jobs:
   be-tests-athena-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: athena
@@ -51,8 +51,8 @@ jobs:
   be-tests-bigquery-cloud-sdk-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: bigquery-cloud-sdk
@@ -73,8 +73,8 @@ jobs:
   be-tests-druid-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: druid
@@ -96,8 +96,8 @@ jobs:
   be-tests-googleanalytics-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: googleanalytics
@@ -112,8 +112,8 @@ jobs:
   be-google-related-drivers-classpath-test:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: 'googleanalytics,bigquery-cloud-sdk'
@@ -134,8 +134,8 @@ jobs:
   be-tests-mariadb-10-2-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -160,8 +160,8 @@ jobs:
   be-tests-mariadb-latest-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -186,8 +186,8 @@ jobs:
   be-tests-mongo-4-2-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -209,8 +209,8 @@ jobs:
   be-tests-mongo-4-2-ssl-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -244,8 +244,8 @@ jobs:
   be-tests-mongo-5-0-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -267,8 +267,8 @@ jobs:
   be-tests-mongo-5-0-ssl-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -302,8 +302,8 @@ jobs:
   be-tests-mongo-latest-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -328,8 +328,8 @@ jobs:
   be-tests-mysql-5-7-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -354,8 +354,8 @@ jobs:
   be-tests-mysql-latest-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -392,8 +392,8 @@ jobs:
   be-tests-oracle-18-4-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: oracle
@@ -419,8 +419,8 @@ jobs:
   be-tests-oracle-21-3-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: oracle
@@ -455,8 +455,8 @@ jobs:
   be-tests-postgres-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: postgres
@@ -484,8 +484,8 @@ jobs:
   be-tests-postgres-latest-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: postgres
@@ -517,8 +517,8 @@ jobs:
   be-tests-presto-jdbc-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: presto-jdbc
@@ -563,14 +563,12 @@ jobs:
       with:
         junit-name: 'be-tests-presto-jdbc-ee'
         test-args: ":exclude-tags '[:mb/once]'"
-    - name: Capture max memory usage
-      run: cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes
 
   be-tests-redshift-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: redshift
@@ -589,8 +587,8 @@ jobs:
   be-tests-snowflake-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: snowflake
@@ -611,8 +609,8 @@ jobs:
   be-tests-sparksql-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: sparksql
@@ -632,8 +630,8 @@ jobs:
   be-tests-sqlite-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: sqlite
@@ -648,8 +646,8 @@ jobs:
   be-tests-sqlserver-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: sqlserver
@@ -676,8 +674,8 @@ jobs:
   be-tests-vertica-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     env:
       CI: 'true'
       DRIVERS: vertica

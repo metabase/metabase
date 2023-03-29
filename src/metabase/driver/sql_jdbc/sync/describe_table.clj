@@ -103,18 +103,21 @@
                   nil)
     (fn [^ResultSet rs]
       ;; https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getColumns(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String)
-      #(let [default (.getString rs "COLUMN_DEF")
-             no-default? (contains? #{nil "NULL" "null"} default)
-             nullable (.getInt rs "NULLABLE")
-             not-nullable? (= 0 nullable)
-             auto-increment (.getString rs "IS_AUTOINCREMENT")
+      #(let [default            (.getString rs "COLUMN_DEF")
+             no-default?        (contains? #{nil "NULL" "null"} default)
+             nullable           (.getInt rs "NULLABLE")
+             not-nullable?      (= 0 nullable)
+             ;; IS_AUTOINCREMENT could return nil
+             auto-increment     (.getString rs "IS_AUTOINCREMENT")
+             auto-increment?    (= "YES" auto-increment)
              no-auto-increment? (= "NO" auto-increment)
-             column-name (.getString rs "COLUMN_NAME")
-             required? (and no-default? not-nullable? no-auto-increment?)]
+             column-name        (.getString rs "COLUMN_NAME")
+             required?          (and no-default? not-nullable? no-auto-increment?)]
          (merge
-           {:name              column-name
-            :database-type     (.getString rs "TYPE_NAME")
-            :database-required required?}
+           {:name                      column-name
+            :database-type             (.getString rs "TYPE_NAME")
+            :database-is-auto-increment auto-increment?
+            :database-required         required?}
            (when-let [remarks (.getString rs "REMARKS")]
              (when-not (str/blank? remarks)
                {:field-comment remarks})))))))
@@ -156,15 +159,16 @@
   "Returns a transducer for computing metatdata about the fields in `table`."
   [driver table]
   (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
-                 (let [semantic-type (calculated-semantic-type driver column-name database-type)]
+                 (let [base-type (database-type->base-type-or-warn driver database-type)
+                       semantic-type (calculated-semantic-type driver column-name database-type)]
                    (merge
-                    (u/select-non-nil-keys col [:name :database-type :field-comment :database-required])
-                    {:base-type         (database-type->base-type-or-warn driver database-type)
+                    (u/select-non-nil-keys col [:name :database-type :field-comment :database-required :database-is-auto-increment])
+                    {:base-type         base-type
                      :database-position i}
                     (when semantic-type
                       {:semantic-type semantic-type})
                     (when (and
-                           (isa? semantic-type :type/SerializedJSON)
+                           (isa? base-type :type/JSON)
                            (driver/database-supports?
                             driver
                             :nested-field-columns
@@ -242,7 +246,7 @@
                                                 :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
 
 (defn describe-table-fks
-  "Default implementation of `driver/describe-table-fks` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
+  "Default implementation of [[metabase.driver/describe-table-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec-or-conn table & [db-name-or-nil]]
   (if (instance? Connection db-or-id-or-spec-or-conn)
     (describe-table-fks* driver db-or-id-or-spec-or-conn table db-name-or-nil)
@@ -400,7 +404,7 @@
   (with-open [conn (jdbc/get-connection spec)]
     (let [table-identifier-info [(:schema table) (:name table)]
           table-fields          (describe-table-fields driver conn table nil)
-          json-fields           (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)]
+          json-fields           (filter #(isa? (:base-type %) :type/JSON) table-fields)]
       (if (nil? (seq json-fields))
         #{}
         (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]

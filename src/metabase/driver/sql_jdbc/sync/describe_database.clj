@@ -17,7 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 
@@ -73,6 +73,7 @@
   [driver ^Connection conn [sql & params]]
   {:pre [(string? sql)]}
   (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)]
+    (log/tracef "[%s] %s" (name driver) sql)
     ;; attempting to execute the SQL statement will throw an Exception if we don't have permissions; otherwise it will
     ;; truthy wheter or not it returns a ResultSet, but we can ignore that since we have enough info to proceed at
     ;; this point.
@@ -92,8 +93,8 @@
       (execute-select-probe-query driver conn sql-args)
       (log/trace "SELECT privileges confirmed")
       true
-      (catch Throwable _
-        (log/trace "No SELECT privileges")
+      (catch Throwable e
+        (log/trace e "Assuming no SELECT privileges: caught exception")
         false))))
 
 (defn- db-tables
@@ -151,7 +152,7 @@
         db-or-id-or-spec
 
         (int? db-or-id-or-spec)
-        (db/select-one Database :id db-or-id-or-spec)
+        (t2/select-one Database :id db-or-id-or-spec)
 
         :else
         nil))

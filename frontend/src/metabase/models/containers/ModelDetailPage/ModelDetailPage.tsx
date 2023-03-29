@@ -101,6 +101,7 @@ function ModelDetailPage({
   const hasActions = actions.length > 0;
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const hasActionsTab = hasActions || hasActionsEnabled;
+  const canRunActions = hasActionsEnabled && hasDataPermissions;
 
   const mainTable = useMemo(
     () => (model.isStructured() ? model.query().sourceTable() : null),
@@ -185,6 +186,7 @@ function ModelDetailPage({
         mainTable={mainTable}
         tab={tab}
         hasDataPermissions={hasDataPermissions}
+        canRunActions={canRunActions}
         hasActionsTab={hasActionsTab}
         onChangeName={handleNameChange}
         onChangeDescription={handleDescriptionChange}
@@ -200,20 +202,13 @@ function getModelId(state: State, props: OwnProps) {
   return Urls.extractEntityId(props.params.slug);
 }
 
-function getModelDatabaseId(
-  state: State,
-  props: OwnProps & EntityLoadersProps,
-) {
-  return props.modelCard.dataset_query.database;
-}
-
 function getPageTitle({ modelCard }: Props) {
   return modelCard?.name;
 }
 
 export default _.compose(
   Questions.load({ id: getModelId, entityAlias: "modelCard" }),
-  Databases.load({ id: getModelDatabaseId, loadingAndErrorWrapper: false }),
+  Databases.loadList(),
   Actions.loadList({
     query: (state: State, props: OwnProps) => ({
       "model-id": getModelId(state, props),

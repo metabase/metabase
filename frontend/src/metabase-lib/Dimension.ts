@@ -336,27 +336,8 @@ export default class Dimension {
     return this.field().aggregationOperators();
   }
 
-  /**
-   * Valid filter operators on this dimension
-   */
-  aggregationOperator(
-    operatorName: string,
-  ): AggregationOperator | null | undefined {
-    return this.field().aggregationOperator(operatorName);
-  }
-
   defaultAggregationOperator(): AggregationOperator | null | undefined {
     return this.aggregationOperators()[0];
-  }
-
-  defaultAggregation() {
-    const aggregation = this.defaultAggregationOperator();
-
-    if (aggregation) {
-      return [aggregation.short, this.mbql()];
-    }
-
-    return null;
   }
 
   // BREAKOUTS
@@ -438,13 +419,6 @@ export default class Dimension {
    */
   isTemporalExtraction(): boolean {
     return this.temporalUnit() && /-of-/.test(this.temporalUnit());
-  }
-
-  /**
-   * Whether temporal bucketing is being applied, *and* the bucketing is an truncation operation such as "day of month";
-   */
-  isTemporalTruncation(): boolean {
-    return this.temporalUnit() && !this.isTemporalExtraction();
   }
 
   // binning-strategy stuff

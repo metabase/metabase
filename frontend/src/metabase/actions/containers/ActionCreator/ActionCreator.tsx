@@ -28,6 +28,7 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 
 import { isSavedAction } from "../../utils";
 import ActionContext, { useActionContext } from "./ActionContext";
+import { ACE_ELEMENT_ID } from "./ActionContext/QueryActionContextProvider";
 import ActionCreatorView from "./ActionCreatorView";
 import CreateActionForm, {
   FormValues as CreateActionFormValues,
@@ -95,7 +96,7 @@ function ActionCreator({
     renderEditorBody,
   } = useActionContext();
 
-  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isSaveModalShown, setShowSaveModal] = useState(false);
 
   const isEditable = isNew || model.canWriteActions();
 
@@ -131,9 +132,14 @@ function ActionCreator({
     }
   };
 
+  const showSaveModal = () => {
+    ensureAceEditorClosed();
+    setShowSaveModal(true);
+  };
+
   const handleClickSave = () => {
     if (isNew) {
-      setShowSaveModal(true);
+      showSaveModal();
     } else {
       handleUpdate();
       onClose?.();
@@ -158,7 +164,7 @@ function ActionCreator({
       >
         {renderEditorBody({ isEditable })}
       </ActionCreatorView>
-      {showSaveModal && (
+      {isSaveModalShown && (
         <Modal title={t`New Action`} onClose={handleCloseNewActionModal}>
           <CreateActionForm
             initialValues={{
@@ -173,6 +179,12 @@ function ActionCreator({
       )}
     </>
   );
+}
+
+function ensureAceEditorClosed() {
+  // @ts-expect-error — `ace` isn't typed yet
+  const editor = window.ace?.edit(ACE_ELEMENT_ID);
+  editor?.completer?.popup?.hide();
 }
 
 function ActionCreatorWithContext({

@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [clojure.string :as str]
    [metabase.db.query :as mdb.query]
+   [metabase.integrations.common :as integrations.common]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -10,7 +11,7 @@
    [metabase.models.permissions-group-membership
     :as perms-group-membership
     :refer [PermissionsGroupMembership]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.session :refer [Session]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
@@ -21,8 +22,8 @@
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as schema]
-   [toucan.db :as db]
-   [toucan.models :as models])
+   [toucan.models :as models]
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
@@ -73,19 +74,19 @@
     ;; add the newly created user to the magic perms groups
     (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
       (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
-      (db/insert! PermissionsGroupMembership
+      (t2/insert! PermissionsGroupMembership
         :user_id  user-id
         :group_id (:id (perms-group/all-users))))
     (when superuser?
       (log/info (trs "Adding User {0} to Admin permissions group..." user-id))
-      (db/insert! PermissionsGroupMembership
+      (t2/insert! PermissionsGroupMembership
         :user_id  user-id
         :group_id (:id (perms-group/admin))))))
 
 (defn- pre-update
   [{reset-token :reset_token, superuser? :is_superuser, active? :is_active, :keys [email id locale], :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
-  (let [in-admin-group?  (db/exists? PermissionsGroupMembership
+  (let [in-admin-group?  (t2/exists? PermissionsGroupMembership
                            :group_id (:id (perms-group/admin))
                            :user_id  id)]
     ;; Do not let the last admin archive themselves
@@ -96,14 +97,14 @@
       (cond
         (and superuser?
              (not in-admin-group?))
-        (db/insert! PermissionsGroupMembership
-          :group_id (u/the-id (perms-group/admin))
-          :user_id  id)
-        ;; don't use [[db/delete!]] here because that does the opposite and tries to update this user which leads to a
+        (t2/insert! PermissionsGroupMembership
+                    :group_id (u/the-id (perms-group/admin))
+                    :user_id  id)
+        ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
              in-admin-group?)
-        (db/simple-delete! PermissionsGroupMembership
+        (t2/delete! (t2/table-name PermissionsGroupMembership)
           :group_id (u/the-id (perms-group/admin))
           :user_id  id))))
   ;; make sure email and locale are valid if set
@@ -113,7 +114,7 @@
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
   (when (false? active?)
-    (db/delete! 'PulseChannelRecipient :user_id id))
+    (t2/delete! 'PulseChannelRecipient :user_id id))
   ;; If we're setting the reset_token then encrypt it before it goes into the DB
   (cond-> user
     true        (merge (hashed-password-values user))
@@ -164,7 +165,7 @@
   :types          (constantly {:login_attributes :json-no-keywordization
                                :settings         :encrypted-json})})
 
-(defmethod serdes.hash/identity-hash-fields User
+(defmethod serdes/hash-fields User
   [_user]
   [:email])
 
@@ -172,7 +173,7 @@
   "Fetch set of IDs of PermissionsGroup a User belongs to."
   [user-or-id]
   (when user-or-id
-    (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id))))
+    (t2/select-fn-set :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id))))
 
 (def UserGroupMembership
   "Group Membership info of a User.
@@ -190,7 +191,7 @@
     (let [selector (cond-> [PermissionsGroupMembership [:group_id :id]]
                      (premium-features/enable-advanced-permissions?)
                      (conj :is_group_manager))]
-      (db/select selector :user_id (u/the-id user-or-id)))))
+      (t2/select selector :user_id (u/the-id user-or-id)))))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -216,7 +217,7 @@
   In which `is_group_manager` is only added when `advanced-permissions` is enabled."
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (db/select [PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
+    (let [user-id->memberships (group-by :user_id (t2/select [PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
                                                              :user_id [:in (set (map u/the-id users))]))
           membership->group    (fn [membership]
                                  (select-keys membership
@@ -231,7 +232,7 @@
   TODO: deprecate :group_ids and use :user_group_memberships instead"
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (db/select [PermissionsGroupMembership :user_id :group_id]
+    (let [user-id->memberships (group-by :user_id (t2/select [PermissionsGroupMembership :user_id :group_id]
                                                     :user_id [:in (set (map u/the-id users))]))]
       (for [user users]
         (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))
@@ -243,7 +244,7 @@
   the wording for this user on a homepage banner that prompts them to add their database."
   [users]
   (when (seq users)
-    (let [user-count (db/count User)]
+    (let [user-count (t2/count User)]
       (for [user users]
         (assoc user :has_invited_second_user (and (= (:id user) 1)
                                                   (> user-count 1)))))))
@@ -310,7 +311,7 @@
 (schema/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
-  (db/insert! User (update new-user :password #(or % (str (UUID/randomUUID))))))
+  (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (UUID/randomUUID)))))))
 
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
@@ -331,8 +332,9 @@
   [new-user :- NewUser]
   (u/prog1 (insert-new-user! (assoc new-user :google_auth true))
     ;; send an email to everyone including the site admin if that's set
-    (classloader/require 'metabase.email.messages)
-    ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true)))
+    (when (integrations.common/send-new-sso-user-admin-email?)
+      (classloader/require 'metabase.email.messages)
+      ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
 
 (schema/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
@@ -353,21 +355,21 @@
   by [[pre-insert]] or [[pre-update]])"
   [user-id password]
   ;; when changing/resetting the password, kill any existing sessions
-  (db/simple-delete! Session :user_id user-id)
+  (t2/delete! (t2/table-name Session) :user_id user-id)
   ;; NOTE: any password change expires the password reset token
-  (db/update! User user-id
-    :password        password
-    :reset_token     nil
-    :reset_triggered nil))
+  (t2/update! User user-id
+              {:password        password
+               :reset_token     nil
+               :reset_triggered nil}))
 
 (defn set-password-reset-token!
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
   (u/prog1 (str user-id \_ (UUID/randomUUID))
-    (db/update! User user-id
-      :reset_token     <>
-      :reset_triggered (System/currentTimeMillis))))
+    (t2/update! User user-id
+                {:reset_token     <>
+                 :reset_triggered (System/currentTimeMillis)})))
 
 (defn form-password-reset-url
   "Generate a properly formed password reset url given a password reset token."
@@ -384,12 +386,12 @@
         new-group-ids      (set (map u/the-id new-groups-or-ids))
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
-      (db/transaction
+      (t2/with-transaction [_conn]
        (when (seq to-remove)
-         (db/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
+         (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
        ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,
        ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
        ;; do things like automatically set the `is_superuser` flag for a User
        (doseq [group-id to-add]
-         (db/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
+         (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))

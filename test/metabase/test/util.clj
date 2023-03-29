@@ -13,6 +13,7 @@
    [hawk.parallel]
    [java-time :as t]
    [metabase.db.query :as mdb.query]
+   [metabase.db.util :as mdb.u]
    [metabase.models
     :refer [Card
             Collection
@@ -55,10 +56,10 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log :as tu.log]
+   [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
@@ -78,28 +79,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(defn- random-uppercase-letter []
-  (char (+ (int \A) (rand-int 26))))
-
-(defn random-name
-  "Generate a random string of 20 uppercase letters."
-  []
-  (str/join (repeatedly 20 random-uppercase-letter)))
-
-(defn random-hash
-  "Generate a random hash of 44 characters to simulate a base64 encoded sha. Eg,
-  \"y6dkn65bbhRZkXj9Yyp0awCKi3iy/xeVIGa/eFfsszM=\""
-  []
-  (let [chars (concat (map char (range (int \a) (+ (int \a) 25)))
-                      (map char (range (int \A) (+ (int \A) 25)))
-                      (range 10)
-                      [\/ \+])]
-    (str (apply str (repeatedly 43 #(rand-nth chars))) "=")))
-
-(defn random-email
-  "Generate a random email address."
-  []
-  (str (u/lower-case-en (random-name)) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
   "Useful for unit test comparisons. Converts map keys found in `data` satisfying `pred` with booleans when not nil."
@@ -137,16 +116,16 @@
             :database_id            (data/id)
             :dataset_query          {}
             :display                :table
-            :name                   (random-name)
+            :name                   (tu.random/random-name)
             :visualization_settings {}})
 
    Collection
-   (fn [_] {:name  (random-name)
+   (fn [_] {:name  (tu.random/random-name)
             :color "#ABCDEF"})
 
    Dashboard
    (fn [_] {:creator_id (rasta-id)
-            :name       (random-name)})
+            :name       (tu.random/random-name)})
 
    DashboardCard
    (fn [_] {:row    0
@@ -161,16 +140,16 @@
    (fn [_] {:details   {}
             :engine    :h2
             :is_sample false
-            :name      (random-name)})
+            :name      (tu.random/random-name)})
 
    Dimension
-   (fn [_] {:name (random-name)
+   (fn [_] {:name (tu.random/random-name)
             :type "internal"})
 
    Field
    (fn [_] {:database_type "VARCHAR"
             :base_type     :type/Text
-            :name          (random-name)
+            :name          (tu.random/random-name)
             :position      1
             :table_id      (data/id :checkins)})
 
@@ -188,17 +167,17 @@
 
    NativeQuerySnippet
    (fn [_] {:creator_id (user-id :crowberto)
-            :name       (random-name)
+            :name       (tu.random/random-name)
             :content    "1 = 1"})
 
    PersistedInfo
-   (fn [_] {:question_slug (random-name)
-            :query_hash    (random-hash)
-            :definition    {:table-name (random-name)
+   (fn [_] {:question_slug (tu.random/random-name)
+            :query_hash    (tu.random/random-hash)
+            :definition    {:table-name (tu.random/random-name)
                             :field-definitions (repeatedly
                                                 4
-                                                #(do {:field-name (random-name) :base-type "type/Text"}))}
-            :table_name    (random-name)
+                                                #(do {:field-name (tu.random/random-name) :base-type "type/Text"}))}
+            :table_name    (tu.random/random-name)
             :active        true
             :state         "persisted"
             :refresh_begin (t/zoned-date-time)
@@ -206,11 +185,11 @@
             :creator_id    (rasta-id)})
 
    PermissionsGroup
-   (fn [_] {:name (random-name)})
+   (fn [_] {:name (tu.random/random-name)})
 
    Pulse
    (fn [_] {:creator_id (rasta-id)
-            :name       (random-name)})
+            :name       (tu.random/random-name)})
 
    PulseCard
    (fn [_] {:position    0
@@ -240,14 +219,14 @@
    Table
    (fn [_] {:db_id  (data/id)
             :active true
-            :name   (random-name)})
+            :name   (tu.random/random-name)})
 
    TaskHistory
    (fn [_]
      (let [started (t/zoned-date-time)
            ended   (t/plus started (t/millis 10))]
        {:db_id      (data/id)
-        :task       (random-name)
+        :task       (tu.random/random-name)
         :started_at started
         :ended_at   ended
         :duration   (.toMillis (t/duration started ended))}))
@@ -269,10 +248,10 @@
       :creator_id   (rasta-id)})
 
    User
-   (fn [_] {:first_name (random-name)
-            :last_name  (random-name)
-            :email      (random-email)
-            :password   (random-name)})})
+   (fn [_] {:first_name (tu.random/random-name)
+            :last_name  (tu.random/random-name)
+            :email      (tu.random/random-email)
+            :password   (tu.random/random-name)})})
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
@@ -378,15 +357,15 @@
 (defn- upsert-raw-setting!
   [original-value setting-k value]
   (if original-value
-    (db/update! Setting setting-k :value value)
-    (db/insert! Setting :key setting-k :value value))
+    (t2/update! Setting setting-k {:value value})
+    (t2/insert! Setting :key setting-k :value value))
   (setting.cache/restore-cache!))
 
 (defn- restore-raw-setting!
   [original-value setting-k]
   (if original-value
-    (db/update! Setting setting-k :value original-value)
-    (db/delete! Setting :key setting-k))
+    (t2/update! Setting setting-k {:value original-value})
+    (t2/delete! Setting :key setting-k))
   (setting.cache/restore-cache!))
 
 (defn do-with-temporary-setting-value
@@ -411,7 +390,7 @@
     (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
       (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
-                             (db/select-one-field :value Setting :key setting-k)
+                             (t2/select-one-fn :value Setting :key setting-k)
                              (#'setting/get setting-k))]
         (try
          (if raw-setting?
@@ -495,18 +474,17 @@
   (hawk.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
-  (let [model                    (db/resolve-model model)
+  (let [model                    (mdb.u/resolve-model model)
         [original-column->value] (mdb.query/query {:select (keys column->temp-value)
                                                    :from   [(t2/table-name model)]
                                                    :where  [:= :id (u/the-id object-or-id)]})]
     (assert original-column->value
             (format "%s %d not found." (name model) (u/the-id object-or-id)))
     (try
-      (db/update! model (u/the-id object-or-id)
-        column->temp-value)
+      (t2/update! model (u/the-id object-or-id) column->temp-value)
       (f)
       (finally
-        (db/execute!
+        (t2/query-one
          {:update (t2/table-name model)
           :set    original-column->value
           :where  [:= :id (u/the-id object-or-id)]})))))
@@ -643,7 +621,7 @@
   (hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
-                                     [model (:max-id (db/select-one [model [(keyword (str "%max." (name (models/primary-key model))))
+                                     [model (:max-id (t2/select-one [model [(keyword (str "%max." (name (mdb.u/primary-key model))))
                                                                             :max-id]]))]))]
     (try
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name models))) "\n")
@@ -653,9 +631,9 @@
                 ;; might not have an old max ID if this is the first time the macro is used in this test run.
                 :let  [old-max-id            (or (get model->old-max-id model)
                                                  0)
-                       max-id-condition      [:> (models/primary-key model) old-max-id]
+                       max-id-condition      [:> (mdb.u/primary-key model) old-max-id]
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
-          (db/execute!
+          (t2/query-one
            {:delete-from (t2/table-name model)
             :where       (if (seq additional-conditions)
                            [:and max-id-condition additional-conditions]
@@ -679,21 +657,21 @@
 (deftest with-model-cleanup-test
   (testing "Make sure the with-model-cleanup macro actually works as expected"
     (tt/with-temp Card [other-card]
-      (let [card-count-before (db/count Card)
-            card-name         (random-name)]
+      (let [card-count-before (t2/count Card)
+            card-name         (tu.random/random-name)]
         (with-model-cleanup [Card]
-          (db/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
+          (t2/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
           (testing "Card count should have increased by one"
             (is (= (inc card-count-before)
-                   (db/count Card))))
+                   (t2/count Card))))
           (testing "Card should exist"
-            (is (db/exists? Card :name card-name))))
+            (is (t2/exists? Card :name card-name))))
         (testing "Card should be deleted at end of with-model-cleanup form"
           (is (= card-count-before
-                 (db/count Card)))
-          (is (not (db/exists? Card :name card-name)))
+                 (t2/count Card)))
+          (is (not (t2/exists? Card :name card-name)))
           (testing "Shouldn't delete other Cards"
-            (is (pos? (db/count Card)))))))))
+            (is (pos? (t2/count Card)))))))))
 
 
 ;; TODO - not 100% sure I understand
@@ -750,13 +728,13 @@
   (initialize/initialize-if-needed! :db)
   (let [read-path                   (perms/collection-read-path collection-or-id)
         readwrite-path              (perms/collection-readwrite-path collection-or-id)
-        groups-with-read-perms      (db/select-field :group_id Permissions :object read-path)
-        groups-with-readwrite-perms (db/select-field :group_id Permissions :object readwrite-path)]
+        groups-with-read-perms      (t2/select-fn-set :group_id Permissions :object read-path)
+        groups-with-readwrite-perms (t2/select-fn-set :group_id Permissions :object readwrite-path)]
     (hawk.parallel/assert-test-is-not-parallel "with-discarded-collections-perms-changes")
     (try
       (f)
       (finally
-        (db/delete! Permissions :object [:in #{read-path readwrite-path}])
+        (t2/delete! Permissions :object [:in #{read-path readwrite-path}])
         (doseq [group-id groups-with-read-perms]
           (perms/grant-collection-read-permissions! group-id collection-or-id))
         (doseq [group-id groups-with-readwrite-perms]
@@ -773,7 +751,7 @@
     (do-with-discarded-collections-perms-changes
      collection
      (fn []
-       (db/delete! Permissions
+       (t2/delete! Permissions
          :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
          :group_id [:not= (u/the-id (perms-group/admin))])
        (f)))
@@ -783,8 +761,8 @@
     (finally
       (when (and (:metabase.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
-        (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/the-id (perms-group/admin))])]
-          (when-not (db/exists? Permissions :group_id group-id, :object "/collection/root/")
+        (doseq [group-id (t2/select-pks-set PermissionsGroup :id [:not= (u/the-id (perms-group/admin))])]
+          (when-not (t2/exists? Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
 (defmacro with-non-admin-groups-no-root-collection-perms
@@ -874,12 +852,12 @@
      ([] thunk)
      ([thunk] (thunk))
      ([thunk [original-column-id remap]]
-      (let [original       (db/select-one Field :id (u/the-id original-column-id))
+      (let [original       (t2/select-one Field :id (u/the-id original-column-id))
             describe-field (fn [{table-id :table_id, field-name :name}]
-                             (format "%s.%s" (db/select-one-field :name Table :id table-id) field-name))]
+                             (format "%s.%s" (t2/select-one-fn :name Table :id table-id) field-name))]
         (if (integer? remap)
           ;; remap is integer => fk remap
-          (let [remapped (db/select-one Field :id (u/the-id remap))]
+          (let [remapped (t2/select-one Field :id (u/the-id remap))]
             (fn []
               (tt/with-temp Dimension [_ {:field_id                (:id original)
                                           :name                    (format "%s [external remap]" (:display_name original))
@@ -893,7 +871,7 @@
                                      remap)
                              remap)]
             (fn []
-              (let [preexisting-id (db/select-one-id FieldValues
+              (let [preexisting-id (t2/select-one-pk FieldValues
                                                      :field_id (:id original)
                                                      :type :full)
                     testing-thunk (fn []
@@ -1005,7 +983,7 @@
   {:pre [(or (string? filename) (nil? filename))]}
   (let [filename (if (string? filename)
                    filename
-                   (random-name))
+                   (tu.random/random-name))
         filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") filename))]
     ;; delete file if it already exists
     (io/delete-file (io/file filename) :silently)

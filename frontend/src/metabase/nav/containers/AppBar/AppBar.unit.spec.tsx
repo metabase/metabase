@@ -1,6 +1,5 @@
 import React from "react";
 import { Route } from "react-router";
-import nock from "nock";
 import { screen } from "@testing-library/react";
 import { createMockCard } from "metabase-types/api/mocks";
 import { renderWithProviders } from "__support__/ui";
@@ -24,7 +23,6 @@ describe("AppBar", () => {
 
     afterEach(() => {
       jest.clearAllMocks();
-      nock.cleanAll();
       restoreMockEmbedding();
     });
 
@@ -143,8 +141,7 @@ describe("AppBar", () => {
 });
 
 function setup(embedOptions: Partial<EmbedOptions>) {
-  const scope = nock(location.origin);
-  setupCollectionsEndpoints(scope, []);
+  setupCollectionsEndpoints([]);
 
   renderWithProviders(<Route path="/question/:slug" component={AppBar} />, {
     withRouter: true,

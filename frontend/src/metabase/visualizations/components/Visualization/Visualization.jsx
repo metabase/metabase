@@ -25,7 +25,7 @@ import {
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { isSameSeries } from "metabase/visualizations/lib/utils";
+import { isSameSeries, getCardKey } from "metabase/visualizations/lib/utils";
 
 import { getMode } from "metabase/modes/lib/modes";
 import { getFont } from "metabase/styled-components/selectors";
@@ -381,7 +381,9 @@ class Visualization extends React.PureComponent {
               <ChartSettingsErrorButton
                 message={error}
                 buttonLabel={e.buttonText}
-                onClick={() => onOpenChartSettings(e.initial)}
+                onClick={() =>
+                  onOpenChartSettings({ initialChartSettings: e.initial })
+                }
               />
             );
           } else if (e instanceof MinRowsError) {
@@ -480,31 +482,36 @@ class Visualization extends React.PureComponent {
           ) : loading ? (
             <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
           ) : (
-            <CardVisualization
-              {...this.props}
-              // NOTE: CardVisualization class used to target ExplicitSize HOC
-              className="CardVisualization flex-full flex-basis-none"
-              isPlaceholder={isPlaceholder}
-              series={series}
-              settings={settings}
-              card={series[0].card} // convenience for single-series visualizations
-              data={series[0].data} // convenience for single-series visualizations
-              hovered={hovered}
-              clicked={clicked}
-              headerIcon={hasHeader ? null : headerIcon}
-              onHoverChange={this.handleHoverChange}
-              onVisualizationClick={this.handleVisualizationClick}
-              visualizationIsClickable={this.visualizationIsClickable}
-              onRenderError={this.onRenderError}
-              onRender={this.onRender}
-              onActionDismissal={this.hideActions}
-              gridSize={gridSize}
-              onChangeCardAndRun={
-                this.props.onChangeCardAndRun
-                  ? this.handleOnChangeCardAndRun
-                  : null
-              }
-            />
+            <div
+              data-card-key={getCardKey(series[0].card)}
+              className="flex flex-column flex-full"
+            >
+              <CardVisualization
+                {...this.props}
+                // NOTE: CardVisualization class used to target ExplicitSize HOC
+                className="CardVisualization flex-full flex-basis-none"
+                isPlaceholder={isPlaceholder}
+                series={series}
+                settings={settings}
+                card={series[0].card} // convenience for single-series visualizations
+                data={series[0].data} // convenience for single-series visualizations
+                hovered={hovered}
+                clicked={clicked}
+                headerIcon={hasHeader ? null : headerIcon}
+                onHoverChange={this.handleHoverChange}
+                onVisualizationClick={this.handleVisualizationClick}
+                visualizationIsClickable={this.visualizationIsClickable}
+                onRenderError={this.onRenderError}
+                onRender={this.onRender}
+                onActionDismissal={this.hideActions}
+                gridSize={gridSize}
+                onChangeCardAndRun={
+                  this.props.onChangeCardAndRun
+                    ? this.handleOnChangeCardAndRun
+                    : null
+                }
+              />
+            </div>
           )}
           <ChartTooltip series={series} hovered={hovered} settings={settings} />
           {this.props.onChangeCardAndRun && (

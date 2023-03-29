@@ -18,7 +18,7 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- optional [& args] (params/->Optional args))
 (defn- param [param-name] (params/->Param param-name))
@@ -87,7 +87,7 @@
   information about"
   []
   (params/map->FieldFilter
-   {:field (db/select-one Field :id (mt/id :checkins :date))
+   {:field (t2/select-one Field :id (mt/id :checkins :date))
     :value {:type  :date/single
             :value (t/offset-date-time "2019-09-20T19:52:00.000-07:00")}}))
 
@@ -265,7 +265,7 @@
           (testing operator
             (is (= expected
                    (-> (substitute query {"param" (params/map->FieldFilter
-                                                   {:field (db/select-one Field :id (mt/id :venues field))
+                                                   {:field (t2/select-one Field :id (mt/id :venues field))
                                                     :value {:type  operator
                                                             :value value}})})
                        vec
@@ -278,8 +278,11 @@
   (testing "Referenced card query substitution"
     (let [query ["SELECT * FROM " (param "#123")]]
       (is (= ["SELECT * FROM (SELECT 1 `x`)" []]
-             (substitute query {"#123" (params/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})}))))))
-
+             (substitute query {"#123" (params/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})})))))
+  (testing "Referenced card query substitution removes trailing semicolons and whitespace #28218"
+    (let [query ["SELECT * FROM " (param "#123")]]
+      (is (= ["SELECT * FROM (SELECT ';' `x`)" []]
+             (substitute query {"#123" (params/map->ReferencedCardQuery {:card-id 123, :query "SELECT ';' `x`; ; "})}))))))
 
 ;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
 

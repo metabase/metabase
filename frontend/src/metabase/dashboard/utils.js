@@ -6,7 +6,7 @@ import {
   isNumberParameter,
   isStringParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
-import { isNative } from "metabase-lib/queries/utils";
+import Question from "metabase-lib/Question";
 
 export function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters && before.embedding_params) {
@@ -67,7 +67,7 @@ export function isLinkDashCard(dashcard) {
 }
 
 export function isNativeDashCard(dashcard) {
-  return isNative(dashcard.card?.dataset_query);
+  return dashcard.card && new Question(dashcard.card).isNative();
 }
 
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the

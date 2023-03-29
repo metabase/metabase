@@ -1,8 +1,9 @@
 import { UserId } from "./user";
+import { CardDisplayType } from "./card";
 
 export type RegularCollectionId = number;
 
-export type CollectionId = RegularCollectionId | "root";
+export type CollectionId = RegularCollectionId | "root" | "personal";
 
 export type CollectionContentModel = "card" | "dataset";
 
@@ -56,6 +57,8 @@ export interface CollectionItem<T = CollectionItemModel> {
   collection_position?: number | null;
   collection_preview?: boolean | null;
   fully_parametrized?: boolean | null;
+  collection?: Collection;
+  display?: CardDisplayType;
   personal_owner_id?: UserId;
   getIcon: () => { name: string };
   getUrl: (opts?: Record<string, unknown>) => string;

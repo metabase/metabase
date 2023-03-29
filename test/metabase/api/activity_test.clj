@@ -15,7 +15,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -63,7 +64,7 @@
       (letfn [(fetch-activity [activity]
                 (merge
                  activity-defaults
-                 (db/select-one [Activity :id :user_id :details :model :model_id] :id (u/the-id activity))))]
+                 (t2/select-one [Activity :id :user_id :details :model :model_id] :id (u/the-id activity))))]
         (is (= [(merge
                  (fetch-activity activity2)
                  {:topic "dashboard-create"

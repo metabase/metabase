@@ -1,5 +1,3 @@
-import nock from "nock";
-
 import { screen, queryIcon } from "__support__/ui";
 
 import {
@@ -18,10 +16,6 @@ async function setup({
 }
 
 describe("ActionCreator > Implicit Actions", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("renders correctly", async () => {
     const { action } = await setup();
 
@@ -42,7 +36,7 @@ describe("ActionCreator > Implicit Actions", () => {
       }),
     });
 
-    expect(screen.getByText("FooBar")).toBeInTheDocument();
+    expect(screen.getAllByText("FooBar")).toHaveLength(2);
   });
 
   it("allows only form settings changes", async () => {

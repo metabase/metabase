@@ -158,3 +158,11 @@
 
         (is (= "map where {:ltf-key -> <Special Number that has to be less than four>}"
                (umd/describe special-lt-4-schema)))))))
+
+(deftest ->malli-io-link-test
+  (is (= nil
+         (#'mu/->malli-io-link nil nil)))
+  (is (= nil
+         (#'mu/->malli-io-link nil :string)))
+  (is (= "https://malli.io?schema=%3Astring%0A&value=nil%0A"
+         (#'mu/->malli-io-link :string nil))))

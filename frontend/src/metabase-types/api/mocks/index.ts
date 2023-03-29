@@ -16,4 +16,5 @@ export * from "./table";
 export * from "./timeline";
 export * from "./settings";
 export * from "./snippets";
+export * from "./store";
 export * from "./user";

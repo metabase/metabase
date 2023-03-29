@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useCallback } from "react";
+import React from "react";
 
 import { t } from "ttag";
 import cx from "classnames";
@@ -14,10 +14,7 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import QuestionEmbedWidget, {
   QuestionEmbedWidgetTrigger,
 } from "metabase/query_builder/containers/QuestionEmbedWidget";
-import {
-  getVisualizationRaw,
-  getIconForVisualizationType,
-} from "metabase/visualizations";
+import { getIconForVisualizationType } from "metabase/visualizations";
 import ViewButton from "./ViewButton";
 
 import QuestionAlertWidget from "./QuestionAlertWidget";
@@ -25,7 +22,7 @@ import QuestionTimelineWidget from "./QuestionTimelineWidget";
 
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionLastUpdated from "./QuestionLastUpdated";
-import { ViewFooterRoot } from "./ViewFooter.styled";
+import { ViewFooterRoot, FooterButtonGroup } from "./ViewFooter.styled";
 
 const ViewFooter = ({
   question,
@@ -51,16 +48,7 @@ const ViewFooter = ({
   isShowingTimelineSidebar,
   onOpenTimelines,
   onCloseTimelines,
-  updateQuestion,
 }) => {
-  const onQueryChange = useCallback(
-    query => {
-      const newQuestion = query.question();
-      updateQuestion(newQuestion, { run: true });
-    },
-    [updateQuestion],
-  );
-
   if (!result) {
     return null;
   }
@@ -77,30 +65,35 @@ const ViewFooter = ({
         className="flex-full"
         left={[
           !hideChartSettings && (
-            <VizTypeButton
-              key="viz-type"
-              question={question}
-              result={result}
-              active={isShowingChartTypeSidebar}
-              onClick={
-                isShowingChartTypeSidebar
-                  ? () => onCloseChartType()
-                  : () => onOpenChartType()
-              }
-            />
-          ),
-          !hideChartSettings && (
-            <VizSettingsButton
-              key="viz-settings"
-              ml={1}
-              mr={[3, 0]}
-              active={isShowingChartSettingsSidebar}
-              onClick={
-                isShowingChartSettingsSidebar
-                  ? () => onCloseChartSettings()
-                  : () => onOpenChartSettings()
-              }
-            />
+            <FooterButtonGroup>
+              <ViewButton
+                medium
+                labelBreakpoint="sm"
+                data-testid="viz-type-button"
+                active={isShowingChartTypeSidebar}
+                onClick={
+                  isShowingChartTypeSidebar
+                    ? () => onCloseChartType()
+                    : () => onOpenChartType()
+                }
+              >
+                {t`Visualization`}
+              </ViewButton>
+              <ViewButton
+                active={isShowingChartSettingsSidebar}
+                icon="gear"
+                iconSize={16}
+                medium
+                onlyIcon
+                labelBreakpoint="sm"
+                data-testid="viz-settings-button"
+                onClick={
+                  isShowingChartSettingsSidebar
+                    ? () => onCloseChartSettings()
+                    : () => onOpenChartSettings()
+                }
+              />
+            </FooterButtonGroup>
           ),
         ]}
         center={
@@ -121,16 +114,7 @@ const ViewFooter = ({
             question,
             result,
             isObjectDetail,
-          }) && (
-            <QuestionRowCount
-              key="row_count"
-              className="mx1"
-              question={question}
-              isResultDirty={isResultDirty}
-              result={result}
-              onQueryChange={onQueryChange}
-            />
-          ),
+          }) && <QuestionRowCount key="row_count" className="mx1" />,
           QuestionLastUpdated.shouldRender({ result }) && (
             <QuestionLastUpdated
               key="last-updated"
@@ -188,40 +172,6 @@ const ViewFooter = ({
     </ViewFooterRoot>
   );
 };
-
-const VizTypeButton = ({ question, result, ...props }) => {
-  // TODO: move this to QuestionResult or something
-  const { visualization } = getVisualizationRaw([
-    { card: question.card(), data: result.data },
-  ]);
-  const icon = visualization && visualization.iconName;
-
-  return (
-    <ViewButton
-      medium
-      p={[2, 1]}
-      icon={icon}
-      labelBreakpoint="sm"
-      data-testid="viz-type-button"
-      {...props}
-    >
-      {t`Visualization`}
-    </ViewButton>
-  );
-};
-
-const VizSettingsButton = ({ ...props }) => (
-  <ViewButton
-    medium
-    p={[2, 1]}
-    icon="gear"
-    labelBreakpoint="sm"
-    data-testid="viz-settings-button"
-    {...props}
-  >
-    {t`Settings`}
-  </ViewButton>
-);
 
 const Well = styled.div`
   display: flex;

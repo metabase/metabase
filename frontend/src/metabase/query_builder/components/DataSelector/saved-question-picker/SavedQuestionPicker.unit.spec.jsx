@@ -1,5 +1,5 @@
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import {
   renderWithProviders,
   screen,
@@ -22,49 +22,55 @@ const COLLECTIONS = {
     id: CURRENT_USER.personal_collection_id,
     name: "My personal collection",
     personal_owner_id: CURRENT_USER.id,
+    here: ["card"],
   }),
-  REGULAR: createMockCollection({ id: 1, name: "Regular collection" }),
+  REGULAR: createMockCollection({
+    id: 1,
+    name: "Regular collection",
+    here: ["card"],
+  }),
 };
 
 function mockCollectionTreeEndpoint() {
-  nock(location.origin)
-    .get("/api/collection/tree?tree=true")
-    .reply(200, Object.values(COLLECTIONS));
+  fetchMock.get(
+    { url: "path:/api/collection/tree", query: { tree: true } },
+    Object.values(COLLECTIONS),
+  );
 }
 
 function mockRootCollectionEndpoint(hasAccess) {
   if (hasAccess) {
-    nock(location.origin)
-      .get("/api/collection/root")
-      .reply(200, createMockCollection({ id: "root", name: "Our analytics" }));
+    fetchMock.get(
+      "path:/api/collection/root",
+      createMockCollection({ id: "root", name: "Our analytics" }),
+    );
   } else {
-    nock(location.origin)
-      .get("/api/collection/root")
-      .reply(200, "You don't have access to this collection");
+    fetchMock.get(
+      "path:/api/collection/root",
+      "You don't have access to this collection",
+    );
   }
 }
 
 function mockCollectionEndpoint(requestedCollectionName) {
   const encodedName = encodeURIComponent(requestedCollectionName);
-  nock(location.origin)
-    .get(`/api/database/-1337/schema/${encodedName}`)
-    .reply(200, [
-      createMockTable({
-        id: "card__1",
-        display_name: "B",
-        schema: requestedCollectionName,
-      }),
-      createMockTable({
-        id: "card__2",
-        display_name: "a",
-        schema: requestedCollectionName,
-      }),
-      createMockTable({
-        id: "card__3",
-        display_name: "A",
-        schema: requestedCollectionName,
-      }),
-    ]);
+  fetchMock.get(`path:/api/database/-1337/schema/${encodedName}`, [
+    createMockTable({
+      id: "card__1",
+      display_name: "B",
+      schema: requestedCollectionName,
+    }),
+    createMockTable({
+      id: "card__2",
+      display_name: "a",
+      schema: requestedCollectionName,
+    }),
+    createMockTable({
+      id: "card__3",
+      display_name: "A",
+      schema: requestedCollectionName,
+    }),
+  ]);
 }
 
 async function setup({
@@ -83,10 +89,6 @@ async function setup({
 describe("SavedQuestionPicker", () => {
   beforeEach(() => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
   });
 
   it("shows the current user personal collection on the top after the root", async () => {

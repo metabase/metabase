@@ -11,6 +11,7 @@ import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData
 import { getVisualizationRaw } from "metabase/visualizations";
 
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+import { SAVING_CHART_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
 import {
   getVirtualCardType,
@@ -196,17 +197,27 @@ function DashCardVisualization({
 
     return (
       <CardDownloadWidget
+        className={SAVING_CHART_IMAGE_HIDDEN_CLASS}
         classNameClose="hover-child hover-child--smooth"
         card={dashcard.card}
         result={mainSeries}
         params={parameterValuesBySlug}
         dashcardId={dashcard.id}
+        dashboardId={dashboard.id}
         token={isEmbed ? dashcard.dashboard_id : undefined}
         icon="ellipsis"
         iconSize={17}
       />
     );
-  }, [series, isEmbed, isPublic, isEditing, dashcard, parameterValuesBySlug]);
+  }, [
+    series,
+    isEmbed,
+    isPublic,
+    isEditing,
+    dashcard,
+    parameterValuesBySlug,
+    dashboard,
+  ]);
 
   return (
     <WrappedVisualization

@@ -16,6 +16,11 @@ export const StyledButton = styled(Button)<{
       : ""}
 `;
 
+export const FullContainer = styled.div`
+  width: 100%;
+  height: 100%;
+`;
+
 export const StyledButtonContent = styled.div`
   display: flex;
   align-items: center;

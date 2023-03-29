@@ -22,6 +22,7 @@
    :caveats            nil
    :points_of_interest nil
    :fk_target_field_id false
+   :database_is_auto_increment false
    :updated_at         true
    :active             true
    :nfc_path           nil
