@@ -204,6 +204,7 @@
              :base-type         :type/Integer
              :semantic-type     nil
              :database-position 0
+             :json-unfolding    false
              :database-required false
              :database-is-auto-increment false}
             {:name              "My Field"
@@ -212,5 +213,6 @@
              :semantic-type     :type/Price
              :id                1
              :database-position 0
+             :json-unfolding    false
              :database-required false
              :database-is-auto-increment false})))))
