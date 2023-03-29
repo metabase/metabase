@@ -117,6 +117,43 @@ describe("Collections BaseItemsTable", () => {
     expect(screen.queryByLabelText("Select all items")).not.toBeInTheDocument();
   });
 
+  describe("description", () => {
+    it("shows description on hover", () => {
+      const DESCRIPTION = "My collection";
+      const ITEM = getCollectionItem({ description: DESCRIPTION });
+
+      setup({ items: [ITEM] });
+
+      const icon = screen.getByRole("img", {
+        name: /info icon/i,
+      });
+      userEvent.hover(icon);
+
+      const tooltip = screen.getByRole("tooltip");
+
+      expect(tooltip).toBeInTheDocument();
+      expect(tooltip).toHaveTextContent(DESCRIPTION);
+    });
+
+    it("shows markdown in description on hover", () => {
+      const DESCRIPTION = "**important** text";
+      const ITEM = getCollectionItem({ description: DESCRIPTION });
+
+      setup({ items: [ITEM] });
+
+      const icon = screen.getByRole("img", {
+        name: /info icon/i,
+      });
+      userEvent.hover(icon);
+
+      const tooltip = screen.getByRole("tooltip");
+
+      expect(tooltip).toBeInTheDocument();
+      expect(tooltip).toHaveTextContent("important text");
+      expect(tooltip).not.toHaveTextContent(DESCRIPTION);
+    });
+  });
+
   describe("models", () => {
     const model = getCollectionItem({
       id: 1,
