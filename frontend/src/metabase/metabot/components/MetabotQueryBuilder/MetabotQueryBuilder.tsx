@@ -1,78 +1,60 @@
 import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { Dataset } from "metabase-types/api";
 import { MetabotQueryStatus, State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
-import {
-  getQueryError,
-  getQueryResults,
-  getQueryStatus,
-  getQuestion,
-} from "../../selectors";
+import { getQueryResults, getQueryStatus } from "../../selectors";
+import MetabotFeedbackForm from "../MetabotFeedbackForm";
 import MetabotQueryEditor from "../MetabotQueryEditor";
 import MetabotVisualization from "../MetabotVisualization";
 import {
-  EmptyStateIcon,
-  EmptyStateRoot,
-  ErrorStateMessage,
-  ErrorStateRoot,
-  LoadingState,
-  QueryStateRoot,
+  IdleStateIcon,
+  IdleStateRoot,
+  QueryBuilderRoot,
+  RunningStateRoot,
 } from "./MetabotQueryBuilder.styled";
 
 interface StateProps {
-  question: Question | null;
   queryStatus: MetabotQueryStatus;
   queryResults: [Dataset] | null;
-  queryError: unknown;
 }
 
 type MetabotQueryBuilderProps = StateProps;
 
 const mapStateToProps = (state: State): StateProps => ({
-  question: getQuestion(state),
   queryStatus: getQueryStatus(state),
   queryResults: getQueryResults(state),
-  queryError: getQueryError(state),
 });
 
 const MetabotQueryBuilder = ({
-  question,
   queryStatus,
   queryResults,
-  queryError,
 }: MetabotQueryBuilderProps) => {
-  if (queryStatus === "running") {
-    return <LoadingState loadingMessage={t`Doing science...`} />;
-  }
-
-  if (queryError) {
-    return (
-      <ErrorStateRoot>
-        <ErrorStateMessage
-          message={getResponseErrorMessage(queryError)}
-          icon="warning"
-        />
-      </ErrorStateRoot>
-    );
-  }
-
-  if (!question || !queryResults) {
-    return (
-      <EmptyStateRoot>
-        <EmptyStateIcon name="insight" />
-      </EmptyStateRoot>
-    );
-  }
+  const isIdle = queryStatus === "idle";
+  const isRunning = queryStatus === "running";
+  const hasResults = queryResults != null;
 
   return (
-    <QueryStateRoot>
-      <MetabotQueryEditor />
-      <MetabotVisualization />
-    </QueryStateRoot>
+    <QueryBuilderRoot>
+      {isIdle && <IdleState />}
+      {hasResults && <MetabotQueryEditor />}
+      {hasResults && !isRunning && <MetabotVisualization />}
+      {isRunning && <RunningState />}
+      {hasResults && <MetabotFeedbackForm />}
+    </QueryBuilderRoot>
   );
+};
+
+const IdleState = () => {
+  return (
+    <IdleStateRoot>
+      <IdleStateIcon name="insight" />
+    </IdleStateRoot>
+  );
+};
+
+const RunningState = () => {
+  return <RunningStateRoot loadingMessage={t`Doing science`} />;
 };
 
 export default connect(mapStateToProps)(MetabotQueryBuilder);

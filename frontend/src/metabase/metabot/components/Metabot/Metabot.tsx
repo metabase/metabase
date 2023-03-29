@@ -1,23 +1,11 @@
 import React, { useEffect } from "react";
 import { connect } from "react-redux";
-import { MetabotFeedbackType } from "metabase-types/api";
-import {
-  MetabotEntityId,
-  MetabotEntityType,
-  MetabotQueryStatus,
-  State,
-} from "metabase-types/store";
+import { MetabotEntityId, MetabotEntityType } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
 import { init, InitPayload, reset } from "../../actions";
-import {
-  getFeedbackType,
-  getQueryStatus,
-  hasQueryResults,
-} from "../../selectors";
 import MetabotHeader from "../MetabotHeader";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
-import MetabotFeedbackForm from "../MetabotFeedbackForm";
 import { MetabotRoot } from "./Metabot.styled";
 
 interface OwnProps {
@@ -29,24 +17,12 @@ interface OwnProps {
   databases?: Database[];
 }
 
-interface StateProps {
-  queryStatus: MetabotQueryStatus;
-  feedbackType: MetabotFeedbackType | null;
-  hasQueryResults: boolean;
-}
-
 interface DispatchProps {
   onInit: (payload: InitPayload) => void;
   onReset: () => void;
 }
 
-type MetabotProps = OwnProps & StateProps & DispatchProps;
-
-const mapStateToProps = (state: State): StateProps => ({
-  queryStatus: getQueryStatus(state),
-  feedbackType: getFeedbackType(state),
-  hasQueryResults: hasQueryResults(state),
-});
+type MetabotProps = OwnProps & DispatchProps;
 
 const mapDispatchToProps: DispatchProps = {
   onInit: init,
@@ -60,9 +36,6 @@ const Metabot = ({
   model,
   database,
   databases,
-  queryStatus,
-  feedbackType,
-  hasQueryResults,
   onInit,
   onReset,
 }: MetabotProps) => {
@@ -71,16 +44,12 @@ const Metabot = ({
     return () => onReset();
   }, [entityId, entityType, initialPrompt, onInit, onReset]);
 
-  const isCompleted = queryStatus === "complete";
-  const hasFeedbackForm = isCompleted && hasQueryResults;
-
   return (
     <MetabotRoot>
       <MetabotHeader model={model} database={database} databases={databases} />
       <MetabotQueryBuilder />
-      {hasFeedbackForm && <MetabotFeedbackForm />}
     </MetabotRoot>
   );
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(Metabot);
+export default connect(null, mapDispatchToProps)(Metabot);
