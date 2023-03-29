@@ -31,6 +31,30 @@
     (is (= "Input:  []\n  Return: [:map [:x int?] [:y int?]]" (:doc (meta #'baz))))
     (ns-unmap *ns* 'baz)))
 
+(deftest mu-defn-instrumentation-independence
+  (mu/defn quux :- :string [x] x)
+
+  (testing "calling malli.dev/start! after mu/defn"
+    (malli.dev/start!)
+    (is (= "abc" (quux "abc")))
+    (is (= ["should be a string, received: 1"]
+           (try (quux 1) (catch Exception e (:humanized (ex-data e)))))))
+
+  (testing "calling malli.dev/stop! after mu/defn"
+    (malli.dev/stop!)
+    (is (= "abc" (quux "abc")))
+    (is (= ["should be a string, received: 1"]
+           (try (quux 1) (catch Exception e (:humanized (ex-data e)))))))
+
+  (testing "stop+start malli.dev mode after mu/defn"
+    (malli.dev/start!)
+    (malli.dev/stop!)
+    (is (= "abc" (quux "abc")))
+    (is (= ["should be a string, received: 1"]
+           (try (quux 1) (catch Exception e (:humanized (ex-data e)))))))
+
+  (ns-unmap *ns* 'quux))
+
 (deftest mu-defn-docstrings
   (testing "docstrings are preserved"
     (mu/defn ^:private boo :- :int "something very important to remember goes here" [_x])
