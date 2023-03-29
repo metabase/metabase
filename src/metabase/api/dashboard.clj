@@ -344,11 +344,10 @@
                               (when is_deep_copy
                                 (duplicate-cards existing-dashboard collection_id))]
                           (reset! new-cards (vals id->new-card))
-                          (doseq [card (update-cards-for-copy from-dashboard-id
-                                                              (:ordered_cards existing-dashboard)
-                                                              is_deep_copy
-                                                              id->new-card)]
-                            (api/check-500 (dashboard/add-dashcard! dash (:card_id card) card)))
+                          (api/check-500 (dashboard/add-dashcards! dash (update-cards-for-copy from-dashboard-id
+                                                                         (:ordered_cards existing-dashboard)
+                                                                         is_deep_copy
+                                                                         id->new-card)))
                           (cond-> dash
                             (seq uncopied)
                             (assoc :uncopied uncopied))))]
@@ -482,7 +481,7 @@
                                :actual-permissions @api/*current-user-permissions-set*})))))))))
 
 (api/defendpoint POST "/:id/cards"
-  "Add a `Card` or `Action` to a Dashboard."
+  "Add `Cards` or `Actions` to a Dashboard."
   [id :as {{:keys [cards]} :body}]
   {id    ms/PositiveInt
    cards [:sequential
@@ -583,7 +582,7 @@
     {:status :ok}))
 
 (api/defendpoint DELETE "/:id/cards"
-  "Remove a `DashboardCard` from a Dashboard."
+  "Remove `DashboardCards` from a Dashboard."
   [id dashcard_ids]
   {id pos-int?}
   (let [dashcard-ids (json/parse-string dashcard_ids)]

@@ -266,23 +266,6 @@
                 "Newly Added:" newly-added-param-field-ids)
       (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids))))
 
-(defn add-dashcard!
-  "Add a Card to a Dashboard.
-   This function is provided for convenience and also makes sure various cleanup steps are performed when finished,
-   for example updating FieldValues for On-Demand DBs.
-   Returns newly created DashboardCard."
-  {:style/indent 2}
-  [dashboard-or-id card-or-id-or-nil & [dashcard-options]]
-  (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
-        dashboard-card      (-> (assoc dashcard-options
-                                  :dashboard_id (u/the-id dashboard-or-id)
-                                  :card_id      (when card-or-id-or-nil (u/the-id card-or-id-or-nil)))
-                                ;; if :series info gets passed in make sure we pass it along as a sequence of IDs
-                                (update :series #(filter identity (map u/the-id %))))]
-    (u/prog1 (dashboard-card/create-dashboard-card! dashboard-card)
-      (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
-        (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
-
 (defn add-dashcards!
   "Add Cards to a Dashboard.
    This function is provided for convenience and also makes sure various cleanup steps are performed when finished,
@@ -294,7 +277,8 @@
         dashboard-cards     (map (fn [dashcard]
                                    (-> (assoc dashcard :dashboard_id (u/the-id dashboard-or-id))
                                        (update :series #(filter identity (map u/the-id %))))) dashcards)]
-    (u/prog1 (map dashboard-card/create-dashboard-card! dashboard-cards)
+    ;; TODO bulk create dashboard-cards too
+    (u/prog1 (doall (map dashboard-card/create-dashboard-card! dashboard-cards))
       (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
         (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
@@ -324,8 +308,6 @@
         (dashboard-card/update-dashboard-card! dashboard-card old-dashcard)))
     (let [new-param-field-ids (params/dashcards->param-field-ids (t2/hydrate new-dashcards :card))]
       (update-field-values-for-on-demand-dbs! (params/dashcards->param-field-ids old-dashcards) new-param-field-ids))))
-
-
 
 ;; TODO - we need to actually make this async, but then we'd need to make `save-card!` async, and so forth
 (defn- result-metadata-for-query
@@ -391,19 +373,21 @@
                                                                  applied-filters-blurb)
                                        :collection_id       (:id collection)
                                        :collection_position 1))))]
-    (doseq [dashcard dashcards]
-      (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
-            series   (some->> dashcard :series (map (fn [card]
-                                                      (-> card
-                                                          (assoc :collection_id (:id collection))
-                                                          save-card!))))
-            dashcard (-> dashcard
-                         (dissoc :card :id :card_id)
-                         (update :parameter_mappings
-                                 (partial map #(assoc % :card_id (:id card))))
-                         (assoc :series series))]
-        (add-dashcard! dashboard card dashcard)))
-    dashboard))
+    (add-dashcards! dashboard
+                    (for [dashcard dashcards]
+                      (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
+                            series   (some->> dashcard :series (map (fn [card]
+                                                                      (-> card
+                                                                          (assoc :collection_id (:id collection))
+                                                                          save-card!))))
+                            dashcard (-> dashcard
+                                         (dissoc :card :id)
+                                         (update :parameter_mappings
+                                                 (partial map #(assoc % :card_id (:id card))))
+                                         (assoc :series series)
+                                         (assoc :card_id (:id card)))]
+                        dashcard)))
+   dashboard))
 
 (def ^:private ParamWithMapping
   {:name     su/NonBlankString
