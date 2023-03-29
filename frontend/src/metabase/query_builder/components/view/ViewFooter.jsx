@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useCallback } from "react";
+import React from "react";
 
 import { t } from "ttag";
 import cx from "classnames";
@@ -48,16 +48,7 @@ const ViewFooter = ({
   isShowingTimelineSidebar,
   onOpenTimelines,
   onCloseTimelines,
-  updateQuestion,
 }) => {
-  const onQueryChange = useCallback(
-    query => {
-      const newQuestion = query.question();
-      updateQuestion(newQuestion, { run: true });
-    },
-    [updateQuestion],
-  );
-
   if (!result) {
     return null;
   }
@@ -123,16 +114,7 @@ const ViewFooter = ({
             question,
             result,
             isObjectDetail,
-          }) && (
-            <QuestionRowCount
-              key="row_count"
-              className="mx1"
-              question={question}
-              isResultDirty={isResultDirty}
-              result={result}
-              onQueryChange={onQueryChange}
-            />
-          ),
+          }) && <QuestionRowCount key="row_count" className="mx1" />,
           QuestionLastUpdated.shouldRender({ result }) && (
             <QuestionLastUpdated
               key="last-updated"

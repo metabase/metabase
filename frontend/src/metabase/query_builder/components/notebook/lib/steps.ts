@@ -96,7 +96,7 @@ const STEPS: NotebookStepDef[] = [
       (!query.sourceQuery() || query.hasAnyClauses()),
     active: query => query.hasLimit(),
     revert: query => query.clearLimit(),
-    clean: query => query.cleanLimit(),
+    clean: query => query,
   },
 ];
 
