@@ -1,123 +1,167 @@
-/* eslint-disable react/prop-types */
-import React from "react";
-import PropTypes from "prop-types";
-
+import React, { RefObject } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import AceEditor from "react-ace";
-
+import AceEditor, { ICommand, IMarker } from "react-ace";
 import * as ace from "ace-builds/src-noconflict/ace";
+import { Ace } from "ace-builds";
 import ExplicitSize from "metabase/components/ExplicitSize";
+import type { Expression } from "metabase-types/types/Query";
 import { format } from "metabase-lib/expressions/format";
 import { processSource } from "metabase-lib/expressions/process";
 import { diagnose } from "metabase-lib/expressions/diagnostics";
 import { tokenize } from "metabase-lib/expressions/tokenizer";
-
 import { isExpression } from "metabase-lib/expressions";
-import HelpText from "../ExpressionEditorHelpText";
+import type { HelpText } from "metabase-lib/expressions/types";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
+import ExpressionEditorHelpText from "../ExpressionEditorHelpText";
 import ExpressionEditorSuggestions from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
-import { suggest } from "./suggest";
-
+import { suggest, Suggestion } from "./suggest";
 import {
   EditorContainer,
   EditorEqualsSign,
+  ErrorMessageContainer,
 } from "./ExpressionEditorTextfield.styled";
 
 ace.config.set("basePath", "/assets/ui/");
 
-const ErrorMessage = ({ error }) => {
-  return (
-    <div>
-      {error && (
-        <div className="text-error mt1 mb1" style={{ whiteSpace: "pre-wrap" }}>
-          {error.message}
-        </div>
-      )}
-    </div>
-  );
+type ErrorWithMessage = { message: string; pos?: number; len?: number };
+
+const ACE_OPTIONS = {
+  behavioursEnabled: false,
+  indentedSoftWrap: false,
+  minLines: 1,
+  maxLines: 9,
+  showLineNumbers: false,
+  showGutter: false,
+  showFoldWidgets: false,
+  showPrintMargin: false,
 };
 
-class ExpressionEditorTextfield extends React.Component {
-  constructor() {
-    super();
-    this.input = React.createRef();
-    this.suggestionTarget = React.createRef();
-  }
+interface ExpressionEditorTextfieldProps {
+  expression: Expression | undefined;
+  name: string;
+  query: StructuredQuery;
+  startRule?: string;
+  width?: number;
+  reportTimezone?: string;
 
-  static propTypes = {
-    expression: PropTypes.oneOfType([
-      PropTypes.number,
-      PropTypes.number,
-      PropTypes.array,
-    ]),
-    name: PropTypes.string,
-    onChange: PropTypes.func.isRequired,
-    onError: PropTypes.func.isRequired,
-    startRule: PropTypes.string.isRequired,
-    onBlankChange: PropTypes.func,
-    helpTextTarget: PropTypes.instanceOf(Element),
+  onChange: (expression: Expression | null) => void;
+  onError: (error: ErrorWithMessage | null) => void;
+  onBlankChange: (isBlank: boolean) => void;
+  onCommit: (expression: Expression | null) => void;
+  helpTextTarget: RefObject<HTMLElement>;
+}
+
+interface ExpressionEditorTextfieldState {
+  source: string;
+  expression: Expression;
+  suggestions: Suggestion[];
+  highlightedSuggestionIndex: number;
+  isFocused: boolean;
+  errorMessage: ErrorWithMessage | null;
+  helpText: HelpText | null;
+  hasChanges: boolean;
+}
+
+function transformPropsToState(
+  props: ExpressionEditorTextfieldProps,
+): ExpressionEditorTextfieldState {
+  const {
+    expression = ExpressionEditorTextfield.defaultProps.expression,
+    query,
+    startRule = ExpressionEditorTextfield.defaultProps.startRule,
+  } = props;
+  const source = format(expression, { query, startRule });
+
+  return {
+    source,
+    expression,
+    highlightedSuggestionIndex: 0,
+    helpText: null,
+    suggestions: [],
+    isFocused: false,
+    errorMessage: null,
+    hasChanges: false,
   };
+}
+
+class ExpressionEditorTextfield extends React.Component<
+  ExpressionEditorTextfieldProps,
+  ExpressionEditorTextfieldState
+> {
+  input = React.createRef<AceEditor>();
+  suggestionTarget = React.createRef<HTMLDivElement>();
 
   static defaultProps = {
-    expression: [null, ""],
+    expression: "",
     startRule: "expression",
-    placeholder: "write some math!",
   };
 
-  state = null;
+  state: ExpressionEditorTextfieldState;
+
+  constructor(props: ExpressionEditorTextfieldProps) {
+    super(props);
+
+    this.state = transformPropsToState(props);
+  }
 
   UNSAFE_componentWillMount() {
     this.UNSAFE_componentWillReceiveProps(this.props);
   }
 
-  UNSAFE_componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(
+    newProps: Readonly<ExpressionEditorTextfieldProps>,
+  ) {
     // we only refresh our state if we had no previous state OR if our expression changed
     const { expression, query, startRule } = newProps;
     if (!this.state || !_.isEqual(this.props.expression, expression)) {
       const source = format(expression, { query, startRule });
-      const currentSource = this.state?.source;
-      this.setState({ source, expression });
-      this.clearSuggestions();
+      const currentSource = this.state.source;
+      this.setState(transformPropsToState(newProps));
 
       // Reset caret position due to reformatting
       if (currentSource !== source && this.input.current) {
         const { editor } = this.input.current;
-        setTimeout(() => editor.gotoLine(1, source.length), 0);
+        setTimeout(() => editor.gotoLine(1, source.length, false), 0);
       }
     }
   }
 
   componentDidMount() {
-    const { editor } = this.input.current;
-    editor.getSession().setMode(new ExpressionMode());
+    if (this.input.current) {
+      const { editor } = this.input.current;
+      // "ExpressionMode" constructor is not typed, so cast it here explicitly
+      const mode = new ExpressionMode() as unknown as Ace.SyntaxMode;
 
-    editor.setOptions({
-      fontFamily: "Monaco, monospace",
-      fontSize: "12px",
-    });
+      editor.getSession().setMode(mode);
 
-    const passKeysToBrowser = editor.commands.byName.passKeysToBrowser;
-    editor.commands.bindKey("Tab", passKeysToBrowser);
-    editor.commands.bindKey("Shift-Tab", passKeysToBrowser);
-    editor.commands.removeCommand(editor.commands.byName.indent);
-    editor.commands.removeCommand(editor.commands.byName.outdent);
+      editor.setOptions({
+        fontFamily: "Monaco, monospace",
+        fontSize: "12px",
+      });
 
-    this.setCaretPosition(
-      this.state.source.length,
-      this.state.source.length === 0,
-    );
+      const passKeysToBrowser = editor.commands.byName.passKeysToBrowser;
+      editor.commands.bindKey("Tab", passKeysToBrowser);
+      editor.commands.bindKey("Shift-Tab", passKeysToBrowser);
+      editor.commands.removeCommand(editor.commands.byName.indent);
+      editor.commands.removeCommand(editor.commands.byName.outdent);
 
-    this.triggerAutosuggest();
+      if (this.state.source.length === 0) {
+        setTimeout(() => this.triggerAutosuggest());
+      }
+
+      this.triggerAutosuggest();
+    }
   }
 
-  onSuggestionSelected = index => {
+  onSuggestionSelected = (index: number) => {
     const { source, suggestions } = this.state;
     const suggestion = suggestions && suggestions[index];
 
-    const { editor } = this.input.current;
-
-    if (suggestion) {
+    if (this.input.current && suggestion) {
+      const { editor } = this.input.current;
       const { tokens } = tokenize(source);
       const token = tokens.find(t => t.end >= suggestion.index);
 
@@ -161,7 +205,7 @@ class ExpressionEditorTextfield extends React.Component {
           suggestions.length,
       });
     } else {
-      this.input.current.editor.navigateLineEnd();
+      this.input.current?.editor.navigateLineEnd();
     }
   };
 
@@ -175,7 +219,7 @@ class ExpressionEditorTextfield extends React.Component {
           suggestions.length,
       });
     } else {
-      this.input.current.editor.navigateLineEnd();
+      this.input.current?.editor.navigateLineEnd();
     }
   };
 
@@ -211,7 +255,7 @@ class ExpressionEditorTextfield extends React.Component {
     }
   };
 
-  handleInputBlur = e => {
+  handleInputBlur = (e: React.FocusEvent) => {
     this.setState({ isFocused: false });
 
     // Switching to another window also triggers the blur event.
@@ -251,7 +295,7 @@ class ExpressionEditorTextfield extends React.Component {
     this.updateSuggestions([]);
   }
 
-  updateSuggestions(suggestions = []) {
+  updateSuggestions(suggestions: Suggestion[] | undefined = []) {
     this.setState({ suggestions });
 
     // Correctly bind Tab depending on whether suggestions are available or not
@@ -283,9 +327,13 @@ class ExpressionEditorTextfield extends React.Component {
     return expression;
   }
 
-  diagnoseExpression() {
+  diagnoseExpression(): ErrorWithMessage | null {
     const { source } = this.state;
-    const { query, startRule, name } = this.props;
+    const {
+      query,
+      startRule = ExpressionEditorTextfield.defaultProps.startRule,
+      name,
+    } = this.props;
     if (!source || source.length === 0) {
       return { message: t`Empty expression` };
     }
@@ -293,9 +341,16 @@ class ExpressionEditorTextfield extends React.Component {
   }
 
   commitExpression() {
-    const { query, startRule } = this.props;
+    const {
+      query,
+      startRule = ExpressionEditorTextfield.defaultProps.startRule,
+    } = this.props;
     const { source } = this.state;
-    const errorMessage = diagnose(source, startRule, query);
+    const errorMessage = diagnose(
+      source,
+      startRule,
+      query,
+    ) as ErrorWithMessage | null;
     this.setState({ errorMessage });
 
     if (errorMessage) {
@@ -313,24 +368,25 @@ class ExpressionEditorTextfield extends React.Component {
     this.handleExpressionChange(this.state.source);
   };
 
-  setCaretPosition = (position, autosuggest) => {
-    // FIXME setCaretPosition(this.input.current, position);
-    if (autosuggest) {
-      setTimeout(() => this.triggerAutosuggest());
+  handleExpressionChange(source: string) {
+    if (source) {
+      this.setState({ hasChanges: true });
     }
-  };
 
-  handleExpressionChange(source) {
     this.setState({ source, errorMessage: null });
     if (this.props.onBlankChange) {
       this.props.onBlankChange(source.length === 0);
     }
   }
 
-  handleCursorChange(selection) {
+  handleCursorChange(selection: Ace.Selection) {
     const cursor = selection.getCursor();
 
-    const { query, reportTimezone, startRule } = this.props;
+    const {
+      query,
+      reportTimezone,
+      startRule = ExpressionEditorTextfield.defaultProps.startRule,
+    } = this.props;
     const { source } = this.state;
     const { suggestions, helpText } = suggest({
       query,
@@ -340,15 +396,15 @@ class ExpressionEditorTextfield extends React.Component {
       targetOffset: cursor.column,
     });
 
-    this.setState({ helpText });
+    this.setState({ helpText: helpText || null });
     this.updateSuggestions(suggestions);
   }
 
-  errorAsMarkers(errorMessage = null) {
+  errorAsMarkers(errorMessage: ErrorWithMessage | null = null): IMarker[] {
     if (errorMessage) {
       const { pos, len } = errorMessage;
       // Because not every error message offers location info (yet)
-      if (typeof pos === "number") {
+      if (typeof pos === "number" && typeof len === "number") {
         return [
           {
             startRow: 0,
@@ -364,7 +420,7 @@ class ExpressionEditorTextfield extends React.Component {
     return [];
   }
 
-  commands = [
+  commands: ICommand[] = [
     {
       name: "arrowDown",
       bindKey: { win: "Down", mac: "Down" },
@@ -388,6 +444,8 @@ class ExpressionEditorTextfield extends React.Component {
     },
     {
       name: "chooseSuggestion",
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore // Based on typings null is not a valid value, but bindKey is assigned dynamically if there are suggestions available.
       bindKey: null,
       exec: () => {
         this.chooseSuggestion();
@@ -403,7 +461,8 @@ class ExpressionEditorTextfield extends React.Component {
   ];
 
   render() {
-    const { source, suggestions, errorMessage, isFocused } = this.state;
+    const { source, suggestions, errorMessage, hasChanges, isFocused } =
+      this.state;
 
     return (
       <React.Fragment>
@@ -425,17 +484,7 @@ class ExpressionEditorTextfield extends React.Component {
             fontSize={12}
             onBlur={this.handleInputBlur}
             onFocus={this.handleFocus}
-            role="ace-editor"
-            setOptions={{
-              behavioursEnabled: false,
-              indentedSoftWrap: false,
-              minLines: 1,
-              maxLines: 9,
-              showLineNumbers: false,
-              showGutter: false,
-              showFoldWidgets: false,
-              showPrintMargin: false,
-            }}
+            setOptions={ACE_OPTIONS}
             onChange={source => this.handleExpressionChange(source)}
             onCursorChange={selection => this.handleCursorChange(selection)}
             width="100%"
@@ -447,8 +496,10 @@ class ExpressionEditorTextfield extends React.Component {
             highlightedIndex={this.state.highlightedSuggestionIndex}
           />
         </EditorContainer>
-        <ErrorMessage error={errorMessage} />
-        <HelpText
+        {errorMessage && hasChanges && (
+          <ErrorMessageContainer>{errorMessage.message}</ErrorMessageContainer>
+        )}
+        <ExpressionEditorHelpText
           target={this.props.helpTextTarget}
           helpText={this.state.helpText}
           width={this.props.width}

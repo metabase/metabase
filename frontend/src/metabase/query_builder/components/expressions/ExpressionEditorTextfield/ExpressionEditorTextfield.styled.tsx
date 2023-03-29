@@ -5,7 +5,10 @@ import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 import { inputPadding } from "metabase/core/style/input";
 
-export const EditorContainer = styled.div`
+export const EditorContainer = styled.div<{
+  isFocused: boolean;
+  hasError: boolean;
+}>`
   border: 1px solid;
   border-color: ${color("border")};
   border-radius: ${space(1)};
@@ -86,4 +89,10 @@ export const EditorEqualsSign = styled.div`
   height: 12px;
   font-weight: 700;
   margin: 0 3px 0 ${space(0)};
+`;
+
+export const ErrorMessageContainer = styled.div`
+  color: ${color("error")};
+  margin: 0.5rem 0;
+  white-space: pre-wrap;
 `;
