@@ -72,8 +72,8 @@
           template-tags (lib-native/template-tags inner_query)
           response  {:dataset_query          {:database database_id
                                               :type     "native"
-                                              :native   {:query final-sql}
-                                              :template-tags template-tags}
+                                              :native   {:query         final-sql
+                                                         :template-tags template-tags}}
                      :display                :table
                      :visualization_settings {}}]
       (tap> {:response response})
