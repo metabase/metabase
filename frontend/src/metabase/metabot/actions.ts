@@ -2,7 +2,12 @@ import { createAction } from "redux-actions";
 import { createThunkAction } from "metabase/lib/redux";
 import { MetabotApi } from "metabase/services";
 import { MetabotFeedbackType } from "metabase-types/api";
-import { Dispatch, GetState } from "metabase-types/store";
+import {
+  Dispatch,
+  GetState,
+  MetabotEntityId,
+  MetabotEntityType,
+} from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import {
   getEntityId,
@@ -14,19 +19,43 @@ import {
   getQuestion,
 } from "./selectors";
 
+interface InitPayload {
+  entityId: MetabotEntityId;
+  entityType: MetabotEntityType;
+  initialPrompt: string;
+}
+
 export const INIT = "metabase/metabot/INIT";
-export const init = createAction(INIT);
+export const init = createThunkAction(
+  INIT,
+  ({ entityId, entityType, initialPrompt }: InitPayload) =>
+    (dispatch: Dispatch) => {
+      dispatch(setEntityId(entityId));
+      dispatch(setEntityType(entityType));
+      dispatch(setPrompt(initialPrompt));
+
+      if (initialPrompt) {
+        dispatch(runPromptQuery());
+      }
+    },
+);
 
 export const RESET = "metabase/metabot/RESET";
 export const reset = createAction(RESET);
+
+export const SET_ENTITY_ID = "metabase/metabot/SET_ENTITY_ID";
+export const setEntityId = createAction(SET_ENTITY_ID);
+
+export const SET_ENTITY_TYPE = "metabase/metabot/SET_ENTITY_TYPE";
+export const setEntityType = createAction(SET_ENTITY_TYPE);
 
 export const SET_CARD = "metabase/metabot/SET_CARD";
 export const setCard = createAction(SET_CARD, (question: Question) =>
   question.card(),
 );
 
-export const SET_PROMPT_TEXT = "metabase/metabot/SET_PROMPT_TEXT";
-export const setPromptText = createAction(SET_PROMPT_TEXT);
+export const SET_PROMPT = "metabase/metabot/SET_PROMPT";
+export const setPrompt = createAction(SET_PROMPT);
 
 export const SET_FEEDBACK_TYPE = "metabase/metabot/SET_FEEDBACK_TYPE";
 export const setFeedbackType = createAction(SET_FEEDBACK_TYPE);
@@ -37,9 +66,9 @@ export const runQuery = createAction(RUN_QUERY);
 export const QUERY_COMPLETED = "metabase/metabot/QUERY_COMPLETED";
 export const queryCompleted = createAction(QUERY_COMPLETED);
 
-export const RUN_TEXT_QUERY = "metabase/metabot/RUN_TEXT_QUERY";
-export const runTextQuery = createThunkAction(
-  RUN_TEXT_QUERY,
+export const RUN_PROMPT_QUERY = "metabase/metabot/RUN_PROMPT_QUERY";
+export const runPromptQuery = createThunkAction(
+  RUN_PROMPT_QUERY,
   () => async (dispatch: Dispatch) => {
     dispatch(runQuery());
     await dispatch(fetchCard());

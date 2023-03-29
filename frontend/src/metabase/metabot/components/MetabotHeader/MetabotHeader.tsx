@@ -10,7 +10,7 @@ import {
 } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
-import { runTextQuery, setPromptText } from "../../actions";
+import { runPromptQuery, setPrompt } from "../../actions";
 import {
   getFeedbackStatus,
   getFeedbackType,
@@ -54,8 +54,8 @@ const mapStateToProps = (state: State): StateProps => ({
 });
 
 const mapDispatchToProps: DispatchProps = {
-  onChangeQuery: setPromptText,
-  onSubmitQuery: runTextQuery,
+  onChangeQuery: setPrompt,
+  onSubmitQuery: runPromptQuery,
   onDatabaseChange: () => undefined,
 };
 

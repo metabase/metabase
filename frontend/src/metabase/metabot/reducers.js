@@ -2,19 +2,20 @@ import { handleActions } from "redux-actions";
 import {
   FETCH_CARD,
   FETCH_QUERY_RESULTS,
-  INIT,
   QUERY_COMPLETED,
   RESET,
   RUN_QUERY,
   SET_CARD,
+  SET_ENTITY_ID,
+  SET_ENTITY_TYPE,
   SET_FEEDBACK_TYPE,
-  SET_PROMPT_TEXT,
+  SET_PROMPT,
   SUBMIT_FEEDBACK,
 } from "./actions";
 
 export const entityId = handleActions(
   {
-    [INIT]: { next: (state, { payload }) => payload.entityId },
+    [SET_ENTITY_ID]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
   null,
@@ -22,7 +23,7 @@ export const entityId = handleActions(
 
 export const entityType = handleActions(
   {
-    [INIT]: { next: (state, { payload }) => payload.entityType },
+    [SET_ENTITY_TYPE]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
   null,
@@ -47,8 +48,7 @@ export const originalCard = handleActions(
 
 export const prompt = handleActions(
   {
-    [INIT]: { next: (state, { payload }) => payload.initialPrompt },
-    [SET_PROMPT_TEXT]: { next: (state, { payload }) => payload },
+    [SET_PROMPT]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => "" },
   },
   "",
@@ -80,7 +80,7 @@ export const queryError = handleActions(
 
 export const feedbackType = handleActions(
   {
-    [FETCH_CARD]: { next: () => null },
+    [RUN_QUERY]: { next: () => null },
     [SET_FEEDBACK_TYPE]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
@@ -89,7 +89,7 @@ export const feedbackType = handleActions(
 
 export const feedbackStatus = handleActions(
   {
-    [FETCH_CARD]: { next: () => "idle" },
+    [RUN_QUERY]: { next: () => "idle" },
     [SUBMIT_FEEDBACK]: { next: () => "complete" },
     [RESET]: { next: () => "idle" },
   },
