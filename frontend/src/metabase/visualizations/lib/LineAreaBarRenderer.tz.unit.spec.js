@@ -10,7 +10,7 @@ import {
   dispatchUIEvent,
   renderLineAreaBar,
   getFormattedTooltips,
-} from "../__support__/visualizations";
+} from "__support__/visualizations";
 
 // make WIDTH big enough that ticks aren't skipped
 const WIDTH = 4000;

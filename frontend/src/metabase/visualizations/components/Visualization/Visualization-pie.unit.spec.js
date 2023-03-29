@@ -2,7 +2,7 @@ import React from "react";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 
 import Visualization from "metabase/visualizations/components/Visualization";
-import { NumberColumn, StringColumn } from "../__support__/visualizations";
+import { NumberColumn, StringColumn } from "__support__/visualizations";
 
 const series = rows => {
   const cols = [

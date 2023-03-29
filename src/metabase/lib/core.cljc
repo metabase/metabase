@@ -151,5 +151,8 @@
    native-query
    query
    saved-question-query]
+  [lib.stage
+   append-stage
+   drop-stage]
   [lib.temporal-bucket
    temporal-bucket])
