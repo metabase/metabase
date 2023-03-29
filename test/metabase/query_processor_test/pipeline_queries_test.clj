@@ -23,8 +23,8 @@
   [table-name & body]
   `(qp/process-query (pmbql-query ~table-name ~@body)))
 
-(def ^:private ^{:arglists '([query stage-number])} $price
-  (lib/field (mt/id :venues :price)))
+(defn- $price [query stage-number]
+  ((lib/field (mt/id :venues :price)) query stage-number))
 
 (deftest ^:parallel pipeline-queries-test
   (testing "Ensure that the QP can handle pMBQL `:pipeline` queries"
