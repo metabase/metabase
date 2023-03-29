@@ -34,6 +34,10 @@ export const getQueryResults = (state: State) => {
   return state.metabot.queryResults;
 };
 
+export const hasQueryResults = (state: State) => {
+  return getQueryResults(state) != null;
+};
+
 export const getQueryError = (state: State) => {
   return state.metabot.queryError;
 };

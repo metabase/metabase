@@ -10,7 +10,11 @@ import {
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
 import { init, InitPayload, reset } from "../../actions";
-import { getFeedbackType, getQueryStatus } from "../../selectors";
+import {
+  getFeedbackType,
+  getQueryStatus,
+  hasQueryResults,
+} from "../../selectors";
 import MetabotHeader from "../MetabotHeader";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
 import MetabotFeedbackForm from "../MetabotFeedbackForm";
@@ -29,6 +33,7 @@ interface OwnProps {
 interface StateProps {
   queryStatus: MetabotQueryStatus;
   feedbackType: MetabotFeedbackType | null;
+  hasQueryResults: boolean;
 }
 
 interface DispatchProps {
@@ -41,6 +46,7 @@ type MetabotProps = OwnProps & StateProps & DispatchProps;
 const mapStateToProps = (state: State): StateProps => ({
   queryStatus: getQueryStatus(state),
   feedbackType: getFeedbackType(state),
+  hasQueryResults: hasQueryResults(state),
 });
 
 const mapDispatchToProps: DispatchProps = {
@@ -57,6 +63,7 @@ const Metabot = ({
   databases,
   queryStatus,
   feedbackType,
+  hasQueryResults,
   onInit,
   onReset,
 }: MetabotProps) => {
@@ -67,12 +74,13 @@ const Metabot = ({
 
   const isCompleted = queryStatus === "complete";
   const isInvalidSql = feedbackType === "invalid-sql";
+  const hasFeedbackForm = isCompleted && !isInvalidSql && hasQueryResults;
 
   return (
     <MetabotRoot>
       <MetabotHeader model={model} database={database} databases={databases} />
       {isInvalidSql ? <MetabotQueryForm /> : <MetabotQueryBuilder />}
-      {isCompleted && !isInvalidSql && <MetabotFeedbackForm />}
+      {hasFeedbackForm && <MetabotFeedbackForm />}
     </MetabotRoot>
   );
 };
