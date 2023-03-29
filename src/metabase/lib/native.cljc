@@ -16,7 +16,9 @@
    [:name ::common/non-blank-string]
    [:display-name {:js/prop "display-name" :optional true} ::common/non-blank-string]
    [:snippet-name {:js/prop "snippet-name" :optional true} ::common/non-blank-string]
-   [:card-id {:js/prop "card-id" :optional true} :int]])
+   [:card-id {:js/prop "card-id" :optional true} :int]
+   [:dimension {:optional true} :any]
+   [:widget-type {:js/prop "widget-type" :optional true} :string]])
 
 (def ^:private TemplateTags
   [:map-of :string TemplateTag])
