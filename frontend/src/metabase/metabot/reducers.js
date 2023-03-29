@@ -3,6 +3,7 @@ import {
   FETCH_CARD,
   FETCH_QUERY_RESULTS,
   QUERY_COMPLETED,
+  QUERY_ERRORED,
   RESET,
   RUN_QUERY,
   SET_CARD,
@@ -73,6 +74,7 @@ export const queryResults = handleActions(
 
 export const queryError = handleActions(
   {
+    [QUERY_ERRORED]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
   null,

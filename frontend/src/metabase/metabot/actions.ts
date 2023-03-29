@@ -58,22 +58,31 @@ export const SET_PROMPT = "metabase/metabot/SET_PROMPT";
 export const setPrompt = createAction(SET_PROMPT);
 
 export const SET_FEEDBACK_TYPE = "metabase/metabot/SET_FEEDBACK_TYPE";
-export const setFeedbackType = createAction(SET_FEEDBACK_TYPE);
 
+export const setFeedbackType = createAction(SET_FEEDBACK_TYPE);
 export const RUN_QUERY = "metabase/metabot/RUN_QUERY";
+
 export const runQuery = createAction(RUN_QUERY);
 
 export const QUERY_COMPLETED = "metabase/metabot/QUERY_COMPLETED";
 export const queryCompleted = createAction(QUERY_COMPLETED);
 
+export const QUERY_ERRORED = "metabase/metabot/QUERY_ERRORED";
+export const queryErrored = createAction(QUERY_ERRORED);
+
 export const RUN_PROMPT_QUERY = "metabase/metabot/RUN_PROMPT_QUERY";
 export const runPromptQuery = createThunkAction(
   RUN_PROMPT_QUERY,
   () => async (dispatch: Dispatch) => {
-    dispatch(runQuery());
-    await dispatch(fetchCard());
-    await dispatch(fetchQueryResults());
-    dispatch(queryCompleted());
+    try {
+      dispatch(runQuery());
+      await dispatch(fetchCard());
+      await dispatch(fetchQueryResults());
+    } catch (error) {
+      dispatch(queryErrored(error));
+    } finally {
+      dispatch(queryCompleted());
+    }
   },
 );
 
@@ -81,9 +90,14 @@ export const RUN_CARD_QUERY = "metabase/metabot/RUN_CARD_QUERY";
 export const runCardQuery = createThunkAction(
   RUN_CARD_QUERY,
   () => async (dispatch: Dispatch) => {
-    dispatch(runQuery());
-    await dispatch(fetchQueryResults());
-    dispatch(queryCompleted());
+    try {
+      dispatch(runQuery());
+      await dispatch(fetchQueryResults());
+    } catch (error) {
+      dispatch(queryErrored(error));
+    } finally {
+      dispatch(queryCompleted());
+    }
   },
 );
 
