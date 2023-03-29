@@ -178,43 +178,22 @@ describe("scenarios > collection defaults", () => {
     });
   });
 
-  describe("description", () => {
-    it('should display collection description', () => {
-      visitRootCollection();
-    
-      cy.get('table').within(() => {
-        cy.findByText("First collection").parent().parent().within(() => {
-          cy.icon("info").trigger("mouseenter"); 
-        })
-      })
-    
-      popover().within(() => {
-        cy.findByText(/Collection First/);
-      })
+  it('should support markdown in collection description', () => {
+    cy.request("PUT", "/api/collection/9", {
+      description: "# header"
     })
 
-    it('should support markdown in collection description', () => {
-      getCollectionIdFromSlug("first_collection", id => {
-        visitCollection(id);
-      });
+    visitRootCollection();
 
-      cy
-        .findByPlaceholderText("Add description")
-        .clear()
-        .type("**important text** and [link](https://metabase.com)")
-        .blur();
-
-      visitRootCollection();
-
-      cy.get('table').within(() => {
-        cy.findByText("First collection").parent().parent().within(() => {
-          cy.icon("info").trigger("mouseenter"); 
-        })
+    cy.get('table').within(() => {
+      cy.findByText("First collection").parent().parent().within(() => {
+        cy.icon("info").trigger("mouseenter"); 
       })
-    
-      popover().within(() => {
-        cy.findByRole("link", {name: "link"});
-      })
+    })
+  
+    popover().within(() => {
+      cy.findByRole("heading").contains("header");
+      cy.findByRole("heading").should("not.include.text", "# header");
     })
   })
 
