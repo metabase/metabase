@@ -60,7 +60,7 @@ export const queryErrored = createAction(QUERY_ERRORED);
 export const runPromptQuery = () => async (dispatch: Dispatch) => {
   try {
     dispatch(runQuery());
-    await dispatch(fetchCard());
+    await dispatch(fetchQuestion());
     await dispatch(fetchQueryResults());
   } catch (error) {
     dispatch(queryErrored(error));
@@ -69,7 +69,7 @@ export const runPromptQuery = () => async (dispatch: Dispatch) => {
   }
 };
 
-export const runCardQuery = () => async (dispatch: Dispatch) => {
+export const runQuestionQuery = () => async (dispatch: Dispatch) => {
   try {
     dispatch(runQuery());
     await dispatch(fetchQueryResults());
@@ -80,8 +80,10 @@ export const runCardQuery = () => async (dispatch: Dispatch) => {
   }
 };
 
-export const FETCH_CARD = "metabase/metabot/FETCH_CARD";
-export const fetchCard =
+export const cancelQuery = () => async () => undefined;
+
+export const FETCH_QUESTION = "metabase/metabot/FETCH_QUESTION";
+export const fetchQuestion =
   () => async (dispatch: Dispatch, getState: GetState) => {
     const entityId = getEntityId(getState());
     const entityType = getEntityType(getState());
@@ -92,7 +94,7 @@ export const fetchCard =
         ? await MetabotApi.modelPrompt({ modelId: entityId, question })
         : await MetabotApi.databasePrompt({ databaseId: entityId, question });
 
-    dispatch({ type: FETCH_CARD, payload });
+    dispatch({ type: FETCH_QUESTION, payload });
   };
 
 export const FETCH_QUERY_RESULTS = "metabase/metabot/FETCH_QUERY_RESULTS";
@@ -118,11 +120,6 @@ export const submitFeedbackForm =
   (feedbackMessage: string) => (dispatch: Dispatch) => {
     dispatch(submitFeedback(feedbackMessage));
   };
-
-export const submitQueryForm = () => (dispatch: Dispatch) => {
-  dispatch(submitFeedback());
-  dispatch(runCardQuery());
-};
 
 export const SUBMIT_FEEDBACK = "metabase/metabot/SUBMIT_FEEDBACK";
 export const submitFeedback =

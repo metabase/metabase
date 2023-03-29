@@ -1,6 +1,6 @@
 import { handleActions } from "redux-actions";
 import {
-  FETCH_CARD,
+  FETCH_QUESTION,
   FETCH_QUERY_RESULTS,
   QUERY_COMPLETED,
   QUERY_ERRORED,
@@ -31,8 +31,8 @@ export const entityType = handleActions(
 
 export const card = handleActions(
   {
+    [FETCH_QUESTION]: { next: (state, { payload }) => payload },
     [UPDATE_QUESTION]: { next: (state, { payload }) => payload },
-    [FETCH_CARD]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
   null,
@@ -40,7 +40,7 @@ export const card = handleActions(
 
 export const originalCard = handleActions(
   {
-    [FETCH_CARD]: { next: (state, { payload }) => payload },
+    [FETCH_QUESTION]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
   null,
@@ -66,7 +66,6 @@ export const queryStatus = handleActions(
 
 export const queryResults = handleActions(
   {
-    [RUN_QUERY]: { next: () => null },
     [FETCH_QUERY_RESULTS]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },

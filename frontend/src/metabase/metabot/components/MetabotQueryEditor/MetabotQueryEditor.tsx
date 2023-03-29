@@ -7,7 +7,7 @@ import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEdit
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
-import { updateQuestion } from "../../actions";
+import { cancelQuery, runQuestionQuery, updateQuestion } from "../../actions";
 import { getQuestion } from "../../selectors";
 
 interface OwnProps {
@@ -19,7 +19,9 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onChange: (question: Question) => void;
+  onRunQuery: () => void;
+  onCancelQuery: () => void;
+  onChangeQuery: (question: Question) => void;
 }
 
 type MetabotQueryEditorProps = OwnProps & StateProps & DispatchProps;
@@ -29,34 +31,41 @@ const mapStateToProps = (state: State): StateProps => ({
 });
 
 const mapDispatchToProps: DispatchProps = {
-  onChange: updateQuestion,
+  onRunQuery: runQuestionQuery,
+  onChangeQuery: updateQuestion,
+  onCancelQuery: cancelQuery,
 };
 
 const MetabotQueryEditor = ({
   question,
   height,
-  onChange,
+  onRunQuery,
+  onCancelQuery,
+  onChangeQuery,
 }: MetabotQueryEditorProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const handleChange = (query: NativeQuery) => onChange(query.question());
+  const handleChange = (query: NativeQuery) => onChangeQuery(query.question());
 
   return (
     <NativeQueryEditor
-      question={question.setId(-1)}
+      question={question}
       query={question.query()}
       viewHeight={height}
       resizable={false}
-      hasTopBar={false}
       hasParametersList={false}
       canChangeDatabase={false}
+      isRunnable={true}
       isInitiallyOpen={false}
       isNativeEditorOpen={isOpen}
+      runQuestionQuery={onRunQuery}
+      cancelQuery={onCancelQuery}
       setDatasetQuery={handleChange}
       setIsNativeEditorOpen={setIsOpen}
     />
   );
 };
 
-export default _.compose(ExplicitSize)(
+export default _.compose(
+  ExplicitSize(),
   connect(mapStateToProps, mapDispatchToProps),
 )(MetabotQueryEditor);

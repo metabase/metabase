@@ -7,7 +7,7 @@ import { VisualizationRunningState } from "metabase/query_builder/components/Que
 export const QueryStateRoot = styled.div`
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1 0 auto;
   overflow: hidden;
   border-top: 1px solid ${color("border")};
 `;
