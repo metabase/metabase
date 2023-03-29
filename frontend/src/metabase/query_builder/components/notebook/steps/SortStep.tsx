@@ -69,11 +69,13 @@ interface SortPopoverProps {
   maxHeight?: number;
   alwaysExpanded?: boolean;
   onChangeSort: (clause: IOrderBy) => void;
+  onClose?: () => void;
 }
 
 const SortPopover = ({
   sort: sortProp,
   onChangeSort,
+  onClose,
   query,
   sortOptions,
   maxHeight,
@@ -94,6 +96,7 @@ const SortPopover = ({
       fieldOptions={sortOptions || query.sortOptions(sort && sort[1])}
       onFieldChange={(field: IField) => {
         onChangeSort([sort[0], field]);
+        onClose?.();
       }}
       table={table}
       enableSubDimensions={false}
