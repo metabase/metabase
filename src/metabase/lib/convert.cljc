@@ -97,12 +97,22 @@
        (remove lib-key?)
        (select-keys x)))
 
-(defn- clause-with-options->legacy-MBQL [[k options & args]]
-  (if (map? options)
-    (into [k] (concat (map ->legacy-MBQL args)
-                      (when-let [options (not-empty (disqualify options))]
-                        [options])))
-    (into [k] (map ->legacy-MBQL (cons options args)))))
+(def ^:private ^:dynamic *inside-aggregation?* false)
+
+(defn- aggregation->legacy-MBQL [[tag options & args]]
+  (let [inner (into [tag] (map ->legacy-MBQL args))]
+    (if-let [aggregation-opts (not-empty (disqualify options))]
+      [:aggregation-options inner aggregation-opts]
+      inner)))
+
+(defn- clause-with-options->legacy-MBQL [[k options & args :as input]]
+  (cond
+    (and *inside-aggregation?*
+         (not= k :field))      (aggregation->legacy-MBQL input)
+    (map? options)             (into [k] (concat (map ->legacy-MBQL args)
+                                                 (when-let [options (not-empty (disqualify options))]
+                                                   [options])))
+    :else                      (into [k] (map ->legacy-MBQL (cons options args)))))
 
 (defmethod ->legacy-MBQL :default
   [x]
@@ -156,17 +166,12 @@
                (update-vals ->legacy-MBQL))
            (chain-stages base))))
 
-(defn- aggregation->legacy-MBQL [[tag options & args]]
-  (let [inner (into [tag] (map ->legacy-MBQL args))]
-    (if-let [aggregation-opts (not-empty (disqualify options))]
-      [:aggregation-options inner aggregation-opts]
-      inner)))
-
 (defmethod ->legacy-MBQL :mbql.stage/mbql [stage]
   (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
           (-> stage
               disqualify
-              (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %)))
+              (m/update-existing :aggregation #(binding [*inside-aggregation?* true]
+                                                 (mapv aggregation->legacy-MBQL %))))
           (remove #{:aggregation} stage-keys)))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]

@@ -232,7 +232,7 @@
                 :query-type  ::druid.qp/total
                 :mbql?       true}
                (query->native
-                {:aggregation [[:aggregation-options [:+ 1 [:distinct $checkins.venue_name]] {:name "__distinct_0"}]]})))))))
+                {:aggregation [[:+ 1 [:aggregation-options [:distinct $checkins.venue_name] {:name "__distinct_0"}]]]})))))))
 
 (defn- table-rows-sample []
   (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :checkins))
