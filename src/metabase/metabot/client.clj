@@ -68,7 +68,7 @@
       (tap> {:openai-response resp})
       (find-result resp extract-response-fn))))
 
-(defn wrap-auth [handler]
+(defn wrap-env [handler]
   (fn [request]
     (if (and (openai-api-key)
              (openai-organization))
@@ -76,7 +76,8 @@
 
           (handler (update request :body merge
                            {:openai-api-key      (openai-api-key)
-                            :openai-organization (openai-organization)})))
+                            :openai-organization (openai-organization)
+                            :openai-model        (openai-model)})))
       {:status  400
        :message "OpenAI credentials are unspecified"})))
 
@@ -111,21 +112,25 @@
           "Error invoking remote service."
           (select-keys response [:body :message])))))))
 
-(def client (-> client/request wrap-json-body wrap-auth wrap-defaults wrap-response))
+(def client (-> client/request
+                wrap-json-body
+                wrap-env
+                wrap-defaults
+                wrap-response))
 
 (defn infer-sql [{:keys [database_id inner_query] :as model} prompt]
   (log/debugf "Using webhook to infer sql from prompt: %s" prompt)
   (let [client   (wrap-url client (openai-sql-inference-webhook))
         response (client {:body {:model model :prompt prompt}})]
     (when-some [bot-sql (:sql response)]
-      (let [final-sql (metabot-util/bot-sql->final-sql model bot-sql)
+      (let [final-sql     (metabot-util/bot-sql->final-sql model bot-sql)
             template-tags (lib-native/template-tags inner_query)
-            response  {:dataset_query          {:database database_id
-                                                :type     "native"
-                                                :native   {:query         final-sql
-                                                           :template-tags template-tags}}
-                       :display                :table
-                       :visualization_settings {}}]
+            response      {:dataset_query          {:database database_id
+                                                    :type     "native"
+                                                    :native   {:query         final-sql
+                                                               :template-tags template-tags}}
+                           :display                :table
+                           :visualization_settings {}}]
         response))))
 
 (defn infer-model [database prompt]

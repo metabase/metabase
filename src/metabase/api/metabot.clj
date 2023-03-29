@@ -55,14 +55,11 @@
           {:status-code 400
            :message     message}))))))
 
-;Add buttons at the bottom with the following
-;This is great!
-;This used the wrong data
-;It should have used <X>
-;This isn’t valid SQL
-;Is should have been <Y>
-;This result is incorrect
-;Is should have been <Z>
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/openai_models"
+  "List available openai models."
+  []
+  (metabot/openai-models))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/feedback"
