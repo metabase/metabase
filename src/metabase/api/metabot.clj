@@ -74,8 +74,7 @@
   (tap> {:prompt      prompt
          :sql         sql
          :feedback    feedback
-         :correct_sql correct_sql
-         :feedback feedback})
+         :correct_sql correct_sql})
   {:message "Thanks for your feedback"})
 
 (api/define-routes)

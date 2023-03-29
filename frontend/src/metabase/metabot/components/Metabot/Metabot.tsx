@@ -18,7 +18,6 @@ import {
 import MetabotHeader from "../MetabotHeader";
 import MetabotQueryBuilder from "../MetabotQueryBuilder";
 import MetabotFeedbackForm from "../MetabotFeedbackForm";
-import MetabotQueryForm from "../MetabotQueryForm";
 import { MetabotRoot } from "./Metabot.styled";
 
 interface OwnProps {
@@ -73,13 +72,12 @@ const Metabot = ({
   }, [entityId, entityType, initialPrompt, onInit, onReset]);
 
   const isCompleted = queryStatus === "complete";
-  const isInvalidSql = feedbackType === "invalid-sql";
-  const hasFeedbackForm = isCompleted && !isInvalidSql && hasQueryResults;
+  const hasFeedbackForm = isCompleted && hasQueryResults;
 
   return (
     <MetabotRoot>
       <MetabotHeader model={model} database={database} databases={databases} />
-      {isInvalidSql ? <MetabotQueryForm /> : <MetabotQueryBuilder />}
+      <MetabotQueryBuilder />
       {hasFeedbackForm && <MetabotFeedbackForm />}
     </MetabotRoot>
   );

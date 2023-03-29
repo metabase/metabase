@@ -107,10 +107,7 @@ export const UPDATE_FEEDBACK_TYPE = "metabase/metabot/UPDATE_FEEDBACK_TYPE";
 export const updateFeedbackType =
   (feedbackType: MetabotFeedbackType) => (dispatch: Dispatch) => {
     dispatch({ type: UPDATE_FEEDBACK_TYPE, payload: feedbackType });
-
-    if (feedbackType === "great") {
-      dispatch(submitFeedback());
-    }
+    dispatch(submitFeedback());
   };
 
 export const submitFeedbackForm =
