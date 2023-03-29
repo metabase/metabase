@@ -22,14 +22,16 @@ import {
   QueryStateRoot,
 } from "./MetabotQueryBuilder.styled";
 
-interface MetabotQueryBuilderProps {
+interface StateProps {
   question: Question | null;
   queryStatus: MetabotQueryStatus;
   queryResults: [Dataset] | null;
   queryError: unknown;
 }
 
-const mapStateToProps = (state: State): MetabotQueryBuilderProps => ({
+type MetabotQueryBuilderProps = StateProps;
+
+const mapStateToProps = (state: State): StateProps => ({
   question: getQuestion(state),
   queryStatus: getQueryStatus(state),
   queryResults: getQueryResults(state),
@@ -67,8 +69,8 @@ const MetabotQueryBuilder = ({
 
   return (
     <QueryStateRoot>
-      <MetabotQueryEditor question={question} isReadOnly hasTopbar />
-      <MetabotVisualization question={question} queryResults={queryResults} />
+      <MetabotQueryEditor />
+      <MetabotVisualization />
     </QueryStateRoot>
   );
 };
