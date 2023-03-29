@@ -30,19 +30,17 @@
   (testing "Ensure that the QP can handle pMBQL `:pipeline` queries"
     (is (= [6]
            (mt/first-row
-            #_{:clj-kondo/ignore [:wrong-arity]}
             (run-pmbql-query :venues
               (lib/aggregate (lib/count))
               (lib/filter (lib/= $price 4))))))))
 
 (deftest ^:parallel denormalized-pipeline-queries-test
   (testing "Ensure that the QP can handle pMBQL `:pipeline` queries as they'd come in from the REST API or application database"
-    (let [query (mt/obj->json->obj
-                  #_{:clj-kondo/ignore [:wrong-arity]}
-                  (-> (pmbql-query :venues
-                        (lib/aggregate (lib/count))
-                        (lib/filter (lib/= $price 4)))
-                      (dissoc :lib/metadata)))]
+    (let [query (-> (pmbql-query :venues
+                      (lib/aggregate (lib/count))
+                      (lib/filter (lib/= $price 4)))
+                    (dissoc :lib/metadata)
+                    mt/obj->json->obj)]
       (testing (format "Query =\n%s" (u/pprint-to-str query))
         (is (= [6]
                (mt/first-row (qp/process-query query))))))))
