@@ -72,8 +72,7 @@ const Metabot = ({
   }, [entityId, entityType, initialPrompt, onInit, onReset]);
 
   const isCompleted = queryStatus === "complete";
-  const isInvalidSql = feedbackType === "invalid-sql";
-  const hasFeedbackForm = isCompleted && !isInvalidSql && hasQueryResults;
+  const hasFeedbackForm = isCompleted && hasQueryResults;
 
   return (
     <MetabotRoot>
