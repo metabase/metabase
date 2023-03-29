@@ -120,11 +120,16 @@
                 :source-table 517},
         :type :query}
 
-       ;; aggregation-options on a nested aggregation inside a larger expression
-       {:database 194,
-        :query {:aggregation [[:+ [:aggregation-options
-                                   [:distinct [:field 1677 nil]]
-                                   {:name "differences"}]
-                               1]],
-                :source-table 517},
+       {:database 67,
+        :query {:aggregation [[:aggregation-options
+                               [:avg
+                                [:field
+                                 809
+                                 {:metabase.query-processor.util.add-alias-info/source-alias "RATING",
+                                  :metabase.query-processor.util.add-alias-info/source-table 224}]]
+                               {:name "avg",
+                                :metabase.query-processor.util.add-alias-info/desired-alias "avg",
+                                :metabase.query-processor.util.add-alias-info/position 1,
+                                :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
+                :source-table 224}
         :type :query}))
