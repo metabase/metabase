@@ -3,11 +3,18 @@ import { LinkProps } from "metabase/core/components/Link";
 import { getTabId, getTabPanelId, TabContext } from "../Tab";
 import { TabLinkRoot, TabLabel } from "./TabLink.styled";
 
-export interface TabLinkProps<T> extends LinkProps {
+export interface TabLinkProps<T> extends Omit<LinkProps, "to"> {
   value?: T;
+  to?: string;
 }
 
-function TabLink<T>({ value, children, onClick, ...props }: TabLinkProps<T>) {
+function TabLink<T>({
+  value,
+  children,
+  onClick,
+  to,
+  ...props
+}: TabLinkProps<T>) {
   const { value: selectedValue, idPrefix, onChange } = useContext(TabContext);
   const tabId = getTabId(idPrefix, value);
   const panelId = getTabPanelId(idPrefix, value);
@@ -30,6 +37,7 @@ function TabLink<T>({ value, children, onClick, ...props }: TabLinkProps<T>) {
       aria-selected={isSelected}
       aria-controls={panelId}
       onClick={handleClick}
+      to={to ?? ""}
     >
       <TabLabel>{children}</TabLabel>
     </TabLinkRoot>
