@@ -51,9 +51,7 @@
   "Call the bot and return the response.
   Takes messages to be used as instructions and a function that will find the first valid result from the messages."
   [messages extract-response-fn]
-  (when (and
-         (openai-api-key)
-         (openai-organization))
+  (try
     (let [resp (openai.api/create-chat-completion
                 {:model    (openai-model)
                  ;; Just produce a single result
@@ -66,7 +64,12 @@
                 {:api-key      (openai-api-key)
                  :organization (openai-organization)})]
       (tap> {:openai-response resp})
-      (find-result resp extract-response-fn))))
+      (find-result resp extract-response-fn))
+    (catch Exception e
+      (throw (ex-info
+              (ex-message e)
+              {:exception-data (ex-data e)
+               :status-code    400})))))
 
 (defn wrap-env [handler]
   (fn [request]
