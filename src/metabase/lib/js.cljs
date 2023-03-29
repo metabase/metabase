@@ -6,6 +6,7 @@
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util.log :as log]))
@@ -61,3 +62,7 @@
   "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."
   [query-map]
   (-> query-map convert/->legacy-MBQL fix-namespaced-values clj->js))
+
+(defn ^:export orderable-fields
+  [query stage-number]
+  (map clj->js (lib.order-by/orderable-fields query-stage-number)))
