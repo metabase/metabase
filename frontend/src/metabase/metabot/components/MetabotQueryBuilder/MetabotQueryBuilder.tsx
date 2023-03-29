@@ -48,20 +48,20 @@ const MetabotQueryBuilder = ({
     <QueryBuilderRoot>
       {hasResults && <MetabotQueryEditor />}
       {isRunning ? (
-        <RunningState />
+        <QueryRunningState />
       ) : hasErrors ? (
-        <ErrorState queryError={queryError} />
+        <QueryErrorState queryError={queryError} />
       ) : hasResults ? (
         <MetabotVisualization />
       ) : (
-        <IdleState />
+        <QueryIdleState />
       )}
       {hasResults && <MetabotFeedbackForm />}
     </QueryBuilderRoot>
   );
 };
 
-const IdleState = () => {
+const QueryIdleState = () => {
   return (
     <IdleStateRoot>
       <IdleStateIcon name="insight" />
@@ -69,7 +69,7 @@ const IdleState = () => {
   );
 };
 
-const RunningState = () => {
+const QueryRunningState = () => {
   return <RunningStateRoot loadingMessage={t`Doing science`} />;
 };
 
@@ -77,7 +77,7 @@ interface ErrorStateProps {
   queryError: unknown;
 }
 
-const ErrorState = ({ queryError }: ErrorStateProps) => {
+const QueryErrorState = ({ queryError }: ErrorStateProps) => {
   return (
     <ErrorStateRoot>
       <ErrorStateMessage>
