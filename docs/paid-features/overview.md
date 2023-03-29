@@ -31,7 +31,7 @@ Paid plans include more ways to manage permissions, including data sandboxing, w
 - [Block permissions](../permissions/data.md#block-access)
 - [SQL snippet folder permissions](../permissions/snippets.md)
 - [Application permissions](../permissions/application.md)
-- [Download permissions](../permissions/data#download-results
+- [Download permissions](../permissions/data#download-results)
 - [Database management permissions](../permissions/data#manage-database)
 - [Data model management permissions](../permissions/data#manage-data-model)
 
@@ -69,7 +69,7 @@ Tools for keeping your Metabase organized, so people can find your most importan
 
 All Metabase editions include global caching controls. Paid plans includes additional caching options that let you control caching for individual questions.
 
-- [Caching controls for individual questions](../configuring-metabase/cachingd#caching-per-question)
+- [Caching controls for individual questions](../configuring-metabase/caching#caching-per-question)
 - [Caching control per database](../configuring-metabase/caching#caching-per-database)
 
 ## Auditing
