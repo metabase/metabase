@@ -1,120 +1,102 @@
-(ns metabase.query-processor.middleware.add-source-metadata
+(ns metabase.query-processor.middleware.add-stage-metadata
   (:require
-   [clojure.walk :as walk]
-   [metabase.api.common :as api]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.util :as lib.util]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.interface :as qp.i]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
-(defn- has-same-fields-as-nested-source?
+(defn- has-same-fields-as-previous-stage?
   "Whether this source query itself has a nested source query, and will have the exact same fields in the results as its
-  nested source. If this is the case, we can return the `source-metadata` for the nested source as-is, if it is
+  nested source. If this is the case, we can return the `stage-metadata` for the nested source as-is, if it is
   present."
-  [{nested-source-query    :source-query
-    nested-source-metadata :source-metadata
-    breakouts              :breakout
-    aggregations           :aggregation
-    fields                 :fields}]
-  (when nested-source-query
+  [query stage-number {breakouts    :breakout
+                       aggregations :aggregation
+                       fields       :fields}]
+  (when-let [{previous-stage-metadata :lib/stage-metadata} (lib.util/previous-stage query stage-number)]
     (and (every? empty? [breakouts aggregations])
          (or (empty? fields)
-             (and (= (count fields) (count nested-source-metadata))
+             (and (= (count fields) (count (:columns previous-stage-metadata)))
                   (every? #(mbql.u/match-one % [:field (_ :guard string?) _])
                           fields))))))
 
-(s/defn ^:private native-source-query->metadata :- (s/maybe [mbql.s/SourceQueryMetadata])
-  "Given a `source-query`, return the source metadata that should be added at the parent level (i.e., at the same
-  level where this `source-query` was present.) This metadata is used by other middleware to determine what Fields to
+(mu/defn ^:private native-stage->metadata :- [:maybe ::lib.metadata/stage-metadata]
+  "Given a `previous-stage`, return the source metadata that should be added at the parent level (i.e., at the same
+  level where this `previous-stage` was present.) This metadata is used by other middleware to determine what Fields to
   expect from the source query."
-  [{nested-source-metadata :source-metadata, :as source-query} :- mbql.s/SourceQuery]
+  [query stage-number {previous-stage-metadata :lib/stage-metadata, :as previous-stage} :- ::lib.schema/stage]
   ;; If the source query has a nested source with metadata and does not change the fields that come back, return
   ;; metadata as-is
-  (if (has-same-fields-as-nested-source? source-query)
-    nested-source-metadata
+  (if (has-same-fields-as-previous-stage? query stage-number previous-stage)
+    previous-stage-metadata
     ;; Otherwise we cannot determine the metadata automatically; usually, this is because the source query itself has
     ;; a native source query
     (do
       (when-not qp.i/*disable-qp-logging*
         (log/warn
-         (trs "Cannot infer `:source-metadata` for source query with native source query without source metadata.")
-         {:source-query source-query}))
+         (trs "Cannot infer metadata for source query with native source query without source metadata.")
+         {:previous-stage previous-stage}))
       nil)))
 
-(s/defn mbql-source-query->metadata :- [mbql.s/SourceQueryMetadata]
-  "Preprocess a `source-query` so we can determine the result columns."
-  [source-query :- mbql.s/MBQLQuery]
-  (try
-    (let [cols (binding [api/*current-user-id* nil]
-                 ((requiring-resolve 'metabase.query-processor/query->expected-cols)
-                  {:database (:id (qp.store/database))
-                   :type     :query
-                   ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
-                   ;; to end up adding it again when the middleware runs at the top level
-                   :query    (assoc-in source-query [:middleware :disable-remaps?] true)}))]
-      (for [col cols]
-        (select-keys col [:name :id :table_id :display_name :base_type :effective_type :coercion_strategy
-                          :semantic_type :unit :fingerprint :settings :source_alias :field_ref :nfc_path :parent_id])))
-    (catch Throwable e
-      (log/error e (str (trs "Error determining expected columns for query: {0}" (ex-message e))))
-      nil)))
+(mu/defn ^:private mbql-stage->metadata :- ::lib.metadata/stage-metadata
+  [query stage-number :- :int stage]
+  (lib.metadata.calculation/metadata query stage-number stage))
 
-(s/defn ^:private add-source-metadata :- {(s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata], s/Keyword s/Any}
-  [{{native-source-query? :native, :as source-query} :source-query, :as inner-query}]
-  (let [metadata ((if native-source-query?
-                     native-source-query->metadata
-                     mbql-source-query->metadata) source-query)]
-    (cond-> inner-query
-      (seq metadata) (assoc :source-metadata metadata))))
+(mu/defn ^:private add-stage-metadata :- [:map
+                                           [:lib/stage-metadata {:optional true} ::lib.metadata/stage-metadata]]
+  [query stage-number :- :int stage]
+  (when-let [previous-stage (lib.util/previous-stage query stage-number)]
+    (let [native-previous-stage? (= (:lib/type previous-stage) :mbql.stage/native)
+          metadata               ((if native-previous-stage?
+                                    native-stage->metadata
+                                    mbql-stage->metadata) query stage-number previous-stage)]
+      (cond-> stage
+        (seq metadata) (assoc :lib/stage-metadata metadata)))))
 
-(defn- legacy-source-metadata?
+(mu/defn ^:private legacy-stage-metadata?
   "Whether this source metadata is *legacy* source metadata from < 0.38.0. Legacy source metadata did not include
   `:field_ref` or `:id`, which made it hard to correctly construct queries with. For MBQL queries, we're better off
   ignoring legacy source metadata and using `qp/query->expected-cols` to infer the source metadata rather than relying
   on old stuff that can produce incorrect queries. See #14788 for more information."
-  [source-metadata]
-  (and (seq source-metadata)
-       (every? nil? (map :field_ref source-metadata))))
+  [stage-metadata :- ::lib.metadata/stage-metadata]
+  (and (seq stage-metadata)
+       (every? nil? (map :field_ref (:columns stage-metadata)))))
 
-(defn- should-add-source-metadata?
-  "Should we add `:source-metadata` about the `:source-query` in this map? True if all of the following are true:
+(mu/defn ^:private should-add-stage-metadata?
+  "Should we add `:stage-metadata` about the `:previous-stage` in this map? True if all of the following are true:
 
-  * The map (e.g. an 'inner' MBQL query or a Join) has a `:source-query`
+  * The map (e.g. an 'inner' MBQL query or a Join) has a `:previous-stage`
 
-  * The map does not *already* have `:source-metadata`, or the `:source-metadata` is 'legacy' source metadata from
+  * The map does not *already* have `:stage-metadata`, or the `:stage-metadata` is 'legacy' source metadata from
     versions < 0.38.0
 
-  * The `:source-query` is an MBQL query, or a native source query with `:source-metadata`"
-  [{{native-source-query?              :native
-     source-query-has-source-metadata? :source-metadata
-     :as                               source-query} :source-query
-    :keys                                            [source-metadata]}]
-  (and source-query
-       (or (not source-metadata)
-           (legacy-source-metadata? source-metadata))
-       (or (not native-source-query?)
-           source-query-has-source-metadata?)))
+  * The `:previous-stage` is an MBQL query, or a native source query with `:stage-metadata`"
+  [query stage-number :- :int stage]
+  (when-let [previous-stage (lib.util/previous-stage query stage-number)]
+    (let [native-previous-stage?  (= (:lib/type previous-stage) :mbql.stage/native)
+          previous-stage-metadata (:lib/stage-metadata previous-stage)]
+      (and (or (not (:lib/stage-metadata stage))
+               (legacy-stage-metadata? previous-stage-metadata))
+           (or (not native-previous-stage?)
+               previous-stage-metadata)))))
 
-(defn- maybe-add-source-metadata [x]
-  (if (and (map? x) (should-add-source-metadata? x))
-    (add-source-metadata x)
-    x))
+(defn add-stage-metadata-for-source-queries
+  "Middleware that attempts to recursively add `:stage-metadata`, if not already present, to any maps with a
+  `:previous-stage`.
 
-(defn- add-source-metadata-at-all-levels [inner-query]
-  (walk/postwalk maybe-add-source-metadata inner-query))
-
-(defn add-source-metadata-for-source-queries
-  "Middleware that attempts to recursively add `:source-metadata`, if not already present, to any maps with a
-  `:source-query`.
-
-  `:source-metadata` is information about the columns we can expect to come back from the source
+  `:stage-metadata` is information about the columns we can expect to come back from the source
   query; this is added automatically for source queries added via the `card__id` source table form, but for *explicit*
   source queries that do not specify this information, we can often infer it by looking at the shape of the source
   query."
-  [{query-type :type, :as query}]
-  (if-not (= query-type :query)
-    query
-    (update query :query add-source-metadata-at-all-levels)))
+  [query]
+  (lib.util/update-stages
+   query
+   (fn [query stage-number stage]
+     (println "query:" query) ; NOCOMMIT
+     (println "stage-number:" stage-number) ; NOCOMMIT
+     (when (should-add-stage-metadata? query stage-number stage)
+       (add-stage-metadata query stage-number stage)))))

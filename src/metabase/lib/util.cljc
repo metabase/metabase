@@ -165,6 +165,12 @@
   (let [{:keys [stages]} (pipeline query)]
     (get (vec stages) (non-negative-stage-index stages stage-number))))
 
+(mu/defn previous-stage :- [:maybe ::lib.schema/stage]
+  "Return the previous stage of the query, if there is one; otherwise return `nil`."
+  [query stage-number :- :int]
+  (when-let [stage-num (previous-stage-number query stage-number)]
+    (query-stage query stage-num)))
+
 (mu/defn update-query-stage :- ::lib.schema/query
   "Update a specific `stage-number` of a `query` by doing
 
@@ -213,17 +219,14 @@
 
   `f` has the signature
 
-    (f query stage-number stage)
-
-  As a convenience, if `f` returns nil, the original stage will be used without changes."
+    (f query stage-number stage)"
   [query f]
-  (letfn [(update-stages* [stages]
-            (into []
-                  (map-indexed (fn [stage-number stage]
-                                 (or (f query stage-number stage)
-                                     stage)))
-                  stages))]
-    (update query :stages update-stages*)))
+  (reduce
+   (fn [query stage-number]
+     (update-in query [:stages stage-number] (fn [stage]
+                                               (f query stage-number stage))))
+   query
+   (range 0 (count (:stages query)))))
 
 (defn update-stages
   "Apply function `f` to every stage of a query, depth-first. Also applied to all query stages.
@@ -231,6 +234,8 @@
   `f` has the signature
 
     (f query stage-number stage)
+
+  `query` reflects the results of the previous call to `f`.
 
   As a convenience, if `f` returns nil, the original stage will be used without changes."
   [query f]

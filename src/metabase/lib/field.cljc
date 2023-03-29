@@ -158,13 +158,13 @@
     true      lib.options/ensure-uuid))
 
 (defmethod ->field :dispatch-type/integer
-  [query _stage field-id]
+  [query _stage-number field-id]
   (lib.metadata/field query field-id))
 
-;;; Pass in a function that takes `query` and `stage` to support ad-hoc usage in tests etc
+;;; Pass in a function that takes `query` and `stage-number` to support ad-hoc usage in tests etc
 (defmethod ->field :dispatch-type/fn
-  [query stage f]
-  (f query stage))
+  [query stage-number f]
+  (f query stage-number))
 
 (defmethod lib.temporal-bucket/temporal-bucket* :field
   [[_field options id-or-name] unit]
@@ -184,3 +184,17 @@
 (defmethod lib.common/->op-arg :metadata/field
   [query stage-number field-metadata]
   (field query stage-number field-metadata))
+
+(defn fields
+  "Specify the `:fields` for a query."
+  ([xs]
+   (fn [query stage-number]
+     (fields query stage-number xs)))
+
+  ([query xs]
+   (fields query -1 xs))
+
+  ([query stage-number xs]
+   (let [xs (mapv #(->field query stage-number %)
+                  xs)]
+     (lib.util/update-query-stage query stage-number assoc :fields xs))))

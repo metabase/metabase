@@ -61,7 +61,8 @@
   [lib.dev
    field
    query-for-table-id
-   query-for-table-name]
+   query-for-table-name
+   table]
   [lib.expression
    expression
    +
@@ -104,6 +105,8 @@
    rtrim
    upper
    lower]
+  [lib.field
+   fields]
   [lib.filter
    filter
    add-filter

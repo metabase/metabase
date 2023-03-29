@@ -16,7 +16,8 @@
    [toucan2.core :as t2]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
-   [metabase.query-processor.store :as qp.store]))
+   [metabase.query-processor.store :as qp.store]
+   [metabase.lib.metadata :as lib.metadata]))
 
 (deftest ordering-test
   (testing "check we fetch Fields in the right order"
@@ -248,12 +249,16 @@
                                  $venues.price]
                       :order-by [[:asc $venues.name]]
                       :limit    3}))
+                  (-> (lib/query-for-table-id qp.store/metadata-provider (mt/id :venues))
+                      (lib/append-stage))
                   (qp.add-implicit-clauses/add-implicit-clauses
                    (add-source-metadata/add-source-metadata-for-source-queries
-                    (mt/mbql-query venues
-                      {:source-table $$venues
-                       :joins        [{:alias        "cat"
-                                       :source-query {:source-table $$categories}
-                                       :condition    [:= $category_id &cat.*categories.id]}]
-                       :order-by     [[:asc $name]]
-                       :limit        3}))))))))
+                    (-> (lib/query-for-table-id qp.store/metadata-provider (mt/id :venues))
+                        (lib/append-stage)
+                        (lib/join (lib/table (mt/id :categories))
+                                  (lib/= (lib/field (mt/id :venues :category_id))
+                                         (lib/with-join-alias (lib/field (mt/id :categories :id)) "cat")))))))))))
+
+(defn x []
+  (mt/with-everything-store
+    ))
