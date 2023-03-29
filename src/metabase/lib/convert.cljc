@@ -69,11 +69,7 @@
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
   (let [[tag opts & args] (->pMBQL aggregation)]
-    (into [tag (merge opts
-                      options
-                      ;; Keep track of the keys of :aggregation-options in case of converting back with ->legacy-MBQL.
-                      {:lib/aggregation-options (keys options)})]
-          args)))
+    (into [tag (merge opts options)] args)))
 
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
@@ -159,17 +155,18 @@
                (update-vals ->legacy-MBQL))
            (chain-stages base))))
 
-(defmethod ->legacy-MBQL :mbql/aggregation-options [[tag options & args]]
-  (let [aggregation-keys    (:lib/aggregation-options options)
-        aggregation-options (select-keys options aggregation-keys)
-        inner-options       (apply dissoc options :lib/aggregation-options aggregation-keys)
-        inner               (into [tag inner-options] args)]
-    [:aggregation-options (->legacy-MBQL inner) aggregation-options]))
+(defn- aggregation->legacy-MBQL [[tag options & args]]
+  (let [inner (into [tag] (map ->legacy-MBQL args))]
+    (if-let [aggregation-opts (not-empty (disqualify options))]
+      [:aggregation-options inner aggregation-opts]
+      inner)))
 
 (defmethod ->legacy-MBQL :mbql.stage/mbql [stage]
   (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
-          (disqualify stage)
-          stage-keys))
+          (-> stage
+              disqualify
+              (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %)))
+          (remove #{:aggregation} stage-keys)))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
