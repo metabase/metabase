@@ -10,8 +10,7 @@ import {
   RUN_QUESTION_QUERY,
   RUN_QUESTION_QUERY_FULFILLED,
   RUN_QUESTION_QUERY_REJECTED,
-  SUBMIT_FEEDBACK,
-  UPDATE_FEEDBACK_TYPE,
+  SUBMIT_FEEDBACK_FORM,
   UPDATE_PROMPT,
   UPDATE_QUESTION,
 } from "./actions";
@@ -93,17 +92,8 @@ export const queryError = handleActions(
 export const feedbackType = handleActions(
   {
     [RUN_PROMPT_QUERY]: { next: () => null },
-    [UPDATE_FEEDBACK_TYPE]: { next: (state, { payload }) => payload },
+    [SUBMIT_FEEDBACK_FORM]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
   null,
-);
-
-export const feedbackStatus = handleActions(
-  {
-    [RUN_PROMPT_QUERY]: { next: () => "idle" },
-    [SUBMIT_FEEDBACK]: { next: () => "complete" },
-    [RESET]: { next: () => "idle" },
-  },
-  "idle",
 );

@@ -2,55 +2,48 @@ import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
-import FormProvider from "metabase/core/components/FormProvider";
 import { MetabotFeedbackType } from "metabase-types/api";
-import { MetabotFeedbackStatus, State } from "metabase-types/store";
-import { submitFeedbackForm, updateFeedbackType } from "../../actions";
-import { getFeedbackStatus, getFeedbackType } from "../../selectors";
+import { State } from "metabase-types/store";
+import { runPromptQuery, submitFeedbackForm } from "../../actions";
+import { getFeedbackType } from "../../selectors";
 import MetabotMessage from "../MetabotMessage";
 import {
+  FeedbackOptions,
   FormRoot,
   FormSection,
-  InlineForm,
-  InlineFormInput,
-  InlineFormSubmitButton,
 } from "./MetabotFeedbackForm.styled";
 
 interface StateProps {
   feedbackType: MetabotFeedbackType | null;
-  feedbackStatus: MetabotFeedbackStatus;
 }
 
 interface DispatchProps {
-  onChangeFeedback: (feedbackType: MetabotFeedbackType) => void;
-  onSubmitFeedback: (feedbackMessage: string) => void;
+  onSubmitFeedback: (feedbackType: MetabotFeedbackType) => void;
+  onRetry: () => void;
 }
 
 type MetabotFeedbackFormProps = StateProps & DispatchProps;
 
 const mapStateToProps = (state: State): StateProps => ({
   feedbackType: getFeedbackType(state),
-  feedbackStatus: getFeedbackStatus(state),
 });
 
 const mapDispatchToProps: DispatchProps = {
-  onChangeFeedback: updateFeedbackType,
   onSubmitFeedback: submitFeedbackForm,
+  onRetry: () => runPromptQuery(),
 };
 
 const MetabotFeedbackForm = ({
   feedbackType,
-  feedbackStatus,
-  onChangeFeedback,
   onSubmitFeedback,
+  onRetry,
 }: MetabotFeedbackFormProps) => {
   return (
     <FormRoot>
       <FeedbackFormContent
         feedbackType={feedbackType}
-        feedbackStatus={feedbackStatus}
-        onChangeFeedback={onChangeFeedback}
         onSubmitFeedback={onSubmitFeedback}
+        onRetry={onRetry}
       />
     </FormRoot>
   );
@@ -58,90 +51,56 @@ const MetabotFeedbackForm = ({
 
 const FeedbackFormContent = ({
   feedbackType,
-  feedbackStatus,
-  onChangeFeedback,
   onSubmitFeedback,
+  onRetry,
 }: MetabotFeedbackFormProps) => {
-  if (feedbackStatus === "complete") {
-    return <MetabotMessage>{t`Thanks for the feedback!`}</MetabotMessage>;
+  if (!feedbackType) {
+    return <FeedbackTypeSelect onSubmitFeedback={onSubmitFeedback} />;
   }
 
-  switch (feedbackType) {
-    case "great":
-      return <MetabotMessage>{t`Glad to hear it!`}</MetabotMessage>;
-    case "wrong-data":
-      return (
-        <FeedbackMessageForm
-          title={t`What data should it have used?`}
-          placeholder={t`Type the name of the data it should have used.`}
-          onSubmit={onSubmitFeedback}
-        />
-      );
-    case "incorrect-result":
-      return (
-        <FeedbackMessageForm
-          title={t`Sorry about that.`}
-          placeholder={t`Describe what’s wrong`}
-          onSubmit={onSubmitFeedback}
-        />
-      );
-    default:
-      return <FeedbackTypeSelect onChangeFeedback={onChangeFeedback} />;
+  if (feedbackType === "great") {
+    return <MetabotMessage>{t`Glad to hear it!`}</MetabotMessage>;
   }
+
+  return <FeedbackRetrySuggestion onRetry={onRetry} />;
 };
 
-interface FeedbackTypeSelectProps {
-  onChangeFeedback: (type: MetabotFeedbackType) => void;
+interface FeedbackRetrySuggestionProps {
+  onRetry: () => void;
 }
 
-const FeedbackTypeSelect = ({ onChangeFeedback }: FeedbackTypeSelectProps) => {
-  const handleGreat = () => onChangeFeedback("great");
-  const handleWrongData = () => onChangeFeedback("wrong-data");
-  const handleIncorrectResult = () => onChangeFeedback("incorrect-result");
-  const handleInvalidSql = () => onChangeFeedback("invalid-sql");
-
+const FeedbackRetrySuggestion = ({ onRetry }: FeedbackRetrySuggestionProps) => {
   return (
     <FormSection>
-      <MetabotMessage>{t`How did I do?`}</MetabotMessage>
-      <Button onClick={handleGreat}>{t`This is great!`}</Button>
-      <Button onClick={handleWrongData}>{t`This used the wrong data.`}</Button>
-      <Button onClick={handleIncorrectResult}>
-        {t`This result isn’t correct.`}
-      </Button>
-      <Button onClick={handleInvalidSql}>{t`This isn’t valid SQL.`}</Button>
+      <MetabotMessage>{t`Sorry, I don't always get things right the first time. I can try again, or you can rephrase your question.`}</MetabotMessage>
+      <Button onClick={onRetry}>{t`Try again`}</Button>
     </FormSection>
   );
 };
 
-interface FeedbackFormValues {
-  message: string;
+interface FeedbackTypeSelectProps {
+  onSubmitFeedback: (type: MetabotFeedbackType) => void;
 }
 
-interface FeedbackMessageFormProps {
-  title: string;
-  placeholder: string;
-  onSubmit: (message: string) => void;
-}
-
-const FeedbackMessageForm = ({
-  title,
-  placeholder,
-  onSubmit,
-}: FeedbackMessageFormProps) => {
-  const initialValues = { message: "" };
-  const handleSubmit = ({ message }: FeedbackFormValues) => onSubmit(message);
+const FeedbackTypeSelect = ({ onSubmitFeedback }: FeedbackTypeSelectProps) => {
+  const handleGreat = () => onSubmitFeedback("great");
+  const handleWrongData = () => onSubmitFeedback("wrong-data");
+  const handleIncorrectResult = () => onSubmitFeedback("incorrect-result");
+  const handleInvalidSql = () => onSubmitFeedback("invalid-sql");
 
   return (
     <FormSection>
-      <MetabotMessage>{title}</MetabotMessage>
-      <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
-        {({ dirty }) => (
-          <InlineForm disabled={!dirty}>
-            <InlineFormInput name="message" placeholder={placeholder} />
-            <InlineFormSubmitButton title="" icon="check" primary />
-          </InlineForm>
-        )}
-      </FormProvider>
+      <MetabotMessage>{t`How did I do?`}</MetabotMessage>
+      <FeedbackOptions>
+        <Button onClick={handleGreat}>{t`This is great!`}</Button>
+        <Button
+          onClick={handleWrongData}
+        >{t`This used the wrong data.`}</Button>
+        <Button onClick={handleIncorrectResult}>
+          {t`This result isn’t correct.`}
+        </Button>
+        <Button onClick={handleInvalidSql}>{t`This isn’t valid SQL.`}</Button>
+      </FeedbackOptions>
     </FormSection>
   );
 };

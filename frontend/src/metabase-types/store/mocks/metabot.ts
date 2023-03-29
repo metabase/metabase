@@ -12,6 +12,5 @@ export const createMockMetabotState = (
   queryResults: null,
   queryError: null,
   feedbackType: null,
-  feedbackStatus: "idle",
   ...opts,
 });

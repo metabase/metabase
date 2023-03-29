@@ -1,25 +1,15 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { getUser } from "metabase/selectors/user";
 import { DatabaseId, MetabotFeedbackType, User } from "metabase-types/api";
-import {
-  Dispatch,
-  MetabotFeedbackStatus,
-  MetabotQueryStatus,
-  State,
-} from "metabase-types/store";
+import { Dispatch, MetabotQueryStatus, State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
 import { runPromptQuery, updatePrompt } from "../../actions";
-import {
-  getFeedbackStatus,
-  getFeedbackType,
-  getQueryStatus,
-  getPrompt,
-} from "../../selectors";
+import { getFeedbackType, getQueryStatus, getPrompt } from "../../selectors";
 import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";
 import ModelLink from "../ModelLink";
@@ -36,7 +26,6 @@ interface StateProps {
   prompt: string;
   queryStatus: MetabotQueryStatus;
   feedbackType: MetabotFeedbackType | null;
-  feedbackStatus: MetabotFeedbackStatus;
   user: User | null;
 }
 
@@ -52,7 +41,6 @@ const mapStateToProps = (state: State): StateProps => ({
   prompt: getPrompt(state),
   queryStatus: getQueryStatus(state),
   feedbackType: getFeedbackType(state),
-  feedbackStatus: getFeedbackStatus(state),
   user: getUser(state),
 });
 
@@ -65,7 +53,6 @@ const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
 const MetabotHeader = ({
   prompt,
   queryStatus,
-  feedbackType,
   model,
   database,
   databases = [],
@@ -74,12 +61,25 @@ const MetabotHeader = ({
   onSubmitPrompt,
   onDatabaseChange,
 }: MetabotHeaderProps) => {
+  const [showDoneQueryTitle, setShowDoneQueryTitle] = useState(false);
+
+  useEffect(() => {
+    if (queryStatus !== "complete") {
+      return;
+    }
+
+    setShowDoneQueryTitle(true);
+    const timerId = setTimeout(() => setShowDoneQueryTitle(false), 5000);
+    return () => clearTimeout(timerId);
+  }, [queryStatus]);
+
   const title = getTitle(
     model,
     database,
     databases,
     user,
-    feedbackType,
+    queryStatus === "running",
+    showDoneQueryTitle,
     onDatabaseChange,
   );
   const placeholder = getPlaceholder(model);
@@ -104,12 +104,18 @@ const getTitle = (
   database: Database | undefined,
   databases: Database[],
   user: User | null,
-  feedbackType: MetabotFeedbackType | null,
+  isLoading: boolean,
+  showDoneQueryTitle: boolean,
   onDatabaseChange: (databaseId: number) => void,
 ) => {
-  if (feedbackType === "invalid-sql") {
-    return t`Sorry about that. Let me know what the SQL should've been.`;
-  } else if (model) {
+  if (isLoading) {
+    return t`A wise, insightful question, indeed.`;
+  }
+  if (showDoneQueryTitle) {
+    return t`Here you go!`;
+  }
+
+  if (model) {
     return getModelTitle(model, user);
   } else if (database) {
     return getDatabaseTitle(database, databases, user, onDatabaseChange);

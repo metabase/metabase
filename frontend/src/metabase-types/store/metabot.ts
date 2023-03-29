@@ -9,7 +9,6 @@ import {
 export type MetabotEntityId = CardId | DatabaseId;
 export type MetabotEntityType = "database" | "model";
 export type MetabotQueryStatus = "idle" | "running" | "complete";
-export type MetabotFeedbackStatus = "idle" | "complete";
 
 export interface MetabotState {
   entityId: MetabotEntityId | null;
@@ -21,5 +20,4 @@ export interface MetabotState {
   queryResults: [Dataset] | null;
   queryError: unknown;
   feedbackType: MetabotFeedbackType | null;
-  feedbackStatus: MetabotFeedbackStatus;
 }

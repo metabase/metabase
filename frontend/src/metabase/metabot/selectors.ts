@@ -34,20 +34,12 @@ export const getQueryResults = (state: State) => {
   return state.metabot.queryResults;
 };
 
-export const hasQueryResults = (state: State) => {
-  return getQueryResults(state) != null;
-};
-
 export const getQueryError = (state: State) => {
   return state.metabot.queryError;
 };
 
 export const getFeedbackType = (state: State) => {
   return state.metabot.feedbackType;
-};
-
-export const getFeedbackStatus = (state: State) => {
-  return state.metabot.feedbackStatus;
 };
 
 export const getNativeQueryText = createSelector([getQuestion], question =>

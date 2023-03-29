@@ -103,21 +103,16 @@ export const fetchQueryResults =
     dispatch({ type: FETCH_QUERY_RESULTS, payload });
   };
 
-export const UPDATE_FEEDBACK_TYPE = "metabase/metabot/UPDATE_FEEDBACK_TYPE";
-export const updateFeedbackType =
-  (feedbackType: MetabotFeedbackType) => (dispatch: Dispatch) => {
-    dispatch({ type: UPDATE_FEEDBACK_TYPE, payload: feedbackType });
-    dispatch(submitFeedback());
-  };
-
+export const SUBMIT_FEEDBACK_FORM = "metabase/metabot/SUBMIT_FEEDBACK_FORM";
 export const submitFeedbackForm =
-  (feedbackMessage: string) => (dispatch: Dispatch) => {
-    dispatch(submitFeedback(feedbackMessage));
+  (feedbackType: MetabotFeedbackType) => (dispatch: Dispatch) => {
+    dispatch({ type: SUBMIT_FEEDBACK_FORM, payload: feedbackType });
+    dispatch(submitFeedback());
   };
 
 export const SUBMIT_FEEDBACK = "metabase/metabot/SUBMIT_FEEDBACK";
 export const submitFeedback =
-  (feedbackMessage?: string) => (dispatch: Dispatch, getState: GetState) => {
+  () => (dispatch: Dispatch, getState: GetState) => {
     const prompt = getPrompt(getState());
     const entityType = getEntityType(getState());
     const sql = getOriginalNativeQueryText(getState());
@@ -129,7 +124,6 @@ export const submitFeedback =
       prompt,
       sql,
       feedback: feedbackType,
-      message: feedbackMessage,
       correct_sql: feedbackType === "invalid-sql" ? correctSql : undefined,
     });
 
