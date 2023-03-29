@@ -213,8 +213,7 @@ describe("scenarios > collection defaults", () => {
       })
     
       popover().within(() => {
-        cy.findByText(/important text/);
-        cy.findByText(/link/);
+        cy.findByRole("link", {name: "link"});
       })
     })
   })
