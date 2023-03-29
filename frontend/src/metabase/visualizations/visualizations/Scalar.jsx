@@ -13,7 +13,7 @@ import ScalarValue, {
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
 import { TYPE } from "metabase-lib/types/constants";
-import { ScalarContainer } from "./Scalar.styled";
+import { ScalarContainer, LabelIcon } from "./Scalar.styled";
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {
@@ -41,7 +41,8 @@ export default class Scalar extends Component {
   static noHeader = true;
   static supportsSeries = true;
 
-  static minSize = { width: 3, height: 3 };
+  static minSize = { width: 1, height: 1 };
+  static defaultSize = { width: 3, height: 3 };
 
   static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;
@@ -214,6 +215,11 @@ export default class Scalar extends Component {
     };
     const isClickable = visualizationIsClickable(clicked);
 
+    const showSmallTitle =
+      !!settings["card.title"] &&
+      isDashboard &&
+      (gridSize?.width < 2 || gridSize?.height < 2);
+
     return (
       <ScalarWrapper>
         <div className="Card-title absolute top right p1 px2">
@@ -243,16 +249,24 @@ export default class Scalar extends Component {
             />
           </span>
         </ScalarContainer>
-        {isDashboard && (
-          <ScalarTitle
-            title={settings["card.title"]}
-            description={settings["card.description"]}
-            onClick={
-              onChangeCardAndRun &&
-              (() => onChangeCardAndRun({ nextCard: card }))
-            }
-          />
-        )}
+
+        {isDashboard &&
+          (showSmallTitle ? (
+            <LabelIcon
+              name="ellipsis"
+              tooltip={settings["card.title"]}
+              size={10}
+            />
+          ) : (
+            <ScalarTitle
+              title={settings["card.title"]}
+              description={settings["card.description"]}
+              onClick={
+                onChangeCardAndRun &&
+                (() => onChangeCardAndRun({ nextCard: card }))
+              }
+            />
+          ))}
       </ScalarWrapper>
     );
   }
