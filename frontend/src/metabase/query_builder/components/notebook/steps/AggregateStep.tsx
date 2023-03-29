@@ -1,8 +1,10 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
+
+import type { Aggregation as IAggregation } from "metabase-types/types/Query";
+import type { NotebookStepUiComponentProps } from "../types";
 import ClauseStep from "./ClauseStep";
 
 const aggTetherOptions = {
@@ -17,13 +19,13 @@ const aggTetherOptions = {
   ],
 };
 
-export default function AggregateStep({
+function AggregateStep({
   color,
   query,
   updateQuery,
   isLastOpened,
   readOnly,
-}) {
+}: NotebookStepUiComponentProps) {
   return (
     <ClauseStep
       data-testid="aggregate-step"
@@ -37,7 +39,7 @@ export default function AggregateStep({
         <AggregationPopover
           query={query}
           aggregation={aggregation}
-          onChangeAggregation={newAggregation =>
+          onChangeAggregation={(newAggregation: IAggregation) =>
             aggregation
               ? updateQuery(aggregation.replace(newAggregation))
               : updateQuery(query.aggregate(newAggregation))
@@ -50,3 +52,5 @@ export default function AggregateStep({
     />
   );
 }
+
+export default AggregateStep;
