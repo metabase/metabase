@@ -2,14 +2,14 @@
   (:refer-clojure :exclude [defn])
   (:require
    [clojure.core :as core]
-   [clojure.string :as str]
    [malli.core :as mc]
    [malli.destructure]
    [malli.error :as me]
    [malli.util :as mut]
    [metabase.shared.util.i18n :refer [tru]]
    [metabase.util :as u]
-   #?@(:clj  ([malli.experimental :as mx]
+   #?@(:clj  ([clojure.string :as str]
+              [malli.experimental :as mx]
               [metabase.util.i18n :as i18n]
               [net.cgrand.macrovich :as macros]
               [ring.util.codec :as codec])))
@@ -36,16 +36,17 @@
             (cond-> {:type type :data data}
               data (assoc :humanized humanized))))))
 
-(defn- annotate-docstring [single parglists return doc]
-  (str/trim
-   (str (if single "Input:  " "Inputs: ")
-        (if single
-          (pr-str (first (mapv :raw-arglist parglists)))
-          (str "(" (str/join "\n           " (map (comp pr-str :raw-arglist) parglists)) ")"))
-        "\n  Return: " (str/replace (u/pprint-to-str (:schema return :any))
-                                    "\n"
-                                    (str "\n          "))
-        (when (not-empty doc) (str "\n\n  " doc)))))
+#?(:clj
+   (defn- annotate-docstring [single parglists return doc]
+     (str/trim
+      (str (if single "Input:  " "Inputs: ")
+           (if single
+             (pr-str (first (mapv :raw-arglist parglists)))
+             (str "(" (str/join "\n           " (map (comp pr-str :raw-arglist) parglists)) ")"))
+           "\n  Return: " (str/replace (u/pprint-to-str (:schema return :any))
+                                       "\n"
+                                       (str "\n          "))
+           (when (not-empty doc) (str "\n\n  " doc))))))
 
 #?(:clj
    (core/defn defn* [target schema args]
@@ -72,7 +73,7 @@
                           ;; replace defn body with instrumented function:
                           (mc/-instrument {:schema ~schema :report explain-fn-fail!}
                                           (fn ~(gensym (clojure.lang.Compiler/munge (str name "-instrumented"))) ~@bodies)))
-                       `(c/defn
+                       `(core/defn
                           ~name
                           ~@(some-> doc vector)
                           ~enriched-meta
