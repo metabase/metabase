@@ -289,15 +289,15 @@
   (some-> metadata :segments deref (get segment-id) deref))
 
 (defn- tables [database-id metadata]
-  (for [dlay  @(:tables metadata)
-        :let  [a-table @dlay]
-        :when (= (:db_id a-table) database-id)]
+  (for [[_id table-delay]  (some-> metadata :tables deref)
+        :let               [a-table (some-> dlay deref)]
+        :when              (and a-table (= (:db_id a-table) database-id))]
     a-table))
 
-(defn- fields [metadata table-id]
-  (for [dlay  @(:fields metadata)
-        :let  [a-field @dlay]
-        :when (= (:table_id a-field) table-id)]
+(defn- fields [table-id metadata]
+  (for [[_id field-delay]  (some-> metadata :fields deref)
+        :let               [a-field (some-> dlay deref)]
+        :when              (and a-field (= (:table_id a-field) table-id))]
     a-field))
 
 (defn metadata-provider
