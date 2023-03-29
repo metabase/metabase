@@ -8,6 +8,7 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -203,8 +204,7 @@
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/mbql
   [query stage-number _stage]
-  (let [parts        display-name-parts
-        descriptions (for [k parts]
+  (let [descriptions (for [k display-name-parts]
                        (lib.metadata.calculation/describe-top-level-key query stage-number k))]
     (str/join ", " (remove str/blank? descriptions))))
 
@@ -249,3 +249,15 @@
      (lib.expression/expressions query stage-number)
      columns
      (implicitly-joinable-columns query columns))))
+
+(mu/defn append-stage :- ::lib.schema/query
+  "Adds a new blank stage to the end of the pipeline"
+  [query]
+  (update query :stages conj (lib.options/ensure-uuid {:lib/type :mbql.stage/mbql})))
+
+(mu/defn drop-stage :- ::lib.schema/query
+  "Drops the final stage in the pipeline"
+  [query]
+  (when (= 1 (count (:stages query)))
+    (throw (ex-info (i18n/tru "Cannot drop the only stage") {:stages (:stages query)})))
+  (update query :stages (comp vec butlast)))

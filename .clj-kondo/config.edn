@@ -243,7 +243,6 @@
     metabase.api.preview-embed                                      api.preview-embed
     metabase.api.public                                             api.public
     metabase.api.pulse                                              api.pulse
-    metabase.api.query-description                                  api.qd
     metabase.api.revision                                           api.revision
     metabase.api.search                                             api.search
     metabase.api.segment                                            api.segment

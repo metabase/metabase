@@ -44,7 +44,8 @@
   [:map
    [:lib/type [:= :metadata/field]] ; TODO -- should this be changed to `:metadata/column`?
    [:id {:optional true} ::lib.schema.id/field]
-   [:name ::lib.schema.common/non-blank-string]])
+   [:name ::lib.schema.common/non-blank-string]
+   [:display_name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (def ^:private CardMetadata
   [:map
@@ -69,7 +70,8 @@
    [:lib/type [:= :metadata/table]]
    [:id ::lib.schema.id/table]
    [:name ::lib.schema.common/non-blank-string]
-   [:schema {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:display_name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:schema       {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    ;; This is now optional! If the [[MetadataProvider]] provides it, great, but if not we can always make the
    ;; subsequent request to fetch fields separately.
    [:fields   {:optional true} [:maybe [:sequential ColumnMetadata]]]

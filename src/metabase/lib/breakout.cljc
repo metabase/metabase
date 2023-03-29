@@ -9,7 +9,7 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-(defmethod lib.metadata.calculation/describe-top-level-key :breakout
+(defmethod lib.metadata.calculation/describe-top-level-key-method :breakout
   [query stage-number _k]
   (when-let [breakouts (not-empty (:breakout (lib.util/query-stage query stage-number)))]
     (i18n/tru "Grouped by {0}"

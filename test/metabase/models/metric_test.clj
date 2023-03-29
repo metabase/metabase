@@ -1,13 +1,13 @@
 (ns metabase.models.metric-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.database :refer [Database]]
+   [metabase.models :refer [Database Segment Table]]
    [metabase.models.metric :as metric :refer [Metric]]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
-   [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
 
@@ -124,3 +124,23 @@
         (is (= "a2318866"
                (serdes/raw-hash ["measurement" (serdes/identity-hash table) now])
                (serdes/identity-hash metric)))))))
+
+(deftest definition-descriptions-test
+  (testing ":definition_description should hydrate to nil if :definition is missing"
+    (t2.with-temp/with-temp [Metric metric {:name     "Metric A"
+                                            :table_id (mt/id :users)}]
+      (is (= nil
+             (:definition_description (t2/hydrate metric :definition_description))))))
+  (t2.with-temp/with-temp [Segment {segment-id :id} {:name       "Checkins with ID = 1"
+                                                     :table_id   (mt/id :checkins)
+                                                     :definition (:query (mt/mbql-query checkins
+                                                                           {:filter [:= $id 1]}))}
+                           Metric metric {:name       "Metric B"
+                                          :table_id   (mt/id :venues)
+                                          :definition (:query (mt/mbql-query venues
+                                                                {:aggregation [[:sum $category_id->categories.name]]
+                                                                 :filter      [:and
+                                                                               [:= $price 4]
+                                                                               [:segment segment-id]]}))}]
+    (is (= "Venues, Sum of Name, Filtered by Price equals 4 and Checkins with ID = 1"
+           (:definition_description (t2/hydrate metric :definition_description))))))

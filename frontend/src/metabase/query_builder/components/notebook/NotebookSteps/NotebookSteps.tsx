@@ -14,10 +14,11 @@ interface NotebookStepsProps {
   sourceQuestion?: Question;
   reportTimezone?: string;
   updateQuestion: (question: Question) => Promise<void>;
+  readOnly?: boolean;
 }
 
-function getInitialOpenSteps(question: Question): OpenSteps {
-  const isNew = !question.table();
+function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
+  const isNew = !readOnly && !question.table();
   return isNew
     ? {
         "0:filter": true,
@@ -32,9 +33,10 @@ function NotebookSteps({
   sourceQuestion,
   reportTimezone,
   updateQuestion,
+  readOnly = false,
 }: NotebookStepsProps) {
   const [openSteps, setOpenSteps] = useState<OpenSteps>(
-    getInitialOpenSteps(question),
+    getInitialOpenSteps(question, readOnly),
   );
   const [lastOpenedStep, setLastOpenedStep] = useState<string | null>(null);
 
@@ -92,6 +94,7 @@ function NotebookSteps({
             reportTimezone={reportTimezone}
             updateQuery={onChange}
             openStep={handleStepOpen}
+            readOnly={readOnly}
           />
         );
       })}

@@ -26,6 +26,7 @@ interface NotebookOwnProps {
   updateQuestion: (question: Question) => Promise<void>;
   runQuestionQuery: () => void;
   setQueryBuilderMode: (mode: string) => void;
+  readOnly?: boolean;
 }
 
 interface NotebookCardProps {
