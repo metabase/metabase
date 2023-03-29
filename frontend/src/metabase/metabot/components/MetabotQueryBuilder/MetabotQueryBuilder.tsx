@@ -40,18 +40,22 @@ const MetabotQueryBuilder = ({
   queryResults,
   queryError,
 }: MetabotQueryBuilderProps) => {
-  const isIdle = queryStatus === "idle";
   const isRunning = queryStatus === "running";
   const hasResults = queryResults != null;
   const hasErrors = queryError != null;
 
   return (
     <QueryBuilderRoot>
-      {isIdle && <IdleState />}
       {hasResults && <MetabotQueryEditor />}
-      {hasResults && !isRunning && <MetabotVisualization />}
-      {isRunning && <RunningState />}
-      {hasErrors && <ErrorState queryError={queryError} />}
+      {isRunning ? (
+        <RunningState />
+      ) : hasErrors ? (
+        <ErrorState queryError={queryError} />
+      ) : hasResults ? (
+        <MetabotVisualization />
+      ) : (
+        <IdleState />
+      )}
       {hasResults && <MetabotFeedbackForm />}
     </QueryBuilderRoot>
   );
