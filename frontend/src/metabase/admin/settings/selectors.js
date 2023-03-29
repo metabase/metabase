@@ -591,7 +591,7 @@ const SECTIONS = updateSectionsWithPlugins({
     order: 13,
     settings: [
       {
-        key: "metabot-enabled",
+        key: "is-metabot-enabled",
         display_name: t`Enable Metabot`,
         description: t`Metabot is in Alpha, and in general LargeLanguageModel generated SQL should be examined carefully before using its results in critical applications. By using Metabot, you agree to share prompt and resultant queries with Metabase to help us improve Metabot’s performance.`,
         type: "boolean",
@@ -601,14 +601,14 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`OpenAI API Key`,
         description: null,
         type: "string",
-        getHidden: (_, settings) => !settings["metabot-enabled"],
+        getHidden: (_, settings) => !settings["is-metabot-enabled"],
       },
       {
         key: "openai-organization",
         display_name: t`OpenAPI Organization ID`,
         description: null,
         type: "string",
-        getHidden: (_, settings) => !settings["metabot-enabled"],
+        getHidden: (_, settings) => !settings["is-metabot-enabled"],
       },
     ],
   },

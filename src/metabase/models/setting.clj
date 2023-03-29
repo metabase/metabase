@@ -127,7 +127,7 @@
   these names to avoid unintended side-effects if an application database still stores values for these settings."
   #{"-site-url"
     "enable-advanced-humanization"
-    "metabot-enabled"
+    "is-metabot-enabled"
     "ldap-sync-admin-group"})
 
 (def ^:dynamic *allow-retired-setting-names*

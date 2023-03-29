@@ -42,7 +42,7 @@ const ARCHIVE_TESTID = "archive-button";
 
 const mapStateToProps = (state: State) => ({
   isModerator: getUserIsAdmin(state),
-  isMetabotEnabled: getSetting(state, "metabot-enabled"),
+  isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
 });
 
 const mapDispatchToProps = {

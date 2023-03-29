@@ -155,7 +155,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "google-auth-configured": false,
   "google-auth-enabled": false,
   "is-hosted?": false,
-  "metabot-enabled": false,
+  "is-metabot-enabled": false,
   "jwt-enabled": false,
   "jwt-configured": false,
   "ldap-configured?": false,

@@ -288,7 +288,7 @@ class MetabaseSettings {
   }
 
   isMetabotEnabled() {
-    return this.get("metabot-enabled");
+    return this.get("is-metabot-enabled");
   }
 
   passwordComplexityRequirements(): PasswordComplexity {

@@ -12,7 +12,7 @@
 
 (def num-choices 3)
 
-(defsetting metabot-enabled
+(defsetting is-metabot-enabled
   (deferred-tru "Is Metabot enabled?")
   :type :boolean
   :visibility :authenticated
