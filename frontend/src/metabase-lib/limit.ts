@@ -1,15 +1,12 @@
-import {
-  current_limit as _current_limit,
-  limit as _limit,
-} from "cljs/metabase.lib.core";
+import * as ML from "cljs/metabase.lib.core";
 import type { Query, Limit } from "./types";
 
 export function currentLimit(query: Query): Limit {
-  return _current_limit(query);
+  return ML.current_limit(query);
 }
 
 export function limit(query: Query, limit: Limit): Query {
-  return _limit(query, limit);
+  return ML.limit(query, limit);
 }
 
 export function hasLimit(query: Query) {
