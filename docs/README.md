@@ -201,7 +201,7 @@ Metabase's reference documentation.
 - [Metabase forum](https://discourse.metabase.com/)
 - [Configuring logging](./configuring-metabase/log-configuration.md)
 
-### [Tutorials and guides](https://www.metabase.com/learn)
+### Tutorials and guides
 
 [Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase, data best practices, and more.
 
