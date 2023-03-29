@@ -158,15 +158,15 @@
 
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
-  [:as {{:keys [database pretty?] :as query} :body}]
+  [:as {{:keys [database pretty] :as query} :body}]
   {database ms/PositiveInt
-   pretty?  [:maybe :boolean]}
+   pretty  [:maybe :boolean]}
   (binding [persisted-info/*allow-persisted-substitution* false]
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [{q :query :as compiled} (qp/compile-and-splice-parameters query)
           driver          (driver.u/database->driver database)
           ;; Format the query unless we explicitly do not want to
-          formatted-query (if (false? pretty?)
+          formatted-query (if (false? pretty)
                             q
                             (or (u/ignore-exceptions (mdb.query/format-sql q driver)) q))]
       (assoc compiled :query formatted-query))))

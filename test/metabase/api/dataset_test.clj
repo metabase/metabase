@@ -280,7 +280,7 @@
               :params nil}
              (mt/user-http-request :rasta :post 200 "dataset/native"
                                    (assoc (mt/mbql-query venues {:fields [$id $name]})
-                                     :pretty? false))))
+                                     :pretty false))))
 
       (testing "\nMake sure parameters are spliced correctly"
         (is (= {:query  (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
@@ -292,7 +292,7 @@
                                      (assoc (mt/mbql-query checkins
                                                            {:fields [$id]
                                                             :filter [:= $date "2015-11-13"]})
-                                       :pretty? false)))))
+                                       :pretty false)))))
 
       (testing "\nshould require that the user have ad-hoc native perms for the DB"
         (mt/with-temp-copy-of-db
@@ -318,7 +318,7 @@
              (mt/user-http-request :rasta :post 200 "dataset/native"
                                    (assoc
                                     (mt/mbql-query venues {:fields [$id $name]})
-                                     :pretty? true)))))
+                                     :pretty true)))))
     (testing "The default behavior is to format the SQL"
       (is (= {:query  (str "SELECT\n"
                            "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
