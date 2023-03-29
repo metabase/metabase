@@ -43,7 +43,7 @@ You _can_ (but shouldn't) set a driver to `lazy-load: false`, as this will make 
 
 ## Plugin initialization
 
-Metabase will initialize plugins automatically as needed. Initialization goes something like this: Metabase adds the driver to the classpath, then it performs ea `init` section of the plugin manifest, in order. In the [example manifest above](#example-manifest), there are two steps, a `load-namespace` step, and a `register-jdbc-driver` step:
+Metabase will initialize plugins automatically as needed. Initialization goes something like this: Metabase adds the driver to the classpath, then it performs each `init` section of the plugin manifest, in order. In the [example manifest above](#example-manifest), there are two steps, a `load-namespace` step, and a `register-jdbc-driver` step:
 
 ```yaml
 init:
