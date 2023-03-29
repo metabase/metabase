@@ -63,6 +63,6 @@
   [query-map]
   (-> query-map convert/->legacy-MBQL fix-namespaced-values clj->js))
 
-(defn ^:export orderable-fields
+(defn ^:export orderable-columns
   [query stage-number]
-  (map clj->js (lib.order-by/orderable-fields query-stage-number)))
+  (map clj->js (lib.order-by/orderable-columns query stage-number)))
