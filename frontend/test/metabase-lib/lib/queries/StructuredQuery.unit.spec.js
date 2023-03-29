@@ -60,6 +60,45 @@ function makeQueryWithoutNumericFields() {
   return new Question(questionDetail, metadata).query();
 }
 
+// no numeric fields, but have linked table (FK) with a numeric field
+function makeQueryWithLinkedTable() {
+  const tableId = "card__123";
+
+  const questionDetail = {
+    display: "table",
+    visualization_settings: {},
+    dataset_query: {
+      type: "query",
+      database: SAMPLE_DATABASE.id,
+      query: {
+        "source-table": tableId,
+      },
+    },
+  };
+
+  const metadata = createMetadata(state => {
+    const tableWithWithoutNumericFields = {
+      id: tableId,
+      db_id: SAMPLE_DATABASE.id,
+      fields: [ORDERS.ID.id, ORDERS.PRODUCT_ID.id, ORDERS.CREATED_AT.id],
+    };
+    const linkedTableId = "card__456";
+    const linkedTable = {
+      id: linkedTableId,
+      db_id: SAMPLE_DATABASE.id,
+      fields: [PRODUCTS.ID.id, PRODUCTS.PRICE.id, PRODUCTS.CREATED_AT.id],
+    };
+
+    return state
+      .assocIn(["entities", "tables", tableId], tableWithWithoutNumericFields)
+      .assocIn(["entities", "tables", linkedTableId], linkedTable);
+  });
+
+  return new Question(questionDetail, metadata).query();
+}
+
+const getShortName = aggregation => aggregation.short;
+
 const query = makeQuery({});
 
 describe("StructuredQuery behavioral tests", () => {
@@ -331,12 +370,16 @@ describe("StructuredQuery", () => {
 
     describe("aggregationOperators", () => {
       it("has the same aggregation operators when query have no custom fields", () => {
-        expect(query.aggregationOperators()).toEqual(
-          query.table().aggregationOperators(),
-        );
-        expect(
-          query.aggregationOperators().map(aggregation => aggregation.short),
-        ).toEqual([
+        const queryOperators = query.aggregationOperators().map(getShortName);
+        const tableOperators = query
+          .table()
+          .aggregationOperators()
+          .map(getShortName);
+
+        // NOTE: Equality check between .aggregationOperators() results leads to an OOM error due to circular references
+        expect(queryOperators).toEqual(tableOperators);
+
+        expect(query.aggregationOperators().map(getShortName)).toEqual([
           "rows",
           "count",
           "sum",
@@ -351,44 +394,68 @@ describe("StructuredQuery", () => {
         ]);
       });
 
-      it("only show aggregation operators on available fields", () => {
-        const queryWithoutNumericFields = makeQueryWithoutNumericFields();
+      describe("query without numeric fields", () => {
+        it("shows aggregation operators only for available fields", () => {
+          const queryWithoutNumericFields = makeQueryWithoutNumericFields();
 
-        expect(queryWithoutNumericFields.aggregationOperators()).toEqual(
-          queryWithoutNumericFields.table().aggregationOperators(),
-        );
-        expect(
-          queryWithoutNumericFields
+          const queryOperators = queryWithoutNumericFields
             .aggregationOperators()
-            .map(aggregation => aggregation.short),
-        ).toEqual(["rows", "count", "distinct", "cum-count", "min", "max"]);
-      });
+            .map(getShortName);
+          const tableOperators = queryWithoutNumericFields
+            .table()
+            .aggregationOperators()
+            .map(getShortName);
 
-      it("shows `avg` aggregation when having a numeric custom field on table without numeric fields", () => {
-        const query = makeQueryWithoutNumericFields().addExpression(
-          "custom_numeric_field",
-          // Expression: case([ID] = 1, 11, 99)
-          ["case", [["=", ORDERS.ID, 1], 11], { default: 99 }],
-        );
+          // NOTE: Equality check between .aggregationOperators() results leads to an OOM error due to circular references
+          expect(queryOperators).toEqual(tableOperators);
+          expect(
+            queryWithoutNumericFields.aggregationOperators().map(getShortName),
+          ).toEqual(["rows", "count", "distinct", "cum-count", "min", "max"]);
+        });
 
-        expect(query.aggregationOperators()).not.toEqual(
-          query.table().aggregationOperators(),
-        );
-        expect(
-          query.aggregationOperators().map(aggregation => aggregation.short),
-        ).toEqual([
-          "rows",
-          "count",
-          "sum",
-          "avg",
-          "median",
-          "distinct",
-          "cum-sum",
-          "cum-count",
-          "stddev",
-          "min",
-          "max",
-        ]);
+        it('shows "avg" aggregation when having a numeric custom field', () => {
+          const query = makeQueryWithoutNumericFields().addExpression(
+            "custom_numeric_field",
+            // Expression: case([ID] = 1, 11, 99)
+            ["case", [["=", ORDERS.ID, 1], 11], { default: 99 }],
+          );
+
+          expect(query.aggregationOperators()).not.toEqual(
+            query.table().aggregationOperators(),
+          );
+          expect(query.aggregationOperators().map(getShortName)).toEqual([
+            "rows",
+            "count",
+            "sum",
+            "avg",
+            "median",
+            "distinct",
+            "cum-sum",
+            "cum-count",
+            "stddev",
+            "min",
+            "max",
+          ]);
+        });
+
+        it("shows aggregation operators for linked tables fields", () => {
+          const queryWithoutNumericFields = makeQueryWithLinkedTable();
+          const operators = queryWithoutNumericFields.aggregationOperators();
+
+          expect(operators.map(getShortName)).toEqual([
+            "rows",
+            "count",
+            "sum",
+            "avg",
+            "median",
+            "distinct",
+            "cum-sum",
+            "cum-count",
+            "stddev",
+            "min",
+            "max",
+          ]);
+        });
       });
     });
 
