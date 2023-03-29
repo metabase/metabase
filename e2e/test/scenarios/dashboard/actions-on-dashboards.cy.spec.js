@@ -110,7 +110,7 @@ const MODEL_NAME = "Test Action Model";
           clickHelper("Update Score");
 
           cy.findByRole("dialog").within(() => {
-            cy.findByLabelText("New score").type("55");
+            cy.findByLabelText("New Score").type("55");
             cy.button(ACTION_NAME).click();
           });
 
