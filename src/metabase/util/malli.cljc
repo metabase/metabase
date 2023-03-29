@@ -14,7 +14,8 @@
               [metabase.util.i18n :as i18n]
               [net.cgrand.macrovich :as macros]
               [ring.util.codec :as codec])))
-  #?(:cljs (:require-macros [metabase.util.malli])))
+  #?(:cljs (:require-macros [metabase.util.malli]))
+  #?(:clj (:import [clojure.lang Compiler])))
 
 (core/defn- encode-uri [fragment]
   (#?(:clj codec/url-encode :cljs js/encodeURI) fragment))
@@ -73,7 +74,7 @@
                           ~@(some-> doc vector)
                           ;; replace defn body with instrumented function:
                           (mc/-instrument {:schema ~schema :report explain-fn-fail!}
-                                          (fn ~(gensym (str name "-instrumented")) ~@bodies)))
+                                          (fn ~(gensym (clojure.lang.Compiler/munge (str name "-instrumented"))) ~@bodies)))
                        `(c/defn
                           ~name
                           ~@(some-> doc vector)
