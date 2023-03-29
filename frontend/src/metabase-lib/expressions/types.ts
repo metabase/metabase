@@ -1,4 +1,4 @@
-import type { Database } from "metabase-types/api/database";
+import type Database from "metabase-lib/metadata/Database";
 
 export interface HelpText {
   name: string;
@@ -12,7 +12,7 @@ export interface HelpText {
 export interface HelpTextConfig {
   name: string;
   args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
-  description: (database: Database, reportTimezone: string) => string;
+  description: (database: Database, reportTimezone?: string) => string;
   structure: string;
   docsPage?: string;
 }
@@ -22,3 +22,11 @@ interface HelpTextArg {
   description: string;
   example: string;
 }
+
+export type MBQLClauseFunctionConfig = {
+  displayName: string;
+  type: string;
+  args: string[];
+  requiresFeature?: string;
+};
+export type MBQLClauseMap = Record<string, MBQLClauseFunctionConfig>;
