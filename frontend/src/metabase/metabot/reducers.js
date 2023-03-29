@@ -66,6 +66,7 @@ export const queryStatus = handleActions(
 
 export const queryResults = handleActions(
   {
+    [RUN_QUERY]: { next: () => null },
     [FETCH_QUERY_RESULTS]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
