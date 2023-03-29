@@ -290,13 +290,13 @@
 
 (defn- tables [database-id metadata]
   (for [[_id table-delay]  (some-> metadata :tables deref)
-        :let               [a-table (some-> dlay deref)]
+        :let               [a-table (some-> table-delay deref)]
         :when              (and a-table (= (:db_id a-table) database-id))]
     a-table))
 
 (defn- fields [table-id metadata]
   (for [[_id field-delay]  (some-> metadata :fields deref)
-        :let               [a-field (some-> dlay deref)]
+        :let               [a-field (some-> field-delay deref)]
         :when              (and a-field (= (:table_id a-field) table-id))]
     a-field))
 
