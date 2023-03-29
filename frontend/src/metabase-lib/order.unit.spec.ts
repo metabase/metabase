@@ -1,8 +1,7 @@
-import * as ML from "cljs/metabase.lib.js";
-
-import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
-
 import _ from "underscore";
+
+import * as ML from "cljs/metabase.lib.js";
+import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
 
 import * as SampleDatabase from "__support__/sample_database_fixture";
 
