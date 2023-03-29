@@ -409,6 +409,7 @@
     metabase.test.domain-entities                                   test.de
     metabase.test.mock.util                                         mock.util
     metabase.test.sync                                              test.sync
+    metabase.test.util.js                                           test.js
     metabase.test.util.timezone                                     test.tz
     metabase.timeseries-query-processor-test.util                   tqpt
     metabase.transforms.core                                        tf

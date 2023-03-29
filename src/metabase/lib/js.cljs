@@ -25,9 +25,7 @@
   For snippets they start with `snippet:`, eg. `{{ snippet: arbitrary text here }}`.
   And for card references either `{{ #123 }}` or with the optional human label `{{ #123-card-title-slug }}`.
 
-  Invalid patterns are simply ignored, so something like `{{&foo!}}` is just disregarded.
-
-  See unit tests in [[for more examples."
+  Invalid patterns are simply ignored, so something like `{{&foo!}}` is just disregarded."
   [query-text]
   (-> query-text
       lib.core/recognize-template-tags
@@ -45,7 +43,7 @@
    (->> existing-tags
         lib.core/->TemplateTags
         (lib.core/template-tags query-text)
-        clj->js)))
+        lib.core/TemplateTags->)))
 
 (defn ^:export suggestedName
   "Return a nice description of a query."

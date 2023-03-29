@@ -3,7 +3,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [malli.util :as mut]
    [medley.core :as m]
    [metabase.lib.schema.common :as common]
    [metabase.util.humanization :as u.humanization]
@@ -11,19 +10,13 @@
    #?@(:cljs ([metabase.domain-entities.converters :as converters]))))
 
 (def ^:private TemplateTag
-  (mut/merge
-    [:map
-     [:type [:enum :text :snippet :card]]
-     [:id :uuid]
-     [:name ::common/non-blank-string]
-     [:display-name {:js/prop "display-name" :optional true} ::common/non-blank-string]]
-    [:multi {:dispatch #?(:clj  :type
-                          :cljs #(if (object? %)
-                                   (keyword (.-type %))
-                                   (:type %)))}
-     [:text    [:map]]
-     [:snippet [:map [:snippet-name {:js/prop "snippet-name"} ::common/non-blank-string]]]
-     [:card    [:map [:card-id {:js/prop "card-id"} :int]]]]))
+  [:map
+   [:type [:enum :text :snippet :card]]
+   [:id :uuid]
+   [:name ::common/non-blank-string]
+   [:display-name {:js/prop "display-name" :optional true} ::common/non-blank-string]
+   [:snippet-name {:js/prop "snippet-name" :optional true} ::common/non-blank-string]
+   [:card-id {:js/prop "card-id" :optional true} :int]])
 
 (def ^:private TemplateTags
   [:map-of :string TemplateTag])
@@ -120,6 +113,11 @@
        {}))))
 
 #?(:cljs
-   (def ->TemplateTags
-     "Converter to a map of `TemplateTag`s keyed by their string names."
-     (converters/incoming TemplateTags)))
+   (do
+     (def ->TemplateTags
+       "Converter to a map of `TemplateTag`s keyed by their string names."
+       (converters/incoming TemplateTags))
+
+     (def TemplateTags->
+       "Converter from a map of `TemplateTag`s keyed by their string names to vanilla JS."
+       (converters/outgoing TemplateTags))))

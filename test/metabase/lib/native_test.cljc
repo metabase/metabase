@@ -1,9 +1,10 @@
 (ns metabase.lib.native-test
   (:require
-   [clojure.test :as t :refer [are deftest]]
+   [clojure.test :refer [are deftest is testing]]
    [metabase.lib.native :as lib.native]
-   #?@(:clj ([medley.core :as m]
-             [metabase.util.humanization :as u.humanization]))))
+   #?@(:clj  ([medley.core :as m]
+              [metabase.util.humanization :as u.humanization])
+       :cljs ([metabase.test.util.js :as test.js]))))
 
 (deftest ^:parallel variable-tag-test
   (are [exp input] (= exp (lib.native/recognize-template-tags input))
@@ -35,58 +36,58 @@
    ;; TODO: This is only CLJ-only because =? from Hawk is not available in CLJS currently.
    ;; I don't think there's any reason why it can't work there too.
    (deftest ^:parallel template-tags-test
-     (t/testing "snippet tags"
-       (t/is (=? {"snippet:foo" {:type         :snippet
-                                 :name         "snippet:foo"
-                                 :snippet-name "foo"
-                                 :id           uuid?}}
-                 (lib.native/template-tags "SELECT * FROM table WHERE {{snippet:foo}}")))
-       (t/is (=? {"snippet:foo"  {:type         :snippet
-                                  :name         "snippet:foo"
-                                  :snippet-name "foo"
-                                  :id           uuid?}
-                  "snippet: foo" {:type         :snippet
-                                  :name         "snippet: foo"
-                                  :snippet-name "foo"
-                                  :id           uuid?}}
+     (testing "snippet tags"
+       (is (=? {"snippet:foo" {:type         :snippet
+                               :name         "snippet:foo"
+                               :snippet-name "foo"
+                               :id           uuid?}}
+               (lib.native/template-tags "SELECT * FROM table WHERE {{snippet:foo}}")))
+       (is (=? {"snippet:foo"  {:type         :snippet
+                                :name         "snippet:foo"
+                                :snippet-name "foo"
+                                :id           uuid?}
+                "snippet: foo" {:type         :snippet
+                                :name         "snippet: foo"
+                                :snippet-name "foo"
+                                :id           uuid?}}
                  ;; TODO: This should probably be considered a bug - whitespace matters for the name.
-                 (lib.native/template-tags "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}"))))
+               (lib.native/template-tags "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}"))))
 
-     (t/testing "renaming a variable"
+     (testing "renaming a variable"
        (let [old-tag {:type         :text
                       :name         "foo"
                       :display-name "Foo"
                       :id           (m/random-uuid)}]
-         (t/testing "changes display-name if the original is not customized"
-           (t/is (=? {"bar" {:type         :text
-                             :name         "bar"
-                             :display-name "Bar"
-                             :id           (:id old-tag)}}
-                     (lib.native/template-tags "SELECT * FROM {{bar}}"
-                                               {"foo" old-tag}))))
-         (t/testing "keeps display-name if it's customized"
-           (t/is (=? {"bar" {:type         :text
-                             :name         "bar"
-                             :display-name "Custom Name"
-                             :id           (:id old-tag)}}
-                     (lib.native/template-tags "SELECT * FROM {{bar}}"
-                                               {"foo" (assoc old-tag :display-name "Custom Name")}))))
+         (testing "changes display-name if the original is not customized"
+           (is (=? {"bar" {:type         :text
+                           :name         "bar"
+                           :display-name "Bar"
+                           :id           (:id old-tag)}}
+                   (lib.native/template-tags "SELECT * FROM {{bar}}"
+                                             {"foo" old-tag}))))
+         (testing "keeps display-name if it's customized"
+           (is (=? {"bar" {:type         :text
+                           :name         "bar"
+                           :display-name "Custom Name"
+                           :id           (:id old-tag)}}
+                   (lib.native/template-tags "SELECT * FROM {{bar}}"
+                                             {"foo" (assoc old-tag :display-name "Custom Name")}))))
 
-         (t/testing "works with other variables present, if they don't change"
+         (testing "works with other variables present, if they don't change"
            (let [other {:type         :text
                         :name         "other"
                         :display-name "Some Var"
                         :id           (m/random-uuid)}]
-             (t/is (=? {"other" other
-                        "bar"   {:type         :text
-                                 :name         "bar"
-                                 :display-name "Bar"
-                                 :id           (:id old-tag)}}
-                       (lib.native/template-tags "SELECT * FROM {{bar}} AND field = {{other}}"
-                                                 {"foo"   old-tag
-                                                  "other" other})))))))
+             (is (=? {"other" other
+                      "bar"   {:type         :text
+                               :name         "bar"
+                               :display-name "Bar"
+                               :id           (:id old-tag)}}
+                     (lib.native/template-tags "SELECT * FROM {{bar}} AND field = {{other}}"
+                                               {"foo"   old-tag
+                                                "other" other})))))))
 
-     (t/testing "general case, add and remove"
+     (testing "general case, add and remove"
        (let [mktag (fn [base]
                      (merge {:type    :text
                              :display-name (u.humanization/name->human-readable-name :simple (:name base))
@@ -108,17 +109,55 @@
              c2    (mktag {:name    "#321"
                            :type    :card
                            :card-id 321})]
-         (t/is (=? {"foo"                   v1
-                    "#123-card-1"           c1
-                    "snippet:first snippet" s1}
-                   (lib.native/template-tags
-                    "SELECT * FROM {{#123-card-1}} WHERE {{foo}} AND {{  snippet:first snippet}}")))
-         (t/is (=? {"bar"                     v2
-                    "baz"                     v3
-                    "snippet:another snippet" s2
-                    "#321"                    c2}
-                   (lib.native/template-tags
-                    "SELECT * FROM {{#321}} WHERE {{baz}} AND {{bar}} AND {{snippet:another snippet}}"
-                    {"foo"                   v1
-                     "#123-card-1"           c1
-                     "snippet:first snippet" s1})))))))
+         (is (=? {"foo"                   v1
+                  "#123-card-1"           c1
+                  "snippet:first snippet" s1}
+                 (lib.native/template-tags
+                  "SELECT * FROM {{#123-card-1}} WHERE {{foo}} AND {{  snippet:first snippet}}")))
+         (is (=? {"bar"                     v2
+                  "baz"                     v3
+                  "snippet:another snippet" s2
+                  "#321"                    c2}
+                 (lib.native/template-tags
+                  "SELECT * FROM {{#321}} WHERE {{baz}} AND {{bar}} AND {{snippet:another snippet}}"
+                  {"foo"                   (assoc v1 :id (random-uuid))
+                   "#123-card-1"           (assoc c1 :id (random-uuid))
+                   "snippet:first snippet" (assoc s1 :id (random-uuid))})))))))
+
+#?(:cljs
+   (deftest converters-test
+     (let [clj-tags {"a"         {:id           #uuid "c5ad010c-632a-4498-b667-9188fbe965f9"
+                                  :name         "a"
+                                  :display-name "A"
+                                  :type         :text}
+                     "#123-foo"  {:id           #uuid "7e58e086-5d63-4986-8fe7-87e05dfa4089"
+                                  :name         "#123-foo"
+                                  :display-name "#123-foo"
+                                  :type         :card
+                                  :card-id      123}
+                     "snippet:b" {:id           #uuid "604131d0-a74c-4822-b113-8e9515b1a985"
+                                  :name         "snippet:b"
+                                  :display-name "Snippet B"
+                                  :type         :snippet
+                                  :snippet-name "b"}}
+           js-tags  #js {"a"         #js {"id"           "c5ad010c-632a-4498-b667-9188fbe965f9"
+                                          "name"         "a"
+                                          "display-name" "A"
+                                          "type"         "text"}
+                         "#123-foo"  #js {"id"           "7e58e086-5d63-4986-8fe7-87e05dfa4089"
+                                          "name"         "#123-foo"
+                                          "display-name" "#123-foo"
+                                          "type"         "card"
+                                          "card-id"      123}
+                         "snippet:b" #js {"id"           "604131d0-a74c-4822-b113-8e9515b1a985"
+                                          "name"         "snippet:b"
+                                          "display-name" "Snippet B"
+                                          "type"         "snippet"
+                                          "snippet-name" "b"}}]
+       (testing "incoming converter works"
+         (is (= clj-tags (#'lib.native/->TemplateTags js-tags))))
+       (testing "outgoing converter works"
+         (is (test.js/= js-tags (#'lib.native/TemplateTags-> clj-tags))))
+       (testing "round trips work"
+         (is (=         clj-tags (-> clj-tags (#'lib.native/TemplateTags->) (#'lib.native/->TemplateTags))))
+         (is (test.js/= js-tags  (-> js-tags  (#'lib.native/->TemplateTags) (#'lib.native/TemplateTags->))))))))
