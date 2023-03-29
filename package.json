@@ -349,6 +349,10 @@
       "prettier --write",
       "node ./bin/verify-doc-links"
     ],
+    "e2e/**/*.{js,jsx,ts,jsx}": [
+      "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0",
+      "prettier --write"
+    ],
     "e2e/test/scenarios/*/{*.js,!(helpers|shared)/*.js}": [
       "node e2e/validate-e2e-test-files.js"
     ]
