@@ -108,24 +108,32 @@ export const submitFeedbackForm = createThunkAction(
   },
 );
 
+export const SUBMIT_QUERY_FORM = "metabase/metabot/SUBMIT_QUERY_FORM";
+export const submitQueryForm = createThunkAction(
+  SUBMIT_QUERY_FORM,
+  () => (dispatch: Dispatch) => {
+    dispatch(submitFeedback());
+    dispatch(runCardQuery());
+  },
+);
+
 export const SUBMIT_FEEDBACK = "metabase/metabot/SUBMIT_FEEDBACK";
 export const submitFeedback = createThunkAction(
   SUBMIT_FEEDBACK,
-  (feedbackMessage?: string) =>
-    async (_dispatch: Dispatch, getState: GetState) => {
-      const prompt = getPrompt(getState());
-      const entityType = getEntityType(getState());
-      const sql = getOriginalNativeQueryText(getState());
-      const correctSql = getNativeQueryText(getState());
-      const feedbackType = getFeedbackType(getState());
+  (feedbackMessage?: string) => (_dispatch: Dispatch, getState: GetState) => {
+    const prompt = getPrompt(getState());
+    const entityType = getEntityType(getState());
+    const sql = getOriginalNativeQueryText(getState());
+    const correctSql = getNativeQueryText(getState());
+    const feedbackType = getFeedbackType(getState());
 
-      return await MetabotApi.sendFeedback({
-        entity_type: entityType,
-        prompt,
-        sql,
-        feedback: feedbackType,
-        message: feedbackMessage,
-        correct_sql: feedbackType === "invalid-sql" ? correctSql : undefined,
-      });
-    },
+    MetabotApi.sendFeedback({
+      entity_type: entityType,
+      prompt,
+      sql,
+      feedback: feedbackType,
+      message: feedbackMessage,
+      correct_sql: feedbackType === "invalid-sql" ? correctSql : undefined,
+    });
+  },
 );
