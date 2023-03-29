@@ -57,6 +57,7 @@ import {
   getIsHeaderVisible,
   getIsAdditionalInfoVisible,
 } from "../selectors";
+import { ApplyButton } from "../components/Dashboard/Dashboard.styled";
 
 function getDashboardId({ dashboardId, params }) {
   if (dashboardId) {
@@ -157,12 +158,60 @@ const DashboardApp = props => {
     setIsShowingToaster(false);
   }, []);
 
+  const {
+    parameterValues,
+    setParameterValue,
+    setParameterValues,
+    fetchDashboardCardData,
+  } = props;
+  const [parameterValuesState, setParameterValuesState] =
+    useState(parameterValues);
+
+  useEffect(() => {
+    setParameterValuesState(parameterValues);
+  }, [parameterValues]);
+
+  const handleParameterValue = useCallback(
+    (id, value) => {
+      const isAutoApplyFilters = props.dashboard?.auto_apply_filters;
+      if (isAutoApplyFilters) {
+        setParameterValue(id, value);
+      } else {
+        setParameterValuesState(parameterValuesState => {
+          return {
+            ...parameterValuesState,
+            [id]: value,
+          };
+        });
+      }
+    },
+    [props.dashboard?.auto_apply_filters, setParameterValue],
+  );
+
+  const hasUnappliedFilters = !_.isEqual(parameterValues, parameterValuesState);
+  const handleApplyFilters = () => {
+    setParameterValues(parameterValuesState);
+    fetchDashboardCardData({ reload: false, clear: true });
+  };
+  const applyFilterButton = !dashboard?.auto_apply_filters && (
+    <ApplyButton
+      primary
+      isVisible={hasUnappliedFilters}
+      onClick={handleApplyFilters}
+    >
+      Apply
+    </ApplyButton>
+  );
+
   return (
     <div className="shrink-below-content-size full-height">
       <Dashboard
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
         {...props}
+        parameterValues={parameterValuesState}
+        setParameterValue={handleParameterValue}
+        applyFilterButton={applyFilterButton}
       />
       {/* For rendering modal urls */}
       {props.children}
