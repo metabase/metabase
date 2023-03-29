@@ -39,9 +39,10 @@ export const init = (payload: InitPayload) => (dispatch: Dispatch) => {
 export const RESET = "metabase/metabot/RESET";
 export const reset = createAction(RESET);
 
-export const UPDATE_CARD = "metabase/metabot/UPDATE_CARD";
-export const updateCard = createAction(UPDATE_CARD, (question: Question) =>
-  question.card(),
+export const UPDATE_QUESTION = "metabase/metabot/UPDATE_QUESTION";
+export const updateQuestion = createAction(
+  UPDATE_QUESTION,
+  (question: Question) => question.card(),
 );
 
 export const UPDATE_PROMPT = "metabase/metabot/UPDATE_PROMPT";

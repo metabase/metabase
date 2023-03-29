@@ -7,7 +7,7 @@ import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEdit
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
-import { updateCard } from "../../actions";
+import { updateQuestion } from "../../actions";
 import { getQuestion } from "../../selectors";
 
 interface OwnProps {
@@ -29,7 +29,7 @@ const mapStateToProps = (state: State): StateProps => ({
 });
 
 const mapDispatchToProps: DispatchProps = {
-  onChange: updateCard,
+  onChange: updateQuestion,
 };
 
 const MetabotQueryEditor = ({

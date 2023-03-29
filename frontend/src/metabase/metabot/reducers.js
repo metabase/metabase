@@ -6,7 +6,7 @@ import {
   QUERY_ERRORED,
   RESET,
   RUN_QUERY,
-  UPDATE_CARD,
+  UPDATE_QUESTION,
   UPDATE_PROMPT,
   SUBMIT_FEEDBACK,
   INIT,
@@ -31,7 +31,7 @@ export const entityType = handleActions(
 
 export const card = handleActions(
   {
-    [UPDATE_CARD]: { next: (state, { payload }) => payload },
+    [UPDATE_QUESTION]: { next: (state, { payload }) => payload },
     [FETCH_CARD]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
