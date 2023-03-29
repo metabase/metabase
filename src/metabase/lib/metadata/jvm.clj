@@ -38,7 +38,7 @@
                               `lib.metadata.protocols/database
                               `UncachedApplicationDatabaseMetadataProvider)
                       {})))
-    (fetch-instance :metadata.models.database/Database database-id))
+    (fetch-instance :metadata/database database-id))
 
   (table   [_this table-id]   (fetch-instance :metadata/table   table-id))
   (field   [_this field-id]   (fetch-instance :metadata/field   field-id))
@@ -53,15 +53,13 @@
                               `UncachedApplicationDatabaseMetadataProvider)
                       {})))
     (log/debugf "Fetching all Tables for Database %d" database-id)
-    (into []
-          (map #(assoc % :lib/type :metadata/table))
-          (t2/reducible-select :metabase.models.table/Table :db_id database-id)))
+    (mapv #(assoc % :lib/type :metadata/table)
+          (t2/select :metabase.models.table/Table :db_id database-id)))
 
   (fields [_this table-id]
     (log/debugf "Fetching all Fields for Table %d" table-id)
-    (into []
-          (map #(assoc % :lib/type :metadata/field))
-          (t2/reducible-select :table_id table-id)))
+    (mapv #(assoc % :lib/type :metadata/field)
+          (t2/select :table_id table-id)))
 
   lib.metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]

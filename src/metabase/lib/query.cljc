@@ -4,11 +4,20 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
+
+(defmethod lib.normalize/normalize :mbql/query
+  [query]
+  (lib.normalize/normalize-map
+   query
+   keyword
+   {:type   keyword
+    :stages (partial mapv lib.normalize/normalize)}))
 
 (defmethod lib.metadata.calculation/metadata :mbql/query
   [query stage-number x]
