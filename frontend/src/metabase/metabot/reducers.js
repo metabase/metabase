@@ -6,8 +6,10 @@ import {
   QUERY_COMPLETED,
   RESET,
   RUN_QUERY,
+  SET_CARD,
   SET_FEEDBACK_TYPE,
   SET_PROMPT_TEXT,
+  SUBMIT_FEEDBACK,
 } from "./actions";
 
 export const entityId = handleActions(
@@ -28,6 +30,7 @@ export const entityType = handleActions(
 
 export const card = handleActions(
   {
+    [SET_CARD]: { next: (state, { payload }) => payload },
     [FETCH_CARD]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
@@ -77,6 +80,7 @@ export const queryError = handleActions(
 
 export const feedbackType = handleActions(
   {
+    [FETCH_CARD]: { next: () => null },
     [SET_FEEDBACK_TYPE]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
   },
@@ -85,6 +89,8 @@ export const feedbackType = handleActions(
 
 export const feedbackStatus = handleActions(
   {
+    [FETCH_CARD]: { next: () => "idle" },
+    [SUBMIT_FEEDBACK]: { next: () => "complete" },
     [RESET]: { next: () => "idle" },
   },
   "idle",

@@ -46,11 +46,11 @@ export const getFeedbackStatus = (state: State) => {
   return state.metabot.feedbackStatus;
 };
 
+export const getNativeQueryText = createSelector([getQuestion], question =>
+  maybeGetNativeQueryText(question),
+);
+
 export const getOriginalNativeQueryText = createSelector(
   [getOriginalQuestion],
   question => maybeGetNativeQueryText(question),
-);
-
-export const getNativeQueryText = createSelector([getQuestion], question =>
-  maybeGetNativeQueryText(question),
 );

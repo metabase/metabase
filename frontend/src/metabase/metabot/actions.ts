@@ -1,7 +1,9 @@
 import { createAction } from "redux-actions";
 import { createThunkAction } from "metabase/lib/redux";
 import { MetabotApi } from "metabase/services";
+import { MetabotFeedbackType } from "metabase-types/api";
 import { Dispatch, GetState } from "metabase-types/store";
+import Question from "metabase-lib/Question";
 import {
   getEntityId,
   getEntityType,
@@ -17,6 +19,11 @@ export const init = createAction(INIT);
 
 export const RESET = "metabase/metabot/RESET";
 export const reset = createAction(RESET);
+
+export const SET_CARD = "metabase/metabot/SET_CARD";
+export const setCard = createAction(SET_CARD, (question: Question) =>
+  question.card(),
+);
 
 export const SET_PROMPT_TEXT = "metabase/metabot/SET_PROMPT_TEXT";
 export const setPromptText = createAction(SET_PROMPT_TEXT);
@@ -82,23 +89,43 @@ export const fetchQueryResults = createThunkAction(
   },
 );
 
-export const SUBMIT_FEEDBACK = "metabase/metabot/SUBMIT_FEEDBACK";
-export const sumbitFeedback = createThunkAction(
-  SUBMIT_FEEDBACK,
-  (message?: string) => async (_dispatch: Dispatch, getState: GetState) => {
-    const feedback = getFeedbackType(getState());
-    const prompt = getPrompt(getState());
-    const entity_type = getEntityType(getState());
-    const sql = getOriginalNativeQueryText(getState());
-    const correct_sql = getNativeQueryText(getState());
-
-    return await MetabotApi.sendFeedback({
-      message,
-      entity_type,
-      feedback,
-      prompt,
-      sql,
-      correct_sql,
-    });
+export const SUBMIT_FEEDBACK_TYPE = "metabase/metabot/SUBMIT_FEEDBACK_TYPE";
+export const submitFeedbackType = createThunkAction(
+  SUBMIT_FEEDBACK_TYPE,
+  (feedbackType: MetabotFeedbackType) => (dispatch: Dispatch) => {
+    dispatch(setFeedbackType(feedbackType));
+    if (feedbackType === "great") {
+      dispatch(submitFeedback());
+    }
   },
+);
+
+export const SUBMIT_FEEDBACK_FORM = "metabase/metabot/SUBMIT_FEEDBACK_FORM";
+export const submitFeedbackForm = createThunkAction(
+  SUBMIT_FEEDBACK_FORM,
+  (feedbackMessage: string) => (dispatch: Dispatch) => {
+    dispatch(submitFeedback(feedbackMessage));
+  },
+);
+
+export const SUBMIT_FEEDBACK = "metabase/metabot/SUBMIT_FEEDBACK";
+export const submitFeedback = createThunkAction(
+  SUBMIT_FEEDBACK,
+  (feedbackMessage?: string) =>
+    async (_dispatch: Dispatch, getState: GetState) => {
+      const prompt = getPrompt(getState());
+      const entityType = getEntityType(getState());
+      const sql = getOriginalNativeQueryText(getState());
+      const correctSql = getNativeQueryText(getState());
+      const feedbackType = getFeedbackType(getState());
+
+      return await MetabotApi.sendFeedback({
+        entity_type: entityType,
+        prompt,
+        sql,
+        feedback: feedbackType,
+        message: feedbackMessage,
+        correct_sql: feedbackType === "invalid-sql" ? correctSql : undefined,
+      });
+    },
 );
