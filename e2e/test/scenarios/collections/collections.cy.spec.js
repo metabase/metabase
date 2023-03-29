@@ -179,17 +179,21 @@ describe("scenarios > collection defaults", () => {
   });
 
   describe("description", () => {
-    it('should display description', () => {
+    it('should display collection description', () => {
       visitRootCollection();
     
-      cy.icon("info").trigger("mouseenter");
-
+      cy.get('table').within(() => {
+        cy.findByText("First collection").parent().parent().within(() => {
+          cy.icon("info").trigger("mouseenter"); 
+        })
+      })
+    
       popover().within(() => {
         cy.findByText(/Collection First/);
       })
     })
 
-    it('should support markdown', () => {
+    it('should support markdown in collection description', () => {
       getCollectionIdFromSlug("first_collection", id => {
         visitCollection(id);
       });
@@ -202,8 +206,12 @@ describe("scenarios > collection defaults", () => {
 
       visitRootCollection();
 
-      cy.icon("info").trigger("mouseenter");
-
+      cy.get('table').within(() => {
+        cy.findByText("First collection").parent().parent().within(() => {
+          cy.icon("info").trigger("mouseenter"); 
+        })
+      })
+    
       popover().within(() => {
         cy.findByText(/important text/);
         cy.findByText(/link/);
