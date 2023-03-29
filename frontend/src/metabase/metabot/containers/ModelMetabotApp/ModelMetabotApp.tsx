@@ -27,7 +27,7 @@ interface StateProps {
   entityId: CardId;
   entityType: MetabotEntityType;
   model: Question;
-  initialQueryText?: string;
+  initialPrompt?: string;
 }
 
 const mapStateToProps = (
@@ -40,7 +40,7 @@ const mapStateToProps = (
     entityId,
     entityType: "model",
     model: new Question(card, getMetadata(state)),
-    initialQueryText: location?.query?.query,
+    initialPrompt: location?.query?.prompt,
   };
 };
 

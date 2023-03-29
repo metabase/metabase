@@ -49,11 +49,11 @@ const mapStateToProps = (
 });
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onSubmitQuery: (databaseId, queryText) =>
+  onSubmitQuery: (databaseId, prompt) =>
     dispatch(
       push({
         pathname: `/metabot/database/${databaseId}`,
-        query: { query: queryText },
+        query: { prompt },
       }),
     ),
 });
@@ -66,11 +66,11 @@ const MetabotWidget = ({
 }: MetabotWidgetProps) => {
   const initialDatabaseId = model?.databaseId() ?? databases[0]?.id;
   const [databaseId, setDatabaseId] = useState(initialDatabaseId);
-  const [queryText, setQueryText] = useState("");
+  const [prompt, setPrompt] = useState("");
 
   const handleSubmitQuery = useCallback(() => {
-    onSubmitQuery(databaseId, queryText);
-  }, [databaseId, queryText, onSubmitQuery]);
+    onSubmitQuery(databaseId, prompt);
+  }, [databaseId, prompt, onSubmitQuery]);
 
   return (
     <MetabotHeader>
@@ -87,10 +87,10 @@ const MetabotWidget = ({
           )} database right now.`}
       </MetabotMessage>
       <MetabotPrompt
-        queryText={queryText}
+        prompt={prompt}
         placeholder={getPromptPlaceholder(model)}
         user={user}
-        onChangeQuery={setQueryText}
+        onChangeQuery={setPrompt}
         onSubmitQuery={handleSubmitQuery}
       />
     </MetabotHeader>

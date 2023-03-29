@@ -8,16 +8,16 @@ import {
 } from "./MetabotPrompt.styled";
 
 export interface MetabotPromptProps {
-  queryText: string;
+  prompt: string;
   placeholder: string;
   user: User | null;
   isLoading?: boolean;
-  onChangeQuery: (queryText: string) => void;
+  onChangeQuery: (prompt: string) => void;
   onSubmitQuery: () => void;
 }
 
 const MetabotPrompt = ({
-  queryText,
+  prompt,
   placeholder,
   user,
   isLoading = false,
@@ -44,13 +44,13 @@ const MetabotPrompt = ({
     <PromptSection>
       {user && <PromptUserAvatar user={user} />}
       <PromptInput
-        value={queryText}
+        value={prompt}
         placeholder={placeholder}
         fullWidth
         onChange={handleChange}
         onKeyDown={handleKeyDown}
       />
-      {queryText.length > 0 ? (
+      {prompt.length > 0 ? (
         <PromptRunButton
           isRunning={isLoading}
           compact

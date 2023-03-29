@@ -7,7 +7,7 @@ import {
   RESET,
   RUN_QUERY,
   SET_FEEDBACK_TYPE,
-  SET_QUERY_TEXT,
+  SET_PROMPT_TEXT,
 } from "./actions";
 
 export const entityId = handleActions(
@@ -42,10 +42,10 @@ export const originalCard = handleActions(
   null,
 );
 
-export const queryText = handleActions(
+export const prompt = handleActions(
   {
-    [INIT]: { next: (state, { payload }) => payload.initialQueryText },
-    [SET_QUERY_TEXT]: { next: (state, { payload }) => payload },
+    [INIT]: { next: (state, { payload }) => payload.initialPrompt },
+    [SET_PROMPT_TEXT]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => "" },
   },
   "",

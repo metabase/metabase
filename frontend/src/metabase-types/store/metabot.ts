@@ -16,7 +16,7 @@ export interface MetabotState {
   entityType: MetabotEntityType | null;
   card: Card | null;
   originalCard: Card | null;
-  queryText: string;
+  prompt: string;
   queryStatus: MetabotQueryStatus;
   queryResults: [Dataset] | null;
   queryError: unknown;

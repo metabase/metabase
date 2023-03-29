@@ -10,12 +10,12 @@ import {
 } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
-import { runTextQuery, setQueryText } from "../../actions";
+import { runTextQuery, setPromptText } from "../../actions";
 import {
   getFeedbackStatus,
   getFeedbackType,
   getQueryStatus,
-  getQueryText,
+  getPrompt,
 } from "../../selectors";
 import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";
@@ -30,7 +30,7 @@ interface OwnProps {
 }
 
 interface StateProps {
-  queryText: string;
+  prompt: string;
   queryStatus: MetabotQueryStatus;
   feedbackType: MetabotFeedbackType | null;
   feedbackStatus: MetabotFeedbackStatus;
@@ -38,7 +38,7 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onChangeQuery: (queryText: string) => void;
+  onChangeQuery: (prompt: string) => void;
   onSubmitQuery: () => void;
   onDatabaseChange: (databaseId: DatabaseId) => void;
 }
@@ -46,7 +46,7 @@ interface DispatchProps {
 type MetabotHeaderProps = OwnProps & StateProps & DispatchProps;
 
 const mapStateToProps = (state: State): StateProps => ({
-  queryText: getQueryText(state),
+  prompt: getPrompt(state),
   queryStatus: getQueryStatus(state),
   feedbackType: getFeedbackType(state),
   feedbackStatus: getFeedbackStatus(state),
@@ -54,13 +54,13 @@ const mapStateToProps = (state: State): StateProps => ({
 });
 
 const mapDispatchToProps: DispatchProps = {
-  onChangeQuery: setQueryText,
+  onChangeQuery: setPromptText,
   onSubmitQuery: runTextQuery,
   onDatabaseChange: () => undefined,
 };
 
 const MetabotHeader = ({
-  queryText,
+  prompt,
   queryStatus,
   feedbackType,
   model,
@@ -85,7 +85,7 @@ const MetabotHeader = ({
     <MetabotHeaderRoot>
       <MetabotMessage>{title}</MetabotMessage>
       <MetabotPrompt
-        queryText={queryText}
+        prompt={prompt}
         placeholder={placeholder}
         user={user}
         isLoading={queryStatus === "running"}

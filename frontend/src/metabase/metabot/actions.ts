@@ -8,7 +8,7 @@ import {
   getFeedbackType,
   getNativeQueryText,
   getOriginalNativeQueryText,
-  getQueryText,
+  getPrompt,
   getQuestion,
 } from "./selectors";
 
@@ -18,8 +18,8 @@ export const init = createAction(INIT);
 export const RESET = "metabase/metabot/RESET";
 export const reset = createAction(RESET);
 
-export const SET_QUERY_TEXT = "metabase/metabot/SET_QUERY_TEXT";
-export const setQueryText = createAction(SET_QUERY_TEXT);
+export const SET_PROMPT_TEXT = "metabase/metabot/SET_PROMPT_TEXT";
+export const setPromptText = createAction(SET_PROMPT_TEXT);
 
 export const SET_FEEDBACK_TYPE = "metabase/metabot/SET_FEEDBACK_TYPE";
 export const setFeedbackType = createAction(SET_FEEDBACK_TYPE);
@@ -54,20 +54,20 @@ export const runCardQuery = createThunkAction(
 export const FETCH_CARD = "metabase/metabot/FETCH_CARD";
 export const fetchCard = createThunkAction(
   FETCH_CARD,
-  () => async (dispatch: Dispatch, getState: GetState) => {
+  () => async (_dispatch: Dispatch, getState: GetState) => {
     const entityId = getEntityId(getState());
     const entityType = getEntityType(getState());
-    const queryText = getQueryText(getState());
+    const prompt = getPrompt(getState());
 
     if (entityType === "model") {
       return await MetabotApi.modelPrompt({
         modelId: entityId,
-        question: queryText,
+        question: prompt,
       });
     } else {
       return await MetabotApi.databasePrompt({
         databaseId: entityId,
-        question: queryText,
+        question: prompt,
       });
     }
   },
@@ -87,7 +87,7 @@ export const sumbitFeedback = createThunkAction(
   SUBMIT_FEEDBACK,
   (message?: string) => async (_dispatch: Dispatch, getState: GetState) => {
     const feedback = getFeedbackType(getState());
-    const prompt = getQueryText(getState());
+    const prompt = getPrompt(getState());
     const entity_type = getEntityType(getState());
     const sql = getOriginalNativeQueryText(getState());
     const correct_sql = getNativeQueryText(getState());

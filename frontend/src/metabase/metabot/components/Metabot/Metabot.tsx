@@ -20,7 +20,7 @@ import { MetabotRoot } from "./Metabot.styled";
 interface OwnProps {
   entityId: MetabotEntityId;
   entityType: MetabotEntityType;
-  initialQueryText: string;
+  initialPrompt: string;
   model?: Question;
   database?: Database;
   databases?: Database[];
@@ -51,7 +51,7 @@ const mapDispatchToProps: DispatchProps = {
 const Metabot = ({
   entityId,
   entityType,
-  initialQueryText = "",
+  initialPrompt = "",
   model,
   database,
   databases,
@@ -61,9 +61,9 @@ const Metabot = ({
   onReset,
 }: MetabotProps) => {
   useEffect(() => {
-    onInit({ entityId, entityType, initialQueryText });
+    onInit({ entityId, entityType, initialPrompt });
     return () => onReset();
-  }, [entityId, entityType, initialQueryText, onInit, onReset]);
+  }, [entityId, entityType, initialPrompt, onInit, onReset]);
 
   const isCompleted = queryStatus === "complete";
   const isInvalidSql = feedbackType === "invalid-sql";

@@ -23,7 +23,7 @@ interface StateProps {
   entityId: DatabaseId;
   entityType: MetabotEntityType;
   database: Database;
-  initialQueryText?: string;
+  initialPrompt?: string;
 }
 
 const mapStateToProps = (
@@ -36,7 +36,7 @@ const mapStateToProps = (
     entityId,
     entityType: "database",
     database: Databases.selectors.getObject(state, { entityId }),
-    initialQueryText: location?.query?.query,
+    initialPrompt: location?.query?.prompt,
   };
 };
 

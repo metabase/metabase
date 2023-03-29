@@ -22,8 +22,8 @@ export const getOriginalQuestion = (state: State) => {
   return card ? new Question(card, getMetadata(state)) : null;
 };
 
-export const getQueryText = (state: State) => {
-  return state.metabot.queryText;
+export const getPrompt = (state: State) => {
+  return state.metabot.prompt;
 };
 
 export const getQueryStatus = (state: State) => {
