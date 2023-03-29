@@ -85,8 +85,7 @@
 
 #?(:clj
    (defmacro defn
-     "Like s/defn, but for malli. Will always validate input and output without the need for calls to instrumentation (they are emitted automatically).
-     Calls to minst/unstrument! can remove this, so use a filter that avoids :validate! if you use that."
+     "Like s/defn, but for malli. Will always validate input and output without the need for calls to instrumentation."
      [& args]
      ;; [[macros/case]] only works properly in a `defmacro`, not in a helper function called by a `defmacro`.
      ;; So we use it here and pass :clj or :cljs to [[-defn]].

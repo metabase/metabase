@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
+   [malli.dev]
    [malli.error :as me]
    [metabase.test :as mt]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -52,7 +53,6 @@
     (is (= "abc" (quux "abc")))
     (is (= ["should be a string, received: 1"]
            (try (quux 1) (catch Exception e (:humanized (ex-data e)))))))
-
   (ns-unmap *ns* 'quux))
 
 (deftest mu-defn-docstrings
