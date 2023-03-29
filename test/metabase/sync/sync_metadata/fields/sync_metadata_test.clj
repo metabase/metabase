@@ -95,7 +95,7 @@
              :database-is-auto-increment true
              :json-unfolding             false})))))
 
-(deftest database-json-unfolding-test
+(deftest json-unfolding-test
   (testing "test that if json-unfolding changes we will update it in the DB"
     (is (= [["Field" 1 {:json_unfolding true}]]
            (updates-that-will-be-performed
@@ -113,7 +113,25 @@
              :database-position          0
              :database-required          false
              :database-is-auto-increment false
-             :json-unfolding             false})))))
+             :json-unfolding             false})))
+    (testing "if json-unfolding is not present in the metadata, default to false"
+     (is (= [["Field" 1 {:json_unfolding false}]]
+            (updates-that-will-be-performed
+            ;; no :json-unfolding key to test case where describe-table does not not return it
+             {:name                       "My Field"
+              :database-type              "Integer"
+              :base-type                  :type/Integer
+              :database-position          0
+              :database-required          false
+              :database-is-auto-increment false}
+             {:name                       "My Field"
+              :database-type              "Integer"
+              :base-type                  :type/Integer
+              :id                         1
+              :database-position          0
+              :database-required          false
+              :database-is-auto-increment false
+              :json-unfolding             true}))))))
 
 (deftest no-op-test
   (testing "no changes should be made (i.e., no calls to `update!`) if nothing changes"

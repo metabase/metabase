@@ -36,6 +36,7 @@
          new-database-is-auto-increment :database-is-auto-increment
          new-json-unfolding             :json-unfolding
          new-db-required                :database-required} field-metadata
+        new-json-unfolding                         (boolean new-json-unfolding)
         new-database-is-auto-increment             (boolean new-database-is-auto-increment)
         new-db-required                            (boolean new-db-required)
         new-database-type                          (or new-database-type "NULL")

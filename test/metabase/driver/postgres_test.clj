@@ -502,36 +502,42 @@
                        :database-type     "text",
                        :base-type         :type/Text,
                        :database-position 0,
+                       :json-unfolding    false
                        :nfc-path          [:incoherent_json_val "b"]
                        :visibility-type   :normal}
                       {:name              "coherent_json_val → a",
                        :database-type     "bigint",
                        :base-type         :type/Integer,
                        :database-position 0,
+                       :json-unfolding    false
                        :nfc-path          [:coherent_json_val "a"]
                        :visibility-type   :normal}
                       {:name              "coherent_json_val → b",
                        :database-type     "bigint",
                        :base-type         :type/Integer,
                        :database-position 0,
+                       :json-unfolding    false
                        :nfc-path          [:coherent_json_val "b"]
                        :visibility-type   :normal}
                       {:name "coherent_json_val → c",
                        :database-type     "timestamp",
                        :base-type         :type/DateTime,
                        :database-position 0,
+                       :json-unfolding    false
                        :visibility-type   :normal,
                        :nfc-path          [:coherent_json_val "c"]}
                       {:name              "incoherent_json_val → c",
                        :database-type     "double precision",
                        :base-type         :type/Number,
                        :database-position 0,
+                       :json-unfolding    false
                        :visibility-type   :normal,
                        :nfc-path          [:incoherent_json_val "c"]}
                       {:name              "incoherent_json_val → d",
                        :database-type     "bigint",
                        :base-type         :type/Integer,
                        :database-position 0,
+                       :json-unfolding    false
                        :visibility-type   :normal,
                        :nfc-path          [:incoherent_json_val "d"]}}
                    (sql-jdbc.sync/describe-nested-field-columns
@@ -557,6 +563,7 @@
                       :database-type     "bigint",
                       :base-type         :type/Integer,
                       :database-position 0,
+                      :json-unfolding    false,
                       :visibility-type   :normal,
                       :nfc-path          [:trivial_json "a"]}}
                    (sql-jdbc.sync/describe-nested-field-columns
@@ -582,6 +589,7 @@
                       :database-type     "bigint",
                       :base-type         :type/Integer,
                       :database-position 0,
+                      :json-unfolding    false,
                       :visibility-type   :normal,
                       :nfc-path          [:trivial_json "a"]}}
                    (sql-jdbc.sync/describe-nested-field-columns
