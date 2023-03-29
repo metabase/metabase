@@ -3,6 +3,7 @@ import {
   createMockCard,
   createMockDataset,
   createMockVisualizationSettings,
+  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import MetabaseSettings from "metabase/lib/settings";
 import { getDownloadButtonParams } from "./utils";
@@ -13,6 +14,7 @@ const card = createMockCard();
 const visualizationSettings = createMockVisualizationSettings();
 const result = createMockDataset({
   json_query: {
+    ...createMockStructuredDatasetQuery(),
     parameters: [],
   },
 });
@@ -128,7 +130,7 @@ describe("getDownloadButtonParams", () => {
       method: "POST",
       url: "api/dataset/csv",
       params: {
-        query: JSON.stringify({ parameters: [] }),
+        query: JSON.stringify(result.json_query),
         visualization_settings: "{}",
       },
     });
