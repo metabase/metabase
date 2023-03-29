@@ -1,5 +1,7 @@
 (ns metabase.lib.query
+  (:refer-clojure :exclude [remove])
   (:require
+   [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
@@ -108,3 +110,42 @@
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)
        lib.convert/->pMBQL
        (query metadata-provider)))
+
+(mu/defn replace-clause :- :metabase.lib.schema/query
+  "Replaces the `target-clause` with `new-clase` in the `query` stage."
+  ([query :- :metabase.lib.schema/query
+    target-clause
+    new-clause]
+   (replace-clause query -1 target-clause new-clause))
+  ([query :- :metabase.lib.schema/query
+    stage-number :- :int
+    target-clause
+    new-clause]
+   (let [replacement (lib.common/->op-arg query stage-number new-clause)]
+     ;; Right now, this works for clauses that cannot have dependents.
+     ;; This will change and have different logic depending on `location`
+     ;; `location` should probably be "found" first before iterating.
+     (reduce
+       (fn [query location]
+         (lib.util/update-query-stage query stage-number
+                                      lib.util/replace-clause location target-clause replacement))
+       query
+       [:order-by]))))
+
+(mu/defn remove-clause :- :metabase.lib.schema/query
+  "Removes the `target-clause` in the filter of the `query`."
+  ([query :- :metabase.lib.schema/query
+    target-clause]
+   (remove-clause query -1 target-clause))
+  ([query :- :metabase.lib.schema/query
+    stage-number :- :int
+    target-clause]
+   ;; Right now, this works for clauses that cannot have dependents.
+   ;; This will change and have different logic depending on `location`
+   ;; `location` should probably be "found" first before iterating.
+   (reduce
+     (fn [query location]
+       (lib.util/update-query-stage query stage-number
+                                    lib.util/remove-clause location target-clause))
+     query
+     [:order-by])))
