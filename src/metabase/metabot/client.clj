@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as client]
+   [metabase.lib.native :as lib-native]
    [metabase.metabot.util :as metabot-util]
    [metabase.models.setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -107,15 +108,17 @@
 
 (def client (-> client/request wrap-json-body wrap-auth wrap-defaults wrap-response))
 
-(defn infer-sql [{:keys [database_id] :as model} prompt]
+(defn infer-sql [{:keys [database_id inner_query] :as model} prompt]
   (log/debugf "Using webhook to infer sql from prompt: %s" prompt)
   (let [client   (wrap-url client (openai-sql-inference-webhook))
         response (client {:body {:model model :prompt prompt}})]
     (when-some [bot-sql (:sql response)]
       (let [final-sql (metabot-util/bot-sql->final-sql model bot-sql)
+            template-tags (lib-native/template-tags inner_query)
             response  {:dataset_query          {:database database_id
                                                 :type     "native"
-                                                :native   {:query final-sql}}
+                                                :native   {:query final-sql}
+                                                :template-tags template-tags}
                        :display                :table
                        :visualization_settings {}}]
         response))))

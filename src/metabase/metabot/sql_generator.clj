@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [honey.sql :as hsql]
    [metabase.db.query :as mdb.query]
+   [metabase.lib.native :as lib-native]
    [metabase.metabot.util :as metabot-util]
    [metabase.metabot.client :as metabot-client]
    [metabase.util :as u]))
@@ -63,14 +64,16 @@
 
 (defn infer-sql
   "Given a model and prompt, attempt to generate a native dataset."
-  [{:keys [database_id] :as denormalized-model} prompt]
+  [{:keys [database_id inner_query] :as denormalized-model} prompt]
   (when-some [bot-sql (metabot-client/invoke-metabot
                        (prepare-ddl-based-sql-generator-input denormalized-model prompt)
                        extract-sql)]
     (let [final-sql (metabot-util/bot-sql->final-sql denormalized-model bot-sql)
+          template-tags (lib-native/template-tags inner_query)
           response  {:dataset_query          {:database database_id
                                               :type     "native"
-                                              :native   {:query final-sql}}
+                                              :native   {:query final-sql}
+                                              :template-tags template-tags}
                      :display                :table
                      :visualization_settings {}}]
       (tap> {:response response})
