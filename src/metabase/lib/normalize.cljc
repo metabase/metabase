@@ -21,10 +21,18 @@
    (keyword (lib.dispatch/dispatch-value x))))
 
 (defmulti normalize
+  "Ensure some part of an MBQL query `x`, e.g. a clause or map, is in the right shape after coming in from JavaScript or
+  deserialized JSON (from the app DB or a REST API request). This is intended for things that are already in a
+  generally correct pMBQL; to 'normalize' things from legacy MBQL, use [[metabase.lib.convert]].
+
+  The default implementation will keywordize keys for maps, and convert some known keys
+  using [[default-map-value-fns]]; for MBQL clauses, it will convert the clause name to a keyword and recursively
+  normalize its options and arguments. Implement this method if you need custom behavior for something."
   {:arglists '([x])}
   dispatch-value)
 
 (def default-map-value-fns
+  "Default normalization functions keys when doing map normalization."
   {:base-type   keyword
    :type        keyword
    :lib/type    keyword
@@ -32,6 +40,11 @@
    :field_ref   normalize})
 
 (defn normalize-map
+  "[[normalize]] a map using `key-fn` (default [[clojure.core/keyword]]) for keys and
+  `value-fns` (default [[default-map-value-fns]]; additional functions are merged into this map).
+
+  This is the default implementation for maps. Custom map implementations can call this with a different `key-fn` or
+  additional `value-fns` as needed."
   ([m]
    (normalize-map m keyword))
 
