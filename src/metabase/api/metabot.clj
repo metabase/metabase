@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [compojure.core :refer [POST]]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.metabot :as metabot]
    [metabase.metabot.util :as metabot-util]
@@ -68,15 +69,12 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/feedback"
   "Record feedback on metabot results."
-  [:as {{:keys [prompt sql feedback correct_sql prompt_template_versions] :as feedback} :body}]
-  ;{database-id ms/PositiveInt
-  ; question string?}
-  ;;great | wrong-data | incorrect-result | invalid-sql
-  (tap> {:prompt      prompt
-         :sql         sql
-         :feedback    feedback
-         :correct_sql correct_sql
-         :prompt_template_versions prompt_template_versions})
-  {:message "Thanks for your feedback"})
+  [:as {feedback :body}]
+  (let [feedback-keys [:correct_sql :feedback :prompt :prompt_template_versions :sql]]
+    (tap> (select-keys feedback feedback-keys))
+    (snowplow/track-event!
+     ::snowplow/metabot-feedback-received api/*current-user-id*
+     (select-keys feedback feedback-keys))
+    {:message "Thanks for your feedback"}))
 
 (api/define-routes)

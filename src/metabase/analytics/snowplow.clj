@@ -204,7 +204,8 @@
    ::action-created                 ::action
    ::action-updated                 ::action
    ::action-deleted                 ::action
-   ::action-executed                ::action})
+   ::action-executed                ::action
+   ::metabot-feedback-received      ::metabot-feedback})
 
 (defn track-event!
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector
