@@ -257,6 +257,7 @@
 
   Makes use of functionality in the [[metabase.db.schema-migrations-test.impl]] namespace since that already does what
   we need."
+  {:style/indent 0}
   [& body]
   `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
      (schema-migrations-test.impl/run-migrations-in-range! conn# [0 "v99.00-000"]) ; this should catch all migrations)

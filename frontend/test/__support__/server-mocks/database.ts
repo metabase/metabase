@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { Database } from "metabase-types/api";
+import { PERMISSION_ERROR } from "./constants";
 import { setupTableEndpoints } from "./table";
 
 export function setupDatabaseEndpoints(db: Database) {
@@ -39,3 +40,21 @@ export const setupSchemaEndpoints = (db: Database) => {
     );
   });
 };
+
+export const setupUnauthorizedSchemaEndpoints = (db: Database) => {
+  fetchMock.get(`path:/api/database/${db.id}/schemas`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
+};
+
+export function setupUnauthorizedDatabaseEndpoints(db: Database) {
+  fetchMock.get(`path:/api/database/${db.id}`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
+}
+
+export function setupUnauthorizedDatabasesEndpoints(dbs: Database[]) {
+  dbs.forEach(db => setupUnauthorizedDatabaseEndpoints(db));
+}

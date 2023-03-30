@@ -17,7 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 
@@ -152,7 +152,7 @@
         db-or-id-or-spec
 
         (int? db-or-id-or-spec)
-        (db/select-one Database :id db-or-id-or-spec)
+        (t2/select-one Database :id db-or-id-or-spec)
 
         :else
         nil))

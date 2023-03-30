@@ -124,22 +124,4 @@ export default class Metadata extends Base {
   question(cardId): Question | null {
     return (cardId != null && this.questions[cardId]) || null;
   }
-
-  /**
-   * @private
-   * @param {Object.<number, Database>} databases
-   * @param {Object.<number, Table>} tables
-   * @param {Object.<number, Field>} fields
-   * @param {Object.<number, Metric>} metrics
-   * @param {Object.<number, Segment>} segments
-   */
-
-  /* istanbul ignore next */
-  _constructor(databases: Database[], tables, fields, metrics, segments) {
-    this.databases = databases;
-    this.tables = tables;
-    this.fields = fields;
-    this.metrics = metrics;
-    this.segments = segments;
-  }
 }

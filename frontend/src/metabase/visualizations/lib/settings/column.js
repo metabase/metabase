@@ -4,6 +4,7 @@ import moment from "moment-timezone";
 import _ from "underscore";
 
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
+import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
@@ -52,6 +53,7 @@ import {
   isCurrency,
   isDateWithoutTime,
 } from "metabase-lib/types/utils/isa";
+import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { nestedSettings } from "./nested";
 
@@ -489,3 +491,90 @@ export function getSettingDefinitionsForColumn(series, column) {
     };
   }
 }
+
+export function isPivoted(series, settings) {
+  const [{ data }] = series;
+
+  if (!settings["table.pivot"]) {
+    return false;
+  }
+
+  const pivotIndex = _.findIndex(
+    data.cols,
+    col => col.name === settings["table.pivot_column"],
+  );
+  const cellIndex = _.findIndex(
+    data.cols,
+    col => col.name === settings["table.cell_column"],
+  );
+  const normalIndex = _.findIndex(
+    data.cols,
+    (col, index) => index !== pivotIndex && index !== cellIndex,
+  );
+
+  return pivotIndex >= 0 && cellIndex >= 0 && normalIndex >= 0;
+}
+
+export const getTitleForColumn = (column, series, settings) => {
+  const pivoted = isPivoted(series, settings);
+  if (pivoted) {
+    return formatColumn(column) || t`Unset`;
+  } else {
+    return (
+      settings.column(column)["_column_title_full"] || formatColumn(column)
+    );
+  }
+};
+
+export const tableColumnSettings = {
+  // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
+  //   { name: "COLUMN_NAME", enabled: true }
+  //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
+  "table.columns": {
+    section: t`Columns`,
+    title: t`Columns`,
+    widget: ChartSettingOrderedColumns,
+    getHidden: (series, vizSettings) => vizSettings["table.pivot"],
+    isValid: ([{ card, data }]) =>
+      // If "table.columns" happened to be an empty array,
+      // it will be treated as "all columns are hidden",
+      // This check ensures it's not empty,
+      // otherwise it will be overwritten by `getDefault` below
+      card.visualization_settings["table.columns"].length !== 0 &&
+      _.all(
+        card.visualization_settings["table.columns"],
+        columnSetting =>
+          findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
+      ),
+    getDefault: ([
+      {
+        data: { cols },
+      },
+    ]) =>
+      cols.map(col => ({
+        name: col.name,
+        fieldRef: col.field_ref,
+        enabled: col.visibility_type !== "details-only",
+      })),
+    getProps: (series, settings) => {
+      const [
+        {
+          data: { cols },
+        },
+      ] = series;
+
+      return {
+        columns: cols,
+        getColumnName: columnSetting => {
+          const columnIndex = findColumnIndexForColumnSetting(
+            cols,
+            columnSetting,
+          );
+          if (columnIndex >= 0) {
+            return getTitleForColumn(cols[columnIndex], series, settings);
+          }
+        },
+      };
+    },
+  },
+};

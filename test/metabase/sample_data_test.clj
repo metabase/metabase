@@ -13,15 +13,18 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------------- Tooling -----------------------------------------------------
 
 ;; These tools are pretty sophisticated for the amount of tests we have!
 
-(defn- sample-database-db []
-  {:details (#'sample-data/try-to-extract-sample-database!)
+(defn- sample-database-db [read-write?]
+  ;; If `read-write?` is false, open the DB in read-only mode so we don't accidentally modify it during testing
+  {:details (cond-> (#'sample-data/try-to-extract-sample-database!)
+              (not read-write?)
+              (update :db #(str % ";ACCESS_MODE_DATA=r")))
    :engine  :h2
    :name    "Sample Database"})
 
@@ -29,7 +32,7 @@
   "Execute `body` with a temporary Sample Database DB bound to `db-binding`."
   {:style/indent 1}
   [[db-binding] & body]
-  `(mt/with-temp Database [db# (sample-database-db)]
+  `(mt/with-temp Database [db# (sample-database-db false)]
      (sync/sync-database! db#)
      (let [~db-binding db#]
        ~@body)))
@@ -37,17 +40,17 @@
 (defn- table
   "Get the Table in a `db` with `table-name`."
   [db table-name]
-  (db/select-one Table :name table-name, :db_id (u/the-id db)))
+  (t2/select-one Table :name table-name, :db_id (u/the-id db)))
 
 (defn- field
   "Get the Field in a `db` with `table-name` and `field-name.`"
   [db table-name field-name]
-  (db/select-one Field :name field-name, :table_id (u/the-id (table db table-name))))
+  (t2/select-one Field :name field-name, :table_id (u/the-id (table db table-name))))
 
 
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
 
-(def ^:private extracted-db-path-regex #"^file:.*plugins/sample-database.db;USER=GUEST;PASSWORD=guest$")
+(def ^:private extracted-db-path-regex #"^file:.*plugins/sample-database.db;USER=GUEST;PASSWORD=guest.*")
 
 (deftest extract-sample-database-test
   (testing "The Sample Database is copied out of the JAR into the plugins directory before the DB details are saved."
@@ -68,7 +71,7 @@
             (with-redefs [u.files/create-dir-if-not-exists! original-var]
               (memoize/memo-clear! @#'plugins/plugins-dir*)
               (sample-data/update-sample-database-if-needed! db)
-              (let [db-path (get-in (db/select-one Database :id (:id db)) [:details :db])]
+              (let [db-path (get-in (t2/select-one Database :id (:id db)) [:details :db])]
                 (is (re-matches extracted-db-path-regex db-path)))))))))
 
   (memoize/memo-clear! @#'plugins/plugins-dir*))
@@ -104,7 +107,8 @@
 
 (deftest write-rows-sample-database-test
   (testing "should be able to execute INSERT, UPDATE, and DELETE statements on the Sample Database"
-    (with-temp-sample-database-db [db]
+    (mt/with-temp Database [db (sample-database-db true)]
+      (sync/sync-database! db)
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
           (testing "update row"

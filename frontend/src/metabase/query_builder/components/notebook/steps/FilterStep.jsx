@@ -10,6 +10,7 @@ export default function FilterStep({
   query,
   updateQuery,
   isLastOpened,
+  readOnly,
   ...props
 }) {
   return (
@@ -17,6 +18,8 @@ export default function FilterStep({
       color={color}
       initialAddText={t`Add filters to narrow your answer`}
       items={query.filters()}
+      renderName={item => item.displayName()}
+      readOnly={readOnly}
       renderPopover={filter => (
         <FilterPopover
           query={query}

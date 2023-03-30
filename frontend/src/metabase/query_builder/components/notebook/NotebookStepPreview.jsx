@@ -61,7 +61,7 @@ class NotebookStepPreview extends React.Component {
       : { stiffness: 170 };
 
     return (
-      <PreviewRoot>
+      <PreviewRoot data-testid="preview-root">
         <PreviewHeader>
           <span className="text-bold">{t`Preview`}</span>
           <PreviewIconContainer>

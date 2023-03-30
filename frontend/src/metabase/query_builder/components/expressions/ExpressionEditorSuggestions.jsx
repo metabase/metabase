@@ -55,7 +55,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
     suggestions: PropTypes.array,
     onSuggestionMouseDown: PropTypes.func, // signature is f(index)
     highlightedIndex: PropTypes.number.isRequired,
-    target: PropTypes.instanceOf(Element).isRequired,
+    target: PropTypes.instanceOf(Element),
   };
 
   componentDidUpdate(prevProps, prevState) {
@@ -79,7 +79,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
   render() {
     const { suggestions, highlightedIndex, target } = this.props;
 
-    if (!suggestions.length) {
+    if (!suggestions.length || !target) {
       return null;
     }
 

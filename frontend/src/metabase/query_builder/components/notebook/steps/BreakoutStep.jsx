@@ -22,6 +22,7 @@ export default function BreakoutStep({
   query,
   updateQuery,
   isLastOpened,
+  readOnly,
   ...props
 }) {
   return (
@@ -30,7 +31,9 @@ export default function BreakoutStep({
       color={color}
       initialAddText={t`Pick a column to group by`}
       items={query.breakouts()}
+      renderName={item => item.displayName()}
       tetherOptions={breakoutTetherOptions}
+      readOnly={readOnly}
       renderPopover={breakout => (
         <BreakoutPopover
           query={query}

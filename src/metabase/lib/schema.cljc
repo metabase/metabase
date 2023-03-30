@@ -12,6 +12,7 @@
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
    [metabase.lib.schema.expression.conditional]
+   [metabase.lib.schema.expression.string]
    [metabase.lib.schema.expression.temporal]
    [metabase.lib.schema.filter]
    [metabase.lib.schema.id :as id]
@@ -23,6 +24,7 @@
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
          metabase.lib.schema.expression.conditional/keep-me
+         metabase.lib.schema.expression.string/keep-me
          metabase.lib.schema.expression.temporal/keep-me
          metabase.lib.schema.filter/keep-me
          metabase.lib.schema.literal/keep-me)
@@ -40,33 +42,39 @@
 (mr/def ::fields
   [:sequential {:min 1} [:ref ::ref/ref]])
 
+(mr/def ::source-table
+  [:or
+   [:ref ::id/table]
+   #"^card__\d+$"])
+
 (mr/def ::stage.mbql
   [:and
    [:map
-    [:lib/type    [:= :mbql.stage/mbql]]
-    [:lib/options ::common/options]
-    [:joins       {:optional true} [:ref ::join/joins]]
-    [:expressions {:optional true} [:ref ::expression/expressions]]
-    [:breakout    {:optional true} ::breakouts]
-    [:aggregation {:optional true} [:ref ::aggregation/aggregations]]
-    [:fields      {:optional true} ::fields]
-    [:filter      {:optional true} [:ref ::expression/boolean]]
-    [:order-by    {:optional true} [:ref ::order-by/order-bys]]]
+    [:lib/type     [:= :mbql.stage/mbql]]
+    [:lib/options  ::common/options]
+    [:joins        {:optional true} [:ref ::join/joins]]
+    [:expressions  {:optional true} [:ref ::expression/expressions]]
+    [:breakout     {:optional true} ::breakouts]
+    [:aggregation  {:optional true} [:ref ::aggregation/aggregations]]
+    [:fields       {:optional true} ::fields]
+    [:filter       {:optional true} [:ref ::expression/boolean]]
+    [:order-by     {:optional true} [:ref ::order-by/order-bys]]
+    [:source-table {:optional true} [:ref ::source-table]]]
    ;; `:source-query` is not allowed in `:pipeline` (pMBQL) queries!
-   [:fn (complement #(contains? % :source-query))]])
+   [:fn #(not (contains? % :source-query))]])
 
 ;;; Schema for an MBQL stage that includes either `:source-table` or `:source-query`.
 (mr/def ::stage.mbql.with-source
   [:and
    ::stage.mbql
    [:map
-    [:source-table ::id/table]]])
+    [:source-table [:ref ::source-table]]]])
 
 ;;; Schema for an MBQL stage that DOES NOT include `:source-table` -- an MBQL stage that is not the initial stage.
 (mr/def ::stage.mbql.without-source
   [:and
    ::stage.mbql
-   [:fn (complement #(contains? % :source-table))]])
+   [:fn #(not (contains? % :source-table))]])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type

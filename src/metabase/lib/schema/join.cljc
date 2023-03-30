@@ -24,7 +24,7 @@
 (mr/def ::fields
   [:or
    [:enum :all :none]
-   ;;; TODO -- Pretty sure fields are supposed to be unique, even excluding `:lib/uuid`
+   ;; TODO -- Pretty sure fields are supposed to be unique, even excluding `:lib/uuid`
    [:sequential {:min 1} [:ref ::ref/ref]]])
 
 ;;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
@@ -33,7 +33,9 @@
 ;;;
 ;;; Driver implementations: This is guaranteed to be present after pre-processing.
 (mr/def ::alias
-  ::common/non-blank-string)
+  [:or
+   {:gen/fmap #(str % "-" (random-uuid))}
+   ::common/non-blank-string])
 
 (mr/def ::join
   [:map

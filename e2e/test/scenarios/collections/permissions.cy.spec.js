@@ -282,7 +282,7 @@ describe("collection permissions", () => {
                     cy.icon("lock").should("not.exist");
                     /**
                      *  We can take 2 routes from here - it will really depend on the design decision:
-                     *    1. Edit icon shouldn't exist at all in which case some other call to action menu/button should exist
+                     *    1. Edit icon shouldn't exist at all in which case some other call to drill-through menu/button should exist
                      *       notifying the user that this collection is archived and prompting them to unarchive it
                      *    2. Edit icon stays but with "Unarchive this item" ONLY in the menu
                      */

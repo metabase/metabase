@@ -2,9 +2,9 @@ import {
   restore,
   openOrdersTable,
   popover,
-  sidebar,
   summarize,
   visitDashboard,
+  rightSidebar,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -205,7 +205,7 @@ describe("scenarios > question > null", () => {
       openOrdersTable();
 
       summarize();
-      sidebar().within(() => {
+      rightSidebar().within(() => {
         // remove pre-selected "Count"
         cy.icon("close").click();
       });

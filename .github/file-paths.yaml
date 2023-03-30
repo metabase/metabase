@@ -65,6 +65,7 @@ backend_all: &backend_all
   - *frontend_sources # keep it here until we detect static viz changes
 
 sources: &sources
+  - *shared_sources
   - *frontend_sources
   - *backend_sources
 
@@ -95,3 +96,8 @@ yaml:
 codeql:
   - "frontend/src/**"
   - "enterprise/frontend/src/**"
+
+i18n:
+  - *default
+  - *ci
+  - *sources

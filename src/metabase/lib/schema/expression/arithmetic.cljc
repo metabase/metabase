@@ -9,14 +9,6 @@
    [metabase.types :as types]
    [metabase.util.malli.registry :as mr]))
 
-(mbql-clause/define-tuple-mbql-clause :interval
-  :int
-  ::temporal-bucketing/unit.date-time.interval)
-
-(defmethod expression/type-of* :interval
-  [[_tag _opts expr _n _unit]]
-  (expression/type-of expr))
-
 (defn- valid-interval-for-type? [[_tag _opts _n unit :as _interval] expr-type]
   (let [unit-schema (cond
                       (isa? expr-type :type/Date)     ::temporal-bucketing/unit.date.interval
@@ -58,6 +50,11 @@
     [:schema [:ref ::common/options]]
     [:repeat {:min 2} [:schema [:ref ::expression/number]]]]])
 
+(defn- type-of-arithmetic-args [args]
+  ;; Okay to use reduce without an init value here since we know we have >= 2 args
+  #_{:clj-kondo/ignore [:reduce-without-init]}
+  (reduce types/most-specific-common-ancestor (map expression/type-of args)))
+
 (mbql-clause/define-mbql-clause :+
   (plus-minus-schema :+))
 
@@ -76,11 +73,6 @@
 (mbql-clause/define-catn-mbql-clause :/ :- :type/Float
   [:args ::args.numbers])
 
-(defn- type-of-arithmetic-args [args]
-  ;; Okay to use reduce without an init value here since we know we have >= 2 args
-  #_{:clj-kondo/ignore [:reduce-without-init]}
-  (reduce types/most-specific-common-ancestor (map expression/type-of args)))
-
 (defmethod expression/type-of* :+
   [[_tag _opts & args]]
   (type-of-arithmetic-args args))
@@ -90,5 +82,25 @@
   (type-of-arithmetic-args args))
 
 (defmethod expression/type-of* :*
+  [[_tag _opts & args]]
+  (type-of-arithmetic-args args))
+
+(mbql-clause/define-tuple-mbql-clause :abs
+  [:schema [:ref ::expression/number]])
+(expression/register-type-of-first-arg :abs)
+
+(doseq [op [:log :exp :sqrt]]
+  (mbql-clause/define-tuple-mbql-clause op :- :type/Float
+    [:schema [:ref ::expression/number]]))
+
+(doseq [op [:ceil :floor :round]]
+  (mbql-clause/define-tuple-mbql-clause op :- :type/Integer
+    [:schema [:ref ::expression/number]]))
+
+(mbql-clause/define-tuple-mbql-clause :power
+  #_num [:schema [:ref ::expression/number]]
+  #_exp [:schema [:ref ::expression/number]])
+
+(defmethod expression/type-of* :power
   [[_tag _opts & args]]
   (type-of-arithmetic-args args))

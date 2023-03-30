@@ -27,6 +27,7 @@ import {
   DisplayLinkCardWrapper,
   CardLink,
   SearchResultsContainer,
+  StyledRecentsList,
 } from "./LinkViz.styled";
 
 import { isUrlString } from "./utils";
@@ -131,15 +132,19 @@ function LinkViz({
     return (
       <EditLinkCardWrapper>
         <TippyPopover
-          visible={!!url?.length && inputIsFocused && !isUrlString(url)}
+          visible={inputIsFocused && !isUrlString(url)}
           content={
-            <SearchResultsContainer>
-              <SearchResults
-                searchText={url?.trim()}
-                onEntitySelect={handleEntitySelect}
-                models={MODELS_TO_SEARCH}
-              />
-            </SearchResultsContainer>
+            !url?.trim?.().length && !entity ? (
+              <StyledRecentsList onClick={handleEntitySelect} />
+            ) : (
+              <SearchResultsContainer>
+                <SearchResults
+                  searchText={url?.trim()}
+                  onEntitySelect={handleEntitySelect}
+                  models={MODELS_TO_SEARCH}
+                />
+              </SearchResultsContainer>
+            )
           }
           placement="bottom"
         >

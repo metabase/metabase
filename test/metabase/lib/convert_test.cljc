@@ -92,3 +92,18 @@
                                                 [:field (meta/id :categories :id) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                                  :strategy     :left-join
                                  :fk-field-id  (meta/id :venues :category-id)}]}}))))
+
+(deftest ^:parallel aggregation-options-test
+  (is (=? {:lib/type :mbql/query
+           :type     :pipeline
+           :stages   [{:lib/type     :mbql.stage/mbql
+                       :lib/options  {:lib/uuid string?}
+                       :source-table 1
+                       :aggregation  [[:sum
+                                       {:lib/uuid string?, :display-name "Revenue"}
+                                       [:field {:lib/uuid string?} 1]]]}]}
+          (lib.convert/->pMBQL {:type  :query
+                                :query {:source-table 1
+                                        :aggregation  [[:aggregation-options
+                                                        [:sum [:field 1 nil]]
+                                                        {:display-name "Revenue"}]]}}))))

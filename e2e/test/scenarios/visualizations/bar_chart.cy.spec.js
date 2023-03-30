@@ -225,6 +225,59 @@ describe("scenarios > visualizations > bar chart", () => {
     });
   });
 
+  // Note (EmmadUsmani): see `line_chart.cy.spec.js` for more test cases of this
+  describe("with split y-axis (metabase#12939)", () => {
+    it("should split the y-axis when column settings differ", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["avg", ["field", ORDERS.TOTAL, null]],
+              ["min", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "bar",
+        visualization_settings: {
+          column_settings: {
+            '["name","avg"]': { number_style: "decimal" },
+            '["name","min"]': { number_style: "percent" },
+          },
+        },
+      });
+
+      cy.get("g.axis.yr").should("be.visible");
+    });
+
+    it("should not split the y-axis when semantic_type, column settings are same and values are not far", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["avg", ["field", ORDERS.TOTAL, null]],
+              ["min", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "bar",
+      });
+
+      cy.get("g.axis.yr").should("not.exist");
+    });
+  });
+
   it("supports up to 100 series (metabase#28796)", () => {
     visitQuestionAdhoc({
       display: "bar",

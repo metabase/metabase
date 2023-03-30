@@ -15,6 +15,7 @@
    [medley.core :as m]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
+   [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -48,8 +49,8 @@
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
    [toucan.db :as db]
-   [toucan.models :as models]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -307,21 +308,21 @@
 
 (defn do-with-single-admin-user
   [attributes thunk]
-  (let [existing-admin-memberships (db/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
-        _                          (db/simple-delete! PermissionsGroupMembership :group_id (:id (perms-group/admin)))
-        existing-admin-ids         (db/select-ids User :is_superuser true)
+  (let [existing-admin-memberships (t2/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
+        _                          (t2/delete! (t2/table-name PermissionsGroupMembership) :group_id (:id (perms-group/admin)))
+        existing-admin-ids         (t2/select-pks-set User :is_superuser true)
         _                          (when (seq existing-admin-ids)
-                                     (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser false))
-        temp-admin                 (db/insert! User (merge (with-temp-defaults User)
-                                                           attributes
-                                                           {:is_superuser true}))
-        primary-key                (models/primary-key User)]
+                                     (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser false}))
+        temp-admin                 (first (t2/insert-returning-instances! User (merge (with-temp-defaults User)
+                                                                                      attributes
+                                                                                      {:is_superuser true})))
+        primary-key                (mdb.u/primary-key User)]
     (try
       (thunk temp-admin)
       (finally
-        (db/delete! User primary-key (primary-key temp-admin))
+        (t2/delete! User primary-key (primary-key temp-admin))
         (when (seq existing-admin-ids)
-          (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser true))
+          (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser true}))
         (db/insert-many! PermissionsGroupMembership existing-admin-memberships)))))
 
 (defmacro with-single-admin-user
@@ -406,7 +407,7 @@
         (is (= (merge (mt/object-defaults User)
                       (select-keys user [:id :last_name :created_at :updated_at])
                       {:name \"Cam\"})
-               (mt/decrecordize (db/select-one User :id (:id user)))))))"
+               (mt/decrecordize (t2/select-one User :id (:id user)))))))"
   (comp
    (memoize
     (fn [toucan-model]
@@ -419,7 +420,7 @@
    (fn [toucan-model]
      (hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
      (initialize/initialize-if-needed! :db)
-     (db/resolve-model toucan-model))))
+     (mdb.u/resolve-model toucan-model))))
 
 (defmacro disable-flaky-test-when-running-driver-tests-in-ci
   "Only run `body` when we're not running driver tests in CI (i.e., `DRIVERS` and `CI` are both not set). Perfect for

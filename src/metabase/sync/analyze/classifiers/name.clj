@@ -10,7 +10,7 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})
@@ -190,7 +190,7 @@
                                         entity-types-patterns)
                                   (case (->> table
                                              :db_id
-                                             (db/select-one Database :id)
+                                             (t2/select-one Database :id)
                                              :engine)
                                     :googleanalytics :entity/GoogleAnalyticsTable
                                     :druid           :entity/EventTable

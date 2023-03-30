@@ -24,7 +24,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -41,14 +40,14 @@
   :dashboard_count
   "Return the number of Dashboards this Card is in."
   [{:keys [id]}]
-  (db/count 'DashboardCard, :card_id id))
+  (t2/count 'DashboardCard, :card_id id))
 
 (mi/define-simple-hydration-method parameter-usage-count
   :parameter_usage_count
   "Return the number of dashboard/card filters and other widgets that use this card to populate their available
   values (via ParameterCards)"
   [{:keys [id]}]
-  (db/count ParameterCard, :card_id id))
+  (t2/count ParameterCard, :card_id id))
 
 (mi/define-simple-hydration-method average-query-time
   :average_query_time
@@ -127,7 +126,7 @@
 
     ;; this is an update, and dataset_query hasn't changed => no-op
     (and existing-card-id
-         (= query (db/select-one-field :dataset_query Card :id existing-card-id)))
+         (= query (t2/select-one-fn :dataset_query Card :id existing-card-id)))
     (do
       (log/debugf "Not inferring result metadata for Card %s: query has not changed" existing-card-id)
       card)
@@ -169,7 +168,7 @@
                   {:status-code 400}))
 
         :else
-        (recur (or (db/select-one-field :dataset_query Card :id source-card-id)
+        (recur (or (t2/select-one-fn :dataset_query Card :id source-card-id)
                    (throw (ex-info (tru "Card {0} does not exist." source-card-id)
                                    {:status-code 404})))
                (conj ids-already-seen source-card-id))))))
@@ -221,7 +220,7 @@
                                                                      :where     [:in :field.id (set field-ids)]})]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
-                                    (format "%d %s" db-id (pr-str (db/select-one-field :name 'Database :id db-id))))]
+                                    (format "%d %s" db-id (pr-str (t2/select-one-fn :name 'Database :id db-id))))]
                             (tru "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
@@ -282,11 +281,11 @@
   - card is archived
   - card.result_metadata changes and the parameter values source field can't be found anymore"
   [{id :id, :as changes}]
-  (let [parameter-cards   (db/select ParameterCard :card_id id)]
+  (let [parameter-cards   (t2/select ParameterCard :card_id id)]
     (doseq [[[po-type po-id] param-cards]
             (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
       (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
-            {:keys [parameters]}   (db/select-one [model :parameters] :id po-id)
+            {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
             affected-param-ids-set (cond
                                      ;; update all parameters that use this card as source
                                      (:archived changes)
@@ -313,7 +312,7 @@
                                     parameter))
                                 parameters)]
         (when-not (= parameters new-parameters)
-          (db/update! model po-id {:parameters new-parameters}))))))
+          (t2/update! model po-id {:parameters new-parameters}))))))
 
 (defn model-supports-implicit-actions?
   "A model with implicit action supported iff they are a raw table,
@@ -329,11 +328,11 @@
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
   [model-id]
-  (when-let [action-ids (t2/select-pks-set 'Action {:select [:action.id]
-                                                    :from   [:action]
-                                                    :join   [:implicit_action
-                                                             [:= :action.id :implicit_action.action_id]]
-                                                    :where  [:= :action.model_id model-id]})]
+  (when-let [action-ids (t2/select-pks-set  'Action {:select [:action.id]
+                                                     :from   [:action]
+                                                     :join   [:implicit_action
+                                                              [:= :action.id :implicit_action.action_id]]
+                                                     :where  [:= :action.model_id model-id]})]
     (t2/delete! 'Action :id [:in action-ids])))
 
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
@@ -344,10 +343,10 @@
           old-card-info (when (or (contains? changes :dataset)
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
-                          (db/select-one [Card :dataset_query :dataset] :id id))]
+                          (t2/select-one [Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
       (when archived?
-        (db/delete! 'DashboardCard :card_id id))
+        (t2/delete! 'DashboardCard :card_id id))
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (get-in changes [:dataset_query :native])
@@ -391,9 +390,9 @@
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
-  (db/delete! ParameterCard :card_id id)
-  (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (db/delete! 'Revision :model "Card", :model_id id))
+  (t2/delete! ParameterCard :card_id id)
+  (t2/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
+  (t2/delete! 'Revision :model "Card", :model_id id))
 
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
@@ -510,7 +509,7 @@
        vec))
 
 (defmethod serdes/descendants "Card" [_model-name id]
-  (let [card               (db/select-one Card :id id)
+  (let [card               (t2/select-one Card :id id)
         source-table       (some->  card :dataset_query :query :source-table)
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))

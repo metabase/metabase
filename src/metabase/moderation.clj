@@ -4,7 +4,6 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (def moderated-item-types
@@ -12,7 +11,7 @@
   (s/enum "card" "dashboard" :card :dashboard))
 
 (def moderated-item-type->model
-  "Maps DB name of the moderated item type to the model symbol (used for db/select and such)"
+  "Maps DB name of the moderated item type to the model symbol (used for t2/select and such)"
   {"card"      'Card
    :card       'Card
    "dashboard" 'Dashboard
@@ -37,7 +36,7 @@
     (let [item-ids    (not-empty (keep :id items))
           all-reviews (when item-ids
                         (group-by (juxt :moderated_item_type :moderated_item_id)
-                                  (db/select 'ModerationReview
+                                  (t2/select 'ModerationReview
                                              :moderated_item_type "card"
                                              :moderated_item_id [:in item-ids]
                                              {:order-by [[:id :desc]]})))]
@@ -53,7 +52,7 @@
   [moderation-reviews]
   (when (seq moderation-reviews)
     (let [id->user (m/index-by :id
-                               (db/select 'User :id [:in (map :moderator_id moderation-reviews)]))]
+                               (t2/select 'User :id [:in (map :moderator_id moderation-reviews)]))]
       (for [mr moderation-reviews]
         (assoc mr :user (get id->user (:moderator_id mr)))))))
 
@@ -62,4 +61,4 @@
   "The moderated item for a given request or review"
   [{:keys [moderated_item_id moderated_item_type]}]
   (when (and moderated_item_type moderated_item_id)
-    (db/select-one (moderated-item-type->model moderated_item_type) :id moderated_item_id)))
+    (t2/select-one (moderated-item-type->model moderated_item_type) :id moderated_item_id)))

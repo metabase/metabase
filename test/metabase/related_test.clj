@@ -10,7 +10,7 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [toucan.db :as db]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest ^:parallel collect-context-bearing-forms-test
@@ -42,7 +42,7 @@
                                                      [1 1] 1.0}]
         (testing (format "Similarity between Card #%d and Card #%d" card-x card-y)
           (is (= expected-similarity
-                 (double (#'related/similarity (db/select-one Card :id (get cards card-x)) (db/select-one Card :id (get cards card-y)))))))))))
+                 (double (#'related/similarity (t2/select-one Card :id (get cards card-x)) (t2/select-one Card :id (get cards card-y)))))))))))
 
 (def ^:private ^:dynamic *world*)
 

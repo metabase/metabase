@@ -16,8 +16,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -97,12 +97,12 @@
         (log/info (trs "Deleting secret ID {0} from app DB because the owning database ({1}) is being deleted"
                        secret-id
                        id))
-        (db/delete! Secret :id secret-id)))))
+        (t2/delete! Secret :id secret-id)))))
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (db/execute! {:delete-from :permissions
-                :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
+  (t2/query-one {:delete-from :permissions
+                 :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
   (delete-orphaned-secrets! database)
   (try
     (driver/notify-database-updated driver database)
@@ -161,7 +161,7 @@
          old-fieldvalues-schedule :cache_field_values_schedule
          existing-settings        :settings
          existing-engine          :engine
-         existing-name            :name} (db/select-one [Database
+         existing-name            :name} (t2/select-one [Database
                                                          :metadata_sync_schedule
                                                          :cache_field_values_schedule
                                                          :engine
@@ -198,12 +198,12 @@
                       :cache_field_values_schedule new-fieldvalues-schedule)))))
          ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
          ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
-         (when (and (:database-enable-actions (or new-settings existing-settings))
-                    (not (driver/database-supports? (or new-engine existing-engine) :actions database)))
-           (throw (ex-info (trs "The database does not support actions.")
-                           {:status-code     400
-                            :existing-engine existing-engine
-                            :new-engine      new-engine})))))))
+        (when (and (:database-enable-actions (or new-settings existing-settings))
+                   (not (driver/database-supports? (or new-engine existing-engine) :actions database)))
+          (throw (ex-info (trs "The database does not support actions.")
+                          {:status-code     400
+                           :existing-engine existing-engine
+                           :new-engine      new-engine})))))))
 
 (defn- pre-insert [{:keys [details], :as database}]
   (-> (cond-> database
@@ -246,14 +246,14 @@
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?
-  (db/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
+  (t2/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
 
 (defn pk-fields
   "Return all the primary key `Fields` associated with this `database`."
   [{:keys [id]}]
-  (let [table-ids (db/select-ids 'Table, :db_id id, :active true)]
+  (let [table-ids (t2/select-pks-set 'Table, :db_id id, :active true)]
     (when (seq table-ids)
-      (db/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
+      (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
 
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
@@ -319,7 +319,7 @@
 
 (defmethod serdes/load-find-local "Database"
   [[{:keys [id]}]]
-  (db/select-one Database :name id))
+  (t2/select-one Database :name id))
 
 (defmethod serdes/load-xform "Database"
   [database]

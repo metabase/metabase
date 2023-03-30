@@ -9,7 +9,6 @@ import { dismissUndo, performUndo } from "metabase/redux/undo";
 
 import BodyComponent from "metabase/components/BodyComponent";
 
-import { getIsNavbarOpen } from "metabase/redux/app";
 import {
   CardContent,
   CardContentSide,
@@ -88,10 +87,9 @@ function UndoToast({ undo, onUndo, onDismiss }) {
 function UndoListingInner() {
   const dispatch = useDispatch();
   const undos = useSelector(state => state.undo);
-  const isNavbarOpen = useSelector(getIsNavbarOpen);
 
   return (
-    <UndoList isNavbarOpen={isNavbarOpen}>
+    <UndoList>
       {undos.map(undo => (
         <UndoToast
           key={undo._domId}

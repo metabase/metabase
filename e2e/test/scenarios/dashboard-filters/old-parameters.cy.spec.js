@@ -22,45 +22,42 @@ describe("scenarios > dashboard > OLD parameters", () => {
         type: "category",
       };
 
-      cy.createQuestion({
+      const questionDetails = {
         name: "Products table",
         query: {
           "source-table": PRODUCTS_ID,
         },
-      }).then(({ body: { id: card_id } }) => {
-        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
-          cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
-            cardId: card_id,
-            row: 0,
-            col: 0,
-            size_x: 8,
-            size_y: 6,
-          }).then(({ body: { id } }) => {
-            cy.addFilterToDashboard({ filter, dashboard_id });
-            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-              cards: [
-                {
-                  id,
-                  card_id,
-                  row: 0,
-                  col: 0,
-                  size_x: 8,
-                  size_y: 6,
-                  parameter_mappings: [
-                    {
-                      card_id,
-                      parameter_id: filter.id,
-                      target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-                    },
-                  ],
-                },
-              ],
-            });
+      };
 
-            visitDashboard(dashboard_id);
+      const dashboardDetails = {
+        parameters: [filter],
+      };
+
+      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+        ({ body: { id, card_id, dashboard_id } }) => {
+          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+            cards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                size_x: 8,
+                size_y: 6,
+                parameter_mappings: [
+                  {
+                    card_id,
+                    parameter_id: filter.id,
+                    target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                  },
+                ],
+              },
+            ],
           });
-        });
-      });
+
+          visitDashboard(dashboard_id);
+        },
+      );
     });
 
     it("should work", () => {
@@ -86,45 +83,40 @@ describe("scenarios > dashboard > OLD parameters", () => {
         type: "location/city",
       };
 
-      cy.createQuestion({
+      const questionDetails = {
         name: "People table",
         query: {
           "source-table": PEOPLE_ID,
         },
-      }).then(({ body: { id: card_id } }) => {
-        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
-          cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
-            cardId: card_id,
-            row: 0,
-            col: 0,
-            size_x: 8,
-            size_y: 6,
-          }).then(({ body: { id } }) => {
-            cy.addFilterToDashboard({ filter, dashboard_id });
-            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-              cards: [
-                {
-                  id,
-                  card_id,
-                  row: 0,
-                  col: 0,
-                  size_x: 8,
-                  size_y: 6,
-                  parameter_mappings: [
-                    {
-                      card_id,
-                      parameter_id: filter.id,
-                      target: ["dimension", ["field", PEOPLE.CITY, null]],
-                    },
-                  ],
-                },
-              ],
-            });
+      };
 
-            visitDashboard(dashboard_id);
+      const dashboardDetails = { parameters: [filter] };
+
+      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+        ({ body: { id, card_id, dashboard_id } }) => {
+          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+            cards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                size_x: 8,
+                size_y: 6,
+                parameter_mappings: [
+                  {
+                    card_id,
+                    parameter_id: filter.id,
+                    target: ["dimension", ["field", PEOPLE.CITY, null]],
+                  },
+                ],
+              },
+            ],
           });
-        });
-      });
+
+          visitDashboard(dashboard_id);
+        },
+      );
     });
 
     it("should work", () => {
@@ -147,7 +139,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
         type: "category",
       };
 
-      cy.createNativeQuestion({
+      const questionDetails = {
         name: "Products SQL",
         native: {
           query: "select * from products where {{category}}",
@@ -164,39 +156,35 @@ describe("scenarios > dashboard > OLD parameters", () => {
           },
         },
         display: "table",
-      }).then(({ body: { id: card_id } }) => {
-        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
-          cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
-            cardId: card_id,
-            row: 0,
-            col: 0,
-            size_x: 8,
-            size_y: 6,
-          }).then(({ body: { id } }) => {
-            cy.addFilterToDashboard({ filter, dashboard_id });
-            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-              cards: [
+      };
+
+      const dashboardDetails = { parameters: [filter] };
+
+      cy.createNativeQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: { id, card_id, dashboard_id } }) => {
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 8,
+              size_y: 6,
+              parameter_mappings: [
                 {
-                  id,
                   card_id,
-                  row: 0,
-                  col: 0,
-                  size_x: 8,
-                  size_y: 6,
-                  parameter_mappings: [
-                    {
-                      card_id,
-                      parameter_id: "c2967a17",
-                      target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-                    },
-                  ],
+                  parameter_id: "c2967a17",
+                  target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
                 },
               ],
-            });
-
-            visitDashboard(dashboard_id);
-          });
+            },
+          ],
         });
+
+        visitDashboard(dashboard_id);
       });
     });
 

@@ -143,13 +143,13 @@ export function BaseTableItem({
         <ItemCell>
           <RowActionsContainer>
             <ActionMenu
-              createBookmark={createBookmark}
-              deleteBookmark={deleteBookmark}
-              bookmarks={bookmarks}
               item={item}
               collection={collection}
+              bookmarks={bookmarks}
               onCopy={onCopy}
               onMove={onMove}
+              createBookmark={createBookmark}
+              deleteBookmark={deleteBookmark}
             />
             {item.model === "dataset" && <ModelDetailLink model={item} />}
           </RowActionsContainer>

@@ -1,22 +1,21 @@
 import React, { useCallback } from "react";
-
-import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import { connect } from "react-redux";
+import EventSandbox from "metabase/components/EventSandbox";
+import { getSetting } from "metabase/selectors/settings";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   canArchiveItem,
   canMoveItem,
   canPinItem,
   canPreviewItem,
-  isFullyParametrized,
   isItemPinned,
   isPreviewEnabled,
-  isPreviewShown,
 } from "metabase/collections/utils";
-import EventSandbox from "metabase/components/EventSandbox";
-
+import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import { State } from "metabase-types/store";
 import { EntityItemMenu } from "./ActionMenu.styled";
 
-export interface ActionMenuProps {
+interface OwnProps {
   className?: string;
   item: CollectionItem;
   collection: Collection;
@@ -26,6 +25,12 @@ export interface ActionMenuProps {
   createBookmark?: (id: string, collection: string) => void;
   deleteBookmark?: (id: string, collection: string) => void;
 }
+
+interface StateProps {
+  isXrayEnabled: boolean;
+}
+
+type ActionMenuProps = OwnProps & StateProps;
 
 function getIsBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
   const normalizedItemModel = normalizeItemModel(item);
@@ -42,11 +47,18 @@ function normalizeItemModel(item: CollectionItem) {
   return item.model === "dataset" ? "card" : item.model;
 }
 
+function mapStateToProps(state: State): StateProps {
+  return {
+    isXrayEnabled: getSetting(state, "enable-xrays"),
+  };
+}
+
 function ActionMenu({
   className,
   item,
   bookmarks,
   collection,
+  isXrayEnabled,
   onCopy,
   onMove,
   createBookmark,
@@ -91,8 +103,7 @@ function ActionMenu({
         className={className}
         item={item}
         isBookmarked={isBookmarked}
-        isPreviewShown={isPreviewShown(item)}
-        isPreviewAvailable={isFullyParametrized(item)}
+        isXrayEnabled={isXrayEnabled}
         onPin={canPin ? handlePin : null}
         onMove={canMove ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}
@@ -105,4 +116,4 @@ function ActionMenu({
   );
 }
 
-export default ActionMenu;
+export default connect(mapStateToProps)(ActionMenu);

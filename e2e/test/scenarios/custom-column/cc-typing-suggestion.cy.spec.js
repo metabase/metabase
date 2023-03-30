@@ -1,5 +1,6 @@
 import {
   enterCustomColumnDetails,
+  getBrokenUpTextMatcher,
   openProductsTable,
   restore,
 } from "e2e/support/helpers";
@@ -47,5 +48,23 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     enterCustomColumnDetails({ formula: "LOW{enter}" });
 
     cy.contains("lower(");
+  });
+
+  it("should show expression function helper if a proper function is typed", () => {
+    enterCustomColumnDetails({ formula: "lower(" });
+
+    cy.findByText(getBrokenUpTextMatcher("lower(text)")).should("be.visible");
+    cy.findByText("Returns the string of text in all lower case.").should(
+      "be.visible",
+    );
+    cy.findByText("lower([Status])").should("be.visible");
+
+    cy.findByTestId("expression-helper-popover-arguments")
+      .findByText("text")
+      .realHover();
+
+    cy.findByText("The column with values to convert to lower case.").should(
+      "be.visible",
+    );
   });
 });

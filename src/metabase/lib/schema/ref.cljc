@@ -13,7 +13,7 @@
 (comment metabase.types/keep-me)
 
 (mr/def ::field.options
-  [:and
+  [:merge
    ::common/options
    [:map
     [:temporal-unit {:optional true} ::temporal-bucketing/unit]]])

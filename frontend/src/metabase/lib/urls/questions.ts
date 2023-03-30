@@ -3,6 +3,7 @@ import slugg from "slugg";
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
 
+import { CardId } from "metabase-types/api";
 import { Card as BaseCard } from "metabase-types/types/Card";
 import Question, { QuestionCreatorOpts } from "metabase-lib/Question";
 
@@ -150,4 +151,8 @@ export function tableRowsQuery(
   // The QB will parse the querystring and use DB and table IDs to create an ad-hoc question
   // We should refactor the initializeQB to avoid passing query string to hash as it's pretty confusing
   return question(null, { hash: query });
+}
+
+export function xrayModel(id: CardId) {
+  return `/auto/dashboard/model/${id}`;
 }

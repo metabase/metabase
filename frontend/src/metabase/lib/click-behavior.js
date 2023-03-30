@@ -4,7 +4,7 @@ import Question from "metabase-lib/Question";
 
 export function getClickBehaviorDescription(dashcard) {
   const noBehaviorMessage = hasActionsMenu(dashcard)
-    ? t`Open the action menu`
+    ? t`Open the drill-through menu`
     : t`Do nothing`;
   if (isTableDisplay(dashcard)) {
     const count = Object.values(

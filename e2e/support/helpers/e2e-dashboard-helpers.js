@@ -19,11 +19,12 @@ export function editDashboard() {
   cy.findByText("You're editing this dashboard.");
 }
 
-export function saveDashboard() {
-  cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-  cy.findByText("Save").click();
-  cy.wait("@getDashboard");
-  cy.findByText("You're editing this dashboard.").should("not.exist");
+export function saveDashboard({
+  buttonLabel = "Save",
+  editBarText = "You're editing this dashboard.",
+} = {}) {
+  cy.findByText(buttonLabel).click();
+  cy.findByText(editBarText).should("not.exist");
   cy.wait(1); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
 

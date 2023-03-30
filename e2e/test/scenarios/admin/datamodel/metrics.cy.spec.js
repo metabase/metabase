@@ -103,10 +103,11 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
       cy.get(".ace_text-input")
         .click()
+        .type(`{selectall}{del}`)
         .type(`{selectall}{del}${customExpression}`)
         .blur();
 
-      cy.findByPlaceholderText("Name (required)").type("Foo");
+      cy.findByPlaceholderText("Something nice and descriptive").type("Foo");
 
       cy.button("Done").click();
       cy.wait("@dataset");
@@ -165,7 +166,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.visit("/reference/metrics/1/questions");
       cy.findByText("Our analysis").should("not.exist");
       cy.findAllByText("Questions about orders < 100");
-      cy.findByText("Orders, orders < 100, Filtered by Total");
+      cy.findByText("Orders, orders < 100, Filtered by Total is greater than or equal to 50");
     });
 
     it("should show the metric detail view for a specific id", () => {
@@ -269,7 +270,10 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
       cy.findByText("Add filters to narrow your answer").click();
       cy.findByText("Custom Expression").click();
-      cy.get(".ace_text-input").clear().type("[ID] > 0 OR [ID] < 9876543210");
+      cy.get(".ace_text-input")
+        .clear()
+        .type("[ID] > 0 OR [ID] < 9876543210")
+        .blur();
       cy.button("Done").click();
 
       cy.log("**Assert that there is a filter text visible**");

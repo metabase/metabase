@@ -244,7 +244,7 @@ export type Join = {
   fields?: JoinFields;
 };
 
-export type LimitClause = number;
+type LimitClause = number;
 
 export type Field = ConcreteField | AggregateField;
 
@@ -302,14 +302,26 @@ export type ExpressionClause = {
   [key: ExpressionName]: Expression;
 };
 
-export type Expression = [
-  ExpressionOperator,
-  ExpressionOperand,
-  ExpressionOperand,
-];
+export type Expression =
+  | NumericLiteral
+  | StringLiteral
+  | boolean
+  | [ExpressionOperator, ExpressionOperand]
+  | [ExpressionOperator, ExpressionOperand, ExpressionOperand]
+  | [
+      ExpressionOperator,
+      ExpressionOperand,
+      ExpressionOperand,
+      ExpressionOperand,
+    ];
 
-export type ExpressionOperator = "+" | "-" | "*" | "/";
-export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;
+export type ExpressionOperator = string;
+export type ExpressionOperand =
+  | ConcreteField
+  | NumericLiteral
+  | StringLiteral
+  | boolean
+  | Expression;
 
 export type FieldsClause = ConcreteField[];
 

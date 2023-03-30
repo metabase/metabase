@@ -578,8 +578,6 @@ jobs:
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
     steps:
     - uses: actions/checkout@v3
-    - name: Setup upterm session
-      uses: lhotari/action-upterm@v1
     - name: Test Redshift driver
       uses: ./.github/actions/test-driver
       with:

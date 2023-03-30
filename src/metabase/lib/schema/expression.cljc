@@ -5,7 +5,8 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.types]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  #?(:cljs (:require-macros [metabase.lib.schema.expression])))
 
 (comment metabase.types/keep-me)
 
@@ -71,6 +72,13 @@
             (i18n/tru "type-of {0} returned an invalid type {1}" (pr-str expr) (pr-str expr-type)))
     (is-type? expr-type base-type)))
 
+#?(:clj
+   (defmacro register-type-of-first-arg
+     "Registers [[tag]] with [[type-of*]] in terms of its first incoming [[expr]].
+      Useful for clauses that are polymorphic on their argument."
+     [tag]
+     `(defmethod type-of* ~tag [[_tag# _opts# expr#]] (type-of expr#))))
+
 (defn- expression-schema
   "Schema that matches the following rules:
 
@@ -84,7 +92,7 @@
   [:and
    [:or
     [:fn
-     {:error/message "This is shaped like an MBQL clause"}
+     {:error/message "shaped like an MBQL clause"}
      (complement mbql-clause?)]
     [:ref :metabase.lib.schema.mbql-clause/clause]]
    [:fn
@@ -118,8 +126,12 @@
 (mr/def ::temporal
   (expression-schema :type/Temporal "expression returning a date, time, or date time"))
 
+(def orderable-types
+  "Set of base types that are orderable."
+  #{:type/Text :type/Number :type/Temporal})
+
 (mr/def ::orderable
-  (expression-schema #{:type/Text :type/Number :type/Temporal}
+  (expression-schema orderable-types
                      "an expression that can be compared with :> or :<"))
 
 (mr/def ::equality-comparable

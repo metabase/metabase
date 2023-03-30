@@ -5,7 +5,7 @@ import {
   visualize,
   openProductsTable,
   summarize,
-  sidebar,
+  leftSidebar,
 } from "e2e/support/helpers";
 
 describe("issue 18207", () => {
@@ -55,7 +55,7 @@ describe("issue 18207", () => {
     popover().contains("Custom Expression").click();
     popover().within(() => {
       enterCustomColumnDetails({ formula: "Max([Vendor])" });
-      cy.findByPlaceholderText("Name (required)").type("LastVendor");
+      cy.findByPlaceholderText("Something nice and descriptive").type("LastVendor");
       cy.findByText("Done").click();
     });
 
@@ -66,7 +66,7 @@ describe("issue 18207", () => {
 
     // Why is it not a table?
     cy.contains("Visualization").click();
-    sidebar().within(() => {
+    leftSidebar().within(() => {
       cy.icon("table").click();
       cy.findByTestId("Table-button").realHover();
       cy.icon("gear").click();

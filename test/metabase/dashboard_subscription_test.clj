@@ -434,8 +434,9 @@
 
     :fixture
     (fn [{dashboard-id :dashboard-id} thunk]
-      (with-link-card-fixture-for-dashboard (t2/select-one Dashboard :id dashboard-id) [_]
-        (thunk)))
+      (mt/with-temporary-setting-values [site-name "Metabase Test"]
+        (with-link-card-fixture-for-dashboard (t2/select-one Dashboard :id dashboard-id) [_]
+          (thunk))))
     :assert
     {:email
      (fn [_ _]

@@ -430,7 +430,7 @@ function addSubtotal(
       // add subtotals until the last level
       child.children.length > 0
         ? addSubtotal(child, showSubtotalsByColumn, {
-            shouldShowSubtotal: child.children.length > 1,
+            shouldShowSubtotal: child.children.length > 1 || child.isCollapsed,
           })
         : child,
     ),

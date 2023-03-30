@@ -8,9 +8,9 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan.models :as models]
-   [toucan2.connection :as t2.conn]))
+   [toucan2.connection :as t2.conn]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -59,12 +59,12 @@
     true                                  (dissoc :session_id)))
 
 (defn- first-login-ever? [{user-id :user_id}]
-  (some-> (db/select [LoginHistory :id] :user_id user-id {:limit 2})
+  (some-> (t2/select [LoginHistory :id] :user_id user-id {:limit 2})
           count
           (= 1)))
 
 (defn- first-login-on-this-device? [{user-id :user_id, device-id :device_id}]
-  (some-> (db/select [LoginHistory :id] :user_id user-id, :device_id device-id, {:limit 2})
+  (some-> (t2/select [LoginHistory :id] :user_id user-id, :device_id device-id, {:limit 2})
           count
           (= 1)))
 

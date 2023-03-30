@@ -7,7 +7,7 @@
   will not be reflected here, for example if we add new information to the metadata. We'll have to manually update
   these things if that happens and Metabase lib is meant to consume it."
   (:require
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
+   [metabase.lib.metadata.graph-provider :as lib.metadata.graph-provider]))
 
 (defonce ^:private ^{:doc "Generate a random prefix to add to all of the [[id]]s below, so that they change between
   test runs to catch places where people are hardcoding IDs rather than using [[id]]."}
@@ -785,8 +785,8 @@
    :lib/type                    :metadata/database})
 
 (def metadata-provider
-  "[[metabase.lib.metadata.protocols/DatabaseMetadataProvider]] using the test [[metadata]]."
-  (lib.metadata.protocols/->SimpleGraphDatabaseMetadataProvider metadata))
+  "[[metabase.lib.metadata.protocols/MetadataProvider]] using the test [[metadata]]."
+  (lib.metadata.graph-provider/->SimpleGraphMetadataProvider metadata))
 
 (def results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
@@ -808,7 +808,7 @@
                :semantic_type  :type/PK
                :fingerprint    nil}
               {:lib/type       :metadata/field
-               :display_name   "NAME"
+               :display_name   "NAME" ; TODO -- these display names are icky
                :field_ref      [:field "NAME" {:base-type :type/Text}]
                :name           "NAME"
                :base_type      :type/Text

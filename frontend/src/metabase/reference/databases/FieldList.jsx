@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { useFormik } from "formik";
 import { t } from "ttag";
 import cx from "classnames";
-import S from "metabase/components/List.css";
+import S from "metabase/components/List/List.css";
 import R from "metabase/reference/Reference.css";
 import F from "metabase/reference/components/Field.css";
 

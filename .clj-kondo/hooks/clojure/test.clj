@@ -38,6 +38,14 @@
       (hooks/reg-finding! (assoc (meta test-name)
                                  :message "Test should not be marked both ^:parallel and ^:synchronized"
                                  :type :metabase/validate-deftest)))
+    ;; only when the custom `:metabase/deftest-not-marked-parallel` is enabled: complain if tests are not explicitly
+    ;; marked `^:parallel` or `^:synchronized`. This is mostly to encourage people to mark everything `^:parallel` in
+    ;; places like `metabase.lib` tests unless there is a really good reason not to.
+    (when-not (or parallel? synchronized?)
+      (hooks/reg-finding!
+       (assoc (meta test-name)
+              :message "Test should be marked either ^:parallel or ^:synchronized"
+              :type :metabase/deftest-not-marked-parallel-or-synchronized)))
     (when parallel?
       (doseq [form body]
         (warn-about-disallowed-parallel-forms form))))

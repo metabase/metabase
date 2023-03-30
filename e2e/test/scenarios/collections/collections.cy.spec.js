@@ -1,4 +1,5 @@
 import { assocIn } from "icepick";
+import _ from "underscore";
 import {
   restore,
   modal,
@@ -10,7 +11,6 @@ import {
   closeNavigationSidebar,
   openCollectionMenu,
   visitCollection,
-  getPersonalCollectionName,
 } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -19,12 +19,49 @@ const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > collection defaults", () => {
-  describe("sidebar behavior", () => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-    });
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
 
+  describe("new collection modal", () => {
+    it("should be usable on small screens", () => {
+      const COLLECTIONS_COUNT = 5;
+      _.times(COLLECTIONS_COUNT, index => {
+        cy.request("POST", "/api/collection", {
+          name: `Collection ${index + 1}`,
+          color: "#509EE3",
+          parent_id: null,
+        });
+      });
+
+      cy.visit("/");
+
+      cy.viewport(800, 500);
+
+      cy.findByText("New").click();
+      cy.findByText("Collection").click();
+
+      modal().within(() => {
+        cy.findByLabelText("Name").type("Test collection");
+        cy.findByLabelText("Description").type("Test collection description");
+        cy.findByText("Our analytics").click();
+      });
+
+      popover().within(() => {
+        cy.findByText(`Collection ${COLLECTIONS_COUNT}`).click();
+      });
+
+      cy.findByText("Create").click();
+
+      cy.findByTestId("collection-name-heading").should(
+        "have.text",
+        "Test collection",
+      );
+    });
+  });
+
+  describe("sidebar behavior", () => {
     it("should navigate effortlessly through collections tree", () => {
       visitRootCollection();
 
@@ -202,7 +239,7 @@ describe("scenarios > collection defaults", () => {
       cy.signInAsAdmin();
     });
 
-    it.skip("should show list of collection items even if one question has invalid parameters (metabase#25543)", () => {
+    it("should show list of collection items even if one question has invalid parameters (metabase#25543)", () => {
       const questionDetails = {
         native: { query: "select 1 --[[]]", "template-tags": {} },
       };
@@ -411,7 +448,6 @@ describe("scenarios > collection defaults", () => {
           cy.findByText("Our analytics").click();
           cy.findByText(/item(s)? selected/).should("not.be.visible");
         });
-
       });
 
       describe("archive", () => {
@@ -483,6 +519,23 @@ describe("scenarios > collection defaults", () => {
           cy.findByText("Third collection").should("be.visible");
         });
       });
+    });
+  });
+
+  describe("x-rays", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsNormalUser();
+      cy.intercept("GET", "/api/automagic-dashboards/model/*").as("dashboard");
+    });
+
+    it("should allow to x-ray models from collection views", () => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
+      cy.visit("/collection/root");
+
+      openEllipsisMenuFor("Orders");
+      popover().findByText("X-ray this").click();
+      cy.wait("@dashboard");
     });
   });
 });

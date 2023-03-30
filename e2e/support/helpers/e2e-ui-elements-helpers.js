@@ -22,6 +22,10 @@ export function rightSidebar() {
   return cy.findAllByTestId("sidebar-right");
 }
 
+export function leftSidebar() {
+  return cy.findByTestId("sidebar-left");
+}
+
 export function navigationSidebar() {
   return cy.get("#root aside").first();
 }
@@ -94,4 +98,8 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mousemove", 5, 5, { force: true })
     .trigger("mousemove", 0, distance * 50, { force: true })
     .trigger("mouseup", 0, distance * 50, { force: true });
+};
+
+export const queryBuilderMain = () => {
+  return cy.findByTestId("query-builder-main");
 };

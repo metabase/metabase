@@ -78,16 +78,19 @@ const NotebookCellItemContentContainer = styled.div`
   transition: background 300ms linear;
 `;
 
-export function NotebookCellItem({
-  inactive,
-  color,
-  containerStyle,
-  right,
-  rightContainerStyle,
-  children,
-  ...props
-}) {
-  const hasRightSide = React.isValidElement(right);
+export function NotebookCellItem(props) {
+  const {
+    inactive,
+    color,
+    containerStyle,
+    right,
+    rightContainerStyle,
+    children,
+    readOnly,
+    ...restProps
+  } = props;
+
+  const hasRightSide = React.isValidElement(right) && !readOnly;
   const mainContentRoundedCorners = ["left"];
   if (!hasRightSide) {
     mainContentRoundedCorners.push("right");
@@ -96,7 +99,7 @@ export function NotebookCellItem({
     <NotebookCellItemContainer
       inactive={inactive}
       color={color}
-      {...props}
+      {...restProps}
       data-testid={props["data-testid"] ?? "notebook-cell-item"}
     >
       <NotebookCellItemContentContainer
@@ -126,7 +129,7 @@ NotebookCellItem.displayName = "NotebookCellItem";
 NotebookCell.CONTAINER_PADDING = CONTAINER_PADDING;
 
 export const NotebookCellAdd = ({ initialAddText, ...props }) => (
-  <NotebookCellItem {...props} inactive={initialAddText}>
+  <NotebookCellItem {...props} inactive={!!initialAddText}>
     {initialAddText || <Icon name="add" className="text-white" />}
   </NotebookCellItem>
 );

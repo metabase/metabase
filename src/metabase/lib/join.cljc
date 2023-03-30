@@ -1,13 +1,65 @@
 (ns metabase.lib.join
   (:require
+   [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.util :as lib.util]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
+
+(mu/defn resolve-join :- ::lib.schema.join/join
+  "Resolve a join with a specific `join-alias`."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   join-alias   :- ::lib.schema.common/non-blank-string]
+  (or (m/find-first #(= (:alias %) join-alias)
+                    (:joins (lib.util/query-stage query stage-number)))
+      (throw (ex-info (i18n/tru "No join named {0}" (pr-str join-alias))
+                      {:join-alias   join-alias
+                       :query        query
+                       :stage-number stage-number}))))
+
+(defmethod lib.metadata.calculation/display-name-method :mbql/join
+  [query _stage-number {[first-stage] :stages, :as _join}]
+  (if-let [source-table (:source-table first-stage)]
+    (if (integer? source-table)
+      (:display_name (lib.metadata/table query source-table))
+      ;; handle card__<id> source tables.
+      (let [[_ card-id-str] (re-matches #"^card__(\d+)$" source-table)]
+        (i18n/tru "Saved Question #{0}" card-id-str)))
+    (i18n/tru "Native Query")))
+
+(mu/defn ^:private column-from-join-fields :- lib.metadata/ColumnMetadata
+  "For a column that comes from a join `:fields` list, add or update metadata as needed, e.g. include join name in the
+  display name."
+  [query           :- ::lib.schema/query
+   stage-number    :- :int
+   column-metadata :- lib.metadata/ColumnMetadata
+   join-alias      :- ::lib.schema.common/non-blank-string]
+  (let [[ref-type options arg] (:field_ref column-metadata)
+        ref-with-join-alias    [ref-type (assoc options :join-alias join-alias) arg]
+        column-metadata        (assoc column-metadata :source_alias join-alias)]
+    (assoc column-metadata
+           :field_ref    ref-with-join-alias
+           :display_name (lib.metadata.calculation/display-name query stage-number column-metadata))))
+
+(defmethod lib.metadata.calculation/metadata :mbql/join
+  [query stage-number {:keys [fields stages], join-alias :alias, :or {fields :none}, :as _join}]
+  (when-not (= fields :none)
+    (let [field-metadatas (if (= fields :all)
+                            (lib.metadata.calculation/metadata (assoc query :stages stages) -1 (last stages))
+                            (for [field-ref fields]
+                              ;; resolve the field ref in the context of the join. Not sure if this is right.
+                              (lib.metadata.calculation/metadata query stage-number field-ref)))]
+      (mapv (fn [field-metadata]
+              (column-from-join-fields query stage-number field-metadata join-alias))
+            field-metadatas))))
 
 (defmulti ^:private ->join-clause
   {:arglists '([query stage-number x])}
@@ -45,6 +97,9 @@
   [query stage-number f]
   (->join-clause query stage-number (f query stage-number)))
 
+;; TODO this is basically the same as lib.common/->op-args,
+;; but requiring lib.common leads to crircular dependencies:
+;; join -> common -> field -> join.
 (defmulti ^:private ->join-condition
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
@@ -53,6 +108,11 @@
 (defmethod ->join-condition :default
   [_query _stage-number x]
   x)
+
+(defmethod ->join-condition :lib/external-op
+  [query stage-number {:keys [operator options args] :or {options {}}}]
+  (->join-condition query stage-number
+                    (lib.options/ensure-uuid (into [operator options] args))))
 
 (defmethod ->join-condition :dispatch-type/fn
   [query stage-number f]
@@ -88,6 +148,37 @@
   ([query stage-number x condition]
    (cond-> (join-clause query stage-number x)
      condition (assoc :condition (join-condition query stage-number condition)))))
+
+(defmulti with-join-alias-method
+  "Implementation for [[with-join-alias]]."
+  {:arglists '([x join-alias])}
+  (fn [x _join-alias]
+    (lib.dispatch/dispatch-value x)))
+
+(mu/defn with-join-alias
+  "Add a specific `join-alias` to something `x`, either a `:field` or join map. Does not recursively update other
+  references (yet; we can add this in the future)."
+  [x join-alias :- ::lib.schema.common/non-blank-string]
+  (with-join-alias-method x join-alias))
+
+(defmethod with-join-alias-method :dispatch-type/fn
+  [f join-alias]
+  (fn [query stage-number]
+    (let [x (f query stage-number)]
+      (with-join-alias-method x join-alias))))
+
+(defmethod with-join-alias-method :mbql/join
+  [join join-alias]
+  (assoc join :alias join-alias))
+
+(mu/defn with-join-fields
+  "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
+  references."
+  [x fields :- ::lib.schema.join/fields]
+  (if (fn? x)
+    (fn [query stage-number]
+      (with-join-fields (x query stage-number) fields))
+    (assoc x :fields fields)))
 
 (mu/defn join :- ::lib.schema/query
   "Create a join map as if by [[join-clause]] and add it to a `query`.

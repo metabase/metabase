@@ -14,7 +14,7 @@ import {
   within,
 } from "__support__/ui";
 import {
-  setupActionsEndpoints,
+  setupModelActionsEndpoints,
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
@@ -212,7 +212,7 @@ async function setup({
   );
 
   setupCardsEndpoints([card]);
-  setupActionsEndpoints(model.id(), actions);
+  setupModelActionsEndpoints(actions, model.id());
   setupCollectionsEndpoints(collections);
 
   const name = model.displayName()?.toLowerCase();

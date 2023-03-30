@@ -8,9 +8,9 @@
    [metabase.models.timeline-event :as timeline-event]
    [metabase.util.date-2 :as u.date]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel Timeline :timeline)
 
@@ -44,7 +44,7 @@
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
   [collection-id {:keys [:timeline/events? :timeline/archived?] :as options}]
-  (cond-> (hydrate (db/select Timeline
+  (cond-> (hydrate (t2/select Timeline
                               :collection_id collection-id
                               :archived (boolean archived?))
                    :creator
@@ -93,7 +93,7 @@
 (defmethod serdes/load-one! "Timeline" [ingested maybe-local]
   (let [timeline ((get-method serdes/load-one! :default) (dissoc ingested :events) maybe-local)]
     (doseq [event (:events ingested)]
-      (let [local (db/select-one 'TimelineEvent :timeline_id (:id timeline) :timestamp (u.date/parse (:timestamp event)))
+      (let [local (t2/select-one 'TimelineEvent :timeline_id (:id timeline) :timestamp (u.date/parse (:timestamp event)))
             event (assoc event
                          :timeline_id (:entity_id timeline)
                          :serdes/meta [{:model "Timeline"      :id (:entity_id timeline)}

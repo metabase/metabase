@@ -18,6 +18,7 @@
             PermissionsGroupMembership
             Pulse
             PulseCard
+            QueryAction
             Segment
             Table]]
    [metabase.models.permissions :as perms]
@@ -26,7 +27,7 @@
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
+   [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -69,7 +70,7 @@
   []
   (merge
    {:table_id true, :database_id true}
-   (db/select-one [Table [:name :table_name] [:schema :table_schema] [:description :table_description]]
+   (t2/select-one [Table [:name :table_name] [:schema :table_schema] [:description :table_description]]
      :id (mt/id :checkins))))
 
 (defn- sorted-results [results]
@@ -80,6 +81,12 @@
 (defn- make-result
   [name & kvs]
   (apply assoc default-search-row :name name kvs))
+
+(defn- query-action
+  [action-id]
+  {:action_id     action-id
+   :database_id   (u/the-id (mt/db))
+   :dataset_query (mt/query venues)})
 
 (def ^:private test-collection (make-result "collection test collection"
                                             :bookmark false
@@ -95,7 +102,8 @@
     test-collection
     (make-result "card test card", :model "card", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
     (make-result "dataset test dataset", :model "dataset", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
-    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true)
+    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
+                 :dataset_query (update (mt/query venues) :type name), :database_id true)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
      (table-search-results))
@@ -129,18 +137,20 @@
                         (merge (data-map instance-name)
                                (when-not in-root-collection?
                                  {:collection_id (u/the-id collection)})))]
-    (mt/with-temp* [Collection [coll         (data-map "collection %s collection")]
-                    Card       [action-model (if in-root-collection?
-                                               action-model-params
-                                               (assoc action-model-params :collection_id (u/the-id coll)))]
-                    Action     [action       (merge (data-map "action %s action")
-                                                    {:type :query, :model_id (u/the-id action-model)})]
-                    Card       [card         (coll-data-map "card %s card" coll)]
-                    Card       [dataset      (assoc (coll-data-map "dataset %s dataset" coll)
-                                                    :dataset true)]
-                    Dashboard  [dashboard    (coll-data-map "dashboard %s dashboard" coll)]
-                    Metric     [metric       (data-map "metric %s metric")]
-                    Segment    [segment      (data-map "segment %s segment")]]
+    (mt/with-temp* [Collection  [coll           (data-map "collection %s collection")]
+                    Card        [action-model   (if in-root-collection?
+                                                  action-model-params
+                                                  (assoc action-model-params :collection_id (u/the-id coll)))]
+                    Action      [{action-id :id
+                                  :as action}   (merge (data-map "action %s action")
+                                  {:type :query, :model_id (u/the-id action-model)})]
+                    QueryAction [_qa (query-action action-id)]
+                    Card        [card           (coll-data-map "card %s card" coll)]
+                    Card        [dataset        (assoc (coll-data-map "dataset %s dataset" coll)
+                                                       :dataset true)]
+                    Dashboard   [dashboard      (coll-data-map "dashboard %s dashboard" coll)]
+                    Metric      [metric         (data-map "metric %s metric")]
+                    Segment     [segment        (data-map "segment %s segment")]]
       (f {:action     action
           :collection coll
           :card       card
@@ -219,11 +229,11 @@
              [:like [:lower :display_name]      "%foo%"] [:inline 0]
              [:like [:lower :description]       "%foo%"] [:inline 0]
              [:like [:lower :collection_name]   "%foo%"] [:inline 0]
-             [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              [:like [:lower :table_schema]      "%foo%"] [:inline 0]
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
+             [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              :else [:inline 1]]]
            (api.search/order-clause "Foo")))))
 
@@ -467,50 +477,53 @@
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
-      (mt/with-temp* [Card       [action-model {:dataset true}]
-                      Action     [_ (archived {:name     "action test action 2"
-                                               :type     :query
-                                               :model_id (u/the-id action-model)})]
-                      Card       [_ (archived {:name "card test card 2"})]
-                      Card       [_ (archived {:name "dataset test dataset" :dataset true})]
-                      Dashboard  [_ (archived {:name "dashboard test dashboard 2"})]
-                      Collection [_ (archived {:name "collection test collection 2"})]
-                      Metric     [_ (archived {:name "metric test metric 2"})]
-                      Segment    [_ (archived {:name "segment test segment 2"})]]
+      (mt/with-temp* [Card        [action-model {:dataset true}]
+                      Action      [{action-id :id} (archived {:name     "action test action 2"
+                                                              :type     :query
+                                                              :model_id (u/the-id action-model)})]
+                      QueryAction [_ (query-action action-id)]
+                      Card        [_ (archived {:name "card test card 2"})]
+                      Card        [_ (archived {:name "dataset test dataset" :dataset true})]
+                      Dashboard   [_ (archived {:name "dashboard test dashboard 2"})]
+                      Collection  [_ (archived {:name "collection test collection 2"})]
+                      Metric      [_ (archived {:name "metric test metric 2"})]
+                      Segment     [_ (archived {:name "segment test segment 2"})]]
         (is (= (default-search-results)
                (search-request-data :crowberto :q "test"))))))
 
   (testing "Should return archived results when specified"
     (with-search-items-in-root-collection "test2"
-      (mt/with-temp* [Card       [action-model action-model-params]
-                      Action     [_ (archived {:name     "action test action"
-                                               :type     :query
-                                               :model_id (u/the-id action-model)})]
-                      Action     [_ (archived {:name     "action that will not appear in results"
-                                               :type     :query
-                                               :model_id (u/the-id action-model)})]
-                      Card       [_ (archived {:name "card test card"})]
-                      Card       [_ (archived {:name "card that will not appear in results"})]
-                      Card       [_ (archived {:name "dataset test dataset" :dataset true})]
-                      Dashboard  [_ (archived {:name "dashboard test dashboard"})]
-                      Collection [_ (archived {:name "collection test collection"})]
-                      Metric     [_ (archived {:name "metric test metric"})]
-                      Segment    [_ (archived {:name "segment test segment"})]]
+      (mt/with-temp* [Card        [action-model action-model-params]
+                      Action      [{action-id :id} (archived {:name     "action test action"
+                                                              :type     :query
+                                                              :model_id (u/the-id action-model)})]
+                      QueryAction [_ (query-action action-id)]
+                      Action      [_ (archived {:name     "action that will not appear in results"
+                                                :type     :query
+                                                :model_id (u/the-id action-model)})]
+                      Card        [_ (archived {:name "card test card"})]
+                      Card        [_ (archived {:name "card that will not appear in results"})]
+                      Card        [_ (archived {:name "dataset test dataset" :dataset true})]
+                      Dashboard   [_ (archived {:name "dashboard test dashboard"})]
+                      Collection  [_ (archived {:name "collection test collection"})]
+                      Metric      [_ (archived {:name "metric test metric"})]
+                      Segment     [_ (archived {:name "segment test segment"})]]
         (is (= (default-archived-results)
                (search-request-data :crowberto :q "test", :archived "true"))))))
 
   (testing "Should return archived results when specified without a search query"
     (with-search-items-in-root-collection "test2"
-      (mt/with-temp* [Card       [action-model action-model-params]
-                      Action     [_ (archived {:name     "action test action"
-                                               :type     :query
-                                               :model_id (u/the-id action-model)})]
-                      Card       [_ (archived {:name "card test card"})]
-                      Card       [_ (archived {:name "dataset test dataset" :dataset true})]
-                      Dashboard  [_ (archived {:name "dashboard test dashboard"})]
-                      Collection [_ (archived {:name "collection test collection"})]
-                      Metric     [_ (archived {:name "metric test metric"})]
-                      Segment    [_ (archived {:name "segment test segment"})]]
+      (mt/with-temp* [Card        [action-model action-model-params]
+                      Action      [{action-id :id} (archived {:name     "action test action"
+                                                :type     :query
+                                                :model_id (u/the-id action-model)})]
+                      QueryAction [_ (query-action action-id)]
+                      Card        [_ (archived {:name "card test card"})]
+                      Card        [_ (archived {:name "dataset test dataset" :dataset true})]
+                      Dashboard   [_ (archived {:name "dashboard test dashboard"})]
+                      Collection  [_ (archived {:name "collection test collection"})]
+                      Metric      [_ (archived {:name "metric test metric"})]
+                      Segment     [_ (archived {:name "segment test segment"})]]
         (is (ordered-subset? (default-archived-results)
                              (search-request-data :crowberto :archived "true")))))))
 
@@ -546,10 +559,10 @@
 
 (deftest table-test
   (testing "You should see Tables in the search results!\n"
-    (mt/with-temp Table [_ {:name "Round Table"}]
+    (mt/with-temp Table [_ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "Round Table")]
-               (search-request-data user :q "Round Table"))))))
+        (is (= [(default-table-search-row "RoundTable")]
+               (search-request-data user :q "RoundTable"))))))
   (testing "You should not see hidden tables"
     (mt/with-temp* [Table [_normal {:name "Foo Visible"}]
                     Table [_hidden {:name "Foo Hidden", :visibility_type "hidden"}]]
@@ -558,9 +571,9 @@
                (search-request-data user :q "Foo"))))))
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
-      (mt/with-temp Table [_ {:name "Round Table" :display_name lancelot}]
+      (mt/with-temp Table [_ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "Round Table") :name lancelot)]
+          (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
                  (search-request-data user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
@@ -586,31 +599,31 @@
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
                 "does have perms, they should still be able to see it (#12332)")
     (mt/with-temp* [Database                   [{db-id :id}]
-                    Table                      [table {:name "Round Table", :db_id db-id}]
+                    Table                      [table {:name "RoundTable", :db_id db-id}]
                     PermissionsGroup           [{group-id :id}]
                     PermissionsGroupMembership [_ {:group_id group-id, :user_id (mt/user->id :rasta)}]]
       (perms/revoke-data-perms! (perms-group/all-users) db-id (:schema table) (:id table))
       (perms/grant-permissions! group-id (perms/table-read-path table))
       (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "Round Table")]
+        (is (= [(default-table-search-row "RoundTable")]
                (binding [*search-request-results-database-id* db-id]
-                 (search-request-data user :q "Round Table"))))))))
+                 (search-request-data user :q "RoundTable"))))))))
 
 (deftest all-users-no-data-perms-table-test
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
     (mt/with-temp* [Database                   [{db-id :id}]
-                    Table                      [table {:name "Round Table", :db_id db-id}]]
+                    Table                      [table {:name "RoundTable", :db_id db-id}]]
       (perms/revoke-data-perms! (perms-group/all-users) db-id (:schema table) (:id table))
       (is (= []
-             (filter #(= (:name %) "Round Table")
+             (filter #(= (:name %) "RoundTable")
                      (binding [*search-request-results-database-id* db-id]
-                       (search-request-data :rasta :q "Round Table"))))))))
+                       (search-request-data :rasta :q "RoundTable"))))))))
 
 (deftest collection-namespaces-test
   (testing "Search should only return Collections in the 'default' namespace"
     (mt/with-temp* [Collection [_c1 {:name "Normal Collection"}]
                     Collection [_c2 {:name "Coin Collection", :namespace "currency"}]]
-      (assert (not (db/exists? Collection :name "Coin Collection", :namespace nil)))
+      (assert (not (t2/exists? Collection :name "Coin Collection", :namespace nil)))
       (is (=? [{:name "Normal Collection"}]
               (->> (search-request-data :crowberto :q "Collection")
                    (filter #(and (= (:model %) "collection")
@@ -634,7 +647,7 @@
             (is (= nil (search-for-pulses pulse))))
           (testing "Even as a dashboard subscription, the pulse is not found."
             (mt/with-temp* [Dashboard [dashboard]]
-              (db/update! Pulse (:id pulse) :dashboard_id (:id dashboard))
+              (t2/update! Pulse (:id pulse) {:dashboard_id (:id dashboard)})
               (is (= nil (search-for-pulses pulse))))))))))
 
 (deftest card-dataset-query-test

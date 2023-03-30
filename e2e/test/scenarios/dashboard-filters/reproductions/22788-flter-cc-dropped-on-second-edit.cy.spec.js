@@ -4,6 +4,7 @@ import {
   filterWidget,
   editDashboard,
   saveDashboard,
+  sidebar,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -79,6 +80,12 @@ describe("issue 22788", () => {
       .within(() => {
         cy.findByText(ccDisplayName);
       });
+
+    // need to actually change the dashboard to test a real save
+    sidebar().within(() => {
+      cy.findByDisplayValue("Text").clear().type('my filter text');
+      cy.button('Done').click();
+    });
 
     saveDashboard();
 

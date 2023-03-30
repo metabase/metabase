@@ -3,14 +3,15 @@
    [clojure.test :refer :all]
    [metabase.models.table :refer [Table]]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
-   [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (defn- updates-that-will-be-performed [new-metadata-from-sync metadata-in-application-db]
   (tt/with-temp Table [table]
     (let [update-operations (atom [])]
-      (with-redefs [db/update! (fn [model id updates]
-                                 (swap! update-operations conj [(name model) id updates]))]
+      (with-redefs [t2/update! (fn [model id updates]
+                                 (swap! update-operations conj [(name model) id updates])
+                                 (count updates))]
         (#'sync-metadata/update-field-metadata-if-needed!
          table
          new-metadata-from-sync

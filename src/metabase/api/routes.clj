@@ -30,7 +30,7 @@
    [metabase.api.pulse :as api.pulse]
    [metabase.api.revision :as api.revision]
    [metabase.api.routes.common
-    :refer [+apikey +auth +generic-exceptions +message-only-exceptions]]
+    :refer [+apikey +auth +public-exceptions +message-only-exceptions]]
    [metabase.api.search :as api.search]
    [metabase.api.segment :as api.segment]
    [metabase.api.session :as api.session]
@@ -89,7 +89,7 @@
   (context "/permissions"          [] (+auth api.permissions/routes))
   (context "/persist"              [] (+auth api.persist/routes))
   (context "/preview_embed"        [] (+auth api.preview-embed/routes))
-  (context "/public"               [] (+generic-exceptions api.public/routes))
+  (context "/public"               [] (+public-exceptions api.public/routes))
   (context "/pulse"                [] (+auth api.pulse/routes))
   (context "/revision"             [] (+auth api.revision/routes))
   (context "/search"               [] (+auth api.search/routes))
