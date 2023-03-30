@@ -6,8 +6,11 @@
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 ;;; this is mostly to ensure all the relevant namespaces with multimethods impls get loaded.
@@ -93,3 +96,37 @@
   "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."
   [query-map]
   (-> query-map convert/->legacy-MBQL fix-namespaced-values clj->js))
+
+(defn ^:export orderable-columns
+  "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
+  add an order by, pass the result to [[order-by]]."
+  ([a-query]
+   (orderable-columns a-query -1))
+  ([a-query stage-number]
+   (-> (lib.order-by/orderable-columns a-query stage-number)
+       (clj->js :keyword-fn u/qualified-name))))
+
+(defn ^:export order-by
+  "Add an `order-by` clause to `a-query`. Returns updated query."
+  ([a-query x]
+   (order-by a-query -1 x nil))
+
+  ([a-query x direction]
+   (order-by a-query -1 x direction))
+
+  ([a-query stage-number x direction]
+   (lib.order-by/order-by
+    a-query
+    stage-number
+    (lib.normalize/normalize (js->clj x :keywordize-keys true))
+    (js->clj direction))))
+
+(defn ^:export order-bys
+  "Get the order-by clauses (as an array of opaque objects) in `a-query` at a given `stage-number`. Returns `nil` if
+  there are no order bys in the query."
+  ([a-query]
+   (order-bys a-query -1))
+  ([a-query stage-number]
+   (some-> (lib.order-by/order-bys a-query stage-number)
+           not-empty
+           to-array)))
