@@ -5,4 +5,10 @@
 declare const Query: unique symbol;
 export type Query = unknown & { _opaque: typeof Query };
 
+declare const MetadataProvider: unique symbol;
+export type MetadataProvider = unknown & { _opaque: typeof MetadataProvider };
+
+declare const Clause: unique symbol;
+export type Clause = unknown & { _opaque: typeof Clause };
+
 export type Limit = number | null;
