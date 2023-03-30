@@ -615,3 +615,8 @@
   (deferred-tru "Schema name for uploads")
   :visibility   :admin
   :type         :string)
+
+(defsetting uploads-table-prefix
+  (deferred-tru "Prefix for upload table names")
+  :visibility   :admin
+  :type         :string)
