@@ -52,8 +52,8 @@ export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
   const cancelQueryDeferred = getCancelQueryDeferred(getState());
   if (getIsQueryRunning(getState())) {
     cancelQueryDeferred.resolve();
+    dispatch({ type: CANCEL_QUERY });
   }
-  dispatch({ type: CANCEL_QUERY });
 };
 
 export const UPDATE_PROMPT = "metabase/metabot/UPDATE_PROMPT";
