@@ -166,7 +166,7 @@
 (defmethod revision/serialize-instance Dashboard
   [_model _id dashboard]
   (-> dashboard
-      (select-keys [:description :name :cache_ttl])
+      (select-keys [:description :name :cache_ttl :auto_apply_filters])
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
                            (-> (select-keys dashboard-card [:size_x :size_y :row :col :id :card_id])
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))
@@ -237,7 +237,10 @@
              (cond
                (< num-cards1 num-cards2) "added a card"
                (> num-cards1 num-cards2) "removed a card"
-               :else                     "rearranged the cards")))]
+               :else                     "rearranged the cards")))
+         (let [f (comp boolean :auto_apply_filters)]
+          (when (not= (f dashboard1) (f dashboard2))
+            (format "set auto apply filters to %s" (str (f dashboard2)))))]
         (concat (map-indexed check-series-change (:cards changes)))
         (->> (filter identity)
              build-sentence))))
