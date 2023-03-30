@@ -242,7 +242,7 @@
   (fn [path]
     (-> path last :model)))
 
-(declare *lookup-by-id*)
+(declare ^:dynamic ^::cache *lookup-by-id*)
 
 (defmethod load-find-local :default [path]
   (let [{id :id model-name :model} (last path)
@@ -372,7 +372,7 @@
                       (take 1)))
        first))
 
-(defn ^:dynamic ^::cache *lookup-by-id*
+(defn *lookup-by-id*
   "Given an ID string, this endeavours to find the matching entity, whether it's an entity ID or identity hash.
   This is useful when writing [[load-xform]] to turn a foreign key from a portable form to an appdb ID.
   Returns a Toucan entity or nil."
