@@ -48,7 +48,6 @@
    [metabase.util.log :as log]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
-   [toucan.db :as db]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
 

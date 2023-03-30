@@ -8,7 +8,6 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defmacro ^:private chain-filter [field field->value & options]

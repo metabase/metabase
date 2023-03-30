@@ -1036,10 +1036,10 @@
    (t2/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/query/%"])
    (t2/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/data/%"])
    (try
-     (t2/insert! Permissions
-                 (map (fn [path-object]
-                        {:group_id (u/the-id group-or-id) :object path-object})
-                      (distinct (conj (->v2-path path) path))))
+     (t2/insert-returning-instances! Permissions
+                                     (map (fn [path-object]
+                                            {:group_id (u/the-id group-or-id) :object path-object})
+                                          (distinct (conj (->v2-path path) path))))
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
        (log/error e (u/format-color 'red (tru "Failed to grant permissions")))

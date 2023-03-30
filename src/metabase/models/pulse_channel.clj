@@ -12,7 +12,6 @@
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
