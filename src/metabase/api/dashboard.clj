@@ -344,10 +344,11 @@
                               (when is_deep_copy
                                 (duplicate-cards existing-dashboard collection_id))]
                           (reset! new-cards (vals id->new-card))
-                          (api/check-500 (dashboard/add-dashcards! dash (update-cards-for-copy from-dashboard-id
-                                                                         (:ordered_cards existing-dashboard)
-                                                                         is_deep_copy
-                                                                         id->new-card)))
+                          (when-let [dashcards (seq (update-cards-for-copy from-dashboard-id
+                                                                           (:ordered_cards existing-dashboard)
+                                                                           is_deep_copy
+                                                                           id->new-card))]
+                            (api/check-500 (dashboard/add-dashcards! dash dashcards)))
                           (cond-> dash
                             (seq uncopied)
                             (assoc :uncopied uncopied))))]
@@ -357,7 +358,6 @@
       (doseq [card newly-created-cards]
         (events/publish-event! :card-create card)))
     (events/publish-event! :dashboard-create dashboard)))
-
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 

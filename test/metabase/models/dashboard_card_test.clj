@@ -94,7 +94,7 @@
                   Card          [{card-id-2 :id} {:name "card2"}]
                   Card          [{card-id3 :id} {:name "card3"}]]
     (let [upd-series (fn [series]
-                       (dashboard-card/update-dashboard-card-series! dashcard-id series)
+                       (dashboard-card/update-dashboard-cards-series! {dashcard-id series})
                        (set (for [card-id (t2/select-fn-set :card_id DashboardCardSeries, :dashboardcard_id dashcard-id)]
                               (t2/select-one-fn :name Card, :id card-id))))]
       (is (= #{}
@@ -112,17 +112,17 @@
   (testing "create-dashboard-card! simple example with a single card"
     (mt/with-temp* [Dashboard [{dashboard-id :id}]
                     Card      [{card-id :id} {:name "Test Card"}]]
-      (let [dashboard-card (dashboard-card/create-dashboard-card!
-                            {:creator_id             (mt/user->id :rasta)
-                             :dashboard_id           dashboard-id
-                             :card_id                card-id
-                             :size_x                 4
-                             :size_y                 3
-                             :row                    1
-                             :col                    1
-                             :parameter_mappings     [{:foo "bar"}]
-                             :visualization_settings {}
-                             :series                 [card-id]})]
+      (let [dashboard-card (dashboard-card/create-dashboard-cards!
+                             [{:creator_id             (mt/user->id :rasta)
+                               :dashboard_id           dashboard-id
+                               :card_id                card-id
+                               :size_x                 4
+                               :size_y                 3
+                               :row                    1
+                               :col                    1
+                               :parameter_mappings     [{:foo "bar"}]
+                               :visualization_settings {}
+                               :series                 [card-id]}])]
         (testing "return value from function"
           (is (= {:size_x                 4
                   :size_y                 3

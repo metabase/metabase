@@ -188,12 +188,12 @@
             current-card    (id->current-card dashcard-id)]
         (cond
           ;; If card is in current-cards but not serialized-cards then we need to delete it
-          (not serialized-card) (dashboard-card/delete-dashboard-card! current-card user-id)
+          (not serialized-card) (dashboard-card/delete-dashboard-cards! [current-card] dashboard-id user-id)
 
           ;; If card is in serialized-cards but not current-cards we need to add it
-          (not current-card) (dashboard-card/create-dashboard-card! (assoc serialized-card
-                                                                      :dashboard_id dashboard-id
-                                                                      :creator_id   user-id))
+          (not current-card) (dashboard-card/create-dashboard-cards! [(assoc serialized-card
+                                                                             :dashboard_id dashboard-id
+                                                                             :creator_id   user-id)])
 
           ;; If card is in both we need to update it to match serialized-card as needed
           :else (dashboard-card/update-dashboard-card! serialized-card current-card)))))
@@ -277,8 +277,7 @@
         dashboard-cards     (map (fn [dashcard]
                                    (-> (assoc dashcard :dashboard_id (u/the-id dashboard-or-id))
                                        (update :series #(filter identity (map u/the-id %))))) dashcards)]
-    ;; TODO bulk create dashboard-cards too
-    (u/prog1 (doall (map dashboard-card/create-dashboard-card! dashboard-cards))
+    (u/prog1 (dashboard-card/create-dashboard-cards! dashboard-cards)
       (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
         (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
