@@ -22,7 +22,9 @@
   border-color: color-mod(var(--color-border) blackness(12%));
   background: var(--color-bg-light);
   transition: all 200ms linear;
-  transition-property: color, border-color, background-color;
+  /* XXX: `visibility` and `opacity` are needed otherwise it won't transition when users click on the apply button, since it's essentially the hover state */
+  transition-property: color, border-color, background-color, visibility,
+    opacity;
 }
 
 .Button:focus {

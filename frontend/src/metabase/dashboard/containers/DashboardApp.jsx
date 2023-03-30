@@ -192,6 +192,7 @@ const DashboardApp = props => {
   const hasUnappliedFilters = !_.isEqual(parameterValues, parameterValuesState);
   const handleApplyFilters = () => {
     setParameterValues(parameterValuesState);
+    // XXX: Move the whole logic inside <Dashboard />, so we don't have to have duplicate logic here
     fetchDashboardCardData({ reload: false, clear: true });
   };
   const applyFilterButton = !dashboard?.auto_apply_filters && (

@@ -136,7 +136,6 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
 export const ApplyButton = styled(Button)`
   margin-left: auto;
 
-  transition: opacity visibility 200ms;
   opacity: ${({ isVisible }) => (isVisible ? 1 : 0)};
   visibility: ${({ isVisible }) => (isVisible ? "visible" : "hidden")};
 `;
