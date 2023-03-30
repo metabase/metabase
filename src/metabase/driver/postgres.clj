@@ -57,6 +57,10 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod driver/database-supports? [:postgres :csv-uploads]
+  [_driver _feat _db]
+  true)
+
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 (defmethod driver/database-supports? [:postgres :datetime-diff]
