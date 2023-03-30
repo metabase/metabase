@@ -1,3 +1,5 @@
+import { Card } from "./card";
+
 export type MetabotFeedbackType =
   | "great"
   | "wrong-data"
@@ -10,4 +12,9 @@ export interface MetabotFeedbackPayload {
   sql: string;
   correct_sql?: string;
   message?: string;
+}
+
+export interface MetabotPromptResult {
+  card: Card;
+  prompt_template_versions: string[] | null;
 }

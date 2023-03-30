@@ -34,8 +34,19 @@ export const entityType = handleActions(
 
 export const card = handleActions(
   {
-    [FETCH_QUESTION]: { next: (state, { payload }) => payload },
+    [FETCH_QUESTION]: { next: (state, { payload }) => payload.card },
     [UPDATE_QUESTION]: { next: (state, { payload }) => payload },
+    [RUN_PROMPT_QUERY]: { next: () => null },
+    [RESET]: { next: () => null },
+  },
+  null,
+);
+
+export const promptTemplateVersions = handleActions(
+  {
+    [FETCH_QUESTION]: {
+      next: (state, { payload }) => payload.prompt_template_versions,
+    },
     [RUN_PROMPT_QUERY]: { next: () => null },
     [RESET]: { next: () => null },
   },

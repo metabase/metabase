@@ -46,6 +46,9 @@ export const getNativeQueryText = createSelector([getQuestion], question =>
   maybeGetNativeQueryText(question),
 );
 
+export const getPromptTemplateVersions = (state: State) =>
+  state.metabot.promptTemplateVersions;
+
 export const getCancelQueryDeferred = (state: State) => {
   return state.metabot.cancelQueryDeferred;
 };

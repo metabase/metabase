@@ -18,6 +18,7 @@ import {
   getIsQueryRunning,
   getNativeQueryText,
   getPrompt,
+  getPromptTemplateVersions,
   getQuestion,
 } from "./selectors";
 
@@ -144,12 +145,14 @@ export const submitFeedback =
     const entityType = getEntityType(getState());
     const sql = getNativeQueryText(getState());
     const feedbackType = getFeedbackType(getState());
+    const prompt_template_versions = getPromptTemplateVersions(getState());
 
     MetabotApi.sendFeedback({
       entity_type: entityType,
       prompt,
       sql,
       feedback: feedbackType,
+      prompt_template_versions,
     });
 
     dispatch({ type: SUBMIT_FEEDBACK });
