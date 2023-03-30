@@ -41,17 +41,22 @@
   (deferred-tru "The Webhook URL to call the model inferencer. This endpoint takes a database and prompt and returns a model.")
   :visibility :settings-manager)
 
-(def ^:private fetch-openai-models
+(defn fetch-openai-models [api-key organization]
+  (try
+    (->> (openai.api/list-models
+          {:api-key      api-key
+           :organization organization})
+         :data
+         (map #(select-keys % [:id :owned_by]))
+         (sort-by :id))
+    (catch Exception _
+      (log/warn "Unable to fetch openai models.")
+      [])))
+
+(def ^:private memoized-fetch-openai-models
   (memoize/ttl
    ^{::memoize/args-fn (fn [[api-key organization]] [api-key organization])}
-   (fn [api-key organization]
-     (let [models (->> (openai.api/list-models
-                        {:api-key      api-key
-                         :organization organization})
-                       :data
-                       (map #(select-keys % [:id :owned_by]))
-                       (sort-by :id))]
-       models))
+   fetch-openai-models
    :ttl/threshold (* 1000 60 60 24)))
 
 (defsetting openai-available-models
@@ -64,7 +69,7 @@
                      (is-metabot-enabled)
                      (openai-api-key)
                      (openai-organization))
-                  (fetch-openai-models
+                  (memoized-fetch-openai-models
                    (openai-api-key)
                    (openai-organization))
                   [])))
