@@ -17,11 +17,6 @@ export const getQuestion = (state: State) => {
   return card ? new Question(card, getMetadata(state)) : null;
 };
 
-export const getOriginalQuestion = (state: State) => {
-  const card = state.metabot.originalCard;
-  return card ? new Question(card, getMetadata(state)) : null;
-};
-
 export const getPrompt = (state: State) => {
   return state.metabot.prompt;
 };
@@ -44,9 +39,4 @@ export const getFeedbackType = (state: State) => {
 
 export const getNativeQueryText = createSelector([getQuestion], question =>
   maybeGetNativeQueryText(question),
-);
-
-export const getOriginalNativeQueryText = createSelector(
-  [getOriginalQuestion],
-  question => maybeGetNativeQueryText(question),
 );

@@ -14,7 +14,6 @@ import {
   getEntityType,
   getFeedbackType,
   getNativeQueryText,
-  getOriginalNativeQueryText,
   getPrompt,
   getQuestion,
 } from "./selectors";
@@ -115,8 +114,7 @@ export const submitFeedback =
   () => (dispatch: Dispatch, getState: GetState) => {
     const prompt = getPrompt(getState());
     const entityType = getEntityType(getState());
-    const sql = getOriginalNativeQueryText(getState());
-    const correctSql = getNativeQueryText(getState());
+    const sql = getNativeQueryText(getState());
     const feedbackType = getFeedbackType(getState());
 
     MetabotApi.sendFeedback({
@@ -124,7 +122,6 @@ export const submitFeedback =
       prompt,
       sql,
       feedback: feedbackType,
-      correct_sql: feedbackType === "invalid-sql" ? correctSql : undefined,
     });
 
     dispatch({ type: SUBMIT_FEEDBACK });

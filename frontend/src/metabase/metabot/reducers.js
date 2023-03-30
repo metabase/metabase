@@ -41,14 +41,6 @@ export const card = handleActions(
   null,
 );
 
-export const originalCard = handleActions(
-  {
-    [FETCH_QUESTION]: { next: (state, { payload }) => payload },
-    [RESET]: { next: () => null },
-  },
-  null,
-);
-
 export const prompt = handleActions(
   {
     [INIT]: { next: (state, { payload }) => payload.initialPrompt ?? "" },
