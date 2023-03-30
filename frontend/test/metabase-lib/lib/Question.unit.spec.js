@@ -69,7 +69,9 @@ const orders_count_where_card = {
     database: SAMPLE_DATABASE.id,
     query: {
       "source-table": ORDERS.id,
-      aggregation: [["count-where", [">", ORDERS.TOTAL.id, 50]]],
+      aggregation: [
+        ["count-where", [">", ["field", ORDERS.TOTAL.id, null], 50]],
+      ],
     },
   },
 };
