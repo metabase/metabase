@@ -101,6 +101,14 @@
   (let [previous-stages (if source-query
                           (inner-query->stages source-query)
                           [])
+        source-metadata (when source-metadata
+                          (-> (if (vector? source-metadata)
+                                {:columns source-metadata}
+                                source-metadata)
+                              (update :columns (fn [columns]
+                                                 (for [column columns]
+                                                   (assoc column :lib/type :metadata/field))))
+                              (assoc :lib/type :metadata/results)))
         previous-stages (cond-> previous-stages
                           source-metadata (assoc-in [(dec (count previous-stages)) :lib/stage-metadata] source-metadata))
         stage-type      (if (:native inner-query)
@@ -171,6 +179,12 @@
   (let [{:keys [stages]} (pipeline query)]
     (get (vec stages) (non-negative-stage-index stages stage-number))))
 
+(mu/defn previous-stage :- [:maybe ::lib.schema/stage]
+  "Return the previous stage of the query, if there is one; otherwise return `nil`."
+  [query stage-number :- :int]
+  (when-let [stage-num (previous-stage-number query stage-number)]
+    (query-stage query stage-num)))
+
 (mu/defn update-query-stage :- ::lib.schema/query
   "Update a specific `stage-number` of a `query` by doing
 
@@ -213,3 +227,43 @@
            ","
            conjunction
            (last coll)))))))
+
+(defn update-stages-ignore-joins
+  "Like [[update-stages]], but does not recurse into the stages inside joins.
+
+  `f` has the signature
+
+    (f query stage-number stage)"
+  [query f]
+  (reduce
+   (fn [query stage-number]
+     (update-in query [:stages stage-number] (fn [stage]
+                                               (f query stage-number stage))))
+   query
+   (range 0 (count (:stages query)))))
+
+(defn update-stages
+  "Apply function `f` to every stage of a query, depth-first. Also applied to all query stages.
+
+  `f` has the signature
+
+    (f query stage-number stage)
+
+  `query` reflects the results of the previous call to `f`.
+
+  As a convenience, if `f` returns nil, the original stage will be used without changes."
+  [query f]
+  (letfn [(update-join [join]
+            (-> query
+                (assoc :stages (:stages join))
+                (update-stages f)
+                :stages))
+          (update-joins [joins]
+            (mapv update-join joins))]
+    (update-stages-ignore-joins
+     query
+     (fn [query stage-number stage]
+       (let [stage (cond-> stage
+                     (:joins stage)
+                     update-joins)]
+         (f query stage-number stage))))))

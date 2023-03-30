@@ -438,16 +438,16 @@
   (when metadata
     (for [m metadata]
       (-> m
-          (m/update-existing :table_id  serdes/export-table-fk)
-          (m/update-existing :id        serdes/export-field-fk)
+          (m/update-existing :table_id  serdes/*export-table-fk*)
+          (m/update-existing :id        serdes/*export-field-fk*)
           (m/update-existing :field_ref serdes/export-mbql)))))
 
 (defn- import-result-metadata [metadata]
   (when metadata
     (for [m metadata]
       (-> m
-          (m/update-existing :table_id  serdes/import-table-fk)
-          (m/update-existing :id        serdes/import-field-fk)
+          (m/update-existing :table_id  serdes/*import-table-fk*)
+          (m/update-existing :id        serdes/*import-field-fk*)
           (m/update-existing :field_ref serdes/import-mbql)))))
 
 (defn- result-metadata-deps [metadata]
@@ -465,11 +465,11 @@
   ;; :creator_id as the user's email.
   (try
     (-> (serdes/extract-one-basics "Card" card)
-        (update :database_id            serdes/export-fk-keyed 'Database :name)
-        (update :table_id               serdes/export-table-fk)
-        (update :collection_id          serdes/export-fk 'Collection)
-        (update :creator_id             serdes/export-user)
-        (update :made_public_by_id      serdes/export-user)
+        (update :database_id            serdes/*export-fk-keyed* 'Database :name)
+        (update :table_id               serdes/*export-table-fk*)
+        (update :collection_id          serdes/*export-fk* 'Collection)
+        (update :creator_id             serdes/*export-user*)
+        (update :made_public_by_id      serdes/*export-user*)
         (update :dataset_query          serdes/export-mbql)
         (update :parameters             serdes/export-parameters)
         (update :parameter_mappings     serdes/export-parameter-mappings)
@@ -482,11 +482,11 @@
   [card]
   (-> card
       serdes/load-xform-basics
-      (update :database_id            serdes/import-fk-keyed 'Database :name)
-      (update :table_id               serdes/import-table-fk)
-      (update :creator_id             serdes/import-user)
-      (update :made_public_by_id      serdes/import-user)
-      (update :collection_id          serdes/import-fk 'Collection)
+      (update :database_id            serdes/*import-fk-keyed* 'Database :name)
+      (update :table_id               serdes/*import-table-fk*)
+      (update :creator_id             serdes/*import-user*)
+      (update :made_public_by_id      serdes/*import-user*)
+      (update :collection_id          serdes/*import-fk* 'Collection)
       (update :dataset_query          serdes/import-mbql)
       (update :parameters             serdes/import-parameters)
       (update :parameter_mappings     serdes/import-parameter-mappings)

@@ -4,8 +4,7 @@ import { t } from "ttag";
 import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
 import _ from "underscore";
 import slugg from "slugg";
-import { humanize } from "metabase/lib/formatting";
-import Utils from "metabase/lib/utils";
+import * as ML from "cljs/metabase.lib.js";
 import { ParameterValuesConfig } from "metabase-types/api";
 import {
   Card,
@@ -25,7 +24,6 @@ import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import { getTemplateTagParameter } from "metabase-lib/parameters/utils/template-tags";
 import Variable from "metabase-lib/variables/Variable";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
-import { createTemplateTag } from "metabase-lib/queries/TemplateTag";
 import ValidationError from "metabase-lib/ValidationError";
 import { isFieldReference } from "metabase-lib/references";
 import Dimension, { FieldDimension, TemplateTagDimension } from "../Dimension";
@@ -47,30 +45,8 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
 ///////////////////////////
 // QUERY TEXT TAG UTILS
 
-const VARIABLE_TAG_REGEX: RegExp = /\{\{\s*([A-Za-z0-9_\.]+)\s*\}\}/g;
-const SNIPPET_TAG_REGEX: RegExp = /\{\{\s*(snippet:\s*[^}]+)\s*\}\}/g;
 export const CARD_TAG_REGEX: RegExp =
   /\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}/g;
-const TAG_REGEXES: RegExp[] = [
-  VARIABLE_TAG_REGEX,
-  SNIPPET_TAG_REGEX,
-  CARD_TAG_REGEX,
-];
-
-// look for variable usage in the query (like '{{varname}}').  we only allow alphanumeric characters for the variable name
-// a variable name can optionally end with :start or :end which is not considered part of the actual variable name
-// expected pattern is like mustache templates, so we are looking for something like {{category}}
-// anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
-// See unit tests for examples
-export function recognizeTemplateTags(queryText: string): string[] {
-  const tagNames = TAG_REGEXES.flatMap(r =>
-    Array.from(queryText.matchAll(r)),
-  ).map(m => m[1]);
-  return _.uniq(tagNames);
-}
-
-// matches '#123-foo-bar' and '#123' but not '#123foo'
-const CARD_TAG_NAME_REGEX: RegExp = /^#([0-9]*)(-[a-z0-9-]*)?$/;
 
 function tagRegex(tagName: string): RegExp {
   return new RegExp(`{{\\s*${tagName}\\s*}}`, "g");
@@ -85,23 +61,6 @@ function replaceTagName(
     .queryText()
     .replace(tagRegex(oldTagName), `{{${newTagName}}}`);
   return query.setQueryText(queryText);
-}
-
-export function cardIdFromTagName(name: string): number | null {
-  const match = name.match(CARD_TAG_NAME_REGEX);
-  return parseInt(match?.[1]) || null;
-}
-
-function isCardTagName(tagName: string): boolean {
-  return CARD_TAG_NAME_REGEX.test(tagName);
-}
-
-function snippetNameFromTagName(name: string): string {
-  return name.slice("snippet:".length).trim();
-}
-
-function isSnippetTagName(name: string): boolean {
-  return name.startsWith("snippet:");
 }
 
 export function updateCardTemplateTagNames(
@@ -478,77 +437,9 @@ export default class NativeQuery extends AtomicQuery {
    * special handling for NATIVE cards to automatically detect parameters ... {{varname}}
    */
   private _getUpdatedTemplateTags(queryText: string): TemplateTags {
-    if (queryText && this.supportsNativeParameters()) {
-      const tags = recognizeTemplateTags(queryText);
-      const existingTemplateTags = this.templateTagsMap();
-      const existingTags = Object.keys(existingTemplateTags);
-
-      // if we ended up with any variables in the query then update the card parameters list accordingly
-      if (tags.length > 0 || existingTags.length > 0) {
-        const newTags = _.difference(tags, existingTags);
-
-        const oldTags = _.difference(existingTags, tags);
-
-        const templateTags = { ...existingTemplateTags };
-
-        if (oldTags.length === 1 && newTags.length === 1) {
-          // renaming
-          const newTag = { ...templateTags[oldTags[0]] };
-
-          if (newTag["display-name"] === humanize(oldTags[0])) {
-            newTag["display-name"] = humanize(newTags[0]);
-          }
-
-          newTag.name = newTags[0];
-
-          if (isCardTagName(newTag.name)) {
-            newTag.type = "card";
-            newTag["card-id"] = cardIdFromTagName(newTag.name);
-          } else if (isSnippetTagName(newTag.name)) {
-            newTag.type = "snippet";
-            newTag["snippet-name"] = snippetNameFromTagName(newTag.name);
-          }
-
-          templateTags[newTag.name] = newTag;
-          delete templateTags[oldTags[0]];
-        } else {
-          // remove old vars
-          for (const name of oldTags) {
-            delete templateTags[name];
-          }
-
-          // create new vars
-          for (const tagName of newTags) {
-            templateTags[tagName] = createTemplateTag(tagName);
-
-            // parse card ID from tag name for card query template tags
-            if (isCardTagName(tagName)) {
-              templateTags[tagName] = Object.assign(templateTags[tagName], {
-                type: "card",
-                "card-id": cardIdFromTagName(tagName),
-              });
-            } else if (isSnippetTagName(tagName)) {
-              // extract snippet name from snippet tag
-              templateTags[tagName] = Object.assign(templateTags[tagName], {
-                type: "snippet",
-                "snippet-name": snippetNameFromTagName(tagName),
-              });
-            }
-          }
-        }
-
-        // ensure all tags have an id since we need it for parameter values to work
-        for (const tag: TemplateTag of Object.values(templateTags)) {
-          if (tag.id == null) {
-            tag.id = Utils.uuid();
-          }
-        }
-
-        return templateTags;
-      }
-    }
-
-    return {};
+    return queryText && this.supportsNativeParameters()
+      ? ML.template_tags(queryText, this.templateTagsMap())
+      : {};
   }
 
   dependentMetadata(): DependentMetadataItem[] {

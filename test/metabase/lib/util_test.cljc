@@ -88,7 +88,8 @@
              :type     :pipeline
              :stages   [{:lib/type           :mbql.stage/mbql
                          :source-table       (meta/id :venues)
-                         :lib/stage-metadata [(meta/field-metadata :venues :id)]}
+                         :lib/stage-metadata {:lib/type :metadata/results
+                                              :columns  [(meta/field-metadata :venues :id)]}}
                         {:lib/type :mbql.stage/mbql}]}
             (lib.util/pipeline
              {:database (meta/id)

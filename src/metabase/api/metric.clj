@@ -16,7 +16,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -122,8 +121,8 @@
     (when (seq fields-to-remove)
       (t2/delete! (t2/table-name MetricImportantField) {:metric_id id, :field_id [:in fields-to-remove]}))
     ;; add new fields as needed
-    (db/insert-many! 'MetricImportantField (for [field-id fields-to-add]
-                                             {:metric_id id, :field_id field-id}))
+    (t2/insert! 'MetricImportantField (for [field-id fields-to-add]
+                                        {:metric_id id, :field_id field-id}))
     {:success true}))
 
 

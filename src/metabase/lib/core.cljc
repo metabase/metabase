@@ -14,6 +14,8 @@
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metric :as lib.metric]
+   [metabase.lib.native :as lib.native]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.segment :as lib.segment]
@@ -32,6 +34,8 @@
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metric/keep-me
+         lib.native/keep-me
+         lib.normalize/keep-me
          lib.order-by/keep-me
          lib.query/keep-me
          lib.segment/keep-me
@@ -58,7 +62,9 @@
    breakout]
   [lib.dev
    field
-   query-for-table-name]
+   query-for-table-id
+   query-for-table-name
+   table]
   [lib.expression
    expression
    +
@@ -101,6 +107,8 @@
    rtrim
    upper
    lower]
+  [lib.field
+   fields]
   [lib.filter
    filter
    add-filter
@@ -135,11 +143,18 @@
    describe-top-level-key
    display-name
    suggested-name]
+  [lib.native
+   #?@(:cljs [->TemplateTags
+              TemplateTags->])
+   recognize-template-tags
+   template-tags]
   [lib.order-by
    order-by
    order-by-clause
    order-bys
    orderable-columns]
+  [lib.normalize
+   normalize]
   [lib.query
    native-query
    query

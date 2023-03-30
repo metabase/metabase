@@ -4,7 +4,7 @@ import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { getQuestionSteps } from "../lib/steps";
-import { NotebookStep as INotebookStep, OpenSteps } from "../lib/steps.types";
+import { NotebookStep as INotebookStep, OpenSteps } from "../types";
 import NotebookStep from "../NotebookStep";
 import { Container } from "./NotebookSteps.styled";
 
@@ -12,7 +12,7 @@ interface NotebookStepsProps {
   className?: string;
   question: Question;
   sourceQuestion?: Question;
-  reportTimezone?: string;
+  reportTimezone: string;
   updateQuestion: (question: Question) => Promise<void>;
   readOnly?: boolean;
 }
