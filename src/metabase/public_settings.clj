@@ -599,3 +599,19 @@
                     (not (t2/exists? 'Database :is_sample false, :initial_sync_status "complete"))
                     ;; frontend should set this value to `true` after the modal has been shown once
                     v))))
+
+(defsetting uploads-enabled
+  (deferred-tru "Whether or not csv uploads are enabled")
+  :visibility :admin
+  :type       :boolean
+  :default    false)
+
+(defsetting uploads-database-id
+  (deferred-tru "Database ID for uploads")
+  :visibility :admin
+  :type       :integer)
+
+(defsetting uploads-schema-name
+  (deferred-tru "Schema name for uploads")
+  :visibility   :admin
+  :type         :string)
