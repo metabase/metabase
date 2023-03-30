@@ -172,7 +172,6 @@ class SettingsEditorApp extends Component {
                 reloadSettings={this.props.reloadSettings}
                 autoFocus={index === 0}
                 settingValues={settingValues}
-                derivedSettingValues={derivedSettingValues}
               />
             ))}
         </ul>

@@ -42,8 +42,7 @@ export default class SettingsSetting extends Component {
   };
 
   render() {
-    const { setting, settingValues, derivedSettingValues, errorMessage } =
-      this.props;
+    const { setting, settingValues, errorMessage } = this.props;
     const settingId = settingToFormFieldId(setting);
 
     let Widget = setting.widget || SETTING_WIDGET_MAP[setting.type];
@@ -57,7 +56,7 @@ export default class SettingsSetting extends Component {
     }
 
     const widgetProps = {
-      ...setting.getProps?.(setting, settingValues, derivedSettingValues),
+      ...setting.getProps?.(setting, settingValues),
       ...setting.props,
       ...this.props,
     };
