@@ -6,6 +6,8 @@ import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { createMockNotebookStep, DEFAULT_LEGACY_QUERY } from "../../test-utils";
 import SortStep from "./SortStep";
 
+console.error = jest.fn();
+
 function setup(step = createMockNotebookStep()) {
   const updateQuery = jest.fn();
 

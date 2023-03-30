@@ -14,51 +14,78 @@ import ClauseStep from "../ClauseStep";
 import { SortFieldList } from "./SortStep.styled";
 
 function SortStep({
-  color,
   query,
-  updateQuery,
+  color,
   isLastOpened,
   readOnly,
+  updateQuery,
 }: NotebookStepUiComponentProps) {
+  const handleUpdateSort = (sort: IOrderBy, index: number) => {
+    updateQuery(query.updateSort(index, sort));
+  };
+
+  const handleAddSort = (sort: IOrderBy) => {
+    updateQuery(query.sort(sort));
+  };
+
+  const handleRemoveSort = (sort: OrderBy, index: number) => {
+    return updateQuery(query.removeSort(index));
+  };
+
   return (
     <ClauseStep
       color={color}
       items={query.sorts()}
       readOnly={readOnly}
+      isLastOpened={isLastOpened}
       renderName={(sort, index) => (
-        <span
-          className="flex align-center"
-          onClick={e => {
-            e.stopPropagation();
-            updateQuery(
-              query.updateSort(index, [
-                sort[0] === "asc" ? "desc" : "asc",
-                sort[1],
-              ]),
-            );
-          }}
-        >
-          <Icon
-            name={sort[0] === "asc" ? "arrow_up" : "arrow_down"}
-            className="text-white mr1"
-          />
-          <span>{sort.dimension().displayName()}</span>
-        </span>
+        <SortDisplayName
+          sort={sort}
+          index={index}
+          onChange={handleUpdateSort}
+        />
       )}
       renderPopover={(sort, index) => (
         <SortPopover
           query={query}
           sort={sort}
-          onChangeSort={newSort =>
-            sort && typeof index === "number"
-              ? updateQuery(query.updateSort(index, newSort))
-              : updateQuery(query.sort(newSort))
-          }
+          onChangeSort={newSort => {
+            const isUpdate = sort && typeof index === "number";
+            return isUpdate
+              ? handleUpdateSort(newSort, index)
+              : handleAddSort(newSort);
+          }}
         />
       )}
-      isLastOpened={isLastOpened}
-      onRemove={(sort, index) => updateQuery(query.removeSort(index))}
+      onRemove={handleRemoveSort}
     />
+  );
+}
+
+interface SortDisplayNameProps {
+  sort: OrderBy;
+  index: number;
+  onChange: (newSort: IOrderBy, index: number) => void;
+}
+
+function SortDisplayName({ sort, index, onChange }: SortDisplayNameProps) {
+  const [direction, fieldRef] = sort;
+
+  const displayName = sort.dimension().displayName();
+  const icon = direction === "asc" ? "arrow_up" : "arrow_down";
+
+  const handleToggleDirection = (event: React.MouseEvent<HTMLSpanElement>) => {
+    event.stopPropagation();
+    const nextDirection = direction === "asc" ? "desc" : "asc";
+    const nextSortClause: IOrderBy = [nextDirection, fieldRef];
+    onChange(nextSortClause, index);
+  };
+
+  return (
+    <span className="flex align-center" onClick={handleToggleDirection}>
+      <Icon name={icon} className="text-white mr1" />
+      <span>{displayName}</span>
+    </span>
   );
 }
 
@@ -82,22 +109,27 @@ const SortPopover = ({
   alwaysExpanded,
 }: SortPopoverProps) => {
   const sort = sortProp || ["asc", null];
+  const [direction, field] = sort;
   const table = query.table();
+
+  const handleChangeField = (nextField: IField) => {
+    onChangeSort([direction, nextField]);
+    onClose?.();
+  };
 
   // FieldList requires table
   if (!table) {
     return null;
   }
 
+  const fieldOptions = sortOptions || query.sortOptions(field);
+
   return (
     <SortFieldList
       maxHeight={maxHeight}
-      field={sort && sort[1]}
-      fieldOptions={sortOptions || query.sortOptions(sort && sort[1])}
-      onFieldChange={(field: IField) => {
-        onChangeSort([sort[0], field]);
-        onClose?.();
-      }}
+      field={field}
+      fieldOptions={fieldOptions}
+      onFieldChange={handleChangeField}
       table={table}
       enableSubDimensions={false}
       useOriginalDimension={true}
