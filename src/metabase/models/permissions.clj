@@ -968,6 +968,32 @@
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
+(defn related-permissions-where-clause
+  "Returns all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
+  This includes *both* ancestor and descendant paths. For example:
+
+  Suppose we asked this functions to delete related permssions for `/db/1/schema/PUBLIC/`. Depending on the
+  permissions the group has, it could end up doing something like:
+
+    *  deleting `/db/1/` permissions (because the ancestor perms implicity grant you full perms for `schema/PUBLIC`)
+    *  deleting perms for `/db/1/schema/PUBLIC/table/2/` (because Table 2 is a descendant of `schema/PUBLIC`)
+
+  In short, it will delete any permissions that contain `/db/1/schema/` as a prefix, or that themeselves are prefixes
+  for `/db/1/schema/`.
+
+  You can optionally include `other-conditions`, which are anded into the filter clause, to further restrict what is
+  deleted."
+  ([group-or-id path] (related-permissions-where-clause group-or-id path []))
+  ([group-or-id path other-conditions]
+   (let [paths (distinct (conj (->v2-path path) path))]
+     {:where (cond-> (into [:and]
+                           [[:= :group_id (u/the-id group-or-id)]
+                            (into [:or
+                                   [:like path (h2x/concat :object (h2x/literal "%"))]]
+                                  (map (fn [path-form] [:like :object (str path-form "%")])
+                                       paths))])
+               (seq other-conditions) (conj other-conditions))})))
+
 (s/defn delete-related-permissions!
   "Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
   This includes *both* ancestor and descendant paths. For example:
@@ -988,24 +1014,16 @@
   `revoke-data-perms!` elsewhere instead of calling this directly."
   {:style/indent 2}
   [group-or-id :- (s/cond-pre su/Map su/IntGreaterThanZero) path :- PathSchema & other-conditions]
-  (let [paths (conj (->v2-path path) path)
-        where {:where (apply list
-                             :and
-                             [:= :group_id (u/the-id group-or-id)]
-                             (into [:or
-                                    [:like path (h2x/concat :object (h2x/literal "%"))]]
-                                   (map (fn [path-form] [:like :object (str path-form "%")])
-                                        paths))
-                             other-conditions)}]
-    (when-let [revoked (t2/select-fn-set :object Permissions where)]
-      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
-      (t2/delete! Permissions where))))
+  (let [where-clause (related-permissions-where-clause group-or-id path other-conditions)
+        related (t2/select-fn-set :object Permissions where-clause)]
+    (when related
+      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) related))
+      (t2/delete! Permissions where-clause))))
 
 ;; TODO: rename this function to `revoke-permissions!` and make its behavior consistent with `grant-permissions!`
 (defn revoke-data-perms!
   "Revoke all permissions for `group-or-id` to object with `path-components`, *including* related permissions (i.e,
   permissions that grant full or partial access to the object in question).
-
 
     (revoke-data-perms! my-group my-db)"
   {:arglists '([group-or-id database-or-id]
