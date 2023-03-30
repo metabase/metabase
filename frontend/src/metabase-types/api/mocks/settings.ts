@@ -170,6 +170,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "persisted-models-enabled": false,
   "premium-embedding-token": null,
   "report-timezone-short": "UTC",
+  "report-timezone-long": "Europe/London",
   "saml-configured": false,
   "saml-enabled": false,
   "snowplow-url": "",

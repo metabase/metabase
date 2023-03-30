@@ -1,13 +1,26 @@
-/* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import CheckBox from "metabase/core/components/CheckBox";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 
-export default function FieldsPicker({
+import type Dimension from "metabase-lib/Dimension";
+
+interface FieldsPickerProps {
+  className?: string;
+  dimensions: Dimension[];
+  selectedDimensions: Dimension[];
+  isAll?: boolean;
+  isNone?: boolean;
+  onSelectAll?: () => void;
+  onSelectNone?: () => void;
+  onToggleDimension: (dimension: Dimension, isSelected: boolean) => void;
+  triggerElement?: React.ReactNode;
+  disableSelected?: boolean;
+}
+
+function FieldsPicker({
   className,
   dimensions,
   selectedDimensions,
@@ -19,7 +32,7 @@ export default function FieldsPicker({
   triggerElement = t`Columns`,
   disableSelected,
   ...props
-}) {
+}: FieldsPickerProps) {
   const selected = new Set(selectedDimensions.map(d => d.key()));
   return (
     <PopoverWithTrigger
@@ -38,9 +51,9 @@ export default function FieldsPicker({
               disabled={isAll && !onSelectNone}
               onChange={() => {
                 if (isAll) {
-                  onSelectNone();
+                  onSelectNone?.();
                 } else {
-                  onSelectAll();
+                  onSelectAll?.();
                 }
               }}
               className="mr1"
@@ -64,3 +77,5 @@ export default function FieldsPicker({
     </PopoverWithTrigger>
   );
 }
+
+export default FieldsPicker;

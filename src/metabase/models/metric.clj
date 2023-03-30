@@ -117,15 +117,15 @@
 (defmethod serdes/extract-one "Metric"
   [_model-name _opts metric]
   (-> (serdes/extract-one-basics "Metric" metric)
-      (update :table_id   serdes/export-table-fk)
-      (update :creator_id serdes/export-user)
+      (update :table_id   serdes/*export-table-fk*)
+      (update :creator_id serdes/*export-user*)
       (update :definition serdes/export-mbql)))
 
 (defmethod serdes/load-xform "Metric" [metric]
   (-> metric
       serdes/load-xform-basics
-      (update :table_id   serdes/import-table-fk)
-      (update :creator_id serdes/import-user)
+      (update :table_id   serdes/*import-table-fk*)
+      (update :creator_id serdes/*import-user*)
       (update :definition serdes/import-mbql)))
 
 (defmethod serdes/dependencies "Metric" [{:keys [definition table_id]}]

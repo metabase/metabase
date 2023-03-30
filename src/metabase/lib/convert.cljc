@@ -163,3 +163,13 @@
                 query-type inner-query})]
     #?(:cljs (js/console.log "->legacy-MBQL on query" query result))
     result))
+
+;;; placeholder, feel free to delete @braden.
+(defmethod ->legacy-MBQL :count
+  [[_tag opts field]]
+  (let [clause (if field
+                 [:count (->legacy-MBQL field)]
+                 [:count])]
+    (if-let [aggregation-options-opts (not-empty (select-keys opts [:name :display-name]))]
+      [:aggregation-options clause aggregation-options-opts]
+      clause)))

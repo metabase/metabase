@@ -34,7 +34,7 @@ type Props = {
   className?: string;
   style?: React.CSSProperties;
   fieldPickerTitle?: string;
-  filter: Filter;
+  filter?: Filter;
   query: StructuredQuery;
   onChange?: (filter: Filter) => void;
   onChangeFilter: (filter: Filter) => void;

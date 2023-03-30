@@ -1,6 +1,6 @@
 // Reducers needed for main application
 
-import { combineReducers } from "redux";
+import { combineReducers } from "@reduxjs/toolkit";
 
 import { PLUGIN_REDUCERS } from "metabase/plugins";
 

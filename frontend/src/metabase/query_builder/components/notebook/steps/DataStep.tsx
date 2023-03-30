@@ -1,12 +1,16 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
 import { CollectionDatasetOrDataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { getDatabasesList } from "metabase/query_builder/selectors";
+
+import type { TableId } from "metabase-types/api";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type Dimension from "metabase-lib/Dimension";
 import { isLocalField } from "metabase-lib/queries/utils/field-ref";
 
+import type { NotebookStepUiComponentProps } from "../types";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import {
   FieldsPickerIcon,
@@ -15,7 +19,12 @@ import {
 } from "../FieldsPickerIcon";
 import FieldsPicker from "./FieldsPicker";
 
-function DataStep({ color, query, updateQuery, readOnly }) {
+function DataStep({
+  color,
+  query,
+  updateQuery,
+  readOnly,
+}: NotebookStepUiComponentProps) {
   const question = query.question();
   const table = query.table();
   const canSelectTableColumns = table && query.isRaw() && !readOnly;
@@ -53,7 +62,7 @@ function DataStep({ color, query, updateQuery, readOnly }) {
           databaseQuery={{ saved: true }}
           selectedDatabaseId={query.databaseId()}
           selectedTableId={query.tableId()}
-          setSourceTableFn={tableId =>
+          setSourceTableFn={(tableId: TableId) =>
             updateQuery(query.setTableId(tableId).setDefaultQuery())
           }
           isInitiallyOpen={!query.tableId()}
@@ -72,7 +81,18 @@ export default connect(state => ({ databases: getDatabasesList(state) }))(
   DataStep,
 );
 
-const DataFieldsPicker = ({ query, updateQuery, ...props }) => {
+interface DataFieldsPickerProps {
+  query: StructuredQuery;
+  updateQuery: NotebookStepUiComponentProps["updateQuery"];
+  triggerStyle?: React.CSSProperties;
+  triggerElement: React.ComponentType<{ isTriggeredComponentOpen?: boolean }>;
+}
+
+const DataFieldsPicker = ({
+  query,
+  updateQuery,
+  ...props
+}: DataFieldsPickerProps) => {
   const dimensions = query.tableDimensions();
   const expressionDimensions = query.expressionDimensions();
   const selectedDimensions = query.columnDimensions();
@@ -88,7 +108,7 @@ const DataFieldsPicker = ({ query, updateQuery, ...props }) => {
     );
   };
 
-  const handleToggleDimension = dimension => {
+  const handleToggleDimension = (dimension: Dimension) => {
     const newFields = [...dimensions, ...expressionDimensions]
       .filter(d => {
         if (d === dimension) {
