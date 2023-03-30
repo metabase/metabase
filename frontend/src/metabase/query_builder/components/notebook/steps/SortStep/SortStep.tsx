@@ -9,8 +9,8 @@ import type DimensionOptions from "metabase-lib/DimensionOptions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type OrderBy from "metabase-lib/queries/structured/OrderBy";
 
-import type { NotebookStepUiComponentProps } from "../types";
-import ClauseStep from "./ClauseStep";
+import type { NotebookStepUiComponentProps } from "../../types";
+import ClauseStep from "../ClauseStep";
 import { SortFieldList } from "./SortStep.styled";
 
 function SortStep({
