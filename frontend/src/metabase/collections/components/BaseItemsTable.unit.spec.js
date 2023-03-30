@@ -2,7 +2,7 @@ import React from "react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import moment from "moment-timezone";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, getIcon } from "__support__/ui";
 
 import {
   DEFAULT_DATE_STYLE,
@@ -115,6 +115,38 @@ describe("Collections BaseItemsTable", () => {
     });
 
     expect(screen.queryByLabelText("Select all items")).not.toBeInTheDocument();
+  });
+
+  describe("description", () => {
+    it("shows description on hover", () => {
+      const DESCRIPTION = "My collection";
+      const ITEM = getCollectionItem({ description: DESCRIPTION });
+
+      setup({ items: [ITEM] });
+
+      const icon = getIcon("info");
+      userEvent.hover(icon);
+
+      const tooltip = screen.getByRole("tooltip");
+
+      expect(tooltip).toBeInTheDocument();
+      expect(tooltip).toHaveTextContent(DESCRIPTION);
+    });
+
+    it("shows markdown in description on hover", () => {
+      const DESCRIPTION = "**important** text";
+      const ITEM = getCollectionItem({ description: DESCRIPTION });
+
+      setup({ items: [ITEM] });
+
+      const icon = getIcon("info");
+      userEvent.hover(icon);
+
+      const tooltip = screen.getByRole("tooltip");
+
+      expect(tooltip).toBeInTheDocument();
+      expect(tooltip).toHaveTextContent("important text");
+    });
   });
 
   describe("models", () => {
