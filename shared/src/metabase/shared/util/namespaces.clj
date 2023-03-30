@@ -41,17 +41,19 @@
                             :clj  identity)
         imported-var      (requiring-resolve (resolve-symbol imported-symbol))
         imported-metadata (meta imported-var)
+        metadata          (merge
+                           {:doc      "docstring"
+                            :arglists '([& args])}
+                           ;; preserve important metadata from the imported var.
+                           imported-metadata
+                           ;; preserve metadata attached to the symbol(s) passed in to import-fn(s).
+                           (meta created-symbol)
+                           (meta imported-symbol))
         defn-name         (-> (or created-symbol (symbol (name imported-symbol)))
-                              (vary-meta merge
-                                         ;; preserve metadata attached to the symbol(s) passed in to import-fn(s).
-                                         (meta created-symbol)
-                                         (meta imported-symbol)
-                                         ;; preserve important metadata from the imported var.
-                                         (select-keys imported-metadata [:export])))
-        docstring         (or (:doc imported-metadata) "docstring")
-        arglists          (or (not-empty (:arglists imported-metadata))
-                              '([& args]))]
-    (defn-form imported-symbol defn-name docstring arglists)))
+                              ;; attach everything except for `:doc` and `:arglists` to the symbol we're deffing; we'll
+                              ;; deal with `:doc` and `:arglists` separately.
+                              (with-meta (dissoc metadata :doc :arglists)))]
+    (defn-form imported-symbol defn-name (:doc metadata) (:arglists metadata))))
 
 (defmacro import-fn
   "Imports a single defn from another namespace.
