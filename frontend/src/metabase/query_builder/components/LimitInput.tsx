@@ -13,7 +13,18 @@ const propTypes = {
   style: PropTypes.object,
 };
 
-const LimitInput = ({ className, small, medium, style = {}, ...props }) => (
+interface LimitInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  small?: boolean;
+  medium?: boolean;
+}
+
+const LimitInput = ({
+  className,
+  small,
+  medium,
+  style = {},
+  ...props
+}: LimitInputProps) => (
   <input
     className={cx("input", className, {
       // HACK: reuse Button styles
