@@ -164,6 +164,7 @@
    :cache_ttl               nil
    :position                nil
    :public_uuid             nil
+   :auto_apply_filters      true
    :show_in_getting_started false
    :updated_at              true})
 
@@ -494,7 +495,21 @@
             ;; In the interest of un-busting the e2e tests let's just check to make sure the endpoint no-ops
             (is (=? {:id dashboard-id}
                     (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                          {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))))
+                                          {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))
+    (testing "auto_apply_filters test"
+      (doseq [enabled? [true false]]
+        (mt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"
+                                                     :auto_apply_filters enabled?}]
+          (testing "Can set it"
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                  {:auto_apply_filters (not enabled?)})
+            (is (= (not enabled?)
+                   (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id))))
+          (testing "If not in put it is not changed"
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                  {:description "foo"})
+            (is (= (not enabled?)
+                   (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id)))))))))
 
 (deftest update-dashboard-guide-columns-test
   (testing "PUT /api/dashboard/:id"
