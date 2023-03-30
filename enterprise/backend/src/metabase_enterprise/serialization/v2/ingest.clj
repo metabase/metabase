@@ -5,7 +5,6 @@
   See the detailed description of the (de)serialization processes in [[metabase.models.serialization.base]]."
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [metabase.models.serialization :as serdes]
    [metabase.util.date-2 :as u.date]
    [metabase.util.yaml :as yaml]
@@ -40,7 +39,7 @@
   "Convert suitable string keys to clojure keywords, ignoring keys with whitespace, etc."
   [{k :key}]
   (if (re-matches #"^[0-9a-zA-Z_\./\-]+$" k)
-    (apply keyword (str/split k #"/"))
+    (keyword k)
     k))
 
 (defn- strip-labels
