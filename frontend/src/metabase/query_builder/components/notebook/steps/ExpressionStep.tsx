@@ -1,17 +1,9 @@
 import React from "react";
 
 import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import ClauseStep from "./ClauseStep";
 
-export interface ExpressionStepProps {
-  color: string;
-  query: StructuredQuery;
-  updateQuery: (query: StructuredQuery) => Promise<void>;
-  isLastOpened: boolean;
-  reportTimezone: string;
-  readOnly?: boolean;
-}
+import type { NotebookStepUiComponentProps } from "../types";
+import ClauseStep from "./ClauseStep";
 
 const ExpressionStep = ({
   color,
@@ -20,7 +12,7 @@ const ExpressionStep = ({
   isLastOpened,
   reportTimezone,
   readOnly,
-}: ExpressionStepProps): JSX.Element => {
+}: NotebookStepUiComponentProps): JSX.Element => {
   const items = Object.entries(query.expressions()).map(
     ([name, expression]) => ({ name, expression }),
   );

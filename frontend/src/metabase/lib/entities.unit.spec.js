@@ -1,9 +1,7 @@
-import { combineReducers, applyMiddleware, createStore, compose } from "redux";
+import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import promise from "redux-promise";
 import { createEntity, combineEntities } from "metabase/lib/entities";
 import requestsReducer from "metabase/redux/requests";
-
-import { thunkWithDispatchAction } from "metabase/store";
 
 const widgets = createEntity({
   name: "widgets",
@@ -32,11 +30,15 @@ const initialState = {
 describe("entities", () => {
   let store;
   beforeEach(() => {
-    store = createStore(
+    store = configureStore({
       reducer,
       initialState,
-      compose(applyMiddleware(thunkWithDispatchAction, promise)),
-    );
+      middleware: getDefaultMiddleware =>
+        getDefaultMiddleware({
+          immutableCheck: false,
+          serializableCheck: false,
+        }).concat([promise]),
+    });
   });
   describe("getObject", () => {
     it("should return an object", () => {

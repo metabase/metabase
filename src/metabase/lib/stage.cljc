@@ -8,6 +8,7 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -20,6 +21,14 @@
    [metabase.util.malli :as mu]))
 
 (declare stage-metadata)
+
+(defmethod lib.normalize/normalize :mbql.stage/mbql
+  [stage]
+  (lib.normalize/normalize-map
+   stage
+   keyword
+   {:aggregation (partial mapv lib.normalize/normalize)
+    :filter      lib.normalize/normalize}))
 
 (mu/defn ^:private fields-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   [query        :- ::lib.schema/query

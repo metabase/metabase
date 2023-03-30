@@ -294,7 +294,7 @@ describe(
       fillActionQuery("{{id}}");
       cy.findByLabelText("#1-orders-model").should("not.exist");
       cy.findByLabelText("101").should("not.exist");
-      cy.findByLabelText("Id").should("be.visible");
+      cy.findByLabelText("ID").should("be.visible");
     });
   },
 );
