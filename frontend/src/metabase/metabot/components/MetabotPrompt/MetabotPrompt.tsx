@@ -14,6 +14,7 @@ export interface MetabotPromptProps {
   isLoading?: boolean;
   onChangePrompt: (prompt: string) => void;
   onSubmitPrompt: () => void;
+  onCancel: () => void;
 }
 
 const MetabotPrompt = ({
@@ -23,6 +24,7 @@ const MetabotPrompt = ({
   isLoading = false,
   onChangePrompt,
   onSubmitPrompt,
+  onCancel,
 }: MetabotPromptProps) => {
   const canSubmit = prompt.length > 0;
 
@@ -58,6 +60,7 @@ const MetabotPrompt = ({
           compact
           isDirty
           onRun={onSubmitPrompt}
+          onCancel={onCancel}
         />
       ) : null}
     </PromptSection>

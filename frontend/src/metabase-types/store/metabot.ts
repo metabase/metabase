@@ -5,6 +5,7 @@ import {
   Dataset,
   MetabotFeedbackType,
 } from "metabase-types/api";
+import { Deferred } from "metabase/lib/promise";
 
 export type MetabotEntityId = CardId | DatabaseId;
 export type MetabotEntityType = "database" | "model";
@@ -19,4 +20,5 @@ export interface MetabotState {
   queryResults: [Dataset] | null;
   queryError: unknown;
   feedbackType: MetabotFeedbackType | null;
+  cancelQueryDeferred: Deferred<unknown>;
 }

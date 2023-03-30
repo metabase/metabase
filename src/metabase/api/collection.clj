@@ -323,7 +323,7 @@
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
   (-> {:select    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                   :c.dataset_query
+                   :c.dataset_query :c.database_id
                    [(h2x/literal (if dataset? "dataset" "card")) :model]
                    [:u.id :last_edit_user]
                    [:u.email :last_edit_email]
@@ -557,7 +557,7 @@
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
    :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
-   [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
+   [:last_edit_user :integer] [:last_edit_timestamp :timestamp] :database_id])
 
 (defn- add-missing-columns
   "Ensures that all necessary columns are in the select-columns collection, adding `[nil :column]` as necessary."

@@ -25,6 +25,11 @@ export const getQueryStatus = (state: State) => {
   return state.metabot.queryStatus;
 };
 
+export const getIsQueryRunning = createSelector(
+  [getQueryStatus],
+  status => status === "running",
+);
+
 export const getQueryResults = (state: State) => {
   return state.metabot.queryResults;
 };
@@ -40,3 +45,7 @@ export const getFeedbackType = (state: State) => {
 export const getNativeQueryText = createSelector([getQuestion], question =>
   maybeGetNativeQueryText(question),
 );
+
+export const getCancelQueryDeferred = (state: State) => {
+  return state.metabot.cancelQueryDeferred;
+};

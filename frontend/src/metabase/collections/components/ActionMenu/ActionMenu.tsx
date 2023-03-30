@@ -13,6 +13,8 @@ import {
 } from "metabase/collections/utils";
 import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Databases from "metabase/entities/databases";
+import Database from "metabase-lib/metadata/Database";
 import { EntityItemMenu } from "./ActionMenu.styled";
 
 interface OwnProps {
@@ -28,6 +30,8 @@ interface OwnProps {
 
 interface StateProps {
   isXrayEnabled: boolean;
+  isMetabotEnabled: boolean;
+  database: Database;
 }
 
 type ActionMenuProps = OwnProps & StateProps;
@@ -47,9 +51,13 @@ function normalizeItemModel(item: CollectionItem) {
   return item.model === "dataset" ? "card" : item.model;
 }
 
-function mapStateToProps(state: State): StateProps {
+function mapStateToProps(state: State, props: OwnProps): StateProps {
   return {
     isXrayEnabled: getSetting(state, "enable-xrays"),
+    isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
+    database: Databases.selectors.getObject(state, {
+      entityId: props.item.database_id,
+    }),
   };
 }
 
@@ -57,8 +65,10 @@ function ActionMenu({
   className,
   item,
   bookmarks,
+  database,
   collection,
   isXrayEnabled,
+  isMetabotEnabled,
   onCopy,
   onMove,
   createBookmark,
@@ -95,6 +105,8 @@ function ActionMenu({
     item?.setCollectionPreview?.(!isPreviewEnabled(item));
   }, [item]);
 
+  const canUseMetabot = database?.canWrite?.() && isMetabotEnabled;
+
   return (
     // this component is used within a `<Link>` component,
     // so we must prevent events from triggering the activation of the link
@@ -104,6 +116,7 @@ function ActionMenu({
         item={item}
         isBookmarked={isBookmarked}
         isXrayEnabled={isXrayEnabled}
+        canUseMetabot={canUseMetabot}
         onPin={canPin ? handlePin : null}
         onMove={canMove ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}

@@ -26,6 +26,7 @@ import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { isSmallScreen } from "metabase/lib/dom";
+import Databases from "metabase/entities/databases";
 import {
   CollectionEmptyContent,
   CollectionMain,
@@ -317,6 +318,7 @@ function CollectionContent({
 
 export default _.compose(
   Bookmark.loadList(),
+  Databases.loadList(),
   Collection.loadList({
     query: {
       tree: true,
