@@ -111,22 +111,20 @@ describe("FormFieldEditor", () => {
       const popover = await screen.findByRole("tooltip");
 
       userEvent.click(within(popover).getByRole("radio", { name: "Text" }));
-      await waitFor(() =>
-        expect(onChange).toHaveBeenLastCalledWith({
-          ...TEST_STRING_FIELD_SETTINGS,
-          inputType: "string",
-        }),
-      );
+
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...TEST_STRING_FIELD_SETTINGS,
+        inputType: "string",
+      });
 
       userEvent.click(
         within(popover).getByRole("radio", { name: "Inline select" }),
       );
-      await waitFor(() =>
-        expect(onChange).toHaveBeenLastCalledWith({
-          ...TEST_STRING_FIELD_SETTINGS,
-          inputType: "radio",
-        }),
-      );
+
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...TEST_STRING_FIELD_SETTINGS,
+        inputType: "radio",
+      });
     });
 
     it("handles value options when switching between field types", async () => {
