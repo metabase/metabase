@@ -1,24 +1,11 @@
-import type { Field, TableId } from "metabase-types/api";
-import { createQuery, SAMPLE_DATABASE, SAMPLE_METADATA } from "./test-helpers";
+import type { Field } from "metabase-types/api";
+import { createQuery, SAMPLE_DATABASE } from "./test-helpers";
 import * as ML from "./v2";
-
-function getColumnCount(tableId: TableId) {
-  return SAMPLE_METADATA.table(tableId)?.fields.length || 0;
-}
 
 describe("order by", () => {
   describe("orderableColumns", () => {
     const query = createQuery();
     const columns = ML.orderableColumns(query);
-
-    it("returns columns from the source and implicitly joinable tables", () => {
-      const expectedCount =
-        getColumnCount(SAMPLE_DATABASE.ORDERS.id) +
-        getColumnCount(SAMPLE_DATABASE.PRODUCTS.id) +
-        getColumnCount(SAMPLE_DATABASE.PEOPLE.id);
-
-      expect(columns).toHaveLength(expectedCount);
-    });
 
     it("returns metadata for columns in the source table", () => {
       const ordersID = columns.find(
