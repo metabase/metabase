@@ -62,6 +62,7 @@
    If `location` contains no clause with `target-clause` no removal happens.
    If the the location is empty, dissoc it from stage."
   [stage location target-clause]
+  {:pre [(clause? target-clause)]}
   (let [target-uuid (clause-uuid target-clause)
         target (get stage location)
         result (->> target
