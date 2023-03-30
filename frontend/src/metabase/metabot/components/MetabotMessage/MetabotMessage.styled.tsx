@@ -9,6 +9,7 @@ export const MetabotMessageRoot = styled.div`
 `;
 
 export const MetabotIcon = styled(MetabotLogo)`
+  width: 3.375rem;
   height: 2.5rem;
 `;
 
