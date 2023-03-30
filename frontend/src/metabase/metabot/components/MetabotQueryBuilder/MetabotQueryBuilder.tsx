@@ -1,5 +1,6 @@
 import React from "react";
 import { connect } from "react-redux";
+import { t } from "ttag";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { Dataset } from "metabase-types/api";
@@ -89,7 +90,7 @@ const QueryErrorState = ({ queryError }: QueryErrorStateProps) => {
     <ErrorStateRoot>
       <ErrorStateMessage
         icon="warning"
-        message={getResponseErrorMessage(queryError)}
+        message={getResponseErrorMessage(queryError) ?? t`An error occurred`}
       />
     </ErrorStateRoot>
   );
