@@ -72,7 +72,7 @@ interface FeedbackRetrySuggestionProps {
 const FeedbackRetrySuggestion = ({ onRetry }: FeedbackRetrySuggestionProps) => {
   return (
     <MetabotFeedbackContent>
-      <MetabotMessage>{t`Sorry, I don't always get things right the first time. I can try again, or you can rephrase your question.`}</MetabotMessage>
+      <MetabotMessage metabotVariant="sad">{t`Sorry, I don't always get things right the first time. I can try again, or you can rephrase your question.`}</MetabotMessage>
       <Button onClick={onRetry}>{t`Try again`}</Button>
     </MetabotFeedbackContent>
   );

@@ -1,4 +1,5 @@
 import React, { ReactNode } from "react";
+import { MetabotVariant } from "metabase/core/components/MetabotLogo/MetabotLogo";
 import {
   MetabotText,
   MetabotIcon,
@@ -7,12 +8,13 @@ import {
 
 interface MetabotMessageProps {
   children?: ReactNode;
+  metabotVariant?: MetabotVariant;
 }
 
-const MetabotMessage = ({ children }: MetabotMessageProps) => {
+const MetabotMessage = ({ children, metabotVariant }: MetabotMessageProps) => {
   return (
     <MetabotMessageRoot>
-      <MetabotIcon />
+      <MetabotIcon variant={metabotVariant} />
       <MetabotText>{children}</MetabotText>
     </MetabotMessageRoot>
   );
