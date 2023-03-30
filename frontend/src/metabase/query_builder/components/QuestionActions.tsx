@@ -90,6 +90,7 @@ const QuestionActions = ({
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
+  const hasNativeWrite = question.database()?.canWrite();
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
@@ -119,6 +120,14 @@ const QuestionActions = ({
 
   const extraButtons = [];
 
+  if (isDataset && hasNativeWrite && isMetabotEnabled) {
+    extraButtons.push({
+      title: t`Ask Metabot`,
+      icon: "insight",
+      link: Urls.modelMetabot(question.id()),
+    });
+  }
+
   extraButtons.push(
     PLUGIN_MODERATION.getMenuItems(question, isModerator, softReloadCard),
   );
@@ -140,14 +149,6 @@ const QuestionActions = ({
         action: handleEditMetadata,
       },
     );
-
-    if (isMetabotEnabled) {
-      extraButtons.push({
-        title: t`Ask Metabot`,
-        icon: "insight",
-        link: Urls.modelMetabot(question.id()),
-      });
-    }
   }
 
   if (canPersistDataset) {

@@ -33,6 +33,7 @@ interface CardLoaderProps {
 interface StateProps {
   user: User | null;
   model: Question | null;
+  databases: Database[];
 }
 
 interface DispatchProps {
@@ -43,10 +44,11 @@ type MetabotWidgetProps = StateProps & DispatchProps & DatabaseLoaderProps;
 
 const mapStateToProps = (
   state: State,
-  { card }: CardLoaderProps,
+  { card, databases }: CardLoaderProps & DatabaseLoaderProps,
 ): StateProps => ({
   user: getUser(state),
   model: card ? new Question(card, getMetadata(state)) : null,
+  databases: databases.filter(d => d.canWrite()),
 });
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
