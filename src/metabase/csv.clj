@@ -29,7 +29,7 @@
 
 (defn value->type
   "The most-specific possible type for a given value. Possibilities are:
-    - ::bolean
+    - ::boolean
     - ::int
     - ::float
     - ::varchar_255
