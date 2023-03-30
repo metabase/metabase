@@ -61,15 +61,15 @@ const MetabotHeader = ({
   onSubmitPrompt,
   onDatabaseChange,
 }: MetabotHeaderProps) => {
-  const [showDoneQueryTitle, setShowDoneQueryTitle] = useState(false);
+  const [isLoadedRecently, setIsLoadedRecently] = useState(false);
 
   useEffect(() => {
     if (queryStatus !== "complete") {
       return;
     }
 
-    setShowDoneQueryTitle(true);
-    const timerId = setTimeout(() => setShowDoneQueryTitle(false), 5000);
+    setIsLoadedRecently(true);
+    const timerId = setTimeout(() => setIsLoadedRecently(false), 5000);
     return () => clearTimeout(timerId);
   }, [queryStatus]);
 
@@ -79,7 +79,7 @@ const MetabotHeader = ({
     databases,
     user,
     queryStatus === "running",
-    showDoneQueryTitle,
+    isLoadedRecently,
     onDatabaseChange,
   );
   const placeholder = getPlaceholder(model);
@@ -105,13 +105,13 @@ const getTitle = (
   databases: Database[],
   user: User | null,
   isLoading: boolean,
-  showDoneQueryTitle: boolean,
+  isLoadedRecently: boolean,
   onDatabaseChange: (databaseId: number) => void,
 ) => {
   if (isLoading) {
     return t`A wise, insightful question, indeed.`;
   }
-  if (showDoneQueryTitle) {
+  if (isLoadedRecently) {
     return t`Here you go!`;
   }
 
