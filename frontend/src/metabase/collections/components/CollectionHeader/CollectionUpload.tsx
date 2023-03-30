@@ -4,7 +4,9 @@ import type { Collection } from "metabase-types/api";
 import { color } from "metabase/lib/colors";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { uploadCSV } from "metabase/collections/upload";
+// import { uploadCSV } from "metabase/collections/upload";
+
+// import { uploadCSV } from "metabase/redux/uploads";
 
 import { CollectionHeaderButton } from "./CollectionHeader.styled";
 import { UploadInput, LoadingStateContainer } from "./CollectionUpload.styled";
@@ -13,22 +15,18 @@ const CLEAR_ERROR_TIMEOUT = 3000;
 
 export default function ColllectionUpload({
   collection,
+  onUploadCSV,
 }: {
   collection: Collection;
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     setIsLoading(true);
 
-    await uploadCSV({
-      file: event.target.files?.[0],
-      collectionId: collection.id,
-      onError: setError,
-    });
+    console.log("derp");
+    onUploadCSV(event.target.files?.[0], collection.id);
 
     setIsLoading(false);
   };

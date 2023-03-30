@@ -87,6 +87,7 @@ interface StatusCardIconContainerProps {
 }
 
 export const StatusCardIconContainer = styled.div<StatusCardIconContainerProps>`
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -20,6 +20,7 @@ export interface State {
   parameters: ParametersState;
   settings: SettingsState;
   setup: SetupState;
+  upload: any;
 }
 
 export type Dispatch<T = any> = (action: T) => void;
