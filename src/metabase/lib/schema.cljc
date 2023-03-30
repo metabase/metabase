@@ -8,7 +8,6 @@
   future we can deprecate that namespace and eventually do away with it entirely."
   (:require
    [metabase.lib.schema.aggregation :as aggregation]
-   [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
    [metabase.lib.schema.expression.conditional]
