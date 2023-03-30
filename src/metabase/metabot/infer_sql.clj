@@ -29,19 +29,22 @@
   "Given a model and prompt, attempt to generate a native dataset."
   [{:keys [model] :as context}]
   (log/debug "Metabot is inferring sql.")
-  (let [{:keys [version model_type] :as template} @template
-        _         (log/infof "Generating SQL from prompt template: '%s:%s'" model_type version)
-        messages  (metabot-util/prompt-template->messages template context)
+  (let [{:keys [version prompt_template] :as template} @template
+        _        (log/infof "Generating SQL from prompt template: '%s:%s'" prompt_template version)
+        messages (metabot-util/prompt-template->messages template context)
         {:keys [database_id inner_query]} model]
     (when-some [bot-sql (metabot-client/invoke-metabot messages extract-sql)]
       (let [final-sql     (metabot-util/bot-sql->final-sql model bot-sql)
             template-tags (lib-native/template-tags inner_query)
-            response      {:dataset_query          {:database database_id
-                                                    :type     "native"
-                                                    :native   {:query         final-sql
-                                                               :template-tags template-tags}}
-                           :display                :table
-                           :visualization_settings {}
-                           :template-version (format "'%s:%s'" model_type version)}]
+            response      {:dataset_query            {:database database_id
+                                                      :type     "native"
+                                                      :native   {:query         final-sql
+                                                                 :template-tags template-tags}}
+                           :display                  :table
+                           :visualization_settings   {}
+                           :prompt_template_versions (vec
+                                                      (conj
+                                                       (:prompt_template_versions model)
+                                                       (format "%s:%s" prompt_template version)))}]
         (tap> {:response response})
         response))))
