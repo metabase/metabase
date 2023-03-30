@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { checkNotNull } from "metabase/core/utils/types";
@@ -46,6 +46,15 @@ const MetabotQueryEditor = ({
   const [isOpen, setIsOpen] = useState(false);
   const handleChange = (query: NativeQuery) => onChangeQuery(query.question());
 
+  const sidebarFeatures = useMemo(
+    () => ({
+      dataReference: false,
+      variables: false,
+      snippets: false,
+    }),
+    [],
+  );
+
   return (
     <NativeQueryEditor
       question={question}
@@ -61,6 +70,7 @@ const MetabotQueryEditor = ({
       cancelQuery={onCancelQuery}
       setDatasetQuery={handleChange}
       setIsNativeEditorOpen={setIsOpen}
+      sidebarFeatures={sidebarFeatures}
     />
   );
 };
