@@ -615,11 +615,12 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`OpenAI Model`,
         description: null,
         type: "select",
-        options:
-          MetabaseSettings.get("openai-available-models")?.map(model => ({
+        getProps: (_setting, _values, settings) => ({
+          options: settings["openai-available-models"].map(model => ({
             name: model.id,
             value: model.id,
-          })) ?? [],
+          })),
+        }),
         getHidden: (_, settings) => !settings["is-metabot-enabled"],
       },
     ],

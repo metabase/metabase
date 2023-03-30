@@ -60,7 +60,7 @@
   :type       :json
   :setter     :none
   :getter     (fn []
-                (if (is-metabot-enabled)
+                (if (and (is-metabot-enabled) (some? (openai-api-key)) (some? (openai-organization)))
                   (fetch-openai-models (openai-api-key) (openai-organization))
                   [])))
 
