@@ -440,11 +440,11 @@
     (if-not (add-fks? driver/*driver*)
       (thunk)
       (let [database-supports? driver/database-supports?]
-        (with-redefs [driver/database-supports? (fn [driver feature]
+        (with-redefs [driver/database-supports? (fn [driver feature db]
                                                   (if (and (add-fks? driver)
                                                            (= feature :foreign-keys))
                                                     true
-                                                    (database-supports? driver feature (data/db))))]
+                                                    (database-supports? driver feature db)))]
           (let [thunk (reduce
                        (fn [thunk [source dest]]
                          (fn []
