@@ -1,6 +1,6 @@
 import React from "react";
 import { connect } from "react-redux";
-import { t } from "ttag";
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { Dataset } from "metabase-types/api";
 import { MetabotQueryStatus, State } from "metabase-types/store";
@@ -22,6 +22,7 @@ import {
 } from "./MetabotQueryBuilder.styled";
 
 interface StateProps {
+  loadingMessage: string;
   queryStatus: MetabotQueryStatus;
   queryResults: [Dataset] | null;
   queryError: unknown;
@@ -30,12 +31,14 @@ interface StateProps {
 type MetabotQueryBuilderProps = StateProps;
 
 const mapStateToProps = (state: State): StateProps => ({
+  loadingMessage: PLUGIN_SELECTORS.getLoadingMessage(state),
   queryStatus: getQueryStatus(state),
   queryResults: getQueryResults(state),
   queryError: getQueryError(state),
 });
 
 const MetabotQueryBuilder = ({
+  loadingMessage,
   queryStatus,
   queryResults,
   queryError,
@@ -48,7 +51,7 @@ const MetabotQueryBuilder = ({
     <QueryBuilderRoot>
       {hasResults && <MetabotQueryEditor />}
       {isRunning ? (
-        <QueryRunningState />
+        <QueryRunningState loadingMessage={loadingMessage} />
       ) : hasErrors ? (
         <QueryErrorState queryError={queryError} />
       ) : hasResults ? (
@@ -69,15 +72,19 @@ const QueryIdleState = () => {
   );
 };
 
-const QueryRunningState = () => {
-  return <RunningStateRoot loadingMessage={t`Doing science`} />;
+interface QueryRunningStateProps {
+  loadingMessage: string;
+}
+
+const QueryRunningState = ({ loadingMessage }: QueryRunningStateProps) => {
+  return <RunningStateRoot loadingMessage={loadingMessage} />;
 };
 
-interface ErrorStateProps {
+interface QueryErrorStateProps {
   queryError: unknown;
 }
 
-const QueryErrorState = ({ queryError }: ErrorStateProps) => {
+const QueryErrorState = ({ queryError }: QueryErrorStateProps) => {
   return (
     <ErrorStateRoot>
       <ErrorStateMessage
