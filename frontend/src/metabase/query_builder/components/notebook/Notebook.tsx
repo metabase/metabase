@@ -22,6 +22,7 @@ interface NotebookOwnProps {
   isDirty: boolean;
   isRunnable: boolean;
   isResultDirty: boolean;
+  reportTimezone: string;
   hasVisualizeButton?: boolean;
   updateQuestion: (question: Question) => Promise<void>;
   runQuestionQuery: () => void;

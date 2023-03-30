@@ -1,18 +1,18 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
+
+import type { NotebookStepUiComponentProps } from "../types";
 import ClauseStep from "./ClauseStep";
 
-export default function FilterStep({
-  color,
+function FilterStep({
   query,
-  updateQuery,
+  color,
   isLastOpened,
   readOnly,
-  ...props
-}) {
+  updateQuery,
+}: NotebookStepUiComponentProps) {
   return (
     <ClauseStep
       color={color}
@@ -36,3 +36,5 @@ export default function FilterStep({
     />
   );
 }
+
+export default FilterStep;

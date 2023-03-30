@@ -1,17 +1,25 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import Icon from "metabase/components/Icon";
+
+import type {
+  Field as IField,
+  OrderBy as IOrderBy,
+} from "metabase-types/types/Query";
+import type DimensionOptions from "metabase-lib/DimensionOptions";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type OrderBy from "metabase-lib/queries/structured/OrderBy";
+
+import type { NotebookStepUiComponentProps } from "../types";
 import ClauseStep from "./ClauseStep";
 import { SortFieldList } from "./SortStep.styled";
 
-export default function SortStep({
+function SortStep({
   color,
   query,
   updateQuery,
   isLastOpened,
   readOnly,
-  ...props
-}) {
+}: NotebookStepUiComponentProps) {
   return (
     <ClauseStep
       color={color}
@@ -42,7 +50,7 @@ export default function SortStep({
           query={query}
           sort={sort}
           onChangeSort={newSort =>
-            sort
+            sort && typeof index === "number"
               ? updateQuery(query.updateSort(index, newSort))
               : updateQuery(query.sort(newSort))
           }
@@ -54,30 +62,41 @@ export default function SortStep({
   );
 }
 
+interface SortPopoverProps {
+  sort?: OrderBy;
+  query: StructuredQuery;
+  sortOptions?: DimensionOptions;
+  maxHeight?: number;
+  alwaysExpanded?: boolean;
+  onChangeSort: (clause: IOrderBy) => void;
+  onClose?: () => void;
+}
+
 const SortPopover = ({
-  sort = ["asc", null],
+  sort: sortProp,
   onChangeSort,
+  onClose,
   query,
   sortOptions,
-  onClose,
   maxHeight,
   alwaysExpanded,
-}) => {
+}: SortPopoverProps) => {
+  const sort = sortProp || ["asc", null];
   const table = query.table();
+
   // FieldList requires table
   if (!table) {
     return null;
   }
+
   return (
     <SortFieldList
       maxHeight={maxHeight}
       field={sort && sort[1]}
       fieldOptions={sortOptions || query.sortOptions(sort && sort[1])}
-      onFieldChange={field => {
+      onFieldChange={(field: IField) => {
         onChangeSort([sort[0], field]);
-        if (onClose) {
-          onClose();
-        }
+        onClose?.();
       }}
       table={table}
       enableSubDimensions={false}
@@ -86,3 +105,5 @@ const SortPopover = ({
     />
   );
 };
+
+export default SortStep;

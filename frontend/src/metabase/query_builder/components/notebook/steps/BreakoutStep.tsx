@@ -1,8 +1,9 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
+
+import type { NotebookStepUiComponentProps } from "../types";
 import ClauseStep from "./ClauseStep";
 
 const breakoutTetherOptions = {
@@ -17,21 +18,20 @@ const breakoutTetherOptions = {
   ],
 };
 
-export default function BreakoutStep({
+function BreakoutStep({
   color,
   query,
   updateQuery,
   isLastOpened,
   readOnly,
-  ...props
-}) {
+}: NotebookStepUiComponentProps) {
   return (
     <ClauseStep
       data-testid="breakout-step"
       color={color}
       initialAddText={t`Pick a column to group by`}
       items={query.breakouts()}
-      renderName={item => item.displayName()}
+      renderName={item => item.displayName() ?? ""}
       tetherOptions={breakoutTetherOptions}
       readOnly={readOnly}
       renderPopover={breakout => (
@@ -50,3 +50,5 @@ export default function BreakoutStep({
     />
   );
 }
+
+export default BreakoutStep;

@@ -250,6 +250,7 @@ export type Field = ConcreteField | AggregateField;
 
 export type ConcreteField =
   | LocalFieldReference
+  | FieldLiteral
   | ForeignFieldReference
   | JoinedFieldReference
   | ExpressionReference

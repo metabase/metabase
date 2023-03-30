@@ -1405,7 +1405,7 @@ class StructuredQueryInner extends AtomicQuery {
 
   // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
   // NOTE: these will not have the correct columnName() if there are duplicates
-  columnDimensions() {
+  columnDimensions(): Dimension[] {
     if (this.hasAggregations() || this.hasBreakouts()) {
       const aggregations = this.aggregationDimensions();
       const breakouts = this.breakoutDimensions();
