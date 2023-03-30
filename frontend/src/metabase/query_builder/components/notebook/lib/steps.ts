@@ -100,7 +100,10 @@ const STEPS: NotebookStepDef[] = [
       Lib.hasLimit(query, stageIndex),
     revert: (legacyQuery, itemIndex, query, stageIndex) => {
       const reverted = Lib.limit(query, stageIndex, null);
-      return legacyQuery.setDatasetQuery(Lib.toLegacyQuery(reverted));
+      const revertedLegacyQuery = Lib.toLegacyQuery(reverted);
+      const revertedStructuredQuery =
+        legacyQuery.setDatasetQuery(revertedLegacyQuery);
+      return revertedStructuredQuery.queries()[stageIndex];
     },
     clean: query => query,
   },
