@@ -9,15 +9,10 @@
 (set! *warn-on-reflection* true)
 
 (def bool-type      :metabase.csv/boolean)
-(def int-type-255   :metabase.csv/int_255)
 (def int-type       :metabase.csv/int)
-(def float-type-255 :metabase.csv/float_255)
 (def float-type     :metabase.csv/float)
 (def vchar-type     :metabase.csv/varchar_255)
 (def text-type      :metabase.csv/text)
-
-(def huge-int   (apply str (repeat 256 "1")))
-(def huge-float (str (apply str (repeat 254 "1")) ".0"))
 
 (deftest type-detection-test
   (doseq [[value expected] [["0"                          bool-type]
@@ -32,16 +27,14 @@
                             ["n"                          bool-type]
                             ["yes"                        bool-type]
                             ["NO"                         bool-type]
-                            ["2"                          int-type-255]
-                            ["-86"                        int-type-255]
-                            ["9,986,000"                  int-type-255]
-                            [huge-int                     int-type]
-                            ["3.14"                       float-type-255]
-                            [".14"                        float-type-255]
-                            ["0.14"                       float-type-255]
-                            ["-9,986.567"                 float-type-255]
-                            ["9,986,000.0"                float-type-255]
-                            [huge-float                   float-type]
+                            ["2"                          int-type]
+                            ["-86"                        int-type]
+                            ["9,986,000"                  int-type]
+                            ["3.14"                       float-type]
+                            [".14"                        float-type]
+                            ["0.14"                       float-type]
+                            ["-9,986.567"                 float-type]
+                            ["9,986,000.0"                float-type]
                             [(apply str (repeat 255 "x")) vchar-type]
                             [(apply str (repeat 256 "x")) text-type]
                             ["86 is my favorite number"   vchar-type]
@@ -50,19 +43,16 @@
       (is (= expected (csv/value->type value))))))
 
 (deftest type-coalescing-test
-  (doseq [[type-a type-b expected] [[bool-type      int-type   int-type]
-                                    [int-type       bool-type  int-type] ;; ensure arg order doesn't matter
-                                    [int-type       float-type float-type]
-                                    [bool-type      vchar-type vchar-type]
-                                    [bool-type      text-type  text-type]
-                                    [int-type       vchar-type text-type]
-                                    [int-type-255   vchar-type vchar-type]
-                                    [int-type       text-type  text-type]
-                                    [float-type-255 vchar-type vchar-type]
-                                    [float-type     vchar-type text-type]
-                                    [float-type     text-type  text-type]
-                                    [vchar-type     text-type  text-type]
-                                    [float-type-255 int-type   text-type]]]
+  (doseq [[type-a type-b expected] [[bool-type  int-type   int-type]
+                                    [int-type   bool-type  int-type] ;; ensure arg order doesn't matter
+                                    [int-type   float-type float-type]
+                                    [bool-type  vchar-type vchar-type]
+                                    [bool-type  text-type  text-type]
+                                    [int-type   vchar-type vchar-type]
+                                    [int-type   text-type  text-type]
+                                    [float-type vchar-type vchar-type]
+                                    [float-type text-type  text-type]
+                                    [vchar-type text-type  text-type]]]
     (is (= expected (csv/coalesce type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
@@ -111,17 +101,4 @@
                             "Rey Skywalker, yes, true, t"
                             "Darth Vader, YES, TRUE, Y"
                             "Grogu, 1, 9001, probably?"
-                            "Han Solo, no, FaLsE, 0"])))))
-  (testing "Long numbers don't trip up length limit"
-    (is (= {"int_column"   text-type
-            "float_column" text-type}
-           (csv/detect-schema
-            (csv-file-with ["int column, float column"
-                            (str huge-int "," huge-float)
-                            "not a number, also not a number"]))))
-    (is (= {"int_column"   vchar-type
-            "float_column" vchar-type}
-           (csv/detect-schema
-            (csv-file-with ["int column, float column"
-                            "123, 3.1415"
-                            "not a number, also not a number"]))))))
+                            "Han Solo, no, FaLsE, 0"]))))))

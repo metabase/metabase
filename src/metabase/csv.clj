@@ -9,33 +9,23 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]))
 
-;;
-;;
-;;      ______text________
-;;     /       |          \
-;;    /        |           \
-;; float   varchar_255     int
-;;   \         /   \        /
-;;    \       /     \      /
-;;   float_255       \    /
-;;            \       \  /
-;;             \-----int_255
-;;                     |
-;;                     |
-;;                  boolean
-(derive ::boolean     ::int_255)
-(derive ::int_255     ::int)
-(derive ::int_255     ::float_255)
+;;           text
+;;            |
+;;            |
+;;       varchar_255
+;;            |
+;;            |
+;;          float
+;;            |
+;;            |
+;;           int
+;;            |
+;;            |
+;;         boolean
+(derive ::boolean     ::int)
 (derive ::int         ::float)
-(derive ::float_255   ::varchar_255)
-(derive ::float       ::text)
+(derive ::float       ::varchar_255)
 (derive ::varchar_255 ::text)
-
-(def intermediate-type->final-type "We use some 'intermediate types' to keep track of information while scanning over the file. This is a map from those
-  intermediate types to the final type they should result in if unaltered."
-  {::int_255   ::int
-   ::float_255 ::float
-   nil         ::text})
 
 (defn value->type
   "The most-specific possible type for a given value. Possibilities are:
@@ -53,10 +43,7 @@
   (cond
     (str/blank? value)                                      nil
     (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" value) ::boolean
-    (re-matches #"-?[\d,]{1,255}"                    value) ::int_255
     (re-matches #"-?[\d,]+"                          value) ::int
-    (and (re-matches #"-?[\d,]*\.\d+"                value)
-         (<= (count value) 255))                            ::float_255
     (re-matches #"-?[\d,]*\.\d+"                     value) ::float
     (re-matches #".{1,255}"                          value) ::varchar_255
     :else                                                   ::text))
@@ -89,19 +76,13 @@
               [column-name (coalesce old-type (get new-types column-name))]))
        (into {})))
 
-(defn- normalize-type
-  "We use some intermediate types (int_255, float_255, nil) while looking at the rows, but when the whole file has been
-  scanned they need to be converted into a proper type."
-  [the-type]
-  (get intermediate-type->final-type the-type the-type))
-
 (defn- rows->schema
   [header rows]
   (let [normalized-header (map (comp u/slugify str/trim) header)]
     (->> rows
          (map (partial row->types normalized-header))
          (reduce coalesce-types)
-         (m/map-vals normalize-type))))
+         (m/map-vals #(or % ::text)))))
 
 (defn detect-schema
   "Returns a map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
