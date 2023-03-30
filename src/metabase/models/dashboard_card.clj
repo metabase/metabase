@@ -136,7 +136,7 @@
                                 [:= :dashcard.id (:id dashcard)]]}))
 
 (s/defn update-dashboard-card-series!
-  "Update the DashboardCardSeries for a given DashboardCard.
+  "Update the DashboardCardSeries for a given DashboardCard and return the updated DashboardCardSeries.
    `card-ids` should be a definitive collection of *all* IDs of cards for the dashboard card in the desired order.
 
    *  If an ID in `card-ids` has no corresponding existing DashboardCardSeries object, one will be created.
@@ -152,7 +152,7 @@
     (let [cards (map-indexed (fn [i card-id]
                                {:dashboardcard_id id, :card_id card-id, :position i})
                              card-ids)]
-      (db/insert-many! DashboardCardSeries cards))))
+      (t2/insert! DashboardCardSeries cards))))
 
 (def ^:private DashboardCardUpdates
   {:id                                      su/IntGreaterThanZero

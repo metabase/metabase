@@ -322,16 +322,6 @@ export const getRoutes = store => (
       </Route>
     </Route>
 
-    {/* INTERNAL */}
-    <Route
-      path="/_internal"
-      getChildRoutes={(partialNextState, callback) =>
-        require.ensure([], function (require) {
-          callback(null, [require("metabase/internal/routes").default]);
-        })
-      }
-    />
-
     {/* DEPRECATED */}
     {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
     <Route

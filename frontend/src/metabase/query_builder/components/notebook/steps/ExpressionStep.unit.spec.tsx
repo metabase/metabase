@@ -101,13 +101,16 @@ function setup(
   query.updateExpression = updateExpression;
   query.removeExpression = removeExpression;
 
+  const step = createMockNotebookStep({
+    type: "expression",
+    query,
+  });
+
   const props = {
-    step: createMockNotebookStep({
-      type: "expression",
-      query,
-    }),
+    step,
     color: "#93A1AB",
     query,
+    topLevelQuery: step.topLevelQuery,
     updateQuery,
     isLastOpened: false,
     reportTimezone: "UTC",

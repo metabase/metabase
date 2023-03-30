@@ -1,4 +1,5 @@
 import type { DatasetQuery } from "metabase-types/types/Card";
+import type { Query } from "metabase-lib/types";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Question from "metabase-lib/Question";
 
@@ -15,7 +16,9 @@ export type NotebookStepType =
 
 export type NotebookStepFn<ReturnType> = (
   query: StructuredQuery,
-  index?: number | null,
+  index: number | undefined | null,
+  topLevelQuery: Query,
+  stageIndex: number,
 ) => ReturnType;
 
 export interface NotebookStep {
@@ -23,6 +26,7 @@ export interface NotebookStep {
   type: NotebookStepType;
   stageIndex: number;
   itemIndex: number | null;
+  topLevelQuery: Query;
   query: StructuredQuery;
   valid: boolean;
   active: boolean;
@@ -46,13 +50,14 @@ export interface NotebookStepAction {
 
 export interface NotebookStepUiComponentProps {
   step: NotebookStep;
+  topLevelQuery: Query;
   query: StructuredQuery;
   sourceQuestion?: Question;
   color: string;
   isLastOpened: boolean;
   reportTimezone: string;
   readOnly?: boolean;
-  updateQuery: (query: StructuredQuery) => Promise<void>;
+  updateQuery: (query: StructuredQuery | Query) => Promise<void>;
 }
 
 export type OpenSteps = Record<NotebookStep["id"], boolean>;

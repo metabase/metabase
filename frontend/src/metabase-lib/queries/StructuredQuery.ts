@@ -656,19 +656,18 @@ class StructuredQueryInner extends AtomicQuery {
    * @returns an array of aggregation options for the currently selected table
    */
   aggregationOperators(): AggregationOperator[] {
-    const expressionFields = this.expressionDimensions().map(
-      expressionDimension => expressionDimension.field(),
-    );
-
     const table = this.table();
-    return (
-      (table &&
-        getAggregationOperators(table, [
-          ...expressionFields,
-          ...table.fields,
-        ])) ||
-      []
-    );
+
+    if (table) {
+      const fieldOptions = this.fieldOptions()
+        .all()
+        .map(dimension => dimension.field())
+        .filter(field => field != null);
+
+      return getAggregationOperators(table.db, fieldOptions);
+    }
+
+    return [];
   }
 
   aggregationOperatorsLookup(): Record<string, AggregationOperator> {

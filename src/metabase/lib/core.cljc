@@ -114,7 +114,6 @@
    add-filter
    current-filter
    current-filters
-   replace-filter
    and
    or
    not
@@ -159,6 +158,8 @@
   [lib.query
    native-query
    query
+   remove-clause
+   replace-clause
    saved-question-query]
   [lib.stage
    append-stage

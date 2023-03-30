@@ -5,7 +5,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -42,7 +41,7 @@
   "Creates new PulseCards, joining the given card, pulse, and dashboard card and setting appropriate defaults for other
   values if they're not provided."
   [new-pulse-cards :- [NewPulseCard]]
-  (db/insert-many! PulseCard
+  (t2/insert! PulseCard
     (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls]} new-pulse-cards]
       {:card_id           card_id
        :pulse_id          pulse_id
