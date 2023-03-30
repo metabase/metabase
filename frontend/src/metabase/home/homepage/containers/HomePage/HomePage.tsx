@@ -1,5 +1,6 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
 import { openNavbar } from "metabase/redux/app";
 import { getSetting } from "metabase/selectors/settings";
@@ -35,6 +36,7 @@ const mapDispatchToProps = {
 };
 
 export default _.compose(
+  Databases.loadList(),
   Search.loadList({
     query: {
       models: "dataset",
