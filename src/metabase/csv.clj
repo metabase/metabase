@@ -2,7 +2,6 @@
   (:require
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
-   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.search.util :as search-util]
@@ -63,11 +62,7 @@
     (nil? type-b)        type-a
     (isa? type-a type-b) type-b
     (isa? type-b type-a) type-a
-    :else
-    (let [common-ancestors (set/intersection (ancestors type-a) (ancestors type-b))]
-      (if (seq common-ancestors)
-        (first common-ancestors)
-        (throw (Exception. (trs "Unexpected type combination in the same column: {0} and {1}" type-a type-b)))))))
+    :else (throw (Exception. (trs "Unexpected type combination in the same column: {0} and {1}" type-a type-b)))))
 
 (defn- coalesce-types
   [types-so-far new-types]
