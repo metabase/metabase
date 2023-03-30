@@ -22,3 +22,16 @@ Default.args = {
     alert("Dismissed");
   },
 };
+
+export const Fixed = Template.bind({});
+Fixed.args = {
+  message: "Would you like to be notified when this dashboard is done loading?",
+  isShown: true,
+  fixed: true,
+  onConfirm: () => {
+    alert("Confirmed");
+  },
+  onDismiss: () => {
+    alert("Dismissed");
+  },
+};
