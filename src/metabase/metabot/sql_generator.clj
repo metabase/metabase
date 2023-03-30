@@ -67,6 +67,7 @@
   [{:keys [database_id inner_query] :as denormalized-model} prompt]
   (when-some [bot-sql (metabot-client/invoke-metabot
                        (prepare-ddl-based-sql-generator-input denormalized-model prompt)
+                       prompt
                        extract-sql)]
     (let [final-sql (metabot-util/bot-sql->final-sql denormalized-model bot-sql)
           template-tags (lib-native/template-tags inner_query)

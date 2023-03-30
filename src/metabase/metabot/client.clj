@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [clj-http.client :as client]
    [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
    [metabase.lib.native :as lib-native]
    [metabase.metabot.util :as metabot-util]
    [metabase.models.setting :refer [defsetting]]
@@ -74,17 +75,22 @@
                    (openai-organization))
                   [])))
 
-(defn find-result [{:keys [choices]} message-fn]
-  (some
-   (fn [{:keys [message]}]
-     (when-some [res (message-fn (:content message))]
-       res))
-   choices))
+(defn find-result [{:keys [choices]} prompt message-fn]
+  (or
+   (some
+    (fn [{:keys [message]}]
+      (when-some [res (message-fn (:content message))]
+        res))
+    choices)
+   (log/infof
+    "Unable to find appropriate result for prompt '%s' in responses:\n\t%s"
+    prompt
+    (str/join "\n\t" (map (fn [m] (get-in m [:message :content])) choices)))))
 
 (defn ^:dynamic invoke-metabot
   "Call the bot and return the response.
   Takes messages to be used as instructions and a function that will find the first valid result from the messages."
-  [messages extract-response-fn]
+  [messages prompt extract-response-fn]
   (try
     (let [resp (openai.api/create-chat-completion
                 {:model    (openai-model)
@@ -98,7 +104,7 @@
                 {:api-key      (openai-api-key)
                  :organization (openai-organization)})]
       (tap> {:openai-response resp})
-      (find-result resp extract-response-fn))
+      (find-result resp prompt extract-response-fn))
     (catch Exception e
       (throw (ex-info
               (ex-message e)

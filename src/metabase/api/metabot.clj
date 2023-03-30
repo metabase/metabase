@@ -6,6 +6,7 @@
    [metabase.metabot :as metabot]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card Collection Database Field FieldValues Table]]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -18,6 +19,10 @@
   ; question string?}
   (tap> {:model-id model-id
          :request  body})
+  (log/infof
+   "Metabot '/api/metabot/model/%s' being called with prompt: '%s'"
+   model-id
+   question)
   (let [model          (api/check-404 (t2/select-one Card :id model-id :dataset true))
         model-metadata (metabot-util/denormalize-model model)]
     (or
@@ -39,6 +44,10 @@
   ; question string?}
   (tap> {:database-id database-id
          :request     body})
+  (log/infof
+   "Metabot '/api/metabot/database/%s' being called with prompt: '%s'"
+   database-id
+   question)
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
         denormalized-database (metabot-util/denormalize-database database)]
     (if-some [model (metabot/infer-model denormalized-database question)]

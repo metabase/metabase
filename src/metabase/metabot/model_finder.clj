@@ -42,5 +42,5 @@
   "Find the model in the db that best matches the prompt. Return nil if no good model found."
   [{:keys [models] :as _denormalized-database} prompt]
   (let [model-input   (prepare-model-finder-input models prompt)
-        best-model-id (metabot-client/invoke-metabot model-input #(find-table-id % (set (map :id models))))]
+        best-model-id (metabot-client/invoke-metabot model-input prompt #(find-table-id % (set (map :id models))))]
     (some (fn [{model-id :id :as model}] (when (= model-id best-model-id) model)) models)))
