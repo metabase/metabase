@@ -60,8 +60,13 @@
   :type       :json
   :setter     :none
   :getter     (fn []
-                (if (and (is-metabot-enabled) (some? (openai-api-key)) (some? (openai-organization)))
-                  (fetch-openai-models (openai-api-key) (openai-organization))
+                (if (and
+                     (is-metabot-enabled)
+                     (openai-api-key)
+                     (openai-organization))
+                  (fetch-openai-models
+                   (openai-api-key)
+                   (openai-organization))
                   [])))
 
 (defn find-result [{:keys [choices]} message-fn]

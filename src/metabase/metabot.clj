@@ -1,11 +1,8 @@
 (ns metabase.metabot
   (:require
-   [clojure.string :as str]
-   [clojure.core.memoize :as memoize]
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.model-finder :as model-finder]
-   [metabase.metabot.sql-generator :as sql-generator]
-   [wkok.openai-clojure.api :as openai.api]))
+   [metabase.metabot.sql-generator :as sql-generator]))
 
 (defn infer-sql [model question]
   (cond
