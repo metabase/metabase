@@ -102,24 +102,23 @@
   "If JSON unfolding was enabled for a JSON field, it activates previously synced nested fields from the JSON field.
    If JSON unfolding was disabled for that field, it inactivates the nested fields from the JSON field.
    Returns nil."
-  [old-field json_unfolding]
-  (cond
-    (and json_unfolding (not (:json_unfolding old-field)))
-    (let [update-result (t2/update! Field
-                                    :table_id (:table_id old-field)
-                                    :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
-                                    {:active true})]
-      (when (zero? update-result)
-        ;; Sync the table if no nested fields exist. This means the table hasn't previously
-        ;; been synced when JSON unfolding was enabled. This assumes the JSON field is already updated to have
-        ;; JSON unfolding enabled.
-        (let [table (field/table old-field)]
-          (sync.concurrent/submit-task (fn [] (sync/sync-table! table))))))
-    (and (not json_unfolding) (:json_unfolding old-field))
-    (t2/update! Field
-                :table_id (:table_id old-field)
-                :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
-                {:active false}))
+  [old-field new-json-unfolding]
+  (when (not= new-json-unfolding (:json_unfolding old-field))
+    (if new-json-unfolding
+      (let [update-result (t2/update! Field
+                                      :table_id (:table_id old-field)
+                                      :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
+                                      {:active true})]
+        (when (zero? update-result)
+          ;; Sync the table if no nested fields exist. This means the table hasn't previously
+          ;; been synced when JSON unfolding was enabled. This assumes the JSON field is already updated to have
+          ;; JSON unfolding enabled.
+          (let [table (field/table old-field)]
+            (sync.concurrent/submit-task (fn [] (sync/sync-table! table))))))
+      (t2/update! Field
+                  :table_id (:table_id old-field)
+                  :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
+                  {:active false})))
   nil)
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -171,7 +170,8 @@
                                       :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
                                                  :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
                                       :non-nil #{:display_name :settings}))))
-    (update-nested-fields-on-json-unfolding-change! field json_unfolding)
+    (when (some? json_unfolding)
+      (update-nested-fields-on-json-unfolding-change! field json_unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
     (u/prog1 (hydrate (t2/select-one Field :id id) :dimensions)

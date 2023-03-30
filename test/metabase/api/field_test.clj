@@ -744,7 +744,7 @@
               (let [field (t2/select-one Field :id (mt/id :json :json_bit))
                     enable-json-unfolding! (fn [v]
                                              (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                   (assoc field :json_unfolding v)))
+                                                                   {:json_unfolding v}))
                     nested-fields          (fn []
                                              (->> (t2/select Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
                                                   (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
@@ -761,6 +761,11 @@
                   (is (empty? (nested-fields))))
                 (testing "nested fields are added when json unfolding is enabled again"
                   (enable-json-unfolding! true)
+                  (is (seq (nested-fields))))
+                (testing "if something else is updated on the field, nothing changes"
+                  (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
+                                        {:display_name "JSON bit updated"})
+                  (is (true? (:json_unfolding (t2/select-one Field (mt/id :json :json_bit)))))
                   (is (seq (nested-fields))))))))))))
 
 (deftest json-unfolding-default-false-test
@@ -776,7 +781,7 @@
               (let [field (t2/select-one Field :id (mt/id :json :json_bit))
                     enable-json-unfolding! (fn [v]
                                              (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                   (assoc field :json_unfolding v)))
+                                                                   {:json_unfolding v}))
                     nested-fields (fn []
                                     (->> (t2/select Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
                                          (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
@@ -795,4 +800,9 @@
                   (is (seq (nested-fields))))
                 (testing "nested fields are removed when json unfolding is disabled again"
                   (enable-json-unfolding! false)
+                  (is (empty? (nested-fields))))
+                (testing "if something else is updated on the field, nothing changes"
+                  (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
+                                        {:display_name "JSON bit updated"})
+                  (is (false? (:json_unfolding (t2/select-one Field (mt/id :json :json_bit)))))
                   (is (empty? (nested-fields))))))))))))
