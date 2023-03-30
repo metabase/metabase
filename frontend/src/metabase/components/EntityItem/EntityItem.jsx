@@ -90,7 +90,7 @@ function EntityItemMenu({
   item,
   isBookmarked,
   isXrayEnabled,
-  isMetabotEnabled,
+  canUseMetabot,
   onPin,
   onMove,
   onCopy,
@@ -105,7 +105,7 @@ function EntityItemMenu({
   const isParametrized = isFullyParametrized(item);
   const isModel = isItemModel(item);
   const isXrayShown = isModel && isXrayEnabled;
-  const isMetabotShown = isModel && isMetabotEnabled;
+  const isMetabotShown = isModel && canUseMetabot;
 
   const actions = useMemo(
     () =>
