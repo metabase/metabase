@@ -13,6 +13,7 @@ import {
   SUBMIT_FEEDBACK_FORM,
   UPDATE_PROMPT,
   UPDATE_QUESTION,
+  CANCEL_QUERY,
 } from "./actions";
 
 export const entityId = handleActions(
@@ -59,6 +60,7 @@ export const queryStatus = handleActions(
     [RUN_QUESTION_QUERY_FULFILLED]: { next: () => "complete" },
     [RUN_QUESTION_QUERY_REJECTED]: { next: () => "complete" },
     [RESET]: { next: () => "idle" },
+    [CANCEL_QUERY]: { next: () => "idle" },
   },
   "idle",
 );
@@ -68,6 +70,7 @@ export const queryResults = handleActions(
     [RUN_PROMPT_QUERY]: { next: () => null },
     [FETCH_QUERY_RESULTS]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
+    [CANCEL_QUERY]: { next: () => null },
   },
   null,
 );
@@ -77,6 +80,7 @@ export const queryError = handleActions(
     [RUN_PROMPT_QUERY_REJECTED]: { next: (state, { payload }) => payload },
     [RUN_QUESTION_QUERY_REJECTED]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
+    [CANCEL_QUERY]: { next: () => null },
   },
   null,
 );
@@ -86,6 +90,23 @@ export const feedbackType = handleActions(
     [RUN_PROMPT_QUERY]: { next: () => null },
     [SUBMIT_FEEDBACK_FORM]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
+    [CANCEL_QUERY]: { next: () => null },
+  },
+  null,
+);
+export const cancelQueryDeferred = handleActions(
+  {
+    [RUN_PROMPT_QUERY]: {
+      next: (state, { payload: cancelQueryDeferred }) => cancelQueryDeferred,
+    },
+    [RUN_QUESTION_QUERY]: {
+      next: (state, { payload: cancelQueryDeferred }) => cancelQueryDeferred,
+    },
+    [CANCEL_QUERY]: { next: (state, { payload }) => null },
+    [RUN_PROMPT_QUERY_FULFILLED]: { next: (state, { payload }) => null },
+    [RUN_PROMPT_QUERY_REJECTED]: { next: (state, { payload }) => null },
+    [RUN_QUESTION_QUERY_FULFILLED]: { next: (state, { payload }) => null },
+    [RUN_QUESTION_QUERY_REJECTED]: { next: (state, { payload }) => null },
   },
   null,
 );

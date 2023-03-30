@@ -8,7 +8,7 @@ import { DatabaseId, MetabotFeedbackType, User } from "metabase-types/api";
 import { Dispatch, MetabotQueryStatus, State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
-import { runPromptQuery, updatePrompt } from "../../actions";
+import { cancelQuery, runPromptQuery, updatePrompt } from "../../actions";
 import { getFeedbackType, getQueryStatus, getPrompt } from "../../selectors";
 import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";
@@ -33,6 +33,7 @@ interface DispatchProps {
   onChangePrompt: (prompt: string) => void;
   onSubmitPrompt: () => void;
   onDatabaseChange: (databaseId: DatabaseId) => void;
+  onCancel: () => void;
 }
 
 type MetabotHeaderProps = OwnProps & StateProps & DispatchProps;
@@ -48,6 +49,7 @@ const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
   onChangePrompt: prompt => dispatch(updatePrompt(prompt)),
   onSubmitPrompt: () => dispatch(runPromptQuery()),
   onDatabaseChange: databaseId => push(Urls.databaseMetabot(databaseId)),
+  onCancel: () => dispatch(cancelQuery()),
 });
 
 const MetabotHeader = ({
@@ -60,6 +62,7 @@ const MetabotHeader = ({
   onChangePrompt,
   onSubmitPrompt,
   onDatabaseChange,
+  onCancel,
 }: MetabotHeaderProps) => {
   const [isLoadedRecently, setIsLoadedRecently] = useState(false);
 
@@ -94,6 +97,7 @@ const MetabotHeader = ({
         isLoading={queryStatus === "running"}
         onChangePrompt={onChangePrompt}
         onSubmitPrompt={onSubmitPrompt}
+        onCancel={onCancel}
       />
     </MetabotHeaderRoot>
   );

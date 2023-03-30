@@ -8,11 +8,14 @@ import {
   MetabotEntityId,
   MetabotEntityType,
 } from "metabase-types/store";
+import { defer, Deferred } from "metabase/lib/promise";
 import Question from "metabase-lib/Question";
 import {
+  getCancelQueryDeferred,
   getEntityId,
   getEntityType,
   getFeedbackType,
+  getIsQueryRunning,
   getNativeQueryText,
   getPrompt,
   getQuestion,
@@ -43,6 +46,15 @@ export const updateQuestion = createAction(
   (question: Question) => question.card(),
 );
 
+export const CANCEL_QUERY = "metabase/metabot/CANCEL_QUERY";
+export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
+  const cancelQueryDeferred = getCancelQueryDeferred(getState());
+  if (getIsQueryRunning(getState())) {
+    cancelQueryDeferred.resolve();
+  }
+  dispatch({ type: CANCEL_QUERY });
+};
+
 export const UPDATE_PROMPT = "metabase/metabot/UPDATE_PROMPT";
 export const updatePrompt = createAction(UPDATE_PROMPT);
 
@@ -51,54 +63,70 @@ export const RUN_PROMPT_QUERY_FULFILLED =
   "metabase/metabot/RUN_PROMPT_QUERY_FULFILLED";
 export const RUN_PROMPT_QUERY_REJECTED =
   "metabase/metabot/RUN_PROMPT_QUERY_REJECTED";
-export const runPromptQuery = () => async (dispatch: Dispatch) => {
-  try {
-    dispatch({ type: RUN_PROMPT_QUERY });
-    await dispatch(fetchQuestion());
-    await dispatch(fetchQueryResults());
-    dispatch({ type: RUN_PROMPT_QUERY_FULFILLED });
-  } catch (error) {
-    dispatch({ type: RUN_PROMPT_QUERY_REJECTED, payload: error });
-  }
-};
+export const runPromptQuery =
+  () => async (dispatch: Dispatch, getState: GetState) => {
+    try {
+      const cancelQueryDeferred = defer();
+      dispatch({ type: RUN_PROMPT_QUERY, payload: cancelQueryDeferred });
+      await dispatch(fetchQuestion(cancelQueryDeferred));
+      await dispatch(fetchQueryResults(cancelQueryDeferred));
+      dispatch({ type: RUN_PROMPT_QUERY_FULFILLED });
+    } catch (error) {
+      if (getIsQueryRunning(getState())) {
+        dispatch({ type: RUN_PROMPT_QUERY_REJECTED, payload: error });
+      }
+    }
+  };
 
 export const RUN_QUESTION_QUERY = "metabase/metabot/RUN_QUESTION_QUERY";
 export const RUN_QUESTION_QUERY_FULFILLED =
   "metabase/metabot/RUN_QUESTION_QUERY_FULFILLED";
 export const RUN_QUESTION_QUERY_REJECTED =
   "metabase/metabot/RUN_QUESTION_QUERY_REJECTED";
-export const runQuestionQuery = () => async (dispatch: Dispatch) => {
-  try {
-    dispatch({ type: RUN_QUESTION_QUERY });
-    await dispatch(fetchQueryResults());
-    dispatch({ type: RUN_QUESTION_QUERY_FULFILLED });
-  } catch (error) {
-    dispatch({ type: RUN_QUESTION_QUERY_REJECTED, payload: error });
-  }
-};
-
-export const cancelQuery = () => async () => undefined;
+export const runQuestionQuery =
+  () => async (dispatch: Dispatch, getState: GetState) => {
+    try {
+      const cancelQueryDeferred = defer();
+      dispatch({ type: RUN_QUESTION_QUERY, payload: cancelQueryDeferred });
+      await dispatch(fetchQueryResults(cancelQueryDeferred));
+      dispatch({ type: RUN_QUESTION_QUERY_FULFILLED });
+    } catch (error) {
+      if (getIsQueryRunning(getState())) {
+        dispatch({ type: RUN_QUESTION_QUERY_REJECTED, payload: error });
+      }
+    }
+  };
 
 export const FETCH_QUESTION = "metabase/metabot/FETCH_QUESTION";
 export const fetchQuestion =
-  () => async (dispatch: Dispatch, getState: GetState) => {
+  (cancelQueryDeferred: Deferred) =>
+  async (dispatch: Dispatch, getState: GetState) => {
     const entityId = getEntityId(getState());
     const entityType = getEntityType(getState());
     const question = getPrompt(getState());
 
     const payload =
       entityType === "model"
-        ? await MetabotApi.modelPrompt({ modelId: entityId, question })
-        : await MetabotApi.databasePrompt({ databaseId: entityId, question });
+        ? await MetabotApi.modelPrompt(
+            { modelId: entityId, question },
+            { cancelled: cancelQueryDeferred.promise },
+          )
+        : await MetabotApi.databasePrompt(
+            { databaseId: entityId, question },
+            { cancelled: cancelQueryDeferred.promise },
+          );
 
     dispatch({ type: FETCH_QUESTION, payload });
   };
 
 export const FETCH_QUERY_RESULTS = "metabase/metabot/FETCH_QUERY_RESULTS";
 export const fetchQueryResults =
-  () => async (dispatch: Dispatch, getState: GetState) => {
+  (cancelQueryDeferred: Deferred) =>
+  async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
-    const payload = await question?.apiGetResults();
+    const payload = await question?.apiGetResults({
+      cancelDeferred: cancelQueryDeferred,
+    });
     dispatch({ type: FETCH_QUERY_RESULTS, payload });
   };
 
