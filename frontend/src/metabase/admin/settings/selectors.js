@@ -620,6 +620,7 @@ const SECTIONS = updateSectionsWithPlugins({
             name: model.id,
             value: model.id,
           })),
+          disabled: _.isEmpty(settings["openai-available-models"]),
         }),
         getHidden: (_, settings) => !settings["is-metabot-enabled"],
       },

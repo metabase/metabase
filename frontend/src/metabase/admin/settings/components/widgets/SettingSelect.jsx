@@ -20,6 +20,7 @@ const SettingSelect = ({
       value={value}
       defaultValue={defaultValue}
       searchProp={searchProp}
+      disabled={disabled}
       onChange={e => onChange(e.target.value)}
       buttonProps={{
         dataTestId: key,
