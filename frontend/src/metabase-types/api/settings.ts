@@ -205,7 +205,7 @@ export interface Settings {
   "openai-api-key": string | null;
   "openai-organization": string | null;
   "openai-model": string | null;
-  "openai-available-models": OpenAiModel[] | null;
+  "openai-available-models"?: OpenAiModel[];
   "other-sso-enabled?": boolean | null;
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;

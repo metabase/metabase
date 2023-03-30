@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as client]
+   [clojure.core.memoize :as memoize]
    [metabase.lib.native :as lib-native]
    [metabase.metabot.util :as metabot-util]
    [metabase.models.setting :refer [defsetting]]
@@ -39,6 +40,29 @@
 (defsetting openai-model-inference-webhook
   (deferred-tru "The Webhook URL to call the model inferencer. This endpoint takes a database and prompt and returns a model.")
   :visibility :settings-manager)
+
+(def ^:private fetch-openai-models
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[api-key organization]] [api-key organization])}
+   (fn [api-key organization]
+     (let [models (->> (openai.api/list-models
+                        {:api-key      api-key
+                         :organization organization})
+                       :data
+                       (map #(select-keys % [:id :owned_by]))
+                       (sort-by :id))]
+       models))
+   :ttl/threshold (* 1000 60 60 24)))
+
+(defsetting openai-available-models
+  (deferred-tru "List available openai models.")
+  :visibility :settings-manager
+  :type       :json
+  :setter     :none
+  :getter     (fn []
+                (if (is-metabot-enabled)
+                  (fetch-openai-models (openai-api-key) (openai-organization))
+                  [])))
 
 (defn find-result [{:keys [choices]} message-fn]
   (some

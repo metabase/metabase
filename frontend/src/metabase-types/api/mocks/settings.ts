@@ -164,7 +164,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "openai-api-key": null,
   "openai-organization": null,
   "openai-model": null,
-  "openai-available-models": null,
+  "openai-available-models": [],
   "other-sso-enabled?": null,
   "password-complexity": { total: 6, digit: 1 },
   "persisted-models-enabled": false,

@@ -56,12 +56,6 @@
            :message     message}))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/openai_models"
-  "List available openai models."
-  []
-  (metabot/openai-models))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/feedback"
   "Record feedback on metabot results."
   [:as {{:keys [prompt sql feedback correct_sql] :as feedback} :body}]
