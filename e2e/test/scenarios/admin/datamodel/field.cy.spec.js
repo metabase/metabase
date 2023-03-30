@@ -161,7 +161,7 @@ describe("Unfold JSON", () => {
 
     // Check json is unfolded initially
     cy.findByText(/json.a/i).should("be.visible");
-    cy.getByTestId("column-json").within(() => { cy.icon("gear") }).click();
+    cy.findByTestId("column-json").within(() => { cy.icon("gear") }).click();
     
     getUnfoldJsonContent().findByText(/Yes/i).click();
     popover().within(() => {
