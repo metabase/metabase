@@ -24,6 +24,8 @@ const MetabotPrompt = ({
   onChangePrompt,
   onSubmitPrompt,
 }: MetabotPromptProps) => {
+  const canSubmit = prompt.length > 0;
+
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onChangePrompt(event.target.value);
@@ -33,11 +35,11 @@ const MetabotPrompt = ({
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Enter") {
+      if (canSubmit && event.key === "Enter") {
         onSubmitPrompt();
       }
     },
-    [onSubmitPrompt],
+    [canSubmit, onSubmitPrompt],
   );
 
   return (
@@ -50,7 +52,7 @@ const MetabotPrompt = ({
         onChange={handleChange}
         onKeyDown={handleKeyDown}
       />
-      {prompt.length > 0 ? (
+      {canSubmit ? (
         <PromptRunButton
           isRunning={isLoading}
           compact
