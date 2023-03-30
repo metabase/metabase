@@ -62,7 +62,7 @@
         "description": "Because we want to know the total I ugess",
         "table_id": 1,
         "definition": {
-          "filter": [">", 6, 20],
+          "filter": [">", ["field", 6, null], 20],
           "aggregation": [["sum", ["field", 6, null]]],
           "source-table": 1
         },
