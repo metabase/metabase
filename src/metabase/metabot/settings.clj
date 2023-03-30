@@ -1,0 +1,61 @@
+(ns metabase.metabot.settings
+  (:require
+   [clojure.core.memoize :as memoize]
+   [metabase.models.setting :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]
+   [wkok.openai-clojure.api :as openai.api]))
+
+(defsetting openai-model
+  (deferred-tru "The OpenAI Model (e.g. 'gpt-4', 'gpt-3.5-turbo')")
+  :visibility :settings-manager
+  :default "gpt-4")
+
+(defsetting openai-api-key
+  (deferred-tru "The OpenAI API Key.")
+  :visibility :settings-manager)
+
+(defsetting openai-organization
+  (deferred-tru "The OpenAI Organization ID.")
+  :visibility :settings-manager)
+
+(defsetting metabot-get-models-url
+  (deferred-tru "The URL in which metabot versioned models are stored.")
+  :visibility :settings-manager)
+
+(defsetting is-metabot-enabled
+  (deferred-tru "Is Metabot enabled?")
+  :type :boolean
+  :visibility :authenticated
+  :default true)
+
+(def ^:private memoized-fetch-openai-models
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[api-key organization]] [api-key organization])}
+   (fn [api-key organization]
+     (try
+       (->> (openai.api/list-models
+             {:api-key      api-key
+              :organization organization})
+            :data
+            (map #(select-keys % [:id :owned_by]))
+            (sort-by :id))
+       (catch Exception _
+         (log/warn "Unable to fetch openai models.")
+         [])))
+   :ttl/threshold (* 1000 60 60 24)))
+
+(defsetting openai-available-models
+  (deferred-tru "List available openai models.")
+  :visibility :settings-manager
+  :type :json
+  :setter :none
+  :getter (fn []
+            (if (and
+                 (is-metabot-enabled)
+                 (openai-api-key)
+                 (openai-organization))
+              (memoized-fetch-openai-models
+               (openai-api-key)
+               (openai-organization))
+              [])))

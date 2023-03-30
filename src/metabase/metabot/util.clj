@@ -2,6 +2,7 @@
   ""
   (:require
    [clojure.string :as str]
+   [honey.sql :as hsql]
    [metabase.db.query :as mdb.query]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Card Collection Database Field FieldValues Table]]
@@ -70,11 +71,40 @@
         (assoc :sql_name (normalize-name display_name))
         (dissoc :field_ref :id))))
 
+(defn- create-enum-ddl
+  "Create the postgres enum for any item in result_metadata that has enumerated/low cardinality values."
+  [{:keys [result_metadata]}]
+  (into {}
+        (for [{:keys [sql_name possible_values]} result_metadata :when (seq possible_values)]
+          [sql_name
+           (format "create type %s_t as enum %s;"
+                   sql_name
+                   (str/join ", " (map (partial format "'%s'") possible_values)))])))
+
+(defn- create-table-ddl
+  "Create an equivalent DDL for this model"
+  [{:keys [sql_name result_metadata] :as model}]
+  (let [enums (create-enum-ddl model)
+        [ddl] (hsql/format
+               {:create-table sql_name
+                :with-columns (for [{:keys [display_name base_type]} result_metadata
+                                    :let [k (normalize-name display_name)]]
+                                [k (if (enums k)
+                                     (format "%s_t" k)
+                                     base_type)])}
+               {:dialect :ansi})]
+    (str/join "\n\n"
+              (conj (vec (vals enums)) (mdb.query/format-sql ddl)))))
+
+(defn- add-create-table-ddl [model]
+  (assoc model :create_table_ddl (create-table-ddl model)))
+
 (defn denormalize-model [{model-name :name :as model}]
   (-> model
       (update :result_metadata #(mapv denormalize-field %))
       (assoc :sql_name (normalize-name model-name))
       (assoc :inner_query (inner-query model))
+      add-create-table-ddl
       (dissoc :creator_id :dataset_query :table_id :collection_position)))
 
 (defn denormalize-database [{database-name :name db_id :id :as database}]
@@ -89,3 +119,12 @@
   [{:keys [inner_query sql_name] :as _denormalized-model} outer-query]
   (let [model-with-cte (format "WITH %s AS (%s) %s" sql_name inner_query outer-query)]
     (fix-model-reference model-with-cte)))
+
+(defn interpolate-template [template context]
+  (letfn [(update-contents [s]
+            (str/replace s #"%%([^%]+)%%"
+                         (fn [[s path]]
+                           (let [kw (->> (str/split path #":")
+                                         (map (comp keyword str/lower-case)))]
+                             (get-in context kw)))))]
+    (map (fn [prompt] (update prompt :content update-contents)) template)))
