@@ -36,7 +36,8 @@
   {:base-type   keyword
    :type        keyword
    :lib/type    keyword
-   :lib/options normalize})
+   :lib/options normalize
+   :field_ref   normalize})
 
 (defn normalize-map
   "[[normalize]] a map using `key-fn` (default [[clojure.core/keyword]]) for keys and
