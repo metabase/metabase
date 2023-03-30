@@ -11,10 +11,7 @@ import ExpandingContent from "metabase/components/ExpandingContent";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import {
-  NotebookStep as INotebookStep,
-  NotebookStepAction,
-} from "../lib/steps.types";
+import { NotebookStep as INotebookStep, NotebookStepAction } from "../types";
 import NotebookStepPreview from "../NotebookStepPreview";
 
 import { STEP_UI } from "./steps";
@@ -42,7 +39,7 @@ interface NotebookStepProps {
   sourceQuestion?: Question;
   isLastStep: boolean;
   isLastOpened: boolean;
-  reportTimezone?: string;
+  reportTimezone: string;
   openStep: (id: string) => void;
   updateQuery: (query: StructuredQuery) => Promise<void>;
   readOnly?: boolean;
