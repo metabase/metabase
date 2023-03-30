@@ -8,14 +8,9 @@
         [goog.string.format :as gstring.format]))
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
-   [malli.core :as mc]
-   [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 

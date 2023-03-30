@@ -1,8 +1,6 @@
 (ns metabase.lib.util-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [clojure.test.check.generators :as gen]
-   [com.gfredericks.test.chuck.clojure-test :refer [checking]]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.util :as lib.util]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
