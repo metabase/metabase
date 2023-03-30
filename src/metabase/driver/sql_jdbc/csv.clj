@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.csv
   (:require
    [honey.sql :as sql]
+   [metabase.driver :as driver]
    [metabase.query-processor.writeback :as qp.writeback]))
 
 (defn file-schema
@@ -19,24 +20,37 @@
   [{:column_name "value1"}
    {:column_name "value2"}])
 
-(defn create-table-sql
+(defn execute-write-sql!
+  "Execute a write query in SQL against a database given by `db-id`."
+  [db-id sql-or-sql+params]
+  (if (sequential? sql-or-sql+params)
+    (let [[sql & params] sql-or-sql+params]
+      (qp.writeback/execute-write-query! {:type     :native
+                                          :database db-id
+                                          :native   {:query  sql
+                                                     :params params}}))
+    (qp.writeback/execute-write-query! {:type     :native
+                                        :database db-id
+                                        :native   {:query sql-or-sql+params}})))
+
+(defn- create-table-sql
   [table-name schema]
   (first (sql/format {:create-table table-name
                       :with-columns
                       (for [{:keys [database-name database-type]} schema]
                         [database-name database-type])})))
 
-(defn create-table!
-  [db-id table-name schema]
+(defmethod driver/create-table! :sql-jdbc
+  [_driver db-id table-name schema]
   (let [sql (str "DROP TABLE IF EXISTS " (name table-name) "; "
                  (create-table-sql table-name schema))]
-    (qp.writeback/execute-write-sql! db-id sql)))
+    (execute-write-sql! db-id sql)))
 
-(defn insert-rows-sql
+(defn- insert-into-sql
   [table-name rows]
   (sql/format {:insert-into table-name :values rows}))
 
-(defn insert-rows!
-  [db-id table-name rows]
-  (let [sql+params (insert-rows-sql table-name rows)]
-    (qp.writeback/execute-write-sql! db-id sql+params)))
+(defmethod driver/insert-into! :sql-jdbc
+  [_driver db-id table-name rows]
+  (let [sql+params (insert-into-sql table-name rows)]
+    (execute-write-sql! db-id sql+params)))
