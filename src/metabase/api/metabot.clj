@@ -7,6 +7,7 @@
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card Collection Database Field FieldValues Table]]
    [metabase.util.log :as log]
+   [metabase.util.schema :as su]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -40,8 +41,8 @@
 (api/defendpoint-schema POST "/database/:database-id"
   "Ask Metabot to generate a SQL query given a prompt about a given database."
   [database-id :as {{:keys [question] :as body} :body}]
-  ;{database-id ms/PositiveInt
-  ; question string?}
+  {database-id su/IntGreaterThanZero
+   question    su/NonBlankString}
   (tap> {:database-id database-id
          :request     body})
   (log/infof
@@ -57,7 +58,7 @@
                       (str/join
                        " "
                        ["Query '%s' didn't find a good match to your data."
-                        "Perhaps try a query that mentions the model name or columns more specificially."])
+                        "Perhaps try a query that mentions the model name or columns more specifically."])
                       question)]
          (ex-info
           message

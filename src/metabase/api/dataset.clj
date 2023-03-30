@@ -157,7 +157,11 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/native"
   "Fetch a native version of an MBQL query."
-  [:as {query :body}]
+  [:as {{:keys [type native database parameters] :as query} :body}]
+  {type (s/maybe s/Str)
+   native (s/maybe {})
+   database (s/maybe s/Int)
+   parameters (s/maybe [])}
   (binding [persisted-info/*allow-persisted-substitution* false]
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (qp/compile-and-splice-parameters query)))
