@@ -7,7 +7,7 @@ export type MetabotVariant = "happy" | "sad";
 const urlByVariant = {
   happy: "app/assets/img/metabot-happy.svg",
   sad: "app/assets/img/metabot-sad.svg",
-} as const;
+};
 
 export interface MetabotLogoProps {
   className?: string;

@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import ImageToggle from "../ImageToggle";
 import { MetabotSetting } from "./types";
-import { MetabotImage } from "./MetabotToggleWidget.styled";
+import { MetabotIcon } from "./MetabotToggleWidget.styled";
 
 interface MetabotToggleWidgetProps {
   setting: MetabotSetting;
@@ -14,7 +14,6 @@ const MetabotToggleWidget = ({
   onChange,
 }: MetabotToggleWidgetProps): JSX.Element => {
   const isEnabled = setting.value ?? setting.default;
-  const metabotImage = isEnabled ? "metabot-happy" : "metabot-sad";
 
   return (
     <ImageToggle
@@ -22,10 +21,7 @@ const MetabotToggleWidget = ({
       value={isEnabled}
       onChange={onChange}
     >
-      <MetabotImage
-        src={`app/assets/img/${metabotImage}.gif`}
-        alt={t`Metabot`}
-      />
+      <MetabotIcon variant={isEnabled ? "happy" : "sad"} />
     </ImageToggle>
   );
 };

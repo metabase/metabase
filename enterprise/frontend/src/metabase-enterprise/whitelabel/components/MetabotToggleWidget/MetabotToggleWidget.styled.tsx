@@ -1,10 +1,8 @@
 import styled from "@emotion/styled";
-import { hueRotate } from "metabase/lib/colors";
+import MetabotLogo from "metabase/core/components/MetabotLogo";
 
-export const MetabotImage = styled.img`
+export const MetabotIcon = styled(MetabotLogo)`
   display: block;
-  width: 100px;
-  height: 90px;
-  margin: 0.5rem 1rem 0.75rem 1.25rem;
-  filter: hue-rotate(${() => hueRotate("brand")}deg);
+  width: 5rem;
+  margin: 1.125rem 1.875rem;
 `;
