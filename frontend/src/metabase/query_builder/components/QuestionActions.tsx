@@ -90,6 +90,7 @@ const QuestionActions = ({
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
+  const hasNativeWrite = question.database()?.canWrite();
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
@@ -119,7 +120,7 @@ const QuestionActions = ({
 
   const extraButtons = [];
 
-  if (isDataset && isMetabotEnabled) {
+  if (isDataset && hasNativeWrite && isMetabotEnabled) {
     extraButtons.push({
       title: t`Ask Metabot`,
       icon: "insight",
