@@ -949,6 +949,7 @@ export class UnconnectedDataSelector extends Component {
   isSavedQuestionSelected = () => isVirtualCardId(this.props.selectedTableId);
 
   handleSavedQuestionSelect = async table => {
+    await this.props.fetchFields(table.id);
     if (this.props.setSourceTableFn) {
       this.props.setSourceTableFn(table.id);
     }
