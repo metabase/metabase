@@ -95,6 +95,7 @@ class NativeQueryEditor extends Component {
 
     if (typeof isInitiallyOpen !== "undefined") {
       setIsNativeEditorOpen?.(isInitiallyOpen);
+      return;
     }
 
     setIsNativeEditorOpen?.(!question || !question.isSaved());
