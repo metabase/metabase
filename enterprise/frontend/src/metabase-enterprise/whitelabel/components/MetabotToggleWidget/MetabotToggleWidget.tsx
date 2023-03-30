@@ -17,7 +17,7 @@ const MetabotToggleWidget = ({
 
   return (
     <ImageToggle
-      label={t`Display our little friend on the homepage`}
+      label={t`Display welcome message on the homepage`}
       value={isEnabled}
       onChange={onChange}
     >
