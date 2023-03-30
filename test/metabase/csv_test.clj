@@ -1,7 +1,12 @@
 (ns metabase.csv-test
   (:require
    [clojure.test :refer :all]
-   [metabase.csv :as csv]))
+   [metabase.csv :as csv]
+   [clojure.string :as str])
+  (:import
+   [java.io File]))
+
+(set! *warn-on-reflection* true)
 
 (def bool-type  :metabase.csv/boolean)
 (def int-type   :metabase.csv/int)
@@ -47,3 +52,21 @@
                                     [float-type text-type  text-type]
                                     [vchar-type text-type  text-type]]]
     (is (= expected (csv/coalesce type-a type-b)))))
+
+(defn- csv-file-with
+  "Create a temp csv file with the given content and return the file"
+  [rows]
+  (let [contents (str/join "\n" rows)
+        csv-file (File/createTempFile "pokefans" ".csv")]
+    (spit csv-file contents)
+    csv-file))
+
+(deftest detect-schema-test
+  (testing "Well-formed CSV file"
+    (is (= {"name"             vchar-type
+            "age"              int-type
+            "favorite_pokemon" vchar-type}
+           (csv/detect-schema
+            (csv-file-with ["Name, Age, Favorite Pokémon"
+                            "Tim, 12, Haunter"
+                            "Ryan, 97, Paras"]))))))

@@ -2,8 +2,10 @@
   (:require
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
+   [metabase.search.util :as search-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [clojure.string :as str]))
 
 (derive ::boolean     ::int)
 (derive ::boolean     ::varchar_255)
