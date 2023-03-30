@@ -8,7 +8,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -119,10 +118,7 @@
                                        [:not [:exists {:select [1]
                                                        :from [:persisted_info]
                                                        :where [:= :persisted_info.card_id :report_card.id]}]]]})]
-    (db/insert-many! PersistedInfo (map #(create-row nil %) cards))))
-
-(comment
-  (ready-unpersisted-models! 183))
+    (t2/insert! PersistedInfo (map #(create-row nil %) cards))))
 
 (defn turn-on-model!
   "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."

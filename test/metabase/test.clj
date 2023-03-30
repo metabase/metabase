@@ -48,7 +48,6 @@
    [metabase.util.log :as log]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
-   [toucan.db :as db]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
 
@@ -323,7 +322,7 @@
         (t2/delete! User primary-key (primary-key temp-admin))
         (when (seq existing-admin-ids)
           (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser true}))
-        (db/insert-many! PermissionsGroupMembership existing-admin-memberships)))))
+        (t2/insert! PermissionsGroupMembership existing-admin-memberships)))))
 
 (defmacro with-single-admin-user
   "Creates an admin user (with details described in the `options-map`) and (temporarily) removes the administrative
