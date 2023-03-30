@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.csv-test
   (:require
-   [clojure.test :refer [is testing]]
+   [clojure.test :refer [is testing deftest]]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.csv :as csv]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -16,8 +17,8 @@
               table-name "airports"
               schema    (csv/file-schema file-path)
               rows      (csv/parse-rows schema file-path)]
-          (csv/create-table! (mt/id) table-name schema)
-          (csv/insert-rows! (mt/id) table-name rows)
+          (driver/create-table! driver/*driver* (mt/id) table-name schema)
+          (driver/insert-into! driver/*driver* (mt/id) table-name rows)
           (sync/sync-database! (mt/db))
           (testing "table exists"
             (is (some? (t2/select-one 'Table :db_id (mt/id) :name table-name))))
