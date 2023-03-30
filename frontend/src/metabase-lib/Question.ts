@@ -21,7 +21,7 @@ import Field from "metabase-lib/metadata/Field";
 import { AggregationDimension, FieldDimension } from "metabase-lib/Dimension";
 import { isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/utils";
-import * as C from "cljs/metabase.domain_entities.card";
+import * as CARD from "cljs/metabase.domain_entities.card";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import * as FILTER from "metabase-lib/queries/utils/filter";
@@ -226,7 +226,7 @@ class QuestionInner {
           "infinite loop - Question has neither _card nor _cljsCardCached",
         );
       }
-      this._cljsCardCached = C.from_js(
+      this._cljsCardCached = CARD.from_js(
         this.databaseId(),
         this.metadata(),
         this._card,
@@ -234,7 +234,7 @@ class QuestionInner {
 
       // TODO: Remove this dev-time check, eventually. It's a useful debugging aid during this transition.
       const roundTripped = massageForRoundTripCheck(
-        C.to_js(this._cljsCardCached),
+        CARD.to_js(this._cljsCardCached),
       );
       // Slightly massage the JS card to match a few details of the CLJS transition.
       const originalCard = massageForRoundTripCheck({
@@ -260,7 +260,7 @@ class QuestionInner {
           "infinite loop - Question has neither _card nor _cljsCardCached",
         );
       }
-      this._card = C.to_js(this._cljsCardCached);
+      this._card = CARD.to_js(this._cljsCardCached);
     }
     return this._card;
   }
@@ -426,11 +426,13 @@ class QuestionInner {
   }
 
   setDisplayIsLocked(locked: boolean): Question {
-    return this._fromCljs(C.with_display_is_locked(this._cljsCard(), locked));
+    return this._fromCljs(
+      CARD.with_display_is_locked(this._cljsCard(), locked),
+    );
   }
 
   displayIsLocked(): boolean {
-    return C.display_is_locked(this._cljsCard());
+    return CARD.display_is_locked(this._cljsCard());
   }
 
   // If we're locked to a display that is no longer "sensible", unlock it
@@ -440,7 +442,7 @@ class QuestionInner {
     previousSensibleDisplays?: string[],
   ): Question {
     return this._fromCljs(
-      C.maybe_unlock_display(
+      CARD.maybe_unlock_display(
         this._cljsCard(),
         sensibleDisplays,
         previousSensibleDisplays,
@@ -1451,9 +1453,13 @@ class QuestionInner {
     return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
+  _getMLv2Query(): Query {
+    return CARD.dataset_query(this._cljsCard());
+  }
+
   generateQueryDescription() {
     const query = this._getMLv2Query();
-    return ML.suggestedName(query);
+    return ML.suggested_name(query);
   }
 
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
