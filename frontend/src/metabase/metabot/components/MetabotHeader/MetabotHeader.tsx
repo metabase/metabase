@@ -117,8 +117,10 @@ const getTitle = (
 
   if (model) {
     return getModelTitle(model, user);
-  } else if (database) {
+  } else if (databases.length > 1 && database) {
     return getDatabaseTitle(database, databases, user, onDatabaseChange);
+  } else {
+    return t`You can ask me things about your data.`;
   }
 };
 
