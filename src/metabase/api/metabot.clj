@@ -68,14 +68,15 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/feedback"
   "Record feedback on metabot results."
-  [:as {{:keys [prompt sql feedback correct_sql] :as feedback} :body}]
+  [:as {{:keys [prompt sql feedback correct_sql prompt_template_versions] :as feedback} :body}]
   ;{database-id ms/PositiveInt
   ; question string?}
   ;;great | wrong-data | incorrect-result | invalid-sql
   (tap> {:prompt      prompt
          :sql         sql
          :feedback    feedback
-         :correct_sql correct_sql})
+         :correct_sql correct_sql
+         :prompt_template_versions prompt_template_versions})
   {:message "Thanks for your feedback"})
 
 (api/define-routes)
