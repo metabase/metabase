@@ -1,10 +1,12 @@
 (ns metabase.metabot.util
   ""
   (:require
+   [cheshire.core :as json]
    [clojure.string :as str]
    [honey.sql :as hsql]
    [metabase.db.query :as mdb.query]
    [metabase.driver.util :as driver.u]
+   [metabase.metabot.settings :as metabot-settings]
    [metabase.models :refer [Card Collection Database Field FieldValues Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -107,11 +109,24 @@
       add-create-table-ddl
       (dissoc :creator_id :dataset_query :table_id :collection_position)))
 
+(defn models->json-summary [{:keys [models]}]
+  (json/generate-string
+   {:tables
+    (for [{model-name :name model-id :id :keys [result_metadata] :as model} models]
+      {:table-id     model-id
+       :table-name   model-name
+       :column-names (mapv :display_name result_metadata)})}
+   {:pretty true}))
+
+(defn- add-model-json-summary [database]
+  (assoc database :model_json_summary (models->json-summary database)))
+
 (defn denormalize-database [{database-name :name db_id :id :as database}]
   (let [models (t2/select Card :database_id db_id :dataset true)]
     (-> database
         (assoc :sql_name (normalize-name database-name))
-        (assoc :models (mapv denormalize-model models)))))
+        (assoc :models (mapv denormalize-model models))
+        add-model-json-summary)))
 
 (defn bot-sql->final-sql
   "Produce the final query usable by the UI but converting the model to a CTE
@@ -120,14 +135,20 @@
   (let [model-with-cte (format "WITH %s AS (%s) %s" sql_name inner_query outer-query)]
     (fix-model-reference model-with-cte)))
 
-(defn interpolate-template
-  "Given a prompt template and a context, fill the template in with the
-  appropriate values to create the actual submitted template."
-  [template context]
+(defn prompt-template->messages
+  "Given a prompt template and a context, fill the template messages in with
+  the appropriate values to create the actual submitted messages."
+  [{:keys [messages]} context]
   (letfn [(update-contents [s]
             (str/replace s #"%%([^%]+)%%"
                          (fn [[s path]]
                            (let [kw (->> (str/split path #":")
                                          (map (comp keyword str/lower-case)))]
                              (get-in context kw)))))]
-    (map (fn [prompt] (update prompt :content update-contents)) template)))
+    (map (fn [prompt] (update prompt :content update-contents)) messages)))
+
+(def prompt-templates
+  (delay
+   (-> (metabot-settings/metabot-get-prompt-templates-url)
+       slurp
+       (json/parse-string keyword))))

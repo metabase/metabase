@@ -12,5 +12,5 @@
 
 (defn infer-model [database question]
   (if (metabot-settings/is-metabot-enabled)
-    (model-finder/infer-model database question)
+    (model-finder/infer-model {:database database :user_prompt question})
     (log/warn "Metabot is not enabled")))
