@@ -23,9 +23,10 @@ interface NotebookOwnProps {
   isRunnable: boolean;
   isResultDirty: boolean;
   hasVisualizeButton?: boolean;
-  updateQuestion: (question: Question) => void;
+  updateQuestion: (question: Question) => Promise<void>;
   runQuestionQuery: () => void;
   setQueryBuilderMode: (mode: string) => void;
+  readOnly?: boolean;
 }
 
 interface NotebookCardProps {
@@ -61,7 +62,7 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
     await updateQuestion(cleanQuestion);
   }
 
-  // vizualize switches the view to the question's visualization.
+  // visualize switches the view to the question's visualization.
   async function visualize() {
     // Only cleanup the question if it's dirty, otherwise Metabase
     // will incorrectly display the Save button, even though there are no changes to save.

@@ -47,3 +47,16 @@
     table-name        :- ::lib.schema.common/non-blank-string]
    (let [table-metadata (lib.metadata/table metadata-provider schema-name table-name)]
      (lib.query/query metadata-provider table-metadata))))
+
+(mu/defn query-for-table-id :- ::lib.schema/query
+  "Create a new query for a specific Table with `table-id`."
+  [metadata-provider :- lib.metadata/MetadataProvider
+   table-id          :- ::lib.schema.id/table]
+  (let [table-metadata (lib.metadata/table metadata-provider table-id)]
+    (lib.query/query metadata-provider table-metadata)))
+
+(mu/defn table :- fn?
+  "Returns a function that can be resolved to Table metadata. For use with a [[lib/join]] or something like that."
+  ([id :- ::lib.schema.id/table]
+   (fn [query _stage-number]
+     (lib.metadata/table query id))))

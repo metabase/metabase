@@ -28,7 +28,7 @@
           ;; If for some reason the metadata is unavailable. This is better than returning nothing I guess
           (i18n/tru "Saved Question {0}" card-id)))))
 
-(defmethod lib.metadata.calculation/describe-top-level-key :source-table
+(defmethod lib.metadata.calculation/describe-top-level-key-method :source-table
   [query stage-number _k]
   (let [stage (lib.util/query-stage query stage-number)]
     (when-let [source-table-id (:source-table stage)]

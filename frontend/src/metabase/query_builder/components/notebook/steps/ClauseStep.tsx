@@ -19,6 +19,7 @@ interface ClauseStepProps<T> {
   onRemove?: ((item: T, index: number) => void) | null;
   initialAddText?: string | null;
   tetherOptions?: Tether.ITetherOptions | null;
+  readOnly?: boolean;
   "data-testid"?: string;
 }
 
@@ -32,6 +33,7 @@ const ClauseStep = <T,>({
   isLastOpened = false,
   initialAddText = null,
   tetherOptions = null,
+  readOnly,
   ...props
 }: ClauseStepProps<T>): JSX.Element => {
   return (
@@ -41,9 +43,9 @@ const ClauseStep = <T,>({
           tetherOptions={tetherOptions}
           key={index}
           triggerElement={
-            <NotebookCellItem color={color}>
+            <NotebookCellItem color={color} readOnly={readOnly}>
               {renderName(item, index)}
-              {onRemove && (!canRemove || canRemove(item)) && (
+              {!readOnly && onRemove && (!canRemove || canRemove(item)) && (
                 <Icon
                   ml={1}
                   name="close"
@@ -60,19 +62,21 @@ const ClauseStep = <T,>({
           {renderPopover(item, index)}
         </PopoverWithTrigger>
       ))}
-      <PopoverWithTrigger
-        triggerElement={
-          <NotebookCellAdd
-            color={color}
-            initialAddText={items.length === 0 && initialAddText}
-          />
-        }
-        tetherOptions={tetherOptions}
-        sizeToFit
-        isInitiallyOpen={isLastOpened}
-      >
-        {renderPopover()}
-      </PopoverWithTrigger>
+      {!readOnly && (
+        <PopoverWithTrigger
+          triggerElement={
+            <NotebookCellAdd
+              color={color}
+              initialAddText={items.length === 0 && initialAddText}
+            />
+          }
+          tetherOptions={tetherOptions}
+          sizeToFit
+          isInitiallyOpen={isLastOpened}
+        >
+          {renderPopover()}
+        </PopoverWithTrigger>
+      )}
     </NotebookCell>
   );
 };

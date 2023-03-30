@@ -87,7 +87,7 @@
     (fn [object]
       (try
         (let [parsed (assoc (obj->clj xform object) :lib/type lib-type-name)]
-          (log/infof "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
+          (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
           parsed)
         (catch js/Error e
           (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
@@ -288,23 +288,23 @@
 (defn- segment [metadata segment-id]
   (some-> metadata :segments deref (get segment-id) deref))
 
-(defn- tables [database-id metadata]
-  (for [dlay  @(:tables metadata)
-        :let  [a-table @dlay]
-        :when (= (:db_id a-table) database-id)]
+(defn- tables [metadata database-id]
+  (for [[_id table-delay]  (some-> metadata :tables deref)
+        :let               [a-table (some-> table-delay deref)]
+        :when              (and a-table (= (:db_id a-table) database-id))]
     a-table))
 
 (defn- fields [metadata table-id]
-  (for [dlay  @(:fields metadata)
-        :let  [a-field @dlay]
-        :when (= (:table_id a-field) table-id)]
+  (for [[_id field-delay]  (some-> metadata :fields deref)
+        :let               [a-field (some-> field-delay deref)]
+        :when              (and a-field (= (:table_id a-field) table-id))]
     a-field))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
   [database-id metadata]
   (let [metadata (parse-metadata metadata)]
-    (log/info "Created metadata provider for metadata")
+    (log/debug "Created metadata provider for metadata")
     (reify lib.metadata.protocols/MetadataProvider
       (database [_this]            (database metadata database-id))
       (table    [_this table-id]   (table    metadata table-id))
@@ -312,5 +312,5 @@
       (metric   [_this metric-id]  (metric   metadata metric-id))
       (segment  [_this segment-id] (segment  metadata segment-id))
       (card     [_this card-id]    (card     metadata card-id))
-      (tables   [_this]            (tables   database-id metadata))
+      (tables   [_this]            (tables   metadata database-id))
       (fields   [_this table-id]   (fields   metadata table-id)))))

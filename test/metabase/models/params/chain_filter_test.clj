@@ -499,20 +499,20 @@
             (is (= 1 (t2/count FieldValues :field_id field-id :type "linked-filter"))))
 
           (testing "should search for the values of linked-filter FieldValues"
-            (db/update-where! FieldValues {:field_id field-id
-                                           :type     "linked-filter"}
-                              :values (json/generate-string ["Good" "Bad"])
-                              ;; HACK: currently this is hardcoded to true for linked-filter
-                              ;; in [[params.field-values/fetch-advanced-field-values]]
-                              ;; we want this to false to test this case
-                              :has_more_values false)
+            (t2/update! FieldValues {:field_id field-id
+                                     :type     "linked-filter"}
+                        {:values (json/generate-string ["Good" "Bad"])
+                         ;; HACK: currently this is hardcoded to true for linked-filter
+                         ;; in [[params.field-values/fetch-advanced-field-values]]
+                         ;; we want this to false to test this case
+                         :has_more_values false})
             (is (= {:values          ["Good"]
                     :has_more_values false}
                    (chain-filter-search categories.name {venues.price 4} "o")))
             (testing "Shouldn't use cached FieldValues if has_more_values=true"
-              (db/update-where! FieldValues {:field_id field-id
-                                             :type     "linked-filter"}
-                                :has_more_values true)
+              (t2/update! FieldValues {:field_id field-id
+                                       :type     "linked-filter"}
+                          {:has_more_values true})
               (is (= {:values          ["Steakhouse"]
                       :has_more_values false}
                      (chain-filter-search categories.name {venues.price 4} "o"))))))))))

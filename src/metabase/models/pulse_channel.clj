@@ -281,7 +281,7 @@
       (let [vs (map #(assoc {:pulse_channel_id id} :user_id %) recipients+)]
         (t2/insert! PulseChannelRecipient vs)))
     (when (seq recipients-)
-      (db/simple-delete! PulseChannelRecipient
+      (t2/delete! (t2/table-name PulseChannelRecipient)
         :pulse_channel_id id
         :user_id          [:in recipients-]))))
 
