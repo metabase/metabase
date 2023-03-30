@@ -28,7 +28,6 @@ interface OwnProps {
 
 interface StateProps {
   isXrayEnabled: boolean;
-  isMetabotEnabled: boolean;
 }
 
 type ActionMenuProps = OwnProps & StateProps;
@@ -51,7 +50,6 @@ function normalizeItemModel(item: CollectionItem) {
 function mapStateToProps(state: State): StateProps {
   return {
     isXrayEnabled: getSetting(state, "enable-xrays"),
-    isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
   };
 }
 
@@ -61,7 +59,6 @@ function ActionMenu({
   bookmarks,
   collection,
   isXrayEnabled,
-  isMetabotEnabled,
   onCopy,
   onMove,
   createBookmark,
@@ -107,7 +104,6 @@ function ActionMenu({
         item={item}
         isBookmarked={isBookmarked}
         isXrayEnabled={isXrayEnabled}
-        isMetabotEnabled={isMetabotEnabled}
         onPin={canPin ? handlePin : null}
         onMove={canMove ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}
