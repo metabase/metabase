@@ -120,7 +120,10 @@
   (let [model-with-cte (format "WITH %s AS (%s) %s" sql_name inner_query outer-query)]
     (fix-model-reference model-with-cte)))
 
-(defn interpolate-template [template context]
+(defn interpolate-template
+  "Given a prompt template and a context, fill the template in with the
+  appropriate values to create the actual submitted template."
+  [template context]
   (letfn [(update-contents [s]
             (str/replace s #"%%([^%]+)%%"
                          (fn [[s path]]

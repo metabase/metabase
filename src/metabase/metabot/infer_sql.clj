@@ -27,8 +27,7 @@
   (let [templates (-> (metabot-settings/metabot-get-prompt-templates-url)
                       slurp
                       (json/parse-string keyword))
-        {:keys [messages version model_type]} (->> templates
-                                                   (group-by (comp keyword :model_type))
+        {:keys [messages version model_type]} (->> (group-by (comp keyword :prompt_template) templates)
                                                    :infer_sql
                                                    (apply max-key :version))
         _         (log/infof "Generating SQL from prompt template: '%s:%s'" model_type version)
