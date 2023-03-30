@@ -86,6 +86,7 @@
                       :description
                       :visibility_type
                       :semantic_type
+                      :json_unfolding
                       :fk_target_field_id
                       :nfc_path]))
 
@@ -105,6 +106,7 @@
                     :description        nil
                     :semantic_type      nil
                     :visibility_type    :normal
+                    :json_unfolding     false
                     :fk_target_field_id nil
                     :nfc_path           nil}
                    original-val)))
@@ -113,6 +115,7 @@
                                                                                   :display_name    "yay"
                                                                                   :description     "foobar"
                                                                                   :semantic_type   :type/Name
+                                                                                  :json_unfolding  true
                                                                                   :visibility_type :sensitive
                                                                                   :nfc_path        ["bob" "dobbs"]})
           (let [updated-val (simple-field-details (t2/select-one Field :id field-id))]
@@ -122,6 +125,7 @@
                       :description        "foobar"
                       :semantic_type      :type/Name
                       :visibility_type    :sensitive
+                      :json_unfolding     true
                       :fk_target_field_id nil
                       :nfc_path           ["bob" "dobbs"]}
                      updated-val)))
@@ -135,6 +139,7 @@
                       :description        nil
                       :semantic_type      nil
                       :visibility_type    :sensitive
+                      :json_unfolding     true
                       :fk_target_field_id nil
                       :nfc_path           nil}
                      (simple-field-details (t2/select-one Field :id field-id)))))))))
