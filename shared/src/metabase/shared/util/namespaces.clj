@@ -1,12 +1,57 @@
 (ns metabase.shared.util.namespaces
   "Potemkin is Java-only, so here's a basic function-importing macro that works for both CLJS and CLJ."
   (:require
-    [net.cgrand.macrovich :as macros]
-    [potemkin :as p]))
+   [net.cgrand.macrovich :as macros]
+   [potemkin :as p]))
 
-(defn- redef [target sym]
-  (let [defn-name (or sym (symbol (name target)))]
-    `(def ~defn-name "docstring" (fn [& args#] (apply ~target args#)))))
+(defn- arity-form
+  "Generate the form for a given arity with `arglist` for a `defn` form created by [[-redef]]."
+  [imported-symbol arglist]
+  (let [variadic?          (some (partial = '&) arglist)
+        simplified-arglist (mapv (fn [arg]
+                                   (if (symbol? arg)
+                                     arg
+                                     (gensym "arg-")))
+                                 arglist)]
+    (list simplified-arglist
+          (cond->> (list* imported-symbol (remove (partial = '&) simplified-arglist))
+            variadic? (cons 'apply)))))
+
+(defn- defn-form
+  "Generate the `defn` form for [[-redef]]."
+  [imported-symbol defn-name docstring arglists]
+  `(defn ~defn-name
+     ~docstring
+     ;; ClojureScript seems to ignore this metadata anyway, oh well. Make sure we re-quote arglists so the reader
+     ;; doesn't try to evaluate them.
+     {:arglists '~arglists}
+     ~@(for [arglist arglists]
+         (arity-form imported-symbol arglist))))
+
+(defmacro -redef
+  "Impl for [[import-fn]] and [[import-fns]]."
+  [imported-symbol created-symbol]
+  {:pre [(qualified-symbol? imported-symbol)
+         ((some-fn nil? simple-symbol?) created-symbol)]}
+  ;; In ClojureScript compilation, `imported-symbol` will come in like `u/format-seconds` instead of
+  ;; `metabase.util/format-seconds`, thus we'll need to use [[cljs.analyzer/resolve-symbol]] to resolve it to the real
+  ;; unaliased version.
+  (let [resolve-symbol    (macros/case
+                            :cljs (requiring-resolve 'cljs.analyzer/resolve-symbol)
+                            :clj  identity)
+        imported-var      (requiring-resolve (resolve-symbol imported-symbol))
+        imported-metadata (meta imported-var)
+        defn-name         (-> (or created-symbol (symbol (name imported-symbol)))
+                              (vary-meta merge
+                                         ;; preserve metadata attached to the symbol(s) passed in to import-fn(s).
+                                         (meta created-symbol)
+                                         (meta imported-symbol)
+                                         ;; preserve important metadata from the imported var.
+                                         (select-keys imported-metadata [:export])))
+        docstring         (or (:doc imported-metadata) "docstring")
+        arglists          (or (not-empty (:arglists imported-metadata))
+                              '([& args]))]
+    (defn-form imported-symbol defn-name docstring arglists)))
 
 (defmacro import-fn
   "Imports a single defn from another namespace.
@@ -17,7 +62,7 @@
   ([target]
    `(import-fn ~target nil))
   ([target sym]
-   (redef target sym)))
+   `(-redef ~target ~sym)))
 
 (defmacro import-fns
   "Imports defns from other namespaces.
@@ -32,5 +77,5 @@
                      :let [target-sym (if (vector? f) (first f)  f)
                            new-sym    (if (vector? f) (second f) f)
                            target     (symbol (name target-ns) (name target-sym))]]
-                 (redef target new-sym)))
+                 `(-redef ~target ~new-sym)))
     :clj  `(p/import-vars ~@spaces)))
