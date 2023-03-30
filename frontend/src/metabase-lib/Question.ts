@@ -1356,7 +1356,7 @@ class QuestionInner {
 
     if (!this.__mlv2Query) {
       this.__mlv2QueryMetadata = metadata;
-      this.__mlv2Query = ML.query(
+      this.__mlv2Query = ML.fromLegacyQuery(
         this.databaseId(),
         metadata,
         this.datasetQuery(),

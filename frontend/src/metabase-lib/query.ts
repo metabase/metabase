@@ -2,7 +2,7 @@ import * as ML from "cljs/metabase.lib.js";
 import type { DatabaseId, DatasetQuery } from "metabase-types/api";
 import type { MetadataProvider, Query } from "./types";
 
-export function query(
+export function fromLegacyQuery(
   databaseId: DatabaseId,
   metadata: MetadataProvider,
   datasetQuery: DatasetQuery,

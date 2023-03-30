@@ -40,5 +40,5 @@ export function createQuery({
   query = DEFAULT_QUERY,
 }: QueryOpts = {}) {
   const metadataProvider = createMetadataProvider({ databaseId, metadata });
-  return ML.query(databaseId, metadataProvider, query);
+  return ML.fromLegacyQuery(databaseId, metadataProvider, query);
 }
