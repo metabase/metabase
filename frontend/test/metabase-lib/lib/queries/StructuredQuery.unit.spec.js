@@ -98,6 +98,16 @@ function makeQueryWithLinkedTable() {
 }
 
 const getShortName = aggregation => aggregation.short;
+// have to map Field entities as they contain circular references Field - Table - Metadata - Field
+const processAggregationOperator = operator =>
+  operator && {
+    ...operator,
+    fields: operator.fields.map(({ id, name, table_id }) => ({
+      id,
+      name,
+      table_id,
+    })),
+  };
 
 const query = makeQuery({});
 
@@ -370,14 +380,12 @@ describe("StructuredQuery", () => {
 
     describe("aggregationOperators", () => {
       it("has the same aggregation operators when query have no custom fields", () => {
-        const queryOperators = query.aggregationOperators().map(getShortName);
-        const tableOperators = query
-          .table()
-          .aggregationOperators()
-          .map(getShortName);
-
         // NOTE: Equality check between .aggregationOperators() results leads to an OOM error due to circular references
-        expect(queryOperators).toEqual(tableOperators);
+        expect(
+          query.aggregationOperators().map(processAggregationOperator),
+        ).toEqual(
+          query.table().aggregationOperators().map(processAggregationOperator),
+        );
 
         expect(query.aggregationOperators().map(getShortName)).toEqual([
           "rows",
@@ -400,11 +408,11 @@ describe("StructuredQuery", () => {
 
           const queryOperators = queryWithoutNumericFields
             .aggregationOperators()
-            .map(getShortName);
+            .map(processAggregationOperator);
           const tableOperators = queryWithoutNumericFields
             .table()
             .aggregationOperators()
-            .map(getShortName);
+            .map(processAggregationOperator);
 
           // NOTE: Equality check between .aggregationOperators() results leads to an OOM error due to circular references
           expect(queryOperators).toEqual(tableOperators);
@@ -420,8 +428,13 @@ describe("StructuredQuery", () => {
             ["case", [["=", ORDERS.ID, 1], 11], { default: 99 }],
           );
 
-          expect(query.aggregationOperators()).not.toEqual(
-            query.table().aggregationOperators(),
+          expect(
+            query.aggregationOperators().map(processAggregationOperator),
+          ).not.toEqual(
+            query
+              .table()
+              .aggregationOperators()
+              .map(processAggregationOperator),
           );
           expect(query.aggregationOperators().map(getShortName)).toEqual([
             "rows",
@@ -462,8 +475,11 @@ describe("StructuredQuery", () => {
     describe("aggregationOperator", () => {
       it("has the same aggregation operator when query have no custom fields", () => {
         const short = "avg";
-        expect(query.aggregationOperator(short)).toEqual(
-          query.table().aggregationOperator(short),
+
+        expect(
+          processAggregationOperator(query.aggregationOperator(short)),
+        ).toEqual(
+          processAggregationOperator(query.table().aggregationOperator(short)),
         );
       });
 

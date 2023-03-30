@@ -148,14 +148,14 @@ describe("metabase-lib/operators/utils", () => {
     }
 
     it("returns nothing without DB features", () => {
-      const db = getDatabase([]);
-      const operators = getSupportedAggregationOperators(db);
+      const database = getDatabase([]);
+      const operators = getSupportedAggregationOperators(database);
       expect(operators).toHaveLength(0);
     });
 
     it("returns correct basic aggregation operators", () => {
-      const db = getDatabase(["basic-aggregations"]);
-      const operators = getSupportedAggregationOperators(db);
+      const database = getDatabase(["basic-aggregations"]);
+      const operators = getSupportedAggregationOperators(database);
       expect(operators.map(o => o.short)).toEqual([
         "rows",
         "count",
@@ -170,8 +170,8 @@ describe("metabase-lib/operators/utils", () => {
     });
 
     it("filters out operators not supported by database", () => {
-      const db = getDatabase(["standard-deviation-aggregations"]);
-      const operators = getSupportedAggregationOperators(db);
+      const database = getDatabase(["standard-deviation-aggregations"]);
+      const operators = getSupportedAggregationOperators(database);
       expect(operators).toEqual([
         expect.objectContaining({
           short: "stddev",
@@ -181,8 +181,8 @@ describe("metabase-lib/operators/utils", () => {
     });
 
     it('returns "median" aggregation operator if "percentile-aggregations" driver feature is supported', () => {
-      const db = getDatabase(["percentile-aggregations"]);
-      const operators = getSupportedAggregationOperators(db);
+      const database = getDatabase(["percentile-aggregations"]);
+      const operators = getSupportedAggregationOperators(database);
       expect(operators).toEqual([
         expect.objectContaining({
           short: "median",

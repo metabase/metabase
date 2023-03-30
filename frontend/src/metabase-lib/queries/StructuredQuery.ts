@@ -653,7 +653,7 @@ class StructuredQueryInner extends AtomicQuery {
     if (table) {
       const fieldOptions = this.fieldOptions()
         .all()
-        .map(dimension => dimension.field?.())
+        .map(dimension => dimension.field())
         .filter(field => field != null);
 
       return getAggregationOperators(table.db, fieldOptions);
