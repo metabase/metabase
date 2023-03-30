@@ -29,7 +29,7 @@
   :visibility :settings-manager)
 
 (defsetting openai-organization
-  (deferred-tru "The OpenAPI Organization ID.")
+  (deferred-tru "The OpenAI Organization ID.")
   :visibility :settings-manager)
 
 (defsetting openai-sql-inference-webhook

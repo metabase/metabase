@@ -605,7 +605,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
       {
         key: "openai-organization",
-        display_name: t`OpenAPI Organization ID`,
+        display_name: t`OpenAI Organization ID`,
         description: null,
         type: "string",
         getHidden: (_, settings) => !settings["is-metabot-enabled"],

@@ -161,6 +161,11 @@ export interface SettingDefinition {
   value?: unknown;
 }
 
+export interface OpenAiModel {
+  id: string;
+  owned_by: string;
+}
+
 export interface Settings {
   "active-users-count"?: number;
   "admin-email": string;
@@ -197,6 +202,10 @@ export interface Settings {
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
+  "openai-api-key": string | null;
+  "openai-organization": string | null;
+  "openai-model": string | null;
+  "openai-available-models": OpenAiModel[] | null;
   "other-sso-enabled?": boolean | null;
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
