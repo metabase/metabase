@@ -2,6 +2,7 @@
   ""
   (:require
    [cheshire.core :as json]
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [honey.sql :as hsql]
    [metabase.db.query :as mdb.query]
@@ -11,6 +12,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn normalize-name
@@ -148,7 +150,16 @@
     (map (fn [prompt] (update prompt :content update-contents)) messages)))
 
 (def prompt-templates
-  (delay
-   (-> (metabot-settings/metabot-get-prompt-templates-url)
-       slurp
-       (json/parse-string keyword))))
+  (memoize/ttl
+   (fn []
+     (log/info "Refreshing metabot prompt templates.")
+     (-> (metabot-settings/metabot-get-prompt-templates-url)
+         slurp
+         (json/parse-string keyword)))
+   ;; Check for updates every hour
+   :ttl/threshold (* 1000 60 60)))
+
+(defn prompt-template [template-type]
+  (->> (group-by (comp keyword :prompt_template) (prompt-templates))
+       template-type
+       (apply max-key :version)))

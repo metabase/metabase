@@ -8,16 +8,10 @@
     (let [discovered (map parse-long (re-seq #"\d+" message))]
       (first (filter candidates discovered)))))
 
-(def template
-  (delay
-   (->> (group-by (comp keyword :prompt_template) @metabot-util/prompt-templates)
-        :infer_model
-        (apply max-key :version))))
-
 (defn infer-model
   "Find the model in the db that best matches the prompt. Return nil if no good model found."
   [{{:keys [models]} :database :as context}]
-  (let [{:keys [version prompt_template] :as template} @template
+  (let [{:keys [version prompt_template] :as template} (metabot-util/prompt-template :infer_model)
         _             (log/infof "Generating SQL from prompt template: '%s:%s'" prompt_template version)
         messages      (metabot-util/prompt-template->messages template context)
         best-model-id (metabot-client/invoke-metabot

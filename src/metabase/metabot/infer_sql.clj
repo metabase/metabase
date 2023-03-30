@@ -19,17 +19,11 @@
     (let [[_pre sql _post] (str/split s #"```(sql|SQL)?")]
       (mdb.query/format-sql sql))))
 
-(def template
-  (delay
-   (->> (group-by (comp keyword :prompt_template) @metabot-util/prompt-templates)
-        :infer_sql
-        (apply max-key :version))))
-
 (defn infer-sql
   "Given a model and prompt, attempt to generate a native dataset."
   [{:keys [model] :as context}]
   (log/debug "Metabot is inferring sql.")
-  (let [{:keys [version prompt_template] :as template} @template
+  (let [{:keys [version prompt_template] :as template} (metabot-util/prompt-template :infer_sql)
         _        (log/infof "Generating SQL from prompt template: '%s:%s'" prompt_template version)
         messages (metabot-util/prompt-template->messages template context)
         {:keys [database_id inner_query]} model]
