@@ -34,16 +34,17 @@
                   DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
-    (is (= {:name         "Test Dashboard"
-            :description  nil
-            :cache_ttl    nil
-            :cards        [{:size_x  4
-                            :size_y  4
-                            :row     0
-                            :col     0
-                            :id      true
-                            :card_id true
-                            :series  true}]}
+    (is (= {:name               "Test Dashboard"
+            :auto_apply_filters true
+            :description        nil
+            :cache_ttl          nil
+            :cards              [{:size_x  4
+                                  :size_y  4
+                                  :row     0
+                                  :col     0
+                                  :id      true
+                                  :card_id true
+                                  :series  true}]}
            (update (revision/serialize-instance Dashboard (:id dashboard) dashboard)
                    :cards
                    (fn [[{:keys [id card_id series], :as card}]]
@@ -79,6 +80,14 @@
                           :id      1
                           :card_id 1
                           :series  []}]})))
+
+  (is (= "set auto apply filters to false."
+         (revision/diff-str
+          Dashboard
+          {:name               "Diff Test"
+           :auto_apply_filters true}
+          {:name               "Diff Test"
+           :auto_apply_filters false})))
 
   (is (= "changed the cache ttl from \"333\" to \"1227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
          (revision/diff-str
@@ -131,44 +140,48 @@
                                          :id      (= dashcard-id id)
                                          :card_id (= card-id card_id)
                                          :series  (= [series-id-1 series-id-2] series))])
-          empty-dashboard      {:name        "Revert Test"
-                                :description "something"
-                                :cache_ttl   nil
-                                :cards       []}
+          empty-dashboard      {:name               "Revert Test"
+                                :description        "something"
+                                :auto_apply_filters true
+                                :cache_ttl          nil
+                                :cards              []}
           serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
       (testing "original state"
-        (is (= {:name        "Test Dashboard"
-                :description nil
-                :cache_ttl   nil
-                :cards       [{:size_x  4
-                               :size_y  4
-                               :row     0
-                               :col     0
-                               :id      true
-                               :card_id true
-                               :series  true}]}
+        (is (= {:name               "Test Dashboard"
+                :description        nil
+                :cache_ttl          nil
+                :auto_apply_filters true
+                :cards              [{:size_x  4
+                                      :size_y  4
+                                      :row     0
+                                      :col     0
+                                      :id      true
+                                      :card_id true
+                                      :series  true}]}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
         (dashboard-card/delete-dashboard-card! dashboard-card (test.users/user->id :rasta))
         (t2/update! Dashboard dashboard-id
-                    {:name        "Revert Test"
-                     :description "something"})
+                    {:name               "Revert Test"
+                     :auto_apply_filters false
+                     :description        "something"})
         (testing "capture updated Dashboard state"
           (let [dashboard (t2/select-one Dashboard :id dashboard-id)]
-            (is (= empty-dashboard
+            (is (= (assoc empty-dashboard :auto_apply_filters false)
                    (revision/serialize-instance Dashboard (:id dashboard) dashboard))))))
       (testing "now do the reversion; state should return to original"
         (revision/revert-to-revision! Dashboard dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
-        (is (= {:name        "Test Dashboard"
-                :description nil
-                :cache_ttl   nil
-                :cards       [{:size_x  4
-                               :size_y  4
-                               :row     0
-                               :col     0
-                               :id      false
-                               :card_id true
-                               :series  true}]}
+        (is (= {:name               "Test Dashboard"
+                :description        nil
+                :cache_ttl          nil
+                :auto_apply_filters true
+                :cards              [{:size_x  4
+                                      :size_y  4
+                                      :row     0
+                                      :col     0
+                                      :id      false
+                                      :card_id true
+                                      :series  true}]}
                (update (revision/serialize-instance Dashboard dashboard-id (t2/select-one Dashboard :id dashboard-id))
                        :cards check-ids))))
       (testing "revert back to the empty state"

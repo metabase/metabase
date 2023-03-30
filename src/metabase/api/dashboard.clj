@@ -387,7 +387,7 @@
   permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
   superuser."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id collection_position cache_ttl auto_apply_filters]
+                   embedding_params position archived collection_id collection_position cache_ttl]
             :as dash-updates} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
@@ -401,8 +401,7 @@
    archived                (s/maybe s/Bool)
    collection_id           (s/maybe su/IntGreaterThanZero)
    collection_position     (s/maybe su/IntGreaterThanZero)
-   cache_ttl               (s/maybe su/IntGreaterThanZero)
-   auto_apply_filters      (s/maybe s/Bool)}
+   cache_ttl               (s/maybe su/IntGreaterThanZero)}
   (let [dash-before-update (api/write-check Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
