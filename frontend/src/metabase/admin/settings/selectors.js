@@ -615,8 +615,8 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`OpenAI Model`,
         description: null,
         type: "select",
-        getProps: () => {
-          const models = MetabaseSettings.get("openai-available-models") ?? [];
+        getProps: (_, settings) => {
+          const models = settings["openai-available-models"] ?? [];
 
           return {
             options: models.map(model => ({ name: model.id, value: model.id })),
