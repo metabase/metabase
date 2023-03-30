@@ -60,6 +60,7 @@ export interface CollectionItem<T = CollectionItemModel> {
   collection?: Collection;
   display?: CardDisplayType;
   personal_owner_id?: UserId;
+  moderated_status?: string;
   getIcon: () => { name: string };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;
