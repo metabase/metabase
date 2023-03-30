@@ -19,16 +19,21 @@ interface RouteProps {
   location: LocationDescriptorObject;
 }
 
+interface DatabaseLoaderProps {
+  databases: Database[];
+}
+
 interface StateProps {
   entityId: DatabaseId;
   entityType: MetabotEntityType;
   database: Database;
+  databases: Database[];
   initialPrompt?: string;
 }
 
 const mapStateToProps = (
   state: State,
-  { params, location }: RouteProps,
+  { params, location, databases }: RouteProps & DatabaseLoaderProps,
 ): StateProps => {
   const entityId = checkNotNull(extractEntityId(params.databaseId));
 
@@ -36,6 +41,7 @@ const mapStateToProps = (
     entityId,
     entityType: "database",
     database: Databases.selectors.getObject(state, { entityId }),
+    databases: databases.filter(database => database.canWrite()),
     initialPrompt: location?.query?.prompt,
   };
 };
