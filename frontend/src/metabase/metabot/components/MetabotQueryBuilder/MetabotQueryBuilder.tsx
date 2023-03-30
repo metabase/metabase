@@ -80,9 +80,10 @@ interface ErrorStateProps {
 const QueryErrorState = ({ queryError }: ErrorStateProps) => {
   return (
     <ErrorStateRoot>
-      <ErrorStateMessage>
-        {getResponseErrorMessage(queryError)}
-      </ErrorStateMessage>
+      <ErrorStateMessage
+        icon="warning"
+        message={getResponseErrorMessage(queryError)}
+      />
     </ErrorStateRoot>
   );
 };
