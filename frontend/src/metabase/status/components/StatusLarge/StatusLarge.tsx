@@ -40,7 +40,7 @@ export interface StatusLargeProps {
 
 const StatusLarge = ({
   status,
-  isActive = true,
+  isActive,
   onCollapse,
 }: StatusLargeProps): JSX.Element => {
   return (
