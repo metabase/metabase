@@ -755,6 +755,10 @@
                 (testing "nested fields are removed when json unfolding is disabled"
                   (enable-json-unfolding! false)
                   (is (empty? (nested-fields))))
+                (testing "json_unfolding is not overwritten by another DB sync"
+                  (sync/sync-database! database)
+                  (is (false? (:json_unfolding (t2/select-one Field (mt/id :json :json_bit)))))
+                  (is (empty? (nested-fields))))
                 (testing "nested fields are added when json unfolding is enabled again"
                   (enable-json-unfolding! true)
                   (is (seq (nested-fields))))))))))))
@@ -784,6 +788,10 @@
                   (enable-json-unfolding! true)
                   ;; Wait for sync to happen
                   (Thread/sleep 500)
+                  (is (seq (nested-fields))))
+                (testing "json_unfolding is not overwritten by another DB sync"
+                  (sync/sync-database! database)
+                  (is (true? (:json_unfolding (t2/select-one Field (mt/id :json :json_bit)))))
                   (is (seq (nested-fields))))
                 (testing "nested fields are removed when json unfolding is disabled again"
                   (enable-json-unfolding! false)

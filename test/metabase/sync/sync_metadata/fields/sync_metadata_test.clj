@@ -27,16 +27,14 @@
              :base-type                  :type/Integer
              :database-position          0
              :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
+             :database-is-auto-increment false}
             {:name                       "My Field"
              :database-type              "NULL"
              :base-type                  :type/Integer
              :id                         1
              :database-position          0
              :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false})))))
+             :database-is-auto-increment false})))))
 
 (deftest database-required-changed-test
   (testing "test that if database-required changes we will update it in the DB"
@@ -47,16 +45,14 @@
              :base-type                  :type/Integer
              :database-position          0
              :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
+             :database-is-auto-increment false}
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
              :id                         1
              :database-position          0
              :database-required          true
-             :database-is-auto-increment false
-             :json-unfolding             false})))))
+             :database-is-auto-increment false})))))
 
 (deftest database-is-auto-increment-changed-test
   (testing "test that if database-required changes we will update it in the DB"
@@ -67,16 +63,14 @@
              :base-type                  :type/Integer
              :database-position          0
              :database-required          false
-             :database-is-auto-increment true
-             :json-unfolding             false}
+             :database-is-auto-increment true}
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
              :id                         1
              :database-position          0
              :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false})))
+             :database-is-auto-increment false})))
     (is (= [["Field" 1 {:database_is_auto_increment false}]]
            (updates-that-will-be-performed
             {:name              "My Field"
@@ -84,54 +78,34 @@
              :base-type         :type/Integer
              :database-position 0
              ;; no :database-is-auto-increment key to test case where describe-table does not not return it
-             :database-required false
-             :json-unfolding    false}
+             :database-required false}
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
              :id                         1
              :database-position          0
              :database-required          false
-             :database-is-auto-increment true
-             :json-unfolding             false})))))
+             :database-is-auto-increment true})))))
 
 (deftest json-unfolding-test
-  (testing "test that if json-unfolding changes we will update it in the DB"
-    (is (= [["Field" 1 {:json_unfolding true}]]
+  (testing "test that if json-unfolding changes the DB doesn't get updated"
+    (is (= []
            (updates-that-will-be-performed
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
              :database-position          0
              :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             true}
+             :json-unfolding             true
+             :database-is-auto-increment false}
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
              :id                         1
              :database-position          0
              :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false})))
-    (testing "if json-unfolding is not present in the metadata, default to false"
-     (is (= [["Field" 1 {:json_unfolding false}]]
-            (updates-that-will-be-performed
-            ;; no :json-unfolding key to test case where describe-table does not not return it
-             {:name                       "My Field"
-              :database-type              "Integer"
-              :base-type                  :type/Integer
-              :database-position          0
-              :database-required          false
-              :database-is-auto-increment false}
-             {:name                       "My Field"
-              :database-type              "Integer"
-              :base-type                  :type/Integer
-              :id                         1
-              :database-position          0
-              :database-required          false
-              :database-is-auto-increment false
-              :json-unfolding             true}))))))
+             :json-unfolding             false
+             :database-is-auto-increment false})))))
 
 (deftest no-op-test
   (testing "no changes should be made (i.e., no calls to `update!`) if nothing changes"
