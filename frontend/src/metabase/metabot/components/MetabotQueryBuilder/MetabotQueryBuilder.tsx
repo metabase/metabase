@@ -9,7 +9,7 @@ import {
   getQueryResults,
   getQueryStatus,
 } from "../../selectors";
-import MetabotFeedbackForm from "../MetabotFeedbackForm";
+import MetabotFeedback from "../MetabotFeedback";
 import MetabotQueryEditor from "../MetabotQueryEditor";
 import MetabotVisualization from "../MetabotVisualization";
 import {
@@ -56,7 +56,7 @@ const MetabotQueryBuilder = ({
       ) : (
         <QueryIdleState />
       )}
-      {hasResults && <MetabotFeedbackForm />}
+      {hasResults && <MetabotFeedback />}
     </QueryBuilderRoot>
   );
 };

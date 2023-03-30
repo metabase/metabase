@@ -9,9 +9,9 @@ import { getFeedbackType } from "../../selectors";
 import MetabotMessage from "../MetabotMessage";
 import {
   FeedbackOptions,
-  FormRoot,
-  FormSection,
-} from "./MetabotFeedbackForm.styled";
+  MetabotFeedbackRoot,
+  MetabotFeedbackContent,
+} from "./MetabotFeedback.styled";
 
 interface StateProps {
   feedbackType: MetabotFeedbackType | null;
@@ -22,7 +22,7 @@ interface DispatchProps {
   onRetry: () => void;
 }
 
-type MetabotFeedbackFormProps = StateProps & DispatchProps;
+type MetabotFeedbackProps = StateProps & DispatchProps;
 
 const mapStateToProps = (state: State): StateProps => ({
   feedbackType: getFeedbackType(state),
@@ -33,19 +33,19 @@ const mapDispatchToProps: DispatchProps = {
   onRetry: () => runPromptQuery(),
 };
 
-const MetabotFeedbackForm = ({
+const MetabotFeedback = ({
   feedbackType,
   onSubmitFeedback,
   onRetry,
-}: MetabotFeedbackFormProps) => {
+}: MetabotFeedbackProps) => {
   return (
-    <FormRoot>
+    <MetabotFeedbackRoot>
       <FeedbackFormContent
         feedbackType={feedbackType}
         onSubmitFeedback={onSubmitFeedback}
         onRetry={onRetry}
       />
-    </FormRoot>
+    </MetabotFeedbackRoot>
   );
 };
 
@@ -53,7 +53,7 @@ const FeedbackFormContent = ({
   feedbackType,
   onSubmitFeedback,
   onRetry,
-}: MetabotFeedbackFormProps) => {
+}: MetabotFeedbackProps) => {
   if (!feedbackType) {
     return <FeedbackTypeSelect onSubmitFeedback={onSubmitFeedback} />;
   }
@@ -71,10 +71,10 @@ interface FeedbackRetrySuggestionProps {
 
 const FeedbackRetrySuggestion = ({ onRetry }: FeedbackRetrySuggestionProps) => {
   return (
-    <FormSection>
+    <MetabotFeedbackContent>
       <MetabotMessage>{t`Sorry, I don't always get things right the first time. I can try again, or you can rephrase your question.`}</MetabotMessage>
       <Button onClick={onRetry}>{t`Try again`}</Button>
-    </FormSection>
+    </MetabotFeedbackContent>
   );
 };
 
@@ -89,7 +89,7 @@ const FeedbackTypeSelect = ({ onSubmitFeedback }: FeedbackTypeSelectProps) => {
   const handleInvalidSql = () => onSubmitFeedback("invalid-sql");
 
   return (
-    <FormSection>
+    <MetabotFeedbackContent>
       <MetabotMessage>{t`How did I do?`}</MetabotMessage>
       <FeedbackOptions>
         <Button onClick={handleGreat}>{t`This is great!`}</Button>
@@ -101,11 +101,8 @@ const FeedbackTypeSelect = ({ onSubmitFeedback }: FeedbackTypeSelectProps) => {
         </Button>
         <Button onClick={handleInvalidSql}>{t`This isn’t valid SQL.`}</Button>
       </FeedbackOptions>
-    </FormSection>
+    </MetabotFeedbackContent>
   );
 };
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(MetabotFeedbackForm);
+export default connect(mapStateToProps, mapDispatchToProps)(MetabotFeedback);
