@@ -1,6 +1,6 @@
 (ns metabase.lib.schema.util-test
   (:require
-   [clojure.test :refer [are deftest]]
+   [clojure.test :refer [are deftest is]]
    [metabase.lib.schema.util :as lib.schema.util]))
 
 (defn- query [uuid-1 uuid-2]
@@ -47,7 +47,5 @@
      "00000000-0000-0000-0000-000000000020"]))
 
 (deftest ^:parallel unique-uuids?-test
-  (are [query expected] (= expected
-                           (lib.schema.util/unique-uuids? query))
-    query-with-no-duplicate-uuids true
-    query-with-duplicate-uuids    false))
+  (is (lib.schema.util/unique-uuids? query-with-no-duplicate-uuids))
+  (is (not (lib.schema.util/unique-uuids? query-with-duplicate-uuids))))
