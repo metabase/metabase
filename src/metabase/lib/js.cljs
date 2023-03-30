@@ -98,7 +98,10 @@
 (defn ^:export legacy-query
   "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."
   [query-map]
-  (-> query-map convert/->legacy-MBQL fix-namespaced-values clj->js))
+  (-> query-map
+      convert/->legacy-MBQL
+      fix-namespaced-values
+      (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export orderable-columns
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
