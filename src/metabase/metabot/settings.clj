@@ -19,9 +19,10 @@
   (deferred-tru "The OpenAI Organization ID.")
   :visibility :settings-manager)
 
-(defsetting metabot-get-models-url
-  (deferred-tru "The URL in which metabot versioned models are stored.")
-  :visibility :settings-manager)
+(defsetting metabot-get-prompt-templates-url
+  (deferred-tru "The URL in which metabot versioned prompt templates are stored.")
+  :visibility :settings-manager
+  :default "https://mwdsorniw4r4jkvesfyyymuexi0kkjkb.lambda-url.us-east-1.on.aws/")
 
 (defsetting is-metabot-enabled
   (deferred-tru "Is Metabot enabled?")

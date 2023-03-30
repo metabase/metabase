@@ -24,7 +24,7 @@
   "Given a model and prompt, attempt to generate a native dataset."
   [{:keys [model] :as context}]
   (log/debug "Metabot is inferring sql.")
-  (let [templates (-> (metabot-settings/metabot-get-models-url)
+  (let [templates (-> (metabot-settings/metabot-get-prompt-templates-url)
                       slurp
                       (json/parse-string keyword))
         {:keys [messages version model_type]} (->> templates
