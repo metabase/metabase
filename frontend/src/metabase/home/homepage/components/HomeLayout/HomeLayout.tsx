@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { getSetting } from "metabase/selectors/settings";
 import MetabotWidget from "metabase/metabot/components/MetabotWidget";
 import { State } from "metabase-types/store";
-import HomeGreeting from "../../containers/HomeGreeting";
+import HomeGreeting from "../HomeGreeting";
 import {
   LayoutBody,
   LayoutIllustration,

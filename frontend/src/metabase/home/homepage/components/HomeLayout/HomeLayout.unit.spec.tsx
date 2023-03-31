@@ -1,21 +1,25 @@
 import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
+import { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 import HomeLayout from "./HomeLayout";
 
-const TEST_USER = createMockUser({
-  first_name: "Testy",
-});
+interface SetupOpts {
+  currentUser?: User;
+}
 
-const setup = () => {
-  renderWithProviders(<HomeLayout />, {
-    storeInitialState: { currentUser: TEST_USER },
+const setup = ({ currentUser }: SetupOpts = {}) => {
+  const state = createMockState({
+    currentUser,
   });
+
+  renderWithProviders(<HomeLayout />, { storeInitialState: state });
 };
 
 describe("HomeLayout", () => {
   it("should render correctly", () => {
-    setup();
-    expect(screen.getByText(/Testy/)).toBeInTheDocument();
+    setup({ currentUser: createMockUser({ first_name: "Test" }) });
+    expect(screen.getByText(/Test/)).toBeInTheDocument();
   });
 });
