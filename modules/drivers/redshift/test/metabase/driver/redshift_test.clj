@@ -224,7 +224,7 @@
                         e)))))
   (log/info (u/format-color 'blue "[ok]")))
 
-(deftest ^:parallel redshift-types-test
+(deftest redshift-types-test
   (mt/test-driver
     :redshift
     (testing "Redshift specific types should be synced correctly"
@@ -260,7 +260,7 @@
                         qual-tbl-nm
                         qual-view-nm))))))))
 
-(deftest ^:parallel redshift-lbv-sync-error-test
+(deftest redshift-lbv-sync-error-test
   (mt/test-driver
     :redshift
     (testing "Late-binding view with with data types that cause a JDBC error can still be synced successfully (#21215)"
