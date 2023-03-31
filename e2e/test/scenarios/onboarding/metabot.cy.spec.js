@@ -47,8 +47,8 @@ describe("scenarios > metabot", () => {
 
   it("should allow to ask questions from the home page", () => {
     cy.createQuestion(MODEL_DETAILS);
-
     cy.visit("/");
+
     cy.findByPlaceholderText(/Ask something like/).type(PROMPT);
     cy.findByRole("button", { name: "play icon" }).click();
     cy.wait("@databasePrompt");
@@ -72,6 +72,5 @@ describe("scenarios > metabot", () => {
     cy.wait("@dataset");
     cy.findByText("Gizmo").should("be.visible");
     cy.findByText("Doohickey").should("not.exist");
-    cy.findByText("Open Editor").click();
   });
 });
