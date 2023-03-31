@@ -10,7 +10,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -35,7 +34,7 @@
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."
   []
   (into {} (for [model (descendants :toucan1/model)
-                 :when (models/model? model)
+                 :when (mdb.u/toucan-model? model)
                  :let  [table-name (some-> model t2/table-name name)]
                  :when table-name
                  ;; ignore any models defined in test namespaces.

@@ -617,7 +617,7 @@
                                          @(requiring-resolve 'metabase.test.data.users/usernames)))]])
 
 (defn do-with-model-cleanup [models f]
-  {:pre [(sequential? models) (every? models/model? models)]}
+  {:pre [(sequential? models) (every? mdb.u/toucan-model? models)]}
   (hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
