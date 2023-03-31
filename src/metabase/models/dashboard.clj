@@ -299,6 +299,7 @@
       (throw (ex-info (tru "Dashboard {0} does not have a DashboardCard with ID {1}"
                            (u/the-id dashboard) (first only-new))
                       {:status-code 404})))
+    ;; TODO: BULK update
     (doseq [dashcard new-dashcards]
       (let [;; update-dashboard-card! requires series to be a sequence of card IDs
             old-dashcard       (-> (get id->old-dashcard (:id dashcard))

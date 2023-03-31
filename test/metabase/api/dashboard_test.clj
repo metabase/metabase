@@ -28,6 +28,7 @@
             Revision
             Table
             User]]
+   [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-test :as dashboard-test]
    [metabase.models.field-values :as field-values]
@@ -1425,19 +1426,19 @@
                 :created_at             true
                 :updated_at             true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))
-        (is (= {:status "ok"}
-               (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                     {:cards [{:id     dashcard-id-1
-                                               :size_x 4
-                                               :size_y 2
-                                               :col    0
-                                               :row    0
-                                               :series [{:id series-id-1}]}
-                                              {:id     dashcard-id-2
-                                               :size_x 1
-                                               :size_y 1
-                                               :col    1
-                                               :row    3}]})))
+        ;; TODO adds tests for return
+        (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                              {:cards [{:id     dashcard-id-1
+                                        :size_x 4
+                                        :size_y 2
+                                        :col    0
+                                        :row    0
+                                        :series [{:id series-id-1}]}
+                                       {:id     dashcard-id-2
+                                        :size_x 1
+                                        :size_y 1
+                                        :col    1
+                                        :row    3}]})
         (is (= {:size_x                 4
                 :size_y                 2
                 :col                    0
@@ -1463,6 +1464,76 @@
                 :updated_at             true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))))))
 
+(deftest e2e-update-cards-test
+  (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
+    (t2.with-temp/with-temp
+      [Dashboard           {dashboard-id :id}  {}
+       Card                {card-id-1 :id}     {}
+       Card                {card-id-2 :id}     {}
+       DashboardCard       {dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id-1}
+       DashboardCard       {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id-1}
+       DashboardCard       {dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id-1}
+       Card                {series-id-1 :id}   {:name "Series Card 1"}
+       Card                {series-id-2 :id}   {:name "Series Card 2"}
+       DashboardCardSeries _                   {:dashboardcard_id dashcard-id-1, :card_id series-id-1
+                                                :position         0}]
+      (with-dashboards-in-writeable-collection [dashboard-id]
+        ;; send a request that update and create and delete some cards at the same time
+        (let [resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                         {:cards [{:id     dashcard-id-1
+                                                   :size_x 4
+                                                   :size_y 4
+                                                   :col    1
+                                                   :row    1
+                                                   ;; update series for card 1
+                                                   :series  [{:id series-id-2}]
+                                                   :card_id card-id-1}
+                                                  {:id     dashcard-id-2
+                                                   :size_x 2
+                                                   :size_y 2
+                                                   :col    2
+                                                   :row    2}
+                                                  ;; remove the dashcard3 and create a new card using negative numbers
+                                                  {:id     -1
+                                                   :size_x 1
+                                                   :size_y 1
+                                                   :col    3
+                                                   :row    3
+                                                   :card_id card-id-2
+                                                   :series  [{:id series-id-1}]}]})
+              updated-card-1 {:id           dashcard-id-1
+                              :card_id      card-id-1
+                              :dashboard_id dashboard-id
+                              :size_x       4
+                              :size_y       4
+                              :action_id    nil
+                              :row          1
+                              :col          1
+                              :series       [{:name "Series Card 2"}]}
+              updated-card-2 {:id           dashcard-id-2
+                              :card_id      card-id-1
+                              :dashboard_id dashboard-id
+                              :size_x       2
+                              :size_y       2
+                              :action_id    nil
+                              :row          2
+                              :col          2
+                              :series       []}
+              new-card       {:card_id      card-id-2
+                              :dashboard_id dashboard-id
+                              :size_x       1
+                              :size_y       1
+                              :action_id    nil
+                              :row          3
+                              :col          3
+                              :series       [{:name "Series Card 1"}]}]
+          (is (=? [updated-card-1
+                   updated-card-2
+                   new-card]
+                  resp))
+          ;; dashboard 3 is deleted
+          (is (nil? (t2/select-one DashboardCard :id dashcard-id-3))))))))
+
 (deftest update-action-cards-test
   (mt/with-actions-enabled
     (testing "PUT /api/dashboard/:id/cards"
@@ -1476,10 +1547,10 @@
                                                   :card_id model-id}]
                       DashboardCard [question-card {:dashboard_id dashboard-id, :card_id model-id}]]
         (with-dashboards-in-writeable-collection [dashboard-id]
-          (is (= {:status "ok"}
-                 (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+          ;; TODO adds test for return
+          (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
                                        {:cards [(assoc action-card :card_id model-id-2)
-                                                (assoc question-card :card_id model-id-2)]})))
+                                                (assoc question-card :card_id model-id-2)]})
           ;; Only action card should change
           (is (partial= [{:card_id model-id-2}
                          {:card_id model-id}]
