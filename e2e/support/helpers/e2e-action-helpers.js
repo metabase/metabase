@@ -1,4 +1,5 @@
 import { capitalize } from "inflection";
+import { getNativeQueryEditor } from "./e2e-bi-basics-helpers";
 
 export function setActionsEnabledForDB(dbId, enabled = true) {
   return cy.request("PUT", `/api/database/${dbId}`, {
@@ -9,7 +10,7 @@ export function setActionsEnabledForDB(dbId, enabled = true) {
 }
 
 export function fillActionQuery(query) {
-  cy.get(".ace_content:visible").type(query, {
+  getNativeQueryEditor().type(query, {
     parseSpecialCharSequences: false,
   });
 }

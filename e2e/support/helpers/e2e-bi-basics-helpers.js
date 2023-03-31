@@ -108,3 +108,7 @@ const ACTION_TYPE_TO_ICON_MAP = {
 function getIcon(actionType) {
   return ACTION_TYPE_TO_ICON_MAP[actionType];
 }
+
+export function getNativeQueryEditor() {
+  return cy.get(".ace_content:visible");
+}
