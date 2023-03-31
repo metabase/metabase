@@ -6,8 +6,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.domain-entities.converters :as converters]
-              [malli.core :as mc]
-              [metabase.lib.convert :as lib.convert]
               [metabase.lib.js :as lib.js]))))
 
 ;;; ----------------------------------- Schemas for Card -----------------------------------------
