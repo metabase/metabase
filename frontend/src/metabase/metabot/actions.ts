@@ -1,8 +1,6 @@
 import { createAction } from "redux-actions";
 import { MetabotApi } from "metabase/services";
 import { closeNavbar } from "metabase/redux/app";
-import { trackSchemaEvent } from "metabase/lib/analytics";
-import { defer, Deferred } from "metabase/lib/promise";
 import { MetabotFeedbackType } from "metabase-types/api";
 import {
   Dispatch,
@@ -10,6 +8,7 @@ import {
   MetabotEntityId,
   MetabotEntityType,
 } from "metabase-types/store";
+import { defer, Deferred } from "metabase/lib/promise";
 import Question from "metabase-lib/Question";
 import {
   getCancelQueryDeferred,
@@ -17,6 +16,7 @@ import {
   getEntityType,
   getFeedbackType,
   getIsQueryRunning,
+  getNativeQueryText,
   getPrompt,
   getPromptTemplateVersions,
   getQuestion,
@@ -141,11 +141,18 @@ export const submitFeedbackForm =
 export const SUBMIT_FEEDBACK = "metabase/metabot/SUBMIT_FEEDBACK";
 export const submitFeedback =
   () => (dispatch: Dispatch, getState: GetState) => {
-    trackSchemaEvent("metabot", "1-0-0", {
-      event: "metabot_feedback_received",
-      entity_type: getEntityType(getState()),
-      feedback_type: getFeedbackType(getState()),
-      prompt_template_versions: getPromptTemplateVersions(getState()),
+    const prompt = getPrompt(getState());
+    const entityType = getEntityType(getState());
+    const sql = getNativeQueryText(getState());
+    const feedbackType = getFeedbackType(getState());
+    const prompt_template_versions = getPromptTemplateVersions(getState());
+
+    MetabotApi.sendFeedback({
+      entity_type: entityType,
+      prompt,
+      sql,
+      feedback_type: feedbackType,
+      prompt_template_versions,
     });
 
     dispatch({ type: SUBMIT_FEEDBACK });
