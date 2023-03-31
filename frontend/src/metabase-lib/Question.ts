@@ -1460,7 +1460,7 @@ class QuestionInner {
 
   generateQueryDescription() {
     const query = this._getMLv2Query();
-    return ML.suggested_name(query);
+    return ML.suggestedName(query);
   }
 
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
