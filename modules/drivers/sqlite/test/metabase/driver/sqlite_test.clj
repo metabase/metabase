@@ -143,12 +143,11 @@
               (testing "timestamp column should exist"
                 (is (= {:name "timestamp_table"
                         :schema nil
-                        :fields #{{:name                       "created_at"
-                                   :database-type              "TIMESTAMP"
-                                   :base-type                  :type/DateTime
-                                   :database-position          0
-                                   :database-required          false
-                                   :json-unfolding             false
+                        :fields #{{:name "created_at"
+                                   :database-type "TIMESTAMP"
+                                   :base-type :type/DateTime
+                                   :database-position 0
+                                   :database-required false
                                    :database-is-auto-increment false}}}
                        (driver/describe-table driver db (t2/select-one Table :id (mt/id :timestamp_table)))))))))))))
 
