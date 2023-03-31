@@ -8,7 +8,7 @@ export function metadataProvider(
   databaseId: DatabaseId,
   metadata: Metadata,
 ): MetadataProvider {
-  return ML.metadataProvider(databaseId, metadata);
+  return ML.__GT_metadata_provider(databaseId, metadata);
 }
 
 export function displayName(query: Query, clause: Clause): string {

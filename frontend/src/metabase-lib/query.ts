@@ -15,5 +15,5 @@ export function toLegacyQuery(query: Query): DatasetQuery {
 }
 
 export function suggestedName(query: Query): string {
-  return ML.suggestedName(query);
+  return ML.suggested_name(query);
 }
