@@ -512,5 +512,4 @@ export const ActionsApi = {
 export const MetabotApi = {
   modelPrompt: POST("/api/metabot/model/:modelId"),
   databasePrompt: POST("/api/metabot/database/:databaseId"),
-  sendFeedback: POST("/api/metabot/feedback"),
 };
