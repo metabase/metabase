@@ -98,9 +98,10 @@
                  (group-memberships user)))))
 
       (testing "but it's ignored if admin is not in mappings"
-        (with-user-in-groups [user [(perms-group/admin)]]
-          (integrations.common/sync-group-memberships! user #{} #{})
-          (is (= #{"All Users" "Administrators"}
+        (with-user-in-groups [group {:name (str ::group)}
+                              user  [(perms-group/admin)]]
+          (integrations.common/sync-group-memberships! user #{group} #{group})
+          (is (= #{"All Users" "Administrators" ":metabase.integrations.common-test/group"}
                  (group-memberships user)))))
 
       (testing "add admin role if the users are mapped to it"
