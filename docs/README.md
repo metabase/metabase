@@ -180,6 +180,10 @@ Metabase's reference documentation.
 - [Auditing tools](./usage-and-performance-tools/audit.md)
 - [Admin tools](./usage-and-performance-tools/tools.md)
 
+### Cloud
+
+- [Documentation for Metabase Cloud and Store](https:www.metabase.com/docs/latest/cloud/start)
+
 ### Metabase API
 
 - [Metabase API documentation](./api-documentation.md)
