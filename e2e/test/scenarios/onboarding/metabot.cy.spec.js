@@ -1,17 +1,17 @@
-import { getNativeQueryEditor, restore } from "e2e/support/helpers";
+import { restore } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
-const TEST_PROMPT = "What's the most popular product category?";
-const TEXT_QUERY_1 = "SELECT CATEGORY FROM PRODUCTS LIMIT 1";
-const TEXT_QUERY_2 = "SELECT CATEGORY FROM PRODUCTS LIMIT 2";
+const PROMPT = "What's the most popular product category?";
+const PROMPT_QUERY = "SELECT CATEGORY FROM PRODUCTS LIMIT 1";
+const MANUAL_QUERY = "SELECT CATEGORY FROM PRODUCTS LIMIT 2";
 
-const TEST_RESPONSE = {
+const PROMPT_RESPONSE = {
   card: {
     dataset_query: {
       database: SAMPLE_DB_ID,
       type: "native",
       native: {
-        query: TEXT_QUERY_1,
+        query: PROMPT_QUERY,
       },
     },
     display: "table",
@@ -25,10 +25,11 @@ describe("scenarios > metabot", () => {
     restore();
     cy.signInAsAdmin();
     cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
-    cy.intercept("POST", "/api/metabot/model/*", TEST_RESPONSE).as(
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/metabot/model/*", PROMPT_RESPONSE).as(
       "modelPrompt",
     );
-    cy.intercept("POST", "/api/metabot/database/*", TEST_RESPONSE).as(
+    cy.intercept("POST", "/api/metabot/database/*", PROMPT_RESPONSE).as(
       "databasePrompt",
     );
   });
@@ -39,18 +40,29 @@ describe("scenarios > metabot", () => {
     cy.visit("/");
     cy.findByPlaceholderText(
       "Ask something like, how many Products have we had over time?",
-    ).type(TEST_PROMPT);
-    cy.icon("play").click();
+    ).type(PROMPT);
+    cy.findByRole("button", { name: "play icon" }).click();
     cy.wait("@databasePrompt");
-    cy.findByDisplayValue(TEST_PROMPT).should("be.visible");
+    cy.wait("@dataset");
+    cy.findByDisplayValue(PROMPT).should("be.visible");
+    cy.findByText(PROMPT_QUERY).should("not.exist");
     cy.findByText("Gizmo").should("be.visible");
     cy.findByText("Doohickey").should("not.exist");
 
     cy.findByText("Open Editor").click();
-    getNativeQueryEditor().invoke("text").should("eq", TEXT_QUERY_1);
-    getNativeQueryEditor().type("{selectall}{backspace}").type(TEXT_QUERY_2);
-    cy.icon("refresh").click();
+    cy.findByTestId("native-query-editor")
+      .type("{selectall}{backspace}")
+      .type(MANUAL_QUERY);
+    cy.findByRole("button", { name: "refresh icon" }).click();
+    cy.wait("@dataset");
     cy.findByText("Gizmo").should("be.visible");
     cy.findByText("Doohickey").should("be.visible");
+
+    cy.findByRole("button", { name: "play icon" }).click();
+    cy.wait("@databasePrompt");
+    cy.wait("@dataset");
+    cy.findByText("Gizmo").should("be.visible");
+    cy.findByText("Doohickey").should("not.exist");
+    cy.findByText("Open Editor").click();
   });
 });
