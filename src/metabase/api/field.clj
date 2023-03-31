@@ -73,7 +73,8 @@
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
     (when (and dimension-id (= :external dimension-type))
-      (t2/delete! Dimension :id dimension-id))))
+      (t2/delete! Dimension :id dimension-id)))
+  true)
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
   (and (not= old-semantic-type new-semantic-type)
@@ -96,13 +97,14 @@
     (when (and old-dim-id
                (= :internal old-dim-type)
                (not (internal-remapping-allowed? base-type new-semantic-type)))
-      (t2/delete! Dimension :id old-dim-id))))
+      (t2/delete! Dimension :id old-dim-id)))
+  true)
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update `Field` with ID."
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
-                   coercion_strategy visibility_type has_field_values settings nfc_path json_unfolding]
+                   coercion_strategy visibility_type has_field_values settings nfc_path]
             :as   body} :body}]
   {caveats            (s/maybe su/NonBlankString)
    description        (s/maybe su/NonBlankString)
@@ -114,8 +116,7 @@
    visibility_type    (s/maybe FieldVisibilityType)
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
    settings           (s/maybe su/Map)
-   nfc_path           (s/maybe [su/NonBlankString])
-   json_unfolding     (s/maybe s/Bool)}
+   nfc_path           (s/maybe [su/NonBlankString])}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
@@ -136,17 +137,19 @@
     ;; everything checks out, now update the field
     (api/check-500
      (t2/with-transaction [_conn]
-      (when removed-fk?
-        (clear-dimension-on-fk-change! field))
-      (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-      (t2/update! Field id
-                  (u/select-keys-when (assoc body
-                                             :fk_target_field_id (when-not removed-fk? fk-target-field-id)
-                                             :effective_type effective-type
-                                             :coercion_strategy coercion-strategy)
-                                      :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
-                                                 :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
-                                      :non-nil #{:display_name :settings}))))
+       (and
+        (if removed-fk?
+          (clear-dimension-on-fk-change! field)
+          true)
+        (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
+        (t2/update! Field id
+          (u/select-keys-when (assoc body
+                                     :fk_target_field_id (when-not removed-fk? fk-target-field-id)
+                                     :effective_type effective-type
+                                     :coercion_strategy coercion-strategy)
+            :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
+                       :coercion_strategy :effective_type :has_field_values :nfc_path}
+            :non-nil #{:display_name :settings})))))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
     (u/prog1 (hydrate (t2/select-one Field :id id) :dimensions)
