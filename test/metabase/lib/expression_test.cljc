@@ -220,3 +220,11 @@
            {:expressions {"one-hundred" 100}})
           -1
           [:expression {:lib/uuid (str (random-uuid))} "double-price"])))))
+
+(deftest ^:parallel expressions-names-test
+  (testing "expressions should include the original expression name"
+    (is (=? [{:name         "expr"
+              :display_name "expr"}]
+            (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                (lib/expression "expr" (lib/absolute-datetime "2020" :month))
+                lib/expressions)))))

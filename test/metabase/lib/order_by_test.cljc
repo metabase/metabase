@@ -11,8 +11,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [metabase.lib.join :as lib.join]))
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -122,25 +121,6 @@
                           :order-by     [[:asc [:aggregation 0]]]}}]
     (is (= "Sorted by Count ascending"
            (describe-legacy-query-order-by query)))))
-
-;;; TODO FIXME
-(deftest ^:parallel describe-order-by-expression-reference-test
-    ;;   it("should work with expressions" () => {
-  ;;     const query = {
-  ;;       "source-table": PRODUCTS.id
-  ;;       expressions: {
-  ;;         Foo: ["concat" "Foo " ["field" 4 null]]
-  ;;       }
-  ;;       "order-by": [["asc" ["expression" "Foo" null]]]
-  ;;     };
-  ;;     expect(base_question._getOrderByDescription(PRODUCTS query)).toEqual([
-  ;;       "Sorted by "
-  ;;       ["Foo ascending"]
-  ;;     ]);
-  ;;   });
-  ;; });
-
-  )
 
 (deftest ^:parallel orderable-columns-breakouts-test
   (testing "If query has aggregations and/or breakouts you can only order by those."
@@ -379,3 +359,38 @@
                 (lib/fields [(lib/field "VENUES" "ID")  (lib/field "CATEGORIES" "ID")])
                 (lib/append-stage)
                 (lib/orderable-columns))))))
+
+(deftest ^:parallel orderable-columns-include-expressions-test
+  (testing "orderable-columns should include expressions"
+    (is (=? [{:lib/type     :metadata/field
+              :name         "expr"
+              :display_name "expr"
+              :lib/source   :source/expressions}
+             {:name "ID"}
+             {:name "NAME"}
+             {:name "CATEGORY_ID"}
+             {:name "LATITUDE"}
+             {:name "LONGITUDE"}
+             {:name "PRICE"}
+             {:name "ID"}
+             {:name "NAME"}]
+            (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                (lib/expression "expr" (lib/absolute-datetime "2020" :month))
+                (lib/fields [(lib/field "VENUES" "ID")])
+                (lib/orderable-columns))))))
+
+(deftest ^:parallel order-by-expression-test
+  (let [query  (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
+                   (lib/fields [(lib/field "VENUES" "ID")]))
+        [expr] (lib/orderable-columns query)]
+    (is (=? {:lib/type   :metadata/field
+             :lib/source :source/expressions
+             :name       "expr"}
+            expr))
+    (let [updated-query (lib/order-by query expr)]
+      (is (=? {:stages [{:order-by [[:asc {} [:expression {} "expr"]]]}]}
+              updated-query))
+      (testing "description"
+        (is (= "Venues, Sorted by expr ascending"
+               (lib/describe-query updated-query)))))))
