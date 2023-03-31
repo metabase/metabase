@@ -182,7 +182,7 @@ Metabase's reference documentation.
 
 ### Cloud
 
-- [Documentation for Metabase Cloud and Store](https:www.metabase.com/docs/latest/cloud/start)
+- [Documentation for Metabase Cloud and Store](https://www.metabase.com/docs/latest/cloud/start)
 
 ### Metabase API
 
