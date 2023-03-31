@@ -1,12 +1,12 @@
 (ns metabase.domain-entities.card
   "Functions for building, updating and querying Cards (that is, Metabase questions)."
   (:require
+   [malli.util :as mut]
    [metabase.domain-entities.malli :as de]
    [metabase.lib.schema :as lib.schema]
    [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.domain-entities.converters :as converters]
               [malli.core :as mc]
-              [malli.util :as mut]
               [metabase.lib.convert :as lib.convert]
               [metabase.lib.js :as lib.js]))))
 
