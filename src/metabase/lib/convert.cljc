@@ -112,14 +112,13 @@
 
 (defmethod ->legacy-MBQL :default
   [x]
-  (if (and (vector? x)
-           (keyword? (first x)))
-    (clause-with-options->legacy-MBQL x)
-    (do
-      #?(:cljs (when-not (or (nil? x) (string? x) (number? x) (boolean? x) (keyword? x))
-                 (throw (ex-info "undefined ->legacy-MBQL" {:dispatch-value (lib.dispatch/dispatch-value x)
-                                                            :value x}))))
-      x)))
+  (cond
+    (and (vector? x)
+         (keyword? (first x))) (clause-with-options->legacy-MBQL x)
+    (map? x)                   (-> x
+                                   disqualify
+                                   (update-vals ->legacy-MBQL))
+    :else x))
 
 (doseq [clause [;; Aggregations
                 :count :avg :count-where :distinct
@@ -149,7 +148,7 @@
   (first (reduce (fn [[inner stage-metadata] stage]
                    [(cond-> (->legacy-MBQL stage)
                       inner          (assoc :source-query inner)
-                      stage-metadata (assoc :source-metadata stage-metadata))
+                      stage-metadata (assoc :source-metadata (mapv ->legacy-MBQL (:columns stage-metadata))))
                     ;; Get the :lib/stage-metadata off the original pMBQL stage, not the converted one.
                     (:lib/stage-metadata stage)])
                  nil
