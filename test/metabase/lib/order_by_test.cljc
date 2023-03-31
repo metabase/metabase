@@ -223,17 +223,17 @@
     (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                     (lib/expression "Category ID + 1"  (lib/+ (lib/field "VENUES" "CATEGORY_ID") 1)))]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:lib/type     :metadata/field
-                  :base_type    :type/Integer
-                  :name         "Category ID + 1"
-                  :display_name "Category ID + 1"
-                  :lib/source   :source/expressions}
-                 {:id (meta/id :venues :id) :name "ID"}
+        (is (=? [{:id (meta/id :venues :id) :name "ID"}
                  {:id (meta/id :venues :name) :name "NAME"}
                  {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
                  {:id (meta/id :venues :latitude) :name "LATITUDE"}
                  {:id (meta/id :venues :longitude) :name "LONGITUDE"}
                  {:id (meta/id :venues :price) :name "PRICE"}
+                 {:lib/type     :metadata/field
+                  :base_type    :type/Integer
+                  :name         "Category ID + 1"
+                  :display_name "Category ID + 1"
+                  :lib/source   :source/expressions}
                  {:id (meta/id :categories :id) :name "ID"}
                  {:id (meta/id :categories :name) :name "NAME"}]
                 (lib/orderable-columns query)))))))
@@ -362,35 +362,46 @@
 
 (deftest ^:parallel orderable-columns-include-expressions-test
   (testing "orderable-columns should include expressions"
-    (is (=? [{:lib/type     :metadata/field
-              :name         "expr"
-              :display_name "expr"
-              :lib/source   :source/expressions}
-             {:name "ID"}
+    (is (=? [{:name "ID"}
              {:name "NAME"}
              {:name "CATEGORY_ID"}
              {:name "LATITUDE"}
              {:name "LONGITUDE"}
              {:name "PRICE"}
-             {:name "ID"}
-             {:name "NAME"}]
+             {:lib/type     :metadata/field
+              :name         "expr"
+              :display_name "expr"
+              :lib/source   :source/expressions}
+             {:name "ID", :lib/source :source/implicitly-joinable}
+             {:name "NAME", :lib/source :source/implicitly-joinable}]
             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                 (lib/fields [(lib/field "VENUES" "ID")])
                 (lib/orderable-columns))))))
 
 (deftest ^:parallel order-by-expression-test
-  (let [query  (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
-                   (lib/fields [(lib/field "VENUES" "ID")]))
-        [expr] (lib/orderable-columns query)]
-    (is (=? {:lib/type   :metadata/field
-             :lib/source :source/expressions
-             :name       "expr"}
-            expr))
-    (let [updated-query (lib/order-by query expr)]
-      (is (=? {:stages [{:order-by [[:asc {} [:expression {} "expr"]]]}]}
-              updated-query))
-      (testing "description"
-        (is (= "Venues, Sorted by expr ascending"
-               (lib/describe-query updated-query)))))))
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/expression "expr" (lib/absolute-datetime "2020" :month))
+                  (lib/fields [(lib/field "VENUES" "ID")]))]
+    (is (= [{:id (meta/id :venues :id),          :name "ID",          :display_name "ID",          :lib/source :source/table-defaults}
+            {:id (meta/id :venues :name),        :name "NAME",        :display_name "Name",        :lib/source :source/table-defaults}
+            {:id (meta/id :venues :category-id), :name "CATEGORY_ID", :display_name "Category ID", :lib/source :source/table-defaults}
+            {:id (meta/id :venues :latitude),    :name "LATITUDE",    :display_name "Latitude",    :lib/source :source/table-defaults}
+            {:id (meta/id :venues :longitude),   :name "LONGITUDE",   :display_name "Longitude",   :lib/source :source/table-defaults}
+            {:id (meta/id :venues :price),       :name "PRICE",       :display_name "Price",       :lib/source :source/table-defaults}
+            {:name "expr", :display_name "expr", :lib/source :source/expressions}
+            {:id (meta/id :categories :id),   :name "ID",   :display_name "ID",   :lib/source :source/implicitly-joinable}
+            {:id (meta/id :categories :name), :name "NAME", :display_name "Name", :lib/source :source/implicitly-joinable}]
+           (map #(select-keys % [:id :name :display_name :lib/source])
+                (lib/orderable-columns query))))
+    (let [expr (m/find-first #(= (:name %) "expr") (lib/orderable-columns query))]
+      (is (=? {:lib/type   :metadata/field
+               :lib/source :source/expressions
+               :name       "expr"}
+              expr))
+      (let [updated-query (lib/order-by query expr)]
+        (is (=? {:stages [{:order-by [[:asc {} [:expression {} "expr"]]]}]}
+                updated-query))
+        (testing "description"
+          (is (= "Venues, Sorted by expr ascending"
+                 (lib/describe-query updated-query))))))))
