@@ -161,7 +161,7 @@ const getPlaceholder = (model?: Question) => {
   if (model) {
     return t`Ask something like, how many ${model.displayName()} have we had over time?`;
   } else {
-    return t`Ask something...`;
+    return t`Ask something…`;
   }
 };
 

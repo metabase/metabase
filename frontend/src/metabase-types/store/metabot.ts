@@ -21,5 +21,5 @@ export interface MetabotState {
   queryResults: [Dataset] | null;
   queryError: unknown;
   feedbackType: MetabotFeedbackType | null;
-  cancelQueryDeferred: Deferred<unknown>;
+  cancelQueryDeferred: Deferred | null;
 }

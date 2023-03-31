@@ -2,6 +2,7 @@ import { createSelector } from "reselect";
 import { getMetadata } from "metabase/selectors/metadata";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
 
 export const getEntityId = (state: State) => {
   return state.metabot.entityId;
@@ -40,6 +41,11 @@ export const getQueryError = (state: State) => {
 export const getFeedbackType = (state: State) => {
   return state.metabot.feedbackType;
 };
+
+export const getNativeQueryText = createSelector([getQuestion], question => {
+  const query = question?.query();
+  return query instanceof NativeQuery ? query.queryText() : undefined;
+});
 
 export const getPromptTemplateVersions = (state: State) =>
   state.metabot.promptTemplateVersions;

@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { isSmallScreen } from "metabase/lib/dom";
-import HomeLayout from "../../containers/HomeLayout";
+import HomeLayout from "../HomeLayout";
 import HomeContent from "../../containers/HomeContent";
 
 export interface HomePageProps {

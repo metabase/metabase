@@ -44,7 +44,10 @@
       "maxLength": 1024
     },
     "prompt_template_versions": {
-      "type": "array",
+      "type": [
+        "array",
+        "null"
+      ],
       "items": {
         "type": "string"
       }

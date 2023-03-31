@@ -6,7 +6,7 @@ import HomePage from "./HomePage";
 jest.mock("metabase/lib/dom");
 
 const LayoutMock = () => <div />;
-jest.mock("../../containers/HomeLayout", () => LayoutMock);
+jest.mock("../HomeLayout", () => LayoutMock);
 
 const ContentMock = () => <div />;
 jest.mock("../../containers/HomeContent", () => ContentMock);
