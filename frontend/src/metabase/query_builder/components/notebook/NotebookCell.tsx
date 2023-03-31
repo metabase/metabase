@@ -10,7 +10,9 @@ import { alpha } from "metabase/lib/colors";
 
 const CONTAINER_PADDING = "10px";
 
-const _NotebookCell = styled.div`
+type BorderSide = "top" | "right" | "bottom" | "left";
+
+const _NotebookCell = styled.div<{ color: string; padding?: string }>`
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -25,7 +27,10 @@ export const NotebookCell = Object.assign(_NotebookCell, {
   CONTAINER_PADDING,
 });
 
-const NotebookCellItemContainer = styled.div`
+const NotebookCellItemContainer = styled.div<{
+  color: string;
+  inactive?: boolean;
+}>`
   display: flex;
   align-items: center;
   font-weight: bold;
@@ -48,7 +53,12 @@ const NotebookCellItemContainer = styled.div`
   }
 `;
 
-const NotebookCellItemContentContainer = styled.div`
+const NotebookCellItemContentContainer = styled.div<{
+  color: string;
+  inactive?: boolean;
+  border?: BorderSide;
+  roundedCorners: BorderSide[];
+}>`
   display: flex;
   align-items: center;
   padding: ${CONTAINER_PADDING};
@@ -81,7 +91,19 @@ const NotebookCellItemContentContainer = styled.div`
   transition: background 300ms linear;
 `;
 
-export function NotebookCellItem(props) {
+interface NotebookCellItemProps {
+  color: string;
+  inactive?: boolean;
+  readOnly?: boolean;
+  right?: React.ReactNode;
+  containerStyle?: React.CSSProperties;
+  rightContainerStyle?: React.CSSProperties;
+  children?: React.ReactNode;
+  onClick?: React.MouseEventHandler;
+  "data-testid"?: string;
+}
+
+export function NotebookCellItem(props: NotebookCellItemProps) {
   const {
     inactive,
     color,
@@ -94,7 +116,7 @@ export function NotebookCellItem(props) {
   } = props;
 
   const hasRightSide = React.isValidElement(right) && !readOnly;
-  const mainContentRoundedCorners = ["left"];
+  const mainContentRoundedCorners: BorderSide[] = ["left"];
   if (!hasRightSide) {
     mainContentRoundedCorners.push("right");
   }
@@ -130,7 +152,14 @@ export function NotebookCellItem(props) {
 
 NotebookCellItem.displayName = "NotebookCellItem";
 
-export const NotebookCellAdd = ({ initialAddText, ...props }) => (
+interface NotebookCellAddProps extends NotebookCellItemProps {
+  initialAddText?: React.ReactNode;
+}
+
+export const NotebookCellAdd = ({
+  initialAddText,
+  ...props
+}: NotebookCellAddProps) => (
   <NotebookCellItem {...props} inactive={!!initialAddText}>
     {initialAddText || <Icon name="add" className="text-white" />}
   </NotebookCellItem>
