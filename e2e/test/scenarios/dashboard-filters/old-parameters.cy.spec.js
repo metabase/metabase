@@ -63,12 +63,20 @@ describe("scenarios > dashboard > OLD parameters", () => {
             ],
           });
 
-          visitDashboard(dashboard_id);
+          cy.intercept("PUT", `/api/dashboard/${dashboard_id}`).as(
+            "updateDashboard",
+          );
+
+          cy.wrap(dashboard_id).as("dashboardId");
         },
       );
     });
 
     it("should work", () => {
+      cy.get("@dashboardId").then(dashboard_id => {
+        visitDashboard(dashboard_id);
+      });
+
       cy.findAllByText("Doohickey");
 
       cy.button("Category").click();
@@ -87,15 +95,13 @@ describe("scenarios > dashboard > OLD parameters", () => {
       rightSidebar().findByLabelText("Auto-apply filters").click();
       cy.button("Apply").should("not.exist");
 
-      cy.button("Category").click();
-      popover().within(() => {
-        cy.findByText("Gadget").click();
-        cy.findByText("Add filter").click();
+      filterWidget().within(() => {
+        cy.icon("close").click();
       });
 
-      cy.findByText("Rows 1-6 of 200").should("be.visible");
-      cy.button("Apply").click();
       cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.button("Apply").click();
+      cy.findByText("Rows 1-6 of 200").should("be.visible");
 
       // test that the apply button won't showup even when adding a new parameter or removing existing ones
       toggleDashboardSidebar();
@@ -116,6 +122,41 @@ describe("scenarios > dashboard > OLD parameters", () => {
       cy.button("Remove").click();
       saveDashboard();
       cy.button("Apply").should("not.exist");
+    });
+
+    it("should not clear existing parameter values after editing dashboards", () => {
+      cy.get("@dashboardId").then(dashboardId => {
+        visitDashboard(dashboardId, {
+          params: {
+            category: "Gadget",
+          },
+        });
+      });
+
+      toggleDashboardSidebar();
+      filterWidget().findByText("Gadget").should("be.visible");
+      rightSidebar().within(() => {
+        cy.findByPlaceholderText("Add description")
+          .click()
+          .type("Please keep filter values 🥹")
+          .blur();
+      });
+      cy.wait("@updateDashboard");
+      filterWidget().findByText("Gadget").should("be.visible");
+      cy.findByText("Rows 1-6 of 53").should("be.visible");
+
+      rightSidebar().findByLabelText("Auto-apply filters").click();
+      cy.wait("@updateDashboard");
+      filterWidget().findByText("Gadget").should("be.visible");
+      cy.findByText("Rows 1-6 of 53").should("be.visible");
+
+      cy.findByTestId("dashboard-name-heading")
+        .click()
+        .type(" new name")
+        .blur();
+      cy.wait("@updateDashboard");
+      filterWidget().findByText("Gadget").should("be.visible");
+      cy.findByText("Rows 1-6 of 53").should("be.visible");
     });
   });
 
