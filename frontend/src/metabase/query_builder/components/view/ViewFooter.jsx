@@ -121,7 +121,10 @@ const ViewFooter = ({
               className="mx1 hide sm-show"
               question={question}
               result={result}
+              card={question.card()}
               visualizationSettings={visualizationSettings}
+              dashcardId={question.card().dashcardId}
+              dashboardId={question.card().dashboardId}
             />
           ),
           QuestionAlertWidget.shouldRender({
