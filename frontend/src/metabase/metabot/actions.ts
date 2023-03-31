@@ -51,7 +51,7 @@ export const CANCEL_QUERY = "metabase/metabot/CANCEL_QUERY";
 export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
   const cancelQueryDeferred = getCancelQueryDeferred(getState());
   if (getIsQueryRunning(getState())) {
-    cancelQueryDeferred.resolve();
+    cancelQueryDeferred?.resolve();
     dispatch({ type: CANCEL_QUERY });
   }
 };

@@ -6,11 +6,12 @@ export const createMockMetabotState = (
   entityId: null,
   entityType: null,
   card: null,
-  originalCard: null,
   prompt: "",
   queryStatus: "idle",
   queryResults: null,
   queryError: null,
   feedbackType: null,
+  promptTemplateVersions: null,
+  cancelQueryDeferred: null,
   ...opts,
 });
