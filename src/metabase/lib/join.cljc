@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -64,7 +65,8 @@
 (defmulti ^:private ->join-clause
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x)))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 ;; TODO -- should the default implementation call [[metabase.lib.query/query]]? That way if we implement a method to
 ;; create an MBQL query from a `Table`, then we'd also get [[join]] support for free?
@@ -103,7 +105,8 @@
 (defmulti ^:private ->join-condition
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x)))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod ->join-condition :default
   [_query _stage-number x]
@@ -153,7 +156,8 @@
   "Implementation for [[with-join-alias]]."
   {:arglists '([x join-alias])}
   (fn [x _join-alias]
-    (lib.dispatch/dispatch-value x)))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (mu/defn with-join-alias
   "Add a specific `join-alias` to something `x`, either a `:field` or join map. Does not recursively update other

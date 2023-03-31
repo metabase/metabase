@@ -45,7 +45,7 @@
 
   (segment [metadata-provider segment-id]
     "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
-    database. Metadata should match [[metabase.lib.metadata/SegmentMetadata]].")
+    database. Metadata should match [[metabase.lib.metadata/SegmentMetadata]]." )
 
   ;; these methods are only needed for using the methods BUILDING queries, so they're sort of optional I guess? Things
   ;; like the Query Processor, which is only manipulating already-built queries, shouldn't need to use these methods.

@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
@@ -79,21 +80,18 @@
                (map (partial lib.metadata.calculation/display-name query stage-number)
                     args)))))
 
-(defmethod lib.metadata.calculation/display-name-method :+
-  [query stage-number [_plus _opts & args]]
-  (infix-display-name query stage-number "+" args))
+(def ^:private infix-operator-display-name
+  {:+ "+"
+   :- "-"
+   :* "×"
+   :/ "÷"})
 
-(defmethod lib.metadata.calculation/display-name-method :-
-  [query stage-number [_minute _opts & args]]
-  (infix-display-name query stage-number "-" args))
+(doseq [tag [:+ :- :/ :*]]
+  (lib.hierarchy/derive tag ::infix-operator))
 
-(defmethod lib.metadata.calculation/display-name-method :/
-  [query stage-number [_divide _opts & args]]
-  (infix-display-name query stage-number "÷" args))
-
-(defmethod lib.metadata.calculation/display-name-method :*
-  [query stage-number [_multiply _opts & args]]
-  (infix-display-name query stage-number "×" args))
+(defmethod lib.metadata.calculation/display-name-method ::infix-operator
+  [query stage-number [tag _opts & args]]
+  (infix-display-name query stage-number (get infix-operator-display-name tag) args))
 
 (defn- infix-column-name
   [query stage-number operator-str args]
@@ -101,21 +99,27 @@
             (map (partial lib.metadata.calculation/column-name query stage-number)
                  args)))
 
-(defmethod lib.metadata.calculation/column-name-method :+
-  [query stage-number [_plus _opts & args]]
-  (infix-column-name query stage-number "plus" args))
+(def ^:private infix-operator-column-name
+  {:+ "plus"
+   :- "minus"
+   :/ "divided_by"
+   :* "times"})
 
-(defmethod lib.metadata.calculation/column-name-method :-
-  [query stage-number [_minute _opts & args]]
-  (infix-column-name query stage-number "minus" args))
+(defmethod lib.metadata.calculation/column-name-method ::infix-operator
+  [query stage-number [tag _opts & args]]
+  (infix-column-name query stage-number (get infix-operator-column-name tag) args))
 
-(defmethod lib.metadata.calculation/column-name-method :/
-  [query stage-number [_divide _opts & args]]
-  (infix-column-name query stage-number "divided_by" args))
-
-(defmethod lib.metadata.calculation/column-name-method :*
-  [query stage-number [_multiply _opts & args]]
-  (infix-column-name query stage-number "times" args))
+;;; `:+`, `:-`, and `:*` all have the same logic; also used for [[metabase.lib.schema.expression/type-of]].
+;;;
+;;; `:lib.type-of/type-is-type-of-arithmetic-args` is defined in [[metabase.lib.schema.expression.arithmetic]]
+(defmethod lib.metadata.calculation/type-of-method :lib.type-of/type-is-type-of-arithmetic-args
+  [query stage-number [_tag _opts & args]]
+  ;; Okay to use reduce without an init value here since we know we have >= 2 args
+  #_{:clj-kondo/ignore [:reduce-without-init]}
+  (reduce
+   types/most-specific-common-ancestor
+   (for [arg args]
+     (lib.metadata.calculation/type-of query stage-number arg))))
 
 (mu/defn ^:private interval-display-name  :- ::lib.schema.common/non-blank-string
   "e.g. something like \"- 2 days\""
@@ -162,20 +166,6 @@
        query stage-number
        update :expressions
        assoc expression-name (lib.common/->op-arg query stage-number an-expression-clause)))))
-
-(doseq [operator [:+ :- :*]]
-  (defmethod lib.metadata.calculation/type-of-method operator
-    [query stage-number [_tag _opts & args]]
-    ;; Okay to use reduce without an init value here since we know we have >= 2 args
-    #_{:clj-kondo/ignore [:reduce-without-init]}
-    (reduce types/most-specific-common-ancestor
-            (map (partial lib.metadata.calculation/type-of query stage-number)
-                 args))))
-
-;;; we always do floating-point division regardless of args.
-(defmethod lib.metadata.calculation/type-of-method :/
-  [_query _stage-number _clause]
-  :type/Float)
 
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])

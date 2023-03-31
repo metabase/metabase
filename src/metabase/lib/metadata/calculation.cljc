@@ -1,8 +1,8 @@
 (ns metabase.lib.metadata.calculation
   (:require
    [clojure.string :as str]
-   [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -17,39 +17,15 @@
   "Calculate a nice human-friendly display name for something."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x)))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmulti column-name-method
   "Calculate a database-friendly name to use for something."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x)))
-
-(defmulti type-of-method
-  "Impl for [[type-of]]."
-  {:arglists '([query stage-number x])}
-  (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x)))
-
-(defmethod type-of-method :default
-  [_query _stage-number x]
-  (lib.schema.expresssion/type-of x))
-
-(defmethod type-of-method :lib/external-op
-  [query stage-number external-op]
-  (type-of-method query stage-number (lib.common/internal-op external-op)))
-
-(defn type-of
-  "Calculate the base type of an MBQL expression. This differs slightly from [[metabase.lib.schema.expression/type-of]]
-  in that has access to a `query` and thus a metadata provider, so can do more complete type calculations."
-  ([query x]
-   (type-of query -1 x))
-
-  ([query stage-number x]
-   (or (:base-type (lib.options/options x))
-       (when (map? x)
-         (:base_type x))
-       (type-of-method query stage-number x))))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (mu/defn ^:export display-name :- ::lib.schema.common/non-blank-string
   "Calculate a nice human-friendly display name for something."
@@ -122,7 +98,8 @@
   `:aggregation` part. Return `nil` if there is nothing to describe."
   {:arglists '([query stage-number top-level-key])}
   (fn [_query _stage-number top-level-key]
-    top-level-key))
+    top-level-key)
+  :hierarchy lib.hierarchy/hierarchy)
 
 (def ^:private TopLevelKey
   "In the interest of making this easy to use in JS-land we'll accept either strings or keywords."
@@ -138,6 +115,43 @@
     top-level-key :- TopLevelKey]
    (describe-top-level-key-method query stage-number (keyword top-level-key))))
 
+(defmulti type-of-method
+  "Calculate the effective type of something. This differs from [[metabase.lib.schema.expression/type-of]] in that it is
+  called with a query/MetadataProvider and a stage number, allowing us to fully resolve information and return
+  complete, unambigous type information. Default implementation calls [[metabase.lib.schema.expression/type-of]]."
+  {:arglists '([query stage-number expr])}
+  (fn [_query _stage-number expr]
+    (lib.dispatch/dispatch-value expr))
+  :hierarchy lib.hierarchy/hierarchy)
+
+(mu/defn type-of :- ::lib.schema.common/base-type
+  "Get the effective type of an MBQL expression."
+  ([query x]
+   (type-of query -1 x))
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    x]
+   (type-of-method query stage-number x)))
+
+(defmethod type-of-method :default
+  [_query _stage-number expr]
+  (lib.schema.expresssion/type-of expr))
+
+(defmethod type-of-method :dispatch-type/fn
+  [query stage-number f]
+  (type-of query stage-number (f query stage-number)))
+
+;;; for MBQL clauses whose type is the same as the type of the first arg. Also used
+;;; for [[metabase.lib.schema.expression/type-of]].
+(defmethod type-of-method :lib.type-of/type-is-type-of-first-arg
+  [query stage-number [_tag _opts expr]]
+  (type-of query stage-number expr))
+
+;;; Ugh
+(defmethod type-of-method :lib/external-op
+  [query stage-number {:keys [operator options args]}]
+  (type-of query stage-number (into [(keyword operator) options] args)))
+
 (defmulti metadata
   "Calculate appropriate metadata for something. What this looks like depends on what we're calculating metadata for. If
   it's a reference or expression of some sort, this should return a single `:metadata/field` map (i.e., something
@@ -145,7 +159,8 @@
   definition, it should return a sequence of metadata maps for all the columns 'returned' at that stage of the query."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x)))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod metadata :default
   [query stage-number x]

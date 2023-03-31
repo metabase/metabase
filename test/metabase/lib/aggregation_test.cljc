@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -195,3 +196,48 @@
                   (lib/aggregate {:operator :sum
                                   :args [(lib.field/field q (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))]})
                   (dissoc :lib/metadata)))))))
+
+(deftest ^:parallel type-of-sum-test
+  (is (= :wow
+         (lib.metadata.calculation/type-of
+          lib.tu/venues-query
+          [:sum
+           {:lib/uuid (str (random-uuid))}
+           [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]]))))
+
+(deftest ^:parallel type-of-test
+  (testing "Make sure we can calculate correct type information for an aggregation clause like"
+    (doseq [tag  [:max
+                  :median
+                  :percentile
+                  :sum
+                  :sum-where]
+            arg  (let [field [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]]
+                   [field
+                    [:+ {:lib/uuid (str (random-uuid))} field 1]
+                    [:- {:lib/uuid (str (random-uuid))} field 1]
+                    [:* {:lib/uuid (str (random-uuid))} field 1]])
+            :let [clause [tag
+                          {:lib/uuid (str (random-uuid))}
+                          arg]]]
+      (testing (str \newline (pr-str clause))
+        (is (= (condp = (first arg)
+                 :field :metabase.lib.schema.expression/type.unknown
+                 :type/*)
+               (lib.schema.expression/type-of clause)))
+        (is (= (condp = (first arg)
+                 :field :type/BigInteger
+                 :type/Integer)
+               (lib.metadata.calculation/type-of lib.tu/venues-query clause)))))))
+
+(deftest ^:parallel expression-ref-inside-aggregation-type-of-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/expression "double-price" (lib/* (lib/field (meta/id :venues :price)) 2))
+                  (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))]
+    (is (=? [{:lib/type     :metadata/field
+              :base_type    :type/Integer
+              :name         "sum_double-price"
+              :display_name "Sum of double-price"}]
+            (lib/aggregations query)))
+    (is (= :type/Integer
+           (lib/type-of query (first (lib/aggregations query)))))))

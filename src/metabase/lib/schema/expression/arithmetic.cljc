@@ -2,6 +2,7 @@
   "Arithmetic expressions like `:+`."
   (:require
    [malli.core :as mc]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
@@ -73,21 +74,18 @@
 (mbql-clause/define-catn-mbql-clause :/ :- :type/Float
   [:args ::args.numbers])
 
-(defmethod expression/type-of* :+
-  [[_tag _opts & args]]
-  (type-of-arithmetic-args args))
+(doseq [tag [:+ :- :*]]
+  (lib.hierarchy/derive tag :lib.type-of/type-is-type-of-arithmetic-args))
 
-(defmethod expression/type-of* :-
-  [[_tag _opts & args]]
-  (type-of-arithmetic-args args))
-
-(defmethod expression/type-of* :*
+;;; `:+`, `:-`, and `:*` all have the same logic; also used for [[metabase.lib.metadata.calculation/type-of-method]]
+(defmethod expression/type-of* :lib.type-of/type-is-type-of-arithmetic-args
   [[_tag _opts & args]]
   (type-of-arithmetic-args args))
 
 (mbql-clause/define-tuple-mbql-clause :abs
   [:schema [:ref ::expression/number]])
-(expression/register-type-of-first-arg :abs)
+
+(lib.hierarchy/derive :abs :lib.type-of/type-is-type-of-first-arg)
 
 (doseq [op [:log :exp :sqrt]]
   (mbql-clause/define-tuple-mbql-clause op :- :type/Float

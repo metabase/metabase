@@ -52,8 +52,6 @@
    [:map
     [:lib/type     [:= :mbql.stage/mbql]]
     [:lib/options  ::common/options]
-    ;; TODO
-    #_[:lib/stage-metadata {:optional true} [:ref #'metabase.lib.metadata/StageMetadata]]
     [:joins        {:optional true} [:ref ::join/joins]]
     [:expressions  {:optional true} [:ref ::expression/expressions]]
     [:breakout     {:optional true} ::breakouts]

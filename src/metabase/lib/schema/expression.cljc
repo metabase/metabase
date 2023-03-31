@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.expression
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
    [metabase.shared.util.i18n :as i18n]
    [metabase.types]
@@ -10,6 +11,7 @@
 
 (comment metabase.types/keep-me)
 
+;;; TODO -- rename to `type-of-method`
 (defmulti type-of*
   "Impl for [[type-of]]. Use [[type-of]], but implement [[type-of*]].
 
@@ -27,16 +29,8 @@
     (let [dispatch-value (lib.dispatch/dispatch-value x)]
       (if (= dispatch-value :type/*)
         (type x)
-        dispatch-value))))
-
-(defmethod type-of* :default
-  [expr]
-  (throw (ex-info (i18n/tru "Don''t know how to determine the base type of {0}" (pr-str expr))
-                  {:expr expr})))
-
-(defmethod type-of* :lib/external-op
-  [{:keys [operator options args] :or {options {}}}]
-  (type-of* (into [(keyword operator) options] args)))
+        dispatch-value)))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defn- mbql-clause? [expr]
   (and (vector? expr)
@@ -61,6 +55,17 @@
         (:base-type (second expr)))
    (type-of* expr)))
 
+(defmethod type-of* :default
+  [expr]
+  (throw (ex-info (i18n/tru "Don''t know how to determine the type of {0}" (pr-str expr))
+                  {:expr expr})))
+
+;;; for MBQL clauses whose type is the same as the type of the first arg. Also used
+;;; for [[metabase.lib.metadata.calculation/type-of-method]].
+(defmethod type-of* :lib.type-of/type-is-type-of-first-arg
+  [[_tag _opts expr]]
+  (type-of expr))
+
 (defn- is-type? [x y]
   (cond
     (set? x)             (some #(is-type? % y) x)
@@ -75,13 +80,6 @@
     (assert ((some-fn keyword? set?) expr-type)
             (i18n/tru "type-of {0} returned an invalid type {1}" (pr-str expr) (pr-str expr-type)))
     (is-type? expr-type base-type)))
-
-#?(:clj
-   (defmacro register-type-of-first-arg
-     "Registers [[tag]] with [[type-of*]] in terms of its first incoming [[expr]].
-      Useful for clauses that are polymorphic on their argument."
-     [tag]
-     `(defmethod type-of* ~tag [[_tag# _opts# expr#]] (type-of expr#))))
 
 (defn- expression-schema
   "Schema that matches the following rules:
@@ -153,3 +151,7 @@
    {:min 1, :error/message ":expressions definition map of expression name -> expression"}
    ::common/non-blank-string
    ::expression])
+
+(defmethod type-of* :lib/external-op
+  [{:keys [operator options args] :or {options {}}}]
+  (type-of (into [(keyword operator) options] args)))

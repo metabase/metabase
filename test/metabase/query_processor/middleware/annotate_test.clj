@@ -405,37 +405,42 @@
     (testing "basic aggregation clauses"
       (testing "`:count` (no field)"
         (is (=? {:base_type :type/Float, :name "count_divided_by_2", :display_name "Count ÷ 2"}
-                (col-info-for-aggregation-clause [:/ [:count] 2]))))
+                (col-info-for-aggregation-clause [:/ [:count] 2])))))))
 
-      (testing "`:sum`"
-        (is (=? {:base_type :type/Integer, :name "sum_price_plus_1", :display_name "Sum of Price + 1"}
-                (mt/$ids venues
-                  (col-info-for-aggregation-clause [:sum [:+ $price 1]]))))))
+(deftest ^:parallel col-info-for-sum-test
+  (mt/with-everything-store
+    (is (=? {:base_type :type/Integer, :name "sum_price_plus_1", :display_name "Sum of Price + 1"}
+            (mt/$ids venues
+              (col-info-for-aggregation-clause [:sum [:+ $price 1]]))))))
 
+(deftest ^:parallel col-info-for-aggregation-options-test
+  (mt/with-everything-store
     (testing "`:aggregation-options`"
       (testing "`:name` and `:display-name`"
-        (is (=? {:base_type     :type/Integer
-                 :name          "sum_2"
-                 :display_name  "My custom name"}
+        (is (=? {:base_type    :type/Integer
+                 :name         "sum_2"
+                 :display_name "My custom name"}
                 (mt/$ids venues
                   (col-info-for-aggregation-clause
                    [:aggregation-options [:sum $price] {:name "sum_2", :display-name "My custom name"}])))))
 
       (testing "`:name` only"
-        (is (=? {:base_type     :type/Integer
-                 :name          "sum_2"
-                 :display_name  "Sum of Price"}
+        (is (=? {:base_type    :type/Integer
+                 :name         "sum_2"
+                 :display_name "Sum of Price"}
                 (mt/$ids venues
                   (col-info-for-aggregation-clause [:aggregation-options [:sum $price] {:name "sum_2"}])))))
 
       (testing "`:display-name` only"
-        (is (=? {:base_type     :type/Integer
-                 :name          "sum_price"
-                 :display_name  "My Custom Name"}
+        (is (=? {:base_type    :type/Integer
+                 :name         "sum_price"
+                 :display_name "My Custom Name"}
                 (mt/$ids venues
                   (col-info-for-aggregation-clause
-                   [:aggregation-options [:sum $price] {:display-name "My Custom Name"}]))))))
+                   [:aggregation-options [:sum $price] {:display-name "My Custom Name"}]))))))))
 
+(deftest ^:parallel col-info-for-aggregation-merge-driver-info-test
+  (mt/with-everything-store
     (testing (str "if a driver is kind enough to supply us with some information about the `:cols` that come back, we "
                   "should include that information in the results. Their information should be preferred over ours")
       (is (=? {:cols [{:name           "metric"
@@ -446,8 +451,10 @@
                        :field_ref      [:aggregation 0]}]}
               (add-column-info
                (mt/mbql-query venues {:aggregation [[:metric "ga:totalEvents"]]})
-               {:cols [{:name "totalEvents", :display_name "Total Events", :base_type :type/Text}]}))))
+               {:cols [{:name "totalEvents", :display_name "Total Events", :base_type :type/Text}]}))))))
 
+(deftest ^:parallel col-info-for-aggregation-with-named-expression-test
+  (mt/with-everything-store
     (testing "col info for an `expression` aggregation w/ a named expression should work as expected"
       (is (=? {:base_type :type/Integer, :name "sum_double-price", :display_name "Sum of double-price"}
               (mt/$ids venues

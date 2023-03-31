@@ -45,6 +45,7 @@
 
 (shared.ns/import-fns
   [lib.aggregation
+   aggregations
    aggregate
    count
    avg

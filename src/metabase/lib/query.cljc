@@ -4,6 +4,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
@@ -96,7 +97,8 @@
   "Implementation for [[query]]."
   {:arglists '([metadata-provider x])}
   (fn [_metadata-provider x]
-    (lib.dispatch/dispatch-value x)))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod ->query :dispatch-type/map
   [metadata-provider query]

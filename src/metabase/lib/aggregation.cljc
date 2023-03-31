@@ -195,11 +195,6 @@
 (lib.common/defop sum [x])
 (lib.common/defop sum-where [x y])
 
-(doseq [op [:max :min :median :percentile :sum :sum-where]]
-  (defmethod lib.metadata.calculation/type-of-method op
-    [query stage-number [_tag _opts x]]
-    (lib.metadata.calculation/type-of query stage-number x)))
-
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."
   ([query an-aggregate-clause]
@@ -214,14 +209,17 @@
 
 (mu/defn aggregations :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Get metadata about the aggregations in a given stage of a query."
-  [query        :- ::lib.schema/query
-   stage-number :- :int]
-  (when-let [aggregation-exprs (not-empty (:aggregation (lib.util/query-stage query stage-number)))]
-    (map-indexed (fn [i aggregation]
-                   (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)
-                         ag-ref   [:aggregation
-                                   {:lib/uuid  (str (random-uuid))
-                                    :base-type (:base_type metadata)}
-                                   i]]
-                     (assoc metadata :field_ref ag-ref, :source :aggregation)))
-                 aggregation-exprs)))
+  ([query]
+   (aggregations query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (when-let [aggregation-exprs (not-empty (:aggregation (lib.util/query-stage query stage-number)))]
+     (map-indexed (fn [i aggregation]
+                    (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)
+                          ag-ref   [:aggregation
+                                    {:lib/uuid  (str (random-uuid))
+                                     :base-type (:base_type metadata)}
+                                    i]]
+                      (assoc metadata :field_ref ag-ref, :source :aggregation)))
+                  aggregation-exprs))))

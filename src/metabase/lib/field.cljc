@@ -2,6 +2,7 @@
   (:require
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -81,6 +82,14 @@
     (update metadata :name (fn [field-name]
                              (str parent-name \. field-name)))))
 
+(defmethod lib.metadata.calculation/type-of-method :metadata/field
+  [_query _stage-number field-metadata]
+  ((some-fn :effective_type :base_type) field-metadata))
+
+(defmethod lib.metadata.calculation/type-of-method :field
+  [query stage-number field-ref]
+  (lib.metadata.calculation/type-of query stage-number (resolve-field-metadata query stage-number field-ref)))
+
 (defmethod lib.metadata.calculation/metadata :metadata/field
   [_query _stage-number field-metadata]
   field-metadata)
@@ -101,12 +110,6 @@
                           {:unit temporal-unit}))]
     (cond->> metadata
       (:parent_id metadata) (add-parent-column-metadata query))))
-
-(defmethod lib.metadata.calculation/type-of-method :field
-  [query stage-number field-ref]
-  (if-let [field-metadata (resolve-field-metadata query stage-number field-ref)]
-    (lib.metadata.calculation/type-of query stage-number field-metadata)
-    :type/*))
 
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.
@@ -140,7 +143,8 @@
 (defmulti ^:private ->field
   {:arglists '([query stage-number field])}
   (fn [_query _stage-number field]
-    (lib.dispatch/dispatch-value field)))
+    (lib.dispatch/dispatch-value field))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod ->field :field
   [_query _stage-number field-clause]
