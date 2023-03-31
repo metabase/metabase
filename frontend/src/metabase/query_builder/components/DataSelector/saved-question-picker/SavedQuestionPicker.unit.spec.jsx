@@ -7,7 +7,7 @@ import {
 } from "__support__/ui";
 import {
   createMockCollection,
-  createMockTable,
+  createMockCollectionItem,
 } from "metabase-types/api/mocks";
 import SavedQuestionPicker from "./SavedQuestionPicker";
 
@@ -52,38 +52,40 @@ function mockRootCollectionEndpoint(hasAccess) {
   }
 }
 
-function mockCollectionEndpoint(requestedCollectionName) {
-  const encodedName = encodeURIComponent(requestedCollectionName);
-  fetchMock.get(`path:/api/database/-1337/schema/${encodedName}`, [
-    createMockTable({
-      id: "card__1",
-      display_name: "B",
-      schema: requestedCollectionName,
-    }),
-    createMockTable({
-      id: "card__2",
-      display_name: "a",
-      schema: requestedCollectionName,
-    }),
-    createMockTable({
-      id: "card__3",
-      display_name: "A",
-      schema: requestedCollectionName,
-    }),
-  ]);
+function mockCollectionItems() {
+  return fetchMock.get("path:/api/collection/root/items", {
+    total: 3,
+    data: [
+      createMockCollectionItem({
+        id: 2,
+        name: "a",
+      }),
+      createMockCollectionItem({
+        id: 3,
+        name: "A",
+      }),
+      createMockCollectionItem({
+        id: 1,
+        name: "B",
+      }),
+    ],
+    models: ["card"],
+    limit: null,
+    offset: null,
+  });
 }
 
-async function setup({
-  canAccessRoot = true,
-  requestedCollectionName = "Everything else",
-} = {}) {
+async function setup({ canAccessRoot = true } = {}) {
   mockCollectionTreeEndpoint();
-  mockCollectionEndpoint(requestedCollectionName);
   mockRootCollectionEndpoint(canAccessRoot);
+  const fetchCollectionItemsMock = mockCollectionItems();
+
   renderWithProviders(
     <SavedQuestionPicker onSelect={jest.fn()} onBack={jest.fn()} />,
   );
   await waitForElementToBeRemoved(() => screen.queryAllByText("Loading..."));
+
+  return { fetchCollectionItemsMock };
 }
 
 describe("SavedQuestionPicker", () => {
@@ -95,7 +97,7 @@ describe("SavedQuestionPicker", () => {
     await setup();
 
     expect(
-      screen.getAllByTestId("tree-item-name").map(node => node.innerHTML),
+      screen.getAllByTestId("tree-item-name").map(node => node.textContent),
     ).toEqual([
       "Our analytics",
       "Your personal collection",
@@ -104,10 +106,14 @@ describe("SavedQuestionPicker", () => {
   });
 
   it("sorts saved questions case-insensitive (metabase#23693)", async () => {
-    await setup();
+    const { fetchCollectionItemsMock } = await setup();
+
+    expect(fetchCollectionItemsMock.lastCall()[0]).toMatch(
+      "sort_column=name&sort_direction=asc",
+    );
 
     expect(
-      screen.getAllByTestId("option-text").map(node => node.innerHTML),
+      screen.getAllByTestId("option-text").map(node => node.textContent),
     ).toEqual(["a", "A", "B"]);
   });
 });

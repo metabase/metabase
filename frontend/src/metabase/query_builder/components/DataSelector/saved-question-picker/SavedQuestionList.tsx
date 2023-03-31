@@ -48,8 +48,6 @@ const SavedQuestionList = ({
             }}
           >
             {({ list }: { list: CollectionItem[] }) => {
-              console.log("Collections.Loader", list);
-
               return (
                 <React.Fragment>
                   {list.map(t => {
