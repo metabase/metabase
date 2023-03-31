@@ -1,6 +1,5 @@
 (ns metabase.metabot.infer-sql
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [metabase.db.query :as mdb.query]
    [metabase.lib.native :as lib-native]
@@ -30,12 +29,13 @@
     (when-some [bot-sql (metabot-client/invoke-metabot messages extract-sql)]
       (let [final-sql     (metabot-util/bot-sql->final-sql model bot-sql)
             template-tags (lib-native/template-tags inner_query)
-            response      {:card {:dataset_query            {:database database_id
-                                                      :type     "native"
-                                                      :native   {:query         final-sql
-                                                                 :template-tags template-tags}}
-                           :display                  :table
-                           :visualization_settings   {}}
+            dataset       {:dataset_query          {:database database_id
+                                                    :type     "native"
+                                                    :native   {:query         final-sql
+                                                               :template-tags template-tags}}
+                           :display                :table
+                           :visualization_settings {}}
+            response      {:card                     dataset
                            :prompt_template_versions (vec
                                                       (conj
                                                        (:prompt_template_versions model)

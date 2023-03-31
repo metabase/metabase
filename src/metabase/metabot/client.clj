@@ -9,7 +9,10 @@
 
 (def num-choices 3)
 
-(defn find-result [{:keys [choices]} message-fn]
+(defn find-result
+  "Given a set of choices returned from the bot, find the first one returned by
+   the supplied message-fn."
+  [{:keys [choices]} message-fn]
   (or
    (some
     (fn [{:keys [message]}]
@@ -27,13 +30,8 @@
   (try
     (let [resp (openai.api/create-chat-completion
                 {:model    (metabot-settings/openai-model)
-                 ;; Just produce a single result
                  :n        num-choices
-                 ; Note - temperature of 0 is deterministic, so n > 1 will return n identical items
-                 ; :temperature 0
-                 :messages messages
-                 ;:messages (prepare-sql-generator-input model prompt)
-                 }
+                 :messages messages}
                 {:api-key      (metabot-settings/openai-api-key)
                  :organization (metabot-settings/openai-organization)})]
       (tap> {:openai-response resp})

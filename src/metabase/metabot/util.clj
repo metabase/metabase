@@ -149,17 +149,24 @@
                              (get-in context kw)))))]
     (map (fn [prompt] (update prompt :content update-contents)) messages)))
 
-(def prompt-templates
+(def ^:private prompt-templates
+  "Return a map"
   (memoize/ttl
    (fn []
      (log/info "Refreshing metabot prompt templates.")
-     (-> (metabot-settings/metabot-get-prompt-templates-url)
-         slurp
-         (json/parse-string keyword)))
+     (let [all-templates (-> (metabot-settings/metabot-get-prompt-templates-url)
+                             slurp
+                             (json/parse-string keyword))]
+       (-> (group-by (comp keyword :prompt_template) all-templates)
+           (update-vals
+            (fn [templates]
+              (let [ordered (vec (sort-by :version templates))]
+                {:latest (peek ordered)
+                 :templates ordered}))))))
    ;; Check for updates every hour
    :ttl/threshold (* 1000 60 60)))
 
-(defn prompt-template [template-type]
-  (->> (group-by (comp keyword :prompt_template) (prompt-templates))
-       template-type
-       (apply max-key :version)))
+(defn prompt-template
+  "Retrieve the lastest prompt template for a given inference type."
+  [template-type]
+  (get-in (prompt-templates) [template-type :latest]))

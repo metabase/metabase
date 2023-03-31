@@ -1,0 +1,1 @@
+(ns metabase.metabot-test)
