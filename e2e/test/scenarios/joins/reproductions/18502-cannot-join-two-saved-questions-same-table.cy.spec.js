@@ -5,7 +5,6 @@ import {
   startNewQuestion,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -21,7 +20,7 @@ describe("issue 18502", () => {
   });
 
   it("should be able to join two saved questions based on the same table (metabase#18502)", () => {
-    cy.intercept(`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as("schema");
+    cy.intercept("GET", "/api/collection/*/items?*").as("getCollectionContent");
 
     cy.createQuestion(question1);
     cy.createQuestion(question2);
@@ -31,10 +30,9 @@ describe("issue 18502", () => {
 
     cy.findByText("18502#1").click();
     cy.icon("join_left_outer").click();
-    cy.wait("@schema");
+    cy.wait("@getCollectionContent");
 
     popover().within(() => {
-      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Saved Questions").click();
       cy.findByText("18502#2").click();
     });
