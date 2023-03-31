@@ -23,8 +23,7 @@
               :semantic-type     :type/PK
               :pk?               true
               :database-required false
-              :database-is-auto-increment true
-              :json-unfolding    false}
+              :database-is-auto-increment true}
              {:name              "buyer"
               :database-type     "OBJECT"
               :base-type         :type/Dictionary
@@ -32,14 +31,12 @@
               :pk?               false
               :database-required false
               :database-is-auto-increment false
-              :json-unfolding    false
               :nested-fields     #{{:name              "name"
                                     :database-type     "VARCHAR"
                                     :base-type         :type/Text
                                     :effective-type    :type/Text
                                     :pk?               false
                                     :database-required false
-                                    :json-unfolding    false
                                     :database-is-auto-increment false}
                                    {:name              "cc"
                                     :database-type     "VARCHAR"
@@ -47,7 +44,6 @@
                                     :effective-type    :type/Text
                                     :pk?               false
                                     :database-required false
-                                    :json-unfolding    false
                                     :database-is-auto-increment false}}}
              {:name              "ts"
               :database-type     "BIGINT"
@@ -56,7 +52,6 @@
               :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
               :pk?               false
               :database-is-auto-increment false
-              :json-unfolding    false
               :database-required false}
              {:name              "toucan"
               :database-type     "OBJECT"
@@ -65,14 +60,12 @@
               :pk?               false
               :database-required false
               :database-is-auto-increment false
-              :json-unfolding    false
               :nested-fields     #{{:name              "name"
                                     :database-type     "VARCHAR"
                                     :base-type         :type/Text
                                     :effective-type    :type/Text
                                     :pk?               false
                                     :database-required false
-                                    :json-unfolding    false
                                     :database-is-auto-increment false}
                                    {:name              "details"
                                     :database-type     "OBJECT"
@@ -80,7 +73,6 @@
                                     :effective-type    :type/Dictionary
                                     :pk?               false
                                     :database-required false
-                                    :json-unfolding    false
                                     :database-is-auto-increment false
                                     :nested-fields     #{{:name              "weight"
                                                           :database-type     "DECIMAL"
@@ -89,7 +81,6 @@
                                                           :semantic-type     :type/Category
                                                           :pk?               false
                                                           :database-required false
-                                                          :json-unfolding    false
                                                           :database-is-auto-increment false}
                                                          {:name              "age"
                                                           :database-type     "INT"
@@ -97,7 +88,6 @@
                                                           :effective-type    :type/Integer
                                                           :pk?               false
                                                           :database-required false
-                                                          :json-unfolding    false
                                                           :database-is-auto-increment false}}}}}}
 
            (let [transactions-table-id   (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))
