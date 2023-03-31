@@ -7,18 +7,6 @@ import type { Aggregation as IAggregation } from "metabase-types/types/Query";
 import type { NotebookStepUiComponentProps } from "../types";
 import ClauseStep from "./ClauseStep";
 
-const aggTetherOptions = {
-  attachment: "top left",
-  targetAttachment: "bottom left",
-  offset: "0 10px",
-  constraints: [
-    {
-      to: "scrollParent",
-      attachment: "together",
-    },
-  ],
-};
-
 function AggregateStep({
   color,
   query,
@@ -33,7 +21,6 @@ function AggregateStep({
       initialAddText={t`Pick the metric you want to see`}
       items={query.aggregations()}
       renderName={item => item.displayName()}
-      tetherOptions={aggTetherOptions}
       readOnly={readOnly}
       renderPopover={aggregation => (
         <AggregationPopover

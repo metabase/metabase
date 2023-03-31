@@ -6,18 +6,6 @@ import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 import type { NotebookStepUiComponentProps } from "../types";
 import ClauseStep from "./ClauseStep";
 
-const breakoutTetherOptions = {
-  attachment: "top left",
-  targetAttachment: "bottom left",
-  offset: "10px 0",
-  constraints: [
-    {
-      to: "scrollParent",
-      attachment: "together",
-    },
-  ],
-};
-
 function BreakoutStep({
   color,
   query,
@@ -32,7 +20,6 @@ function BreakoutStep({
       initialAddText={t`Pick a column to group by`}
       items={query.breakouts()}
       renderName={item => item.displayName() ?? ""}
-      tetherOptions={breakoutTetherOptions}
       readOnly={readOnly}
       renderPopover={breakout => (
         <BreakoutPopover

@@ -1,8 +1,7 @@
 import React from "react";
 
-import type Tether from "tether";
 import Icon from "metabase/components/Icon";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import {
   NotebookCell,
   NotebookCellAdd,
@@ -18,7 +17,6 @@ interface ClauseStepProps<T> {
   isLastOpened?: boolean;
   onRemove?: ((item: T, index: number) => void) | null;
   initialAddText?: string | null;
-  tetherOptions?: Tether.ITetherOptions | null;
   readOnly?: boolean;
   "data-testid"?: string;
 }
@@ -32,18 +30,21 @@ const ClauseStep = <T,>({
   onRemove = null,
   isLastOpened = false,
   initialAddText = null,
-  tetherOptions = null,
   readOnly,
   ...props
 }: ClauseStepProps<T>): JSX.Element => {
   return (
     <NotebookCell color={color} data-testid={props["data-testid"]}>
       {items.map((item, index) => (
-        <PopoverWithTrigger
-          tetherOptions={tetherOptions}
+        <TippyPopoverWithTrigger
           key={index}
-          triggerElement={
-            <NotebookCellItem color={color} readOnly={readOnly}>
+          sizeToFit
+          renderTrigger={({ onClick }) => (
+            <NotebookCellItem
+              color={color}
+              onClick={onClick}
+              readOnly={readOnly}
+            >
               {renderName(item, index)}
               {!readOnly && onRemove && (!canRemove || canRemove(item)) && (
                 <Icon
@@ -56,26 +57,23 @@ const ClauseStep = <T,>({
                 />
               )}
             </NotebookCellItem>
-          }
-          sizeToFit
-        >
-          {renderPopover(item, index)}
-        </PopoverWithTrigger>
+          )}
+          popoverContent={renderPopover(item, index)}
+        />
       ))}
       {!readOnly && (
-        <PopoverWithTrigger
-          triggerElement={
+        <TippyPopoverWithTrigger
+          isInitiallyVisible={isLastOpened}
+          sizeToFit
+          renderTrigger={({ onClick }) => (
             <NotebookCellAdd
               color={color}
               initialAddText={items.length === 0 && initialAddText}
+              onClick={onClick}
             />
-          }
-          tetherOptions={tetherOptions}
-          sizeToFit
-          isInitiallyOpen={isLastOpened}
-        >
-          {renderPopover()}
-        </PopoverWithTrigger>
+          )}
+          popoverContent={renderPopover()}
+        />
       )}
     </NotebookCell>
   );
