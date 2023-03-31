@@ -797,15 +797,15 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti create-table!
-  "Create a table named `table-name` with a given `schema`. Drivers that support `:csv-uploads` must implement this method."
-  {:added "0.47.0", :arglists '([driver db-id table-name schema])}
+(defmulti create-table
+  "Create a table named `table-name` with a given `schema-name`."
+  {:added "0.47.0", :arglists '([driver database schema-name table-name col->type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti insert-into!
-  "Insert rows into a table named `table-name`. Rows are maps of column names to values."
-  {:added "0.47.0", :arglists '([driver db-id table-name rows])}
+(defmulti load-from-csv
+  "Loads a table from a csv file. If the table does not exist, it will be created. If the table already exists, TBD."
+  {:arglists '([driver database table-name file-name]), :added "0.47.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

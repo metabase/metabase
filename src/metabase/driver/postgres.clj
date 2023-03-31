@@ -754,3 +754,20 @@
   [driver prepared-statement i t]
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
+
+(defn- load-from-csv-sql [table column-names file-name]
+  (vec (concat [(str "COPY (?).(?)(" (str/join "," (repeat 9 "(?)")) ") FROM (?) WITH (FORMAT CSV, HEADER TRUE, ENCODING 'UTF8', QUOTE '\"', ESCAPE '\\')")]
+               [(:schema table)]
+               [(:name table)]
+               column-names
+               [file-name])))
+
+(defmethod driver/load-from-csv [:postgres]
+  [driver database schema-name table-name file-name]
+  ;; create table
+  ;; WIP: this should come from detect-schema
+  (let [cols->type {"column_name" ::csv/integer}]
+    (driver/create-table driver database schema-name table-name cols->type)
+    ;; insert data
+    (let [sql (load-from-csv-sql table (keys cols->type) file-name)]
+      (execute-write-sql! db-id sql))))
