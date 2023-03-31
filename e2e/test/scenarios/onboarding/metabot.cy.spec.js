@@ -1,9 +1,20 @@
 import { restore } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const PROMPT = "What's the most popular product category?";
 const PROMPT_QUERY = "SELECT CATEGORY FROM PRODUCTS LIMIT 1";
 const MANUAL_QUERY = "SELECT CATEGORY FROM PRODUCTS LIMIT 2";
+
+const MODEL_DETAILS = {
+  name: "Products",
+  query: {
+    "source-table": PRODUCTS_ID,
+  },
+  dataset: true,
+};
 
 const PROMPT_RESPONSE = {
   card: {
@@ -35,12 +46,10 @@ describe("scenarios > metabot", () => {
   });
 
   it("should allow to ask questions from the home page", () => {
-    cy.request("PUT", "/api/card/1", { name: "Products", dataset: true });
+    cy.createQuestion(MODEL_DETAILS);
 
     cy.visit("/");
-    cy.findByPlaceholderText(
-      "Ask something like, how many Products have we had over time?",
-    ).type(PROMPT);
+    cy.findByPlaceholderText(/Ask something like/).type(PROMPT);
     cy.findByRole("button", { name: "play icon" }).click();
     cy.wait("@databasePrompt");
     cy.wait("@dataset");
