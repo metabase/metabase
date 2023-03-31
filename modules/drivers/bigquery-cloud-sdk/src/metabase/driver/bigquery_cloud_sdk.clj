@@ -167,13 +167,19 @@
                set)})
 
 (defn- get-field-parsers [^Schema schema]
-  (into []
-        (map (fn [^Field field]
-               (let [column-type (.. field getType name)
-                     column-mode (.getMode field)
-                     method (get-method bigquery.qp/parse-result-of-type column-type)]
-                 (partial method column-type column-mode bigquery.common/*bigquery-timezone-id*))))
-        (.getFields schema)))
+  (let [default-parser (get-method bigquery.qp/parse-result-of-type :default)]
+    (into []
+          (map (fn [^Field field]
+                 (let [column-type (.. field getType name)
+                       column-mode (.getMode field)
+                       method (get-method bigquery.qp/parse-result-of-type column-type)]
+                   (when (= method default-parser)
+                     (let [column-name (.getName field)]
+                       (log/warn (trs "Warning: missing type mapping for parsing BigQuery results column {0} of type {1}."
+                                      column-name
+                                      column-type))))
+                   (partial method column-type column-mode bigquery.common/*bigquery-timezone-id*))))
+          (.getFields schema))))
 
 (defn- parse-field-value [^FieldValue cell parser]
   (when-let [v (.getValue cell)]
