@@ -87,9 +87,17 @@
                   <img class="icon" style="padding-top: 4px; padding-right: 16px; width: 100%; height: auto; max-width: 20px" src="cid:{{iconCid}}"/>
                 </td>
                 <td>
+                  {{^disableLinks}}
                   <a class="title" href="{{titleUrl}}" style="font-size: 20px; font-weight: 700; padding-bottom: 4px;">
                     {{title}}
                   </a>
+                  {{/disableLinks}}
+
+                  {{#disableLinks}}
+                  <span class="title" style="font-size: 20px; font-weight: 700; padding-bottom: 4px; color: {{applicationColor}}">
+                    {{title}}
+                  </span>
+                  {{/disableLinks}}
                 </td>
               </tr>
               {{#dashboardDescription}}
@@ -141,11 +149,13 @@
               We’ll stop sending you alerts about this question now.
               </p>
             {{/firstRunOnly?}}
+            {{^disableLinks}}
             <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
             <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">
               Sent from <a href="{{siteUrl}}" style="color: {{applicationColor}}">{{siteUrl}}</a>.
               <a href="{{notificationManagementUrl}}" style="color: {{applicationColor}}">Manage your subscriptions</a>
             </div>
+            {{/disableLinks}}
           </div>
         </td>
       </tr>

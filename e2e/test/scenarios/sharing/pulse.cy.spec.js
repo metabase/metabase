@@ -49,6 +49,7 @@ describe("scenarios > pulse", { tags: "@external" }, () => {
           },
         ],
         skip_if_empty: false,
+        disable_links: false,
       });
     });
 

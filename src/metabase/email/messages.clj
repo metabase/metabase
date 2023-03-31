@@ -307,6 +307,7 @@
           :titleUrl                  (params/dashboard-url (:id dashboard) (params/parameters pulse dashboard))
           :dashboardDescription      (:description dashboard)
           :creator                   (-> pulse :creator :common_name)
+          :disableLinks              (:disable_links pulse)
           :sectionStyle              (style/style (style/section-style))}
          (pulse-link-context pulse)))
 
@@ -460,7 +461,8 @@
 
 (defn- render-message-body
   [notification message-type message-context timezone dashboard results]
-  (let [rendered-cards  (binding [render/*include-title* true]
+  (let [rendered-cards  (binding [render/*include-title* true
+                                  render/*include-links* (not (:disableLinks message-context))]
                           (mapv #(render-result-card timezone %) results))
         icon-name       (case message-type
                           :alert :bell

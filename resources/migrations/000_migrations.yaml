@@ -14378,6 +14378,22 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v47.00-005
+      author: voldern
+      validCheckSum: ANY
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: disable_links
+                  type: boolean
+                  remarks: 'Do not include links to the dashboard, questions or subscription management in the Pulse email'
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

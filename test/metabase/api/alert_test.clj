@@ -274,6 +274,7 @@
                                  :id            true
                                  :created_at    true})]
    :skip_if_empty       true
+   :disable_links       false
    :collection_id       false
    :collection_position nil
    :dashboard_id        false

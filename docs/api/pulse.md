@@ -85,6 +85,8 @@ Create a new `Pulse`.
 
 *  **`skip_if_empty`** value may be nil, or if non-nil, value must be a boolean.
 
+*  **`disable_links`** value may be nil, or if non-nil, value must be a boolean.
+
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
@@ -107,6 +109,8 @@ Test send an unsaved pulse.
 
 *  **`skip_if_empty`** value may be nil, or if non-nil, value must be a boolean.
 
+*  **`disable_links`** value may be nil, or if non-nil, value must be a boolean.
+
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
@@ -120,6 +124,8 @@ Update a Pulse with `id`.
 ### PARAMS:
 
 *  **`skip_if_empty`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`disable_links`** value may be nil, or if non-nil, value must be a boolean.
 
 *  **`parameters`** value must be an array. Each value must be a map.
 

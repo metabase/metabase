@@ -109,11 +109,12 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Create a new `Pulse`."
-  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id parameters]} :body}]
+  [:as {{:keys [name cards channels skip_if_empty disable_links collection_id collection_position dashboard_id parameters]} :body}]
   {name                su/NonBlankString
    cards               (su/non-empty [pulse/CoercibleToCardRef])
    channels            (su/non-empty [su/Map])
    skip_if_empty       (s/maybe s/Bool)
+   disable_links       (s/maybe s/Bool)
    collection_id       (s/maybe su/IntGreaterThanZero)
    collection_position (s/maybe su/IntGreaterThanZero)
    dashboard_id        (s/maybe su/IntGreaterThanZero)
@@ -131,6 +132,7 @@
   (let [pulse-data {:name                name
                     :creator_id          api/*current-user-id*
                     :skip_if_empty       skip_if_empty
+                    :disable_links       disable_links
                     :collection_id       collection_id
                     :collection_position collection_position
                     :dashboard_id        dashboard_id
@@ -177,11 +179,12 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a Pulse with `id`."
-  [id :as {{:keys [name cards channels skip_if_empty collection_id archived parameters], :as pulse-updates} :body}]
+  [id :as {{:keys [name cards channels skip_if_empty disable_links collection_id archived parameters], :as pulse-updates} :body}]
   {name          (s/maybe su/NonBlankString)
    cards         (s/maybe (su/non-empty [pulse/CoercibleToCardRef]))
    channels      (s/maybe (su/non-empty [su/Map]))
    skip_if_empty (s/maybe s/Bool)
+   disable_links (s/maybe s/Bool)
    collection_id (s/maybe su/IntGreaterThanZero)
    archived      (s/maybe s/Bool)
    parameters    [su/Map]}
@@ -218,7 +221,7 @@
        (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
        ;; ok, now update the Pulse
        (pulse/update-pulse!
-        (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
+        (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :disable_links :collection_id :collection_position
                                            :archived :parameters])
                :id id)))))
   ;; return updated Pulse
@@ -313,11 +316,12 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/test"
   "Test send an unsaved pulse."
-  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id] :as body} :body}]
+  [:as {{:keys [name cards channels skip_if_empty disable_links collection_id collection_position dashboard_id] :as body} :body}]
   {name                su/NonBlankString
    cards               (su/non-empty [pulse/CoercibleToCardRef])
    channels            (su/non-empty [su/Map])
    skip_if_empty       (s/maybe s/Bool)
+   disable_links       (s/maybe s/Bool)
    collection_id       (s/maybe su/IntGreaterThanZero)
    collection_position (s/maybe su/IntGreaterThanZero)
    dashboard_id        (s/maybe su/IntGreaterThanZero)}

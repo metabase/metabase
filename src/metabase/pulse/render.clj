@@ -24,6 +24,10 @@
   "Should the rendered pulse include a card description? (default: `false`)"
   false)
 
+(def ^:dynamic *include-links*
+  "Should the rendered pulse include links to the card? (default: `false`)"
+  false)
+
 (s/defn ^:private make-title-if-needed :- (s/maybe common/RenderedPulseCard)
   [render-type card dashcard]
   (when *include-title*
@@ -140,6 +144,21 @@
   [card]
   (h (urls/card-url (:id card))))
 
+(s/defn ^:private make-card-wrapper :- common/RenderedPulseCard
+  "Make a wrapper for a `card` as a link to the card if `*include-links*` is true."
+  [card]
+  (let [style (style/style
+               (style/section-style)
+               {:display         :block
+                :text-decoration :none})]
+    {:attachments {}
+     :content (if *include-links*
+                [:a {:href        (card-href card)
+                     :target      "_blank"
+                     :rel         "noopener noreferrer"
+                     :style       style}]
+                [:div {:style style}])}))
+
 (s/defn render-pulse-card :- common/RenderedPulseCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
 
@@ -148,7 +167,8 @@
 - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
   scalar results where text is preferable to an image of a div of a single result."
   [render-type timezone-id :- (s/maybe s/Str) card dashcard results]
-  (let [{title :content, title-attachments :attachments} (make-title-if-needed render-type card dashcard)
+  (let [{wrapper :content} (make-card-wrapper card)
+        {title :content, title-attachments :attachments} (make-title-if-needed render-type card dashcard)
         {description :content}                           (make-description-if-needed dashcard card)
         {pulse-body       :content
          body-attachments :attachments
@@ -158,19 +178,13 @@
                        ;; Provide a horizontal scrollbar for tables that overflow container width.
                        ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
                        [:div {:style (style/style {:overflow-x :auto})}
-                        [:a {:href        (card-href card)
-                             :target      "_blank"
-                             :rel         "noopener noreferrer"
-                             :style       (style/style
-                                           (style/section-style)
-                                           {:display         :block
-                                            :text-decoration :none})}
-                         title
-                         description
-                         [:div {:class "pulse-body"
-                                :style (style/style {:display :block
-                                                     :margin  :16px})}
-                          pulse-body]]]]}
+                        (conj wrapper
+                              title
+                              description
+                              [:div {:class "pulse-body"
+                                     :style (style/style {:display :block
+                                                          :margin  :16px})}
+                               pulse-body])]]}
       text (assoc :render/text text))))
 
 (defn render-pulse-card-for-display

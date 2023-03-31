@@ -36,6 +36,7 @@ function _AddEditEmailSidebar({
   onChannelScheduleChange,
   testPulse,
   toggleSkipIfEmpty,
+  toggleDisableLinks,
   setPulse,
   handleArchive,
   setPulseParameters,
@@ -121,6 +122,19 @@ function _AddEditEmailSidebar({
             onChange={toggleSkipIfEmpty}
           />
         </div>
+        <div className="text-bold py3 flex justify-between align-center border-top">
+          <Heading>{t`Do not include links`}</Heading>
+          <Icon
+            name="info"
+            className="text-medium ml1"
+            size={12}
+            tooltip={t`Do not include links to the dashboard, questions or subscription management in the email.`}
+          />
+          <Toggle
+            value={pulse.disable_links || false}
+            onChange={toggleDisableLinks}
+          />
+        </div>
         <div className="text-bold py2 flex justify-between align-center border-top">
           <div className="flex align-center">
             <Heading>{t`Attach results`}</Heading>
@@ -166,6 +180,7 @@ _AddEditEmailSidebar.propTypes = {
   onChannelScheduleChange: PropTypes.func.isRequired,
   testPulse: PropTypes.func.isRequired,
   toggleSkipIfEmpty: PropTypes.func.isRequired,
+  toggleDisableLinks: PropTypes.func.isRequired,
   setPulse: PropTypes.func.isRequired,
   handleArchive: PropTypes.func.isRequired,
   setPulseParameters: PropTypes.func.isRequired,

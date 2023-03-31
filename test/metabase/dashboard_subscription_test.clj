@@ -328,7 +328,47 @@
                    (count (pulse.test-util/input @#'body/attached-results-text)))))
           (testing "attached-results-text should return nil since it's a slack message"
             (is (= [nil]
-                   (pulse.test-util/output @#'body/attached-results-text))))))}}))
+                   (pulse.test-util/output @#'body/attached-results-text))))))}}
+
+     "email table should not contain links to dashboard or subscription management"
+     {:pulse {:skip_if_empty false :disable_links true}
+     :card (pulse.test-util/checkins-query-card {:aggregation nil, :limit 9})
+
+     :assert
+     {:email
+      (fn [_ _]
+        (is (= (rasta-pulse-email
+                {:body [{;; No "Pulse:" prefix
+                         "Aviary KPIs" true
+                         ;; Includes dashboard description
+                         "How are the birds doing today?" true
+                         ;; Includes name of subscription creator
+                         "Sent by Rasta Toucan" true
+                         ;; Includes everything
+                         "More results have been included" false
+                         ;; Inline table
+                         "ID</th>" true
+                         ;; Span instead of link to source dashboard
+                         "<span class=\\\"title\\\"" true
+                         ;; Does not link to source dashboard
+                         "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\\"" false
+                         ;; Does not link to Metabase instance
+                         "Sent from <a href=\\\"https://metabase.com/testmb\\\"" false
+                         ;; Does not have links to subscription management page in account settings
+                         "\\\"https://metabase.com/testmb/account/notifications\\\"" false
+                         "Manage your subscriptions" false}
+                        pulse.test-util/png-attachment]})
+               (mt/summarize-multipart-email
+                #"Aviary KPIs"
+                #"How are the birds doing today?"
+                #"Sent by Rasta Toucan"
+                #"More results have been included"
+                #"ID</th>"
+                #"<span class=\"title\""
+                #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\""
+                #"Sent from <a href=\"https://metabase.com/testmb\""
+                #"\"https://metabase.com/testmb/account/notifications\""
+                #"Manage your subscriptions"))))}}))
 
 (deftest virtual-card-test
   (tests {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}

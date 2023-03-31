@@ -180,6 +180,11 @@ class SharingSidebarInner extends React.Component {
     this.setPulse({ ...pulse, skip_if_empty: !pulse.skip_if_empty });
   };
 
+  toggleDisableLinks = () => {
+    const { pulse } = this.props;
+    this.setPulse({ ...pulse, disable_links: !pulse.disable_links });
+  };
+
   setPulseParameters = parameters => {
     const { pulse } = this.props;
 
@@ -311,6 +316,7 @@ class SharingSidebarInner extends React.Component {
           )}
           testPulse={testPulse}
           toggleSkipIfEmpty={this.toggleSkipIfEmpty}
+          toggleDisableLinks={this.toggleDisableLinks}
           setPulse={this.setPulse}
           users={users}
           handleArchive={this.handleArchive}
