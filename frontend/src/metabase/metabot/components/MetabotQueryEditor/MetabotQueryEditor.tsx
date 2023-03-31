@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { checkNotNull } from "metabase/core/utils/types";
@@ -9,6 +9,16 @@ import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import { cancelQuery, runQuestionQuery, updateQuestion } from "../../actions";
 import { getQuestion } from "../../selectors";
+
+const SIDEBAR_FEATURES = {
+  dataReference: false,
+  variables: false,
+  snippets: false,
+};
+
+const RESIZABLE_BOX_PROPS = {
+  resizeHandles: [],
+};
 
 interface OwnProps {
   height: number;
@@ -46,15 +56,6 @@ const MetabotQueryEditor = ({
   const [isOpen, setIsOpen] = useState(false);
   const handleChange = (query: NativeQuery) => onChangeQuery(query.question());
 
-  const sidebarFeatures = useMemo(
-    () => ({
-      dataReference: false,
-      variables: false,
-      snippets: false,
-    }),
-    [],
-  );
-
   return (
     <NativeQueryEditor
       cancelQueryOnLeave={false}
@@ -71,7 +72,8 @@ const MetabotQueryEditor = ({
       cancelQuery={onCancelQuery}
       setDatasetQuery={handleChange}
       setIsNativeEditorOpen={setIsOpen}
-      sidebarFeatures={sidebarFeatures}
+      sidebarFeatures={SIDEBAR_FEATURES}
+      resizableBoxProps={RESIZABLE_BOX_PROPS}
     />
   );
 };
