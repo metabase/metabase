@@ -450,15 +450,17 @@
   "Returns the string of a toucan model.
 
   (model-name :m/card) => Card."
-  (fn [k]
-    (assert (keyword? k))
-    k))
+  (fn [model]
+    (assert (keyword? model))
+    model))
 
 (defmethod model-name :default
-  [k]
-  (-> k
-      name
-      str/capitalize))
+  [model]
+  (if (keyword? model)
+    (-> model
+        name
+        str/capitalize)
+    (name model)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |

@@ -52,7 +52,7 @@
 (defmethod diff-str :default
   [model o1 o2]
   (when-let [[before after] (data/diff o1 o2)]
-    (diff-string (name model) before after)))
+    (diff-string (mi/model-name model) before after)))
 
 ;;; # Revision Entity
 
@@ -98,7 +98,7 @@
   "Get the revisions for `model` with `id` in reverse chronological order."
   [model id]
   {:pre [(mdb.u/toucan-model? model) (integer? id)]}
-  (t2/select Revision, :model (name model), :model_id id, {:order-by [[:id :desc]]}))
+  (t2/select Revision, :model (mi/model-name model), :model_id id, {:order-by [[:id :desc]]}))
 
 (defn revisions+details
   "Fetch `revisions` for `model` with `id` and add details."
@@ -137,7 +137,7 @@
     ;; make sure we still have a map after calling out serialization function
     (assert (map? object))
     (t2/insert! Revision
-      :model        (name entity)
+      :model        (mi/model-name entity)
       :model_id     id
       :user_id      user-id
       :object       object

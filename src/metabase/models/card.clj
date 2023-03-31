@@ -35,7 +35,7 @@
   We'll keep this till we replace all the Card symbol in our codebase."
   :m/card)
 
-(defmethod mi/model-name :m/card [] "Card")
+(defmethod mi/model-name :m/card [_model] "Card")
 
 (methodical/defmethod t2/table-name :m/card [_model] :report_card)
 
