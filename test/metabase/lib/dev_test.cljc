@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer [are deftest is]]
    [metabase.lib.core :as lib]
-   [metabase.lib.test-metadata :as meta])
-  #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])))
+   [metabase.lib.test-metadata :as meta]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (deftest ^:parallel field-test
   (are [x] (fn? x)
