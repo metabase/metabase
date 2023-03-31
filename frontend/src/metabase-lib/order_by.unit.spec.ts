@@ -1,13 +1,16 @@
+import { createMetadata } from "__support__/sample_database_fixture";
 import type { Field } from "metabase-types/api";
+import { createMockTable } from "metabase-types/api/mocks";
+import { createProductsTitleField } from "metabase-types/api/mocks/presets";
 import { createQuery, SAMPLE_DATABASE } from "./test-helpers";
 import * as ML from "./v2";
 
 describe("order by", () => {
   describe("orderableColumns", () => {
-    const query = createQuery();
-    const columns = ML.orderableColumns(query);
-
     it("returns metadata for columns in the source table", () => {
+      const query = createQuery();
+      const columns = ML.orderableColumns(query);
+
       const ordersID = columns.find(
         ({ id }) => id === SAMPLE_DATABASE.ORDERS.ID.id,
       );
@@ -24,6 +27,9 @@ describe("order by", () => {
     });
 
     it("returns metadata for columns in implicitly joinable tables", () => {
+      const query = createQuery();
+      const columns = ML.orderableColumns(query);
+
       const productsTitle = columns.find(
         ({ id }) => id === SAMPLE_DATABASE.PRODUCTS.TITLE.id,
       );
@@ -38,20 +44,57 @@ describe("order by", () => {
         }),
       );
     });
+
+    it("returns metadata for columns in source question/model", () => {
+      const table_id = "card__1";
+      const field = createProductsTitleField({ table_id });
+      const table = createMockTable({
+        id: table_id,
+        name: "Product Model",
+        fields: [field],
+      });
+      const metadata = createMetadata(state =>
+        state.assocIn(["entities", "tables", table.id], table),
+      );
+      const columns = ML.orderableColumns(
+        createQuery({
+          databaseId: table.db_id,
+          metadata,
+          query: {
+            type: "query",
+            database: table.db_id,
+            query: { "source-table": table_id },
+          },
+        }),
+      );
+
+      const productsTitle = columns.find(
+        ({ id }) => id === field.id && field.table_id === table_id,
+      );
+
+      expect(productsTitle).toEqual({
+        id: field.id,
+        table_id,
+        name: field.name,
+        display_name: field.display_name,
+        base_type: field.base_type,
+      });
+    });
   });
 
   describe("add order by", () => {
-    const query = createQuery();
-
     it("should handle no order by clauses", () => {
+      const query = createQuery();
       expect(ML.orderBys(query)).toHaveLength(0);
     });
 
     it("should update the query", () => {
+      const query = createQuery();
       const columns = ML.orderableColumns(query);
       const productTitle = columns.find(
         column => column.id === SAMPLE_DATABASE.PRODUCTS.TITLE.id,
       );
+
       const nextQuery = ML.orderBy(query, productTitle as Field);
       const orderBys = ML.orderBys(nextQuery);
 
