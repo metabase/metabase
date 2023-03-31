@@ -10,7 +10,6 @@
    [clojure.string :as str]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -148,7 +147,7 @@
     :native   (native-query->pipeline query)
     :query    (mbql-query->pipeline query)))
 
-(mu/defn ^:private non-negative-stage-index :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+(mu/defn ^:private non-negative-stage-index :- [:int {:min 0}]
   "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on
   `stages`. `-1` = the last stage, `-2` = the penultimate stage, etc."
   [stages       :- [:sequential [:ref ::lib.schema/stage]]
@@ -162,12 +161,11 @@
                       {:num-stages (count stages)})))
     stage-number'))
 
-(defn previous-stage-number
+(mu/defn previous-stage-number :- [:maybe [:int {:min 0}]]
   "The index of the previous stage, if there is one. `nil` if there is no previous stage."
-  [{:keys [stages], :as _query} stage-number]
-  (let [stage-number (if (neg? stage-number)
-                       (+ (count stages) stage-number)
-                       stage-number)]
+  [{:keys [stages], :as _query} :- :map
+   stage-number                 :- :int]
+  (let [stage-number (non-negative-stage-index stages stage-number)]
     (when (pos? stage-number)
       (dec stage-number))))
 

@@ -16,6 +16,13 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
+(mu/defn column-metadata->expression-ref :- :mbql.clause/expression
+  "Given `:metadata/field` column metadata for an expression, construct an `:expression` reference."
+  [metadata :- lib.metadata/ColumnMetadata]
+  (let [options {:lib/uuid       (str (random-uuid))
+                 :effective-type ((some-fn :effective_type :base_type) metadata)}]
+    [:expression options (:name metadata)]))
+
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
   "Find the expression with `expression-name` in a given stage of a `query`, or throw an Exception if it doesn't
   exist."
@@ -34,11 +41,11 @@
   [{:keys [operator options args] :or {options {}}}]
   (lib.schema.expression/type-of* (into [(keyword operator) options] args)))
 
-(defmethod lib.metadata.calculation/metadata :expression
+(defmethod lib.metadata.calculation/metadata-method :expression
   [query stage-number [_expression opts expression-name, :as expression-ref]]
   (let [expression (resolve-expression query stage-number expression-name)]
     {:lib/type     :metadata/field
-     :field_ref    expression-ref
+     :lib/source   :source/expressions
      :name         expression-name
      :display_name (lib.metadata.calculation/display-name query stage-number expression-ref)
      :base_type    (or (:base-type opts)
@@ -214,5 +221,6 @@
     (let [metadata (lib.metadata.calculation/metadata query stage-number expression-definition)]
       (merge
        metadata
-       {:field_ref [:expression {:lib/uuid (str (random-uuid)), :base-type (:base_type metadata)} expression-name]
-        :source    :expressions}))))
+       {:lib/source   :source/expressions
+        :name         expression-name
+        :display-name expression-name}))))

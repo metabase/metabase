@@ -122,6 +122,7 @@
     (is (= "Sorted by Count ascending"
            (describe-legacy-query-order-by query)))))
 
+;;; TODO FIXME
 (deftest ^:parallel describe-order-by-expression-reference-test
     ;;   it("should work with expressions", () => {
   ;;     const query = {
@@ -153,11 +154,8 @@
                   :table_id           (meta/id :venues)
                   :name               "CATEGORY_ID"
                   :has_field_values   :none
-                  :source             :breakout
+                  :lib/source         :source/breakouts
                   :fk_target_field_id (meta/id :categories :id)
-                  :field_ref          [:field
-                                       {:base-type :type/Integer, :lib/uuid string?}
-                                       (meta/id :venues :category-id)]
                   :effective_type     :type/Integer
                   :id                 (meta/id :venues :category-id)
                   :display_name       "Category ID"
@@ -166,14 +164,12 @@
                   :base_type    :type/Integer
                   :name         "sum_price"
                   :display_name "Sum of Price"
-                  :field_ref    [:aggregation {:lib/uuid string?, :base-type :type/Integer} 0]
-                  :source       :aggregation}
+                  :lib/source   :source/aggregations}
                  {:lib/type     :metadata/field
                   :base_type    :type/Float
                   :name         "avg_price_plus_1"
                   :display_name "Average of Price + 1"
-                  :field_ref    [:aggregation {:lib/uuid string?, :base-type :type/Float} 1]
-                  :source       :aggregation}]
+                  :lib/source   :source/aggregations}]
                 (lib/orderable-columns query)))))))
 
 (deftest ^:parallel orderable-columns-breakouts-with-expression-test
@@ -183,11 +179,10 @@
                     (lib/breakout [:expression {:lib/uuid (str (random-uuid))} "Category ID + 1"]))]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
         (is (=? [{:lib/type     :metadata/field
-                  :field_ref    [:expression {:lib/uuid string?} "Category ID + 1"]
                   :name         "Category ID + 1"
                   :display_name "Category ID + 1"
                   :base_type    :type/Integer
-                  :source       :breakout}]
+                  :lib/source   :source/breakouts}]
                 (lib/orderable-columns query)))))))
 
 (deftest ^:parallel orderable-columns-test
@@ -198,60 +193,48 @@
                 :display_name "ID"
                 :id           (meta/id :venues :id)
                 :table_id     (meta/id :venues)
-                :base_type    :type/BigInteger
-                :field_ref    [:field {:lib/uuid string?, :base-type :type/BigInteger} (meta/id :venues :id)]}
+                :base_type    :type/BigInteger}
                {:lib/type     :metadata/field
                 :name         "NAME"
                 :display_name "Name"
                 :id           (meta/id :venues :name)
                 :table_id     (meta/id :venues)
-                :base_type    :type/Text
-                :field_ref    [:field {:lib/uuid string?, :base-type :type/Text} (meta/id :venues :name)]}
+                :base_type    :type/Text}
                {:lib/type     :metadata/field
                 :name         "CATEGORY_ID"
                 :display_name "Category ID"
                 :id           (meta/id :venues :category-id)
-                :table_id     (meta/id :venues)
-                :field_ref    [:field {:lib/uuid string?, :base-type :type/Integer} (meta/id :venues :category-id)]}
+                :table_id     (meta/id :venues)}
                {:lib/type     :metadata/field
                 :name         "LATITUDE"
                 :display_name "Latitude"
                 :id           (meta/id :venues :latitude)
                 :table_id     (meta/id :venues)
-                :base_type    :type/Float
-                :field_ref    [:field {:lib/uuid string?, :base-type :type/Float} (meta/id :venues :latitude)]}
+                :base_type    :type/Float}
                {:lib/type     :metadata/field
                 :name         "LONGITUDE"
                 :display_name "Longitude"
                 :id           (meta/id :venues :longitude)
                 :table_id     (meta/id :venues)
-                :base_type    :type/Float
-                :field_ref    [:field {:lib/uuid string?, :base-type :type/Float} (meta/id :venues :longitude)]}
+                :base_type    :type/Float}
                {:lib/type     :metadata/field
                 :name         "PRICE"
                 :display_name "Price"
                 :id           (meta/id :venues :price)
                 :table_id     (meta/id :venues)
-                :base_type    :type/Integer
-                :field_ref    [:field {:lib/uuid string?, :base-type :type/Integer} (meta/id :venues :price)]}
+                :base_type    :type/Integer}
                {:lib/type     :metadata/field
                 :name         "ID"
                 :display_name "ID"
                 :id           (meta/id :categories :id)
                 :table_id     (meta/id :categories)
-                :base_type    :type/BigInteger
-                :field_ref    [:field
-                               {:lib/uuid string?, :base-type :type/BigInteger, :source-field (meta/id :venues :category-id)}
-                               (meta/id :categories :id)]}
+                :base_type    :type/BigInteger}
                {:lib/type     :metadata/field
                 :name         "NAME"
                 :display_name "Name"
                 :id           (meta/id :categories :name)
                 :table_id     (meta/id :categories)
-                :base_type    :type/Text
-                :field_ref    [:field
-                               {:lib/uuid string?, :base-type :type/Text, :source-field (meta/id :venues :category-id)}
-                               (meta/id :categories :name)]}]
+                :base_type    :type/Text}]
               (lib/orderable-columns query))))))
 
 (deftest ^:parallel orderable-expressions-test
@@ -261,12 +244,9 @@
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
         (is (=? [{:lib/type     :metadata/field
                   :base_type    :type/Integer
-                  :name         "category_id_plus_1"
+                  :name         "Category ID + 1"
                   :display_name "Category ID + 1"
-                  :field_ref    [:expression
-                                 {:lib/uuid string?, :base-type :type/Integer}
-                                 "Category ID + 1"]
-                  :source       :expressions}
+                  :lib/source   :source/expressions}
                  {:id (meta/id :venues :id), :name "ID"}
                  {:id (meta/id :venues :name), :name "NAME"}
                  {:id (meta/id :venues :category-id), :name "CATEGORY_ID"}
@@ -315,20 +295,14 @@
                   :source_alias "Cat"
                   :id           (meta/id :categories :id)
                   :table_id     (meta/id :categories)
-                  :base_type    :type/BigInteger
-                  :field_ref    [:field
-                                 {:lib/uuid string?, :base-type :type/BigInteger, :join-alias "Cat"}
-                                 (meta/id :categories :id)]}
+                  :base_type    :type/BigInteger}
                  {:lib/type     :metadata/field
                   :name         "NAME"
                   :display_name "Categories → Name"
                   :source_alias "Cat"
                   :id           (meta/id :categories :name)
                   :table_id     (meta/id :categories)
-                  :base_type    :type/Text
-                  :field_ref    [:field
-                                 {:lib/uuid string?, :base-type :type/Text, :join-alias "Cat"}
-                                 (meta/id :categories :name)]}]
+                  :base_type    :type/Text}]
                 (lib/orderable-columns query)))))))
 
 (deftest ^:parallel orderable-columns-source-metadata-test
@@ -336,23 +310,17 @@
     (let [query (lib.tu/query-with-card-source-table)]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
         (is (=? [{:name "ID"
-                  :base_type :type/BigInteger
-                  :field_ref [:field {:lib/uuid string?, :base-type :type/BigInteger} "ID"]}
+                  :base_type :type/BigInteger}
                  {:name "NAME"
-                  :base_type :type/Text
-                  :field_ref [:field {:lib/uuid string?, :base-type :type/Text} "NAME"]}
+                  :base_type :type/Text}
                  {:name "CATEGORY_ID"
-                  :base_type :type/Integer
-                  :field_ref [:field {:lib/uuid string?, :base-type :type/Integer} "CATEGORY_ID"]}
+                  :base_type :type/Integer}
                  {:name "LATITUDE"
-                  :base_type :type/Float
-                  :field_ref [:field {:lib/uuid string?, :base-type :type/Float} "LATITUDE"]}
+                  :base_type :type/Float}
                  {:name "LONGITUDE"
-                  :base_type :type/Float
-                  :field_ref [:field {:lib/uuid string?, :base-type :type/Float} "LONGITUDE"]}
+                  :base_type :type/Float}
                  {:name "PRICE"
-                  :base_type :type/Integer
-                  :field_ref [:field {:lib/uuid string?, :base-type :type/Integer} "PRICE"]}]
+                  :base_type :type/Integer}]
                 (lib/orderable-columns query)))))))
 
 (deftest ^:parallel orderable-columns-e2e-test

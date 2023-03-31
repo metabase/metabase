@@ -90,7 +90,7 @@
   (is (=? {:base_type    :type/Integer
            :name         "double-price"
            :display_name "double-price"
-           :field_ref    [:expression {:lib/uuid string?} "double-price"]}
+           :lib/source   :source/expressions}
           (lib.metadata.calculation/metadata
            (lib.tu/venues-query-with-last-stage
             {:expressions {"double-price" [:*
@@ -110,8 +110,7 @@
     (is (=? [{:name         "prev_month"
               :display_name "prev_month"
               :base_type    :type/DateTime
-              :source       :fields
-              :field_ref    [:expression {:lib/uuid string?} "prev_month"]}]
+              :lib/source   :source/fields}]
             (lib.metadata.calculation/metadata query -1 query)))))
 
 (deftest ^:parallel date-interval-names-test
@@ -165,7 +164,6 @@
     (testing "Uses the first clause"
       (testing "Gets the type information from the field"
         (is (=? {:name         "expr"
-                 :field_ref    [:expression {} "expr"]
                  :display_name "expr"
                  :base_type    :type/Text}
                 (infer-first [:coalesce
@@ -178,8 +176,7 @@
       (testing "Gets the type information from the literal"
         (is (=? {:base_type    :type/Text
                  :name         "expr"
-                 :display_name "expr"
-                 :field_ref    [:expression {} "expr"]}
+                 :display_name "expr"}
                 (infer-first [:coalesce {:lib/uuid (str (random-uuid))} "bar" (lib.tu/field-clause :venues :name)])))))))
 
 (deftest ^:parallel infer-case-test
@@ -187,7 +184,6 @@
     (testing "Uses first available type information"
       (testing "From a field"
         (is (=? {:name         "expr"
-                 :field_ref    [:expression {} "expr"]
                  :display_name "expr"
                  :base_type    :type/Text}
                 (infer-first [:coalesce
@@ -203,7 +199,7 @@
   (is (=? {:base_type    :type/DateTime
            :name         "last-login-plus-2"
            :display_name "last-login-plus-2"
-           :field_ref    [:expression {} "last-login-plus-2"]}
+           :lib/source   :source/expressions}
           (lib.metadata.calculation/metadata
            (lib.tu/venues-query-with-last-stage
             {:expressions {"last-login-plus-2" [:datetime-add
