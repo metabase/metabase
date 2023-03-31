@@ -6,10 +6,10 @@ ci: &ci
   - ".github/**/!(*.md)"
 
 shared_sources: &shared_sources
-  - "shared/src"
+  - "shared/src/**"
 
 shared_specs: &shared_specs
-  - "shared/test"
+  - "shared/test/**"
 
 frontend_sources: &frontend_sources
   - *shared_sources
