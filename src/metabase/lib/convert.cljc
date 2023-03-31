@@ -70,11 +70,7 @@
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
   (let [[tag opts & args] (->pMBQL aggregation)]
-    (into [tag (merge opts
-                      options
-                      ;; Keep track of the keys of :aggregation-options in case of converting back with ->legacy-MBQL.
-                      {:lib/aggregation-options (keys options)})]
-          args)))
+    (into [tag (merge opts options)] args)))
 
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
@@ -101,6 +97,12 @@
        (remove lib-key?)
        (select-keys x)))
 
+(defn- aggregation->legacy-MBQL [[tag options & args]]
+  (let [inner (into [tag] (map ->legacy-MBQL args))]
+    (if-let [aggregation-opts (not-empty (disqualify options))]
+      [:aggregation-options inner aggregation-opts]
+      inner)))
+
 (defn- clause-with-options->legacy-MBQL [[k options & args]]
   (if (map? options)
     (into [k] (concat (map ->legacy-MBQL args)
@@ -110,14 +112,31 @@
 
 (defmethod ->legacy-MBQL :default
   [x]
-  (if (and (vector? x)
-           (keyword? (first x)))
-    (clause-with-options->legacy-MBQL x)
-    (do
-      #?(:cljs (when-not (or (nil? x) (string? x) (number? x) (boolean? x) (keyword? x))
-                 (throw (ex-info "undefined ->legacy-MBQL" {:dispatch-value (lib.dispatch/dispatch-value x)
-                                                            :value x}))))
-      x)))
+  (cond
+    (and (vector? x)
+         (keyword? (first x))) (clause-with-options->legacy-MBQL x)
+    (map? x)                   (-> x
+                                   disqualify
+                                   (update-vals ->legacy-MBQL))
+    :else x))
+
+(doseq [clause [;; Aggregations
+                :count :avg :count-where :distinct
+                :max :median :min :percentile
+                :share :stddev :sum :sum-where
+
+                ;; Expressions
+                :+ :- :* :/
+                :case :coalesce
+                :abs :log :exp :sqrt :ceil :floor :round :power :interval
+                :relative-datetime :time :absolute-datetime :now :convert-timezone
+                :get-week :get-year :get-month :get-day :get-hour
+                :get-minute :get-second :get-quarter
+                :datetime-add :datetime-subtract
+                :concat :substring :replace :regexextract :length
+                :trim :ltrim :rtrim :upper :lower]]
+  (defmethod ->legacy-MBQL clause [input]
+    (aggregation->legacy-MBQL input)))
 
 (defn- chain-stages [{:keys [stages]}]
   ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
@@ -129,7 +148,7 @@
   (first (reduce (fn [[inner stage-metadata] stage]
                    [(cond-> (->legacy-MBQL stage)
                       inner          (assoc :source-query inner)
-                      stage-metadata (assoc :source-metadata stage-metadata))
+                      stage-metadata (assoc :source-metadata (mapv ->legacy-MBQL (:columns stage-metadata))))
                     ;; Get the :lib/stage-metadata off the original pMBQL stage, not the converted one.
                     (:lib/stage-metadata stage)])
                  nil
@@ -160,17 +179,12 @@
                (update-vals ->legacy-MBQL))
            (chain-stages base))))
 
-(defmethod ->legacy-MBQL :mbql/aggregation-options [[tag options & args]]
-  (let [aggregation-keys    (:lib/aggregation-options options)
-        aggregation-options (select-keys options aggregation-keys)
-        inner-options       (apply dissoc options :lib/aggregation-options aggregation-keys)
-        inner               (into [tag inner-options] args)]
-    [:aggregation-options (->legacy-MBQL inner) aggregation-options]))
-
 (defmethod ->legacy-MBQL :mbql.stage/mbql [stage]
   (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
-          (disqualify stage)
-          stage-keys))
+          (-> stage
+              disqualify
+              (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %)))
+          (remove #{:aggregation} stage-keys)))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage

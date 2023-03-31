@@ -60,7 +60,7 @@
   #?@(:clj
       [pretty.core/PrettyPrintable
        (pretty [_this]
-               (list `->CachedProxyMetadataProvider cache metadata-provider))]))
+               (list `cached-metadata-provider metadata-provider))]))
 
 (defn cached-metadata-provider
   "Wrap `metadata-provider` with an implementation that automatically caches results.

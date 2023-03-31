@@ -1,11 +1,11 @@
 (ns metabase.lib.field
   (:require
-   [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -18,6 +18,23 @@
    [metabase.util.malli :as mu]))
 
 (comment metabase.lib.schema.ref/keep-me)
+
+(defn- normalize-binning-options [opts]
+  (lib.normalize/normalize-map
+   opts
+   keyword
+   {:strategy keyword}))
+
+(defn- normalize-field-options [opts]
+  (lib.normalize/normalize-map
+   opts
+   keyword
+   {:temporal-unit keyword
+    :binning       normalize-binning-options}))
+
+(defmethod lib.normalize/normalize :field
+  [[tag opts id-or-name]]
+  [(keyword tag) (normalize-field-options opts) id-or-name])
 
 (mu/defn ^:private resolve-field-id :- lib.metadata/ColumnMetadata
   "Integer Field ID: get metadata from the metadata provider. This is probably not 100% the correct thing to do if
@@ -139,13 +156,13 @@
     true      lib.options/ensure-uuid))
 
 (defmethod ->field :dispatch-type/integer
-  [query _stage field-id]
+  [query _stage-number field-id]
   (lib.metadata/field query field-id))
 
-;;; Pass in a function that takes `query` and `stage` to support ad-hoc usage in tests etc
+;;; Pass in a function that takes `query` and `stage-number` to support ad-hoc usage in tests etc
 (defmethod ->field :dispatch-type/fn
-  [query stage f]
-  (f query stage))
+  [query stage-number f]
+  (f query stage-number))
 
 (defmethod lib.temporal-bucket/temporal-bucket* :field
   [[_field options id-or-name] unit]
@@ -162,6 +179,16 @@
   [field-ref join-alias]
   (lib.options/update-options field-ref assoc :join-alias join-alias))
 
-(defmethod lib.common/->op-arg :metadata/field
-  [query stage-number field-metadata]
-  (field query stage-number field-metadata))
+(defn fields
+  "Specify the `:fields` for a query."
+  ([xs]
+   (fn [query stage-number]
+     (fields query stage-number xs)))
+
+  ([query xs]
+   (fields query -1 xs))
+
+  ([query stage-number xs]
+   (let [xs (mapv #(->field query stage-number %)
+                  xs)]
+     (lib.util/update-query-stage query stage-number assoc :fields xs))))

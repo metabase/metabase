@@ -409,6 +409,7 @@
     metabase.test.domain-entities                                   test.de
     metabase.test.mock.util                                         mock.util
     metabase.test.sync                                              test.sync
+    metabase.test.util.js                                           test.js
     metabase.test.util.timezone                                     test.tz
     metabase.timeseries-query-processor-test.util                   tqpt
     metabase.transforms.core                                        tf
@@ -488,6 +489,8 @@
   metabase.query-processor.error-type/deferror                                         clojure.core/def
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results   clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution clojure.core/let
+  metabase.query-processor-test.pipeline-queries-test/pmbql-query                      clojure.core/->
+  metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                  clojure.core/->
   metabase.shared.util.namespaces/import-fns                                           potemkin/import-vars
   metabase.sync.util/sum-for                                                           clojure.core/for
   metabase.sync.util/with-emoji-progress-bar                                           clojure.core/let

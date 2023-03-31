@@ -111,15 +111,15 @@
 (defmethod serdes/extract-one "Segment"
   [_model-name _opts segment]
   (-> (serdes/extract-one-basics "Segment" segment)
-      (update :table_id   serdes/export-table-fk)
-      (update :creator_id serdes/export-user)
+      (update :table_id   serdes/*export-table-fk*)
+      (update :creator_id serdes/*export-user*)
       (update :definition serdes/export-mbql)))
 
 (defmethod serdes/load-xform "Segment" [segment]
   (-> segment
       serdes/load-xform-basics
-      (update :table_id   serdes/import-table-fk)
-      (update :creator_id serdes/import-user)
+      (update :table_id   serdes/*import-table-fk*)
+      (update :creator_id serdes/*import-user*)
       (update :definition serdes/import-mbql)))
 
 (defmethod serdes/dependencies "Segment" [{:keys [definition table_id]}]

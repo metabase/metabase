@@ -13,6 +13,8 @@ import SummarizeStep from "../steps/SummarizeStep";
 import SortStep from "../steps/SortStep";
 import LimitStep from "../steps/LimitStep";
 
+import { NotebookStepUiComponentProps } from "../types";
+
 export type StepUIItem = {
   title: string;
   icon?: string;
@@ -20,9 +22,7 @@ export type StepUIItem = {
   transparent?: boolean;
   compact?: boolean;
   getColor: () => string;
-
-  // Remove any once all step components are typed
-  component: React.ComponentType<any>;
+  component: React.ComponentType<NotebookStepUiComponentProps>;
 };
 
 export const STEP_UI: Record<string, StepUIItem> = {
@@ -34,9 +34,14 @@ export const STEP_UI: Record<string, StepUIItem> = {
   join: {
     title: t`Join data`,
     icon: "join_left_outer",
-    component: JoinStep,
     priority: 1,
     getColor: () => color("brand"),
+
+    // JoinStep's props actually satisfy the NotebookStepUiComponentProps type,
+    // but there are differences like PropTypes.string and NotebookStepType,
+    // that make it 'technically' incompatible.
+    // Should be removed once the JoinStep is converted to TypeScript.
+    component: JoinStep as React.ComponentType<NotebookStepUiComponentProps>,
   },
   expression: {
     title: t`Custom column`,

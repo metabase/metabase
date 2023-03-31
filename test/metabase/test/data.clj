@@ -160,7 +160,7 @@
   ([table-name inner-query]
    {:pre [(map? inner-query)]}
    `(let [query# (mbql-query-no-test ~table-name ~inner-query)]
-      (t/is (= (normalize query#) (-> query# lib.convert/->pMBQL lib.convert/->legacy-MBQL normalize))
+      (t/is (= (normalize query#) (-> query# normalize lib.convert/->pMBQL lib.convert/->legacy-MBQL normalize))
             "Legacy MBQL queries should round trip to pMBQL and back")
       query#)))
 

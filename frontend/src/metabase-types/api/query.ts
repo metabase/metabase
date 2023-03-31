@@ -1,10 +1,12 @@
-import type { TemplateTags } from "../types/Query";
+import type { AggregationClause, TemplateTags } from "../types/Query";
 import type { DatabaseId } from "./database";
 import type { FieldId } from "./field";
 import type { TableId } from "./table";
 
 export interface StructuredQuery {
   "source-table"?: TableId;
+
+  aggregation?: AggregationClause;
 }
 
 export interface NativeQuery {

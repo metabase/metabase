@@ -11,6 +11,8 @@ import FieldList from "metabase/query_builder/components/FieldList";
 import Select from "metabase/core/components/Select";
 import { isDateTimeField } from "metabase-lib/queries/utils/field-ref";
 import Join from "metabase-lib/queries/structured/Join";
+import Question from "metabase-lib/Question";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { NotebookCellAdd, NotebookCellItem } from "../NotebookCell";
 import {
@@ -46,26 +48,29 @@ const stepShape = {
   id: PropTypes.string.isRequired,
   type: PropTypes.string.isRequired,
   query: PropTypes.object.isRequired,
+  topLevelQuery: PropTypes.object.isRequired,
   previewQuery: PropTypes.object,
+  active: PropTypes.bool.isRequired,
   valid: PropTypes.bool.isRequired,
   visible: PropTypes.bool.isRequired,
   stageIndex: PropTypes.number.isRequired,
-  itemIndex: PropTypes.number.isRequired,
+  itemIndex: PropTypes.number,
   update: PropTypes.func.isRequired,
   revert: PropTypes.func.isRequired,
   clean: PropTypes.func.isRequired,
   actions: PropTypes.array.isRequired,
+  next: PropTypes.object,
+  previous: PropTypes.object,
 };
-stepShape.previous = PropTypes.shape(stepShape);
-stepShape.next = PropTypes.shape(stepShape);
 
 const joinStepPropTypes = {
-  query: PropTypes.object.isRequired,
+  query: PropTypes.instanceOf(StructuredQuery).isRequired,
+  topLevelQuery: PropTypes.object.isRequired,
   step: PropTypes.shape(stepShape).isRequired,
-  color: PropTypes.string,
+  color: PropTypes.string.isRequired,
   isLastOpened: PropTypes.bool,
   updateQuery: PropTypes.func.isRequired,
-  sourceQuestion: PropTypes.object,
+  sourceQuestion: PropTypes.instanceOf(Question),
   readOnly: PropTypes.bool,
 };
 

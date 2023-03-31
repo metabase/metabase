@@ -5,7 +5,6 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
-import * as MLv2 from "cljs/metabase.lib.js";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/queries/StructuredQuery";
@@ -14,7 +13,7 @@ import NativeQuery, {
 } from "metabase-lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/queries/InternalQuery";
-import Query from "metabase-lib/queries/Query";
+import BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
@@ -84,6 +83,9 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/Alert";
 import { getBaseDimensionReference } from "metabase-lib/references";
+
+import type { Query } from "./types";
+import * as ML from "./v2";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -230,7 +232,7 @@ class QuestionInner {
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
    */
-  setQuery(newQuery: Query): Question {
+  setQuery(newQuery: BaseQuery): Question {
     if (this._card.dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
@@ -1335,11 +1337,11 @@ class QuestionInner {
     return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
-  _getMLv2Query(metadata = this._metadata) {
+  _getMLv2Query(metadata = this._metadata): Query {
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
       if (!this.__mlv2MetadataProvider) {
-        this.__mlv2MetadataProvider = MLv2.metadataProvider(
+        this.__mlv2MetadataProvider = ML.metadataProvider(
           this.databaseId(),
           metadata,
         );
@@ -1354,7 +1356,7 @@ class QuestionInner {
 
     if (!this.__mlv2Query) {
       this.__mlv2QueryMetadata = metadata;
-      this.__mlv2Query = MLv2.query(
+      this.__mlv2Query = ML.fromLegacyQuery(
         this.databaseId(),
         metadata,
         this.datasetQuery(),
@@ -1366,7 +1368,7 @@ class QuestionInner {
 
   generateQueryDescription() {
     const query = this._getMLv2Query();
-    return MLv2.suggestedName(query);
+    return ML.suggestedName(query);
   }
 
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {

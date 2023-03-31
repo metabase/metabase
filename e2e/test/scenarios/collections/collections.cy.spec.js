@@ -178,12 +178,28 @@ describe("scenarios > collection defaults", () => {
     });
   });
 
-  describe("render last edited by when names are null", () => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
+  it("should support markdown in collection description", () => {
+    cy.request("PUT", "/api/collection/9", {
+      description: "# header",
     });
 
+    visitRootCollection();
+
+    cy.get("table").within(() => {
+      cy.findByText("First collection")
+        .closest("tr")
+        .within(() => {
+          cy.icon("info").trigger("mouseenter");
+        });
+    });
+
+    popover().within(() => {
+      cy.findByRole("heading").contains("header");
+      cy.findByRole("heading").should("not.include.text", "# header");
+    });
+  });
+
+  describe("render last edited by when names are null", () => {
     it("should render short value without tooltip", () => {
       cy.intercept(
         "GET",

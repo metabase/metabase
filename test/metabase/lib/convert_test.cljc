@@ -112,19 +112,33 @@
   ;; Miscellaneous queries that have caused test failures in the past, captured here for quick feedback.
   (are [query] (= query (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))
        ;; :aggregation-options on a non-aggregate expression with an inner aggregate.
-       {:database 194,
+       {:database 194
         :query {:aggregation [[:aggregation-options
                                [:- [:sum [:field 1677 nil]] 41]
-                               {:name "Sum-41"}]],
-                :breakout [[:field 1677 nil]],
-                :source-table 517},
+                               {:name "Sum-41"}]]
+                :breakout [[:field 1677 nil]]
+                :source-table 517}
         :type :query}
 
-       ;; aggregation-options on a nested aggregation inside a larger expression
-       {:database 194,
-        :query {:aggregation [[:+ [:aggregation-options
-                                   [:distinct [:field 1677 nil]]
-                                   {:name "differences"}]
-                               1]],
-                :source-table 517},
+       ;; :aggregation-options nested, not at the top level under :aggregation
+       {:database 194
+        :query {:aggregation [[:- [:aggregation-options
+                                   [:sum [:field 1677 nil]]
+                                   {:name "Sum-41"}] 41]]
+                :breakout [[:field 1677 nil]]
+                :source-table 517}
+        :type :query}
+
+       {:database 67
+        :query {:aggregation [[:aggregation-options
+                               [:avg
+                                [:field
+                                 809
+                                 {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
+                                  :metabase.query-processor.util.add-alias-info/source-table 224}]]
+                               {:name "avg"
+                                :metabase.query-processor.util.add-alias-info/desired-alias "avg"
+                                :metabase.query-processor.util.add-alias-info/position 1
+                                :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
+                :source-table 224}
         :type :query}))

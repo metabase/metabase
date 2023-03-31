@@ -8,13 +8,11 @@ import Icon from "metabase/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import ExpandingContent from "metabase/components/ExpandingContent";
 
+import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import {
-  NotebookStep as INotebookStep,
-  NotebookStepAction,
-} from "../lib/steps.types";
+import { NotebookStep as INotebookStep, NotebookStepAction } from "../types";
 import NotebookStepPreview from "../NotebookStepPreview";
 
 import { STEP_UI } from "./steps";
@@ -42,10 +40,10 @@ interface NotebookStepProps {
   sourceQuestion?: Question;
   isLastStep: boolean;
   isLastOpened: boolean;
-  reportTimezone?: string;
-  openStep: (id: string) => void;
-  updateQuery: (query: StructuredQuery) => Promise<void>;
+  reportTimezone: string;
   readOnly?: boolean;
+  openStep: (id: string) => void;
+  updateQuery: (query: StructuredQuery | Query) => Promise<void>;
 }
 
 function NotebookStep({
@@ -92,7 +90,12 @@ function NotebookStep({
   }, [step.query, step.actions, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
-    const reverted = step.revert?.(step.query);
+    const reverted = step.revert?.(
+      step.query,
+      step.itemIndex,
+      step.topLevelQuery,
+      step.stageIndex,
+    );
     if (reverted) {
       updateQuery(reverted);
     }
@@ -137,6 +140,7 @@ function NotebookStep({
               <NotebookStepComponent
                 color={color}
                 step={step}
+                topLevelQuery={step.topLevelQuery}
                 query={step.query}
                 sourceQuestion={sourceQuestion}
                 updateQuery={updateQuery}
