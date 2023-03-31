@@ -14312,7 +14312,6 @@ databaseChangeLog:
       id: v47.00-001
       author: calherries
       comment: Added 0.47.0 -- set base-type to type/JSON for JSON database-types for postgres and mysql
-      validCheckSum: ANY
       changes:
         - sql:
             sql: >-
@@ -14361,6 +14360,61 @@ databaseChangeLog:
               ON f.id = updates.id
               WHEN MATCHED THEN
                 UPDATE SET f.base_type = updates.base_type;
+
+  - changeSet:
+      id: v47.00-002
+      author: calherries
+      comment: Added 0.47.0 - Add json_unfolding column to metabase_field
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: 'Enable/disable JSON unfolding for a field'
+                name: json_unfolding
+                type: boolean
+                defaultValueBoolean: false
+                constraints:
+                  nullable: false
+            tableName: metabase_field
+
+  - changeSet:
+      id: v47.00-003
+      author: calherries
+      comment: Added 0.47.0 - Populate metabase_field.json_unfolding based on database details
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field f
+              SET json_unfolding = coalesce((d.details::jsonb->'json-unfolding') in ('true', 'null'), true)
+              FROM metabase_database d
+              JOIN metabase_table t ON t.db_id = d.id
+              WHERE f.table_id = t.id AND f.base_type = 'type/JSON'
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field f
+              JOIN metabase_table t ON f.table_id = t.id
+              JOIN metabase_database d ON t.db_id = d.id
+              SET json_unfolding = coalesce(JSON_UNQUOTE(JSON_EXTRACT(d.details, '$."json-unfolding"')) in ('true', 'null'), true)
+              WHERE f.base_type = 'type/JSON'
+        - sql:
+            dbms: h2
+            sql:
+              MERGE INTO metabase_field f
+              USING (
+                SELECT
+                  coalesce(JSON_VALUE(d.details, 'json-unfolding'), true) as json_unfolding,
+                  f.id
+                FROM metabase_field f
+                JOIN metabase_table t ON f.table_id = t.id
+                JOIN metabase_database d ON t.db_id = d.id
+                WHERE f.base_type = 'type/JSON'
+              ) as updates
+              ON f.id = updates.id
+              WHEN MATCHED THEN
+                UPDATE SET f.json_unfolding = updates.json_unfolding
+      rollback: # nothing to do, since json_unfolding is new in 47
 
   - changeSet:
       id: v47.00-004
