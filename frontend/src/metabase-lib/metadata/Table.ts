@@ -13,6 +13,8 @@ import type Metadata from "./Metadata";
 import type Schema from "./Schema";
 import type Field from "./Field";
 import type Database from "./Database";
+import type Metric from "./Metric";
+import type Segment from "./Segment";
 
 /**
  * @typedef { import("./Metadata").SchemaName } SchemaName
@@ -32,6 +34,8 @@ class TableInner extends Base {
   schema_name: string;
   db_id: number;
   fields: Field[];
+  metrics: Metric[];
+  segments: Segment[];
   metadata?: Metadata;
   db?: Database | undefined | null;
 
@@ -108,7 +112,7 @@ class TableInner extends Base {
 
   // AGGREGATIONS
   aggregationOperators() {
-    return getAggregationOperators(this, this.fields);
+    return getAggregationOperators(this.db, this.fields);
   }
 
   aggregationOperatorsLookup() {

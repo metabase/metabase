@@ -23,7 +23,7 @@ const questionDetails = {
   },
 };
 
-describe.skip("issue 22230", () => {
+describe("issue 22230", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -34,11 +34,15 @@ describe.skip("issue 22230", () => {
   it("should be able to filter on an aggregation (metabase#22230)", () => {
     cy.findByText("Filter").click();
     popover().contains("Max of Name").click();
+    cy.findByTestId("select-button").click();
+    cy.findByRole("option", { name: "Starts with" }).click();
 
-    cy.findByPlaceholderText("Enter some text").type("Zora").blur();
+    cy.findByPlaceholderText("Enter some text").type("Zo").blur();
     cy.button("Add filter").click();
 
     visualize();
-    cy.findByText("Zora Schamberger");
+    cy.findByText("Showing 2 rows").should("be.visible");
+    cy.findByText("Zora Schamberger").should("be.visible");
+    cy.findByText("Zoie Kozey").should("be.visible");
   });
 });

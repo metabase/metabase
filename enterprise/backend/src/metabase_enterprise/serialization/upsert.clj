@@ -27,7 +27,6 @@
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.after :as t2.after]))
 
@@ -91,9 +90,9 @@
   (if (has-post-insert? model)
     (insert-many-individually! model on-error entities)
     (if (= :abort on-error)
-      (db/insert-many! model entities)
+      (t2/insert-returning-pks! model entities)
       (try
-        (db/insert-many! model entities)
+        (t2/insert-returning-pks! model entities)
         ;; Retry each individually so we can do as much as we can
         (catch Throwable _
           (insert-many-individually! model on-error entities))))))

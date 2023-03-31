@@ -14,7 +14,7 @@ import NativeQuery, {
 } from "metabase-lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/queries/InternalQuery";
-import Query from "metabase-lib/queries/Query";
+import BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
@@ -84,6 +84,8 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/Alert";
 import { getBaseDimensionReference } from "metabase-lib/references";
+
+import { Query } from "./types";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -230,7 +232,7 @@ class QuestionInner {
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
    */
-  setQuery(newQuery: Query): Question {
+  setQuery(newQuery: BaseQuery): Question {
     if (this._card.dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
@@ -1335,7 +1337,7 @@ class QuestionInner {
     return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
-  _getMLv2Query(metadata = this._metadata) {
+  _getMLv2Query(metadata = this._metadata): Query {
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
       if (!this.__mlv2MetadataProvider) {

@@ -443,8 +443,8 @@
   [dashcard]
   (-> (into (sorted-map) dashcard)
       (dissoc :id :collection_authority_level :dashboard_id :updated_at)
-      (update :card_id                serdes/export-fk 'Card)
-      (update :action_id              serdes/export-fk 'Action)
+      (update :card_id                serdes/*export-fk* 'Card)
+      (update :action_id              serdes/*export-fk* 'Action)
       (update :parameter_mappings     serdes/export-parameter-mappings)
       (update :visualization_settings serdes/export-visualization-settings)))
 
@@ -456,19 +456,19 @@
     (-> (serdes/extract-one-basics "Dashboard" dash)
         (update :ordered_cards     #(mapv extract-dashcard %))
         (update :parameters        serdes/export-parameters)
-        (update :collection_id     serdes/export-fk Collection)
-        (update :creator_id        serdes/export-user)
-        (update :made_public_by_id serdes/export-user))))
+        (update :collection_id     serdes/*export-fk* Collection)
+        (update :creator_id        serdes/*export-user*)
+        (update :made_public_by_id serdes/*export-user*))))
 
 (defmethod serdes/load-xform "Dashboard"
   [dash]
   (-> dash
       serdes/load-xform-basics
       ;; Deliberately not doing anything to :ordered_cards - they get handled by load-insert! and load-update! below.
-      (update :collection_id     serdes/import-fk Collection)
+      (update :collection_id     serdes/*import-fk* Collection)
       (update :parameters        serdes/import-parameters)
-      (update :creator_id        serdes/import-user)
-      (update :made_public_by_id serdes/import-user)))
+      (update :creator_id        serdes/*import-user*)
+      (update :made_public_by_id serdes/*import-user*)))
 
 (defn- dashcard-for [dashcard dashboard]
   (assoc dashcard

@@ -176,7 +176,13 @@
                       {:status-code     400
                        :existing-engine existing-engine
                        :new-engine      new-engine}))
-      (u/prog1 (handle-secrets-changes database)
+      (u/prog1  (-> database
+                    (cond->
+                      ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
+                      (and (some? (:details database))
+                           (not (driver/database-supports? (or new-engine existing-engine) :nested-field-columns database)))
+                      (update :details dissoc :json_unfolding))
+                    handle-secrets-changes)
         ;; TODO - this logic would make more sense in post-update if such a method existed
         ;; if the sync operation schedules have changed, we need to reschedule this DB
         (when (or new-metadata-schedule new-fieldvalues-schedule)
@@ -305,7 +311,7 @@
   ;; TODO Support alternative encryption of secret database details.
   ;; There's one optional foreign key: creator_id. Resolve it as an email.
   (cond-> (serdes/extract-one-basics "Database" entity)
-    true                 (update :creator_id serdes/export-user)
+    true                 (update :creator_id serdes/*export-user*)
     true                 (dissoc :features) ; This is a synthetic column that isn't in the real schema.
     (= :exclude secrets) (dissoc :details)))
 
@@ -325,7 +331,7 @@
   [database]
   (-> database
       serdes/load-xform-basics
-      (update :creator_id serdes/import-user)))
+      (update :creator_id serdes/*import-user*)))
 
 (defmethod serdes/load-insert! "Database" [_ ingested]
   (let [m (get-method serdes/load-insert! :default)]
@@ -343,3 +349,11 @@
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
+
+(defn json-unfolding-default
+  "Returns true if JSON fields should be unfolded by default for this database, and false otherwise."
+  [database]
+  ;; If json-unfolding=nil in the database details, return true. This allows adding support for
+  ;; nested-field-columns for drivers in the future and have json-unfolding enabled by default, without
+  ;; needing a migration to add the `json-unfolding=true` key to the database details.
+  ((fnil identity true) (get-in database [:details :json-unfolding])))

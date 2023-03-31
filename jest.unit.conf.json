@@ -53,7 +53,6 @@
     "/frontend/src/metabase/visualizations/lib/errors.js",
     "/frontend/src/cljs/",
     "/frontend/src/cljs_release/",
-    "/frontend/src/metabase/internal/",
     "/frontend/test/"
   ],
   "testEnvironment": "jest-environment-jsdom",

@@ -1,18 +1,18 @@
 (ns metabase.lib.util
   (:refer-clojure :exclude [format])
   (:require
+   #?@(:clj
+       ([potemkin :as p]))
+   #?@(:cljs
+       ([goog.string :as gstring]
+        [goog.string.format :as gstring.format]))
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   #?@(:clj
-       ([potemkin :as p]))
-   #?@(:cljs
-       ([goog.string :as gstring]
-        [goog.string.format :as gstring.format]))))
+   [metabase.util.malli :as mu]))
 
 ;; The formatting functionality is only loaded if you depend on goog.string.format.
 #?(:cljs (comment gstring.format/keep-me))
@@ -28,30 +28,45 @@
 (defn- clause? [clause]
   (and (vector? clause)
        (> (count clause) 1)
-       (keyword? (first clause))))
+       (keyword? (first clause))
+       (map? (second clause))
+       (contains? (second clause) :lib/uuid)))
 
 (defn- clause-uuid [clause]
   (when (clause? clause)
     (get-in clause [1 :lib/uuid])))
 
 (defn replace-clause
-  "Replace the clause with `target-uuid` in `clause` with `new-clause`.
-  If `clause` itself has :lib/uuid equal to `target-uuid`, `new-clause` is returned.
-  If `clause` contains no clause with `target-uuid` no replacement happens.
-  Since UUIDs are assumed to be unique, at most one replacement happens."
-  [clause target-uuid new-clause]
-  (if (clause? clause)
-    (if (= (clause-uuid clause) target-uuid)
-      new-clause
-      (reduce (fn [clause i]
-                (let [arg (clause i)
-                      arg' (replace-clause arg target-uuid new-clause)]
-                  (if (not= arg' arg)
-                    (reduced (assoc clause i arg'))
-                    clause)))
-              clause
-              (range 2 (count clause))))
-    clause))
+  "Replace the `target-clause` in `stage` `location` with `new-clause`.
+   If a clause has :lib/uuid equal to the `target-clause` it is swapped with `new-clause`.
+   If `location` contains no clause with `target-clause` no replacement happens."
+  [stage location target-clause new-clause]
+  {:pre [(clause? target-clause)]}
+  (update
+    stage
+    location
+    #(->> (for [clause %]
+            (if (= (clause-uuid clause) (clause-uuid target-clause))
+              new-clause
+              clause))
+          vec)))
+
+(defn remove-clause
+  "Replace the `target-clause` in `stage` `location`.
+   If a clause has :lib/uuid equal to the `target-clause` it is removed.
+   If `location` contains no clause with `target-clause` no removal happens.
+   If the the location is empty, dissoc it from stage."
+  [stage location target-clause]
+  {:pre [(clause? target-clause)]}
+  (let [target-uuid (clause-uuid target-clause)
+        target (get stage location)
+        result (->> target
+                    (remove (comp #{target-uuid} clause-uuid))
+                    vec
+                    not-empty)]
+    (if result
+      (assoc stage location result)
+      (dissoc stage location))))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
 ;;; the near future.
@@ -86,6 +101,14 @@
   (let [previous-stages (if source-query
                           (inner-query->stages source-query)
                           [])
+        source-metadata (when source-metadata
+                          (-> (if (vector? source-metadata)
+                                {:columns source-metadata}
+                                source-metadata)
+                              (update :columns (fn [columns]
+                                                 (for [column columns]
+                                                   (assoc column :lib/type :metadata/field))))
+                              (assoc :lib/type :metadata/results)))
         previous-stages (cond-> previous-stages
                           source-metadata (assoc-in [(dec (count previous-stages)) :lib/stage-metadata] source-metadata))
         stage-type      (if (:native inner-query)
@@ -156,6 +179,12 @@
   (let [{:keys [stages]} (pipeline query)]
     (get (vec stages) (non-negative-stage-index stages stage-number))))
 
+(mu/defn previous-stage :- [:maybe ::lib.schema/stage]
+  "Return the previous stage of the query, if there is one; otherwise return `nil`."
+  [query stage-number :- :int]
+  (when-let [stage-num (previous-stage-number query stage-number)]
+    (query-stage query stage-num)))
+
 (mu/defn update-query-stage :- ::lib.schema/query
   "Update a specific `stage-number` of a `query` by doing
 
@@ -198,3 +227,43 @@
            ","
            conjunction
            (last coll)))))))
+
+(defn update-stages-ignore-joins
+  "Like [[update-stages]], but does not recurse into the stages inside joins.
+
+  `f` has the signature
+
+    (f query stage-number stage)"
+  [query f]
+  (reduce
+   (fn [query stage-number]
+     (update-in query [:stages stage-number] (fn [stage]
+                                               (f query stage-number stage))))
+   query
+   (range 0 (count (:stages query)))))
+
+(defn update-stages
+  "Apply function `f` to every stage of a query, depth-first. Also applied to all query stages.
+
+  `f` has the signature
+
+    (f query stage-number stage)
+
+  `query` reflects the results of the previous call to `f`.
+
+  As a convenience, if `f` returns nil, the original stage will be used without changes."
+  [query f]
+  (letfn [(update-join [join]
+            (-> query
+                (assoc :stages (:stages join))
+                (update-stages f)
+                :stages))
+          (update-joins [joins]
+            (mapv update-join joins))]
+    (update-stages-ignore-joins
+     query
+     (fn [query stage-number stage]
+       (let [stage (cond-> stage
+                     (:joins stage)
+                     update-joins)]
+         (f query stage-number stage))))))

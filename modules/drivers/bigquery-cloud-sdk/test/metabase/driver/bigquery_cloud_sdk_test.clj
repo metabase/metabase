@@ -16,7 +16,6 @@
    [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (com.google.cloud.bigquery BigQuery)))
@@ -335,7 +334,7 @@
         (try
           (let [synced-tables (t2/select Table :db_id (mt/id))]
             (is (= 2 (count synced-tables)))
-            (db/insert-many! Table (map #(dissoc % :id :schema) synced-tables))
+            (t2/insert! Table (map #(dissoc % :id :schema) synced-tables))
             (sync/sync-database! (mt/db) {:scan :schema})
             (let [synced-tables (t2/select Table :db_id (mt/id))]
               (is (partial= {true [{:name "messages"} {:name "users"}]

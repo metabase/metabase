@@ -184,6 +184,12 @@ export const MBQL_CLAUSES = {
     args: ["string", "string"],
     hasOptions: true,
   },
+  "does-not-contain": {
+    displayName: `doesNotContain`,
+    type: "boolean",
+    args: ["string", "string"],
+    hasOptions: true,
+  },
   "starts-with": {
     displayName: `startsWith`,
     type: "boolean",
@@ -222,8 +228,18 @@ export const MBQL_CLAUSES = {
     type: "boolean",
     args: ["expression"],
   },
+  "not-null": {
+    displayName: `notnull`,
+    type: "boolean",
+    args: ["expression"],
+  },
   "is-empty": {
     displayName: `isempty`,
+    type: "boolean",
+    args: ["expression"],
+  },
+  "not-empty": {
+    displayName: `notempty`,
     type: "boolean",
     args: ["expression"],
   },
@@ -475,7 +491,10 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "relative-datetime",
   "interval",
   "is-null",
+  "not-null",
   "is-empty",
+  "not-empty",
+  "does-not-contain",
   // other
   "coalesce",
 ]);

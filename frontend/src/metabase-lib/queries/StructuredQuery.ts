@@ -12,7 +12,6 @@ import {
   Breakout,
   Filter,
   Join,
-  LimitClause,
   OrderBy,
   DependentMetadataItem,
   ExpressionClause,
@@ -49,11 +48,16 @@ import Dimension, {
   AggregationDimension,
 } from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
+
+import * as MLv2 from "..";
+import type { Limit, Query } from "../types";
+
 import Segment from "../metadata/Segment";
 import Database from "../metadata/Database";
 import Question from "../Question";
 import Table from "../metadata/Table";
 import Field from "../metadata/Field";
+
 import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
@@ -123,6 +127,15 @@ class StructuredQueryInner extends AtomicQuery {
   ) {
     super(question, datasetQuery);
     this._structuredDatasetQuery = datasetQuery as StructuredDatasetQuery;
+  }
+
+  private getMLv2Query(): Query {
+    return this.question()._getMLv2Query();
+  }
+
+  private updateWithMLv2(nextQuery: Query) {
+    const nextMLv1Query = MLv2.toLegacyQuery(nextQuery);
+    return this.setDatasetQuery(nextMLv1Query);
   }
 
   /* Query superclass methods */
@@ -374,7 +387,6 @@ class StructuredQueryInner extends AtomicQuery {
       .cleanAggregations()
       .cleanBreakouts()
       .cleanSorts()
-      .cleanLimit()
       .cleanFields()
       .cleanEmpty();
   }
@@ -419,10 +431,6 @@ class StructuredQueryInner extends AtomicQuery {
 
   cleanSorts(): StructuredQuery {
     return this._cleanClauseList("sorts");
-  }
-
-  cleanLimit(): StructuredQuery {
-    return this; // TODO
   }
 
   cleanFields(): StructuredQuery {
@@ -553,8 +561,8 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   hasLimit() {
-    const limit = this.limit();
-    return limit != null && limit > 0;
+    const query = this.getMLv2Query();
+    return MLv2.hasLimit(query);
   }
 
   hasFields() {
@@ -648,19 +656,18 @@ class StructuredQueryInner extends AtomicQuery {
    * @returns an array of aggregation options for the currently selected table
    */
   aggregationOperators(): AggregationOperator[] {
-    const expressionFields = this.expressionDimensions().map(
-      expressionDimension => expressionDimension.field(),
-    );
-
     const table = this.table();
-    return (
-      (table &&
-        getAggregationOperators(table, [
-          ...expressionFields,
-          ...table.fields,
-        ])) ||
-      []
-    );
+
+    if (table) {
+      const fieldOptions = this.fieldOptions()
+        .all()
+        .map(dimension => dimension.field())
+        .filter(field => field != null);
+
+      return getAggregationOperators(table.db, fieldOptions);
+    }
+
+    return [];
   }
 
   aggregationOperatorsLookup(): Record<string, AggregationOperator> {
@@ -1096,16 +1103,19 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   // LIMIT
-  limit(): number | null | undefined {
-    return Q.getLimit(this.query());
+  limit(): Limit {
+    const query = this.getMLv2Query();
+    return MLv2.currentLimit(query);
   }
 
-  updateLimit(limit: LimitClause) {
-    return this._updateQuery(Q.updateLimit, arguments);
+  updateLimit(limit: Limit) {
+    const query = this.getMLv2Query();
+    const nextQuery = MLv2.limit(query, limit);
+    return this.updateWithMLv2(nextQuery);
   }
 
   clearLimit() {
-    return this._updateQuery(Q.clearLimit, arguments);
+    return this.updateLimit(null);
   }
 
   // EXPRESSIONS
@@ -1394,7 +1404,7 @@ class StructuredQueryInner extends AtomicQuery {
 
   // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
   // NOTE: these will not have the correct columnName() if there are duplicates
-  columnDimensions() {
+  columnDimensions(): Dimension[] {
     if (this.hasAggregations() || this.hasBreakouts()) {
       const aggregations = this.aggregationDimensions();
       const breakouts = this.breakoutDimensions();

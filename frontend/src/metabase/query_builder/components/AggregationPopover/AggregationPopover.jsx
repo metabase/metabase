@@ -9,11 +9,11 @@ import Tooltip from "metabase/core/components/Tooltip";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Aggregation from "metabase-lib/queries/structured/Aggregation";
+import ExpressionWidget from "../expressions/ExpressionWidget";
+import ExpressionWidgetHeader from "../expressions/ExpressionWidgetHeader";
 import QueryDefinitionTooltip from "../QueryDefinitionTooltip";
-import ExpressionPopover from "../ExpressionPopover";
 
 import {
-  ExpressionPopoverRoot,
   AggregationItemList,
   AggregationFieldList,
 } from "./AggregationPopover.styled";
@@ -314,6 +314,13 @@ export default class AggregationPopover extends Component {
     }));
   }
 
+  onChangeExpression = (name, expression) => {
+    const aggregation = AGGREGATION.setName(expression, name);
+
+    this.setState({ aggregation });
+    this.commitAggregation(aggregation);
+  };
+
   render() {
     const { query } = this.props;
     const table = query.table();
@@ -324,33 +331,16 @@ export default class AggregationPopover extends Component {
 
     if (editingAggregation) {
       return (
-        <ExpressionPopoverRoot>
-          <ExpressionPopover
-            title={CUSTOM_SECTION_NAME}
-            query={query}
-            expression={aggregation}
-            startRule="aggregation"
-            onChange={parsedExpression =>
-              this.setState({
-                aggregation: AGGREGATION.setContent(
-                  this.state.aggregation,
-                  parsedExpression,
-                ),
-                error: null,
-              })
-            }
-            onBack={this.onClearAggregation}
-            onDone={() => this.commitAggregation(this.state.aggregation)}
-            name={AGGREGATION.getName(this.state.aggregation)}
-            onChangeName={name =>
-              this.setState({
-                aggregation: name
-                  ? AGGREGATION.setName(aggregation, name)
-                  : aggregation,
-              })
-            }
-          />
-        </ExpressionPopoverRoot>
+        <ExpressionWidget
+          name={AGGREGATION.getName(this.state.aggregation)}
+          query={query}
+          expression={aggregation}
+          withName
+          startRule="aggregation"
+          header={<ExpressionWidgetHeader onBack={this.onClearAggregation} />}
+          onChangeExpression={this.onChangeExpression}
+          onClose={this.onClearAggregation}
+        />
       );
     }
 

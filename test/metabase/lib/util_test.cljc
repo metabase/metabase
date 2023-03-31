@@ -1,8 +1,6 @@
 (ns metabase.lib.util-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [clojure.test.check.generators :as gen]
-   [com.gfredericks.test.chuck.clojure-test :refer [checking]]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.util :as lib.util]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -90,7 +88,8 @@
              :type     :pipeline
              :stages   [{:lib/type           :mbql.stage/mbql
                          :source-table       (meta/id :venues)
-                         :lib/stage-metadata [(meta/field-metadata :venues :id)]}
+                         :lib/stage-metadata {:lib/type :metadata/results
+                                              :columns  [(meta/field-metadata :venues :id)]}}
                         {:lib/type :mbql.stage/mbql}]}
             (lib.util/pipeline
              {:database (meta/id)
@@ -217,28 +216,3 @@
     ["a" "b"]         "a and b"
     ["a" "b" "c"]     "a, b, and c"
     ["a" "b" "c" "d"] "a, b, c, and d"))
-
-(deftest ^:parallel replace-clause-test
-  (checking "can be called with anything"
-    [x gen/any-equatable]
-    (is (identical? x (lib.util/replace-clause x
-                                               (str (random-uuid))
-                                               (random-uuid)))))
-  (let [target-uuid (random-uuid)
-        replacement (random-uuid)]
-    (testing "full replacement"
-      (is (identical? replacement
-                      (lib.util/replace-clause [:= {:lib/uuid target-uuid}]
-                                               target-uuid
-                                               replacement))))
-    (let [clause [:= {:lib/uuid (str (random-uuid))}
-                  3
-                  [:field {:lib/uuid (str (random-uuid))}]
-                  [:+ 2 [:expression {:lib/uuid target-uuid} "a"] 7]]]
-      (testing "nested replacement"
-        (is (= (assoc-in clause [4 2] replacement)
-               (lib.util/replace-clause clause target-uuid replacement))))
-      (testing "only one occurrence is replaced"
-        (let [clause (assoc clause 5 [:< [:field {:lib/uuid target-uuid} 2]])]
-          (is (= (assoc-in clause [4 2] replacement)
-                 (lib.util/replace-clause clause target-uuid replacement))))))))
