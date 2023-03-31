@@ -51,7 +51,7 @@
     }
   },
   "required": [
-    "event",
+    "event"
   ],
   "additionalProperties": true
 }

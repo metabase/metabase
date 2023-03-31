@@ -14,7 +14,7 @@ export interface MetabotPromptProps {
   isLoading?: boolean;
   onChangePrompt: (prompt: string) => void;
   onSubmitPrompt: () => void;
-  onCancel: () => void;
+  onCancel?: () => void;
 }
 
 const MetabotPrompt = ({
