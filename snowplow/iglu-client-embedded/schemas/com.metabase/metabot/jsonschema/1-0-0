@@ -43,6 +43,12 @@
       ],
       "maxLength": 1024
     },
+    "prompt_template_versions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
   },
   "required": [
     "event",
