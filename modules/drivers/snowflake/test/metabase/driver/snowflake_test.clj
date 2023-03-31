@@ -130,15 +130,13 @@
                          :pk?               true
                          :database-position 0
                          :database-is-auto-increment true
-                         :database-required false
-                         :json-unfolding    false}
+                         :database-required false}
                         {:name              "name"
                          :database-type     "VARCHAR"
                          :base-type         :type/Text
                          :database-position 1
                          :database-is-auto-increment false
-                         :database-required true
-                         :json-unfolding    false}}}
+                         :database-required true}}}
              (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one Table :id (mt/id :categories))))))))
 
 (deftest describe-table-fks-test

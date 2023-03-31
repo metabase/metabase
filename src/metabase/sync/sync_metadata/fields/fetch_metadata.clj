@@ -33,7 +33,6 @@
           :semantic-type             (:semantic_type field)
           :pk?                       (isa? (:semantic_type field) :type/PK)
           :field-comment             (:description field)
-          :json-unfolding            (:json_unfolding field)
           :database-is-auto-increment (:database_is_auto_increment field)
           :database-position         (:database_position field)
           :database-required         (:database_required field)})
@@ -70,8 +69,7 @@
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
  (t2/select [Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
-             :parent_id :id :description :database_position :nfc_path :database_is_auto_increment :database_required
-             :json_unfolding]
+             :parent_id :id :description :database_position :nfc_path :database_is_auto_increment :database_required]
      :table_id  (u/the-id table)
      :active    true
      {:order-by table/field-order-rule}))

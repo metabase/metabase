@@ -46,15 +46,17 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
+(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ database]
+  (let [json-setting (get-in database [:details :json-unfolding])
+        ;; If not set at all, default to true, actually
+        setting-nil? (nil? json-setting)]
+    (or json-setting setting-nil?)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
-
-(defmethod driver/database-supports? [:postgres :nested-field-columns]
-  [_driver _feat _db]
-  true)
 
 (defmethod driver/database-supports? [:postgres :datetime-diff]
   [_driver _feat _db]
