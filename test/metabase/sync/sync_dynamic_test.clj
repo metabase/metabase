@@ -22,14 +22,7 @@
                            (for [field fields]
                              (u/select-non-nil-keys
                               field
-                              [:table_id
-                               :name
-                               :fk_target_field_id
-                               :parent_id
-                               :base_type
-                               :database_type
-                               :database_is_auto_increment
-                               :json-unfolding]))))))))
+                              [:table_id :name :fk_target_field_id :parent_id :base_type :database_type :database_is_auto_increment]))))))))
 
 (defn- get-tables [database-or-id]
   (->> (hydrate (t2/select Table, :db_id (u/the-id database-or-id), {:order-by [:id]}) :fields)
