@@ -1,4 +1,6 @@
 import React from "react";
+import { t } from "ttag";
+
 import Icon from "metabase/components/Icon";
 
 import type {
@@ -11,7 +13,7 @@ import type OrderBy from "metabase-lib/queries/structured/OrderBy";
 
 import type { NotebookStepUiComponentProps } from "../../types";
 import ClauseStep from "../ClauseStep";
-import { SortFieldList } from "./SortStep.styled";
+import { SortDirectionButton, SortFieldList } from "./SortStep.styled";
 
 function SortStep({
   query,
@@ -82,10 +84,13 @@ function SortDisplayName({ sort, index, onChange }: SortDisplayNameProps) {
   };
 
   return (
-    <span className="flex align-center" onClick={handleToggleDirection}>
-      <Icon name={icon} className="text-white mr1" />
+    <SortDirectionButton
+      aria-label={t`Change direction`}
+      onClick={handleToggleDirection}
+    >
+      <Icon name={icon} />
       <span>{displayName}</span>
-    </span>
+    </SortDirectionButton>
   );
 }
 

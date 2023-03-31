@@ -6,8 +6,6 @@ import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { createMockNotebookStep, DEFAULT_LEGACY_QUERY } from "../../test-utils";
 import SortStep from "./SortStep";
 
-console.error = jest.fn();
-
 function setup(step = createMockNotebookStep()) {
   const updateQuery = jest.fn();
 
@@ -84,12 +82,12 @@ describe("SortStep", () => {
     expect(direction).toBe("asc");
   });
 
-  it("should toggle sort direction on arrow click", () => {
+  it("should toggle sort direction", () => {
     const [field] = ORDERS.fields;
     const query = DEFAULT_LEGACY_QUERY.sort(["asc", field.reference()]);
     const { getNextQuery } = setup(createMockNotebookStep({ query }));
 
-    userEvent.click(getIcon("arrow_up"));
+    userEvent.click(screen.getByLabelText("Change direction"));
 
     const [sort] = getNextQuery().sorts();
     const [direction] = sort.raw();
