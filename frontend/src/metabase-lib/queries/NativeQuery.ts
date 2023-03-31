@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
 import _ from "underscore";
 import slugg from "slugg";
-import * as ML from "cljs/metabase.lib.js";
 import { ParameterValuesConfig } from "metabase-types/api";
 import {
   Card,
@@ -28,6 +27,7 @@ import ValidationError from "metabase-lib/ValidationError";
 import { isFieldReference } from "metabase-lib/references";
 import Dimension, { FieldDimension, TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
+import * as ML from "../v2";
 
 import { getNativeQueryTable } from "./utils/native-query-table";
 
@@ -438,7 +438,7 @@ export default class NativeQuery extends AtomicQuery {
    */
   private _getUpdatedTemplateTags(queryText: string): TemplateTags {
     return queryText && this.supportsNativeParameters()
-      ? ML.template_tags(queryText, this.templateTagsMap())
+      ? ML.templateTags(queryText, this.templateTagsMap())
       : {};
   }
 
