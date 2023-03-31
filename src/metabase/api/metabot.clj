@@ -2,9 +2,9 @@
   (:require
    [clojure.string :as str]
    [compojure.core :refer [POST]]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.metabot :as metabot]
+   [metabase.metabot.feedback :as metabot-feedback]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card Collection Database Field FieldValues Table]]
    [metabase.util.log :as log]
@@ -68,14 +68,14 @@
 (api/defendpoint-schema POST "/feedback"
   "Record feedback on metabot results."
   [:as {feedback :body}]
-  (let [snowplow-keys [:entity_type :prompt_template_versions :feedback_type]
-        feedback-keys (into snowplow-keys [:prompt :sql])]
-    (tap> (select-keys feedback feedback-keys))
-    ;; The snowplow tracker event
-    (snowplow/track-event!
-     ::snowplow/metabot-feedback-received api/*current-user-id*
-     (select-keys feedback snowplow-keys))
-
-    {:message "Thanks for your feedback"}))
+  (if-some [stored-feedback (metabot-feedback/submit-feedback feedback)]
+    {:feedback stored-feedback
+     :message  "Thanks for your feedback"}
+    (throw
+     (let [message "There was a problem submitting your feedback."]
+       (ex-info
+        message
+        {:status-code 500
+         :message     message})))))
 
 (api/define-routes)

@@ -24,6 +24,11 @@
   :visibility :settings-manager
   :default "https://mwdsorniw4r4jkvesfyyymuexi0kkjkb.lambda-url.us-east-1.on.aws/")
 
+(defsetting metabot-feedback-url
+  (deferred-tru "The URL to which metabot feedback is posted.")
+  :visibility :settings-manager
+  :default "https://amtix3l3qvitb2qxstaqtcoqby0monuf.lambda-url.us-east-1.on.aws/")
+
 (defsetting is-metabot-enabled
   (deferred-tru "Is Metabot enabled?")
   :type :boolean
