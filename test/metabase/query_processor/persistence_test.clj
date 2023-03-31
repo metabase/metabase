@@ -13,7 +13,8 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.fix-bad-references
     :as fix-bad-refs]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [toucan.db :as db])
   (:import
    (java.time Instant)
    (java.time.temporal ChronoUnit)))
