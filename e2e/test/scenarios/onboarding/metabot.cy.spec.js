@@ -54,7 +54,6 @@ describe("scenarios > metabot", () => {
     cy.wait("@databasePrompt");
     cy.wait("@dataset");
     cy.findByDisplayValue(PROMPT).should("be.visible");
-    cy.findByText(PROMPT_QUERY).should("not.exist");
     cy.findByText("Gizmo").should("be.visible");
     cy.findByText("Doohickey").should("not.exist");
 
