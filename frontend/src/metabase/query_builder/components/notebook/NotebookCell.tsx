@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import React from "react";
+import React, { forwardRef } from "react";
 
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
@@ -101,54 +100,60 @@ interface NotebookCellItemProps {
   children?: React.ReactNode;
   onClick?: React.MouseEventHandler;
   "data-testid"?: string;
+  ref?: React.Ref<HTMLDivElement>;
 }
 
-export function NotebookCellItem(props: NotebookCellItemProps) {
-  const {
-    inactive,
-    color,
-    containerStyle,
-    right,
-    rightContainerStyle,
-    children,
-    readOnly,
-    ...restProps
-  } = props;
+export const NotebookCellItem: React.ComponentType<NotebookCellItemProps> =
+  forwardRef(function NotebookCellItem(
+    props: NotebookCellItemProps,
+    ref: React.Ref<HTMLDivElement>,
+  ) {
+    const {
+      inactive,
+      color,
+      containerStyle,
+      right,
+      rightContainerStyle,
+      children,
+      readOnly,
+      ...restProps
+    } = props;
 
-  const hasRightSide = React.isValidElement(right) && !readOnly;
-  const mainContentRoundedCorners: BorderSide[] = ["left"];
-  if (!hasRightSide) {
-    mainContentRoundedCorners.push("right");
-  }
-  return (
-    <NotebookCellItemContainer
-      inactive={inactive}
-      color={color}
-      {...restProps}
-      data-testid={props["data-testid"] ?? "notebook-cell-item"}
-    >
-      <NotebookCellItemContentContainer
+    const hasRightSide = React.isValidElement(right) && !readOnly;
+    const mainContentRoundedCorners: BorderSide[] = ["left"];
+    if (!hasRightSide) {
+      mainContentRoundedCorners.push("right");
+    }
+    return (
+      <NotebookCellItemContainer
         inactive={inactive}
         color={color}
-        roundedCorners={mainContentRoundedCorners}
-        style={containerStyle}
+        {...restProps}
+        data-testid={props["data-testid"] ?? "notebook-cell-item"}
+        ref={ref}
       >
-        {children}
-      </NotebookCellItemContentContainer>
-      {hasRightSide && (
         <NotebookCellItemContentContainer
           inactive={inactive}
           color={color}
-          border="left"
-          roundedCorners={["right"]}
-          style={rightContainerStyle}
+          roundedCorners={mainContentRoundedCorners}
+          style={containerStyle}
         >
-          {right}
+          {children}
         </NotebookCellItemContentContainer>
-      )}
-    </NotebookCellItemContainer>
-  );
-}
+        {hasRightSide && (
+          <NotebookCellItemContentContainer
+            inactive={inactive}
+            color={color}
+            border="left"
+            roundedCorners={["right"]}
+            style={rightContainerStyle}
+          >
+            {right}
+          </NotebookCellItemContentContainer>
+        )}
+      </NotebookCellItemContainer>
+    );
+  });
 
 NotebookCellItem.displayName = "NotebookCellItem";
 
@@ -156,13 +161,16 @@ interface NotebookCellAddProps extends NotebookCellItemProps {
   initialAddText?: React.ReactNode;
 }
 
-export const NotebookCellAdd = ({
-  initialAddText,
-  ...props
-}: NotebookCellAddProps) => (
-  <NotebookCellItem {...props} inactive={!!initialAddText}>
-    {initialAddText || <Icon name="add" className="text-white" />}
-  </NotebookCellItem>
-);
+export const NotebookCellAdd: React.ComponentType<NotebookCellAddProps> =
+  forwardRef(
+    (
+      { initialAddText, ...props }: NotebookCellAddProps,
+      ref: React.Ref<HTMLDivElement>,
+    ) => (
+      <NotebookCellItem {...props} inactive={!!initialAddText} ref={ref}>
+        {initialAddText || <Icon name="add" className="text-white" />}
+      </NotebookCellItem>
+    ),
+  );
 
 NotebookCellAdd.displayName = "NotebookCellAdd";
