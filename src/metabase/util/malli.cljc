@@ -54,31 +54,19 @@
         humanized (cond input  (me/humanize (mc/explain input args) {:wrap humanize-include-value})
                         output (me/humanize (mc/explain output value) {:wrap humanize-include-value}))
         link (cond input (->malli-io-link input args)
-                   output (->malli-io-link output value))
-        e (ex-info
-           (pr-str humanized)
-           (cond-> {:type type :data data}
-             data            (assoc :humanized humanized)
-             (and data link) (assoc :link link)))
-        _ (println (.getStackTrace e))
-        ;; Clojure-only: drop the first few frames so the first frame is actually the line of code that triggered the
-        ;; error
-        e #?(:clj (doto e
-                    (.setStackTrace (into-array java.lang.StackTraceElement
-                                                (->> (.getStackTrace e)
-                                                     (drop-while (fn [frame]
-                                                                   (or (str/starts-with? (str frame) "metabase.util.malli")
-                                                                       (not (str/starts-with? (str frame) "metabase")))))))))
-             :cljs e)]
-    (println (.getStackTrace e))
-    (throw e)))
+                   output (->malli-io-link output value))]
+    (throw (ex-info
+            (pr-str humanized)
+            (cond-> {:type type :data data}
+              data (assoc :humanized humanized)
+              (and data link) (assoc :link link))))))
 
 #?(:clj
    (clojure.core/defn instrument!
      "Instrument a [[metabase.util.malli/defn]]."
      [id]
      (minst/instrument! {:filters [(minst/-filter-var #(-> % meta :validate! (= id)))]
-                         :report  #'explain-fn-fail!}))
+                         :report  explain-fn-fail!}))
    :cljs
    (clojure.core/defn instrument!
      "Instrument a [[metabase.util.malli/defn]]. No-op for ClojureScript. Instrumentation currently only works in
