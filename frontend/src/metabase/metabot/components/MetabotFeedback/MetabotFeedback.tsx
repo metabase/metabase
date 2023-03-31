@@ -84,9 +84,9 @@ interface FeedbackTypeSelectProps {
 
 const FeedbackTypeSelect = ({ onSubmitFeedback }: FeedbackTypeSelectProps) => {
   const handleGreat = () => onSubmitFeedback("great");
-  const handleWrongData = () => onSubmitFeedback("wrong-data");
-  const handleIncorrectResult = () => onSubmitFeedback("incorrect-result");
-  const handleInvalidSql = () => onSubmitFeedback("invalid-sql");
+  const handleWrongData = () => onSubmitFeedback("wrong_data");
+  const handleIncorrectResult = () => onSubmitFeedback("incorrect_result");
+  const handleInvalidSql = () => onSubmitFeedback("invalid_sql");
 
   return (
     <MetabotFeedbackContent>
