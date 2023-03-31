@@ -217,7 +217,7 @@
 (mu/defn create-dashboard-cards!
   "Create a new DashboardCard by inserting it into the database along with all associated pieces of data such as
   DashboardCardSeries. Returns the newly created DashboardCard or throws an Exception."
-  [dashboard-cards :- [:+ NewDashboardCard]]
+  [dashboard-cards :- [:sequential NewDashboardCard]]
   (t2/with-transaction [_conn]
     (let [dashboard-card-ids (t2/insert-returning-pks!
                                DashboardCard
