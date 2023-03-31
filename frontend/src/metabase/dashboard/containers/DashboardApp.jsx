@@ -160,7 +160,8 @@ const DashboardApp = props => {
     setIsShowingSlowToaster(false);
   }, []);
 
-  const { parameterValues } = props;
+  const { parameterValues, setDashboardAttributes, saveDashboardAndCards } =
+    props;
 
   const [shouldShowAutoApplyFiltersToast, cancel, reset] = useTimeout(
     DASHBOARD_SLOW_TIMEOUT,
@@ -183,13 +184,27 @@ const DashboardApp = props => {
       autoApplyFiltersToasterApi.show({
         message: t`You can make this dashboard snappier by turning off auto-applying filters.`,
         confirmText: t`Turn off`,
+        onConfirm: () => {
+          setDashboardAttributes({
+            id: dashboard?.id,
+            attributes: {
+              auto_apply_filters: false,
+            },
+          });
+          saveDashboardAndCards(dashboard?.id);
+          autoApplyFiltersToasterApi.hide();
+          // XXX: Make the dashboard not reload after clicking the button
+        },
       });
     }
   }, [
     autoApplyFiltersToasterApi,
     dashboard?.auto_apply_filters,
+    dashboard?.id,
     isLoadingComplete,
     parameterValues,
+    saveDashboardAndCards,
+    setDashboardAttributes,
     shouldShowAutoApplyFiltersToast,
   ]);
 
