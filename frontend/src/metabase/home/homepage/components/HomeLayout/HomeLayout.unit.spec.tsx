@@ -1,22 +1,14 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import HomeLayout, { HomeLayoutProps } from "./HomeLayout";
+import { renderWithProviders, screen } from "__support__/ui";
+import HomeLayout from "./HomeLayout";
 
-const HomeGreetingMock = () => <div>Hey there</div>;
-jest.mock("../../containers/HomeGreeting", () => HomeGreetingMock);
+const setup = () => {
+  renderWithProviders(<HomeLayout />);
+};
 
 describe("HomeLayout", () => {
   it("should render correctly", () => {
-    const props = getProps();
-
-    render(<HomeLayout {...props} />);
-
+    setup();
     expect(screen.getByText("Hey there")).toBeInTheDocument();
   });
-});
-
-const getProps = (opts?: Partial<HomeLayoutProps>): HomeLayoutProps => ({
-  hasMetabot: false,
-  hasIllustration: false,
-  ...opts,
 });
