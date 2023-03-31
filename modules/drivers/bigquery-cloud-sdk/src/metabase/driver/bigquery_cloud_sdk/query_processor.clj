@@ -92,8 +92,7 @@
     (parse-fn v)))
 
 (defmethod parse-result-of-type :default
-  [column-type column-mode _ v]
-  (log/warn (trs "Warning: missing type mapping for parsing BigQuery results of type {0}." column-type))
+  [_column-type column-mode _ v]
   (parse-value column-mode v identity))
 
 (defmethod parse-result-of-type "STRING"
