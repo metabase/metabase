@@ -1,10 +1,48 @@
 import React from "react";
+import moment from "moment-timezone";
+import mockDate from "mockdate";
+import userEvent from "@testing-library/user-event";
 import { render, screen } from "__support__/ui";
+
 import MetabaseSettings from "metabase/lib/settings";
 import { updateMomentStartOfWeek } from "metabase/lib/i18n";
-import Calendar from "./Calendar";
+import Calendar, { CalendarProps } from "./Calendar";
 
 describe("Calendar", () => {
+  afterEach(() => {
+    mockDate.reset();
+  });
+
+  it("should switch months correctly", () => {
+    mockDate.set("2018-01-12T12:00:00Z", 0);
+    setup({ selected: moment("2018-01-01") });
+
+    const PREVIOUS = screen.getByRole("img", { name: /chevronleft icon/i });
+    const NEXT = screen.getByRole("img", { name: /chevronright icon/i });
+
+    expect(screen.getByText("January 2018")).toBeInTheDocument();
+
+    userEvent.click(PREVIOUS);
+    expect(screen.getByText("December 2017")).toBeInTheDocument();
+
+    userEvent.click(NEXT);
+    userEvent.click(NEXT);
+    expect(screen.getByText("February 2018")).toBeInTheDocument();
+  });
+
+  it("should render all days of current month by default", () => {
+    mockDate.set("2023-03-31T12:00:00Z", 0);
+    setup();
+
+    // check that listed dates are correct
+    expect(screen.getByTestId("calendar-weeks")).toHaveTextContent(
+      [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+        21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+      ].join(""), // days in March 2023
+    );
+  });
+
   it("should render weekday short names", () => {
     setup();
 
@@ -51,6 +89,6 @@ describe("Calendar", () => {
   });
 });
 
-function setup() {
-  return render(<Calendar />);
+function setup(props?: Partial<CalendarProps>) {
+  return render(<Calendar {...props} />);
 }

@@ -26,7 +26,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.lang.management ManagementFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -134,7 +136,9 @@
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)
-  (log/info (trs "Metabase Initialization COMPLETE")))
+  (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
+        duration   (- (System/currentTimeMillis) start-time)]
+    (log/info (trs "Metabase Initialization COMPLETE in {0}" (u/format-milliseconds duration)))))
 
 (defn init!
   "General application initialization function which should be run once at application startup. Calls `[[init!*]] and
