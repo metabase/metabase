@@ -68,11 +68,14 @@
 (api/defendpoint-schema POST "/feedback"
   "Record feedback on metabot results."
   [:as {feedback :body}]
-  (let [feedback-keys [:entity_type :prompt :prompt_template_versions :sql :feedback_type]]
+  (let [snowplow-keys [:entity_type :prompt_template_versions :feedback_type]
+        feedback-keys (into snowplow-keys [:prompt :sql])]
     (tap> (select-keys feedback feedback-keys))
+    ;; The snowplow tracker event
     (snowplow/track-event!
      ::snowplow/metabot-feedback-received api/*current-user-id*
-     (select-keys feedback feedback-keys))
+     (select-keys feedback snowplow-keys))
+
     {:message "Thanks for your feedback"}))
 
 (api/define-routes)
