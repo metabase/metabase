@@ -2,12 +2,14 @@
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util.honeysql-extensions :as hx]))
 
 (comment sql-jdbc.actions/keep-me)
@@ -97,3 +99,16 @@
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _semantic_type expr]
   (hx/->timestamp expr))
+
+(defn- create-table-sql
+  [table-name schema]
+  (first (sql/format {:create-table table-name
+                      :with-columns
+                      (for [{:keys [database-name database-type]} schema]
+                        [database-name database-type])})))
+
+(defmethod driver/create-table :sql-jdbc
+  [_driver db-id table-name schema]
+  (let [sql (str "DROP TABLE IF EXISTS " (name table-name) "; "
+                 (create-table-sql table-name schema))]
+    (qp.writeback/execute-write-sql! db-id sql)))
