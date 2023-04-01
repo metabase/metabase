@@ -1,6 +1,6 @@
 (ns metabase.lib.schema.expression.temporal-test
   (:require
-   [clojure.test :refer [are deftest]]
+   [clojure.test :refer [are deftest is]]
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.schema.expression :as expression]))
@@ -40,3 +40,11 @@
      {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Integer}
      "2023-03-08T19:55:01"
      :day]))
+
+(deftest ^:parallel temporal-extract-test
+  (is (not (mc/explain
+            :mbql.clause/temporal-extract
+            [:temporal-extract
+             {:lib/uuid "202ec127-f7b9-49ce-b785-cd7b96996660"}
+             [:field {:temporal-unit :default, :lib/uuid "cde9c9d4-c399-4808-8476-24b65842ba82"} 1]
+             :year-of-era]))))

@@ -18,7 +18,7 @@
 ;;; |                                                Date extract tests                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn test-temporal-extract
+(defn- test-temporal-extract
   [{:keys [aggregation breakout expressions fields filter limit]}]
   (if breakout
     (->> (mt/run-mbql-query times {:expressions expressions
@@ -209,7 +209,7 @@
                         first
                         (zipmap ops))))))))))
 
-(deftest temporal-extraction-with-filter-expresion-tests
+(deftest ^:parallel temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
@@ -879,7 +879,7 @@
               #t "2023-10-02T00:00:00"]]
       [dt (u.date/format dt)])]])
 
-(def diff-time-zones-athena-cases-query
+(def ^:private diff-time-zones-athena-cases-query
   ;; This query recreates [[diff-time-zones-cases]] for Athena from [[diff-time-zones-athena-cases]].
   "with x as (
      select
@@ -1094,7 +1094,7 @@
                       (mt/formatted-rows [int int int int])
                       first))))))))
 
-(deftest datetime-diff-type-test
+(deftest ^:parallel datetime-diff-type-test
   (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers-with-feature :datetime-diff))
     (testing "Cannot datetime-diff against time column"
       (mt/dataset test-data-with-time

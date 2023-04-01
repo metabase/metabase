@@ -240,3 +240,15 @@
             (lib/aggregations query)))
     (is (= :type/Integer
            (lib/type-of query (first (lib/aggregations query)))))))
+
+(deftest ^:parallel preserve-field-settings-metadata-test
+  (testing "Aggregation metadata should return the `:settings` for the field being aggregated, for some reason."
+    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/aggregate (lib/sum (lib/field (meta/id :venues :price)))))]
+      (is (=? {:settings     {:is_priceless true}
+               :lib/type     :metadata/field
+               :base_type    :type/Integer
+               :name         "sum_price"
+               :display_name "Sum of Price"
+               :lib/source   :source/aggregations}
+              (lib.metadata.calculation/metadata query (first (lib/aggregations query -1))))))))

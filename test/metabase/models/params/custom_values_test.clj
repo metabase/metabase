@@ -55,14 +55,14 @@
                        :values          [1 2 3]}
                       (custom-values/values-from-card
                         (t2/select-one Card :id card-id)
-                        [:field "sum" {:base-type :type/Float}]))))
+                        [:field "sum_price" {:base-type :type/Float}]))))
 
             (testing "can search on aggregation column"
               (is (=? {:has_more_values false,
                        :values          [2]}
                       (custom-values/values-from-card
                         (t2/select-one Card :id card-id)
-                        [:field "sum" {:base-type :type/Float}]
+                        [:field "sum_price" {:base-type :type/Float}]
                         2))))
 
             (testing "doing case in-sensitve search on breakout columns"

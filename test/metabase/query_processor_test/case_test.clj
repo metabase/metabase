@@ -67,7 +67,7 @@
       (is (= 194.5 (test-case [:sum [:case [[[:< [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]
                                             [[:< [:field (mt/id :venues :price) nil] 4] [:+ [:/ [:field (mt/id :venues :price) nil] 2] 1]]]]]))))))
 
-(deftest test-case-normalization
+(deftest ^:parallel test-case-normalization
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 116.0 (test-case ["sum" ["case" [[["<" ["field-id" (mt/id :venues :price)] 2] 2]
                                             [["<" ["field-id" (mt/id :venues :price)] 4] 1]]]])))))
