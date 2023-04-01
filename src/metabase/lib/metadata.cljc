@@ -49,7 +49,9 @@
    ;; introduced by a join, not necessarily ultimately returned.
    :source/joins
    ;; Introduced by `:expressions`; not necessarily ultimately returned.
-   :source/expressions])
+   :source/expressions
+   ;; Not even introduced, but 'visible' because this column is implicitly joinable.
+   :source/implicitly-joinable])
 
 (def ColumnMetadata
   "Malli schema for a valid map of column metadata, which can mean one of two things:

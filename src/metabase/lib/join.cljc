@@ -99,7 +99,8 @@
               (column-from-join-fields query stage-number field-metadata join-alias))
             field-metadatas))))
 
-(defmulti ^:private ->join-clause
+(defmulti join-clause-method
+  "Convert something to a join clause."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x))
@@ -108,33 +109,33 @@
 ;; TODO -- should the default implementation call [[metabase.lib.query/query]]? That way if we implement a method to
 ;; create an MBQL query from a `Table`, then we'd also get [[join]] support for free?
 
-(defmethod ->join-clause :mbql/join
+(defmethod join-clause-method :mbql/join
   [_query _stage-number a-join-clause]
   a-join-clause)
 
-(defmethod ->join-clause :mbql/query
+;;; TODO -- this probably ought to live in [[metabase.lib.query]]
+(defmethod join-clause-method :mbql/query
   [_query _stage-number another-query]
   (-> {:lib/type :mbql/join
        :stages   (:stages (lib.util/pipeline another-query))}
       lib.options/ensure-uuid))
 
-(defmethod ->join-clause :mbql.stage/mbql
+;;; TODO -- this probably ought to live in [[metabase.lib.stage]]
+(defmethod join-clause-method :mbql.stage/mbql
   [_query _stage-number mbql-stage]
   (-> {:lib/type :mbql/join
        :stages   [mbql-stage]}
       lib.options/ensure-uuid))
 
-(defmethod ->join-clause :metadata/table
-  [query stage-number table-metadata]
-  (->join-clause query
-                 stage-number
-                 {:lib/type     :mbql.stage/mbql
-                  :lib/options  {:lib/uuid (str (random-uuid))}
-                  :source-table (:id table-metadata)}))
-
-(defmethod ->join-clause :dispatch-type/fn
+(defmethod join-clause-method :dispatch-type/fn
   [query stage-number f]
-  (->join-clause query stage-number (f query stage-number)))
+  (join-clause-method query
+                      stage-number
+                      (or (f query stage-number)
+                          (throw (ex-info "Error creating join clause: (f query stage-number) returned nil"
+                                          {:query        query
+                                           :stage-number stage-number
+                                           :f            f})))))
 
 ;; TODO this is basically the same as lib.common/->op-args,
 ;; but requiring lib.common leads to crircular dependencies:
@@ -183,11 +184,12 @@
      (join-clause query stage-number x condition)))
 
   ([query stage-number x]
-   (->join-clause query stage-number x))
+   (join-clause-method query stage-number x))
 
   ([query stage-number x condition]
    (cond-> (join-clause query stage-number x)
      condition (assoc :condition (join-condition query stage-number condition)))))
+
 
 (mu/defn with-join-fields
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
@@ -212,8 +214,9 @@
 
   ([query stage-number x condition]
    (let [stage-number (or stage-number -1)
-         new-join     (cond-> (->join-clause query stage-number x)
-                        condition (assoc :condition (join-condition query stage-number condition)))]
+         new-join     (if (some? condition) ; I guess technically `false` could be a valid join condition?
+                        (join-clause query stage-number x condition)
+                        (join-clause query stage-number x))]
      (lib.util/update-query-stage query stage-number update :joins (fn [joins]
                                                                      (conj (vec joins) new-join))))))
 

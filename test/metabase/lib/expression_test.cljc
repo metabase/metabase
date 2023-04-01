@@ -110,8 +110,8 @@
     (is (=? [{:name         "prev_month"
               :display_name "prev_month"
               :base_type    :type/DateTime
-              :lib/source   :source/fields}]
-            (lib.metadata.calculation/metadata query -1 query)))))
+              :lib/source   :source/expressions}]
+            (lib.metadata.calculation/metadata query)))))
 
 (deftest ^:parallel date-interval-names-test
   (let [clause [:datetime-add
