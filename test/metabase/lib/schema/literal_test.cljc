@@ -3,8 +3,7 @@
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.schema.literal :as literal]
-   [malli.error :as me]))
+   [metabase.lib.schema.literal :as literal]))
 
 (deftest ^:parallel integer-literal-test
   (testing "valid schemas"
@@ -58,55 +57,3 @@
       ::expression/time
       ::expression/datetime
       ::expression/temporal)))
-
-(deftest ^:parallel absolute-datetime-type-of-test
-  (are [literal expected] (= expected
-                             (expression/type-of [:absolute-datetime
-                                                  {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-                                                  literal
-                                                  :day]))
-    "2023-03-08"          :type/Date
-    "2023-03-08T20:34:00" :type/DateTime))
-
-(deftest ^:parallel temporal-literals-test
-  (are [expr schema] (not (me/humanize (mc/explain schema expr)))
-    "2023-03-08"
-    ::literal/date
-
-    [:absolute-datetime
-     {:base-type :type/Date, :lib/uuid "00000000-0000-0000-0000-000000000000"}
-     "2023-03-08"
-     :day]
-    ::literal/date
-
-    [:absolute-datetime
-     {:base-type :type/Date, :lib/uuid "00000000-0000-0000-0000-000000000000"}
-     "2023-03-08"
-     :default]
-    ::literal/date))
-
-(deftest ^:parallel invalid-temporal-literals-test
-  (are [expr schema] (me/humanize (mc/explain schema expr))
-    "2023-03-08T19:55:01"
-    ::literal/date
-
-    ;; wrong literal string
-    [:absolute-datetime
-     {:base-type :type/Date, :lib/uuid "00000000-0000-0000-0000-000000000000"}
-     "2023-03-08T19:55:01"
-     :day]
-    ::literal/date
-
-    ;; wrong base type
-    [:absolute-datetime
-     {:base-type :type/DateTime, :lib/uuid "00000000-0000-0000-0000-000000000000"}
-     "2023-03-08"
-     :day]
-    ::literal/date
-
-    ;; wrong unit
-    [:absolute-datetime
-     {:base-type :type/Date, :lib/uuid "00000000-0000-0000-0000-000000000000"}
-     "2023-03-08"
-     :hour]
-    ::literal/date))

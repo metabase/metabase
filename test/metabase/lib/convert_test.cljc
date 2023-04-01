@@ -144,7 +144,7 @@
      :type :query}
 
     {:query {:aggregation [[:count]]
-             :order-by    [[:asc [:aggregation 0 nil]]]
+             :order-by    [[:asc [:aggregation 0]]]
              :filter      [:between [:field 1 nil] "2019-01-01" "2021-01-01"]}}))
 
 (deftest ^:parallel convert-aggregation-reference-test

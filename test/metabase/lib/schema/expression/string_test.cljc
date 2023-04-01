@@ -1,6 +1,6 @@
 (ns metabase.lib.schema.expression.string-test
   (:require
-   [clojure.test :refer [deftest is are]]
+   [clojure.test :refer [are deftest]]
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.schema]))

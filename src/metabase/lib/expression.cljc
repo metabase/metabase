@@ -49,7 +49,8 @@
   {:lib/type     :metadata/field
    :name         expression-name
    :display_name (lib.metadata.calculation/display-name query stage-number expression-ref)
-   :base_type    (lib.metadata.calculation/type-of query stage-number expression-ref)})
+   :base_type    (lib.metadata.calculation/type-of query stage-number expression-ref)
+   :lib/source   :source/expressions})
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/number
   [_query _stage-number n]
@@ -127,31 +128,50 @@
    (for [arg args]
      (lib.metadata.calculation/type-of query stage-number arg))))
 
+(defn- interval-unit-str [amount unit]
+  (clojure.core/case unit
+    :millisecond (i18n/trun "millisecond" "milliseconds" (clojure.core/abs amount))
+    :second      (i18n/trun "second"      "seconds"      (clojure.core/abs amount))
+    :minute      (i18n/trun "minute"      "minutes"      (clojure.core/abs amount))
+    :hour        (i18n/trun "hour"        "hours"        (clojure.core/abs amount))
+    :day         (i18n/trun "day"         "days"         (clojure.core/abs amount))
+    :week        (i18n/trun "week"        "weeks"        (clojure.core/abs amount))
+    :month       (i18n/trun "month"       "months"       (clojure.core/abs amount))
+    :quarter     (i18n/trun "quarter"     "quarters"     (clojure.core/abs amount))
+    :year        (i18n/trun "year"        "years"        (clojure.core/abs amount))))
+
 (mu/defn ^:private interval-display-name  :- ::lib.schema.common/non-blank-string
   "e.g. something like \"- 2 days\""
   [amount :- :int
    unit   :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
   ;; TODO -- sorta duplicated with [[metabase.shared.parameters.parameters/translated-interval]], but not exactly
-  (let [unit-str (clojure.core/case unit
-                   :millisecond (i18n/trun "millisecond" "milliseconds" (clojure.core/abs amount))
-                   :second      (i18n/trun "second"      "seconds"      (clojure.core/abs amount))
-                   :minute      (i18n/trun "minute"      "minutes"      (clojure.core/abs amount))
-                   :hour        (i18n/trun "hour"        "hours"        (clojure.core/abs amount))
-                   :day         (i18n/trun "day"         "days"         (clojure.core/abs amount))
-                   :week        (i18n/trun "week"        "weeks"        (clojure.core/abs amount))
-                   :month       (i18n/trun "month"       "months"       (clojure.core/abs amount))
-                   :quarter     (i18n/trun "quarter"     "quarters"     (clojure.core/abs amount))
-                   :year        (i18n/trun "year"        "years"        (clojure.core/abs amount)))]
+  (let [unit-str (interval-unit-str amount unit)]
     (wrap-str-in-parens-if-nested
      (if (pos? amount)
-       (lib.util/format "+ %d %s" amount       unit-str)
+       (lib.util/format "+ %d %s" amount                    unit-str)
        (lib.util/format "- %d %s" (clojure.core/abs amount) unit-str)))))
+
+(mu/defn ^:private interval-column-name  :- ::lib.schema.common/non-blank-string
+  "e.g. something like `minus_2_days`"
+  [amount :- :int
+   unit   :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
+  ;; TODO -- sorta duplicated with [[metabase.shared.parameters.parameters/translated-interval]], but not exactly
+  (let [unit-str (interval-unit-str amount unit)]
+    (if (pos? amount)
+      (lib.util/format "plus_%s_%s"  amount                    unit-str)
+      (lib.util/format "minus_%d_%s" (clojure.core/abs amount) unit-str))))
 
 (defmethod lib.metadata.calculation/display-name-method :datetime-add
   [query stage-number [_datetime-add _opts x amount unit]]
   (str (lib.metadata.calculation/display-name query stage-number x)
        \space
        (interval-display-name amount unit)))
+
+(defmethod lib.metadata.calculation/column-name-method :datetime-add
+  [query stage-number [_datetime-add _opts x amount unit]]
+  (str (lib.metadata.calculation/column-name query stage-number x)
+       \_
+       (interval-column-name amount unit)))
 
 ;;; for now we'll just pretend `:coalesce` isn't a present and just use the display name for the expr it wraps.
 (defmethod lib.metadata.calculation/display-name-method :coalesce

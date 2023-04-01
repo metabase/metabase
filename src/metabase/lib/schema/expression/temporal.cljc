@@ -1,9 +1,12 @@
 (ns metabase.lib.schema.expression.temporal
   (:require
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
+   [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
-   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]))
+   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
+   [metabase.util.malli.registry :as mr]))
 
 (mbql-clause/define-tuple-mbql-clause :interval
   :int
@@ -47,14 +50,72 @@
 
 (mbql-clause/define-tuple-mbql-clause :now :- :type/DateTimeWithTZ)
 
-(mbql-clause/define-tuple-mbql-clause :absolute-datetime :- :type/DateTimeWithTZ
-  #_:datetimestr [:schema [:ref ::expression/string]]
-  #_:unit [:ref ::temporal-bucketing/unit.date-time.interval])
+;;; if `:absolute-datetime` has `:base-type` in options, it must either derive from `:type/Date` or `:type/DateTime`.
+;;; TODO -- we should do additional validation here and make sure the unit/value agree with base-type when it's
+;;; present.
+(mr/def ::absolute-datetime.base-type
+  [:and
+   [:ref ::common/base-type]
+   [:fn
+    {:error/message ":absolute-datetime base-type must derive from :type/Date or :type/DateTime"}
+    (fn [base-type]
+      (some #(isa? base-type %)
+            [:type/Date
+             :type/DateTime]))]])
+
+(mr/def ::absolute-datetime.options
+  [:merge
+   [:ref ::common/options]
+   [:map
+    [:base-type {:optional true} [:ref ::absolute-datetime.base-type]]]])
+
+(mbql-clause/define-mbql-clause :absolute-datetime
+  [:cat
+   {:error/message "valid :absolute-datetime clause"}
+   [:= :absolute-datetime]
+   [:schema [:ref ::absolute-datetime.options]]
+   [:alt
+    [:cat
+     {:error/message ":absolute-datetime literal and unit for :type/Date"}
+     [:schema [:or
+               [:ref ::literal/date]
+               ;; absolute datetime also allows `year-month` and `year` literals.
+               [:ref ::literal/string.year-month]
+               [:ref ::literal/string.year]]]
+     [:schema [:or
+               [:= :default]
+               [:ref ::temporal-bucketing/unit.date]]]]
+    [:cat
+     {:error/message ":absolute-datetime literal and unit for :type/DateTime"}
+     [:schema [:ref ::literal/datetime]]
+     [:schema [:or
+               [:= :default]
+               [:ref ::temporal-bucketing/unit.date-time]]]]]])
+
+(defmethod expression/type-of* :absolute-datetime
+  [[_tag _opts value _unit]]
+  (or
+   ;; handle year-month and year string regexes, which are not allowed as date literals unless wrapped in
+   ;; `:absolute-datetime`.
+   (when (string? value)
+     (cond
+       (re-matches literal/year-month-regex value) :type/Date
+       (re-matches literal/year-regex value)       :type/Date))
+   ;; for things that return a union of types like string literals, only the temporal types make sense, so filter out
+   ;; everything else.
+   (let [value-type (expression/type-of value)
+         value-type (if (set? value-type)
+                      (into #{} (filter #(isa? % :type/Temporal)) value-type)
+                      value-type)]
+     (if (and (set? value-type)
+              (= (count value-type) 1))
+       (first value-type)
+       value-type))))
 
 (mbql-clause/define-tuple-mbql-clause :relative-datetime :- :type/DateTime
-  #_:datetimestr [:schema [:ref ::expression/string]]
-  #_:unit [:ref ::temporal-bucketing/unit.date-time.interval])
+  #_:datetimestr [:ref ::expression/string]
+  #_:unit        [:ref ::temporal-bucketing/unit.date-time.interval])
 
-(mbql-clause/define-tuple-mbql-clause :time :- :type/TimeWithTZ
-  #_:timestr [:schema [:ref ::expression/string]]
-  #_:unit [:ref ::temporal-bucketing/unit.time.interval])
+(mbql-clause/define-tuple-mbql-clause :time :- :type/Time
+  #_:timestr [:ref ::expression/string]
+  #_:unit    [:ref ::temporal-bucketing/unit.time.interval])
