@@ -94,7 +94,9 @@
   [:and
    [:or
     [:fn
-     {:error/message "shaped like an MBQL clause"}
+     {:error/message "valid MBQL clause"
+      :error/fn      (fn [{:keys [value]} _]
+                       (str "invalid MBQL clause: " (pr-str value)))}
      (complement mbql-clause?)]
     [:ref :metabase.lib.schema.mbql-clause/clause]]
    [:fn

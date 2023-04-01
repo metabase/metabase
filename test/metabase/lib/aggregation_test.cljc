@@ -198,7 +198,7 @@
                   (dissoc :lib/metadata)))))))
 
 (deftest ^:parallel type-of-sum-test
-  (is (= :wow
+  (is (= :type/BigInteger
          (lib.metadata.calculation/type-of
           lib.tu/venues-query
           [:sum

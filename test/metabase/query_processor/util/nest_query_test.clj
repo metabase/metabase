@@ -552,7 +552,7 @@
                             add/add-alias-info
                             nest-expressions))))))))
 
-(deftest multiple-joins-with-expressions-test
+(deftest ^:parallel multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
     (driver/with-driver :h2
       (mt/dataset sample-dataset
@@ -632,7 +632,7 @@
                             add/add-alias-info
                             nest-expressions))))))))
 
-(deftest uniquify-aliases-test
+(deftest ^:parallel uniquify-aliases-test
   (driver/with-driver :h2
     (mt/dataset sample-dataset
       (mt/with-everything-store

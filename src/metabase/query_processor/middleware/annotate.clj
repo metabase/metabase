@@ -8,6 +8,8 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
@@ -21,6 +23,7 @@
    [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
@@ -311,11 +314,16 @@
 
 (defn- mlv2-query [inner-query]
   (qp.store/cached [:mlv2-query (hash inner-query)]
-    (lib/query
-     qp.store/metadata-provider
-     (lib.convert/->pMBQL (lib.convert/legacy-query-from-inner-query
-                           (:id (qp.store/database))
-                           inner-query)))))
+    (try
+      (lib/query
+       qp.store/metadata-provider
+       (lib.convert/->pMBQL (lib.convert/legacy-query-from-inner-query
+                             (:id (qp.store/database))
+                             (mbql.normalize/normalize-fragment [:query] inner-query))))
+      (catch Throwable e
+        (throw (ex-info (tru "Error converting query to pMBQL: {0}" (ex-message e))
+                        {:inner-query inner-query, :type qp.error-type/qp}
+                        e))))))
 
 (s/defn col-info-for-aggregation-clause
   "Return appropriate column metadata for an `:aggregation` clause."
@@ -325,12 +333,17 @@
   (let [mlv2-clause (lib.convert/->pMBQL clause)]
     (lib.metadata.calculation/metadata (mlv2-query inner-query) -1 mlv2-clause)))
 
-(defn aggregation-name
+(mu/defn aggregation-name :- ::lib.schema.common/non-blank-string
   "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
   or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
 
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
-  [inner-query ag-clause]
+  [inner-query :- [:and
+                   [:map]
+                   [:fn
+                    {:error/message "legacy inner-query with :source-table or :source-query"}
+                    (some-fn :source-table :source-query)]]
+   ag-clause]
   (lib.metadata.calculation/column-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
 
 (defn aggregation-display-name

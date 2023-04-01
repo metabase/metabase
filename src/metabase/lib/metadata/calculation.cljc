@@ -81,10 +81,14 @@
     ;; anything else: use `pr-str` representation.
     (pr-str x)))
 
+;;; TODO -- this logic is wack, we should probably be snake casing stuff and display names like
+;;;
+;;; "Sum of Products → Price"
+;;;
+;;; result in totally wacko column names like "sum_products_%E2%86%92_price", let's try to generate things that are
+;;; actually going to be allowed here.
 (defn- slugify [s]
   (-> s
-      (str/replace #"\+" (i18n/tru "plus"))
-      (str/replace #"\-" (i18n/tru "minus"))
       (str/replace #"[\(\)]" "")
       u/slugify))
 
@@ -131,7 +135,8 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     x]
-   (type-of-method query stage-number x)))
+   (or ((some-fn :effective-type :base-type) (lib.options/options x))
+       (type-of-method query stage-number x))))
 
 (defmethod type-of-method :default
   [_query _stage-number expr]

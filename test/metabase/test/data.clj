@@ -47,7 +47,8 @@
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [clojure.walk :as walk]))
 
 (set! *warn-on-reflection* true)
 
@@ -136,6 +137,17 @@
      (mbql-query-impl/wrap-inner-query <>)
      (vary-meta <> assoc :type :mbql))))
 
+(defn -remove-lib-type-keys
+  "Since [[metabase.query-processor.middleware.annotate]] uses MLv2 under the hood now, some metadata includes
+  `:lib/type`; we can safely ignore it."
+  [x]
+  (walk/postwalk
+   (fn [x]
+     (if (map? x)
+       (dissoc x :lib/type)
+       x))
+   x))
+
 (defmacro mbql-query
   "Macro for easily building MBQL queries for test purposes.
 
@@ -160,7 +172,8 @@
   ([table-name inner-query]
    {:pre [(map? inner-query)]}
    `(let [query# (mbql-query-no-test ~table-name ~inner-query)]
-      (t/is (= (normalize query#) (-> query# normalize lib.convert/->pMBQL lib.convert/->legacy-MBQL normalize))
+      (t/is (= (-remove-lib-type-keys (normalize query#))
+               (-> query# normalize lib.convert/->pMBQL lib.convert/->legacy-MBQL normalize -remove-lib-type-keys))
             "Legacy MBQL queries should round trip to pMBQL and back")
       query#)))
 

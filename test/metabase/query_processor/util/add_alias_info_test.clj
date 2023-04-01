@@ -229,17 +229,17 @@
                                                  ::add/source-alias  "count_3"
                                                  ::add/desired-alias "count_3"
                                                  ::add/position      2}]]}
-                 :fields       [[:field "count" {:base-type          :type/BigInteger
+                 :fields       [[:field "count" {:base-type          :type/Integer
                                                  ::add/source-table  ::add/source
                                                  ::add/source-alias  "count"
                                                  ::add/desired-alias "count"
                                                  ::add/position      0}]
-                                [:field "count_2" {:base-type          :type/BigInteger
+                                [:field "count_2" {:base-type          :type/Integer
                                                    ::add/source-table  ::add/source
                                                    ::add/source-alias  "count_2"
                                                    ::add/desired-alias "count_2"
                                                    ::add/position      1}]
-                                [:field "count_3" {:base-type          :type/BigInteger
+                                [:field "count_3" {:base-type          :type/Integer
                                                    ::add/source-table  ::add/source
                                                    ::add/source-alias  "count_3"
                                                    ::add/desired-alias "count_3"
@@ -443,7 +443,7 @@
                                         ::add/position 1}
                             outer-count-opts (-> count-opts
                                                  (dissoc :name)
-                                                 (assoc :base-type :type/BigInteger
+                                                 (assoc :base-type :type/Integer
                                                         ::add/source-table ::add/source)
                                                  (update ::add/source-alias prefix-alias)
                                                  (update ::add/desired-alias prefix-alias))]
@@ -460,7 +460,7 @@
                                   [:field
                                    "strange count"
                                    outer-count-opts]
-                                  [:value 10 {:base_type :type/BigInteger}]]
+                                  [:value 10 {:base_type :type/Integer}]]
                          :limit 1}))
                     (-> (mt/mbql-query venues
                           {:source-query {:source-table $$venues
@@ -468,7 +468,7 @@
                                                           [:count]
                                                           {:name "strange count"}]]
                                           :breakout     [$price]}
-                           :filter       [:< [:field "strange count" {:base-type :type/BigInteger}] 10]
+                           :filter       [:< [:field "strange count" {:base-type :type/Integer}] 10]
                            :limit        1})
                         add-alias-info
                         :query)))))))
@@ -613,11 +613,11 @@
                   {:aggregation [[:aggregation-options
                                   [:sum [:field %user_id {::add/source-table $$checkins
                                                           ::add/source-alias "USER_ID"}]]
-                                  {:name               "sum"
+                                  {:name               "sum_user_id"
                                    ::add/position      0
-                                   ::add/source-alias  "sum"
-                                   ::add/desired-alias "sum"}]]
-                   :order-by    [[:asc [:aggregation 0 {::add/desired-alias "sum"
+                                   ::add/source-alias  "sum_user_id"
+                                   ::add/desired-alias "sum_user_id"}]]
+                   :order-by    [[:asc [:aggregation 0 {::add/desired-alias "sum_user_id"
                                                         ::add/position      0}]]]})
                 (add-alias-info
                  (mt/mbql-query checkins
