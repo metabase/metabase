@@ -1,7 +1,0 @@
-Source code in this repository is variously licensed under the GNU Affero General Public License (AGPL), or the Metabase Commercial License (https://www.metabase.com/license/commercial).
-
-* Outside of the top-level "enterprise" directory, source code in a given file is licensed under the AGPL.
-
-* Within the the top-level "enterprise" directory, source code in a given file is licensed under the Metabase Commercial License, unless otherwise noted.
-
-When built, binary files are generated for the AGPL source code and the Metabase Commercial License source code. Binaries located at hub.docker.com/metabase/metabase-enterprise and downloads.metabase.com/enterprise are released under the Metabase Commercial License. Binaries located at hub.docker.com/metabase/metabase and all non-enterprise paths at downloads.metabase.com are released under the AGPL.

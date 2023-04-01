@@ -1,5 +1,0 @@
-{:paths
- ["src" "resources"]
-
- :deps
- {com.novemberain/monger {:mvn/version "3.6.0"}}}
