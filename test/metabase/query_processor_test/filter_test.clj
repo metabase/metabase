@@ -9,7 +9,7 @@
    [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.test :as mt]))
 
-(deftest and-test
+(deftest ^:parallel and-test
   (mt/test-drivers (mt/normal-drivers)
     (testing ":and, :>, :>="
       (is (= [[55 "Dal Rae Restaurant"       67 33.983  -118.096 4]
@@ -30,7 +30,7 @@
                  {:filter   [:and [:< $id 24] [:> $id 20] [:!= $id 22]]
                   :order-by [[:asc $id]]})))))))
 
-(deftest filter-by-false-test
+(deftest ^:parallel filter-by-false-test
   (mt/test-drivers (mt/normal-drivers)
     (testing (str "Check that we're checking for non-nil values, not just logically true ones. There's only one place "
                   "(out of 3) that I don't like")
@@ -50,7 +50,7 @@
     nil false
     x))
 
-(deftest comparison-test
+(deftest ^:parallel comparison-test
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset places-cam-likes
       (testing "Can we use true literal in comparisons"
@@ -89,7 +89,7 @@
                                  :aggregation [[:count]]}))
                             first)))))))
 
-(deftest between-test
+(deftest ^:parallel between-test
   (mt/test-drivers (mt/normal-drivers)
     (testing ":between filter, single subclause (neither :and nor :or)"
       (is (= [[21 "PizzaHacker"    58 37.7441 -122.421 2]
@@ -104,9 +104,9 @@
       ;; test's results
       (when (= :snowflake driver/*driver*)
         (driver/notify-database-updated driver/*driver* (mt/id)))
-      (is (= {:rows [[29]]
-              :cols [(qp.test/aggregate-col :count)]}
-             (qp.test/rows-and-cols
+      (is (=? {:rows [[29]]
+               :cols [(qp.test/aggregate-col :count)]}
+              (qp.test/rows-and-cols
                (mt/format-rows-by [int]
                  (mt/run-mbql-query checkins
                    {:aggregation [[:count]]
@@ -118,7 +118,7 @@
     (mt/normal-drivers-with-feature :date-arithmetics)
     (timezones-test/timezone-aware-column-drivers)))
 
-(deftest temporal-arithmetic-test
+(deftest ^:parallel temporal-arithmetic-test
   (testing "Should be able to use temporal arithmetic expressions in filters (#22531)"
     (mt/test-drivers (timezone-arithmetic-drivers)
       (mt/dataset attempted-murders
@@ -148,7 +148,7 @@
                           (pos-int? result)))
                   (is (nat-int? result)))))))))))
 
-(deftest nonstandard-temporal-arithmetic-test
+(deftest ^:parallel nonstandard-temporal-arithmetic-test
   (testing "Nonstandard temporal arithmetic should also be supported"
     (mt/test-drivers (timezone-arithmetic-drivers)
       (mt/dataset attempted-murders
@@ -183,7 +183,7 @@
                           (pos-int? result)))
                   (is (nat-int? result)))))))))))
 
-(deftest or-test
+(deftest ^:parallel or-test
   (mt/test-drivers (mt/normal-drivers)
     (testing ":or, :<=, :="
       (is (= [[1 "Red Medicine"                  4 10.0646 -165.374 3]
@@ -195,7 +195,7 @@
                  {:filter   [:or [:<= $id 3] [:= $id 5]]
                   :order-by [[:asc $id]]})))))))
 
-(deftest inside-test
+(deftest ^:parallel inside-test
   (mt/test-drivers (mt/normal-drivers)
     (testing ":inside"
       (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
@@ -203,16 +203,15 @@
                (mt/run-mbql-query venues
                  {:filter [:inside $latitude $longitude 10.0649 -165.379 10.0641 -165.371]})))))))
 
-(deftest is-null-test
+(deftest ^:parallel is-null-test
   (mt/test-drivers (mt/normal-drivers)
     (let [result (mt/first-row (mt/run-mbql-query checkins
                                  {:aggregation [[:count]]
                                   :filter      [:is-null $date]}))]
       ;; Some DBs like Mongo don't return any results at all in this case, and there's no easy workaround (#5419)
-      (is (= true
-             (contains? #{[0] [0M] [nil] nil} result))))))
+      (is (contains? #{[0] [0M] [nil] nil} result)))))
 
-(deftest not-null-test
+(deftest ^:parallel not-null-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [1000]
            (mt/first-row
@@ -236,7 +235,7 @@
 
 ;;; -------------------------------------------------- starts-with ---------------------------------------------------
 
-(deftest starts-with-test
+(deftest ^:parallel starts-with-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
             [74 "Chez Jay"           2 34.0104 -118.493 2]]
@@ -274,7 +273,7 @@
 
 ;;; --------------------------------------------------- ends-with ----------------------------------------------------
 
-(deftest ends-with-test
+(deftest ^:parallel ends-with-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
             [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
@@ -316,7 +315,7 @@
 
 ;;; ---------------------------------------------------- contains ----------------------------------------------------
 
-(deftest contains-test
+(deftest ^:parallel contains-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[31 "Bludso's BBQ"             5 33.8894 -118.207 2]
             [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
@@ -397,7 +396,7 @@
 ;; equivalent expressions but I already wrote them so in this case it doesn't hurt to have a little more test coverage
 ;; than we need
 
-(deftest not-filter-test
+(deftest ^:parallel not-filter-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "="
       (is (= 99
@@ -473,7 +472,7 @@
 ;;; |                                                      Etc                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest etc-test
+(deftest ^:parallel etc-test
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset office-checkins
       (testing "make sure that filtering with timestamps truncating to minutes works (#4632)"
@@ -486,7 +485,7 @@
       (is (= 7
              (count-with-filter-clause checkins [:= !week.date "2015-06-21T07:00:00.000000000-00:00"]))))))
 
-(deftest string-escape-test
+(deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
     (testing "Make sure single quotes in parameters are escaped properly for the current driver"
@@ -516,7 +515,7 @@
                  {:aggregation [[:count]]
                   :filter      [:starts-with $name "In-N-Out"]})))))))
 
-(deftest automatically-parse-strings-test
+(deftest ^:parallel automatically-parse-strings-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "The QP should automatically parse String parameters in filter clauses to the correct type"
       (testing "String parameter to an Integer Field"
@@ -528,7 +527,7 @@
 ;; - there are 415 regions, and 8 have a `nil` name; 407 have non-empty, non-nil names
 ;; - there are 601 airports, and 1 has a `""` code; 600 have non-empty, non-nil codes
 
-(deftest text-equals-nil-empty-string-test
+(deftest ^:parallel text-equals-nil-empty-string-test
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset airports
       (testing ":= against a text column should match the correct columns when value is"
@@ -541,7 +540,7 @@
                    (mt/formatted-rows [int]
                      (mt/run-mbql-query airport {:aggregation [:count], :filter [:= $code ""]}))))))))))
 
-(deftest text-not-equals-nil-test
+(deftest ^:parallel text-not-equals-nil-test
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset airports
       (testing ":!= against a nil/NULL in a text column should be truthy"
@@ -553,7 +552,7 @@
                  (mt/formatted-rows [int]
                    (mt/run-mbql-query airport {:aggregation [:count], :filter [:!= $code "SFO"]})))))))))
 
-(deftest is-empty-not-empty-test
+(deftest ^:parallel is-empty-not-empty-test
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset airports
       (testing ":is-empty and :not-empty filters should work correctly (#13158)"
@@ -575,7 +574,7 @@
                    (mt/formatted-rows [int]
                      (mt/run-mbql-query airport {:aggregation [:count], :filter [:not-empty $code]}))))))))))
 
-(deftest order-by-nulls-test
+(deftest ^:parallel order-by-nulls-test
   (testing "Check that we can sort by numeric columns that contain NULLs (#6615)"
     (mt/dataset daily-bird-counts
       (mt/test-drivers (mt/normal-drivers)
