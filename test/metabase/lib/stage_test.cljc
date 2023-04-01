@@ -26,8 +26,7 @@
                  :lib/metadata meta/metadata-provider}]
       (is (mc/validate ::lib.schema/query query))
       (is (=? [(merge (meta/field-metadata :venues :price)
-                      {:source    :fields
-                       :field_ref [:field {:lib/uuid string?} (meta/id :venues :price)]})]
+                      {:lib/source :source/fields})]
               (lib.metadata.calculation/metadata query -1 query))))))
 
 (deftest ^:parallel deduplicate-expression-names-in-aggregations-test
@@ -44,12 +43,10 @@
                                    [:avg {} (lib.tu/field-clause :venues :price)]]]})]
         (is (=? [{:base_type    :type/Float
                   :name         "0_9_times_avg_price"
-                  :display_name "0.9 × Average of Price"
-                  :field_ref    [:aggregation {:lib/uuid string?} 0]}
+                  :display_name "0.9 × Average of Price"}
                  {:base_type    :type/Float
                   :name         "0_8_times_avg_price"
-                  :display_name "0.8 × Average of Price"
-                  :field_ref    [:aggregation {:lib/uuid string?} 1]}]
+                  :display_name "0.8 × Average of Price"}]
                 (lib.metadata.calculation/metadata query -1 query)))))))
 
 (deftest ^:parallel stage-display-name-card-source-query
