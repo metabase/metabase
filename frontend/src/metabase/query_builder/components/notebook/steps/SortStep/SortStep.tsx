@@ -47,15 +47,18 @@ function SortStep({
           onChange={handleUpdateSort}
         />
       )}
-      renderPopover={(sort, index) => (
+      renderPopover={({ item: sort, index, closePopover }) => (
         <SortPopover
           query={query}
           sort={sort}
           onChangeSort={newSort => {
             const isUpdate = sort && typeof index === "number";
-            return isUpdate
-              ? handleUpdateSort(newSort, index)
-              : handleAddSort(newSort);
+            if (isUpdate) {
+              handleUpdateSort(newSort, index);
+            } else {
+              handleAddSort(newSort);
+            }
+            closePopover();
           }}
         />
       )}

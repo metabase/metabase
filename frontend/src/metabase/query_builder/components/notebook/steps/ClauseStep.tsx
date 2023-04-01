@@ -8,11 +8,17 @@ import {
   NotebookCellItem,
 } from "../NotebookCell";
 
+export type RenderPopoverProps<T> = {
+  item?: T;
+  index?: number;
+  closePopover: () => void;
+};
+
 interface ClauseStepProps<T> {
   color: string;
   items: T[];
   renderName: (item: T, index: number) => JSX.Element | string;
-  renderPopover: (item?: T, index?: number) => JSX.Element | null;
+  renderPopover: (props: RenderPopoverProps<T>) => JSX.Element | null;
   canRemove?: (item: T) => boolean;
   isLastOpened?: boolean;
   onRemove?: ((item: T, index: number) => void) | null;
@@ -58,7 +64,9 @@ const ClauseStep = <T,>({
               )}
             </NotebookCellItem>
           )}
-          popoverContent={renderPopover(item, index)}
+          popoverContent={({ closePopover }) =>
+            renderPopover({ item, index, closePopover })
+          }
         />
       ))}
       {!readOnly && (
@@ -72,7 +80,7 @@ const ClauseStep = <T,>({
               onClick={onClick}
             />
           )}
-          popoverContent={renderPopover()}
+          popoverContent={renderPopover}
         />
       )}
     </NotebookCell>

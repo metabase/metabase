@@ -23,18 +23,21 @@ const ExpressionStep = ({
       items={items}
       renderName={({ name }) => name}
       readOnly={readOnly}
-      renderPopover={item => (
+      renderPopover={({ item, closePopover }) => (
         <ExpressionWidget
           query={query}
           name={item?.name}
           expression={item?.expression}
           withName
           onChangeExpression={(newName, newExpression) => {
-            item?.expression
-              ? updateQuery(
-                  query.updateExpression(newName, newExpression, item.name),
-                )
-              : updateQuery(query.addExpression(newName, newExpression));
+            if (item?.expression) {
+              updateQuery(
+                query.updateExpression(newName, newExpression, item.name),
+              );
+            } else {
+              updateQuery(query.addExpression(newName, newExpression));
+            }
+            closePopover();
           }}
           reportTimezone={reportTimezone}
         />

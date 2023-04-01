@@ -21,15 +21,18 @@ function BreakoutStep({
       items={query.breakouts()}
       renderName={item => item.displayName() ?? ""}
       readOnly={readOnly}
-      renderPopover={breakout => (
+      renderPopover={({ item: breakout, closePopover }) => (
         <BreakoutPopover
           query={query}
           breakout={breakout}
-          onChangeBreakout={newBreakout =>
-            breakout
-              ? updateQuery(breakout.replace(newBreakout))
-              : updateQuery(query.breakout(newBreakout))
-          }
+          onChangeBreakout={newBreakout => {
+            if (breakout) {
+              updateQuery(breakout.replace(newBreakout));
+            } else {
+              updateQuery(query.breakout(newBreakout));
+            }
+            closePopover();
+          }}
         />
       )}
       isLastOpened={isLastOpened}

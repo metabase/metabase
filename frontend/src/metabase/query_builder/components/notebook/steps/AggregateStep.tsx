@@ -22,15 +22,18 @@ function AggregateStep({
       items={query.aggregations()}
       renderName={item => item.displayName()}
       readOnly={readOnly}
-      renderPopover={aggregation => (
+      renderPopover={({ item: aggregation, closePopover }) => (
         <AggregationPopover
           query={query}
           aggregation={aggregation}
-          onChangeAggregation={(newAggregation: IAggregation) =>
-            aggregation
-              ? updateQuery(aggregation.replace(newAggregation))
-              : updateQuery(query.aggregate(newAggregation))
-          }
+          onChangeAggregation={(newAggregation: IAggregation) => {
+            if (aggregation) {
+              updateQuery(aggregation.replace(newAggregation));
+            } else {
+              updateQuery(query.aggregate(newAggregation));
+            }
+            closePopover();
+          }}
         />
       )}
       isLastOpened={isLastOpened}

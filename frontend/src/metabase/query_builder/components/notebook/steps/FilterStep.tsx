@@ -20,15 +20,18 @@ function FilterStep({
       items={query.filters()}
       renderName={item => item.displayName()}
       readOnly={readOnly}
-      renderPopover={filter => (
+      renderPopover={({ item: filter, closePopover }) => (
         <FilterPopover
           query={query}
           filter={filter}
-          onChangeFilter={newFilter =>
-            filter
-              ? updateQuery(filter.replace(newFilter))
-              : updateQuery(query.filter(newFilter))
-          }
+          onChangeFilter={newFilter => {
+            if (filter) {
+              updateQuery(filter.replace(newFilter));
+            } else {
+              updateQuery(query.filter(newFilter));
+            }
+            closePopover();
+          }}
         />
       )}
       isLastOpened={isLastOpened}
