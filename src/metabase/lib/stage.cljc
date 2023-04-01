@@ -95,8 +95,13 @@
    stage-number :- :int]
   (when-let [{fields :fields} (lib.util/query-stage query stage-number)]
     (not-empty
-     (for [field-ref fields]
-       (assoc (lib.metadata.calculation/metadata query stage-number field-ref) :lib/source :source/fields)))))
+     (for [[tag :as ref-clause] fields]
+       (assoc (lib.metadata.calculation/metadata query stage-number ref-clause)
+              :lib/source (case tag
+                            ;; you can't have an `:aggregation` reference in `:fields`; anything in `:aggregations` is
+                            ;; returned automatically anyway by [[aggregations-columns]] above.
+                            :field       :source/fields
+                            :expression  :source/expressions))))))
 
 (mu/defn ^:private breakout-ags-fields-columns :- [:maybe StageMetadataColumns]
   [query        :- ::lib.schema/query
@@ -166,8 +171,9 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    join         :- ::lib.schema.join/join]
-  (for [col (lib.metadata.calculation/metadata query stage-number join)]
-    (assoc col :lib/source :source/joins)))
+  (not-empty
+   (for [col (lib.metadata.calculation/metadata query stage-number join)]
+     (assoc col :lib/source :source/joins))))
 
 (mu/defn ^:private default-columns-added-by-joins :- [:maybe StageMetadataColumns]
   [query        :- ::lib.schema/query
@@ -205,7 +211,11 @@
 
   PLUS
 
-  2. Columns added by joins at this stage"
+  2. Expressions (aka calculated columns) added in this stage
+
+  PLUS
+
+  3. Columns added by joins at this stage"
   [query        :- ::lib.schema/query
    stage-number :- :int]
   (concat
@@ -225,7 +235,9 @@
         ;; 1d: `:lib/stage-metadata` for the (presumably native) query
         (for [col (:columns (:lib/stage-metadata this-stage))]
           (assoc col :lib/source :source/native)))))
-   ;; 2: columns added by joins at this stage
+   ;; 2: expressions (aka calculated columns) added in this stage
+   (lib.expression/expressions query stage-number)
+   ;; 3: columns added by joins at this stage
    (default-columns-added-by-joins query stage-number)))
 
 (defn- ensure-distinct-names [metadatas]
@@ -297,7 +309,9 @@
                 (m/distinct-by :table_id)
                 (mapcat (fn [{table-id :table_id, ::keys [source-field-id]}]
                           (for [field (source-table-default-fields query table-id)]
-                            (assoc field :fk_field_id source-field-id)))))
+                            (assoc field :fk_field_id source-field-id))))
+                (map (fn [metadata]
+                       (assoc metadata :lib/source :source/implicitly-joinable))))
           column-metadatas)))
 
 (mu/defn visible-columns :- StageMetadataColumns
@@ -307,7 +321,6 @@
   (let [query   (lib.util/update-query-stage query stage-number dissoc :fields :breakout :aggregation)
         columns (default-columns query stage-number)]
     (concat
-     (lib.expression/expressions query stage-number)
      columns
      (implicitly-joinable-columns query columns))))
 

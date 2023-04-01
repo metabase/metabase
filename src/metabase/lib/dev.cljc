@@ -54,6 +54,6 @@
 
 (mu/defn table :- fn?
   "Returns a function that can be resolved to Table metadata. For use with a [[lib/join]] or something like that."
-  ([id :- ::lib.schema.id/table]
-   (fn [query _stage-number]
-     (lib.metadata/table query id))))
+  [id :- ::lib.schema.id/table]
+  (fn [query _stage-number]
+    (lib.metadata/table query id)))
