@@ -27,7 +27,7 @@
     ;; can implement support for some platform-specific classes like `BigDecimal` or `java.time.OffsetDateTime`, for
     ;; use inside QP code or whatever. In the future maybe we can add support for JS-specific stuff too.
     (let [dispatch-value (lib.dispatch/dispatch-value x)]
-      (if (= dispatch-value :type/*)
+      (if (= dispatch-value :dispatch-type/*)
         (type x)
         dispatch-value)))
   :hierarchy lib.hierarchy/hierarchy)

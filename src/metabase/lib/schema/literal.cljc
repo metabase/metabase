@@ -2,9 +2,14 @@
   "Malli schemas for string, temporal, number, and boolean literals."
   (:require
    [malli.core :as mc]
+   [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
+   [metabase.lib.schema.mbql-clause :as mbql-clause]
+   [metabase.lib.schema.temporal-bucketing
+    :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
-   #?@(:clj ([metabase.lib.schema.literal.jvm]))))
+   #?@(:clj ([metabase.lib.schema.literal.jvm]))
+   [medley.core :as m]))
 
 (defmethod expression/type-of* :dispatch-type/nil
   [_nil]
@@ -70,17 +75,27 @@
 
 
 (mr/def ::string.date
-  [:re local-date-regex])
+  [:re
+   {:error/message "date string literal"}
+   local-date-regex])
 
 (mr/def ::string.time
   [:or
-   [:re local-time-regex]
-   [:re offset-time-regex]])
+   [:re
+    {:error/message "local time string literal"}
+    local-time-regex]
+   [:re
+    {:error/message "offset time string literal"}
+    offset-time-regex]])
 
 (mr/def ::string.datetime
   [:or
-   [:re local-datetime-regex]
-   [:re offset-datetime-regex]])
+   [:re
+    {:error/message "local date time string literal"}
+    local-datetime-regex]
+   [:re
+    {:error/message "offset date time string literal"}
+    offset-datetime-regex]])
 
 (defmethod expression/type-of* :dispatch-type/string
   [s]
@@ -90,20 +105,20 @@
     ::string.time     #{:type/Text :type/Time}
     :type/Text))
 
-(mr/def ::date
+(mr/def ::date.raw
   #?(:clj  [:or
             :time/local-date
             ::string.date]
      :cljs ::string.date))
 
-(mr/def ::time
+(mr/def ::time.raw
   #?(:clj [:or
            ::string.time
            :time/local-time
            :time/offset-time]
      :cljs ::string.time))
 
-(mr/def ::datetime
+(mr/def ::datetime.raw
   #?(:clj [:or
            ::string.datetime
            :time/local-date-time
@@ -111,8 +126,83 @@
            :time/zoned-date-time]
      :cljs ::string.datetime))
 
+(mr/def ::temporal.raw
+  [:or
+   [:ref ::date.raw]
+   [:ref ::time.raw]
+   [:ref ::datetime.raw]])
+
+(mr/def ::absolute-datetime.base-type
+  [:and
+   [:ref ::common/base-type]
+   [:fn
+    {:error/message ":absolute-datetime base-type must derive from :type/Date or :type/DateTime"}
+    (fn [base-type]
+      (some #(isa? base-type %)
+            [:type/Date
+             :type/DateTime]))]])
+
+(mbql-clause/define-mbql-clause :absolute-datetime
+  [:cat
+   {:error/message "valid :absolute-datetime clause"}
+   [:= :absolute-datetime]
+   [:schema [:ref ::common/options]]
+   [:alt
+    [:cat
+     {:error/message ":absolute-datetime literal and unit for :type/Date"}
+     [:schema [:ref ::date.raw]]
+     [:schema [:or
+               [:= :default]
+               [:ref ::lib.schema.temporal-bucketing/unit.date]]]]
+    [:cat
+     {:error/message ":absolute-datetime literal and unit for :type/DateTime"}
+     [:schema [:ref ::datetime.raw]]
+     [:schema [:or
+               [:= :default]
+               [:ref ::lib.schema.temporal-bucketing/unit.date-time]]]]]])
+
+(defmethod expression/type-of* :absolute-datetime
+  [[_tag _opts value _unit]]
+  ;; for things that return a union of types like string literals, only the temporal types make sense, so filter out
+  ;; everything else.
+  (let [value-type (expression/type-of value)
+        value-type (if (set? value-type)
+                     (into #{} (filter #(isa? % :type/Temporal)) value-type)
+                     value-type)]
+    (if (and (set? value-type)
+             (= (count value-type) 1))
+      (first value-type)
+      value-type)))
+
+(mbql-clause/define-tuple-mbql-clause :time :- :type/Time
+  [:ref ::time.raw]
+  [:ref ::lib.schema.temporal-bucketing/unit.time])
+
+(defn- absolute-datetime-of-type [base-type]
+  [:and
+   [:ref :mbql.clause/absolute-datetime]
+   [:fn
+    {:error/message (str ":absolute-datetime of type " base-type)}
+    (fn [[_tag opts _value _unit]]
+      (isa? (:base-type opts) base-type))]])
+
+(mr/def ::date
+  [:or
+   [:ref ::date.raw]
+   (absolute-datetime-of-type :type/Date)])
+
+(mr/def ::time
+  [:or
+   [:ref ::time.raw]
+   [:ref :mbql.clause/time]])
+
+(mr/def ::datetime
+  [:or
+   [:ref ::datetime.raw]
+   (absolute-datetime-of-type :type/DateTime)])
+
 (mr/def ::temporal
   [:or
-   ::date
-   ::time
-   ::datetime])
+   [:ref ::date]
+   [:ref ::time]
+   [:ref ::datetime]])

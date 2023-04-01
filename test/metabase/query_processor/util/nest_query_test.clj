@@ -305,7 +305,7 @@
                  :expressions {"CC" [:+ 1 1]}
                  :limit 2})))))))))
 
-(deftest nest-expressions-with-joins-test
+(deftest ^:parallel nest-expressions-with-joins-test
   (driver/with-driver :h2
     (mt/with-everything-store
       (testing "If there are any `:joins`, those need to be nested into the `:source-query` as well."

@@ -17,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest group-bitmask-test
+(deftest ^:parallel group-bitmask-test
   (doseq [[indices expected] {[0]     6
                               [0 1]   4
                               [0 1 2] 0
@@ -25,7 +25,7 @@
     (is (= expected
            (#'qp.pivot/group-bitmask 3 indices)))))
 
-(deftest powerset-test
+(deftest ^:parallel powerset-test
   (is (= [[]]
          (#'qp.pivot/powerset [])))
   (is (= [[0] []]
@@ -35,7 +35,7 @@
   (is (= [[0 1 2] [1 2] [0 2] [2] [0 1] [1] [0] []]
          (#'qp.pivot/powerset [0 1 2]))))
 
-(deftest breakout-combinations-test
+(deftest ^:parallel breakout-combinations-test
   (testing "Should return the combos that Paul specified in (#14329)"
     (is (= [[0 1 2]
             [0 1]
@@ -70,7 +70,7 @@
               []]
              (#'qp.pivot/breakout-combinations 3 [] []))))))
 
-(deftest validate-pivot-rows-cols-test
+(deftest ^:parallel validate-pivot-rows-cols-test
   (testing "Should throw an Exception if you pass in invalid pivot-rows"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -103,13 +103,13 @@
        :pivot-rows [0 1 2]
        :pivot-cols []})))
 
-(deftest allow-snake-case-test
+(deftest ^:parallel allow-snake-case-test
   (testing "make sure the stuff works with either normal lisp-case keys or snake_case"
     (is (= (mt/rows (qp.pivot/run-pivot-query (test-query)))
            (mt/rows (qp.pivot/run-pivot-query (set/rename-keys (test-query)
                                                                {:pivot-rows :pivot_rows, :pivot-cols :pivot_cols})))))))
 
-(deftest generate-queries-test
+(deftest ^:parallel generate-queries-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (let [request {:database   (mt/db)
@@ -157,7 +157,7 @@
             (is (= 6 (count actual)))
             (is (= expected actual))))))))
 
-(deftest dont-return-too-many-rows-test
+(deftest ^:parallel dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"
     (let [results (qp.pivot/run-pivot-query (test-query))
           rows    (mt/rows results)]
@@ -196,7 +196,7 @@
        (map first)
        set))
 
-(deftest return-correct-columns-test
+(deftest ^:parallel return-correct-columns-test
   (let [results (qp.pivot/run-pivot-query (api.pivots/pivot-query))
         rows    (mt/rows results)]
     (testing "Columns should come back in the expected order"
@@ -226,14 +226,14 @@
     (is (= (count (mt/rows (qp.pivot/run-pivot-query (api.pivots/pivot-query))))
            (qp.pivot/run-pivot-query (api.pivots/pivot-query) nil {:rff rff})))))
 
-(deftest parameters-query-test
+(deftest ^:parallel parameters-query-test
   (mt/dataset sample-dataset
     (is (schema= {:status    (s/eq :completed)
                   :row_count (s/eq 137)
                   s/Keyword  s/Any}
                  (qp.pivot/run-pivot-query (api.pivots/parameters-query))))))
 
-(deftest pivots-should-not-return-expressions-test
+(deftest ^:parallel pivots-should-not-return-expressions-test
   (mt/dataset sample-dataset
     (let [query (assoc (mt/mbql-query orders
                          {:aggregation [[:count]]
@@ -277,7 +277,7 @@
                        :aggregation [[:count]]
                        :breakout    [$user_id->people.source [:expression "Product Rating + 1"]]})))))))
 
-(deftest pivot-query-should-work-without-data-permissions-test
+(deftest ^:parallel pivot-query-should-work-without-data-permissions-test
   (testing "Pivot queries should work if the current user only has permissions to view the Card -- no data perms (#14989)"
     (mt/dataset sample-dataset
       (mt/with-temp-copy-of-db
@@ -307,7 +307,7 @@
                   (is (= (mt/rows (qp.pivot/run-pivot-query query))
                          (mt/rows result))))))))))))
 
-(deftest pivot-with-order-by-test
+(deftest ^:parallel pivot-with-order-by-test
   (testing "Pivot queries should work if there is an `:order-by` clause (#17198)"
     (mt/dataset sample-dataset
       (let [query (mt/mbql-query products
@@ -322,14 +322,14 @@
                (mt/rows
                 (qp.pivot/run-pivot-query query))))))))
 
-(deftest pivot-with-order-by-metric-test
+(deftest ^:parallel pivot-with-order-by-metric-test
   (testing "Pivot queries should allow ordering by aggregation (#22872)"
     (mt/dataset sample-dataset
-      (let  [query (mt/mbql-query reviews
-                     {:breakout [$rating [:field (mt/id :reviews :created_at) {:temporal-unit :year}]]
-                      :aggregation [[:count]]
-                      :order-by [[:asc [:aggregation 0 nil]]]
-                      :filter [:between $created_at "2019-01-01" "2021-01-01"]})]
+      (let [query (mt/mbql-query reviews
+                    {:breakout    [$rating [:field (mt/id :reviews :created_at) {:temporal-unit :year}]]
+                     :aggregation [[:count]]
+                     :order-by    [[:asc [:aggregation 0 nil]]]
+                     :filter      [:between $created_at "2019-01-01" "2021-01-01"]})]
         (mt/with-native-query-testing-context query
           (is (= [[1 "2020-01-01T00:00:00Z" 0 5]
                   [2 "2020-01-01T00:00:00Z" 0 13]
@@ -350,4 +350,4 @@
                   [4 nil 2 314]
                   [nil nil 3 607]]
                  (mt/rows
-                   (qp.pivot/run-pivot-query query)))))))))
+                  (qp.pivot/run-pivot-query query)))))))))

@@ -63,16 +63,24 @@
   [[_tag x y]]
   (let [[id-or-name options] (if (map? x)
                                [y x]
-                               [x y])
-        options              (cond-> options
-                               (not (:lib/uuid options))
-                               (assoc :lib/uuid (str (random-uuid))))]
-    [:field options id-or-name]))
+                               [x y])]
+    (lib.options/ensure-uuid [:field options id-or-name])))
+
+(defmethod ->pMBQL :aggregation
+  [[_tag x y]]
+  (let [[index options] (if (integer? x)
+                          [x y]
+                          [y x])]
+    (lib.options/ensure-uuid [:aggregation options index])))
 
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
   (let [[tag opts & args] (->pMBQL aggregation)]
     (into [tag (merge opts options)] args)))
+
+(defmethod ->pMBQL :value
+  [[_tag value _type-info]]
+  value)
 
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff

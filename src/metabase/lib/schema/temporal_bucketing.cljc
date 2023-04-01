@@ -39,6 +39,11 @@
    ::unit.time.extract
    ::unit.time.truncate])
 
+(mr/def ::unit.date-time
+  [:or
+   ::unit.date
+   ::unit.time])
+
 (mr/def ::unit
   [:or
    [:= :default]

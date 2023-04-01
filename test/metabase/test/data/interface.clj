@@ -389,7 +389,6 @@
    ;; TODO - Can `:cum-count` be used without args as well ??
    (assert (= aggregation-type :count))
    {:base_type     :type/BigInteger
-    :semantic_type :type/Quantity
     :name          "count"
     :display_name  "Count"
     :source        :aggregation

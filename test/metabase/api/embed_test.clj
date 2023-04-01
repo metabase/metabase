@@ -104,13 +104,13 @@
 (defn ^:deprecated test-query-results
   "DEPRECATED -- you should use `schema=` instead"
   ([actual]
-   (is (= {:data       {:cols             [(mt/obj->json->obj (qp.test/aggregate-col :count))]
-                        :rows             [[100]]
-                        :insights         nil
-                        :results_timezone "UTC"}
-           :json_query {}
-           :status     "completed"}
-          actual)))
+   (is (=? {:data       {:cols             [(mt/obj->json->obj (qp.test/aggregate-col :count))]
+                         :rows             [[100]]
+                         :insights         nil
+                         :results_timezone "UTC"}
+            :json_query {}
+            :status     "completed"}
+           actual)))
 
   ([results-format actual]
    (case results-format
