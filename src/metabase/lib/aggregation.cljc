@@ -11,6 +11,15 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
+(mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
+  "Given `:metadata/field` column metadata for an aggregation, construct an `:aggregation` reference."
+  [metadata :- lib.metadata/ColumnMetadata]
+  (let [options {:lib/uuid       (str (random-uuid))
+                 :effective-type ((some-fn :effective_type :base_type) metadata)}
+        index   (::aggregation-index metadata)]
+    (assert (integer? index) "Metadata for an aggregation reference should include ::aggregation-index")
+    [:aggregation options index]))
+
 (mu/defn resolve-aggregation :- ::lib.schema.aggregation/aggregation
   "Resolve an aggregation with a specific `index`."
   [query        :- ::lib.schema/query
@@ -32,14 +41,16 @@
      (for [aggregation aggregations]
        (lib.metadata.calculation/display-name query stage-number aggregation)))))
 
-(defmethod lib.metadata.calculation/metadata :aggregation
-  [query stage-number [_ag opts index, :as aggregation-ref]]
+(defmethod lib.metadata.calculation/metadata-method :aggregation
+  [query stage-number [_ag opts index, :as _aggregation-ref]]
   (let [aggregation (resolve-aggregation query stage-number index)]
     (merge
      (lib.metadata.calculation/metadata query stage-number aggregation)
-     {:field_ref aggregation-ref}
+     {:lib/source :source/aggregations}
      (when (:base-type opts)
-       {:base_type (:base-type opts)}))))
+       {:base_type (:base-type opts)})
+     (when (:effective-type opts)
+       {:effective_type opts}))))
 
 ;;; TODO -- merge this stuff into `defop` somehow.
 
@@ -216,10 +227,6 @@
     stage-number :- :int]
    (when-let [aggregation-exprs (not-empty (:aggregation (lib.util/query-stage query stage-number)))]
      (map-indexed (fn [i aggregation]
-                    (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)
-                          ag-ref   [:aggregation
-                                    {:lib/uuid  (str (random-uuid))
-                                     :base-type (:base_type metadata)}
-                                    i]]
-                      (assoc metadata :field_ref ag-ref, :source :aggregation)))
+                    (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)]
+                      (assoc metadata :lib/source :source/aggregations, ::aggregation-index i)))
                   aggregation-exprs))))

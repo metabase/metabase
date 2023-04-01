@@ -3,7 +3,6 @@
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
@@ -194,7 +193,7 @@
       (is (=? result-query
               (-> q
                   (lib/aggregate {:operator :sum
-                                  :args [(lib.field/field q (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))]})
+                                  :args [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))]})
                   (dissoc :lib/metadata)))))))
 
 (deftest ^:parallel type-of-sum-test

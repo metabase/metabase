@@ -14,6 +14,42 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
+(defmulti with-join-alias-method
+  "Implementation for [[with-join-alias]]."
+  {:arglists '([x join-alias])}
+  (fn [x _join-alias]
+    (lib.dispatch/dispatch-value x)))
+
+(defmethod with-join-alias-method :dispatch-type/fn
+  [f join-alias]
+  (fn [query stage-number]
+    (let [x (f query stage-number)]
+      (with-join-alias-method x join-alias))))
+
+(defmethod with-join-alias-method :mbql/join
+  [join join-alias]
+  (assoc join :alias join-alias))
+
+(mu/defn with-join-alias
+  "Add a specific `join-alias` to something `x`, either a `:field` or join map. Does not recursively update other
+  references (yet; we can add this in the future)."
+  [x join-alias :- ::lib.schema.common/non-blank-string]
+  (with-join-alias-method x join-alias))
+
+(defmulti current-join-alias-method
+  "Impl for [[current-join-alias]]."
+  {:arglists '([x])}
+  lib.dispatch/dispatch-value)
+
+(defmethod current-join-alias-method :default
+  [_x]
+  nil)
+
+(mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
+  "Get the current join alias associated with something, if it has one."
+  [x]
+  (current-join-alias-method x))
+
 (mu/defn resolve-join :- ::lib.schema.join/join
   "Resolve a join with a specific `join-alias`."
   [query        :- ::lib.schema/query
@@ -36,21 +72,22 @@
         (i18n/tru "Saved Question #{0}" card-id-str)))
     (i18n/tru "Native Query")))
 
-(mu/defn ^:private column-from-join-fields :- lib.metadata/ColumnMetadata
+(mu/defn ^:private column-from-join-fields :- lib.metadata.calculation/ColumnMetadataWithSource
   "For a column that comes from a join `:fields` list, add or update metadata as needed, e.g. include join name in the
   display name."
   [query           :- ::lib.schema/query
    stage-number    :- :int
    column-metadata :- lib.metadata/ColumnMetadata
    join-alias      :- ::lib.schema.common/non-blank-string]
-  (let [[ref-type options arg] (:field_ref column-metadata)
-        ref-with-join-alias    [ref-type (assoc options :join-alias join-alias) arg]
-        column-metadata        (assoc column-metadata :source_alias join-alias)]
-    (assoc column-metadata
-           :field_ref    ref-with-join-alias
-           :display_name (lib.metadata.calculation/display-name query stage-number column-metadata))))
+  (let [column-metadata (assoc column-metadata :source_alias join-alias)
+        col             (-> (assoc column-metadata
+                                   :display_name (lib.metadata.calculation/display-name query stage-number column-metadata)
+                                   :lib/source :source/fields)
+                            (with-join-alias join-alias))]
+    (assert (= (current-join-alias col) join-alias))
+    col))
 
-(defmethod lib.metadata.calculation/metadata :mbql/join
+(defmethod lib.metadata.calculation/metadata-method :mbql/join
   [query stage-number {:keys [fields stages], join-alias :alias, :or {fields :none}, :as _join}]
   (when-not (= fields :none)
     (let [field-metadatas (if (= fields :all)
@@ -151,29 +188,6 @@
   ([query stage-number x condition]
    (cond-> (join-clause query stage-number x)
      condition (assoc :condition (join-condition query stage-number condition)))))
-
-(defmulti with-join-alias-method
-  "Implementation for [[with-join-alias]]."
-  {:arglists '([x join-alias])}
-  (fn [x _join-alias]
-    (lib.dispatch/dispatch-value x))
-  :hierarchy lib.hierarchy/hierarchy)
-
-(mu/defn with-join-alias
-  "Add a specific `join-alias` to something `x`, either a `:field` or join map. Does not recursively update other
-  references (yet; we can add this in the future)."
-  [x join-alias :- ::lib.schema.common/non-blank-string]
-  (with-join-alias-method x join-alias))
-
-(defmethod with-join-alias-method :dispatch-type/fn
-  [f join-alias]
-  (fn [query stage-number]
-    (let [x (f query stage-number)]
-      (with-join-alias-method x join-alias))))
-
-(defmethod with-join-alias-method :mbql/join
-  [join join-alias]
-  (assoc join :alias join-alias))
 
 (mu/defn with-join-fields
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of

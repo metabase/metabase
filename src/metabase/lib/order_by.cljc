@@ -3,11 +3,11 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
@@ -47,11 +47,14 @@
   [_query _stage-number clause]
   (lib.options/ensure-uuid clause))
 
-;;; by default, try to convert `x` to a Field clause and then order by `:asc`
+(defmethod ->order-by-clause :dispatch-type/fn
+  [query stage-number f]
+  (->order-by-clause query stage-number (f query stage-number)))
+
+;;; by default, try to convert `x` to a ref and then order by `:asc`
 (defmethod ->order-by-clause :default
-  [query stage-number x]
-  (let [field-clause (lib.field/field query stage-number x)]
-    (lib.options/ensure-uuid [:asc field-clause])))
+  [_query _stage-number x]
+  (lib.options/ensure-uuid [:asc (lib.ref/ref x)]))
 
 (defn order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."

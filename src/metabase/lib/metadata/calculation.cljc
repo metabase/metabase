@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -157,22 +158,41 @@
   [query stage-number {:keys [operator options args]}]
   (type-of query stage-number (into [(keyword operator) options] args)))
 
-(defmulti metadata
-  "Calculate appropriate metadata for something. What this looks like depends on what we're calculating metadata for. If
-  it's a reference or expression of some sort, this should return a single `:metadata/field` map (i.e., something
-  satisfying the [[metabase.lib.metadata/ColumnMetadata]] schema. If it's something like a stage of a query or a join
-  definition, it should return a sequence of metadata maps for all the columns 'returned' at that stage of the query."
+(defmulti metadata-method
+  "Impl for [[metadata]]."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod metadata :default
+(defmethod metadata-method :default
   [query stage-number x]
   {:lib/type     :metadata/field
    :base_type    (type-of query stage-number x)
    :name         (column-name query stage-number x)
    :display_name (display-name query stage-number x)})
+
+(def ColumnMetadataWithSource
+  "Schema for the column metadata that should be returned by [[metadata]]."
+  [:merge
+   lib.metadata/ColumnMetadata
+   [:map
+    [:lib/source ::lib.metadata/column-source]]])
+
+(mu/defn metadata :- [:or
+                      lib.metadata/ColumnMetadata
+                      [:sequential ColumnMetadataWithSource]]
+  "Calculate appropriate metadata for something. What this looks like depends on what we're calculating metadata for.
+  If it's a reference or expression of some sort, this should return a single `:metadata/field` map (i.e., something
+  satisfying the [[metabase.lib.metadata/ColumnMetadata]] schema. If it's something like a stage of a query or a join
+  definition, it should return a sequence of metadata maps for all the columns 'returned' at that stage of the query,
+  and include the `:lib/source` of where they came from."
+  ([query]
+   (metadata query -1 query))
+  ([query x]
+   (metadata query -1 x))
+  ([query stage-number x]
+   (metadata-method query stage-number x)))
 
 (mu/defn describe-query :- ::lib.schema.common/non-blank-string
   "Convenience for calling [[display-name]] on a query to describe the results of its final stage."

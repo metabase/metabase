@@ -1,9 +1,9 @@
 (ns metabase.lib.common
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema.common :as schema.common]
    [metabase.util.malli :as mu])
   #?(:cljs (:require-macros [metabase.lib.common])))
@@ -32,8 +32,8 @@
   x)
 
 (defmethod ->op-arg :metadata/field
-  [query stage-number field-metadata]
-  (lib.field/field query stage-number field-metadata))
+  [_query _stage-number field-metadata]
+  (lib.ref/ref field-metadata))
 
 (defmethod ->op-arg :lib/external-op
   [query stage-number {:keys [operator options args] :or {options {}}}]

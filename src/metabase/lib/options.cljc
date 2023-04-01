@@ -3,6 +3,8 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
+;;; TODO -- not 100% sure we actually need all of this stuff anymore.
+
 (defn- mbql-clause? [x]
   (and (vector? x)
        (keyword? (first x))))
