@@ -14,6 +14,7 @@
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel NativeQuerySnippet :native_query_snippet)
+(defmethod mi/model-name NativeQuerySnippet [_model] "NativeQuerySnippet")
 
 (defmethod collection/allowed-namespaces NativeQuerySnippet
   [_]

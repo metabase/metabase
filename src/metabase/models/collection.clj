@@ -1173,7 +1173,7 @@
           allowed-namespaces   (allowed-namespaces model)]
       (when-not (contains? allowed-namespaces collection-namespace)
         (let [msg (tru "A {0} can only go in Collections in the {1} namespace."
-                       (str/capitalize (name model))
+                       (mi/model-name model)
                        (str/join (format " %s " (tru "or")) (map #(pr-str (or % (tru "default")))
                                                                  allowed-namespaces)))]
           (throw (ex-info msg {:status-code          400

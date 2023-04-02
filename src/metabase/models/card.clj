@@ -35,9 +35,9 @@
   We'll keep this till we replace all the Card symbol in our codebase."
   :m/card)
 
-(defmethod mi/model-name :m/card [_model] "Card")
-
 (methodical/defmethod t2/table-name :m/card [_model] :report_card)
+(defmethod mi/model-name :m/card [_model] "Card")
+(defmethod mi/name->model "Card" [_name] :m/card)
 
 (methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
   [_original-model _k]

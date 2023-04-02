@@ -449,18 +449,26 @@
 (defmulti model-name
   "Returns the string of a toucan model.
 
-  (model-name :m/card) => Card."
+  (model-name :m/Card) => \"Card\"."
   (fn [model]
-    (assert (keyword? model))
+    (assert (or (keyword? model) (symbol model)))
     model))
 
 (defmethod model-name :default
   [model]
   (if (keyword? model)
-    (-> model
-        name
-        str/capitalize)
-    (name model)))
+    (-> (name model)
+        (str/capitalize))
+    #(name model)))
+
+(defmulti name->model
+  (fn [name]
+    (assert (string? name))
+    name))
+
+(defmethod name->model :default
+  [name]
+  (mdb.u/resolve-model (symbol name)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |

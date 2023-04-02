@@ -68,7 +68,7 @@
   [{:keys [model], :as revision}]
   ;; in some cases (such as tests) we have 'fake' models that cannot be resolved normally; don't fail entirely in
   ;; those cases
-  (let [model (u/ignore-exceptions (mdb.u/resolve-model (symbol model)))]
+  (let [model (u/ignore-exceptions (mi/name->model model))]
     (cond-> revision
       model (update :object (partial models/do-post-select model)))))
 
@@ -156,14 +156,14 @@
          (integer? user-id)
          (t2/exists? User :id user-id)
          (integer? revision-id)]}
-  (let [serialized-instance (t2/select-one-fn :object Revision, :model (name entity), :model_id id, :id revision-id)]
+  (let [serialized-instance (t2/select-one-fn :object Revision, :model (mi/model-name entity), :model_id id, :id revision-id)]
     (t2/with-transaction [_conn]
       ;; Do the reversion of the object
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change
       (let [last-revision (t2/select-one Revision :model (name entity), :model_id id, {:order-by [[:id :desc]]})
             new-revision  (first (t2/insert-returning-instances! Revision
-                                                                 :model        (name entity)
+                                                                 :model        (mi/model-name entity)
                                                                  :model_id     id
                                                                  :user_id      user-id
                                                                  :object       serialized-instance
