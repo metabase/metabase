@@ -108,4 +108,13 @@
              (keys
               (csv/detect-schema
                (csv-file-with [header
-                               "Luke,ah'm,yer,da,,,missing,columns,should,not,matter"]))))))))
+                               "Luke,ah'm,yer,da,,,missing,columns,should,not,matter"])))))))
+  (testing "Empty contents (with header) are okay"
+      (is (= {"name"     text-type
+              "is_jedi_" text-type}
+             (csv/detect-schema
+              (csv-file-with ["Name, Is Jedi?"])))))
+  (testing "Completely empty contents are okay"
+      (is (= {}
+             (csv/detect-schema
+              (csv-file-with [""]))))))

@@ -78,7 +78,7 @@
     (->> rows
          (map row->types)
          (map (partial pad column-count))
-         (reduce coalesce-types)
+         (reduce coalesce-types (repeat column-count nil))
          (map #(or % ::text))
          (map vector normalized-header)
          (ordered-map/ordered-map))))
