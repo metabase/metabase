@@ -2,7 +2,8 @@
   (:require
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
-   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]))
+   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
+   [metabase.util.malli.registry :as mr]))
 
 (mbql-clause/define-tuple-mbql-clause :interval
   :int
@@ -55,6 +56,29 @@
   #_:datetimestr [:schema [:ref ::expression/string]]
   #_:unit [:ref ::temporal-bucketing/unit.date-time.interval])
 
-(mbql-clause/define-tuple-mbql-clause :time :- :type/TimeWithTZ
+(mbql-clause/define-tuple-mbql-clause :time :- :type/Time
   #_:timestr [:schema [:ref ::expression/string]]
   #_:unit [:ref ::temporal-bucketing/unit.time.interval])
+
+(mr/def ::temporal-extract.unit
+  [:enum
+   :year-of-era
+   :quarter-of-year
+   :month-of-year
+   :week-of-year-iso
+   :week-of-year-us
+   :week-of-year-instance
+   :day-of-month
+   :day-of-week
+   :hour-of-day
+   :minute-of-hour
+   :second-of-minute])
+
+(mr/def ::temporal-extract.week-mode
+  [:enum :iso :us :instance])
+
+;;; TODO -- this should make sure unit agrees with the type of expression we're extracting from.
+(mbql-clause/define-catn-mbql-clause :temporal-extract :- :type/Integer
+  [:datetime [:schema [:ref ::expression/temporal]]]
+  [:unit     [:schema [:ref ::temporal-extract.unit]]]
+  [:mode     [:? [:schema [:ref ::temporal-extract.week-mode]]]])
