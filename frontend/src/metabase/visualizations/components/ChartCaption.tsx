@@ -1,15 +1,19 @@
-import React, { useCallback } from "react";
-import PropTypes from "prop-types";
-import { iconPropTypes } from "metabase/components/Icon";
+import React, { useCallback, ReactNode } from "react";
+import { IconProps } from "metabase/components/Icon";
+import {
+  Series,
+  TransformedSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { ChartCaptionRoot } from "./ChartCaption.styled";
 
-const propTypes = {
-  series: PropTypes.array.isRequired,
-  settings: PropTypes.object.isRequired,
-  icon: PropTypes.shape(iconPropTypes),
-  actionButtons: PropTypes.node,
-  onChangeCardAndRun: PropTypes.func,
-};
+interface Props {
+  series: Series;
+  settings: VisualizationSettings;
+  icon?: IconProps;
+  actionButtons?: ReactNode;
+  onChangeCardAndRun: (data: Record<string, unknown>) => void;
+}
 
 const ChartCaption = ({
   series,
@@ -17,10 +21,10 @@ const ChartCaption = ({
   icon,
   actionButtons,
   onChangeCardAndRun,
-}) => {
+}: Props) => {
   const title = settings["card.title"] ?? series[0].card.name;
   const description = settings["card.description"];
-  const data = series._raw || series;
+  const data = (series as TransformedSeries)._raw || series;
   const card = data[0].card;
   const cardIds = new Set(data.map(s => s.card.id));
   const canSelectTitle = cardIds.size === 1 && onChangeCardAndRun;
@@ -46,7 +50,5 @@ const ChartCaption = ({
     />
   );
 };
-
-ChartCaption.propTypes = propTypes;
 
 export default ChartCaption;
