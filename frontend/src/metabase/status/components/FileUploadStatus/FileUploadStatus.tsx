@@ -46,7 +46,7 @@ const FileUploadStatusContent = ({
   collection: Collection;
   uploads: FileUpload[];
 }) => {
-  const isActive = uploads.some(uploadIsActive);
+  const isActive = uploads.some(uploadInProgress);
   const isVisible = useStatusVisibility(isActive);
 
   if (!isVisible) {
@@ -56,7 +56,13 @@ const FileUploadStatusContent = ({
   return <FileUploadStatusLarge uploads={uploads} collection={collection} />;
 };
 
-const uploadIsActive = (upload: FileUpload) => upload.status !== "complete";
+export const uploadInProgress = (upload: FileUpload) =>
+  upload.status === "in-progress";
+
+export const uploadCompleted = (upload: FileUpload) =>
+  upload.status === "complete";
+
+export const uploadAborted = (upload: FileUpload) => upload.status === "error";
 
 export default _.compose(
   Collections.loadList({ loadingAndErrorWrapper: false }),
