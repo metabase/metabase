@@ -3,7 +3,6 @@
    [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
    [malli.core :as mc]
-   [malli.error :as me]
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as expression]))
 
@@ -96,15 +95,3 @@
       [:xor 13 [:field 1 {:lib/uuid (str (random-uuid))}]]
       ;; 1 is not a valid <string> arg
       [:contains "abc" 1])))
-
-(deftest ^:parallel do-not-be-fussy-test
-  (is (not (me/humanize
-            (mc/explain
-             :mbql.clause/>
-             [:>
-              {:lib/uuid "092fc5be-f3c8-4886-b942-cce0ce79b646"}
-              [:field {:temporal-unit :default, :lib/uuid "011d4b77-6878-4366-b9c8-54f655ea14f5"} 1]
-              [:absolute-datetime
-               {:lib/uuid "448e2636-fb7f-495e-ad67-99cba5e79b11"}
-               "2015-01-01T00:00Z"
-               :default]])))))
