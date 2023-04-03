@@ -3,23 +3,59 @@ import React, {
   MouseEvent,
   useContext,
   useCallback,
+  useRef,
+  useState,
 } from "react";
 
-import { getTabId, getTabPanelId, TabContext } from "../Tab";
-import { TabButtonLabel, TabButtonRoot } from "./TabButton.styled";
+import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
+
+import {
+  getTabButtonLabelId,
+  getTabId,
+  getTabPanelId,
+  TabContext,
+  TabContextType,
+} from "../Tab";
+import { TabButtonLabel, TabButtonRoot, MenuButton } from "./TabButton.styled";
+import TabButtonMenu from "./TabButtonMenu";
+
+export type TabButtonValue = string | number;
+
+export type TabButtonMenuAction = (
+  context: TabContextType,
+  value?: TabButtonValue,
+) => void;
+
+export interface TabButtonMenuItem {
+  label: string;
+  action: TabButtonMenuAction;
+}
 
 export interface TabButtonProps
   extends ButtonHTMLAttributes<HTMLButtonElement> {
-  value?: string | number;
+  value?: TabButtonValue;
+  menuItems?: TabButtonMenuItem[];
 }
-function TabButton({ value, children, onClick, ...props }: TabButtonProps) {
+
+function TabButton({
+  value,
+  menuItems,
+  children,
+  onClick,
+  ...props
+}: TabButtonProps) {
   const { value: selectedValue, idPrefix, onChange } = useContext(TabContext);
-  const tabId = getTabId(idPrefix, value);
-  const panelId = getTabPanelId(idPrefix, value);
   const isSelected = value === selectedValue;
+
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const showMenu = menuItems !== undefined && menuItems.length > 0;
 
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
+      if (menuButtonRef.current?.contains(event.target as Node)) {
+        return;
+      }
       onClick?.(event);
       onChange?.(value);
     },
@@ -29,14 +65,40 @@ function TabButton({ value, children, onClick, ...props }: TabButtonProps) {
   return (
     <TabButtonRoot
       {...props}
-      id={tabId}
+      id={getTabId(idPrefix, value)}
       role="tab"
       isSelected={isSelected}
       aria-selected={isSelected}
-      aria-controls={panelId}
+      aria-controls={getTabPanelId(idPrefix, value)}
       onClick={handleClick}
     >
-      <TabButtonLabel>{children}</TabButtonLabel>
+      <TabButtonLabel id={getTabButtonLabelId(idPrefix, value)}>
+        {children}
+      </TabButtonLabel>
+      {showMenu && (
+        <ControlledPopoverWithTrigger
+          visible={isMenuOpen}
+          onOpen={() => setIsMenuOpen(true)}
+          onClose={() => setIsMenuOpen(false)}
+          renderTrigger={({ onClick }) => (
+            <MenuButton
+              icon="chevrondown"
+              iconSize={10}
+              isSelected={isSelected}
+              isOpen={isMenuOpen}
+              onClick={onClick}
+              ref={menuButtonRef}
+            />
+          )}
+          popoverContent={({ closePopover }) => (
+            <TabButtonMenu
+              menuItems={menuItems}
+              value={value}
+              closePopover={closePopover}
+            />
+          )}
+        />
+      )}
     </TabButtonRoot>
   );
 }
