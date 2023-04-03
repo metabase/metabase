@@ -30,8 +30,6 @@ const LegendCaption = ({
   actionButtons,
   onSelectTitle,
 }) => {
-  console.log("legend caption");
-  console.log(title, description);
   return (
     <LegendCaptionRoot className={className} data-testid="legend-caption">
       {icon && <LegendLabelIcon {...icon} />}
