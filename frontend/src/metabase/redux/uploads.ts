@@ -9,22 +9,22 @@ import {
   handleActions,
 } from "metabase/lib/redux";
 
-export const UPLOAD_CSV_TO_COLLECTION = "metabase/collection/UPLOAD_CSV";
+export const UPLOAD_FILE_TO_COLLECTION = "metabase/collection/UPLOAD_FILE";
 
-export const UPLOAD_CSV_TO_COLLECTION_START =
-  "metabase/collection/UPLOAD_CSV_START";
+export const UPLOAD_FILE_TO_COLLECTION_START =
+  "metabase/collection/UPLOAD_FILE_START";
 
-export const UPLOAD_CSV_TO_COLLECTION_END =
-  "metabase/collection/UPLOAD_CSV_END";
+export const UPLOAD_FILE_TO_COLLECTION_END =
+  "metabase/collection/UPLOAD_FILE_END";
 
-const uploadStart = createAction(UPLOAD_CSV_TO_COLLECTION_START);
-const uploadEnd = createAction(UPLOAD_CSV_TO_COLLECTION_END);
+const uploadStart = createAction(UPLOAD_FILE_TO_COLLECTION_START);
+const uploadEnd = createAction(UPLOAD_FILE_TO_COLLECTION_END);
 
 export const getAllUploads = (state: State) =>
   Object.keys(state.upload).map(key => state.upload[key]);
 
-export const uploadCSV = createThunkAction(
-  UPLOAD_CSV_TO_COLLECTION,
+export const uploadFile = createThunkAction(
+  UPLOAD_FILE_TO_COLLECTION,
   (file: File, collectionId: CollectionId) =>
     async (dispatch: Dispatch, getState: GetState) => {
       const uploads = getAllUploads(getState());
@@ -39,7 +39,7 @@ export const uploadCSV = createThunkAction(
       );
 
       // Do API Request here
-      // await uploadCSV({
+      // await uploadFILE({
       //   file,
       //   collectionId,
       // });
@@ -65,14 +65,14 @@ const upload = handleActions<
   UploadStartPayload | UploadEndPayload
 >(
   {
-    [UPLOAD_CSV_TO_COLLECTION_START]: {
+    [UPLOAD_FILE_TO_COLLECTION_START]: {
       next: (state, { payload }) =>
         assocIn(state, [payload.id], {
           ...payload,
           status: "in-progress",
         }),
     },
-    [UPLOAD_CSV_TO_COLLECTION_END]: {
+    [UPLOAD_FILE_TO_COLLECTION_END]: {
       next: (state, { payload }) =>
         assocIn(state, [payload.id, "status"], "complete"),
     },
