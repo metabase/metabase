@@ -30,7 +30,7 @@ import {
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
-import { saveDashboardImage } from "metabase/visualizations/lib/save-chart-image";
+import { saveDashboardPdf } from "metabase/visualizations/lib/save-chart-image";
 
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
@@ -418,8 +418,8 @@ class DashboardHeader extends Component {
   saveAsImage = async () => {
     const { dashboard } = this.props;
     const cardNodeSelector = `[data-testid="Dashboard-Cards-Container"]`;
-    const name = `${dashboard.name}.png`;
-    await saveDashboardImage(cardNodeSelector, name);
+    const name = `${dashboard.name}.pdf`;
+    await saveDashboardPdf(cardNodeSelector, name);
   };
 
   render() {
