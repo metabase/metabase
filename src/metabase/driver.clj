@@ -490,6 +490,9 @@
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
+    ;; Does the driver support CSV uploads
+    :csv-uploads
+
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
     :actions/custom

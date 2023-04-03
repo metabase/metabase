@@ -16,7 +16,7 @@
 
 (comment metabase.lib.schema/keep-me)
 
-(defmethod lib.metadata.calculation/describe-top-level-key :filter
+(defmethod lib.metadata.calculation/describe-top-level-key-method :filter
   [query stage-number _key]
   (when-let [filter-clause (:filter (lib.util/query-stage query stage-number))]
     (i18n/tru "Filtered by {0}" (lib.metadata.calculation/display-name query stage-number filter-clause))))
@@ -252,20 +252,3 @@
    (let [stage-number (clojure.core/or stage-number -1)
          new-filter (lib.common/->op-arg query stage-number boolean-expression)]
      (lib.util/update-query-stage query stage-number update :filter conjoin new-filter))))
-
-(mu/defn replace-filter :- :metabase.lib.schema/query
-  "Replaces the expression with `target-uuid` with `boolean-expression` the filter of `query`."
-  ([query :- :metabase.lib.schema/query
-    target-uuid :- :string
-    boolean-expression]
-   (metabase.lib.filter/replace-filter query nil target-uuid boolean-expression))
-
-  ([query :- :metabase.lib.schema/query
-    stage-number :- [:maybe :int]
-    target-uuid :- :string
-    boolean-expression]
-   (let [stage-number (clojure.core/or stage-number -1)
-         new-filter   (lib.common/->op-arg query stage-number boolean-expression)]
-     (lib.util/update-query-stage query stage-number
-                                  update :filter
-                                  lib.util/replace-clause target-uuid new-filter))))

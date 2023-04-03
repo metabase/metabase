@@ -18,7 +18,7 @@ describe("issue 6239", () => {
 
     cy.get(".ace_text-input").type("CountIf([Total] > 0)").blur();
 
-    cy.findByPlaceholderText("Name (required)").type("CE");
+    cy.findByPlaceholderText("Something nice and descriptive").type("CE");
     cy.button("Done").click();
 
     cy.findByText("Pick a column to group by").click();
