@@ -3,33 +3,62 @@ import _ from "underscore";
 import { useSelector } from "react-redux";
 import { getAllUploads } from "metabase/redux/uploads";
 import Collections from "metabase/entities/collections/collections";
+import { Collection } from "metabase-types/api";
+import { FileUpload } from "metabase-types/store/upload";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import FileUploadStatusLarge from "../FileUploadStatusLarge";
-import { Collection } from "metabase-types/api";
 
-const FileUploadStatus = ({ collections }: { collections: Collection[] }) => {
+const FileUploadStatus = ({
+  collections = [],
+}: {
+  collections: Collection[];
+}) => {
   const uploads = useSelector(getAllUploads);
+
+  const uploadCollections = collections.filter(collection =>
+    uploads.some(upload => upload.collectionId === collection.id),
+  );
+
+  console.log(uploadCollections);
+
+  return (
+    <>
+      {uploadCollections.map(collection => {
+        const collectionUploads = uploads.filter(
+          ({ collectionId }) => collectionId === collection.id,
+        );
+
+        return (
+          <FileUploadStatusContent
+            key={`uploads-${collection.id}`}
+            uploads={collectionUploads}
+            collection={collection}
+          />
+        );
+      })}
+    </>
+  );
+};
+
+const FileUploadStatusContent = ({
+  collection,
+  uploads,
+}: {
+  collection: Collection;
+  uploads: FileUpload[];
+}) => {
   const isActive = uploads.some(uploadIsActive);
   const isVisible = useStatusVisibility(isActive);
 
-  const groupedUploads = _.groupBy(uploads, "collectionId");
-
-  console.log(Collections);
-
-  if (isVisible) {
-    return (
-      <FileUploadStatusLarge uploads={uploads} collection={{ name: "temp" }} />
-    );
+  if (!isVisible) {
+    return null;
   }
 
-  return null;
+  return <FileUploadStatusLarge uploads={uploads} collection={collection} />;
 };
 
-const uploadIsActive = upload => upload.status !== "complete";
-
-const getCollectionForUpload = (upload, collections: Collection[]) =>
-  collections.find(collection => collection.id === upload.collectionId);
+const uploadIsActive = (upload: FileUpload) => upload.status !== "complete";
 
 export default _.compose(
   Collections.loadList({ loadingAndErrorWrapper: false }),
