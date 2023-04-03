@@ -21,7 +21,7 @@ export interface CollectionHeaderProps {
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
   onCreateBookmark: (collection: Collection) => void;
   onDeleteBookmark: (collection: Collection) => void;
-  onUploadCSV: (file: File, collectionId: CollectionId) => void;
+  onUpload: (file: File, collectionId: CollectionId) => void;
 }
 
 const CollectionHeader = ({
@@ -33,7 +33,7 @@ const CollectionHeader = ({
   onUpdateCollection,
   onCreateBookmark,
   onDeleteBookmark,
-  onUploadCSV,
+  onUpload,
 }: CollectionHeaderProps): JSX.Element => {
   const canUpload = true; // TODO: check settings for upload permissions
 
@@ -52,7 +52,7 @@ const CollectionHeader = ({
           onDeleteBookmark={onDeleteBookmark}
         />
         {canUpload && (
-          <CollectionUpload collection={collection} onUploadCSV={onUploadCSV} />
+          <CollectionUpload collection={collection} onUpload={onUpload} />
         )}
         <CollectionMenu
           collection={collection}

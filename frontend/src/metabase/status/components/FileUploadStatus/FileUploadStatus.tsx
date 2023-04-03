@@ -20,8 +20,6 @@ const FileUploadStatus = ({
     uploads.some(upload => upload.collectionId === collection.id),
   );
 
-  console.log(uploadCollections);
-
   return (
     <>
       {uploadCollections.map(collection => {
