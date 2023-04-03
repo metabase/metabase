@@ -34,7 +34,7 @@
                                                  (mt/user-http-request :rasta :get 200 url)))))))))))
 
 (deftest add-card-parameter-mapping-permissions-test
-  (testing "POST /api/dashboard/:id/cards"
+  (testing "PUT /api/dashboard/:id/cards"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
       (met/with-gtaps {:gtaps {:venues {}}}
         (api.dashboard-test/do-with-add-card-parameter-mapping-permissions-fixtures
@@ -63,8 +63,7 @@
          (fn [{:keys [dashboard-id card-id update-mappings! new-mappings]}]
            (testing "Should be able to update `:parameter_mappings` *with* only sandboxed perms"
              (perms/grant-permissions! (perms-group/all-users) (perms/table-segmented-query-path (mt/id :venues)))
-             (is (= {:status "ok"}
-                    (update-mappings! 200)))
+             (update-mappings! 200)
              (is (= new-mappings
                     (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))))))))
 

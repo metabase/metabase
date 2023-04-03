@@ -556,6 +556,8 @@
     (dashboard-card/delete-dashboard-cards! dashboard-cards (:id dashboard) api/*current-user-id*)))
 
 (defn- classify-dashcard-changes [current-dashcards new-dashcards]
+  (def current current-dashcards)
+  (def new-cards new-dashcards)
   (let [current-dashcard-ids          (set (map :id current-dashcards))
         update-or-delete-dashcard-ids (->> new-dashcards
                                           (map :id)
@@ -590,8 +592,7 @@
   (let [dashboard     (api/check-not-archived (api/write-check Dashboard id))
         current-cards (dashboard/ordered-cards id)
 
-        {:keys [to-update to-delete to-create]}
-        (classify-dashcard-changes current-cards cards)]
+        {:keys [to-update to-delete to-create]} (classify-dashcard-changes current-cards cards)]
     (api/check-500
       (t2/with-transaction [_conn]
         (when (seq to-delete)
@@ -599,7 +600,8 @@
         (when (seq to-create)
           (create-cards dashboard to-create))
         (when (seq to-update)
-          (update-cards dashboard to-update))))
+          (update-cards dashboard to-update))
+        true))
     (t2/hydrate (dashboard/ordered-cards id) :series)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

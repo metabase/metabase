@@ -112,17 +112,17 @@
   (testing "create-dashboard-card! simple example with a single card"
     (mt/with-temp* [Dashboard [{dashboard-id :id}]
                     Card      [{card-id :id} {:name "Test Card"}]]
-      (let [dashboard-card (dashboard-card/create-dashboard-cards!
-                             [{:creator_id             (mt/user->id :rasta)
-                               :dashboard_id           dashboard-id
-                               :card_id                card-id
-                               :size_x                 4
-                               :size_y                 3
-                               :row                    1
-                               :col                    1
-                               :parameter_mappings     [{:foo "bar"}]
-                               :visualization_settings {}
-                               :series                 [card-id]}])]
+      (let [dashboard-card (first (dashboard-card/create-dashboard-cards!
+                                    [{:creator_id             (mt/user->id :rasta)
+                                      :dashboard_id           dashboard-id
+                                      :card_id                card-id
+                                      :size_x                 4
+                                      :size_y                 3
+                                      :row                    1
+                                      :col                    1
+                                      :parameter_mappings     [{:foo "bar"}]
+                                      :visualization_settings {}
+                                      :series                 [card-id]}]))]
         (testing "return value from function"
           (is (= {:size_x                 4
                   :size_y                 3
