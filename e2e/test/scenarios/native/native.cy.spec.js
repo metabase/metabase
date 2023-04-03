@@ -235,7 +235,7 @@ describe("scenarios > question > native", () => {
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
 
-    cy.findByText(/where CATEGORY = 'Gadget'/).should("be.visible");
+    cy.findByText(/where CATEGORY='Gadget'/).should("be.visible");
   });
 
   it("should show errors when previewing a query", () => {
