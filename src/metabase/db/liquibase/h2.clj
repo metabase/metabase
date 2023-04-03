@@ -4,7 +4,8 @@
    [metabase.util :as u])
   (:import
    (liquibase.database.core H2Database)
-   (liquibase.database.jvm JdbcConnection)))
+   (liquibase.database.jvm JdbcConnection)
+   (org.json.simple JSONValue JSONObject)))
 
 (set! *warn-on-reflection* true)
 
