@@ -6,6 +6,7 @@ import Button from "metabase/core/components/Button";
 
 export interface TabButtonProps {
   isSelected?: boolean;
+  disabled?: boolean;
 }
 
 export const TabButtonLabel = styled.div`
@@ -20,11 +21,13 @@ export const TabButtonRoot = styled.button<TabButtonProps>`
 
   padding: 1rem 0;
 
-  color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
+  color: ${props =>
+    props.isSelected && !props.disabled ? color("brand") : color("text-dark")};
+  opacity: ${props => (props.disabled ? 0.3 : 1)};
   font-size: 0.875rem;
   font-weight: 700;
 
-  cursor: pointer;
+  cursor: ${props => (props.disabled ? "default" : "pointer")};
 
   border-bottom: 3px solid
     ${props => (props.isSelected ? color("brand") : "transparent")};
@@ -46,13 +49,21 @@ export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
 
   ${props =>
     props.isOpen &&
+    !props.disabled &&
     css`
       color: ${color("brand")};
       background-color: ${color("bg-medium")};
     `}
   &:hover,:focus {
-    color: ${color("brand")};
-    background-color: ${color("bg-medium")};
+    ${props =>
+      props.disabled
+        ? css`
+            color: ${color("text-dark")};
+          `
+        : css`
+            color: ${color("brand")};
+            background-color: ${color("bg-medium")};
+          `}
   }
 `;
 
