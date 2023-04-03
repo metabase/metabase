@@ -68,9 +68,9 @@ jobs:
       with:
         name: metabase-${{ matrix.edition }}-uberjar
     - name: Launch uberjar
-      run: java -jar ./target/uberjar/metabase.jar
+      run: java -jar ./target/uberjar/metabase.jar &
     - name: Wait for Metabase to start
-      run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
   containerize_test_and_push_container:
     runs-on: ubuntu-22.04
