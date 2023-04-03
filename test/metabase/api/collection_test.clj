@@ -533,6 +533,19 @@
                (mt/obj->json->obj
                  (:data (mt/user-http-request :crowberto :get 200
                                               (str "collection/" (u/the-id collection) "/items"))))))))
+    (testing "Database id is returned for items in which dataset is true"
+      (mt/with-temp* [Collection [collection]
+                      User [{user-id :id} {:first_name "x" :last_name "x" :email "zzzz@example.com"}]
+                      Card [{card-id-1 :id} {:dataset       true
+                                             :collection_id (u/the-id collection)}]
+                      Card [{card-id-2 :id} {:collection_id (u/the-id collection)}]]
+        (is (=
+             #{{:id card-id-1 :database_id (mt/id)}
+               {:id card-id-2 :database_id nil}}
+             (->> (:data (mt/user-http-request :crowberto :get 200
+                                               (str "collection/" (u/the-id collection) "/items")))
+                  (map #(select-keys % [:id :database_id]))
+                  set)))))
     (testing "check that limit and offset work and total comes back"
       (mt/with-temp* [Collection [collection]
                       Card       [_ {:collection_id (u/the-id collection)}]
