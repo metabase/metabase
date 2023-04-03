@@ -19,7 +19,6 @@
   [model-id :as {{:keys [question] :as body} :body}]
   ;{model-id ms/PositiveInt
   ; question string?}
-  (tap> {:model-id model-id :request body})
   (log/infof
    "Metabot '/api/metabot/model/%s' being called with prompt: '%s'"
    model-id
@@ -43,7 +42,6 @@
   [database-id :as {{:keys [question] :as body} :body}]
   {database-id su/IntGreaterThanZero
    question    su/NonBlankString}
-  (tap> {:database-id database-id :request body})
   (log/infof
    "Metabot '/api/metabot/database/%s' being called with prompt: '%s'"
    database-id
@@ -51,7 +49,16 @@
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
         denormalized-database (metabot-util/denormalize-database database)]
     (if-some [model (metabot/infer-model denormalized-database question)]
-      (metabot/infer-sql model question)
+      (or
+       (metabot/infer-sql model question)
+       (throw
+        (let [message (format
+                       "Query '%s' didn't produce any SQL. Perhaps try a more detailed query."
+                       question)]
+          (ex-info
+           message
+           {:status-code 400
+            :message     message}))))
       (throw
        (let [message (format
                       (str/join
