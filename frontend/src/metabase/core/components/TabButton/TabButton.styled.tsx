@@ -1,6 +1,8 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
+import Button from "metabase/core/components/Button";
 
 export interface TabButtonProps {
   isSelected?: boolean;
@@ -14,6 +16,8 @@ export const TabButtonLabel = styled.div`
 `;
 
 export const TabButtonRoot = styled.button<TabButtonProps>`
+  display: flex;
+
   padding: 1rem 0;
 
   color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
@@ -24,4 +28,52 @@ export const TabButtonRoot = styled.button<TabButtonProps>`
 
   border-bottom: 3px solid
     ${props => (props.isSelected ? color("brand") : "transparent")};
+`;
+
+export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
+  transition: background-color 0s;
+
+  border: none;
+
+  padding: 0.25rem;
+  margin-left: 0.25rem;
+
+  ${props =>
+    props.isSelected &&
+    css`
+      color: ${color("brand")};
+    `}
+
+  ${props =>
+    props.isOpen &&
+    css`
+      color: ${color("brand")};
+      background-color: ${color("bg-medium")};
+    `}
+  &:hover,:focus {
+    color: ${color("brand")};
+    background-color: ${color("bg-medium")};
+  }
+`;
+
+export const MenuContent = styled.ul`
+  padding: 0.5rem;
+`;
+
+export const MenuItem = styled.li`
+  width: 100%;
+  padding: 0.85em 1.45em;
+  border-radius: 0.5em;
+
+  color: ${color("text-dark")};
+  font-weight: 700;
+  text-align: start;
+  text-decoration: none;
+
+  cursor: pointer;
+  &:focus,
+  :hover {
+    color: ${color("brand")};
+    background-color: ${color("bg-light")};
+  }
 `;
