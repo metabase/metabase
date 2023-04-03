@@ -50,7 +50,7 @@ describe("scenarios > metabot", () => {
     cy.visit("/");
 
     cy.findByPlaceholderText(/Ask something like/).type(PROMPT);
-    cy.findByRole("button", { name: "play icon" }).click();
+    cy.findByLabelText("Get Answer").click();
     cy.wait("@databasePrompt");
     cy.wait("@dataset");
     cy.findByDisplayValue(PROMPT).should("be.visible");
@@ -61,15 +61,45 @@ describe("scenarios > metabot", () => {
     cy.findByTestId("native-query-editor")
       .type("{selectall}{backspace}")
       .type(MANUAL_QUERY);
-    cy.findByRole("button", { name: "refresh icon" }).click();
+    cy.findByLabelText("Refresh").click();
     cy.wait("@dataset");
     cy.findByText("Gizmo").should("be.visible");
     cy.findByText("Doohickey").should("be.visible");
 
-    cy.findByRole("button", { name: "play icon" }).click();
+    cy.findByLabelText("Get Answer").click();
     cy.wait("@databasePrompt");
     cy.wait("@dataset");
     cy.findByText("Gizmo").should("be.visible");
     cy.findByText("Doohickey").should("not.exist");
+  });
+
+  it("should allow to ask questions from the query builder when metabot enabled", () => {
+    cy.visit("/");
+    cy.findByPlaceholderText(/Ask something like/).should("not.exist");
+
+    cy.createQuestion(MODEL_DETAILS);
+    cy.reload();
+
+    cy.findByPlaceholderText(/Ask something like/).should("be.visible");
+
+    cy.findByText("Products").click();
+    cy.findByLabelText("Move, archive, and more...").click();
+
+    cy.findByText("Ask Metabot").click();
+
+    cy.findByPlaceholderText(/Ask something like/).type(PROMPT);
+    cy.findByLabelText("Get Answer").click();
+    cy.wait("@modelPrompt");
+    cy.wait("@dataset");
+    cy.findByText("Gizmo").should("be.visible");
+
+    cy.findByText("How did I do?");
+
+    cy.request("PUT", "/api/setting/is-metabot-enabled", { value: false });
+
+    cy.visit("/collection/root");
+    cy.findByText("Products").click();
+    cy.findByLabelText("Move, archive, and more...").click();
+    cy.findByText("Ask Metabot").should("not.exist");
   });
 });
