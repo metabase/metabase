@@ -4,9 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { getIcon } from "__support__/ui";
 
 import TabRow from "../TabRow";
-import TabButton from "./TabButton";
+import TabButton, { TabButtonProps } from "./TabButton";
 
-function setup() {
+function setup(props?: TabButtonProps) {
   const action = jest.fn();
   const value = "some_value";
 
@@ -17,6 +17,7 @@ function setup() {
         menuItems={[
           { label: "first item", action: (context, value) => action(value) },
         ]}
+        {...props}
       >
         Tab 1
       </TabButton>
@@ -43,5 +44,15 @@ describe("TabButton", () => {
     (await screen.findByRole("option", { name: "first item" })).click();
 
     expect(action).toHaveBeenCalledWith(value);
+  });
+
+  it("should not open the menu when disabled", async () => {
+    setup({ disabled: true });
+
+    userEvent.click(getIcon("chevrondown"));
+
+    expect(
+      screen.queryByRole("option", { name: "first item" }),
+    ).not.toBeInTheDocument();
   });
 });
