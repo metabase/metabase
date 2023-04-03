@@ -3,6 +3,7 @@
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
    [metabase.search.util :as search-util]
    [metabase.util :as u]
@@ -48,11 +49,8 @@
     :else                                                   ::text))
 
 (defn- row->types
-  [column-names row]
-  (->> row
-       (map vector column-names)
-       (map (fn [[column-name value]] [column-name (and value (value->type (search-util/normalize value)))]))
-       (into {})))
+  [row]
+  (map (comp value->type search-util/normalize) row))
 
 (defn coalesce
   "Returns the 'parent' type (the most general)."
@@ -66,18 +64,25 @@
 
 (defn- coalesce-types
   [types-so-far new-types]
-  (->> types-so-far
-       (map (fn [[column-name old-type]]
-              [column-name (coalesce old-type (get new-types column-name))]))
-       (into {})))
+  (->> (map vector types-so-far new-types)
+       (map (partial apply coalesce))))
+
+(defn- pad
+  "Lengthen `values` until it is of length `n` by filling it with nils."
+  [n values]
+  (first (partition n n (repeat nil) values)))
 
 (defn- rows->schema
   [header rows]
-  (let [normalized-header (map (comp u/slugify str/trim) header)]
+  (let [normalized-header (map (comp u/slugify str/trim) header)
+        column-count      (count normalized-header)]
     (->> rows
-         (map (partial row->types normalized-header))
+         (map row->types)
+         (map (partial pad column-count))
          (reduce coalesce-types)
-         (m/map-vals #(or % ::text)))))
+         (map #(or % ::text))
+         (map vector normalized-header)
+         (ordered-map/ordered-map))))
 
 (defn detect-schema
   "Returns a map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
@@ -93,4 +98,4 @@
   [csv-file]
   (with-open [reader (io/reader csv-file)]
     (let [[header & rows] (csv/read-csv reader)]
-      (rows->schema header rows ))))
+      (rows->schema header rows))))
