@@ -117,12 +117,14 @@
                (serdes/raw-hash ["big customers" (serdes/identity-hash table) now])
                (serdes/identity-hash segment)))))))
 
-(deftest definition-description-test
+(deftest definition-description-missing-definition-test
   (testing "Do not hydrate definition description if definition is nil"
     (t2.with-temp/with-temp [Segment segment {:name     "Segment"
                                               :table_id (mt/id :users)}]
       (is (=? {:definition_description nil}
-              (t2/hydrate segment :definition_description)))))
+              (t2/hydrate segment :definition_description))))))
+
+(deftest definition-description-test
   (t2.with-temp/with-temp [Segment segment {:name       "Expensive BBQ Spots"
                                             :definition (:query (mt/mbql-query venues
                                                                   {:filter
@@ -140,3 +142,20 @@
                                                                           [:not-null $id]]}))}]
         (is (= "Filtered by Expensive BBQ Spots and ID is not empty"
                (:definition_description (t2/hydrate segment-2 :definition_description))))))))
+
+(deftest definition-description-missing-source-table-test
+  (testing "Should work if `:definition` does not include `:source-table`"
+    (t2.with-temp/with-temp [Segment segment {:name       "Expensive BBQ Spots"
+                                              :definition (mt/$ids venues
+                                                            {:filter
+                                                             [:= $price 4]})}]
+      (is (= "Filtered by Price equals 4"
+             (:definition_description (t2/hydrate segment :definition_description)))))))
+
+(deftest definition-description-invalid-query-test
+  (testing "Should return `nil` if query is invalid"
+    (t2.with-temp/with-temp [Segment segment {:name       "Expensive BBQ Spots"
+                                              :definition (:query (mt/mbql-query venues
+                                                                    {:filter
+                                                                     [:= [:field Integer/MAX_VALUE nil] 4]}))}]
+      (is (nil? (:definition_description (t2/hydrate segment :definition_description)))))))
