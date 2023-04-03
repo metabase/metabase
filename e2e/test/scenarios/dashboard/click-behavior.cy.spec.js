@@ -1,4 +1,8 @@
-import { restore, visitDashboard } from "e2e/support/helpers";
+import {
+  addCardToDashboard,
+  restore,
+  visitDashboard,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -22,31 +26,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         ({ body: { id: nativeId } }) => {
           cy.createDashboard().then(({ body: { id: dashboardId } }) => {
             // Add native question to the dashboard
-            cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-              cardId: nativeId,
-              row: 0,
-              col: 0,
-              size_x: 12,
-              size_y: 10,
-            }).then(({ body: { id: dashCardId } }) => {
-              // Add click behavior to the dashboard card and point it to the question 1
-              cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-                cards: [
-                  {
-                    id: dashCardId,
-                    card_id: nativeId,
-                    row: 0,
-                    col: 0,
-                    size_x: 12,
-                    size_y: 10,
-                    visualization_settings:
-                      getVisualizationSettings(question1Id),
-                  },
-                ],
-              });
-
-              visitDashboard(dashboardId);
+            addCardToDashboard({
+              dashboard_id: dashboardId,
+              card_id: nativeId,
+              card: {
+                // Add click behavior to the dashboard card and point it to the question 1
+                visualization_settings: getVisualizationSettings(question1Id),
+              },
             });
+            visitDashboard(dashboardId);
           });
         },
       );
