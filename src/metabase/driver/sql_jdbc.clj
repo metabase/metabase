@@ -104,11 +104,13 @@
   [table-name schema]
   (first (sql/format {:create-table table-name
                       :with-columns
-                      (for [{:keys [database-name database-type]} schema]
-                        [database-name database-type])})))
+                      (map (juxt (comp keyword :database-name)
+                                 (comp keyword :database-type)) schema)})))
 
+;; TODO: this assumes schema-name is non-nil and the database supports schemas
 (defmethod driver/create-table :sql-jdbc
-  [_driver db-id table-name schema]
-  (let [sql (str "DROP TABLE IF EXISTS " (name table-name) "; "
+  [_driver db-id schema-name table-name schema ]
+  (let [sql (str "DROP TABLE IF EXISTS " schema-name "." table-name "; "
                  (create-table-sql table-name schema))]
+    (prn "create-table" sql)
     (qp.writeback/execute-write-sql! db-id sql)))

@@ -761,18 +761,18 @@
     (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
 
 (defn- load-from-csv-sql [schema-name table-name column-names file-name]
-  (vec (concat [(str "COPY (?).(?)(" (str/join "," (repeat 9 "(?)")) ") FROM (?) WITH (FORMAT CSV, HEADER TRUE, ENCODING 'UTF8', QUOTE '\"', ESCAPE '\\')")]
-               [schema-name]
-               [table-name]
-               column-names
-               [file-name])))
+  (str "COPY " schema-name "." table-name "(" (str/join "," column-names) ") FROM '" file-name
+       "' WITH (FORMAT CSV, HEADER TRUE, ENCODING 'UTF8', QUOTE '\"', ESCAPE '\\')"))
 
-(defmethod driver/load-from-csv [:postgres]
-  [driver database schema-name table-name file-name]
+(defmethod driver/load-from-csv :postgres
+  [driver db-id schema-name table-name file-name]
   ;; create table
   ;; WIP: this should come from detect-schema
-  (let [cols->type {"column_name" "varchar(255)"}]
-    (driver/create-table driver database schema-name table-name cols->type)
-    ;; insert data
-    (let [sql (load-from-csv-sql schema-name table-name (keys cols->type) file-name)]
-      (qp.writeback/execute-write-sql! (:id database) sql))))
+  (let [csv-schema [{:database-name "column_name"
+                     :csv-type      :metabase.csv/varchar_255
+                     :database-type "VARCHAR(255)"}]
+        cols       (map :database-name csv-schema)]
+    (driver/create-table driver db-id schema-name table-name csv-schema)
+    (let [sql (load-from-csv-sql schema-name table-name cols file-name)
+          upload-result (qp.writeback/execute-write-sql! db-id sql)]
+      (pos? (:rows-affected upload-result)))))
