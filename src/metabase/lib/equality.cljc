@@ -2,7 +2,8 @@
   "Logic for determining whether two pMBQL queries are equal."
   (:refer-clojure :exclude [=])
   (:require
-   [metabase.lib.dispatch :as lib.dispatch]))
+   [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -16,7 +17,8 @@
           y-dispatch-value (lib.dispatch/dispatch-value y)]
       (if (not= x-dispatch-value y-dispatch-value)
         ::different-dispatch-values
-        x-dispatch-value))))
+        x-dispatch-value)))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod = ::different-dispatch-values
   [_x _y]

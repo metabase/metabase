@@ -677,7 +677,7 @@
    :name                "PRICE"
    :fingerprint_version 5
    :has_field_values    :list
-   :settings            nil
+   :settings            {:is_priceless true}
    :caveats             nil
    :fk_target_field_id  nil
    :custom_position     0

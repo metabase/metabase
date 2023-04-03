@@ -47,6 +47,7 @@
 
 (shared.ns/import-fns
   [lib.aggregation
+   aggregations
    aggregate
    count
    avg
@@ -145,7 +146,8 @@
    describe-query
    describe-top-level-key
    display-name
-   suggested-name]
+   suggested-name
+   type-of]
   [lib.native
    #?@(:cljs [->TemplateTags
               TemplateTags->])

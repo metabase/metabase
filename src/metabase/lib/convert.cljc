@@ -3,13 +3,15 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]))
 
 (defmulti ->pMBQL
   "Coerce something to pMBQL (the version of MBQL manipulated by Metabase Lib v2) if it's not already pMBQL."
   {:arglists '([x])}
-  lib.dispatch/dispatch-value)
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defn- default-MBQL-clause->pMBQL [mbql-clause]
   (let [[clause-type options & args] (lib.options/ensure-uuid mbql-clause)]
@@ -61,20 +63,30 @@
   [[_tag x y]]
   (let [[id-or-name options] (if (map? x)
                                [y x]
-                               [x y])
-        options              (cond-> options
-                               (not (:lib/uuid options))
-                               (assoc :lib/uuid (str (random-uuid))))]
-    [:field options id-or-name]))
+                               [x y])]
+    (lib.options/ensure-uuid [:field options id-or-name])))
+
+(defmethod ->pMBQL :aggregation
+  [[_tag x y]]
+  (let [[index options] (if (integer? x)
+                          [x y]
+                          [y x])]
+    (lib.options/ensure-uuid [:aggregation options index])))
 
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
   (let [[tag opts & args] (->pMBQL aggregation)]
     (into [tag (merge opts options)] args)))
 
+(defmethod ->pMBQL :value
+  [[_tag value _type-info]]
+  value)
+
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
-  like [[metabase.mbql.normalize/normalize]], and then probably to [[->pMBQL]]."
+  like [[metabase.mbql.normalize/normalize]], and then probably to [[->pMBQL]].
+
+  `database-id` can be `nil`, but you'll get an invalid query."
   [database-id inner-query]
   (merge {:database database-id, :type :query}
          (if (:native inner-query)
@@ -85,7 +97,8 @@
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's
   not already legacy MBQL."
   {:arglists '([x])}
-  lib.dispatch/dispatch-value)
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defn- lib-key? [x]
   (and (qualified-keyword? x)
