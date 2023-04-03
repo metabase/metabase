@@ -43,7 +43,7 @@ function getFieldsForSourceQueryTable(
       "field",
       column.name,
       {
-        "base-type": column.base_type,
+        "base-type": column.base_type as string,
       },
     ];
 

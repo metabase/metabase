@@ -75,6 +75,7 @@
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   io.prometheus/simpleclient_jetty          {:mvn/version "0.16.0"}             ; prometheus jetty collector
+  javax.servlet/servlet-api                 {:mvn/version "2.5"}                ; used by ring's multipart-params (file upload)
   joda-time/joda-time                       {:mvn/version "2.12.2"}
   kixi/stats                                {:mvn/version "0.5.5"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
@@ -82,7 +83,7 @@
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
   metabase/saml20-clj                       {:mvn/version "2.1.0"}              ; EE SAML integration
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
-  metosin/malli                             {:mvn/version "0.10.2"}              ; Data-driven Schemas for Clojure/Script and babashka
+  metosin/malli                             {:mvn/version "0.10.2"}             ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.0.0"}              ; NanoID generator for generating entity_ids
   net.cgrand/macrovich                      {:mvn/version "0.2.1"}              ; utils for writing macros for both Clojure & ClojureScript
   net.i2p.crypto/eddsa                      {:mvn/version "0.3.0"}              ; ED25519 key support (optional dependency for org.apache.sshd/sshd-core)
@@ -101,6 +102,8 @@
   org.apache.logging.log4j/log4j-jul        {:mvn/version "2.20.0"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-slf4j2-impl
                                             {:mvn/version "2.20.0"}             ; allows the slf4j2 API to work with log4j 2
+  org.apache.logging.log4j/log4j-layout-template-json
+                                            {:mvn/version "2.20.0"}             ; allows the custom json logging format
   org.apache.poi/poi                        {:mvn/version "5.2.3"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.2.3"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
@@ -586,7 +589,7 @@
   :profile
   {:main-opts ["-m" "metabase.core" "profile"]
    :jvm-opts  ["-XX:+CITime" ; print time spent in JIT compiler
-               "-XX:+PrintGC"]}
+               "-Xlog:gc"]}
 
   ;; get the H2 shell with clojure -X:dev:h2
   :h2

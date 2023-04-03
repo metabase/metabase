@@ -1,9 +1,11 @@
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import { NotebookStep, NotebookStepFn, OpenSteps } from "./steps.types";
+import { NotebookStep, NotebookStepFn, OpenSteps } from "../types";
 
 // This converts an MBQL query into a sequence of notebook "steps", with special logic to determine which steps are
 // allowed to be added at every other step, generating a preview query at each step, how to delete a step,
@@ -94,9 +96,16 @@ const STEPS: NotebookStepDef[] = [
       query.hasData() &&
       (!query.hasAggregations() || query.hasBreakouts()) &&
       (!query.sourceQuery() || query.hasAnyClauses()),
-    active: query => query.hasLimit(),
-    revert: query => query.clearLimit(),
-    clean: query => query.cleanLimit(),
+    active: (legacyQuery, itemIndex, query, stageIndex) =>
+      Lib.hasLimit(query, stageIndex),
+    revert: (legacyQuery, itemIndex, query, stageIndex) => {
+      const reverted = Lib.limit(query, stageIndex, null);
+      const revertedLegacyQuery = Lib.toLegacyQuery(reverted);
+      const revertedStructuredQuery =
+        legacyQuery.setDatasetQuery(revertedLegacyQuery);
+      return revertedStructuredQuery.queries()[stageIndex];
+    },
+    clean: query => query,
   },
 ];
 
@@ -119,8 +128,11 @@ export function getQuestionSteps(question: Question, openSteps = {}) {
       query = query.nest();
     }
 
+    const topLevelQuery = query.question()._getMLv2Query();
+
     for (const [stageIndex, stageQuery] of query.queries().entries()) {
       const { steps, actions } = getStageSteps(
+        topLevelQuery,
         stageQuery,
         stageIndex,
         openSteps,
@@ -145,7 +157,8 @@ export function getQuestionSteps(question: Question, openSteps = {}) {
 /**
  * Returns an array of "steps" to be displayed in the notebook for one "stage" (nesting) of a query
  */
-export function getStageSteps(
+function getStageSteps(
+  topLevelQuery: Query,
   stageQuery: StructuredQuery,
   stageIndex: number,
   openSteps: OpenSteps,
@@ -164,17 +177,23 @@ export function getStageSteps(
       type: STEP.type,
       stageIndex: stageIndex,
       itemIndex: itemIndex,
+      topLevelQuery,
       query: stageQuery,
-      valid: STEP.valid(stageQuery, itemIndex),
-      active: STEP.active(stageQuery, itemIndex),
+      valid: STEP.valid(stageQuery, itemIndex, topLevelQuery, stageIndex),
+      active: STEP.active(stageQuery, itemIndex, topLevelQuery, stageIndex),
       visible:
-        STEP.valid(stageQuery, itemIndex) &&
-        !!(STEP.active(stageQuery, itemIndex) || openSteps[id]),
+        STEP.valid(stageQuery, itemIndex, topLevelQuery, stageIndex) &&
+        !!(
+          STEP.active(stageQuery, itemIndex, topLevelQuery, stageIndex) ||
+          openSteps[id]
+        ),
       revert: STEP.revert
         ? (query: StructuredQuery) =>
-            STEP.revert ? STEP.revert(query, itemIndex) : null
+            STEP.revert
+              ? STEP.revert(query, itemIndex, topLevelQuery, stageIndex)
+              : null
         : null,
-      clean: query => STEP.clean(query, itemIndex),
+      clean: query => STEP.clean(query, itemIndex, topLevelQuery, stageIndex),
       update: datasetQuery => {
         let newQuery = stageQuery.setDatasetQuery(datasetQuery);
         // clean each subsequent step individually. we have to do this rather than calling newQuery.clean() in case
@@ -188,7 +207,12 @@ export function getStageSteps(
           ) {
             newQuery = current.query.setSourceQuery(newQuery.query());
           }
-          newQuery = current.clean(newQuery);
+          newQuery = current.clean(
+            newQuery,
+            current.itemIndex,
+            topLevelQuery,
+            current.stageIndex,
+          );
         }
         // strip empty source queries
         return newQuery.cleanNesting();
@@ -243,7 +267,12 @@ export function getStageSteps(
     }
     // revert the previewQuery for this step
     if (step.revert && previewQuery) {
-      previewQuery = step.revert(previewQuery);
+      previewQuery = step.revert(
+        previewQuery,
+        step.itemIndex,
+        topLevelQuery,
+        step.stageIndex,
+      );
     }
   }
 

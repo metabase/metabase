@@ -285,3 +285,7 @@ text.value-label-white {
 .LineAreaBarChart .dc-chart .event-line.hover {
   stroke: var(--color-brand);
 }
+
+.LineAreaBarChart .dc-chart path.area {
+  fill-opacity: 1;
+}
