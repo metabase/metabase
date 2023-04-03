@@ -7,7 +7,7 @@ import {
 } from "metabase-types/api";
 import { ChartCaptionRoot } from "./ChartCaption.styled";
 
-interface Props {
+interface ChartCaptionProps {
   series: Series;
   settings: VisualizationSettings;
   icon?: IconProps;
@@ -21,7 +21,7 @@ const ChartCaption = ({
   icon,
   actionButtons,
   onChangeCardAndRun,
-}: Props) => {
+}: ChartCaptionProps) => {
   const title = settings["card.title"] ?? series[0].card.name;
   const description = settings["card.description"];
   const data = (series as TransformedSeries)._raw || series;
