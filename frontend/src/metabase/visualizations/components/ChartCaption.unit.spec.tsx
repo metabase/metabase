@@ -1,5 +1,5 @@
 import React, { ComponentPropsWithoutRef } from "react";
-import { noop } from "underscore";
+import _ from "underscore";
 import userEvent from "@testing-library/user-event";
 import { render, screen, getIcon } from "__support__/ui";
 
@@ -27,7 +27,7 @@ const getSeries = ({ card }: { card?: Card } = {}): Series => {
 const setup = (props: Partial<Props> = {}) => {
   const {
     series = getSeries(),
-    onChangeCardAndRun = noop,
+    onChangeCardAndRun = _.noop,
     settings = {},
   } = props;
 
