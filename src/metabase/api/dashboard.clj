@@ -556,8 +556,6 @@
     (dashboard-card/delete-dashboard-cards! dashboard-cards (:id dashboard) api/*current-user-id*)))
 
 (defn- classify-dashcard-changes [current-dashcards new-dashcards]
-  (def current current-dashcards)
-  (def new-cards new-dashcards)
   (let [current-dashcard-ids          (set (map :id current-dashcards))
         update-or-delete-dashcard-ids (->> new-dashcards
                                           (map :id)
@@ -589,8 +587,10 @@
              ...]}"
   [id :as {{:keys [cards]} :body}]
   {cards (su/non-empty [UpdatedDashboardCard])}
-  (let [dashboard     (api/check-not-archived (api/write-check Dashboard id))
-        current-cards (dashboard/ordered-cards id)
+  (let [dashboard     (-> (api/write-check Dashboard id)
+                          api/check-not-archived
+                          (t2/hydrate :ordered_cards))
+        current-cards (ordered_cards dashboard)
 
         {:keys [to-update to-delete to-create]} (classify-dashcard-changes current-cards cards)]
     (api/check-500
