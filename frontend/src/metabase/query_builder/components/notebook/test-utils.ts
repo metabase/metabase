@@ -6,6 +6,7 @@ import type { NotebookStep } from "./types";
 
 export const DEFAULT_QUESTION = getSavedStructuredQuestion();
 export const DEFAULT_LEGACY_QUERY = DEFAULT_QUESTION.query() as StructuredQuery;
+export const DEFAULT_QUERY = DEFAULT_QUESTION._getMLv2Query();
 
 export function createMockNotebookStep(
   opts: Partial<NotebookStep> = {},
@@ -15,6 +16,7 @@ export function createMockNotebookStep(
     type: "data",
     stageIndex: 0,
     itemIndex: 0,
+    topLevelQuery: DEFAULT_QUERY,
     query: DEFAULT_LEGACY_QUERY,
     valid: true,
     active: true,

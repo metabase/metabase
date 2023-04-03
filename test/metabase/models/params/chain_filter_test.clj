@@ -8,7 +8,6 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defmacro ^:private chain-filter [field field->value & options]
@@ -573,7 +572,7 @@
         (thunk)
         (finally
          (t2/update! Field field-id {:has_field_values has_field_values})
-         (db/insert-many! FieldValues fvs))))))
+         (t2/insert! FieldValues fvs))))))
 
 (defmacro ^:private with-clean-field-values-for-field
   "Run `body` with all FieldValues for `field-id` deleted.

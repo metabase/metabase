@@ -1,5 +1,6 @@
 (ns metabase.lib.table
   (:require
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.util :as lib.util]
@@ -42,3 +43,22 @@
         :else
         (throw (ex-info (i18n/tru "Unexpected source table ID {0}" (pr-str source-table-id))
                         {:query query, :source-table-id source-table-id}))))))
+
+(defmethod lib.join/with-join-alias-method :metadata/table
+  [table-metadata join-alias]
+  (assoc table-metadata ::join-alias join-alias))
+
+(defmethod lib.join/current-join-alias-method :metadata/table
+  [table-metadata]
+  (::join-alias table-metadata))
+
+(defmethod lib.join/join-clause-method :metadata/table
+  [query stage-number {::keys [join-alias], :as table-metadata}]
+  (lib.join/join-clause-method query
+                               stage-number
+                               (merge
+                                {:lib/type     :mbql.stage/mbql
+                                 :lib/options  {:lib/uuid (str (random-uuid))}
+                                 :source-table (:id table-metadata)}
+                                (when join-alias
+                                  {:alias join-alias}))))

@@ -12,7 +12,6 @@
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -279,7 +278,7 @@
         recipients-    (set/difference recipients-old recipients-new)]
     (when (seq recipients+)
       (let [vs (map #(assoc {:pulse_channel_id id} :user_id %) recipients+)]
-        (db/insert-many! PulseChannelRecipient vs)))
+        (t2/insert! PulseChannelRecipient vs)))
     (when (seq recipients-)
       (t2/delete! (t2/table-name PulseChannelRecipient)
         :pulse_channel_id id

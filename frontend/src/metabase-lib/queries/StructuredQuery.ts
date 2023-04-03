@@ -49,7 +49,7 @@ import Dimension, {
 } from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
 
-import * as MLv2 from "..";
+import * as ML from "../v2";
 import type { Limit, Query } from "../types";
 
 import Segment from "../metadata/Segment";
@@ -134,7 +134,7 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   private updateWithMLv2(nextQuery: Query) {
-    const nextMLv1Query = MLv2.toLegacyQuery(nextQuery);
+    const nextMLv1Query = ML.toLegacyQuery(nextQuery);
     return this.setDatasetQuery(nextMLv1Query);
   }
 
@@ -562,7 +562,7 @@ class StructuredQueryInner extends AtomicQuery {
 
   hasLimit() {
     const query = this.getMLv2Query();
-    return MLv2.hasLimit(query);
+    return ML.hasLimit(query);
   }
 
   hasFields() {
@@ -656,19 +656,18 @@ class StructuredQueryInner extends AtomicQuery {
    * @returns an array of aggregation options for the currently selected table
    */
   aggregationOperators(): AggregationOperator[] {
-    const expressionFields = this.expressionDimensions().map(
-      expressionDimension => expressionDimension.field(),
-    );
-
     const table = this.table();
-    return (
-      (table &&
-        getAggregationOperators(table, [
-          ...expressionFields,
-          ...table.fields,
-        ])) ||
-      []
-    );
+
+    if (table) {
+      const fieldOptions = this.fieldOptions()
+        .all()
+        .map(dimension => dimension.field())
+        .filter(field => field != null);
+
+      return getAggregationOperators(table.db, fieldOptions);
+    }
+
+    return [];
   }
 
   aggregationOperatorsLookup(): Record<string, AggregationOperator> {
@@ -1106,12 +1105,12 @@ class StructuredQueryInner extends AtomicQuery {
   // LIMIT
   limit(): Limit {
     const query = this.getMLv2Query();
-    return MLv2.currentLimit(query);
+    return ML.currentLimit(query);
   }
 
   updateLimit(limit: Limit) {
     const query = this.getMLv2Query();
-    const nextQuery = MLv2.limit(query, limit);
+    const nextQuery = ML.limit(query, limit);
     return this.updateWithMLv2(nextQuery);
   }
 

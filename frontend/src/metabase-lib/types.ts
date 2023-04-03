@@ -5,4 +5,12 @@
 declare const Query: unique symbol;
 export type Query = unknown & { _opaque: typeof Query };
 
+declare const MetadataProvider: unique symbol;
+export type MetadataProvider = unknown & { _opaque: typeof MetadataProvider };
+
 export type Limit = number | null;
+
+declare const OrderByClause: unique symbol;
+export type OrderByClause = unknown & { _opaque: typeof OrderByClause };
+
+export type Clause = OrderByClause;

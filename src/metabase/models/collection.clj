@@ -694,7 +694,7 @@
         group-ids-with-write-perms (t2/select-fn-set :group_id Permissions
                                                      :object (perms/collection-readwrite-path source-collection-or-id))]
     ;; ...and insert corresponding rows for each destination Collection
-    (db/insert-many! Permissions
+    (t2/insert! Permissions
       (concat
        ;; insert all the new read-perms records
        (for [dest     dest-collections-or-ids

@@ -1,18 +1,17 @@
 (ns metabase.lib.util
   (:refer-clojure :exclude [format])
   (:require
-   [clojure.set :as set]
-   [clojure.string :as str]
-   [metabase.lib.options :as lib.options]
-   [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
    #?@(:clj
        ([potemkin :as p]))
    #?@(:cljs
        ([goog.string :as gstring]
-        [goog.string.format :as gstring.format]))))
+        [goog.string.format :as gstring.format]))
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.malli :as mu]))
 
 ;; The formatting functionality is only loaded if you depend on goog.string.format.
 #?(:cljs (comment gstring.format/keep-me))
@@ -28,30 +27,45 @@
 (defn- clause? [clause]
   (and (vector? clause)
        (> (count clause) 1)
-       (keyword? (first clause))))
+       (keyword? (first clause))
+       (map? (second clause))
+       (contains? (second clause) :lib/uuid)))
 
 (defn- clause-uuid [clause]
   (when (clause? clause)
     (get-in clause [1 :lib/uuid])))
 
 (defn replace-clause
-  "Replace the clause with `target-uuid` in `clause` with `new-clause`.
-  If `clause` itself has :lib/uuid equal to `target-uuid`, `new-clause` is returned.
-  If `clause` contains no clause with `target-uuid` no replacement happens.
-  Since UUIDs are assumed to be unique, at most one replacement happens."
-  [clause target-uuid new-clause]
-  (if (clause? clause)
-    (if (= (clause-uuid clause) target-uuid)
-      new-clause
-      (reduce (fn [clause i]
-                (let [arg (clause i)
-                      arg' (replace-clause arg target-uuid new-clause)]
-                  (if (not= arg' arg)
-                    (reduced (assoc clause i arg'))
-                    clause)))
-              clause
-              (range 2 (count clause))))
-    clause))
+  "Replace the `target-clause` in `stage` `location` with `new-clause`.
+   If a clause has :lib/uuid equal to the `target-clause` it is swapped with `new-clause`.
+   If `location` contains no clause with `target-clause` no replacement happens."
+  [stage location target-clause new-clause]
+  {:pre [(clause? target-clause)]}
+  (update
+    stage
+    location
+    #(->> (for [clause %]
+            (if (= (clause-uuid clause) (clause-uuid target-clause))
+              new-clause
+              clause))
+          vec)))
+
+(defn remove-clause
+  "Replace the `target-clause` in `stage` `location`.
+   If a clause has :lib/uuid equal to the `target-clause` it is removed.
+   If `location` contains no clause with `target-clause` no removal happens.
+   If the the location is empty, dissoc it from stage."
+  [stage location target-clause]
+  {:pre [(clause? target-clause)]}
+  (let [target-uuid (clause-uuid target-clause)
+        target (get stage location)
+        result (->> target
+                    (remove (comp #{target-uuid} clause-uuid))
+                    vec
+                    not-empty)]
+    (if result
+      (assoc stage location result)
+      (dissoc stage location))))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
 ;;; the near future.
@@ -133,7 +147,7 @@
     :native   (native-query->pipeline query)
     :query    (mbql-query->pipeline query)))
 
-(mu/defn ^:private non-negative-stage-index :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+(mu/defn ^:private non-negative-stage-index :- [:int {:min 0}]
   "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on
   `stages`. `-1` = the last stage, `-2` = the penultimate stage, etc."
   [stages       :- [:sequential [:ref ::lib.schema/stage]]
@@ -147,12 +161,11 @@
                       {:num-stages (count stages)})))
     stage-number'))
 
-(defn previous-stage-number
+(mu/defn previous-stage-number :- [:maybe [:int {:min 0}]]
   "The index of the previous stage, if there is one. `nil` if there is no previous stage."
-  [{:keys [stages], :as _query} stage-number]
-  (let [stage-number (if (neg? stage-number)
-                       (+ (count stages) stage-number)
-                       stage-number)]
+  [{:keys [stages], :as _query} :- :map
+   stage-number                 :- :int]
+  (let [stage-number (non-negative-stage-index stages stage-number)]
     (when (pos? stage-number)
       (dec stage-number))))
 

@@ -5,7 +5,6 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
-import * as MLv2 from "cljs/metabase.lib.js";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/queries/StructuredQuery";
@@ -85,7 +84,8 @@ import {
 } from "metabase-lib/Alert";
 import { getBaseDimensionReference } from "metabase-lib/references";
 
-import { Query } from "./types";
+import type { Query } from "./types";
+import * as ML from "./v2";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -1341,7 +1341,7 @@ class QuestionInner {
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
       if (!this.__mlv2MetadataProvider) {
-        this.__mlv2MetadataProvider = MLv2.metadataProvider(
+        this.__mlv2MetadataProvider = ML.metadataProvider(
           this.databaseId(),
           metadata,
         );
@@ -1356,7 +1356,7 @@ class QuestionInner {
 
     if (!this.__mlv2Query) {
       this.__mlv2QueryMetadata = metadata;
-      this.__mlv2Query = MLv2.query(
+      this.__mlv2Query = ML.fromLegacyQuery(
         this.databaseId(),
         metadata,
         this.datasetQuery(),
@@ -1368,7 +1368,7 @@ class QuestionInner {
 
   generateQueryDescription() {
     const query = this._getMLv2Query();
-    return MLv2.suggestedName(query);
+    return ML.suggestedName(query);
   }
 
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {

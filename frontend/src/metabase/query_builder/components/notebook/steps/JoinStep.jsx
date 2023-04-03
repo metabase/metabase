@@ -48,6 +48,7 @@ const stepShape = {
   id: PropTypes.string.isRequired,
   type: PropTypes.string.isRequired,
   query: PropTypes.object.isRequired,
+  topLevelQuery: PropTypes.object.isRequired,
   previewQuery: PropTypes.object,
   active: PropTypes.bool.isRequired,
   valid: PropTypes.bool.isRequired,
@@ -64,6 +65,7 @@ const stepShape = {
 
 const joinStepPropTypes = {
   query: PropTypes.instanceOf(StructuredQuery).isRequired,
+  topLevelQuery: PropTypes.object.isRequired,
   step: PropTypes.shape(stepShape).isRequired,
   color: PropTypes.string.isRequired,
   isLastOpened: PropTypes.bool,

@@ -1,6 +1,7 @@
 (ns metabase.lib.convert
   (:require
    [clojure.set :as set]
+   [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]))
@@ -25,6 +26,9 @@
   [query]
   query)
 
+(def ^:private stage-keys
+  [:aggregation :breakout :expressions :fields :filter :order-by :joins])
+
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
   (reduce
@@ -33,7 +37,7 @@
        stage
        (update stage k ->pMBQL)))
    stage
-   [:aggregation :breakout :expressions :fields :filter :order-by :joins]))
+   stage-keys))
 
 (defmethod ->pMBQL :mbql/join
   [join]
@@ -83,9 +87,21 @@
   {:arglists '([x])}
   lib.dispatch/dispatch-value)
 
+(defn- lib-key? [x]
+  (and (qualified-keyword? x)
+       (= (namespace x) "lib")))
+
 (defn- disqualify [x]
-  #?(:cljs (when (number? x) (js-debugger)))
-  (select-keys x (remove qualified-keyword? (keys x))))
+  (->> x
+       keys
+       (remove lib-key?)
+       (select-keys x)))
+
+(defn- aggregation->legacy-MBQL [[tag options & args]]
+  (let [inner (into [tag] (map ->legacy-MBQL args))]
+    (if-let [aggregation-opts (not-empty (disqualify options))]
+      [:aggregation-options inner aggregation-opts]
+      inner)))
 
 (defn- clause-with-options->legacy-MBQL [[k options & args]]
   (if (map? options)
@@ -96,22 +112,47 @@
 
 (defmethod ->legacy-MBQL :default
   [x]
-  (if (and (vector? x)
-           (keyword? (first x)))
-    (clause-with-options->legacy-MBQL x)
-    (do
-      #?(:cljs (when-not (or (nil? x) (string? x) (number? x) (boolean? x) (keyword? x))
-                 (js/console.log "undefined ->legacy-MBQL for" (lib.dispatch/dispatch-value x) x)
-                 (throw (ex-info "undefined ->legacy-MBQL" {:dispatch-value (lib.dispatch/dispatch-value x)
-                                                            :value x}))))
-      x)))
+  (cond
+    (and (vector? x)
+         (keyword? (first x))) (clause-with-options->legacy-MBQL x)
+    (map? x)                   (-> x
+                                   disqualify
+                                   (update-vals ->legacy-MBQL))
+    :else x))
 
-(defn- chain-stages [x]
-  (let [stages (map ->legacy-MBQL (:stages x))]
-    (reduce (fn [inner stage]
-              (assoc stage :source-query inner))
-            (first stages)
-            (rest stages))))
+(doseq [clause [;; Aggregations
+                :count :avg :count-where :distinct
+                :max :median :min :percentile
+                :share :stddev :sum :sum-where
+
+                ;; Expressions
+                :+ :- :* :/
+                :case :coalesce
+                :abs :log :exp :sqrt :ceil :floor :round :power :interval
+                :relative-datetime :time :absolute-datetime :now :convert-timezone
+                :get-week :get-year :get-month :get-day :get-hour
+                :get-minute :get-second :get-quarter
+                :datetime-add :datetime-subtract
+                :concat :substring :replace :regexextract :length
+                :trim :ltrim :rtrim :upper :lower]]
+  (defmethod ->legacy-MBQL clause [input]
+    (aggregation->legacy-MBQL input)))
+
+(defn- chain-stages [{:keys [stages]}]
+  ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
+  ;; In legacy, an inner query might have both :source-query, and :source-metadata giving the metadata for that nested
+  ;; :source-query.
+  ;; In pMBQL, the :lib/stage-metadata is attached to the same stage it applies to.
+  ;; So when chaining pMBQL stages back into legacy form, if stage n has :lib/stage-metadata, stage n+1 needs
+  ;; :source-metadata attached.
+  (first (reduce (fn [[inner stage-metadata] stage]
+                   [(cond-> (->legacy-MBQL stage)
+                      inner          (assoc :source-query inner)
+                      stage-metadata (assoc :source-metadata (mapv ->legacy-MBQL (:columns stage-metadata))))
+                    ;; Get the :lib/stage-metadata off the original pMBQL stage, not the converted one.
+                    (:lib/stage-metadata stage)])
+                 nil
+                 stages)))
 
 (defmethod ->legacy-MBQL :dispatch-type/map [m]
   (-> m
@@ -139,37 +180,25 @@
            (chain-stages base))))
 
 (defmethod ->legacy-MBQL :mbql.stage/mbql [stage]
-  (-> stage
-      disqualify
-      (update-vals ->legacy-MBQL)))
+  (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
+          (-> stage
+              disqualify
+              (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %)))
+          (remove #{:aggregation} stage-keys)))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
       disqualify
-      (set/rename-keys {:native :query})
       (update-vals ->legacy-MBQL)))
 
 (defmethod ->legacy-MBQL :mbql/query [query]
   (let [base        (disqualify query)
         inner-query (chain-stages base)
-        query-type  (if (-> query :stages first :lib/type (= :mbql.stage/native))
+        query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
                       :native
-                      :query)
-        result
-        (merge (-> base
-                   (dissoc :stages)
-                   (update-vals ->legacy-MBQL))
-               {:type      query-type
-                query-type inner-query})]
-    #?(:cljs (js/console.log "->legacy-MBQL on query" query result))
-    result))
-
-;;; placeholder, feel free to delete @braden.
-(defmethod ->legacy-MBQL :count
-  [[_tag opts field]]
-  (let [clause (if field
-                 [:count (->legacy-MBQL field)]
-                 [:count])]
-    (if-let [aggregation-options-opts (not-empty (select-keys opts [:name :display-name]))]
-      [:aggregation-options clause aggregation-options-opts]
-      clause)))
+                      :query)]
+    (merge (-> base
+               (dissoc :stages)
+               (update-vals ->legacy-MBQL))
+           {:type      query-type
+            query-type inner-query})))
