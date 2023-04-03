@@ -6,6 +6,8 @@
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.api.field :as api.field]
+   [metabase.db.query :as mdb.query]
+   [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -154,13 +156,20 @@
                     (assoc query :constraints (qp.constraints/default-query-constraints))])
              0)})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/native"
+(api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
-  [:as {query :body}]
+  [:as {{:keys [database pretty] :as query} :body}]
+  {database ms/PositiveInt
+   pretty  [:maybe :boolean]}
   (binding [persisted-info/*allow-persisted-substitution* false]
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-    (qp/compile-and-splice-parameters query)))
+    (let [{q :query :as compiled} (qp/compile-and-splice-parameters query)
+          driver          (driver.u/database->driver database)
+          ;; Format the query unless we explicitly do not want to
+          formatted-query (if (false? pretty)
+                            q
+                            (or (u/ignore-exceptions (mdb.query/format-sql q driver)) q))]
+      (assoc compiled :query formatted-query))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/pivot"
