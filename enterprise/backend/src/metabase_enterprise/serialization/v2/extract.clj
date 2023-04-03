@@ -50,13 +50,13 @@
   ;; TODO document and test data-model-only if we want to keep this feature...
   (let [model-pred (cond
                      (:data-model-only opts)
-                     #{"Database" "Dimension" "Field" "FieldValues" "Metric" "Segment" "Table"}
+                     #{'Database 'Dimension 'Field 'FieldValues 'Metric 'Segment 'Table}
 
                      (:include-field-values opts)
                      (constantly true)
 
                      :else
-                     (complement #{"FieldValues"}))
+                     (complement #{'FieldValues}))
         ;; This set of unowned top-level collections is used in several `extract-query` implementations.
         opts       (assoc opts :collection-set (collection-set-for-user (:user opts)))]
     (eduction cat (for [model serdes.models/exported-models

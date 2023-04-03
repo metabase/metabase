@@ -12,7 +12,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 (defn backfill-ids-for
@@ -28,7 +27,7 @@
         (t2/update! model (get entity pk) {:entity_id eid})))))
 
 (defn- has-entity-id? [model]
-  (::mi/entity-id (models/properties model)))
+  (isa? model ::mi/entity-id))
 
 (defn backfill-ids
   "Updates all rows of all models that are (a) serialized and (b) have `entity_id` columns to have the
@@ -36,6 +35,6 @@
   row."
   []
   (doseq [model-name (concat serdes.models/exported-models serdes.models/inlined-models)
-          :let [model (mdb.u/resolve-model (symbol model-name))]
+          :let [model (mdb.u/resolve-model model-name)]
           :when (has-entity-id? model)]
     (backfill-ids-for model)))
