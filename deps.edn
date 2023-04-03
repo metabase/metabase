@@ -102,6 +102,8 @@
   org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.19.0"}             ; allows the commons-logging API to work with log4j 2
   org.apache.logging.log4j/log4j-jul        {:mvn/version "2.19.0"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-slf4j-impl {:mvn/version "2.19.0"}             ; allows the slf4j API to work with log4j 2
+  org.apache.logging.log4j/log4j-layout-template-json
+                                            {:mvn/version "2.20.0"}             ; allows the custom json logging format
   org.apache.poi/poi                        {:mvn/version "5.2.3"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.2.3"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
