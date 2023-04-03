@@ -8,6 +8,7 @@
    [honey.sql :as sql]
    [malli.core :as mc]
    [metabase.config :as config]
+   [metabase.csv-test :as csv-test]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.postgres :as postgres]
@@ -1154,3 +1155,14 @@
               :sslkey
               absolute-path
               (str/ends-with? ".p12"))))))
+
+(deftest load-from-csv-test
+  (testing "Upload a csv"
+    (mt/test-driver :postgres
+      (mt/with-actions-test-data
+        (is (true? (driver/load-from-csv
+                    driver/*driver*
+                    (mt/id)
+                    "public"
+                    "upload_test"
+                    (csv-test/csv-file-with ["id,first_name" "one,Luke"]))))))))

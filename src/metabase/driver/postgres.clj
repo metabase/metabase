@@ -8,6 +8,7 @@
    [clojure.walk :as walk]
    [honey.sql :as sql]
    [java-time :as t]
+   [metabase.csv :as csv]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -34,7 +35,11 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
-   (java.sql ResultSet ResultSetMetaData Time Types)
+   (java.sql
+     ResultSet
+     ResultSetMetaData
+     Time
+     Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (java.util Date UUID)))
 
@@ -764,13 +769,20 @@
   (str "COPY " schema-name "." table-name "(" (str/join "," column-names) ") FROM '" file-name
        "' WITH (FORMAT CSV, HEADER TRUE, ENCODING 'UTF8', QUOTE '\"', ESCAPE '\\')"))
 
+(def csv->database-type
+  {::csv/varchar_255 "VARCHAR(255)"
+   ::csv/text        "TEXT"
+   ::csv/int         "INTEGER"
+   ::csv/float       "FLOAT"
+   ::csv/boolean     "BOOLEAN"})
+
 (defmethod driver/load-from-csv :postgres
   [driver db-id schema-name table-name file-name]
-  ;; create table
-  ;; WIP: this should come from detect-schema
-  (let [csv-schema [{:database-name "column_name"
-                     :csv-type      :metabase.csv/varchar_255
-                     :database-type "VARCHAR(255)"}]
+  (let [csv-schema (csv/detect-schema file-name)
+        csv-schema (for [[k v] csv-schema]
+                     {:database-name k
+                      :csv-type      v
+                      :database-type (csv->database-type v)})
         cols       (map :database-name csv-schema)]
     (driver/create-table driver db-id schema-name table-name csv-schema)
     (let [sql (load-from-csv-sql schema-name table-name cols file-name)

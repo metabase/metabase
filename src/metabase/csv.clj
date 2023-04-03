@@ -84,7 +84,7 @@
          (ordered-map/ordered-map))))
 
 (defn detect-schema
-  "Returns a map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
+  "Returns an ordered map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
   first row. Supported types are:
 
     - ::int
