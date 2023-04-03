@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { getIcon, render, screen, within } from "__support__/ui";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 
 const series = (value = 1.23) => [
@@ -37,6 +38,42 @@ describe("MetricForm", () => {
       />,
     );
     expect(screen.getByText("12,345")).toBeInTheDocument(); // with compact formatting, we'd have 1
+  });
+
+  it("should render description", () => {
+    const DESCRIPTION = "description";
+
+    render(
+      <Scalar
+        series={series()}
+        settings={{ ...settings, "card.description": DESCRIPTION }}
+        isDashboard
+        visualizationIsClickable={() => false}
+      />,
+    );
+
+    userEvent.hover(getIcon("info_outline"));
+
+    expect(screen.getByRole("tooltip")).toHaveTextContent(DESCRIPTION);
+  });
+
+  it("should render markdown in description", () => {
+    const DESCRIPTION = "# header";
+
+    render(
+      <Scalar
+        series={series()}
+        settings={{ ...settings, "card.description": DESCRIPTION }}
+        isDashboard
+        visualizationIsClickable={() => false}
+      />,
+    );
+
+    userEvent.hover(getIcon("info_outline"));
+
+    expect(
+      within(screen.getByRole("tooltip")).getByRole("heading"),
+    ).toHaveTextContent("header");
   });
 
   it("should render compact if normal formatting is >6 characters", () => {
