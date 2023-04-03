@@ -27,6 +27,7 @@
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -759,10 +760,10 @@
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
 
-(defn- load-from-csv-sql [table column-names file-name]
+(defn- load-from-csv-sql [schema-name table-name column-names file-name]
   (vec (concat [(str "COPY (?).(?)(" (str/join "," (repeat 9 "(?)")) ") FROM (?) WITH (FORMAT CSV, HEADER TRUE, ENCODING 'UTF8', QUOTE '\"', ESCAPE '\\')")]
-               [(:schema table)]
-               [(:name table)]
+               [schema-name]
+               [table-name]
                column-names
                [file-name])))
 
@@ -770,8 +771,8 @@
   [driver database schema-name table-name file-name]
   ;; create table
   ;; WIP: this should come from detect-schema
-  (let [cols->type {"column_name" ::csv/integer}]
+  (let [cols->type {"column_name" "varchar(255)"}]
     (driver/create-table driver database schema-name table-name cols->type)
     ;; insert data
-    (let [sql (load-from-csv-sql table (keys cols->type) file-name)]
-      (execute-write-sql! db-id sql))))
+    (let [sql (load-from-csv-sql schema-name table-name (keys cols->type) file-name)]
+      (qp.writeback/execute-write-sql! (:id database) sql))))
