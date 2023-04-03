@@ -2,7 +2,8 @@
   (:require
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
-   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]))
+   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
+   [metabase.util.malli.registry :as mr]))
 
 (mbql-clause/define-tuple-mbql-clause :interval
   :int
@@ -51,9 +52,14 @@
   #_:datetimestr [:schema [:ref ::expression/string]]
   #_:unit [:ref ::temporal-bucketing/unit.date-time.interval])
 
+(mr/def ::relative-datetime.amount
+  [:or
+   [:= :current]
+   :int])
+
 (mbql-clause/define-tuple-mbql-clause :relative-datetime :- :type/DateTime
-  #_:datetimestr [:schema [:ref ::expression/string]]
-  #_:unit [:ref ::temporal-bucketing/unit.date-time.interval])
+  #_n    [:ref ::relative-datetime.amount]
+  #_unit [:ref ::temporal-bucketing/unit.date-time.interval])
 
 (mbql-clause/define-tuple-mbql-clause :time :- :type/TimeWithTZ
   #_:timestr [:schema [:ref ::expression/string]]
