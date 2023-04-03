@@ -2,7 +2,7 @@ import React from "react";
 import { withRouter } from "react-router";
 import type { Location } from "history";
 
-import { Collection } from "metabase-types/api";
+import { Collection, CollectionId } from "metabase-types/api";
 
 import CollectionCaption from "./CollectionCaption";
 import CollectionBookmark from "./CollectionBookmark";
@@ -21,7 +21,7 @@ export interface CollectionHeaderProps {
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
   onCreateBookmark: (collection: Collection) => void;
   onDeleteBookmark: (collection: Collection) => void;
-  onUploadCSV: (file: File, collectionId: string) => void;
+  onUploadCSV: (file: File, collectionId: CollectionId) => void;
 }
 
 const CollectionHeader = ({

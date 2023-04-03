@@ -1,18 +1,19 @@
 import React from "react";
 import { t } from "ttag";
 import Link from "metabase/core/components/Link";
+import { Collection } from "metabase-types/api";
+import { FileUpload } from "metabase-types/store/upload";
 
 import StatusLarge from "../StatusLarge";
 
 export interface FileUploadLargeProps {
-  isActive?: boolean;
-  onCollapse?: () => void;
+  collection: Collection;
+  uploads: FileUpload[];
 }
 
 const FileUploadLarge = ({
   collection,
   uploads,
-  onCollapse,
 }: FileUploadLargeProps): JSX.Element => {
   const status = {
     title: getTitle(uploads, collection),
@@ -21,18 +22,18 @@ const FileUploadLarge = ({
       title: upload.name,
       icon: "model",
       description: getDescription(upload),
-      isInProgress: isSyncInProgress(upload),
-      isCompleted: isSyncCompleted(upload),
-      isAborted: isSyncAborted(upload),
+      isInProgress: uploadInProgress(upload),
+      isCompleted: uploadCompleted(upload),
+      isAborted: uploadAborted(upload),
     })),
   };
 
-  return <StatusLarge status={status} onCollapse={onCollapse} />;
+  return <StatusLarge status={status} />;
 };
 
-const getTitle = (uploads, collection) => {
-  const isDone = uploads.every(isSyncCompleted);
-  const isError = uploads.some(isSyncAborted);
+const getTitle = (uploads: FileUpload[], collection: Collection) => {
+  const isDone = uploads.every(uploadCompleted);
+  const isError = uploads.some(uploadAborted);
 
   if (isDone) {
     return t`Data added to ${collection.name}`;
@@ -43,13 +44,14 @@ const getTitle = (uploads, collection) => {
   }
 };
 
-const isSyncInProgress = upload => upload.status === "in-progress";
+const uploadInProgress = (upload: FileUpload) =>
+  upload.status === "in-progress";
 
-const isSyncCompleted = upload => upload.status === "complete";
+const uploadCompleted = (upload: FileUpload) => upload.status === "complete";
 
-const isSyncAborted = upload => upload.status === "error";
+const uploadAborted = (upload: FileUpload) => upload.status === "error";
 
-const getDescription = upload =>
-  upload.status === "complete" ? <Link>Start exploring</Link> : "";
+const getDescription = (upload: FileUpload) =>
+  upload.status === "complete" ? <Link to="/">Start exploring</Link> : "";
 
 export default FileUploadLarge;
