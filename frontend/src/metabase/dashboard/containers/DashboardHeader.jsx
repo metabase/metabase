@@ -30,7 +30,7 @@ import {
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
-import Header from "../components/DashboardHeader";
+import DashboardHeaderView from "../components/DashboardHeaderView";
 import { SIDEBAR_NAME } from "../constants";
 import {
   DashboardHeaderButton,
@@ -418,7 +418,7 @@ class DashboardHeader extends Component {
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
-      <Header
+      <DashboardHeaderView
         headerClassName="wrapper"
         objectType="dashboard"
         analyticsContext="Dashboard"
