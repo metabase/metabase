@@ -101,4 +101,11 @@
                             "Rey Skywalker, yes, true, t"
                             "Darth Vader, YES, TRUE, Y"
                             "Grogu, 1, 9001, probably?"
-                            "Han Solo, no, FaLsE, 0"]))))))
+                            "Han Solo, no, FaLsE, 0"])))))
+  (testing "Order is ensured"
+    (let [header "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,zz,yy,xx,ww,vv,uu,tt,ss,rr,qq,pp,oo,nn,mm,ll,kk,jj,ii,hh,gg,ff,ee,dd,cc,bb,aa"]
+      (is (= (str/split header #",")
+             (keys
+              (csv/detect-schema
+               (csv-file-with [header
+                               "Luke,ah'm,yer,da,,,missing,columns,should,not,matter"]))))))))
