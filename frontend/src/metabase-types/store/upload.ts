@@ -5,6 +5,7 @@ export type FileUpload = {
   name: string;
   collectionId: CollectionId;
   modelId?: string;
+  message?: string;
   error?: string;
   id: number;
 };

@@ -6,6 +6,12 @@ import { FileUpload } from "metabase-types/store/upload";
 
 import StatusLarge from "../StatusLarge";
 
+import {
+  uploadInProgress,
+  uploadCompleted,
+  uploadAborted,
+} from "../FileUploadStatus/FileUploadStatus";
+
 export interface FileUploadLargeProps {
   collection: Collection;
   uploads: FileUpload[];
@@ -44,14 +50,13 @@ const getTitle = (uploads: FileUpload[], collection: Collection) => {
   }
 };
 
-const uploadInProgress = (upload: FileUpload) =>
-  upload.status === "in-progress";
-
-const uploadCompleted = (upload: FileUpload) => upload.status === "complete";
-
-const uploadAborted = (upload: FileUpload) => upload.status === "error";
-
-const getDescription = (upload: FileUpload) =>
-  upload.status === "complete" ? <Link to="/">Start exploring</Link> : "";
+const getDescription = (upload: FileUpload) => {
+  if (upload.status === "complete") {
+    return <Link to={`/model/${upload.modelId}`}>Start exploring</Link>;
+  } else if (upload.status === "error") {
+    return upload.message;
+  }
+  return "";
+};
 
 export default FileUploadLarge;
