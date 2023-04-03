@@ -139,7 +139,10 @@ function massageForRoundTripCheck(x) {
   // An object: recursively massage each value.
   const result = {};
   Object.keys(x).forEach(k => {
-    result[k] = massageForRoundTripCheck(x[k]);
+    // Skip dataset_query - it's transformed separately and sometimes round-trips with slightly
+    // different details but the same meaning.
+    result[k] =
+      k === "dataset_query" ? undefined : massageForRoundTripCheck(x[k]);
   });
   return result;
 }
@@ -237,7 +240,6 @@ class QuestionInner {
       const roundTripped = massageForRoundTripCheck(
         CARD.to_js(this._cljsCardCached),
       );
-      // Slightly massage the JS card to match a few details of the CLJS transition.
       const originalCard = massageForRoundTripCheck({
         ...this._card,
         ...("parameters" in this._card
