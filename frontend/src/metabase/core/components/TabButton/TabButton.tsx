@@ -88,6 +88,7 @@ function TabButton({
               isOpen={isMenuOpen}
               onClick={onClick}
               ref={menuButtonRef}
+              disabled={props.disabled}
             />
           )}
           popoverContent={({ closePopover }) => (

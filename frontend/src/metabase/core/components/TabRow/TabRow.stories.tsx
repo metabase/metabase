@@ -56,8 +56,10 @@ const Template: ComponentStory<typeof TabRow> = args => {
         <TabButton value={5} menuItems={menuItems}>
           Tab 5
         </TabButton>
-        <TabButton value={6}>Tab 6</TabButton>
-        <TabButton value={7} menuItems={menuItems}>
+        <TabButton value={6} disabled>
+          Tab 6
+        </TabButton>
+        <TabButton value={7} menuItems={menuItems} disabled>
           Tab 7
         </TabButton>
       </TabRow>
