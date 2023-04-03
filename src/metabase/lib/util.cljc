@@ -169,6 +169,15 @@
     (when (pos? stage-number)
       (dec stage-number))))
 
+(defn next-stage-number
+  "The index of the next stage, if there is one. `nil` if there is no next stage."
+  [{:keys [stages], :as _query} stage-number]
+  (let [stage-number (if (neg? stage-number)
+                       (+ (count stages) stage-number)
+                       stage-number)]
+    (when (< (inc stage-number) (count stages))
+      (inc stage-number))))
+
 (mu/defn query-stage :- ::lib.schema/stage
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
   the query."

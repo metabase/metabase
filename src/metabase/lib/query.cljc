@@ -8,10 +8,67 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.stage :as lib.stage]
    [metabase.lib.util :as lib.util]
+   [metabase.mbql.util :as mbql.u]
    [metabase.util.malli :as mu]))
+
+(defn- find-clause
+  [query stage-number target-clause]
+  (let [stage (lib.util/query-stage query stage-number)
+        [target-type _ target-id] target-clause]
+    (not-empty
+      (reduce
+        (fn [accum top-level-clause]
+          (if (mbql.u/match-one (get stage top-level-clause)
+                                [target-type _ target-id] true)
+            (conj accum top-level-clause)
+            accum))
+        #{}
+        [:order-by :aggregation :breakout :filter :expressions :joins :fields]))))
+
+(defn- check-subsequent-stages!
+  "Throws if target-clause is used in a subsequent stage"
+  [previous-query query stage-number target-clause]
+  (let [[target-type _ target-id] target-clause]
+    (loop [stage-number stage-number]
+      (when-let [next-stage (lib.util/next-stage-number query stage-number)]
+        (when-not (->> (lib.stage/visible-columns query next-stage)
+                       (some (fn [{:keys [lib/type id] :as _column}]
+                               (and (= (keyword "metadata" (name target-type)) type) (= target-id id)))))
+          ;; Get the ref to look for from the previous-query
+          (let [target-ref (->> (lib.stage/visible-columns previous-query next-stage)
+                                (some (fn [{:keys [lib/type id] :as column}]
+                                        (when (and (= (keyword "metadata" (name target-type)) type) (= target-id id))
+                                          (lib.ref/ref column)))))]
+            (if-let [found (find-clause query next-stage target-ref)]
+              (throw (ex-info "Clause cannot be removed as it has dependents" {:target-clause target-clause
+                                                                               :stage-number next-stage
+                                                                               :found found}))
+              (recur next-stage))))))))
+
+(mu/defn remove-clause :- :metabase.lib.schema/query
+  "Removes the `target-clause` in the filter of the `query`."
+  ([query :- :metabase.lib.schema/query
+    target-clause]
+   (remove-clause query -1 target-clause))
+  ([query :- :metabase.lib.schema/query
+    stage-number :- :int
+    target-clause]
+   (reduce
+     (fn [query location]
+       (let [result (lib.util/update-query-stage query stage-number
+                                                 lib.util/remove-clause location target-clause)]
+         (when (not= query result)
+           (case location
+             :breakout (check-subsequent-stages! query result stage-number (lib.ref/ref target-clause))
+             nil))
+         result))
+     query
+     [:order-by :breakout])))
 
 (mu/defn replace-clause :- :metabase.lib.schema/query
   "Replaces the `target-clause` with `new-clause` in the `query` stage."
@@ -29,28 +86,15 @@
      ;; `location` should probably be "found" first before iterating.
      (reduce
        (fn [query location]
-         (lib.util/update-query-stage query stage-number
-                                      lib.util/replace-clause location target-clause replacement))
+         (let [result (lib.util/update-query-stage query stage-number
+                                                   lib.util/replace-clause location target-clause replacement)]
+           (when (not= query result)
+             (case location
+               :breakout (check-subsequent-stages! query result stage-number (lib.ref/ref target-clause))
+               nil))
+           result))
        query
-       [:order-by]))))
-
-(mu/defn remove-clause :- :metabase.lib.schema/query
-  "Removes the `target-clause` in the filter of the `query`."
-  ([query :- :metabase.lib.schema/query
-    target-clause]
-   (remove-clause query -1 target-clause))
-  ([query :- :metabase.lib.schema/query
-    stage-number :- :int
-    target-clause]
-   ;; Right now, this works for clauses that cannot have dependents.
-   ;; This will change and have different logic depending on `location`
-   ;; `location` should probably be "found" first before iterating.
-   (reduce
-     (fn [query location]
-       (lib.util/update-query-stage query stage-number
-                                    lib.util/remove-clause location target-clause))
-     query
-     [:order-by])))
+       [:order-by :breakout]))))
 
 (defmethod lib.normalize/normalize :mbql/query
   [query]

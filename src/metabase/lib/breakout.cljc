@@ -32,6 +32,7 @@
                                                                         (conj (vec breakouts) expr))))))
 
 (mu/defn current-breakouts :- [:maybe [:sequential ::lib.schema.expression/expression]]
+  "Return the current breakouts"
   ([query]
    (current-breakouts query -1))
   ([query :- ::lib.schema/query
