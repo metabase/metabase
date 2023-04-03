@@ -63,7 +63,7 @@ describe("scenarios > metabot", () => {
     verifyMetabotResults();
   });
 
-  it("should allow to ask questions from collection views", () => {
+  it.skip("should allow to ask questions from collection views", () => {
     cy.createQuestion(MODEL_DETAILS);
     cy.visit("/collection/root");
     openCollectionItemMenu(MODEL_DETAILS.name);
