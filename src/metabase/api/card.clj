@@ -12,6 +12,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
    [metabase.api.timeline :as api.timeline]
+   [metabase.csv :as csv]
    [metabase.driver :as driver]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
@@ -970,5 +971,11 @@ saved later when it is ready."
    param-key ms/NonBlankString
    query     ms/NonBlankString}
   (param-values (api/read-check Card card-id) param-key query))
+
+(api/defendpoint ^:multipart POST "/from-csv"
+  "Create a table and model populated with the values from the attached CSV."
+  [:as {raw-params :params}]
+  (let [f (:tempfile (get raw-params "file"))]
+    {:status 200 :body (csv/detect-schema f)}))
 
 (api/define-routes)
