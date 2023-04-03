@@ -128,3 +128,23 @@
    (some-> (lib.order-by/order-bys a-query stage-number)
            not-empty
            to-array)))
+
+(defn ^:export remove-clause
+  "Removes the `target-clause` in the filter of the `query`."
+  ([a-query clause]
+   (remove-clause a-query -1 clause))
+  ([a-query stage-number clause]
+   (lib.query/remove-clause
+     a-query stage-number
+     (lib.normalize/normalize (js->clj clause :keywordize-keys true)))))
+
+(defn ^:export replace-clause
+  "Replaces the `target-clause` with `new-clause` in the `query` stage."
+  ([a-query target-clause new-clause]
+   (replace-clause a-query -1 target-clause new-clause))
+  ([a-query stage-number target-clause new-clause]
+   (println [target-clause new-clause])
+   (lib.query/replace-clause
+     a-query stage-number
+     (lib.normalize/normalize (js->clj target-clause :keywordize-keys true))
+     (lib.normalize/normalize (js->clj new-clause :keywordize-keys true)))))
