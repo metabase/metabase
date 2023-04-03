@@ -1,6 +1,10 @@
 import _ from "underscore";
 import { assoc } from "icepick";
-import { restore, visitDashboard } from "e2e/support/helpers";
+import {
+  addCardsToDashboard,
+  restore,
+  visitDashboard,
+} from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 describe("scenarios > dashboard > permissions", () => {
@@ -65,20 +69,12 @@ describe("scenarios > dashboard > permissions", () => {
     cy.createDashboard().then(({ body: { id: dashId } }) => {
       dashboardId = dashId;
 
-      cy.request("POST", `/api/dashboard/${dashId}/cards`, {
-        cardId: firstQuestionId,
-        row: 0,
-        col: 0,
-        size_x: 6,
-        size_y: 6,
-      }).then(({ body: { id: dashCardIdA } }) => {
-        cy.request("POST", `/api/dashboard/${dashId}/cards`, {
-          cardId: secondQuestionId,
-          row: 0,
-          col: 6,
-          size_x: 6,
-          size_y: 6,
-        });
+      addCardsToDashboard({
+        dashboard_id: dashId,
+        cards: [
+          { card_id: firstQuestionId, row: 0, col: 0, size_x: 6, size_y: 6 },
+          { card_id: secondQuestionId, row: 0, col: 6, size_x: 6, size_y: 6 },
+        ],
       });
     });
   });

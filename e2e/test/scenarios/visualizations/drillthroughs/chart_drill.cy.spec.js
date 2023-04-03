@@ -10,6 +10,7 @@ import {
   visitQuestion,
   visitDashboard,
   startNewQuestion,
+  addCardToDashboard,
 } from "e2e/support/helpers";
 
 import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -133,37 +134,20 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add the first question to the dashboard");
 
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: Q1_ID,
-              row: 0,
-              col: 0,
-              size_x: 16,
-              size_y: 12,
-            }).then(({ body: { id: DASH_CARD_ID } }) => {
-              cy.log(
-                "Add additional series combining it with the second question",
-              );
-
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cards: [
+            addCardToDashboard({
+              card_id: Q1_ID,
+              dashboard_id: DASHBOARD_ID,
+              card: {
+                size_x: 16,
+                size_y: 12,
+                // Add additional series combining it with the second question
+                series: [
                   {
-                    id: DASH_CARD_ID,
-                    card_id: Q1_ID,
-                    row: 0,
-                    col: 0,
-                    size_x: 16,
-                    size_y: 12,
-                    series: [
-                      {
-                        id: Q2_ID,
-                        model: "card",
-                      },
-                    ],
-                    visualization_settings: {},
-                    parameter_mappings: [],
+                    id: Q2_ID,
+                    model: "card",
                   },
                 ],
-              });
+              },
             });
 
             visitDashboard(DASHBOARD_ID);
@@ -219,37 +203,20 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add the first question to the dashboard");
 
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: Q1_ID,
-              row: 0,
-              col: 0,
-              size_x: 16,
-              size_y: 12,
-            }).then(({ body: { id: DASH_CARD_ID } }) => {
-              cy.log(
-                "Add additional series combining it with the second question",
-              );
-
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cards: [
+            addCardToDashboard({
+              card_id: Q1_ID,
+              dashboard_id: DASHBOARD_ID,
+              card: {
+                size_x: 16,
+                size_y: 12,
+                // Add additional series combining it with the second question
+                series: [
                   {
-                    id: DASH_CARD_ID,
-                    card_id: Q1_ID,
-                    row: 0,
-                    col: 0,
-                    size_x: 16,
-                    size_y: 12,
-                    series: [
-                      {
-                        id: Q2_ID,
-                        model: "card",
-                      },
-                    ],
-                    visualization_settings: {},
-                    parameter_mappings: [],
+                    id: Q2_ID,
+                    model: "card",
                   },
                 ],
-              });
+              },
             });
 
             visitDashboard(DASHBOARD_ID);
@@ -565,35 +532,20 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       display: "pie",
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-          row: 0,
-          col: 0,
-          size_x: 16,
-          size_y: 10,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          // Add click through to the custom destination on a card
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
-              {
-                id: DASH_CARD_ID,
-                card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                size_x: 16,
-                size_y: 10,
-                series: [],
-                visualization_settings: {
-                  click_behavior: {
-                    type: "link",
-                    linkType: "url",
-                    linkTemplate: "question/{{count}}",
-                  },
-                },
-                parameter_mappings: [],
+        addCardToDashboard({
+          card_id: QUESTION_ID,
+          dashboard_id: DASHBOARD_ID,
+          card: {
+            size_x: 16,
+            size_y: 10,
+            visualization_settings: {
+              click_behavior: {
+                type: "link",
+                linkType: "url",
+                linkTemplate: "question/{{count}}",
               },
-            ],
-          });
+            },
+          },
         });
 
         visitDashboard(DASHBOARD_ID);

@@ -1,4 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { addCardToDashboard } from "e2e/support/helpers";
 
 const { PEOPLE_ID, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -64,32 +65,6 @@ export function setup() {
     "Dashboard with multiple cards, including markdown",
     "multiDashboard",
   );
-}
-
-function addCardToDashboard({ card_id, dashboard_id, card } = {}) {
-  const url = `/api/dashboard/${dashboard_id}/cards`;
-
-  return cy
-    .request("POST", url, {
-      cardId: card_id,
-    })
-    .then(({ body: { id } }) => {
-      cy.request("PUT", url, {
-        cards: [
-          {
-            id,
-            card_id,
-            row: 0,
-            col: 0,
-            size_x: 8,
-            size_y: 8,
-            visualization_settings: {},
-            parameter_mappings: [],
-            ...card,
-          },
-        ],
-      });
-    });
 }
 
 function addEmptyDashboard(name, alias) {

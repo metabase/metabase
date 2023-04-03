@@ -11,6 +11,7 @@ import {
   visitDashboard,
   appbar,
   rightSidebar,
+  addCardToDashboard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -265,50 +266,34 @@ describe("scenarios > dashboard", () => {
           ],
         });
 
-        // add previously created question to the dashboard
-        cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-          cardId: questionId,
-          row: 0,
-          col: 0,
-          size_x: 10,
-          size_y: 8,
-        }).then(({ body: { id: dashCardId } }) => {
-          // connect filter to that question
-          cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-            cards: [
+        addCardToDashboard({
+          card_id: questionId,
+          dashboard_id: dashboardId,
+          card: {
+            parameter_mappings: [
               {
-                id: dashCardId,
+                parameter_id: "92eb69ea",
                 card_id: questionId,
-                row: 0,
-                col: 0,
-                size_x: 10,
-                size_y: 8,
-                parameter_mappings: [
-                  {
-                    parameter_id: "92eb69ea",
-                    card_id: questionId,
-                    target: ["dimension", ["field", PEOPLE.ID, null]],
-                  },
-                ],
-                visualization_settings: {
-                  // set click behavior to update filter (ID)
-                  click_behavior: {
-                    type: "crossfilter",
-                    parameterMapping: {
-                      "92eb69ea": {
-                        id: "92eb69ea",
-                        source: { id: "ID", name: "ID", type: "column" },
-                        target: {
-                          id: "92eb69ea",
-                          type: "parameter",
-                        },
-                      },
+                target: ["dimension", ["field", PEOPLE.ID, null]],
+              },
+            ],
+            visualization_settings: {
+              // set click behavior to update filter (ID)
+              click_behavior: {
+                type: "crossfilter",
+                parameterMapping: {
+                  "92eb69ea": {
+                    id: "92eb69ea",
+                    source: { id: "ID", name: "ID", type: "column" },
+                    target: {
+                      id: "92eb69ea",
+                      type: "parameter",
                     },
                   },
                 },
               },
-            ],
-          });
+            },
+          },
         });
 
         visitDashboard(dashboardId);

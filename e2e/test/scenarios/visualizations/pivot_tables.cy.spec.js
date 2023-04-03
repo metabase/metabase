@@ -497,42 +497,20 @@ describe("scenarios > visualizations > pivot tables", () => {
 
   describe("dashboards", () => {
     beforeEach(() => {
-      cy.log("Create a question");
-      cy.request("POST", "/api/card", {
-        name: QUESTION_NAME,
-        dataset_query: testQuery,
-        display: "pivot",
-        visualization_settings: {},
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.createDashboard({ name: DASHBOARD_NAME }).then(
-          ({ body: { id: DASHBOARD_ID } }) => {
-            cy.log("Add previously created question to that dashboard");
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: QUESTION_ID,
-              row: 0,
-              col: 0,
-              size_x: 12,
-              size_y: 8,
-            }).then(({ body: { id: DASH_CARD_ID } }) => {
-              cy.log("Resize the dashboard card");
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cards: [
-                  {
-                    id: DASH_CARD_ID,
-                    card_id: QUESTION_ID,
-                    row: 0,
-                    col: 0,
-                    size_x: 12,
-                    size_y: 8,
-                  },
-                ],
-              });
-              cy.log("Open the dashboard");
-              visitDashboard(DASHBOARD_ID);
-            });
-          },
-        );
-      });
+      cy.createQuestionAndDashboard({
+        questionDetails: {
+          name: QUESTION_NAME,
+          query: testQuery.query,
+          display: "pivot",
+        },
+        dashboardDetails: {
+          name: DASHBOARD_NAME,
+        },
+        cardDetails: {
+          size_x: 12,
+          size_y: 8,
+        },
+      }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
     });
 
     it("should display a pivot table on a dashboard (metabase#14465)", () => {
@@ -554,56 +532,38 @@ describe("scenarios > visualizations > pivot tables", () => {
     beforeEach(() => {
       cy.viewport(1400, 800); // Row totals on embed preview was getting cut off at the normal width
       cy.log("Create a question");
-      cy.request("POST", "/api/card", {
-        name: QUESTION_NAME,
-        dataset_query: testQuery,
-        display: "pivot",
-        visualization_settings: {},
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.log("Enable sharing");
-        cy.request("POST", `/api/card/${QUESTION_ID}/public_link`);
 
-        cy.log("Enable embedding");
-        cy.request("PUT", `/api/card/${QUESTION_ID}`, {
+      cy.createQuestionAndDashboard({
+        questionDetails: {
+          name: QUESTION_NAME,
+          query: testQuery.query,
+          display: "pivot",
+        },
+        dashboardDetails: {
+          name: DASHBOARD_NAME,
+        },
+        cardDetails: {
+          size_x: 12,
+          size_y: 8,
+        },
+      }).then(({ body: { card_id, dashboard_id } }) => {
+        cy.log("Enable sharing on card");
+        cy.request("POST", `/api/card/${card_id}/public_link`);
+
+        cy.log("Enable embedding on card");
+        cy.request("PUT", `/api/card/${card_id}`, {
           enable_embedding: true,
         });
 
-        cy.createDashboard({ name: DASHBOARD_NAME }).then(
-          ({ body: { id: DASHBOARD_ID } }) => {
-            cy.log("Add previously created question to that dashboard");
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: QUESTION_ID,
-              row: 0,
-              col: 0,
-              size_x: 12,
-              size_y: 8,
-            }).then(({ body: { id: DASH_CARD_ID } }) => {
-              cy.log("Resize the dashboard card");
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cards: [
-                  {
-                    id: DASH_CARD_ID,
-                    card_id: QUESTION_ID,
-                    row: 0,
-                    col: 0,
-                    size_x: 12,
-                    size_y: 8,
-                  },
-                ],
-              });
-            });
+        cy.log("Enable sharing on dashboard");
+        cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`);
 
-            cy.log("Enable sharing");
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/public_link`);
+        cy.log("Enable embedding on dashboard");
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          enable_embedding: true,
+        });
 
-            cy.log("Enable embedding");
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-              enable_embedding: true,
-            });
-          },
-        );
-
-        visitQuestion(QUESTION_ID);
+        visitQuestion(card_id);
       });
     });
 
