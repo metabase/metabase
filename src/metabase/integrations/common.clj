@@ -10,7 +10,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn sync-group-memberships!
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is
@@ -20,10 +21,12 @@
         excluded-group-ids #{(u/the-id (perms-group/all-users))}
         user-id            (u/the-id user-or-id)
         current-group-ids  (when (seq mapped-group-ids)
-                             (db/select-field :group_id PermissionsGroupMembership
-                                              :user_id  user-id
-                                              :group_id [:in mapped-group-ids]
-                                              :group_id [:not-in excluded-group-ids]))
+                             (t2/select-fn-set :group_id PermissionsGroupMembership
+                                               {:where
+                                                [:and
+                                                 [:= :user_id user-id]
+                                                 [:in :group_id mapped-group-ids]
+                                                 [:not-in :group_id excluded-group-ids]]}))
         new-group-ids      (set/intersection (set (map u/the-id new-groups-or-ids))
                                              mapped-group-ids)
         ;; determine what's different between current mapped groups and new mapped groups
