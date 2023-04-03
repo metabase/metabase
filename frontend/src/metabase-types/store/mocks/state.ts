@@ -10,6 +10,7 @@ import {
   createMockQueryBuilderState,
   createMockSettingsState,
   createMockSetupState,
+  createMockUploadState,
 } from "metabase-types/store/mocks";
 
 export const createMockState = (opts?: Partial<State>): State => ({
@@ -23,5 +24,6 @@ export const createMockState = (opts?: Partial<State>): State => ({
   qb: createMockQueryBuilderState(),
   settings: createMockSettingsState(),
   setup: createMockSetupState(),
+  upload: createMockUploadState(),
   ...opts,
 });

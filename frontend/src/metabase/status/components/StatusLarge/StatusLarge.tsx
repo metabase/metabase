@@ -26,7 +26,7 @@ type statusItem = {
   id?: number;
   title: string;
   icon: string;
-  description?: string;
+  description?: string | JSX.Element;
   isInProgress: boolean;
   isCompleted: boolean;
   isAborted: boolean;
@@ -47,9 +47,11 @@ const StatusLarge = ({
     <StatusRoot role="status">
       <StatusHeader>
         <StatusTitle>{status.title}</StatusTitle>
-        <StatusToggle onClick={onCollapse}>
-          <Icon name="chevrondown" />
-        </StatusToggle>
+        {onCollapse && (
+          <StatusToggle onClick={onCollapse}>
+            <Icon name="chevrondown" />
+          </StatusToggle>
+        )}
       </StatusHeader>
       <StatusBody>
         {status.items.map(item => (

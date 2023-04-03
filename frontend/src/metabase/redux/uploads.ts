@@ -1,8 +1,9 @@
-import { assocIn, updateIn } from "icepick";
+import { assocIn } from "icepick";
+//import { uploadCSV } from "metabase/collections/upload";
 import { Dispatch, GetState, State } from "metabase-types/store";
-
+import { CollectionId } from "metabase-types/api";
+import { FileUploadState } from "metabase-types/store/upload";
 import {
-  combineReducers,
   createAction,
   createThunkAction,
   handleActions,
@@ -20,14 +21,12 @@ const uploadStart = createAction(UPLOAD_CSV_TO_COLLECTION_START);
 const uploadEnd = createAction(UPLOAD_CSV_TO_COLLECTION_END);
 
 export const getAllUploads = (state: State) =>
-  Object.keys(state.upload.upload).map(key => state.upload.upload[key]);
+  Object.keys(state.upload).map(key => state.upload[key]);
 
 export const uploadCSV = createThunkAction(
   UPLOAD_CSV_TO_COLLECTION,
-  (file: File, collectionId: string) =>
+  (file: File, collectionId: CollectionId) =>
     async (dispatch: Dispatch, getState: GetState) => {
-      // console.log(file, collectionId, getState());
-
       const uploads = getAllUploads(getState());
       const id = uploads.length;
 
@@ -39,13 +38,32 @@ export const uploadCSV = createThunkAction(
         }),
       );
 
+      // Do API Request here
+      // await uploadCSV({
+      //   file,
+      //   collectionId,
+      // });
+
       await setTimeout(() => {
         dispatch(uploadEnd({ id }));
       }, 6000);
     },
 );
 
-const upload = handleActions(
+interface UploadStartPayload {
+  id: number;
+  name: string;
+  collectionId: string;
+}
+
+interface UploadEndPayload {
+  id: number;
+}
+
+const upload = handleActions<
+  FileUploadState,
+  UploadStartPayload | UploadEndPayload
+>(
   {
     [UPLOAD_CSV_TO_COLLECTION_START]: {
       next: (state, { payload }) =>
@@ -62,6 +80,4 @@ const upload = handleActions(
   {},
 );
 
-export default combineReducers({
-  upload,
-});
+export default upload;
