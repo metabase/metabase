@@ -19,3 +19,11 @@ declare function OrderByFn(
 ): Query;
 
 export const orderBy: typeof OrderByFn = ML.order_by;
+
+export function orderByClause(
+  query: Query,
+  stageNumber: number,
+  field: Field,
+): Field {
+  return ML.order_by_clause(query, stageNumber, field);
+}

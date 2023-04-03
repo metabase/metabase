@@ -79,12 +79,13 @@ describe("order by", () => {
       const nextQuery = ML.replaceClause(
         orderedQuery,
         orderBys[0],
-        productCategory as Field,
+        ML.orderByClause(orderedQuery, -1, productCategory as Field) as Field,
       );
-      const nextOrderBys = ML.orderBys(orderedQuery);
+      const nextOrderBys = ML.orderBys(nextQuery);
       expect(ML.displayName(nextQuery, nextOrderBys[0])).toBe(
         "Category ascending",
       );
+      expect(orderBys[0]).not.toEqual(nextOrderBys[0]);
     });
   });
 

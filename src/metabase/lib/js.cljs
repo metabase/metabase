@@ -104,6 +104,11 @@
    (-> (lib.order-by/orderable-columns a-query stage-number)
        (clj->js :keyword-fn u/qualified-name))))
 
+(defn ^:export order-by-clause
+  "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
+  [a-query stage-number x]
+  (lib.order-by/order-by-clause a-query stage-number (lib.normalize/normalize (js->clj x :keywordize-keys true))))
+
 (defn ^:export order-by
   "Add an `order-by` clause to `a-query`. Returns updated query."
   ([a-query x]
@@ -143,7 +148,6 @@
   ([a-query target-clause new-clause]
    (replace-clause a-query -1 target-clause new-clause))
   ([a-query stage-number target-clause new-clause]
-   (println [target-clause new-clause])
    (lib.query/replace-clause
      a-query stage-number
      (lib.normalize/normalize (js->clj target-clause :keywordize-keys true))
