@@ -56,7 +56,7 @@
     (is (= expected (csv/coalesce type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
-(defn- csv-file-with
+(defn csv-file-with
   "Create a temp csv file with the given content and return the file"
   [rows]
   (let [contents (str/join "\n" rows)
