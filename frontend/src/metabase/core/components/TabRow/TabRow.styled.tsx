@@ -10,6 +10,7 @@ export const TabList = styled(BaseTabList)`
 
   ${BaseTabList.Content} {
     display: flex;
+    overflow: hidden;
   }
 
   ${TabLink.Root}:not(:last-child) {
