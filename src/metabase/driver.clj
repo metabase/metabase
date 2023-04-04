@@ -809,7 +809,7 @@
 (defmulti load-from-csv
   "Loads a table from a csv file. If the table does not exist, it will be created. If the table already exists, TBD.
    Returns true if the load was successful, and raises an error if it was not."
-  {:arglists '([driver database table-name file-name]), :added "0.47.0"}
+  {:arglists '([driver database schema-name table-name file-name]), :added "0.47.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
