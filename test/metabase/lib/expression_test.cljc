@@ -54,7 +54,7 @@
                           (lib/power int-field float-field) :type/Number
                           (lib/interval 1 :month) :type/Integer ;; Need an interval type
                           #_#_(lib/relative-datetime "2020-01-01" :default) :type/DateTime
-                          (lib/time "08:00:00" :hour) :type/TimeWithTZ
+                          (lib/time "08:00:00" :hour) :type/Time
                           #_#_(lib/absolute-datetime "2020-01-01" :default) :type/DateTimeWithTZ
                           (lib/now) :type/DateTimeWithTZ
                           (lib/convert-timezone dt-field "US/Pacific" "US/Eastern") :type/DateTime
