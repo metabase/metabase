@@ -8,9 +8,10 @@ import { getMainElement } from "metabase/lib/dom";
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import withAutoApplyFilters from "metabase/dashboard/hoc/withAutoApplyFilters";
+import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
-import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
 import DashboardGrid from "../DashboardGrid";
 import { SIDEBAR_NAME } from "../../constants";
@@ -347,4 +348,4 @@ class Dashboard extends Component {
   }
 }
 
-export default DashboardControls(Dashboard);
+export default _.compose(DashboardControls, withAutoApplyFilters)(Dashboard);
