@@ -35,8 +35,6 @@
   We'll keep this till we replace all the Card symbol in our codebase."
   :m/Card)
 
-#_(defmethod mi/name->toucan-model "Card" [_model-name] :m/Card)
-
 (methodical/defmethod t2/table-name :m/Card [_model] :report_card)
 
 (methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
@@ -104,7 +102,7 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defmethod revision/serialize-instance Card
+(defmethod revision/serialize-instance :m/Card
   ([instance]
    (revision/serialize-instance Card nil instance))
   ([_model _id instance]
@@ -448,7 +446,7 @@
   (t2/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
   (t2/delete! 'Revision :model "Card", :model_id id))
 
-(defmethod serdes/hash-fields Card
+(defmethod serdes/hash-fields :m/Card
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
