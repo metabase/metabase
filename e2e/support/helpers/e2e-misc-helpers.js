@@ -137,12 +137,14 @@ export function visitQuestion(id) {
  *
  * @param {number} id
  */
-export function visitModel(id) {
-  // In case we use this function multiple times in a test, make sure aliases are unique for each question
+export function visitModel(id, { hasDataAccess = true } = {}) {
   const alias = "modelQuery" + id;
 
-  // We need to use the dataset endpoint for models
-  cy.intercept("POST", `/api/dataset`).as(alias);
+  if (hasDataAccess) {
+    cy.intercept("POST", `/api/dataset`).as(alias);
+  } else {
+    cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
+  }
 
   cy.visit(`/model/${id}`);
 

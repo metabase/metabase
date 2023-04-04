@@ -69,20 +69,13 @@ describe("scenarios > metabot", () => {
     verifyNoQueryBuilderMetabot();
   });
 
-  it("should not allow to submit prompts when there are no data permissions", () => {
+  it("should not allow to submit prompts for a user without native permissions", () => {
     cy.createQuestion(MODEL_DETAILS, { wrapId: true, idAlias: "modelId" });
     enableMetabot();
     cy.signIn("nodata");
     verifyNoHomeMetabot();
     verifyNoCollectionMetabot();
-    verifyNoQueryBuilderMetabot();
-  });
-
-  it("should allow to submit prompts when there are no collection permissions", () => {
-    cy.createQuestion(MODEL_DETAILS, { wrapId: true, idAlias: "modelId" });
-    enableMetabot();
-    cy.signIn("nocollection");
-    verifyHomeMetabot();
+    verifyNoQueryBuilderMetabot({ hasDataAccess: false });
   });
 });
 
@@ -129,7 +122,7 @@ const verifyCollectionMetabot = () => {
 };
 
 const verifyQueryBuilderMetabot = () => {
-  cy.get("@modelId").then(visitModel);
+  cy.get("@modelId").then(id => visitModel(id));
   openQuestionActions();
   cy.findByText("Ask Metabot").click();
   cy.findByPlaceholderText(/Ask something/).type(PROMPT);
@@ -152,8 +145,8 @@ const verifyNoCollectionMetabot = () => {
   cy.findByText("Ask Metabot").should("not.exist");
 };
 
-const verifyNoQueryBuilderMetabot = () => {
-  cy.get("@modelId").then(visitModel);
+const verifyNoQueryBuilderMetabot = ({ hasDataAccess = true } = {}) => {
+  cy.get("@modelId").then(id => visitModel(id, { hasDataAccess }));
   openQuestionActions();
   cy.findByText("Ask Metabot").should("not.exist");
 };
