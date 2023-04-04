@@ -5,7 +5,10 @@
    [clojure.test :refer :all]
    [metabase.csv :as csv]
    [metabase.driver :as driver]
-   [metabase.test :as mt])
+   [metabase.models :refer [Field Table]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan2.core :as t2])
   (:import
    [java.io File]))
 
@@ -136,3 +139,71 @@
             (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))
             (Thread/sleep 1000)
             (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))))))))
+
+(deftest load!-test
+  (mt/test-driver :postgres
+    (mt/with-empty-db
+      (let [db-id              (u/the-id (mt/db))
+            file               (csv-file-with ["id, name"
+                                               "1, Luke Skywalker"
+                                               "2, Darth Vader"])
+            existing-table-ids (t2/select-pks-vec Table :db_id db-id)]
+        (testing "Uploads must be enabled"
+          (doseq [uploads-enabled-value [false nil]]
+            (mt/with-temporary-setting-values [uploads-enabled      uploads-enabled-value
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (is (thrown-with-msg?
+                   java.lang.Exception
+                   #"^Uploads are not enabled\.$"
+                   (csv/load! file))))))
+        (testing "Database ID must be set"
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  nil
+                                             uploads-schema-name  "public"
+                                             uploads-table-prefix "uploaded_magic_"]
+            (is (thrown-with-msg?
+                 java.lang.Exception
+                 #"^You must set the `uploads-database-id` before uploading files\.$"
+                 (csv/load! file)))))
+        (testing "Database ID must be valid"
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  -1
+                                             uploads-schema-name  "public"
+                                             uploads-table-prefix "uploaded_magic_"]
+            (is (thrown-with-msg?
+                 java.lang.Exception
+                 #"^The uploads database does not exist\."
+                 (csv/load! file)))))
+        (testing "Schema name must be set"
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  db-id
+                                             uploads-schema-name  nil
+                                             uploads-table-prefix "uploaded_magic_"]
+            (is (thrown-with-msg?
+                 java.lang.Exception
+                 #"^You must set the `uploads-schema-name` before uploading files\.$"
+                 (csv/load! file)))))
+        (testing "Table prefix must be set"
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  db-id
+                                             uploads-schema-name  "public"
+                                             uploads-table-prefix nil]
+            (is (thrown-with-msg?
+                 java.lang.Exception
+                 #"^You must set the `uploads-table-prefix` before uploading files\.$"
+                 (csv/load! file)))))
+        (testing "Happy path"
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  db-id
+                                             uploads-schema-name  "public"
+                                             uploads-table-prefix "uploaded_magic_"]
+            (csv/load! file)
+            (let [new-table (t2/select-one Table {:where
+                                                  [:and [:= :db_id db-id]
+                                                        (when (seq existing-table-ids)
+                                                          [:not-in :id existing-table-ids])]})]
+              (is (str/starts-with? (:name new-table) "pokefans"))
+              (is (= "public" (:schema new-table)))
+              (is (= #{"id" "name"} (t2/select-fn-set :name Field :table_id (:id new-table)))))))))))

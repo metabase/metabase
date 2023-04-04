@@ -6,13 +6,22 @@
    [flatland.ordered.map :as ordered-map]
    [java-time :as t]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Database]]
+   [metabase.models.setting :as setting]
    [metabase.search.util :as search-util]
+   [metabase.sync :as sync]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.i18n :refer [trs]]
+   [toucan2.core :as t2])
   (:import
    (java.io File)))
 
 (set! *warn-on-reflection* true)
+
+;;;; +------------------+
+;;;; | Schema detection |
+;;;; +------------------+
 
 ;;           text
 ;;            |
@@ -89,6 +98,30 @@
          (map vector normalized-header)
          (ordered-map/ordered-map))))
 
+;;;; +------------------+
+;;;; | Helper Functions |
+;;;; +------------------+
+
+(defn- file->table-name [^File file]
+  (str (u/slugify (second (re-matches #"(.*)\.csv$" (.getName file))))
+       (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
+
+(defn- value-or-throw!
+  [value ^String message]
+  (let [test-fn (if (string? value) str/blank? nil?)]
+    (if (test-fn value)
+      (throw (Exception. message))
+      value)))
+
+(defn- get-setting-or-throw!
+  [setting-name]
+  (value-or-throw! (setting/get setting-name)
+                   (trs "You must set the `{0}` before uploading files." (name setting-name))))
+
+;;;; +------------------+
+;;;; | Public Functions |
+;;;; +------------------+
+
 (defn detect-schema
   "Returns an ordered map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
   first row. Supported types are:
@@ -105,9 +138,6 @@
     (let [[header & rows] (csv/read-csv reader)]
       (rows->schema header rows))))
 
-(defn- file->table-name [^File file]
-  (str (u/slugify (second (re-matches #"(.*)\.csv$" (.getName file)))) (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
-
 ;; TODO: assumes DB supports schema
 (defn load-from-csv
   "Loads a table from a CSV file. Returns the name of the newly created table."
@@ -115,3 +145,19 @@
   (let [table-name (file->table-name file)]
     (driver/load-from-csv driver database schema-name table-name file)
     table-name))
+
+(defn load!
+  "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
+  syncing and scanning the new data, and creating an appropriate model. May throw validation or DB errors."
+  [csv-file]
+  (when (not (setting/get :uploads-enabled))
+    (throw (Exception. "Uploads are not enabled.")))
+  (let [db-id         (get-setting-or-throw! :uploads-database-id)
+        database      (or (t2/select-one Database :id db-id)
+                          (throw (Exception. (trs "The uploads database does not exist."))))
+        schema-name   (get-setting-or-throw! :uploads-schema-name)
+        _table-prefix (get-setting-or-throw! :uploads-table-prefix)
+        driver        (value-or-throw! (#{:postgres} (driver.u/database->driver database))
+                                       (trs "The database ID for uploads must correspond to a Postgres database."))]
+    (load-from-csv driver db-id schema-name csv-file)
+    (sync/sync-database! database)))
