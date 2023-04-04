@@ -6,6 +6,8 @@ const {
   args,
 } = require("./cypress-runner-utils");
 
+const isCI = process.env["CI"];
+
 const folder = args["--folder"];
 const isFolder = !!folder;
 
@@ -22,7 +24,7 @@ const runCypress = async (baseUrl, exitFunction) => {
   });
 
   const defaultConfig = {
-    browser: "chrome",
+    browser: isCI ? "replay-chromium" : "chrome",
     configFile: "e2e/support/cypress.config.js",
     config: {
       baseUrl,
