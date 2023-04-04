@@ -4,7 +4,7 @@
             [metabase.metabot-test :as metabot-test]
             [metabase.metabot.client :as metabot-client]
             [metabase.metabot.util :as metabot-util]
-            [metabase.models :refer [Card Collection Database Field Metric Table]]
+            [metabase.models :refer [Card]]
             [metabase.test :as mt]))
 
 (deftest metabot-only-works-on-models-test
@@ -92,7 +92,7 @@
   (testing "When we can't find a model, we return a message"
     (mt/with-temporary-setting-values [is-metabot-enabled true]
       (mt/dataset sample-dataset
-        (mt/with-temp* [Card [orders-model
+        (mt/with-temp* [Card [_orders-model
                               {:name    "Orders Model"
                                :dataset_query
                                {:database (mt/id)
@@ -100,7 +100,7 @@
                                 :query    {:source-table (mt/id :orders)}}
                                :dataset true}]]
           (let [bot-message "No good model selected :("
-                q           "How many orders do I have?"]
+                q           "A not useful prompt"]
             (with-redefs [metabot-client/bot-endpoint   (metabot-test/test-bot-endpoint-single-message bot-message)
                           metabot-util/prompt-templates (constantly metabot-test/test-prompt-templates)]
               (let [response (mt/user-http-request :rasta :post 400
@@ -122,7 +122,7 @@
           (let [bot-message (format
                              "Part 1 is %s but part 2 doesn't return SQL."
                              (:id orders-model))
-                q           "How many orders do I have?"]
+                q           "orders model but nothing useful"]
             (with-redefs [metabot-client/bot-endpoint   (metabot-test/test-bot-endpoint-single-message bot-message)
                           metabot-util/prompt-templates (constantly metabot-test/test-prompt-templates)]
               (let [response (mt/user-http-request :rasta :post 400
@@ -135,7 +135,7 @@
   (mt/with-temporary-setting-values [is-metabot-enabled true]
     (testing "Too many requests returns a useful message"
       (mt/dataset sample-dataset
-        (mt/with-temp* [Card [orders-model
+        (mt/with-temp* [Card [_
                               {:name    "Orders Model"
                                :dataset_query
                                {:database (mt/id)
@@ -154,7 +154,7 @@
               (is (true? (str/includes? message "The bot server is under heavy load"))))))))
     (testing "Not having the right API keys set returns a useful message"
       (mt/dataset sample-dataset
-        (mt/with-temp* [Card [orders-model
+        (mt/with-temp* [Card [_
                               {:name    "Orders Model"
                                :dataset_query
                                {:database (mt/id)

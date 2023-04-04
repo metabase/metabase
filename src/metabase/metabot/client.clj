@@ -1,13 +1,15 @@
 (ns metabase.metabot.client
   (:require
-   [clojure.pprint :as pp]
+   [clojure.pprint :as pprint]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.util.log :as log]
    [wkok.openai-clojure.api :as openai.api]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic bot-endpoint openai.api/create-chat-completion)
+(def ^:dynamic bot-endpoint
+  "The endpoint used to invoke the remote LLM"
+  openai.api/create-chat-completion)
 
 (defn invoke-metabot
   "Call the bot and return the response.
@@ -23,7 +25,8 @@
     (catch Exception e
       (log/warn "Exception when calling invoke-metabot: %s" (.getMessage e))
       (when (ex-data e)
-        (log/warnf "Exception data:\n%s" (with-out-str (pp/pprint (ex-data e)))))
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (log/warnf "Exception data:\n%s" (with-out-str (pprint/pprint (ex-data e)))))
       (throw
        ;; If we have ex-data, we'll assume were intercepting an openai.api/create-chat-completion response
        (if-some [status (:status (ex-data e))]

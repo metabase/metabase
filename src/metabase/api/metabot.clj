@@ -6,7 +6,7 @@
    [metabase.metabot :as metabot]
    [metabase.metabot.feedback :as metabot-feedback]
    [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [Card Collection Database Field FieldValues Table]]
+   [metabase.models :refer [Card Database]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [toucan2.core :as t2]))
@@ -16,7 +16,7 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/model/:model-id"
   "Ask Metabot to generate a SQL query given a prompt about a given model."
-  [model-id :as {{:keys [question] :as body} :body}]
+  [model-id :as {{:keys [question]} :body}]
   ;{model-id ms/PositiveInt
   ; question string?}
   (log/infof
@@ -41,7 +41,7 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/database/:database-id"
   "Ask Metabot to generate a SQL query given a prompt about a given database."
-  [database-id :as {{:keys [question] :as body} :body}]
+  [database-id :as {{:keys [question]} :body}]
   {database-id su/IntGreaterThanZero
    question    su/NonBlankString}
   (log/infof

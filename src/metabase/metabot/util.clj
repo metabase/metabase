@@ -5,11 +5,11 @@
    [cheshire.core :as json]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [honey.sql :as hsql]
+   [honey.sql :as sql]
    [metabase.db.query :as mdb.query]
    [metabase.driver.util :as driver.u]
    [metabase.metabot.settings :as metabot-settings]
-   [metabase.models :refer [Card Collection Database Field FieldValues Table]]
+   [metabase.models :refer [Card FieldValues]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -26,7 +26,7 @@
   Standardization of names produces dramatically better results."
   [s]
   (some-> s
-          str/upper-case
+          u/upper-case-en
           (str/replace #"[^\p{Alnum}]+" " ")
           str/trim
           (str/replace #" " "_")))
@@ -39,13 +39,12 @@
                    (fn [v] (cond-> v
                              (str/includes? v " ")
                              normalize-name)))
-        {:keys [query]} (let [driver (driver.u/database->driver (:database (qp/preprocess dataset_query)))]
-                          (let [qp (qp.reducible/combine-middleware
-                                    (vec qp/around-middleware)
-                                    (fn [query _rff _context]
-                                      (add/add-alias-info
-                                       (#'qp/preprocess* query))))]
-                            (qp dataset_query nil nil)))
+        {:keys [query]} (let [qp (qp.reducible/combine-middleware
+                                  (vec qp/around-middleware)
+                                  (fn [query _rff _context]
+                                    (add/add-alias-info
+                                     (#'qp/preprocess* query))))]
+                          (qp dataset_query nil nil))
         {:keys [fields]} query]
     (for [field fields
           :let [[_ id m] field
@@ -100,7 +99,7 @@
   "Create an equivalent DDL for this model"
   [{:keys [sql_name result_metadata] :as model}]
   (let [enums (create-enum-ddl model)
-        [ddl] (hsql/format
+        [ddl] (sql/format
                {:create-table sql_name
                 :with-columns (for [{:keys [sql_name base_type]} result_metadata
                                     :let [k sql_name]]
@@ -163,7 +162,7 @@
             (str/replace s #"%%([^%]+)%%"
                          (fn [[_ path]]
                            (let [kw (->> (str/split path #":")
-                                         (mapv (comp keyword str/lower-case)))]
+                                         (mapv (comp keyword u/lower-case-en)))]
                              (or (get-in context kw)
                                  (let [message (format "No value found in context for key path '%s'" kw)]
                                    (throw (ex-info

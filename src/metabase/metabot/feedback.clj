@@ -1,18 +1,18 @@
 (ns metabase.metabot.feedback
   (:require [cheshire.core :as json]
-            [clj-http.client :as client]
+            [clj-http.client :as http]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.metabot.settings :as metabot-settings]))
 
-(def snowplow-keys [:entity_type :prompt_template_versions :feedback_type])
-(def feedback-keys (into snowplow-keys [:prompt :sql]))
+(def ^:private snowplow-keys [:entity_type :prompt_template_versions :feedback_type])
+(def ^:private feedback-keys (into snowplow-keys [:prompt :sql]))
 
 (defn- store-detailed-feedback
   "Store feedback details, including the original prompt and generated sql."
   [feedback]
   (let [feedback (select-keys feedback feedback-keys)
-        {:keys [status body]} (client/request
+        {:keys [status body]} (http/request
                                {:url              (metabot-settings/metabot-feedback-url)
                                 :method           :post
                                 :body             (json/generate-string
