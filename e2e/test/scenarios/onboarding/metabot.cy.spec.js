@@ -57,7 +57,8 @@ describe("scenarios > metabot", () => {
     cy.createQuestion(MODEL_DETAILS);
     enableMetabot();
     verifyHomeMetabot();
-    verifyHomeMetabotEditing();
+    verifyManualQueryEditing();
+    verifyMetabotFeedback();
   });
 
   it("should allow to submit prompts based on models", () => {
@@ -109,7 +110,7 @@ describeWithSnowplow("scenarios > metabot", () => {
     cy.createQuestion(MODEL_DETAILS);
     enableMetabot();
     verifyHomeMetabot();
-    cy.findByRole("button", { name: "This isn’t valid SQL." }).click();
+    verifyMetabotFeedback();
 
     // 1 - new_instance_created
     // 2 - pageview
@@ -133,7 +134,7 @@ const verifyHomeMetabot = () => {
   cy.findByText("Doohickey").should("not.exist");
 };
 
-const verifyHomeMetabotEditing = () => {
+const verifyManualQueryEditing = () => {
   cy.findByText("Open Editor").click();
   cy.findByTestId("native-query-editor")
     .type("{selectall}{backspace}")
@@ -142,9 +143,11 @@ const verifyHomeMetabotEditing = () => {
   cy.wait("@dataset");
   cy.findByText("Gizmo").should("be.visible");
   cy.findByText("Doohickey").should("be.visible");
+};
 
-  cy.findByLabelText("Get Answer").click();
-  cy.wait("@databasePrompt");
+const verifyMetabotFeedback = () => {
+  cy.findByRole("button", { name: "This isn’t valid SQL." }).click();
+  cy.findByRole("button", { name: "Try again" }).click();
   cy.wait("@dataset");
   cy.findByText("Gizmo").should("be.visible");
   cy.findByText("Doohickey").should("not.exist");
