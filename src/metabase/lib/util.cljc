@@ -8,6 +8,7 @@
         [goog.string.format :as gstring.format]))
    [clojure.set :as set]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.shared.util.i18n :as i18n]
@@ -41,7 +42,7 @@
    If `location` contains no clause with `target-clause` no replacement happens."
   [stage location target-clause new-clause]
   {:pre [(clause? target-clause)]}
-  (update
+  (m/update-existing
     stage
     location
     #(->> (for [clause %]
@@ -57,15 +58,16 @@
    If the the location is empty, dissoc it from stage."
   [stage location target-clause]
   {:pre [(clause? target-clause)]}
-  (let [target-uuid (clause-uuid target-clause)
-        target (get stage location)
-        result (->> target
-                    (remove (comp #{target-uuid} clause-uuid))
-                    vec
-                    not-empty)]
-    (if result
-      (assoc stage location result)
-      (dissoc stage location))))
+  (if-let [target (get stage location)]
+    (let [target-uuid (clause-uuid target-clause)
+          result (->> target
+                      (remove (comp #{target-uuid} clause-uuid))
+                      vec
+                      not-empty)]
+      (if result
+        (assoc stage location result)
+        (dissoc stage location)))
+    stage))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
 ;;; the near future.

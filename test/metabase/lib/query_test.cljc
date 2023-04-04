@@ -106,7 +106,7 @@
                  count)))
     (testing "removing breakout with dependent should not be allowed"
       (is (thrown-with-msg?
-            #?(:clj Exception :cljs :default)
+            #?(:clj Exception :cljs js/Error)
             #"Clause cannot be removed as it has dependents"
             (-> query
                 (lib/append-stage)
@@ -114,7 +114,7 @@
                 (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
                 (lib/remove-clause 0 (first breakouts)))))
       (is (thrown-with-msg?
-            #?(:clj Exception :cljs :default)
+            #?(:clj Exception :cljs js/Error)
             #"Clause cannot be removed as it has dependents"
             (-> query
                 (lib/append-stage)
@@ -160,7 +160,7 @@
     (is (= (second breakouts) (second replaced-breakouts)))
     (testing "replacing breakout with dependent should not be allowed"
       (is (thrown-with-msg?
-            #?(:clj Exception :cljs :default)
+            #?(:clj Exception :cljs js/Error)
             #"Clause cannot be removed as it has dependents"
             (-> query
                 (lib/append-stage)

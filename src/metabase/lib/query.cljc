@@ -13,7 +13,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.mbql.util.match :as mbql.match]
    [metabase.util.malli :as mu]))
 
 (defn- find-clause
@@ -23,8 +23,8 @@
     (not-empty
       (reduce
         (fn [accum top-level-clause]
-          (if (mbql.u/match-one (get stage top-level-clause)
-                                [target-type _ target-id] true)
+          (if (mbql.match/match-one (get stage top-level-clause)
+                [target-type _ target-id] true)
             (conj accum top-level-clause)
             accum))
         #{}
@@ -33,16 +33,16 @@
 (defn- check-subsequent-stages!
   "Throws if target-clause is used in a subsequent stage"
   [previous-query query stage-number target-clause]
-  (let [[target-type _ target-id] target-clause]
+  (let [[_ _ target-id] target-clause]
     (loop [stage-number stage-number]
       (when-let [next-stage (lib.util/next-stage-number query stage-number)]
         (when-not (->> (lib.stage/visible-columns query next-stage)
-                       (some (fn [{:keys [lib/type id] :as _column}]
-                               (and (= (keyword "metadata" (name target-type)) type) (= target-id id)))))
+                       (some (fn [{:keys [lib/source id] :as _column}]
+                               (and (= :source/previous-stage source) (= target-id id)))))
           ;; Get the ref to look for from the previous-query
           (let [target-ref (->> (lib.stage/visible-columns previous-query next-stage)
-                                (some (fn [{:keys [lib/type id] :as column}]
-                                        (when (and (= (keyword "metadata" (name target-type)) type) (= target-id id))
+                                (some (fn [{:keys [lib/source id] :as column}]
+                                        (when (and (= :source/previous-stage source) (= target-id id))
                                           (lib.ref/ref column)))))]
             (if-let [found (find-clause query next-stage target-ref)]
               (throw (ex-info "Clause cannot be removed as it has dependents" {:target-clause target-clause
