@@ -975,7 +975,7 @@ saved later when it is ready."
 (api/defendpoint ^:multipart POST "/from-csv"
   "Create a table and model populated with the values from the attached CSV."
   [:as {raw-params :params}]
-  (let [f (:tempfile (get raw-params "file"))]
-    {:status 200 :body (csv/detect-schema f)}))
+  (csv/load! (:tempfile (get raw-params "file")))
+  {:status 200})
 
 (api/define-routes)
