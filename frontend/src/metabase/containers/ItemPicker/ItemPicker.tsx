@@ -32,6 +32,7 @@ interface OwnProps {
   entity?: typeof Collections; // collections/snippets entity
   showSearch?: boolean;
   showScroll?: boolean;
+  useDebouncedSearch?: boolean;
   className?: string;
   style?: React.CSSProperties;
   onChange: (value: PickerValue) => void;
@@ -80,6 +81,7 @@ function ItemPicker({
   className,
   showSearch = true,
   showScroll = true,
+  useDebouncedSearch = false,
   style,
   onChange,
   getCollectionIcon,
@@ -132,6 +134,8 @@ function ItemPicker({
     if (models.length === 1) {
       query.models = models;
     }
+
+    console.log("searching with ", searchString);
 
     return query;
   }, [models, searchString, openCollectionId]);
@@ -216,6 +220,7 @@ function ItemPicker({
         searchString={searchString}
         searchQuery={searchQuery}
         showSearch={showSearch}
+        useDebouncedSearch={useDebouncedSearch}
         crumbs={crumbs}
         onChange={handleChange}
         onSearchStringChange={setSearchString}

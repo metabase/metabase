@@ -6,6 +6,7 @@ import ItemPicker from "./ItemPicker";
 const CollectionPicker = ({ value, onChange, ...props }) => (
   <ItemPicker
     {...props}
+    useDebouncedSearch={true}
     value={value === undefined ? undefined : { model: "collection", id: value }}
     onChange={collection => onChange(collection ? collection.id : undefined)}
     models={["collection"]}

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -10,6 +10,8 @@ import Search from "metabase/entities/search";
 
 import type { Collection } from "metabase-types/api";
 
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import type {
   CollectionPickerItem,
   PickerItem,
@@ -37,6 +39,7 @@ interface Props {
   searchString: string;
   searchQuery: SearchQuery;
   showSearch?: boolean;
+  useDebouncedSearch?: boolean;
   crumbs: any[];
   className?: string;
   style?: React.CSSProperties;
@@ -59,6 +62,7 @@ function ItemPickerView({
   searchString,
   searchQuery,
   showSearch = true,
+  useDebouncedSearch = false,
   crumbs,
   className,
   style,
@@ -74,13 +78,33 @@ function ItemPickerView({
 
   const isPickingNotCollection = models.some(model => model !== "collection");
 
+  // We have the searchString here to act as the middle-man for different search
+  // behaviors. i.e. with the debounce, we can use the useDebouncedValue hook,
+  // or with a keypress we can only set the parent's search text on "Enter"
+  const [searchText, setSearchText] = useState(searchString);
+
+  const handleSearchInput = useCallback(e => {
+    setSearchText(e.target.value);
+  }, []);
+
+  const debouncedSearchText = useDebouncedValue(
+    searchText,
+    SEARCH_DEBOUNCE_DURATION,
+  );
+
+  useEffect(() => {
+    if (useDebouncedSearch) {
+      onSearchStringChange(debouncedSearchText);
+    }
+  }, [debouncedSearchText, onSearchStringChange, useDebouncedSearch]);
+
   const handleSearchInputKeyPress = useCallback(
     e => {
       if (e.key === "Enter") {
-        onSearchStringChange(e.target.value);
+        onSearchStringChange(searchText);
       }
     },
-    [onSearchStringChange],
+    [onSearchStringChange, searchText],
   );
 
   const handleOpenSearch = useCallback(() => {
@@ -101,6 +125,7 @@ function ItemPickerView({
             className="input"
             placeholder={t`Search`}
             autoFocus
+            onChange={handleSearchInput}
             onKeyPress={handleSearchInputKeyPress}
           />
           <SearchToggle onClick={handleCloseSearch}>
@@ -125,8 +150,9 @@ function ItemPickerView({
     crumbs,
     showSearch,
     handleOpenSearch,
-    handleCloseSearch,
+    handleSearchInput,
     handleSearchInputKeyPress,
+    handleCloseSearch,
   ]);
 
   const renderCollectionListItem = useCallback(
