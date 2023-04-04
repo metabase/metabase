@@ -1161,31 +1161,41 @@
   (testing "Upload a csv"
     (mt/test-driver :postgres
       (mt/with-empty-db
-        (is (true? (driver/load-from-csv
-                    driver/*driver*
-                    (mt/id)
-                    "public"
-                    "upload_test"
-                    (str (csv-test/csv-file-with ["id,empty,string,bool" "2,,string,true" "3,,string,false"])))))
-        (testing "Table and Fields exist after sync"
-          (sync/sync-database! (mt/db))
-          (let [table (t2/select-one Table :name "upload_test" :schema "public" :db_id (mt/id))]
-            (is (some? table))
-            (is (=? {:database_position 0
-                     :database_type     "int4"
-                     :display_name      "ID"
-                     :semantic_type     :type/PK
-                     :base_type         :type/Integer}
-                    (t2/select-one Field :name "id" :table_id (:id table))))
-            (is (=? {:database_position 1
-                     :database_type     "text"
-                     :base_type         :type/Text}
-                    (t2/select-one Field :name "empty" :table_id (:id table))))
-            (is (=? {:database_position 2
-                     :database_type     "varchar"
-                     :base_type         :type/Text}
-                    (t2/select-one Field :name "string" :table_id (:id table))))
-            (is (=? {:database_position 3
-                     :database_type     "bool"
-                     :base_type         :type/Boolean}
-                    (t2/select-one Field :name "bool" :table_id (:id table))))))))))
+        (let [table-name (driver/load-from-csv
+                          driver/*driver*
+                          (mt/id)
+                          "public"
+                          "upload_test"
+                          (str (csv-test/csv-file-with ["id,empty,string,bool" "2,,string,true" "3,,string,false"])))]
+          (is (some? (re-find #"upload_test_\d{14}" table-name)))
+          (testing "Can upload two files with the same name"
+            ;; Sleep for a second, because the table name is based on the current second
+            (Thread/sleep 1000)
+            (is (some? (driver/load-from-csv
+                        driver/*driver*
+                        (mt/id)
+                        "public"
+                        "upload_test"
+                        (str (csv-test/csv-file-with ["id" "2" "3"]))))))
+          (testing "Table and Fields exist after sync"
+            (sync/sync-database! (mt/db))
+            (let [table (t2/select-one Table :schema "public" :name table-name :db_id (mt/id))]
+              (is (some? table))
+              (is (=? {:database_position 0
+                       :database_type     "int4"
+                       :display_name      "ID"
+                       :semantic_type     :type/PK
+                       :base_type         :type/Integer}
+                      (t2/select-one Field :name "id" :table_id (:id table))))
+              (is (=? {:database_position 1
+                       :database_type     "text"
+                       :base_type         :type/Text}
+                      (t2/select-one Field :name "empty" :table_id (:id table))))
+              (is (=? {:database_position 2
+                       :database_type     "varchar"
+                       :base_type         :type/Text}
+                      (t2/select-one Field :name "string" :table_id (:id table))))
+              (is (=? {:database_position 3
+                       :database_type     "bool"
+                       :base_type         :type/Boolean}
+                      (t2/select-one Field :name "bool" :table_id (:id table)))))))))))
