@@ -6,6 +6,7 @@
    [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
@@ -373,6 +374,91 @@
   :args ::define-hydration-method
   :ret  any?)
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Toucan 2 Extensions                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; --- transforms methods
+(def tf-metabase-query
+  "Transform for metabase-query."
+  {:in  (comp json-in maybe-normalize)
+   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization)})
+
+(defn- result-metadata-out
+  "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
+  [metadata]
+  (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
+    (seq (map mbql.normalize/normalize-source-metadata metadata))))
+
+(def tf-result-metadata
+  "Transform for card.result_metadata like columns."
+  {:in  json-in
+   :out result-metadata-out})
+
+(def tf-keyword
+  "Transform for keywords."
+  {:in  u/qualified-name
+   :out keyword})
+
+(def tf-json
+  "Transform for json."
+  {:in  json-in
+   :out json-out-with-keywordization})
+
+(def tf-visualization-settings
+  "Transform for viz-settings."
+  {:in  (comp json-in migrate-viz-settings)
+   :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
+
+(def tf-parameters-list
+  "Transform for parameters list."
+  {:in  (comp json-in normalize-parameters-list)
+   :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
+
+
+;; --- predefined hooks
+
+(t2/define-before-insert :hook/timestamped?
+  [instance]
+  (-> instance
+      add-updated-at-timestamp
+      add-created-at-timestamp))
+
+(t2/define-before-update :hook/timestamped?
+  [instance]
+  (-> instance
+      add-updated-at-timestamp))
+
+(t2/define-before-insert :hook/created-at-timestamped?
+  [instance]
+  (-> instance
+      add-created-at-timestamp))
+
+(t2/define-before-insert :hook/updated-at-timestamped?
+  [instance]
+  (-> instance
+      add-updated-at-timestamp))
+
+(t2/define-before-insert :hook/entity-id
+  [instance]
+  (-> instance
+      add-entity-id))
+
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
+
+(defmulti model-name
+  "Returns the string of a toucan model.
+
+  (model-name :m/card) => Card."
+  (fn [k]
+    (assert (keyword? k))
+    k))
+
+(defmethod model-name :default
+  [k]
+  (-> k
+      name
+      str/capitalize))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
