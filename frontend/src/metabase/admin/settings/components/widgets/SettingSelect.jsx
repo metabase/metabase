@@ -5,10 +5,10 @@ import cx from "classnames";
 import Select, { Option } from "metabase/core/components/Select";
 
 const SettingSelect = ({
-  className,
+  className = "",
   setting: { placeholder, value, options, defaultValue, searchProp, key },
   onChange,
-  disabled,
+  disabled = false,
 }) => (
   <Select
     className={cx("SettingsInput", className)}
@@ -20,6 +20,7 @@ const SettingSelect = ({
     buttonProps={{
       dataTestId: key,
     }}
+    disabled={disabled}
   >
     {options.map(option => {
       const name = typeof option === "object" ? option.name : option;

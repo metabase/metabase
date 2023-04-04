@@ -162,6 +162,10 @@ class MetabaseSettings {
     return this.get("anon-tracking-enabled") || false;
   }
 
+  uploadsEnabled() {
+    return !!(this.get("uploads-enabled") && this.get("uploads-database-id"));
+  }
+
   googleAnalyticsEnabled() {
     return this.get("ga-enabled") || false;
   }
