@@ -103,14 +103,12 @@
 
 ;; TODO: this assumes schema-name is non-nil and the database supports schemas
 (defn- create-table-sql
-  [schema-name table-name schema]
+  [schema-name table-name col->type]
   (first (sql/format {:create-table (str schema-name "." table-name)
-                      :with-columns
-                      (map (juxt (comp keyword :database-name)
-                                 (comp keyword :database-type)) schema)})))
+                      :with-columns (map (fn [kv] (map keyword kv)) col->type)})))
 
 ;; TODO: this assumes schema-name is non-nil and the database supports schemas
 (defmethod driver/create-table :sql-jdbc
-  [_driver db-id schema-name table-name csv-schema]
-  (let [sql (create-table-sql schema-name table-name csv-schema)]
+  [_driver db-id schema-name table-name col->type]
+  (let [sql (create-table-sql schema-name table-name col->type)]
     (qp.writeback/execute-write-sql! db-id sql)))

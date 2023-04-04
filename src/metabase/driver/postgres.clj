@@ -774,14 +774,10 @@
 
 (defmethod driver/load-from-csv :postgres
   [driver db-id schema-name table-name file-name]
-  (let [csv-schema (csv/detect-schema file-name)
-        csv-schema (for [[k v] csv-schema]
-                     {:database-name k
-                      :csv-type      v
-                      :database-type (csv->database-type v)})
-        cols       (map :database-name csv-schema)
-        table-name (str table-name "_" (t/format "yyyyMMddHHmmss" (t/local-date-time)))]
-    (driver/create-table driver db-id schema-name table-name csv-schema)
+  (let [col->type   (update-vals (csv/detect-schema file-name) csv->database-type)
+        cols        (keys col->type)
+        table-name  (str table-name "_" (t/format "yyyyMMddHHmmss" (t/local-date-time)))]
+    (driver/create-table driver db-id schema-name table-name col->type)
     (let [sql (load-from-csv-sql schema-name table-name cols file-name)
           upload-result (qp.writeback/execute-write-sql! db-id sql)]
       (when (pos? (:rows-affected upload-result))
