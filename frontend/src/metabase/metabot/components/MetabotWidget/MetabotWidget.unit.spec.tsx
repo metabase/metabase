@@ -5,13 +5,9 @@ import { Card, CollectionItem, Database, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollectionItem,
+  createMockDatabase,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createSampleDatabase,
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-} from "metabase-types/api/mocks/presets";
 import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
@@ -24,6 +20,10 @@ import {
 } from "__support__/ui";
 import MetabotWidget from "./MetabotWidget";
 
+const TEST_DATABASE = createMockDatabase({
+  id: 1,
+});
+
 const TEST_USER = createMockUser({
   first_name: "Test",
   last_name: "Testy",
@@ -33,10 +33,10 @@ const TEST_MODEL = createMockCard({
   name: "Orders",
   dataset: true,
   dataset_query: {
-    database: SAMPLE_DB_ID,
+    database: TEST_DATABASE.id,
     type: "query",
     query: {
-      "source-table": ORDERS_ID,
+      "source-table": 1,
     },
   },
 });
@@ -56,7 +56,7 @@ interface SetupOpts {
 }
 
 const setup = async ({
-  databases = [createSampleDatabase()],
+  databases = [TEST_DATABASE],
   cards = [TEST_MODEL],
   collectionItems = [TEST_MODEL_ITEM],
   currentUser = TEST_USER,
@@ -86,6 +86,6 @@ describe("MetabotWidget", () => {
     userEvent.click(screen.getByRole("button", { name: "Get Answer" }));
 
     const location = history?.getCurrentLocation();
-    expect(location?.pathname).toBe(`/metabot/database/${SAMPLE_DB_ID}`);
+    expect(location?.pathname).toBe(`/metabot/database/${TEST_DATABASE.id}`);
   });
 });
