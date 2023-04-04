@@ -33,7 +33,7 @@
   (deferred-tru "Is Metabot enabled?")
   :type :boolean
   :visibility :authenticated
-  :default true)
+  :default false)
 
 (def ^:private memoized-fetch-openai-models
   (memoize/ttl

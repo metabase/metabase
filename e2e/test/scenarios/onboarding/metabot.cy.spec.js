@@ -1,4 +1,4 @@
-import { restore } from "e2e/support/helpers";
+import { openQuestionActions, restore, visitModel } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -35,7 +35,6 @@ describe("scenarios > metabot", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/metabot/model/*", PROMPT_RESPONSE).as(
       "modelPrompt",
@@ -45,31 +44,109 @@ describe("scenarios > metabot", () => {
     );
   });
 
-  it("should allow to ask questions from the home page", () => {
+  it("should allow to submit prompts based on the database", () => {
     cy.createQuestion(MODEL_DETAILS);
-    cy.visit("/");
+    enableMetabot();
+    verifyHomeMetabot();
+  });
 
-    cy.findByPlaceholderText(/Ask something like/).type(PROMPT);
-    cy.findByRole("button", { name: "play icon" }).click();
-    cy.wait("@databasePrompt");
-    cy.wait("@dataset");
-    cy.findByDisplayValue(PROMPT).should("be.visible");
-    cy.findByText("Gizmo").should("be.visible");
-    cy.findByText("Doohickey").should("not.exist");
+  it("should allow to submit prompts based on models", () => {
+    cy.createQuestion(MODEL_DETAILS, { wrapId: true, idAlias: "modelId" });
+    enableMetabot();
+    verifyCollectionMetabot();
+    verifyQueryBuilderMetabot();
+  });
 
-    cy.findByText("Open Editor").click();
-    cy.findByTestId("native-query-editor")
-      .type("{selectall}{backspace}")
-      .type(MANUAL_QUERY);
-    cy.findByRole("button", { name: "refresh icon" }).click();
-    cy.wait("@dataset");
-    cy.findByText("Gizmo").should("be.visible");
-    cy.findByText("Doohickey").should("be.visible");
+  it("should not allow to submit prompts when there are no models", () => {
+    enableMetabot();
+    verifyNoHomeMetabot();
+  });
 
-    cy.findByRole("button", { name: "play icon" }).click();
-    cy.wait("@databasePrompt");
-    cy.wait("@dataset");
-    cy.findByText("Gizmo").should("be.visible");
-    cy.findByText("Doohickey").should("not.exist");
+  it("should not allow to submit prompts when metabot is not enabled", () => {
+    cy.createQuestion(MODEL_DETAILS, { wrapId: true, idAlias: "modelId" });
+    verifyNoHomeMetabot();
+    verifyNoCollectionMetabot();
+    verifyNoQueryBuilderMetabot();
+  });
+
+  it("should not allow to submit prompts for a user without native permissions", () => {
+    cy.createQuestion(MODEL_DETAILS, { wrapId: true, idAlias: "modelId" });
+    enableMetabot();
+    cy.signIn("nodata");
+    verifyNoHomeMetabot();
+    verifyNoCollectionMetabot();
+    verifyNoQueryBuilderMetabot({ hasDataAccess: false });
   });
 });
+
+const enableMetabot = () => {
+  cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
+};
+
+const verifyHomeMetabot = () => {
+  cy.visit("/");
+  cy.findByPlaceholderText(/Ask something/).type(PROMPT);
+  cy.findByLabelText("Get Answer").click();
+  cy.wait("@databasePrompt");
+  cy.wait("@dataset");
+  cy.findByDisplayValue(PROMPT).should("be.visible");
+  cy.findByText("Gizmo").should("be.visible");
+  cy.findByText("Doohickey").should("not.exist");
+
+  cy.findByText("Open Editor").click();
+  cy.findByTestId("native-query-editor")
+    .type("{selectall}{backspace}")
+    .type(MANUAL_QUERY);
+  cy.findByLabelText("Refresh").click();
+  cy.wait("@dataset");
+  cy.findByText("Gizmo").should("be.visible");
+  cy.findByText("Doohickey").should("be.visible");
+
+  cy.findByLabelText("Get Answer").click();
+  cy.wait("@databasePrompt");
+  cy.wait("@dataset");
+  cy.findByText("Gizmo").should("be.visible");
+  cy.findByText("Doohickey").should("not.exist");
+};
+
+const verifyCollectionMetabot = () => {
+  cy.visit("/collection/root");
+  cy.findByText("Products").click();
+  cy.findByLabelText("Move, archive, and more...").click();
+  cy.findByText("Ask Metabot").click();
+  cy.findByPlaceholderText(/Ask something/).type(PROMPT);
+  cy.findByLabelText("Get Answer").click();
+  cy.wait("@modelPrompt");
+  cy.wait("@dataset");
+  cy.findByText("Gizmo").should("be.visible");
+};
+
+const verifyQueryBuilderMetabot = () => {
+  cy.get("@modelId").then(id => visitModel(id));
+  openQuestionActions();
+  cy.findByText("Ask Metabot").click();
+  cy.findByPlaceholderText(/Ask something/).type(PROMPT);
+  cy.findByLabelText("Get Answer").click();
+  cy.wait("@modelPrompt");
+  cy.wait("@dataset");
+  cy.findByText("Gizmo").should("be.visible");
+};
+
+const verifyNoHomeMetabot = () => {
+  cy.visit("/");
+  cy.findByAltText("Metabot").should("be.visible");
+  cy.findByPlaceholderText(/Ask something/).should("not.exist");
+};
+
+const verifyNoCollectionMetabot = () => {
+  cy.visit("/collection/root");
+  cy.findByText("Products").click();
+  cy.findByLabelText("Move, archive, and more...").click();
+  cy.findByText("Ask Metabot").should("not.exist");
+};
+
+const verifyNoQueryBuilderMetabot = ({ hasDataAccess = true } = {}) => {
+  cy.get("@modelId").then(id => visitModel(id, { hasDataAccess }));
+  openQuestionActions();
+  cy.findByText("Ask Metabot").should("not.exist");
+};
