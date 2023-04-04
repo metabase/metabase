@@ -753,9 +753,9 @@
               ;; Sync the new database
               (sync/sync-database! database)
               (let [field (t2/select-one Field :id (mt/id :json :json_bit))
-                    enable-json-unfolding! (fn [v]
-                                             (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                   (assoc field :json_unfolding v)))
+                    set-json-unfolding! (fn [v]
+                                          (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
+                                                                (assoc field :json_unfolding v)))
                     nested-fields          (fn []
                                              (->> (t2/select Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
                                                   (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
@@ -764,7 +764,7 @@
                 (testing "nested fields are present since json unfolding is enabled by default"
                   (is (seq (nested-fields))))
                 (testing "nested fields are removed when json unfolding is disabled"
-                  (enable-json-unfolding! false)
+                  (set-json-unfolding! false)
                   (sync/sync-database! database)
                   (is (empty? (nested-fields))))
                 (testing "json_unfolding is not overwritten by another DB sync"
@@ -772,7 +772,7 @@
                   (is (false? (:json_unfolding (t2/select-one Field (mt/id :json :json_bit)))))
                   (is (empty? (nested-fields))))
                 (testing "nested fields are added when json unfolding is enabled again"
-                  (enable-json-unfolding! true)
+                  (set-json-unfolding! true)
                   (sync/sync-database! database)
                   (is (seq (nested-fields))))))))))))
 
