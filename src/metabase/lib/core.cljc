@@ -145,6 +145,7 @@
    describe-query
    describe-top-level-key
    display-name
+   display-info
    suggested-name]
   [lib.native
    #?@(:cljs [->TemplateTags

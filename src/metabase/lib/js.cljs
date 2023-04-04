@@ -101,7 +101,15 @@
   ([a-query]
    (orderable-columns a-query -1))
   ([a-query stage-number]
-   (-> (lib.order-by/orderable-columns a-query stage-number)
+   (lib.order-by/orderable-columns a-query stage-number)))
+
+(defn ^:export display-info
+  "Given an opaque Cljs object, return a plain JS object with info you'd need to implement UI for it.
+  See `::metabase.lib.metadata.calculation/display-info` for the keys this might contain."
+  ([a-query x]
+   (display-info a-query -1 x))
+  ([a-query stage-number x]
+   (-> (lib.metadata.calculation/display-info a-query stage-number x)
        (clj->js :keyword-fn u/qualified-name))))
 
 (defn ^:export order-by-clause
