@@ -3,6 +3,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
+   [java-time :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -100,9 +101,10 @@
   [_driver _semantic_type expr]
   (hx/->timestamp expr))
 
+;; TODO: this assumes schema-name is non-nil and the database supports schemas
 (defn- create-table-sql
-  [table-name schema]
-  (first (sql/format {:create-table table-name
+  [schema-name table-name schema]
+  (first (sql/format {:create-table (str schema-name "." table-name)
                       :with-columns
                       (map (juxt (comp keyword :database-name)
                                  (comp keyword :database-type)) schema)})))
@@ -110,6 +112,5 @@
 ;; TODO: this assumes schema-name is non-nil and the database supports schemas
 (defmethod driver/create-table :sql-jdbc
   [_driver db-id schema-name table-name csv-schema]
-  (let [sql (str "DROP TABLE IF EXISTS " schema-name "." table-name "; "
-                 (create-table-sql table-name csv-schema))]
+  (let [sql (create-table-sql schema-name table-name csv-schema)]
     (qp.writeback/execute-write-sql! db-id sql)))
