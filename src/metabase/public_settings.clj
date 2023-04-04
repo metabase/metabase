@@ -601,7 +601,7 @@
                     v))))
 
 (defsetting uploads-enabled
-  (deferred-tru "Whether or not csv uploads are enabled")
+  (deferred-tru "Whether or not uploads are enabled")
   :visibility :admin
   :type       :boolean
   :default    false)
