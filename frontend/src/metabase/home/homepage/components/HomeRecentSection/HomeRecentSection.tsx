@@ -21,7 +21,7 @@ interface StateProps {
   user: User | null;
 }
 
-type HomeRecentSectionProps = EntityLoaderProps & StateProps;
+export type HomeRecentSectionProps = EntityLoaderProps & StateProps;
 
 const mapStateToProps = (state: State): StateProps => ({
   user: getUser(state),
