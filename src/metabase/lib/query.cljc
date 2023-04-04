@@ -15,7 +15,7 @@
    [metabase.util.malli :as mu]))
 
 (mu/defn replace-clause :- :metabase.lib.schema/query
-  "Replaces the `target-clause` with `new-clase` in the `query` stage."
+  "Replaces the `target-clause` with `new-clause` in the `query` stage."
   ([query :- :metabase.lib.schema/query
     target-clause
     new-clause]
