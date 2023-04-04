@@ -19,6 +19,7 @@ Thanks to our amazing user community, Metabase has been translated into many dif
 The languages you can currently pick from are:
 
 - English (default)
+- Albanian
 - Arabic
 - Bulgarian
 - Catalan
@@ -32,6 +33,7 @@ The languages you can currently pick from are:
 - Indonesian
 - Italian
 - Japanese
+- Korean
 - Norwegian Bokmål
 - Polish
 - Portuguese
