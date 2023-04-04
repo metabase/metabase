@@ -1159,10 +1159,12 @@
 (deftest load-from-csv-test
   (testing "Upload a csv"
     (mt/test-driver :postgres
-      (mt/with-actions-test-data
+      (mt/with-empty-db
         (is (true? (driver/load-from-csv
                     driver/*driver*
                     (mt/id)
                     "public"
                     "upload_test"
-                    (csv-test/csv-file-with ["id,first_name" "one,Luke"]))))))))
+                    (str (csv-test/csv-file-with ["id,first_name" "one,Luke"])))))
+        ;; TODO - test that the data is actually in the DB. We should do this once the sync/scan PR is completed.
+        ))))
