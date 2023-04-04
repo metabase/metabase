@@ -38,8 +38,8 @@
                                 :query    {:source-table (mt/id :orders)}}
                                :dataset true}]]
           (let [bot-sql (format "SELECT * FROM %s" (:name model))]
-            (with-redefs [metabot-client/bot-endpoint   (test-bot-endpoint-single-message bot-sql)
-                          metabot-util/prompt-templates (constantly test-prompt-templates)]
+            (with-redefs [metabot-client/*bot-endpoint*   (test-bot-endpoint-single-message bot-sql)
+                          metabot-util/*prompt-templates* (constantly test-prompt-templates)]
               (let [{:keys [inner_query] :as denormalized-model} (metabot-util/denormalize-model model)
                     user_prompt   "Show me all of my data"
                     context       {:model       denormalized-model
@@ -85,8 +85,8 @@
                                     :user_prompt user_prompt
                                     :prompt_task :infer_model}
                 bot-message        (format "The best model is probably %s" (:id orders-model))]
-            (with-redefs [metabot-client/bot-endpoint   (test-bot-endpoint-single-message bot-message)
-                          metabot-util/prompt-templates (constantly test-prompt-templates)]
+            (with-redefs [metabot-client/*bot-endpoint*   (test-bot-endpoint-single-message bot-message)
+                          metabot-util/*prompt-templates* (constantly test-prompt-templates)]
               (is
                (= denormalized-model
                   (dissoc

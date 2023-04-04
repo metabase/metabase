@@ -170,7 +170,7 @@
                                             :status-code 400}))))))))]
     (map (fn [prompt] (update prompt :content update-contents)) messages)))
 
-(def ^:private ^:dynamic prompt-templates
+(def ^:private ^:dynamic *prompt-templates*
   "Return a map of prompt templates with keys of template type and values
   which are objects containing keys 'latest' (the latest template version)
    and 'templates' (all template versions)."
@@ -194,7 +194,7 @@
    of the context interpolating all values from the template. The returned
    value is the template object with the prompt contained in the ':prompt' key."
   [{:keys [prompt_task] :as context}]
-  (if-some [template (get-in (prompt-templates) [prompt_task :latest])]
+  (if-some [template (get-in (*prompt-templates*) [prompt_task :latest])]
     (assoc template
       :prompt (prompt-template->messages template context))
     (throw

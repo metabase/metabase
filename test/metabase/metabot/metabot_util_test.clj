@@ -89,7 +89,7 @@
 
 (deftest create-prompt-test
   (testing "We can do prompt lookup and interpolation"
-    (with-redefs [metabot-util/prompt-templates (constantly metabot-test/test-prompt-templates)]
+    (with-redefs [metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
       (let [prompt (metabot-util/create-prompt
                     {:model       {:sql_name         "TEST_MODEL"
                                    :create_table_ddl "CREATE TABLE TEST_MODEL"}

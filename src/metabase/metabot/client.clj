@@ -7,7 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic bot-endpoint
+(def ^:dynamic *bot-endpoint*
   "The endpoint used to invoke the remote LLM"
   openai.api/create-chat-completion)
 
@@ -16,7 +16,7 @@
   Takes messages to be used as instructions and a function that will find the first valid result from the messages."
   [messages]
   (try
-    (bot-endpoint
+    (*bot-endpoint*
      {:model    (metabot-settings/openai-model)
       :n        (metabot-settings/num-metabot-choices)
       :messages messages}

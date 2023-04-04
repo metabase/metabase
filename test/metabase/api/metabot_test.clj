@@ -33,8 +33,8 @@
                              (metabot-util/normalize-name (:name orders-model)))
                 bot-sql     (metabot-util/extract-sql bot-message)
                 q           "How many orders do I have?"]
-            (with-redefs [metabot-client/bot-endpoint   (metabot-test/test-bot-endpoint-single-message bot-message)
-                          metabot-util/prompt-templates (constantly metabot-test/test-prompt-templates)]
+            (with-redefs [metabot-client/*bot-endpoint*   (metabot-test/test-bot-endpoint-single-message bot-message)
+                          metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
               (let [response (mt/user-http-request :rasta :post 200
                                                    (format "/metabot/model/%s" (:id orders-model))
                                                    {:question q})
@@ -55,8 +55,8 @@
                                :dataset true}]]
           (let [bot-message "IDK what to do here"
                 q           "How many orders do I have?"]
-            (with-redefs [metabot-client/bot-endpoint   (metabot-test/test-bot-endpoint-single-message bot-message)
-                          metabot-util/prompt-templates (constantly metabot-test/test-prompt-templates)]
+            (with-redefs [metabot-client/*bot-endpoint*   (metabot-test/test-bot-endpoint-single-message bot-message)
+                          metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
               (let [response (mt/user-http-request :rasta :post 400
                                                    (format "/metabot/model/%s" (:id orders-model))
                                                    {:question q})]
@@ -79,8 +79,8 @@
                              (metabot-util/normalize-name (:name orders-model)))
                 bot-sql     (metabot-util/extract-sql bot-message)
                 q           "How many orders do I have?"]
-            (with-redefs [metabot-client/bot-endpoint   (metabot-test/test-bot-endpoint-single-message bot-message)
-                          metabot-util/prompt-templates (constantly metabot-test/test-prompt-templates)]
+            (with-redefs [metabot-client/*bot-endpoint*   (metabot-test/test-bot-endpoint-single-message bot-message)
+                          metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
               (let [response (mt/user-http-request :rasta :post 200
                                                    (format "/metabot/database/%s" (mt/id))
                                                    {:question q})
@@ -101,8 +101,8 @@
                                :dataset true}]]
           (let [bot-message "No good model selected :("
                 q           "A not useful prompt"]
-            (with-redefs [metabot-client/bot-endpoint   (metabot-test/test-bot-endpoint-single-message bot-message)
-                          metabot-util/prompt-templates (constantly metabot-test/test-prompt-templates)]
+            (with-redefs [metabot-client/*bot-endpoint*   (metabot-test/test-bot-endpoint-single-message bot-message)
+                          metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
               (let [response (mt/user-http-request :rasta :post 400
                                                    (format "/metabot/database/%s" (mt/id))
                                                    {:question q})]
@@ -123,8 +123,8 @@
                              "Part 1 is %s but part 2 doesn't return SQL."
                              (:id orders-model))
                 q           "orders model but nothing useful"]
-            (with-redefs [metabot-client/bot-endpoint   (metabot-test/test-bot-endpoint-single-message bot-message)
-                          metabot-util/prompt-templates (constantly metabot-test/test-prompt-templates)]
+            (with-redefs [metabot-client/*bot-endpoint*   (metabot-test/test-bot-endpoint-single-message bot-message)
+                          metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
               (let [response (mt/user-http-request :rasta :post 400
                                                    (format "/metabot/database/%s" (mt/id))
                                                    {:question q})]
@@ -142,12 +142,12 @@
                                 :type     :query
                                 :query    {:source-table (mt/id :orders)}}
                                :dataset true}]]
-          (with-redefs [metabot-client/bot-endpoint   (fn [_ _]
+          (with-redefs [metabot-client/*bot-endpoint*   (fn [_ _]
                                                         (throw (ex-info
                                                                 "Too many requests"
                                                                 {:message "Too many requests"
                                                                  :status  429})))
-                        metabot-util/prompt-templates (constantly metabot-test/test-prompt-templates)]
+                        metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
             (let [{:keys [message]} (mt/user-http-request :rasta :post 429
                                                           (format "/metabot/database/%s" (mt/id))
                                                           {:question "Doesn't matter"})]
@@ -161,12 +161,12 @@
                                 :type     :query
                                 :query    {:source-table (mt/id :orders)}}
                                :dataset true}]]
-          (with-redefs [metabot-client/bot-endpoint   (fn [_ _]
+          (with-redefs [metabot-client/*bot-endpoint*   (fn [_ _]
                                                         (throw (ex-info
                                                                 "Unauthorized"
                                                                 {:message "Unauthorized"
                                                                  :status  401})))
-                        metabot-util/prompt-templates (constantly metabot-test/test-prompt-templates)]
+                        metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
             (let [{:keys [message]} (mt/user-http-request :rasta :post 400
                                                           (format "/metabot/database/%s" (mt/id))
                                                           {:question "Doesn't matter"})]
