@@ -34,7 +34,7 @@
                             :pk_ref     pk_ref
                             :value_ref  value_ref
                             :generation 0
-                            :schedule   default-schedule
+                            :schedule   (default-schedule)
                             :created_by api/*current-user-id*})))
 
 (api/defendpoint DELETE "/:id"
