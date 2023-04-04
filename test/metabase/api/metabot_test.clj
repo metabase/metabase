@@ -171,4 +171,3 @@
                                                           (format "/metabot/database/%s" (mt/id))
                                                           {:question "Doesn't matter"})]
               (is (true? (str/includes? message "Bot credentials are incorrect or not set"))))))))))
-

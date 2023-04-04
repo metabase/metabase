@@ -133,5 +133,3 @@
             {:inner_query "SELECT * FROM {{#123}}"
              :sql_name    "MY_MODEL"}
             "SELECT * FROM MY_MODEL")))))
-
-

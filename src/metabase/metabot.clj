@@ -63,4 +63,3 @@
                   (format "%s:%s" prompt_template version)))
         (log/infof "No model inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))
-
