@@ -3,6 +3,7 @@ import {
   enableTracking,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
+  openCollectionItemMenu,
   openQuestionActions,
   resetSnowplow,
   restore,
@@ -155,8 +156,7 @@ const verifyMetabotFeedback = () => {
 
 const verifyCollectionMetabot = () => {
   cy.visit("/collection/root");
-  cy.findByText("Products").click();
-  cy.findByLabelText("Move, archive, and more...").click();
+  openCollectionItemMenu(MODEL_DETAILS.name);
   cy.findByText("Ask Metabot").click();
   cy.findByPlaceholderText(/Ask something/).type(PROMPT);
   cy.findByLabelText("Get Answer").click();
@@ -184,8 +184,7 @@ const verifyNoHomeMetabot = () => {
 
 const verifyNoCollectionMetabot = () => {
   cy.visit("/collection/root");
-  cy.findByText("Products").click();
-  cy.findByLabelText("Move, archive, and more...").click();
+  openCollectionItemMenu(MODEL_DETAILS.name);
   cy.findByText("Ask Metabot").should("not.exist");
 };
 

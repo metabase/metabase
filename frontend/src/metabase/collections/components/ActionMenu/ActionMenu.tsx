@@ -13,7 +13,6 @@ import {
 } from "metabase/collections/utils";
 import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import Databases from "metabase/entities/databases";
 import Database from "metabase-lib/metadata/Database";
 import { EntityItemMenu } from "./ActionMenu.styled";
 
@@ -21,6 +20,7 @@ interface OwnProps {
   className?: string;
   item: CollectionItem;
   collection: Collection;
+  databases?: Database[];
   bookmarks?: Bookmark[];
   onCopy: (items: CollectionItem[]) => void;
   onMove: (items: CollectionItem[]) => void;
@@ -31,7 +31,6 @@ interface OwnProps {
 interface StateProps {
   isXrayEnabled: boolean;
   isMetabotEnabled: boolean;
-  database: Database;
 }
 
 type ActionMenuProps = OwnProps & StateProps;
@@ -51,21 +50,18 @@ function normalizeItemModel(item: CollectionItem) {
   return item.model === "dataset" ? "card" : item.model;
 }
 
-function mapStateToProps(state: State, props: OwnProps): StateProps {
+function mapStateToProps(state: State): StateProps {
   return {
     isXrayEnabled: getSetting(state, "enable-xrays"),
     isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
-    database: Databases.selectors.getObject(state, {
-      entityId: props.item.database_id,
-    }),
   };
 }
 
 function ActionMenu({
   className,
   item,
+  databases,
   bookmarks,
-  database,
   collection,
   isXrayEnabled,
   isMetabotEnabled,
@@ -74,11 +70,13 @@ function ActionMenu({
   createBookmark,
   deleteBookmark,
 }: ActionMenuProps) {
+  const database = databases?.find(({ id }) => id === item.database_id);
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
   const canPin = canPinItem(item, collection);
   const canPreview = canPreviewItem(item, collection);
   const canMove = canMoveItem(item, collection);
   const canArchive = canArchiveItem(item, collection);
+  const canUseMetabot = database?.canWrite?.() && isMetabotEnabled;
 
   const handlePin = useCallback(() => {
     item.setPinned?.(!isItemPinned(item));
@@ -104,8 +102,6 @@ function ActionMenu({
   const handleTogglePreview = useCallback(() => {
     item?.setCollectionPreview?.(!isPreviewEnabled(item));
   }, [item]);
-
-  const canUseMetabot = database?.canWrite?.() && isMetabotEnabled;
 
   return (
     // this component is used within a `<Link>` component,
