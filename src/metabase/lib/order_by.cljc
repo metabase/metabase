@@ -90,7 +90,7 @@
      (lib.util/update-query-stage query stage-number update :order-by (fn [order-bys]
                                                                         (conj (vec order-bys) new-order-by))))))
 
-(mu/defn ^:export order-bys :- [:maybe [:sequential ::lib.schema.order-by/order-by]]
+(mu/defn order-bys :- [:maybe [:sequential ::lib.schema.order-by/order-by]]
   "Get the order-by clauses in a query."
   ([query :- ::lib.schema/query]
    (order-bys query -1))
