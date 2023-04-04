@@ -8,8 +8,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def num-choices 3)
-
 (defn find-result
   "Given a set of choices returned from the bot, find the first one returned by
    the supplied message-fn."
@@ -33,7 +31,7 @@
   (try
     (let [resp (bot-endpoint
                 {:model    (metabot-settings/openai-model)
-                 :n        num-choices
+                 :n        (metabot-settings/num-metabot-choices)
                  :messages messages}
                 {:api-key      (metabot-settings/openai-api-key)
                  :organization (metabot-settings/openai-organization)})]

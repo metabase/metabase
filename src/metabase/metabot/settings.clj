@@ -35,6 +35,12 @@
   :visibility :authenticated
   :default false)
 
+(defsetting num-metabot-choices
+  (deferred-tru "Number of potential responses metabot will request. The first valid response is selected.")
+  :type :integer
+  :visibility :internal
+  :default 3)
+
 (def ^:private memoized-fetch-openai-models
   (memoize/ttl
    ^{::memoize/args-fn (fn [[api-key organization]] [api-key organization])}
