@@ -34,7 +34,7 @@
            401 (ex-info
                 "Bot credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
                 {:message     "Bot credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
-                 ;; Don't actually produce a 401 becuase you'll get redirect do the home page.
+                 ;; Don't actually produce a 401 because you'll get redirect do the home page.
                  :status-code 400})
            429 (ex-info
                 "The bot server is under heavy load and cannot process your request at this time.\nPlease try again."
