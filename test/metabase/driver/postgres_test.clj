@@ -1201,4 +1201,10 @@
               (is (=? {:database_position 4
                        :database_type     "float8"
                        :base_type         :type/Float}
-                      (t2/select-one Field :name "float" :table_id (:id table)))))))))))
+                      (t2/select-one Field :name "float" :table_id (:id table))))
+              (testing "Check the data was uploaded into the table"
+                (is (= [[2]] (-> (mt/process-query {:database (mt/id)
+                                                    :type :query
+                                                    :query {:source-table (:id table)
+                                                            :aggregation [[:count]]}})
+                                 mt/rows)))))))))))
