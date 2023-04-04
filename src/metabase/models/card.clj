@@ -36,7 +36,7 @@
   :m/Card)
 
 (defmethod mi/model-name :m/Card [] "Card")
-(defmethod mi/name->toucan-model "Card" [_model-name] :m/Card)
+#_(defmethod mi/name->toucan-model "Card" [_model-name] :m/Card)
 
 (methodical/defmethod t2/table-name :m/Card [_model] :report_card)
 
