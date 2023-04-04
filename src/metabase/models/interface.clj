@@ -446,20 +446,6 @@
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 
-(defmulti model-name
-  "Returns the string of a toucan model.
-
-  (model-name :m/card) => Card."
-  (fn [k]
-    (assert (keyword? k))
-    k))
-
-(defmethod model-name :default
-  [k]
-  (-> k
-      name
-      str/capitalize))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
