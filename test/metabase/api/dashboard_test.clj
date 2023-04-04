@@ -1565,26 +1565,40 @@
 
 (deftest delete-cards-test
   (testing "PUT /api/dashboard/id/:cards to delete"
-    ;; fetch a dashboard WITH a dashboard card on it
-    (mt/with-temp* [Dashboard           [{dashboard-id :id}]
-                    Card                [{card-id :id}]
-                    Card                [{series-id-1 :id}]
-                    Card                [{series-id-2 :id}]
-                    DashboardCard       [{dashcard-id-1 :id}  {:dashboard_id dashboard-id, :card_id card-id}]
-                    DashboardCard       [{_dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                    DashboardCard       [{dashcard-id-3 :id}  {:dashboard_id dashboard-id, :card_id card-id}]
-                    DashboardCardSeries [_                    {:dashboardcard_id dashcard-id-1, :card_id series-id-1, :position 0}]
-                    DashboardCardSeries [_                    {:dashboardcard_id dashcard-id-1, :card_id series-id-2, :position 1}]
-                    DashboardCardSeries [_                    {:dashboardcard_id dashcard-id-3, :card_id series-id-1, :position 0}]]
-      (with-dashboards-in-writeable-collection [dashboard-id]
-        (is (= 3
-               (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
-        (is (=? [{:id     dashcard-id-3
-                  :series [{:id series-id-1}]}]
-                (mt/user-http-request :rasta :put 200
-                                      (format "dashboard/%d/cards" dashboard-id) {:cards [(dashcard-like-response dashcard-id-3)]})))
-        (is (= 1
-               (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))))))
+    (testing "partial delete"
+      ;; fetch a dashboard WITH a dashboard card on it
+      (mt/with-temp* [Dashboard           [{dashboard-id :id}]
+                      Card                [{card-id :id}]
+                      Card                [{series-id-1 :id}]
+                      Card                [{series-id-2 :id}]
+                      DashboardCard       [{dashcard-id-1 :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+                      DashboardCard       [{_dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                      DashboardCard       [{dashcard-id-3 :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+                      DashboardCardSeries [_                    {:dashboardcard_id dashcard-id-1, :card_id series-id-1, :position 0}]
+                      DashboardCardSeries [_                    {:dashboardcard_id dashcard-id-1, :card_id series-id-2, :position 1}]
+                      DashboardCardSeries [_                    {:dashboardcard_id dashcard-id-3, :card_id series-id-1, :position 0}]]
+        (with-dashboards-in-writeable-collection [dashboard-id]
+          (is (= 3
+                 (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
+          (is (=? [{:id     dashcard-id-3
+                    :series [{:id series-id-1}]}]
+                  (mt/user-http-request :rasta :put 200
+                                        (format "dashboard/%d/cards" dashboard-id) {:cards [(dashcard-like-response dashcard-id-3)]})))
+          (is (= 1
+                 (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))
+    (testing "prune"
+      (mt/with-temp* [Dashboard           [{dashboard-id :id}]
+                      Card                [{card-id :id}]
+                      DashboardCard       [_ {:dashboard_id dashboard-id, :card_id card-id}]
+                      DashboardCard       [_ {:dashboard_id dashboard-id, :card_id card-id}]]
+        (with-dashboards-in-writeable-collection [dashboard-id]
+          (is (= 2
+                 (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
+          (is (=? []
+                  (mt/user-http-request :rasta :put 200
+                                        (format "dashboard/%d/cards" dashboard-id) {:cards []})))
+          (is (= 0
+                 (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        GET /api/dashboard/:id/revisions                                        |

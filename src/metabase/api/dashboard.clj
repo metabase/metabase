@@ -586,11 +586,11 @@
                                     ...}]}
              ...]}"
   [id :as {{:keys [cards]} :body}]
-  {cards (su/non-empty [UpdatedDashboardCard])}
+  {cards [UpdatedDashboardCard]}
   (let [dashboard     (-> (api/write-check Dashboard id)
                           api/check-not-archived
                           (t2/hydrate :ordered_cards))
-        current-cards (ordered_cards dashboard)
+        current-cards (:ordered_cards dashboard)
 
         {:keys [to-update to-delete to-create]} (classify-dashcard-changes current-cards cards)]
     (api/check-500
