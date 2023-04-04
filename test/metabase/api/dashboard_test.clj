@@ -1600,6 +1600,22 @@
           (is (= 0
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))))
 
+(deftest classify-changes-test
+  (testing "classify correctly"
+    (is (= {:to-update [{:id 2 :name "c3"} {:id 4 :name "c4"}]
+            :to-delete [{:id 1 :name "c1"} {:id 3 :name "c3"}]
+            :to-create [{:id -1 :name "-c1"}]}
+           (#'api.dashboard/classify-changes
+             [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
+             [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}]))))
+  (testing "current changes can't contain neg ids"
+    (is (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #".*value must be an integer greater than zero.*"
+          (#'api.dashboard/classify-changes
+            [{:id -1}]
+            [])))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        GET /api/dashboard/:id/revisions                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+

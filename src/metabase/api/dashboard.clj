@@ -513,21 +513,26 @@
                                          (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
     (check-parameter-mapping-permissions new-mappings)))
 
-(def ^:private UpdatedDashboardCard
-  (su/with-api-error-message
-    {:id                                  (su/with-api-error-message s/Int
-                                            ;; can be both positive and negative int
-                                            "value must be a DashboardCard ID.")
-     :size_x                              su/IntGreaterThanZero
-     :size_y                              su/IntGreaterThanZero
-     :row                                 su/IntGreaterThanOrEqualToZero
-     :col                                 su/IntGreaterThanOrEqualToZero
-     (s/optional-key :parameter_mappings) (s/maybe [{:parameter_id su/NonBlankString
-                                                     :target       s/Any
-                                                     s/Keyword     s/Any}])
-     (s/optional-key :series)             (s/maybe [su/Map])
-     s/Keyword                            s/Any}
-    "value must be a valid DashboardCard map."))
+(mu/defn ^:private classify-changes :- [:map
+                                        [:to-create [:sequential [:map [:id neg-int?]]]]
+                                        [:to-update [:sequential [:map [:id ms/PositiveInt]]]]
+                                        [:to-delete [:sequential [:map [:id ms/PositiveInt]]]]]
+  [current-changes :- [:sequential [:map [:id ms/PositiveInt]]]
+   new-changes     :- [:sequential [:map [:id int?]]]]
+  (let [current-dashcard-ids          (set (map :id current-changes))
+        update-or-delete-dashcard-ids (->> new-changes
+                                          (map :id)
+                                          (filter pos?)
+                                          set)
+        to-update (filter #(and (current-dashcard-ids (:id %))
+                                (update-or-delete-dashcard-ids (:id %)))
+                          new-changes)
+        to-delete (filter #(not (update-or-delete-dashcard-ids (:id %)))
+                           current-changes)
+        to-create (filter #(neg? (:id %)) new-changes)]
+    {:to-update to-update
+     :to-delete to-delete
+     :to-create to-create}))
 
 (defn- create-cards
   [dashboard cards]
@@ -554,22 +559,6 @@
 (defn- delete-cards [dashboard dashcard-ids]
   (when-let [dashboard-cards (t2/select DashboardCard :id [:in dashcard-ids])]
     (dashboard-card/delete-dashboard-cards! dashboard-cards (:id dashboard) api/*current-user-id*)))
-
-(defn- classify-dashcard-changes [current-dashcards new-dashcards]
-  (let [current-dashcard-ids          (set (map :id current-dashcards))
-        update-or-delete-dashcard-ids (->> new-dashcards
-                                          (map :id)
-                                          (filter pos?)
-                                          set)
-        to-update (filter #(and (current-dashcard-ids (:id %))
-                                (update-or-delete-dashcard-ids (:id %)))
-                          new-dashcards)
-        to-delete (filter #(not (update-or-delete-dashcard-ids (:id %)))
-                          current-dashcards)
-        to-create (filter #(neg? (:id %)) new-dashcards)]
-    {:to-update to-update
-     :to-delete to-delete
-     :to-create to-create}))
 
 (def ^:private UpdatedDashboardCard
   [:map
@@ -604,7 +593,7 @@
                           (t2/hydrate :ordered_cards))
         current-cards (:ordered_cards dashboard)
 
-        {:keys [to-update to-delete to-create]} (classify-dashcard-changes current-cards cards)]
+        {:keys [to-update to-delete to-create]} (classify-changes current-cards cards)]
     (api/check-500
       (t2/with-transaction [_conn]
         (when (seq to-delete)
