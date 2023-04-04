@@ -63,6 +63,7 @@ const mapDispatchToProps = {
 };
 
 function CollectionContent({
+  databases,
   bookmarks,
   collection,
   collections: collectionList = [],
@@ -208,6 +209,7 @@ function CollectionContent({
                 onDeleteBookmark={handleDeleteBookmark}
               />
               <PinnedItemOverview
+                databases={databases}
                 bookmarks={bookmarks}
                 createBookmark={createBookmark}
                 deleteBookmark={deleteBookmark}
@@ -255,6 +257,7 @@ function CollectionContent({
                   return (
                     <CollectionTable>
                       <ItemsTable
+                        databases={databases}
                         bookmarks={bookmarks}
                         createBookmark={createBookmark}
                         deleteBookmark={deleteBookmark}
