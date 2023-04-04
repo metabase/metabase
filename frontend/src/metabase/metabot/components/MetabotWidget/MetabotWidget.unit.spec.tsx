@@ -35,6 +35,11 @@ const TEST_USER = createMockUser({
   last_name: "Testy",
 });
 
+const TEST_USER_2 = createMockUser({
+  first_name: null,
+  last_name: null,
+});
+
 const TEST_MODEL = createMockCard({
   name: "Orders",
   dataset: true,
@@ -120,5 +125,19 @@ describe("MetabotWidget", () => {
     });
 
     expect(screen.getByPlaceholderText("Ask something…")).toBeInTheDocument();
+  });
+
+  it("should show a greeting message based on the user name", async () => {
+    await setup();
+
+    expect(screen.getByText(/Hey there, Test!/)).toBeInTheDocument();
+  });
+
+  it("should show a generic greeting message if no user name is available", async () => {
+    await setup({
+      currentUser: TEST_USER_2,
+    });
+
+    expect(screen.getByText(/Hey there!/)).toBeInTheDocument();
   });
 });
