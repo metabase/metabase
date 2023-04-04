@@ -14428,11 +14428,24 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: status
+                  name: state
                   type: ${text.type}
                   remarks: 'The status of the index: initializing, indexed, error, overflow.'
                   constraints:
                     nullable: false
+
+              - column:
+                  name: state_change_at
+                  type: ${timestamp_type}
+                  remarks: 'When the status changed'
+                  constraints:
+                    nullable: true
+              - column:
+                  name: error
+                  type: ${text.type}
+                  remarks: 'The error message if the status is error.'
+                  constraints:
+                    nullable: true
               - column:
                   name: created_at
                   type: ${timestamp_type}
@@ -14492,6 +14505,20 @@ databaseChangeLog:
       rollback:
         - dropTable:
             tableName: model_index_value
+
+  - changeSet:
+      id: v47.00-010
+      author: dpsutton
+      comment: Add unique constraint on index_id and pk
+      changes:
+        - addUniqueConstraint:
+            tableName: model_index_value
+            constraintName: unique_model_index_value_index_id_model_pk
+            columnNames: model_pk, model_index_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: model_index_value
+            constraintName: unique_model_index_value_index_id_model_pk
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
