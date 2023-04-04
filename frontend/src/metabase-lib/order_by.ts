@@ -2,7 +2,8 @@ import * as ML from "cljs/metabase.lib.js";
 import type { Field } from "metabase-types/api";
 import type { OrderByClause, Query } from "./types";
 
-export function orderableColumns(query: Query): Field[] {
+/// returns array of opaque objects
+export function orderableColumns(query: Query): [] {
   return ML.orderable_columns(query);
 }
 

@@ -14,3 +14,9 @@ export function metadataProvider(
 export function displayName(query: Query, clause: Clause): string {
   return ML_MetadataCalculation.display_name(query, clause);
 }
+
+// x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
+// should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
+export function displayInfo(query: Query, x) {
+  return ML.display_info(query, x);
+}
