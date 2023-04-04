@@ -183,6 +183,14 @@ jobs:
         env:
           TERM: xterm
 
+      - name: Upload Replay.io recordings
+        if: failure()
+        uses: replayio/action-upload@v0.4.7
+        with:
+          api-key: ${{ secrets.RECORD_REPLAY_API_KEY }}
+          filter: ${{ 'function($v) { $v.metadata.test.result = "failed" }' }}
+          public: true
+
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v3
         if: failure()
