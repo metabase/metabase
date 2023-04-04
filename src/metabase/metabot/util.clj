@@ -16,6 +16,17 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+(defn supported?
+  "Is metabot supported for the given database."
+  [db-id]
+  (let [q "SELECT 1 FROM (SELECT 1)"]
+    (try
+      (some?
+       (qp/process-query {:database db-id
+                          :type     "native"
+                          :native   {:query q}}))
+      (catch Exception _ false))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Input Denormalization ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn normalize-name
