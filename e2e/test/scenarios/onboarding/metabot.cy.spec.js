@@ -1,4 +1,13 @@
-import { openQuestionActions, restore, visitModel } from "e2e/support/helpers";
+import {
+  describeWithSnowplow,
+  enableTracking,
+  expectGoodSnowplowEvents,
+  expectNoBadSnowplowEvents,
+  openQuestionActions,
+  resetSnowplow,
+  restore,
+  visitModel,
+} from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -48,6 +57,7 @@ describe("scenarios > metabot", () => {
     cy.createQuestion(MODEL_DETAILS);
     enableMetabot();
     verifyHomeMetabot();
+    verifyHomeMetabotEditing();
   });
 
   it("should allow to submit prompts based on models", () => {
@@ -79,6 +89,35 @@ describe("scenarios > metabot", () => {
   });
 });
 
+describeWithSnowplow("scenarios > metabot", () => {
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/metabot/database/*", PROMPT_RESPONSE).as(
+      "databasePrompt",
+    );
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should send snowplow events when submitting metabot feedback", () => {
+    cy.createQuestion(MODEL_DETAILS);
+    enableMetabot();
+    verifyHomeMetabot();
+    cy.findByRole("button", { name: "This isn’t valid SQL." }).click();
+
+    // 1 - new_instance_created
+    // 2 - pageview
+    // 4 - metabot_feedback_received
+    expectGoodSnowplowEvents(3);
+  });
+});
+
 const enableMetabot = () => {
   cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
 };
@@ -92,7 +131,9 @@ const verifyHomeMetabot = () => {
   cy.findByDisplayValue(PROMPT).should("be.visible");
   cy.findByText("Gizmo").should("be.visible");
   cy.findByText("Doohickey").should("not.exist");
+};
 
+const verifyHomeMetabotEditing = () => {
   cy.findByText("Open Editor").click();
   cy.findByTestId("native-query-editor")
     .type("{selectall}{backspace}")
