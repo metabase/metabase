@@ -2,10 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.client :as metabot-client]
    [metabase.metabot :as metabot]
+   [metabase.metabot.client :as metabot-client]
    [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [Card Collection Database Field FieldValues Table]]
+   [metabase.models :refer [Card Database]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -63,14 +63,14 @@
                                 :type     :query
                                 :query    {:source-table (mt/id :orders)}}
                                :dataset true}]
-                        Card [people-model
+                        Card [_people-model
                               {:name    "People Model"
                                :dataset_query
                                {:database (mt/id)
                                 :type     :query
                                 :query    {:source-table (mt/id :people)}}
                                :dataset true}]
-                        Card [products-model
+                        Card [_products-model
                               {:name    "Products Model"
                                :dataset_query
                                {:database (mt/id)

@@ -7,7 +7,6 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.db.query :as mdb.query]
-   [metabase.driver.util :as driver.u]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.models :refer [Card FieldValues]]
    [metabase.query-processor :as qp]

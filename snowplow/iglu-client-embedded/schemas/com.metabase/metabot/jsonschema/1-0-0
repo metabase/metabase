@@ -50,6 +50,7 @@
         "null"
       ],
       "items": {
+        "description": "A prompt template version as prompt_type:version",
         "type": "string",
         "maxLength": 1024
       }

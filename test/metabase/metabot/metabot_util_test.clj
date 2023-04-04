@@ -2,9 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.db.query :as mdb.query]
-   [metabase.metabot.util :as metabot-util]
    [metabase.metabot-test :as metabot-test]
-   [metabase.models :refer [Card Collection Database Field FieldValues Table]]
+   [metabase.metabot.util :as metabot-util]
+   [metabase.models :refer [Card Database]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -73,7 +73,7 @@
 (deftest denormalize-database-test
   (testing "Basic denormalized database test"
     (mt/dataset sample-dataset
-      (mt/with-temp* [Card [model
+      (mt/with-temp* [Card [_
                             {:dataset_query
                              {:database (mt/id)
                               :type     :query
@@ -126,7 +126,7 @@
       (is (= (mdb.query/format-sql sql)
              (metabot-util/extract-sql bot-str))))))
 
-(deftest extract-sql-test
+(deftest bot-sql->final-sql-test
   (testing "A simple test of interpolation of denormalized data with bot sql"
     (is (= "WITH MY_MODEL AS (SELECT * FROM {{#123}}) SELECT * FROM MY_MODEL"
            (metabot-util/bot-sql->final-sql
