@@ -19,7 +19,6 @@
     :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.models :refer [Table]]
    [metabase.models.action :as action]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -1158,7 +1157,7 @@
               (str/ends-with? ".p12"))))))
 
 (deftest load-from-csv-test
-  (testing "Upload a csv"
+  (testing "Upload a csv file"
     (mt/test-driver :postgres
       (mt/with-empty-db
         (let [table-name (driver/load-from-csv
@@ -1166,7 +1165,7 @@
                           (mt/id)
                           "public"
                           "upload_test"
-                          (str (csv-test/csv-file-with ["id,empty,string,bool" "2,,string,true" "3,,string,false"])))]
+                          (str (csv-test/csv-file-with ["id,empty,string,bool,float" "2,,string,true,1.1" "3,,string,false,1.1"])))]
           (is (some? (re-find #"upload_test_\d{14}" table-name)))
           (testing "Can upload two files with the same name"
             ;; Sleep for a second, because the table name is based on the current second
@@ -1198,4 +1197,8 @@
               (is (=? {:database_position 3
                        :database_type     "bool"
                        :base_type         :type/Boolean}
-                      (t2/select-one Field :name "bool" :table_id (:id table)))))))))))
+                      (t2/select-one Field :name "bool" :table_id (:id table))))
+              (is (=? {:database_position 4
+                       :database_type     "float8"
+                       :base_type         :type/Float}
+                      (t2/select-one Field :name "float" :table_id (:id table)))))))))))
