@@ -14378,6 +14378,121 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v47.00-008
+      author: dpsutton
+      comment: Indexed Entities information table
+      changes:
+        - createTable:
+            tableName: model_index
+            remarks: 'Used to keep track of which models have indexed columns.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: 'The ID of the indexed model.'
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_model_index_model_id
+              - column:
+                  name: pk_ref
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the primary key field ref.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value_ref
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the label field ref.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: generation
+                  type: int
+                  remarks: 'The current generation of indexed values. Values from previous generations can be deleted.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schedule
+                  type: ${text.type}
+                  remarks: 'The cron schedule for when value syncing should happen.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: ${text.type}
+                  remarks: 'The status of the index: initializing, indexed, error, overflow.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: 'The timestamp of when these changes were made.'
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: ID of the user who created the event
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_event_creator_id
+                    deleteCascade: true
+      rollback:
+        - dropTable:
+            tableName: model_index
+
+  - changeSet:
+      id: v47.00-009
+      author: dpsutton
+      comment: Indexed Entities values table
+      changes:
+        - createTable:
+            tableName: model_index_values
+            remarks: 'Used to keep track of the values indexed in a model'
+            columns:
+              - column:
+                  name: model_index_id
+                  type: int
+                  remarks: 'The ID of the indexed model.'
+                  constraints:
+                    nullable: false
+                    referencedTableName: model_index
+                    referencedColumnNames: id
+                    foreignKeyName: fk_model_index_values_model_id
+              - column:
+                  name: model_pk
+                  type: int
+                  remarks: 'The primary key of the indexed value'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value
+                  type: ${text.type}
+                  remarks: 'The label to display identifying the indexed value.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: generation
+                  type: int
+                  remarks: 'The current generation of indexed values. Values from previous generations can be deleted.'
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: model_index_values
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
