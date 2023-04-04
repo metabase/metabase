@@ -22,6 +22,12 @@ import MetabotWidget from "./MetabotWidget";
 
 const TEST_DATABASE = createMockDatabase({
   id: 1,
+  name: "DB1",
+});
+
+const TEST_DATABASE_2 = createMockDatabase({
+  id: 2,
+  name: "DB2",
 });
 
 const TEST_USER = createMockUser({
@@ -46,6 +52,11 @@ const TEST_MODEL_ITEM = createMockCollectionItem({
   model: "dataset",
 });
 
+const TEST_QUESTION_ITEM = createMockCollectionItem({
+  name: "Question",
+  model: "card",
+});
+
 const TEST_MODEL_PLACEHOLDER = `Ask something like, how many ${TEST_MODEL.name} have we had over time?`;
 
 interface SetupOpts {
@@ -58,7 +69,7 @@ interface SetupOpts {
 const setup = async ({
   databases = [TEST_DATABASE],
   cards = [TEST_MODEL],
-  collectionItems = [TEST_MODEL_ITEM],
+  collectionItems = [TEST_MODEL_ITEM, TEST_QUESTION_ITEM],
   currentUser = TEST_USER,
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints(databases);
@@ -87,5 +98,27 @@ describe("MetabotWidget", () => {
 
     const location = history?.getCurrentLocation();
     expect(location?.pathname).toBe(`/metabot/database/${TEST_DATABASE.id}`);
+  });
+
+  it("should allow to select a database if there are multiple databases", async () => {
+    const { history } = await setup({
+      databases: [TEST_DATABASE, TEST_DATABASE_2],
+    });
+
+    userEvent.click(screen.getByText(TEST_DATABASE.name));
+    userEvent.click(screen.getByText(TEST_DATABASE_2.name));
+    userEvent.type(screen.getByPlaceholderText(TEST_MODEL_PLACEHOLDER), "How");
+    userEvent.click(screen.getByRole("button", { name: "Get Answer" }));
+
+    const location = history?.getCurrentLocation();
+    expect(location?.pathname).toBe(`/metabot/database/${TEST_DATABASE_2.id}`);
+  });
+
+  it("should use a generic placeholder if a model is not available", async () => {
+    await setup({
+      collectionItems: [TEST_QUESTION_ITEM],
+    });
+
+    expect(screen.getByPlaceholderText("Ask something…")).toBeInTheDocument();
   });
 });
