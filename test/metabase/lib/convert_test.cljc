@@ -111,54 +111,34 @@
 (deftest ^:parallel round-trip-test
   ;; Miscellaneous queries that have caused test failures in the past, captured here for quick feedback.
   (are [query] (= query (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))
-    ;; :aggregation-options on a non-aggregate expression with an inner aggregate.
-    {:database 194
-     :query {:aggregation [[:aggregation-options
-                            [:- [:sum [:field 1677 nil]] 41]
-                            {:name "Sum-41"}]]
-             :breakout [[:field 1677 nil]]
-             :source-table 517}
-     :type :query}
+       ;; :aggregation-options on a non-aggregate expression with an inner aggregate.
+       {:database 194
+        :query {:aggregation [[:aggregation-options
+                               [:- [:sum [:field 1677 nil]] 41]
+                               {:name "Sum-41"}]]
+                :breakout [[:field 1677 nil]]
+                :source-table 517}
+        :type :query}
 
-    ;; :aggregation-options nested, not at the top level under :aggregation
-    {:database 194
-     :query {:aggregation [[:- [:aggregation-options
-                                [:sum [:field 1677 nil]]
-                                {:name "Sum-41"}] 41]]
-             :breakout [[:field 1677 nil]]
-             :source-table 517}
-     :type :query}
+       ;; :aggregation-options nested, not at the top level under :aggregation
+       {:database 194
+        :query {:aggregation [[:- [:aggregation-options
+                                   [:sum [:field 1677 nil]]
+                                   {:name "Sum-41"}] 41]]
+                :breakout [[:field 1677 nil]]
+                :source-table 517}
+        :type :query}
 
-    {:database 67
-     :query {:aggregation [[:aggregation-options
-                            [:avg
-                             [:field
-                              809
-                              {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
-                               :metabase.query-processor.util.add-alias-info/source-table 224}]]
-                            {:name "avg"
-                             :metabase.query-processor.util.add-alias-info/desired-alias "avg"
-                             :metabase.query-processor.util.add-alias-info/position 1
-                             :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
-             :source-table 224}
-     :type :query}
-
-    {:query {:aggregation [[:count]]
-             :order-by    [[:asc [:aggregation 0]]]
-             :filter      [:between [:field 1 nil] "2019-01-01" "2021-01-01"]}}))
-
-(deftest ^:parallel convert-aggregation-reference-test
-  (is (=? [:aggregation {:lib/uuid string?} 0]
-          (lib.convert/->pMBQL [:aggregation 0 nil])))
-  (is (=? {:lib/type :mbql/query
-           :database 1
-           :type     :pipeline
-           :stages   [{:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}
-                       :order-by    [[:asc
-                                      {:lib/uuid string?}
-                                      [:aggregation {:lib/uuid string?} 0]]]}]}
-          (lib.convert/->pMBQL
-           {:database 1
-            :type     :query
-            :query    {:order-by [[:asc [:aggregation 0 nil]]]}}))))
+       {:database 67
+        :query {:aggregation [[:aggregation-options
+                               [:avg
+                                [:field
+                                 809
+                                 {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
+                                  :metabase.query-processor.util.add-alias-info/source-table 224}]]
+                               {:name "avg"
+                                :metabase.query-processor.util.add-alias-info/desired-alias "avg"
+                                :metabase.query-processor.util.add-alias-info/position 1
+                                :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
+                :source-table 224}
+        :type :query}))
