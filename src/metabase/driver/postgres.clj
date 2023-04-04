@@ -32,7 +32,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log])
   (:import
    (java.sql ResultSet ResultSetMetaData Time Types)
@@ -778,8 +778,11 @@
         cols        (keys col->type)
         table-name  (str table-name (t/format "_yyyyMMddHHmmss" (t/local-date-time)))]
     (driver/create-table driver db-id schema-name table-name col->type)
-    (let [sql (load-from-csv-sql schema-name table-name cols file-name)
-          upload-result (qp.writeback/execute-write-sql! db-id sql)]
+    (let [sql           (load-from-csv-sql schema-name table-name cols file-name)
+          upload-result (try
+                          (qp.writeback/execute-write-sql! db-id sql)
+                          (catch Throwable e
+                            (driver/drop-table driver db-id schema-name table-name)
+                            (throw (ex-info (tru "Error uploading CSV: {0}" (ex-message e)) {}))))]
       (when (pos? (:rows-affected upload-result))
-        table-name))
-    (driver/drop-table driver db-id schema-name table-name col->type)))
+        table-name))))

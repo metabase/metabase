@@ -1215,7 +1215,7 @@
     (mt/with-empty-db
       (testing "Can't upload a CSV with missing values"
         (is (thrown-with-msg?
-              ExceptionInfo #"Error executing write query: ERROR: missing data for column \"column_that_doesnt_have_a_value\""
+              ExceptionInfo #"Error uploading CSV:"
              (driver/load-from-csv
               driver/*driver*
               (mt/id)
@@ -1223,4 +1223,5 @@
               "upload_test"
               (str (csv-test/csv-file-with ["id,column_that_doesnt_have_a_value" "2"]))))))
       (testing "Check that the table isn't created if the upload fails"
-        (is (nil? (t2/select-one Table :schema "public" :db_id (mt/id))))))))
+        (sync/sync-database! (mt/db))
+        (is (nil? (t2/select-one Table :db_id (mt/id))))))))
