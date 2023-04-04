@@ -14,7 +14,7 @@
    [metabase.util.malli :as mu]))
 
 (mu/defn replace-clause :- :metabase.lib.schema/query
-  "Replaces the `target-clause` with `new-clase` in the `query` stage."
+  "Replaces the `target-clause` with `new-clause` in the `query` stage."
   ([query :- :metabase.lib.schema/query
     target-clause
     new-clause]
@@ -60,7 +60,7 @@
    {:type   keyword
     :stages (partial mapv lib.normalize/normalize)}))
 
-(defmethod lib.metadata.calculation/metadata :mbql/query
+(defmethod lib.metadata.calculation/metadata-method :mbql/query
   [query stage-number x]
   (lib.metadata.calculation/metadata query stage-number (lib.util/query-stage x stage-number)))
 

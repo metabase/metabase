@@ -107,6 +107,13 @@
         (with-user-in-groups [user []]
           (integrations.common/sync-group-memberships! user #{(perms-group/admin)} #{(perms-group/admin)})
           (is (= #{"All Users" "Administrators"}
+                 (group-memberships user)))))
+
+      (testing "unmapped admin group is ignored even if other groups are added (#29718)"
+        (with-user-in-groups [group {:name (str ::group)}
+                              user  [(perms-group/admin)]]
+          (integrations.common/sync-group-memberships! user #{group} #{group})
+          (is (= #{"All Users" "Administrators" ":metabase.integrations.common-test/group"}
                  (group-memberships user)))))))
 
   (testing "Make sure the delete last admin exception is catched"

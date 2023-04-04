@@ -102,4 +102,51 @@ describe("order by", () => {
       expect(ML.displayName(nextQuery, orderBys[0])).toBe("Title ascending");
     });
   });
+
+  describe("replace order by", () => {
+    const query = createQuery();
+
+    it("should update the query", () => {
+      const columns = ML.orderableColumns(query);
+      const productTitle = columns.find(
+        column => column.id === SAMPLE_DATABASE.PRODUCTS.TITLE.id,
+      );
+
+      const productCategory = columns.find(
+        column => column.id === SAMPLE_DATABASE.PRODUCTS.CATEGORY.id,
+      );
+      const orderedQuery = ML.orderBy(query, productTitle as Field);
+      const orderBys = ML.orderBys(orderedQuery);
+
+      expect(orderBys).toHaveLength(1);
+      const nextQuery = ML.replaceClause(
+        orderedQuery,
+        orderBys[0],
+        ML.orderByClause(orderedQuery, -1, productCategory as Field) as Field,
+      );
+      const nextOrderBys = ML.orderBys(nextQuery);
+      expect(ML.displayName(nextQuery, nextOrderBys[0])).toBe(
+        "Category ascending",
+      );
+      expect(orderBys[0]).not.toEqual(nextOrderBys[0]);
+    });
+  });
+
+  describe("remove order by", () => {
+    const query = createQuery();
+
+    it("should update the query", () => {
+      const columns = ML.orderableColumns(query);
+      const productTitle = columns.find(
+        column => column.id === SAMPLE_DATABASE.PRODUCTS.TITLE.id,
+      );
+
+      const orderedQuery = ML.orderBy(query, productTitle as Field);
+      const orderBys = ML.orderBys(orderedQuery);
+      expect(orderBys).toHaveLength(1);
+
+      const nextQuery = ML.removeClause(orderedQuery, orderBys[0]);
+      expect(ML.orderBys(nextQuery)).toHaveLength(0);
+    });
+  });
 });

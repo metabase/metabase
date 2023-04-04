@@ -2,7 +2,7 @@
   "Currently this is mostly a convenience namespace for REPL and test usage. We'll probably have a slightly different
   version of this for namespace for QB and QP usage in the future -- TBD."
   (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min
-                            + - * / time abs concat replace])
+                            + - * / time abs concat replace ref])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
@@ -18,6 +18,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.table :as lib.table]
@@ -38,6 +39,7 @@
          lib.normalize/keep-me
          lib.order-by/keep-me
          lib.query/keep-me
+         lib.ref/keep-me
          lib.segment/keep-me
          lib.stage/keep-me
          lib.table/keep-me
@@ -67,6 +69,7 @@
    table]
   [lib.expression
    expression
+   expressions
    +
    -
    *
@@ -161,6 +164,8 @@
    remove-clause
    replace-clause
    saved-question-query]
+  [lib.ref
+   ref]
   [lib.stage
    append-stage
    drop-stage]
