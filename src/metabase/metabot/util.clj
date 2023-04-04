@@ -192,19 +192,33 @@
    :ttl/threshold (* 1000 60 60)))
 
 (defn create-prompt
-  "Create a prompt by looking up the latest template for the given prompt-type
-  and interpolating all values from the template. The returned value is the
-  template object with the prompt contained in the ':prompt' key."
-  [context prompt-type]
-  (if-some [template (get-in (prompt-templates) [prompt-type :latest])]
+  "Create a prompt by looking up the latest template for the prompt_task type
+   of the context interpolating all values from the template. The returned
+   value is the template object with the prompt contained in the ':prompt' key."
+  [{:keys [prompt_task] :as context}]
+  (if-some [template (get-in (prompt-templates) [prompt_task :latest])]
     (assoc template
       :prompt (prompt-template->messages template context))
     (throw
      (ex-info
-      (format "No prompt inference template found for prompt type: %s" prompt-type)
-      {:prompt_type prompt-type}))))
+      (format "No prompt inference template found for prompt type: %s" prompt_task)
+      {:prompt_type prompt_task}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Results Processing ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn find-result
+  "Given a set of choices returned from the bot, find the first one returned by
+   the supplied message-fn."
+  [message-fn {:keys [choices]}]
+  (or
+   (some
+    (fn [{:keys [message]}]
+      (when-some [res (message-fn (:content message))]
+        res))
+    choices)
+   (log/infof
+    "Unable to find appropriate result for user prompt in responses:\n\t%s"
+    (str/join "\n\t" (map (fn [m] (get-in m [:message :content])) choices)))))
 
 (defn extract-sql
   "Search a provided string for a SQL block"

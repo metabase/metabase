@@ -1,41 +1,25 @@
 (ns metabase.metabot.client
   (:require
    [clojure.pprint :as pp]
-   [clojure.string :as str]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.util.log :as log]
    [wkok.openai-clojure.api :as openai.api]))
 
 (set! *warn-on-reflection* true)
 
-(defn find-result
-  "Given a set of choices returned from the bot, find the first one returned by
-   the supplied message-fn."
-  [{:keys [choices]} message-fn]
-  (or
-   (some
-    (fn [{:keys [message]}]
-      (when-some [res (message-fn (:content message))]
-        res))
-    choices)
-   (log/infof
-    "Unable to find appropriate result for user prompt in responses:\n\t%s"
-    (str/join "\n\t" (map (fn [m] (get-in m [:message :content])) choices)))))
-
 (def ^:dynamic bot-endpoint openai.api/create-chat-completion)
 
 (defn invoke-metabot
   "Call the bot and return the response.
   Takes messages to be used as instructions and a function that will find the first valid result from the messages."
-  [messages extract-response-fn]
+  [messages]
   (try
-    (let [resp (bot-endpoint
-                {:model    (metabot-settings/openai-model)
-                 :n        (metabot-settings/num-metabot-choices)
-                 :messages messages}
-                {:api-key      (metabot-settings/openai-api-key)
-                 :organization (metabot-settings/openai-organization)})]
-      (find-result resp extract-response-fn))
+    (bot-endpoint
+     {:model    (metabot-settings/openai-model)
+      :n        (metabot-settings/num-metabot-choices)
+      :messages messages}
+     {:api-key      (metabot-settings/openai-api-key)
+      :organization (metabot-settings/openai-organization)})
     (catch Exception e
       (log/warn "Exception when calling invoke-metabot: %s" (.getMessage e))
       (when (ex-data e)

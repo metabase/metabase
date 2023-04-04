@@ -93,8 +93,8 @@
       (let [prompt (metabot-util/create-prompt
                     {:model       {:sql_name         "TEST_MODEL"
                                    :create_table_ddl "CREATE TABLE TEST_MODEL"}
-                     :user_prompt "Find my data"}
-                    :infer_sql)]
+                     :user_prompt "Find my data"
+                     :prompt_task :infer_sql})]
         (= {:prompt_template "infer_sql",
             :version         "0001",
             :messages        [{:role "system", :content "The system prompt"}
