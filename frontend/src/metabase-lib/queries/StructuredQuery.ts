@@ -222,7 +222,7 @@ class StructuredQueryInner extends AtomicQuery {
    * @returns the underlying MBQL query object
    */
   query(): StructuredQueryObject {
-    return this._structuredDatasetQuery.query;
+    return this._structuredDatasetQuery.query || {};
   }
 
   setQuery(query: StructuredQueryObject): StructuredQuery {

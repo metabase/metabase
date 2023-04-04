@@ -72,7 +72,7 @@
      #_part  [:ref ::expression/string]]))
 
 (def ^:private time-interval-options
-  [:map [:include-current {:optional true} :boolean]]) ; default false
+  [:map [:include-current {:optional true :js/prop "include_current"} :boolean]]) ; default false
 
 ;; SUGAR: rewritten as a filter clause with a relative-datetime value
 (mbql-clause/define-mbql-clause :time-interval :- :type/Boolean

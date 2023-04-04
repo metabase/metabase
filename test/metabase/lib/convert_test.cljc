@@ -179,4 +179,37 @@
                                          [:field 23402 nil]
                                          [:field 23100 {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                           :strategy     :left-join
-                          :fk-field-id  23402}]}}))
+                          :fk-field-id  23402}]}}
+
+    {:database 67
+     :query {:aggregation [[:aggregation-options
+                            [:avg
+                             [:field
+                              809
+                              {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
+                               :metabase.query-processor.util.add-alias-info/source-table 224}]]
+                            {:name "avg"
+                             :metabase.query-processor.util.add-alias-info/desired-alias "avg"
+                             :metabase.query-processor.util.add-alias-info/position 1
+                             :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
+             :source-table 224}
+     :type :query}
+
+    {:dataset_query {:query    {:source-table 2
+                                :filter [:and [:time-interval [:field 15 nil]
+                                               :current :day {:include_current true}]]}
+                     :type     :query
+                     :database 1}
+     :display "table"}))
+
+(comment
+  (= {:dataset_query {:query {:source-table 2
+                              :filter [:and [:time-interval [:field 15 nil] :current :day {:include_current true}]]}
+                      :type :query
+                      :database 1}
+      :display "table"}
+     {:dataset_query {:type :query
+                      :database 1
+                      :query {:source-table 2
+                              :filter [:and [:aggregation-options [:time-interval [:field 15 nil] :current :day] {:include_current true}]]}}
+      :display "table"}))

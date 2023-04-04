@@ -68,6 +68,13 @@
   [[_tag value opts]]
   (lib.options/ensure-uuid [:value opts value]))
 
+(defmethod ->pMBQL :time-interval
+  [[_tag w x y z]]
+  (default-MBQL-clause->pMBQL
+    (if (map? z)
+      [:time-interval z w x y]
+      [:time-interval w x y])))
+
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
   (let [[tag opts & args] (->pMBQL aggregation)]
@@ -138,6 +145,11 @@
                 :trim :ltrim :rtrim :upper :lower]]
   (defmethod ->legacy-MBQL clause [input]
     (aggregation->legacy-MBQL input)))
+
+(defmethod ->legacy-MBQL :time-interval [[tag options & args]]
+  (clause-with-options->legacy-MBQL
+    (into [tag (set/rename-keys options {:include-current :include_current})]
+          args)))
 
 (defn- chain-stages [{:keys [stages]}]
   ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.

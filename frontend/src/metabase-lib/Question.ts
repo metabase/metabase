@@ -141,8 +141,9 @@ function massageForRoundTripCheck(x) {
   Object.keys(x).forEach(k => {
     // Skip dataset_query - it's transformed separately and sometimes round-trips with slightly
     // different details but the same meaning.
-    result[k] =
-      k === "dataset_query" ? undefined : massageForRoundTripCheck(x[k]);
+    //result[k] =
+    //  k === "dataset_query" ? undefined : massageForRoundTripCheck(x[k]);
+    result[k] = massageForRoundTripCheck(x[k]);
   });
   return result;
 }
@@ -247,6 +248,8 @@ class QuestionInner {
           : undefined),
       });
       if (!_.isEqual(originalCard, roundTripped)) {
+        console.log("round-trip mismatch", originalCard, roundTripped);
+        //debugger;
         throw new Error(
           "round-tripped Question._card is not the same as the original",
         );
