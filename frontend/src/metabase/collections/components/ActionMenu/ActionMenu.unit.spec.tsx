@@ -1,11 +1,14 @@
 import React from "react";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { getMetadata } from "metabase/selectors/metadata";
+import { createEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders } from "__support__/ui";
-import { Collection, CollectionItem } from "metabase-types/api";
+import { Collection, CollectionItem, Database } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
+  createMockDatabase,
 } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
@@ -16,20 +19,29 @@ import ActionMenu from "./ActionMenu";
 interface SetupOpts {
   item: CollectionItem;
   collection?: Collection;
-  isXrayAvailable?: boolean;
+  databases?: Database[];
+  isXrayEnabled?: boolean;
+  isMetabotEnabled?: boolean;
 }
 
 const setup = ({
   item,
   collection = createMockCollection({ can_write: true }),
-  isXrayAvailable = false,
+  databases = [],
+  isXrayEnabled = false,
+  isMetabotEnabled = false,
 }: SetupOpts) => {
   const storeInitialState = createMockState({
+    entities: createEntitiesState({
+      databases,
+    }),
     settings: createMockSettingsState({
-      "enable-xrays": isXrayAvailable,
+      "enable-xrays": isXrayEnabled,
+      "is-metabot-enabled": isMetabotEnabled,
     }),
   });
 
+  const metadata = getMetadata(storeInitialState);
   const onCopy = jest.fn();
   const onMove = jest.fn();
 
@@ -37,6 +49,7 @@ const setup = ({
     <ActionMenu
       item={item}
       collection={collection}
+      databases={metadata.databasesList()}
       onCopy={onCopy}
       onMove={onMove}
     />,
@@ -141,7 +154,7 @@ describe("ActionMenu", () => {
         model: "dataset",
       });
 
-      setup({ item, isXrayAvailable: true });
+      setup({ item, isXrayEnabled: true });
 
       userEvent.click(getIcon("ellipsis"));
       expect(screen.getByText("X-ray this")).toBeInTheDocument();
@@ -153,7 +166,7 @@ describe("ActionMenu", () => {
         model: "dataset",
       });
 
-      setup({ item, isXrayAvailable: false });
+      setup({ item, isXrayEnabled: false });
 
       userEvent.click(getIcon("ellipsis"));
       expect(screen.queryByText("X-ray this")).not.toBeInTheDocument();
@@ -165,7 +178,7 @@ describe("ActionMenu", () => {
         model: "card",
       });
 
-      setup({ item, isXrayAvailable: true });
+      setup({ item, isXrayEnabled: true });
 
       userEvent.click(getIcon("ellipsis"));
       expect(screen.queryByText("X-ray this")).not.toBeInTheDocument();
@@ -177,10 +190,95 @@ describe("ActionMenu", () => {
         model: "dashboard",
       });
 
-      setup({ item, isXrayAvailable: true });
+      setup({ item, isXrayEnabled: true });
 
       userEvent.click(getIcon("ellipsis"));
       expect(screen.queryByText("X-ray this")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("metabot", () => {
+    it("should allow to ask metabot when it is enabled and there is native write access", () => {
+      const database = createMockDatabase({
+        id: 1,
+        native_permissions: "write",
+      });
+
+      const item = createMockCollectionItem({
+        id: 1,
+        model: "dataset",
+        database_id: database.id,
+      });
+
+      setup({
+        item,
+        databases: [database],
+        isMetabotEnabled: true,
+      });
+
+      userEvent.click(getIcon("ellipsis"));
+      expect(screen.getByText("Ask Metabot")).toBeInTheDocument();
+    });
+
+    it("should not allow to ask metabot when it is not enabled but there is native write access", () => {
+      const database = createMockDatabase({
+        id: 1,
+        native_permissions: "write",
+      });
+
+      const item = createMockCollectionItem({
+        id: 1,
+        model: "dataset",
+        database_id: database.id,
+      });
+
+      setup({
+        item,
+        databases: [database],
+        isMetabotEnabled: false,
+      });
+
+      userEvent.click(getIcon("ellipsis"));
+      expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
+    });
+
+    it("should not allow to ask metabot when it is enabled but there is no native write access", () => {
+      const database = createMockDatabase({
+        id: 1,
+        native_permissions: "none",
+      });
+
+      const item = createMockCollectionItem({
+        id: 1,
+        model: "dataset",
+        database_id: database.id,
+      });
+
+      setup({
+        item,
+        databases: [database],
+        isMetabotEnabled: true,
+      });
+
+      userEvent.click(getIcon("ellipsis"));
+      expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
+    });
+
+    it("should not allow to ask metabot when it is enabled but there is no data access", () => {
+      const item = createMockCollectionItem({
+        id: 1,
+        model: "dataset",
+        database_id: 1,
+      });
+
+      setup({
+        item,
+        databases: [],
+        isMetabotEnabled: true,
+      });
+
+      userEvent.click(getIcon("ellipsis"));
+      expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
     });
   });
 });
