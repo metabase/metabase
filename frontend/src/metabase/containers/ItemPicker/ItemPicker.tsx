@@ -135,8 +135,6 @@ function ItemPicker({
       query.models = models;
     }
 
-    console.log("searching with ", searchString);
-
     return query;
   }, [models, searchString, openCollectionId]);
 
