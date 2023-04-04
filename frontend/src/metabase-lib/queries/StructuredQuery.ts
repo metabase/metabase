@@ -206,8 +206,7 @@ class StructuredQueryInner extends AtomicQuery {
    * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
    */
   readOnly() {
-    const database = this.database();
-    return database == null || database.native_permissions !== "write";
+    return !this.database();
   }
 
   /* Methods unique to this query type */
