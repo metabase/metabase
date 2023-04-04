@@ -75,6 +75,7 @@ Report timezone is only supported for the following databases:
    - Oracle
    - PostgreSQL
    - Presto
+   - Redshift
    - Vertica
 
 ## First day of the week
