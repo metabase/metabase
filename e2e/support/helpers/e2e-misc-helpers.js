@@ -133,6 +133,23 @@ export function visitQuestion(id) {
 }
 
 /**
+ * Visit a model and wait for its query to load.
+ *
+ * @param {number} id
+ */
+export function visitModel(id) {
+  // In case we use this function multiple times in a test, make sure aliases are unique for each question
+  const alias = "modelQuery" + id;
+
+  // We need to use the dataset endpoint for models
+  cy.intercept("POST", `/api/dataset`).as(alias);
+
+  cy.visit(`/model/${id}`);
+
+  cy.wait("@" + alias);
+}
+
+/**
  * Visit a dashboard and wait for the related queries to load.
  *
  * @param {number} dashboard_id

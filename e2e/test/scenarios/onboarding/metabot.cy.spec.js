@@ -1,8 +1,4 @@
-import {
-  openQuestionActions,
-  restore,
-  visitQuestion,
-} from "e2e/support/helpers";
+import { openQuestionActions, restore, visitModel } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -53,7 +49,7 @@ describe("scenarios > metabot", () => {
     enableMetabot();
 
     cy.visit("/");
-    cy.findByPlaceholderText(/Ask something like/).type(PROMPT);
+    cy.findByPlaceholderText(/Ask something/).type(PROMPT);
     cy.findByLabelText("Get Answer").click();
     cy.wait("@databasePrompt");
     cy.wait("@dataset");
@@ -78,23 +74,23 @@ describe("scenarios > metabot", () => {
   });
 
   it("should allow to submit prompts based on models", () => {
-    cy.createQuestion(MODEL_DETAILS, { idAlias: "modelId" });
+    cy.createQuestion(MODEL_DETAILS, { wrapId: true, idAlias: "modelId" });
     enableMetabot();
 
     cy.visit("/collection/root");
     cy.findByText("Products").click();
     cy.findByLabelText("Move, archive, and more...").click();
     cy.findByText("Ask Metabot").click();
-    cy.findByPlaceholderText(/Ask something like/).type(PROMPT);
+    cy.findByPlaceholderText(/Ask something/).type(PROMPT);
     cy.findByLabelText("Get Answer").click();
     cy.wait("@modelPrompt");
     cy.wait("@dataset");
     cy.findByText("Gizmo").should("be.visible");
 
-    cy.get("@modelId").then(visitQuestion);
+    cy.get("@modelId").then(visitModel);
     openQuestionActions();
     cy.findByText("Ask Metabot").click();
-    cy.findByPlaceholderText(/Ask something like/).type(PROMPT);
+    cy.findByPlaceholderText(/Ask something/).type(PROMPT);
     cy.findByLabelText("Get Answer").click();
     cy.wait("@modelPrompt");
     cy.wait("@dataset");
@@ -104,22 +100,22 @@ describe("scenarios > metabot", () => {
   it("should not allow to submit prompts when there are no models", () => {
     enableMetabot();
     cy.visit("/");
-    cy.findByPlaceholderText(/Ask something like/).should("not.exist");
+    cy.findByPlaceholderText(/Ask something/).should("not.exist");
   });
 
   it("should not allow to submit prompts when metabot is not enabled", () => {
-    cy.createQuestion(MODEL_DETAILS, { idAlias: "modelId" });
+    cy.createQuestion(MODEL_DETAILS, { wrapId: true, idAlias: "modelId" });
 
     cy.visit("/");
     cy.findByAltText("Metabot").should("be.visible");
-    cy.findByPlaceholderText(/Ask something like/).should("not.exist");
+    cy.findByPlaceholderText(/Ask something/).should("not.exist");
 
     cy.visit("/collection/root");
     cy.findByText("Products").click();
     cy.findByLabelText("Move, archive, and more...").click();
     cy.findByText("Ask Metabot").should("not.exist");
 
-    cy.get("@modelId").then(visitQuestion);
+    cy.get("@modelId").then(visitModel);
     openQuestionActions();
     cy.findByText("Ask Metabot").should("not.exist");
   });

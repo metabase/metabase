@@ -1,4 +1,4 @@
-import { restore, questionInfoButton } from "e2e/support/helpers";
+import { restore, questionInfoButton, visitModel } from "e2e/support/helpers";
 
 describe("scenarios > models > revision history", () => {
   beforeEach(() => {
@@ -30,12 +30,6 @@ describe("scenarios > models > revision history", () => {
     cy.get(".cellData");
   });
 });
-
-function visitModel(id) {
-  cy.intercept("POST", "/api/dataset").as("dataset");
-  cy.visit(`/model/${id}`);
-  cy.wait("@dataset");
-}
 
 function openRevisionHistory() {
   cy.intercept("GET", "/api/user").as("user");
