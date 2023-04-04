@@ -4,11 +4,9 @@ import _ from "underscore";
 import { Dashboard } from "metabase-types/api";
 import { ApplyButton } from "./withAutoApplyFilters.styled";
 
-// XXX: Use similar type as in https://github.com/metabase/metabase/blob/c56d0872ac2a2cf44a827acfa1af5e8b76dcaa7d/frontend/src/metabase-lib/parameters/utils/cards.ts#L17
 type ParameterValues = Record<string, any>;
 
 interface WithAutoApplyFiltersProps {
-  // XXX: Fix types
   dashboard: Dashboard;
   parameterValues: ParameterValues;
   setParameterValue: (id: string, value: any) => void;
@@ -36,12 +34,7 @@ export default function withAutoApplyFilters<T>(
       fetchDashboardCardData,
     } = props;
 
-    // XXX: control parameterValues and dashboard to be changed at the same time, otherwise
-    // the logic inside <Dashboard />'s `componentDidUpdate` will be triggered twice,
-    // causing the dashboard cards to be fetched twice, when there'are parameters
-    // in the query params.
     const [state, setState] = useState<{
-      // XXX: Fix types
       dashboard: Dashboard;
       parameterValues: ParameterValues;
     }>({ dashboard, parameterValues });
@@ -91,10 +84,6 @@ export default function withAutoApplyFilters<T>(
 
     const handleApplyFilters = () => {
       setParameterValues(state.parameterValues);
-      // XXX: This is needed since the logic to reload the dashboard is in `<Dashboard />`
-      // but now we pass `parameterValues` from the state of this HoC instead, so calling
-      // `fetchDashboardCardData` inside `<Dashboard />` won't do anything since the redux
-      // state hasn't changed.
       fetchDashboardCardData({ reload: false, clear: true });
     };
 
