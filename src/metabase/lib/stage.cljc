@@ -191,8 +191,12 @@
   (when (string? source-table-id)
     (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" source-table-id)]
       (when-let [card-id (parse-long card-id-str)]
-        (when-let [result-metadata (:result_metadata (lib.metadata/card query card-id))]
-          (when-let [cols (not-empty (:columns result-metadata))]
+        ;; it seems like in some cases the FE is renaming `:result_metadata` to `:fields`, not 100% sure why but
+        ;; handle that case anyway. (#29739)
+        (when-let [result-metadata ((some-fn :result_metadata :fields) (lib.metadata/card query card-id))]
+          (when-let [cols (not-empty (cond
+                                       (map? result-metadata)        (:columns result-metadata)
+                                       (sequential? result-metadata) result-metadata))]
             (for [col cols]
               (assoc col :lib/source :source/card))))))))
 

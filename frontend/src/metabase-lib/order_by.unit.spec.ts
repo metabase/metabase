@@ -72,13 +72,15 @@ describe("order by", () => {
         ({ id }) => id === field.id && field.table_id === table_id,
       );
 
-      expect(productsTitle).toEqual({
-        id: field.id,
-        table_id,
-        name: field.name,
-        display_name: field.display_name,
-        base_type: field.base_type,
-      });
+      expect(productsTitle).toEqual(
+        expect.objectContaining({
+          id: field.id,
+          table_id,
+          name: field.name,
+          display_name: field.display_name,
+          base_type: field.base_type,
+        }),
+      );
     });
   });
 
