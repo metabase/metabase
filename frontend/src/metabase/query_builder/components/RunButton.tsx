@@ -29,26 +29,14 @@ const RunButton = forwardRef(function RunButton(
   }: RunButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
-  let buttonText = null;
-  let buttonIcon = null;
-  if (isRunning) {
-    buttonIcon = "close";
-    if (!compact) {
-      buttonText = t`Cancel`;
-    }
-  } else if (isDirty) {
-    if (compact) {
-      buttonIcon = "play";
-    } else {
-      buttonText = t`Get Answer`;
-    }
-  } else {
-    buttonIcon = "refresh";
-  }
+  const icon = getButtonIcon(isRunning, isDirty);
+  const ariaLabel = getButtonLabel(isRunning, isDirty);
+  const buttonLabel = compact || (!isRunning && !isDirty) ? null : ariaLabel;
+
   return (
     <Button
       {...props}
-      icon={buttonIcon}
+      icon={icon}
       primary={isDirty}
       iconSize={16}
       className={cx(className, "RunButton", {
@@ -58,10 +46,34 @@ const RunButton = forwardRef(function RunButton(
       })}
       onClick={isRunning ? onCancel : onRun}
       ref={ref}
+      aria-label={ariaLabel}
     >
-      {buttonText}
+      {buttonLabel}
     </Button>
   );
 });
+
+const getButtonLabel = (isRunning: boolean, isDirty: boolean) => {
+  if (isRunning) {
+    return t`Cancel`;
+  }
+
+  if (isDirty) {
+    return t`Get Answer`;
+  }
+
+  return t`Refresh`;
+};
+
+const getButtonIcon = (isRunning: boolean, isDirty: boolean) => {
+  if (isRunning) {
+    return "close";
+  }
+  if (isDirty) {
+    return "play";
+  }
+
+  return "refresh";
+};
 
 export default RunButton;

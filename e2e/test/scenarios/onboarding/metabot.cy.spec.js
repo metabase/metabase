@@ -1,4 +1,4 @@
-import { openQuestionActions, popover, restore } from "e2e/support/helpers";
+import { restore } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -37,72 +37,69 @@ describe("scenarios > metabot", () => {
     cy.signInAsAdmin();
     cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/metabot/model/*", PROMPT_RESPONSE);
-    cy.intercept("POST", "/api/metabot/database/*", PROMPT_RESPONSE);
+    cy.intercept("POST", "/api/metabot/model/*", PROMPT_RESPONSE).as(
+      "modelPrompt",
+    );
+    cy.intercept("POST", "/api/metabot/database/*", PROMPT_RESPONSE).as(
+      "databasePrompt",
+    );
   });
 
   it("should allow to ask questions from the home page", () => {
     cy.createQuestion(MODEL_DETAILS);
     cy.visit("/");
-    runMetabotQuery(PROMPT);
-    verifyMetabotResults();
+
+    cy.findByPlaceholderText(/Ask something like/).type(PROMPT);
+    cy.findByLabelText("Get Answer").click();
+    cy.wait("@databasePrompt");
+    cy.wait("@dataset");
+    cy.findByDisplayValue(PROMPT).should("be.visible");
+    cy.findByText("Gizmo").should("be.visible");
+    cy.findByText("Doohickey").should("not.exist");
 
     cy.findByText("Open Editor").click();
-    runQuestionQuery(MANUAL_QUERY);
-    verifyQuestionResults();
+    cy.findByTestId("native-query-editor")
+      .type("{selectall}{backspace}")
+      .type(MANUAL_QUERY);
+    cy.findByLabelText("Refresh").click();
+    cy.wait("@dataset");
+    cy.findByText("Gizmo").should("be.visible");
+    cy.findByText("Doohickey").should("be.visible");
 
-    runMetabotQuery(PROMPT);
-    verifyMetabotResults();
+    cy.findByLabelText("Get Answer").click();
+    cy.wait("@databasePrompt");
+    cy.wait("@dataset");
+    cy.findByText("Gizmo").should("be.visible");
+    cy.findByText("Doohickey").should("not.exist");
   });
 
-  it("should allow to ask questions from the query builder", () => {
-    cy.createQuestion(MODEL_DETAILS, { visitQuestion: true });
-    openQuestionActions();
-    popover().findByText("Ask Metabot").click();
-    runMetabotQuery(PROMPT);
-    verifyMetabotResults();
-  });
+  it("should allow to ask questions from the query builder when metabot enabled", () => {
+    cy.visit("/");
+    cy.findByPlaceholderText(/Ask something like/).should("not.exist");
 
-  it.skip("should allow to ask questions from collection views", () => {
     cy.createQuestion(MODEL_DETAILS);
+    cy.reload();
+
+    cy.findByPlaceholderText(/Ask something like/).should("be.visible");
+
+    cy.findByText("Products").click();
+    cy.findByLabelText("Move, archive, and more...").click();
+
+    cy.findByText("Ask Metabot").click();
+
+    cy.findByPlaceholderText(/Ask something like/).type(PROMPT);
+    cy.findByLabelText("Get Answer").click();
+    cy.wait("@modelPrompt");
+    cy.wait("@dataset");
+    cy.findByText("Gizmo").should("be.visible");
+
+    cy.findByText("How did I do?");
+
+    cy.request("PUT", "/api/setting/is-metabot-enabled", { value: false });
+
     cy.visit("/collection/root");
-    openCollectionItemMenu(MODEL_DETAILS.name);
-    popover().findByText("Ask Metabot").click();
-    runMetabotQuery(PROMPT);
-    verifyMetabotResults();
+    cy.findByText("Products").click();
+    cy.findByLabelText("Move, archive, and more...").click();
+    cy.findByText("Ask Metabot").should("not.exist");
   });
 });
-
-const runMetabotQuery = prompt => {
-  cy.findByPlaceholderText(/Ask something/)
-    .clear()
-    .type(prompt);
-  cy.findByRole("button", { name: "play icon" }).click();
-  cy.wait("@dataset");
-  cy.findByDisplayValue(prompt).should("be.visible");
-};
-
-const verifyMetabotResults = () => {
-  cy.findByText("Gizmo").should("be.visible");
-  cy.findByText("Doohickey").should("not.exist");
-};
-
-const runQuestionQuery = query => {
-  cy.findByTestId("native-query-editor")
-    .type("{selectall}{backspace}")
-    .type(query);
-  cy.findByRole("button", { name: "refresh icon" }).click();
-  cy.wait("@dataset");
-};
-
-const verifyQuestionResults = () => {
-  cy.findByText("Gizmo").should("be.visible");
-  cy.findByText("Doohickey").should("be.visible");
-};
-
-const openCollectionItemMenu = item => {
-  cy.findByText(item)
-    .closest("tr")
-    .find(".Icon-ellipsis")
-    .click({ force: true });
-};

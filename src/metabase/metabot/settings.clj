@@ -22,7 +22,7 @@
 (defsetting metabot-get-prompt-templates-url
   (deferred-tru "The URL in which metabot versioned prompt templates are stored.")
   :visibility :settings-manager
-  :default "https://mwdsorniw4r4jkvesfyyymuexi0kkjkb.lambda-url.us-east-1.on.aws/")
+  :default "https://stkxezsr2kcnkhusi3fgcc5nqm0ttgfx.lambda-url.us-east-1.on.aws/")
 
 (defsetting metabot-feedback-url
   (deferred-tru "The URL to which metabot feedback is posted.")
