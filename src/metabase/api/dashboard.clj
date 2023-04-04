@@ -571,9 +571,20 @@
      :to-delete to-delete
      :to-create to-create}))
 
-;; TODO - we should use schema to validate the format of the Cards :D
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id/cards"
+(def ^:private UpdatedDashboardCard
+  [:map
+   ;; id can be negative, it indicates a new card and BE should create them
+   [:id                                  int?]
+   [:size_x                              ms/PositiveInt]
+   [:size_y                              ms/PositiveInt]
+   [:row                                 ms/IntGreaterThanOrEqualToZero]
+   [:col                                 ms/IntGreaterThanOrEqualToZero]
+   [:parameter_mappings {:optional true} [:maybe [:sequential [:map
+                                                                [:parameter_id ms/NonBlankString]
+                                                                [:target       :any]]]]]
+   [:series             {:optional true} [:maybe [:sequential map?]]]])
+
+(api/defendpoint PUT "/:id/cards"
   "Update `Cards` on a Dashboard. Request body should have the form:
 
     {:cards [{:id                 ... ; DashboardCard ID
@@ -586,7 +597,8 @@
                                     ...}]}
              ...]}"
   [id :as {{:keys [cards]} :body}]
-  {cards [UpdatedDashboardCard]}
+  {id    ms/PositiveInt
+   cards [:sequential UpdatedDashboardCard]}
   (let [dashboard     (-> (api/write-check Dashboard id)
                           api/check-not-archived
                           (t2/hydrate :ordered_cards))
