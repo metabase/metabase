@@ -19,6 +19,7 @@
     :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.models :refer [Table]]
    [metabase.models.action :as action]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -1165,6 +1166,26 @@
                     (mt/id)
                     "public"
                     "upload_test"
-                    (str (csv-test/csv-file-with ["id,first_name" "one,Luke"])))))
-        ;; TODO - test that the data is actually in the DB. We should do this once the sync/scan PR is completed.
-        ))))
+                    (str (csv-test/csv-file-with ["id,empty,string,bool" "2,,string,true" "3,,string,false"])))))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :name "upload_test" :schema "public" :db_id (mt/id))]
+            (is (some? table))
+            (is (=? {:database_position 0
+                     :database_type     "int4"
+                     :display_name      "ID"
+                     :semantic_type     :type/PK
+                     :base_type         :type/Integer}
+                    (t2/select-one Field :name "id" :table_id (:id table))))
+            (is (=? {:database_position 1
+                     :database_type     "text"
+                     :base_type         :type/Text}
+                    (t2/select-one Field :name "empty" :table_id (:id table))))
+            (is (=? {:database_position 2
+                     :database_type     "varchar"
+                     :base_type         :type/Text}
+                    (t2/select-one Field :name "string" :table_id (:id table))))
+            (is (=? {:database_position 3
+                     :database_type     "bool"
+                     :base_type         :type/Boolean}
+                    (t2/select-one Field :name "bool" :table_id (:id table))))))))))
