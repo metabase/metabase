@@ -1,4 +1,8 @@
-import { restore } from "e2e/support/helpers";
+import {
+  openQuestionActions,
+  restore,
+  visitQuestion,
+} from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -35,7 +39,6 @@ describe("scenarios > metabot", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/metabot/model/*", PROMPT_RESPONSE).as(
       "modelPrompt",
@@ -45,10 +48,11 @@ describe("scenarios > metabot", () => {
     );
   });
 
-  it("should allow to ask questions from the home page", () => {
+  it("should allow to submit prompts based on the database", () => {
     cy.createQuestion(MODEL_DETAILS);
-    cy.visit("/");
+    enableMetabot();
 
+    cy.visit("/");
     cy.findByPlaceholderText(/Ask something like/).type(PROMPT);
     cy.findByLabelText("Get Answer").click();
     cy.wait("@databasePrompt");
@@ -73,33 +77,54 @@ describe("scenarios > metabot", () => {
     cy.findByText("Doohickey").should("not.exist");
   });
 
-  it("should allow to ask questions from the query builder when metabot enabled", () => {
-    cy.visit("/");
-    cy.findByPlaceholderText(/Ask something like/).should("not.exist");
+  it("should allow to submit prompts based on models", () => {
+    cy.createQuestion(MODEL_DETAILS, { idAlias: "modelId" });
+    enableMetabot();
 
-    cy.createQuestion(MODEL_DETAILS);
-    cy.reload();
-
-    cy.findByPlaceholderText(/Ask something like/).should("be.visible");
-
+    cy.visit("/collection/root");
     cy.findByText("Products").click();
     cy.findByLabelText("Move, archive, and more...").click();
-
     cy.findByText("Ask Metabot").click();
-
     cy.findByPlaceholderText(/Ask something like/).type(PROMPT);
     cy.findByLabelText("Get Answer").click();
     cy.wait("@modelPrompt");
     cy.wait("@dataset");
     cy.findByText("Gizmo").should("be.visible");
 
-    cy.findByText("How did I do?");
+    cy.get("@modelId").then(visitQuestion);
+    openQuestionActions();
+    cy.findByText("Ask Metabot").click();
+    cy.findByPlaceholderText(/Ask something like/).type(PROMPT);
+    cy.findByLabelText("Get Answer").click();
+    cy.wait("@modelPrompt");
+    cy.wait("@dataset");
+    cy.findByText("Gizmo").should("be.visible");
+  });
 
-    cy.request("PUT", "/api/setting/is-metabot-enabled", { value: false });
+  it("should not allow to submit prompts when there are no models", () => {
+    enableMetabot();
+    cy.visit("/");
+    cy.findByPlaceholderText(/Ask something like/).should("not.exist");
+  });
+
+  it("should not allow to submit prompts when metabot is not enabled", () => {
+    cy.createQuestion(MODEL_DETAILS, { idAlias: "modelId" });
+
+    cy.visit("/");
+    cy.findByAltText("Metabot").should("be.visible");
+    cy.findByPlaceholderText(/Ask something like/).should("not.exist");
 
     cy.visit("/collection/root");
     cy.findByText("Products").click();
     cy.findByLabelText("Move, archive, and more...").click();
     cy.findByText("Ask Metabot").should("not.exist");
+
+    cy.get("@modelId").then(visitQuestion);
+    openQuestionActions();
+    cy.findByText("Ask Metabot").should("not.exist");
   });
 });
+
+const enableMetabot = () => {
+  cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
+};
