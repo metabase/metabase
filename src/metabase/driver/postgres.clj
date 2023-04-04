@@ -35,11 +35,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
-   (java.sql
-     ResultSet
-     ResultSetMetaData
-     Time
-     Types)
+   (java.sql ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (java.util Date UUID)))
 
