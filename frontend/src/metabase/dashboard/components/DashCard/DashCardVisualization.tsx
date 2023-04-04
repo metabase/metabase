@@ -221,9 +221,7 @@ function DashCardVisualization({
 
   return (
     <WrappedVisualization
-      // Visualization has to be converted to TypeScript before we can remove the ts-ignore
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
+      // Visualization has to be converted to TypeScript
       className={cx("flex-full overflow-hidden", {
         "pointer-events-none": isEditingDashboardLayout,
       })}

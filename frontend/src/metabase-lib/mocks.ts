@@ -12,6 +12,7 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 
+import type { TableId } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -123,9 +124,7 @@ export function getComposedModel(
   const question = getStructuredModel(card).composeDataset();
   const query = question.query() as StructuredQuery;
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  question._metadata.tables[query.sourceTableId()] = ORDERS;
+  question._metadata.tables[query.sourceTableId() as TableId] = ORDERS;
 
   return question;
 }

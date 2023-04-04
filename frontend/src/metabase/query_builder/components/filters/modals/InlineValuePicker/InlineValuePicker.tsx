@@ -75,8 +75,7 @@ function ValuesInput({
   if (!isBetween) {
     return (
       <FieldValuesWidget
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore: this component doesn't have types or propTypes
+        // this component doesn't have types or propTypes
         value={filterArguments}
         color="brand"
         onChange={onChange}

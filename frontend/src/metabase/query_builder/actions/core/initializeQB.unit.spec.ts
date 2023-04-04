@@ -357,8 +357,6 @@ describe("QB Actions > initializeQB", () => {
           const { dispatch } = await setup({
             question: question.setCard({
               ...question.card(),
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore
               archived: true,
             }),
           });

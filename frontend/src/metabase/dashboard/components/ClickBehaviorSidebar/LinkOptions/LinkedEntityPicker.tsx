@@ -150,9 +150,7 @@ function LinkedEntityPicker({
   const handleResetLinkTargetType = useCallback(() => {
     updateSettings({
       type: clickBehavior.type,
-
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
+      // @ts-expect-error wrong type definitions
       linkType: null,
     });
   }, [clickBehavior, updateSettings]);

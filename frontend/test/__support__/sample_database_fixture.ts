@@ -33,12 +33,12 @@ function aliasTablesAndFields(metadata: Metadata) {
   for (const database of Object.values(metadata.databases)) {
     for (const table of database.tables) {
       if (!(table.name in database)) {
-        // @ts-ignore
+        // @ts-expect-error
         database[table.name] = table;
       }
       for (const field of table.fields) {
         if (!(field.name in table)) {
-          // @ts-ignore
+          // @ts-expect-error
           table[field.name] = field;
         }
       }

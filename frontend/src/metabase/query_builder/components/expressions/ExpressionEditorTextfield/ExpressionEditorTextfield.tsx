@@ -444,8 +444,7 @@ class ExpressionEditorTextfield extends React.Component<
     },
     {
       name: "chooseSuggestion",
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore // Based on typings null is not a valid value, but bindKey is assigned dynamically if there are suggestions available.
+      // @ts-expect-error Based on typings null is not a valid value, but bindKey is assigned dynamically if there are suggestions available.
       bindKey: null,
       exec: () => {
         this.chooseSuggestion();

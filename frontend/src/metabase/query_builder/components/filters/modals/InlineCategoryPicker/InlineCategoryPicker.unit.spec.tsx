@@ -104,15 +104,15 @@ const remappedCategoryField = new Field({
   metadata,
 });
 
-// @ts-ignore
+// @ts-expect-error
 metadata.fields[smallCategoryField.id] = smallCategoryField;
-// @ts-ignore
+// @ts-expect-error
 metadata.fields[largeCategoryField.id] = largeCategoryField;
-// @ts-ignore
+// @ts-expect-error
 metadata.fields[emptyCategoryField.id] = emptyCategoryField;
-// @ts-ignore
+// @ts-expect-error
 metadata.fields[nullCategoryField.id] = nullCategoryField;
-// @ts-ignore
+// @ts-expect-error
 metadata.fields[remappedCategoryField.id] = remappedCategoryField;
 
 const card = {

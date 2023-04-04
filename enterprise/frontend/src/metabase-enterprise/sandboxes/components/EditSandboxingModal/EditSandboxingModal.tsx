@@ -202,8 +202,7 @@ const EditSandboxingModal = ({
           <div className="flex align-center my2 text-error">
             {typeof error === "string"
               ? error
-              : // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
+              : // @ts-expect-error need to use custom type for Error
                 error.data.message ?? ERROR_MESSAGE}
           </div>
         )}
@@ -309,7 +308,7 @@ const TargetName = ({ policy, target }: TargetNameProps) => {
 
       return (
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
+        // @ts-expect-error
         <QuestionLoader
           questionId={policy.card_id}
           questionObject={

@@ -21,8 +21,7 @@ const QUERY = Question.create({
   metadata,
 })
   .query()
-  // eslint-disable-next-line
-  // @ts-ignore
+  // @ts-expect-error wrong type definition
   .aggregate(["count"])
   .filter(["time-interval", ["field", ORDERS.CREATED_AT.id, null], -30, "day"])
   .filter(["=", ["field", ORDERS.TOTAL.id, null], 1234])

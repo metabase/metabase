@@ -43,8 +43,7 @@ function CategoryFieldInput({
   return (
     <FieldValuesWidgetContainer>
       <StyledFieldValuesWidget
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore, typescript is very confused about the value type for this non-tsx component
+        // typescript is very confused about the value type for this non-tsx component
         value={[String(value ?? "")]}
         fields={[field]}
         onChange={(newVals: string[]) => onChange(newVals[0])}

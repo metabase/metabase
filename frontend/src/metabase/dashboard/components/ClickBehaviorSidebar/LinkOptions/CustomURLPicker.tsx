@@ -59,9 +59,7 @@ function CustomURLPicker({
   const handleReset = useCallback(() => {
     updateSettings({
       type: clickBehavior.type,
-
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
+      // @ts-expect-error wrong type definition
       linkType: null,
     });
   }, [clickBehavior, updateSettings]);

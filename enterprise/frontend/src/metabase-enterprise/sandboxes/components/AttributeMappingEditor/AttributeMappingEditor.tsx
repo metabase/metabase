@@ -59,8 +59,7 @@ const AttributeMappingEditor = ({
         {shouldUseSavedQuestion ? t`Parameter or variable` : t`Column`}
       </div>
     }
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
+    // @ts-expect-error MappingEditor needs to be converted to TS
     renderValueInput={({ value, onChange }) =>
       !shouldUseSavedQuestion && policy.table_id != null ? (
         <div style={{ minWidth: 200 }}>
