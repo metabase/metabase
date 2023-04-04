@@ -524,6 +524,7 @@
                    :name                (:name card)
                    :collection_position nil
                    :collection_preview  true
+                   :database_id         nil
                    :display             "table"
                    :description         nil
                    :entity_id           (:entity_id card)
@@ -582,30 +583,30 @@
       (mt/with-temp Collection [collection {:name "Debt Collection"}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-some-children-of-collection collection
-          (is (= (-> (mapv default-item [{:name "Acme Products", :model "pulse", :entity_id true}
-                                         {:name "Birthday Card", :description nil, :model "card",
-                                          :collection_preview false, :display "table", :entity_id true}
-                                         {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true}
-                                         {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id true}])
-                     (assoc-in [1 :fully_parametrized] true))
-                 (mt/boolean-ids-and-timestamps
-                  (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
+          (is (partial= (-> (mapv default-item [{:name "Acme Products", :model "pulse", :entity_id true}
+                                                {:name               "Birthday Card", :description nil, :model "card",
+                                                 :collection_preview false, :display "table", :entity_id true}
+                                                {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true}
+                                                {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id true}])
+                            (assoc-in [1 :fully_parametrized] true))
+                        (mt/boolean-ids-and-timestamps
+                         (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
 
       (testing "...and that you can also filter so that you only see the children you want to see"
         (mt/with-temp Collection [collection {:name "Art Collection"}]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
           (with-some-children-of-collection collection
-            (is (= ()
-                   (mt/boolean-ids-and-timestamps
-                    (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=no_models"))))))
-            (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
-                   (mt/boolean-ids-and-timestamps
-                    (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard"))))))
-            (is (= [(-> {:name "Birthday Card", :description nil, :model "card",
-                         :collection_preview false, :display "table", :entity_id true}
-                        default-item
-                        (assoc :fully_parametrized true))
-                    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
+            (is (partial= ()
+                          (mt/boolean-ids-and-timestamps
+                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=no_models"))))))
+            (is (partial= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
+                          (mt/boolean-ids-and-timestamps
+                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard"))))))
+            (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
+                                :collection_preview false, :display "table", :entity_id true}
+                               default-item
+                               (assoc :fully_parametrized true))
+                           (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))))))
 
@@ -614,8 +615,8 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-some-children-of-collection collection
           (t2/update! Dashboard {:collection_id (u/the-id collection)} {:archived true})
-          (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
-                 (mt/boolean-ids-and-timestamps
+          (is (partial= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
+                        (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))
     (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
                     User       [{user1-id :id} {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}]
@@ -824,25 +825,25 @@
       (mt/with-temp* [Collection         [collection {:namespace "snippets", :name "My Snippet Collection"}]
                       NativeQuerySnippet [snippet    {:collection_id (:id collection), :name "My Snippet"}]
                       NativeQuerySnippet [archived   {:collection_id (:id collection) , :name "Archived Snippet", :archived true}]]
-        (is (= [{:id        (:id snippet)
-                 :name      "My Snippet"
-                 :entity_id (:entity_id snippet)
-                 :model     "snippet"}]
-               (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection))))))
+        (is (partial= [{:id        (:id snippet)
+                        :name      "My Snippet"
+                        :entity_id (:entity_id snippet)
+                        :model     "snippet"}]
+                      (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection))))))
 
         (testing "\nShould be able to fetch archived Snippets"
-          (is (= [{:id        (:id archived)
-                   :name      "Archived Snippet"
-                   :entity_id (:entity_id archived)
-                   :model     "snippet"}]
-                 (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?archived=true" (:id collection)))))))
+          (is (partial= [{:id        (:id archived)
+                          :name      "Archived Snippet"
+                          :entity_id (:entity_id archived)
+                          :model     "snippet"}]
+                        (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?archived=true" (:id collection)))))))
 
         (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
-          (is (= [{:id        (:id snippet)
-                   :name      "My Snippet"
-                   :entity_id (:entity_id snippet)
-                   :model     "snippet"}]
-                 (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))))))
+          (is (partial= [{:id        (:id snippet)
+                          :name      "My Snippet"
+                          :entity_id (:entity_id snippet)
+                          :model     "snippet"}]
+                        (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))))))
 
 
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
@@ -902,12 +903,12 @@
 (deftest fetch-personal-collection-items-test
   (testing "GET /api/collection/:id/items"
     (testing "If we have a sub-Collection of our Personal Collection, that should show up"
-      (is (= lucky-personal-subcollection-item
-             (api-get-lucky-personal-collection-with-subcollection :lucky))))
+      (is (partial= lucky-personal-subcollection-item
+                    (api-get-lucky-personal-collection-with-subcollection :lucky))))
 
     (testing "sub-Collections of other's Personal Collections should show up for admins as well"
-      (is (= lucky-personal-subcollection-item
-             (api-get-lucky-personal-collection-with-subcollection :crowberto))))))
+      (is (partial= lucky-personal-subcollection-item
+                    (api-get-lucky-personal-collection-with-subcollection :crowberto))))))
 
 
 ;;; ------------------------------------ Effective Ancestors & Effective Children ------------------------------------
@@ -957,8 +958,8 @@
                 :effective_location  "/"}
                (api-get-collection-ancestors a))))
       (testing "children"
-        (is (= (map collection-item ["B" "C"])
-               (api-get-collection-children a))))))
+        (is (partial= (map collection-item ["B" "C"])
+                      (api-get-collection-children a))))))
 
   (testing "ok, does a second-level Collection have its parent and its children?"
     (with-collection-hierarchy [a b c d g]
@@ -967,8 +968,8 @@
                 :effective_location  "/A/"}
                (api-get-collection-ancestors c))))
       (testing "children"
-        (is (= (map collection-item ["D" "G"])
-               (api-get-collection-children c))))))
+        (is (partial= (map collection-item ["D" "G"])
+                      (api-get-collection-children c))))))
 
   (testing "what about a third-level Collection?"
     (with-collection-hierarchy [a b c d g]
@@ -1009,8 +1010,8 @@
                   :effective_location  "/A/"}
                  (api-get-collection-ancestors c))))
         (testing "children"
-          (is (= (map collection-item ["E" "F"])
-                 (api-get-collection-children c)))))))
+          (is (partial= (map collection-item ["E" "F"])
+                        (api-get-collection-children c)))))))
 
   (testing "Make sure we can collapse multiple generations. For A: removing C and D should move up E and F"
     (with-collection-hierarchy [a b e f g]
@@ -1019,8 +1020,8 @@
                 :effective_location  "/"}
                (api-get-collection-ancestors a))))
       (testing "children"
-        (is (= (map collection-item ["B" "E" "F"])
-               (api-get-collection-children a))))))
+        (is (partial= (map collection-item ["B" "E" "F"])
+                      (api-get-collection-children a))))))
 
   (testing "Let's make sure the 'archived` option works on Collections, nested or not"
     (with-collection-hierarchy [a b c]
@@ -1030,8 +1031,8 @@
                 :effective_location  "/"}
                (api-get-collection-ancestors a :archived true))))
       (testing "children"
-        (is (= [(collection-item "B")]
-               (api-get-collection-children a :archived true)))))))
+        (is (partial= [(collection-item "B")]
+                       (api-get-collection-children a :archived true)))))))
 
 (deftest personal-collection-ancestors-test
   (testing "Effective ancestors of a personal collection will contain a :personal_owner_id"
@@ -1076,17 +1077,17 @@
 (deftest fetch-root-items-collection-test
   (testing "GET /api/collection/root/items"
     (testing "Make sure you can see everything for Users that can see everything"
-      (is (= [(-> {:name "Birthday Card", :description nil, :model "card",
-                   :collection_preview false, :display "table"}
-                  default-item
-                  (assoc :fully_parametrized true))
-              (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
-              (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
-             (with-some-children-of-collection nil
-               (-> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
-                   (remove-non-test-items &ids)
-                   remove-non-personal-collections
-                   mt/boolean-ids-and-timestamps))))
+      (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
+                          :collection_preview false, :display "table"}
+                         default-item
+                         (assoc :fully_parametrized true))
+                     (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
+                     (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
+                    (with-some-children-of-collection nil
+                      (-> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
+                          (remove-non-test-items &ids)
+                          remove-non-personal-collections
+                          mt/boolean-ids-and-timestamps))))
 
       (testing "... with limits and offsets"
         (with-some-children-of-collection nil
@@ -1121,16 +1122,16 @@
             (mt/with-temp* [PermissionsGroup           [group]
                             PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
               (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-              (is (= [(-> {:name "Birthday Card", :description nil, :model "card",
-                           :collection_preview false, :display "table"}
-                          default-item
-                          (assoc :fully_parametrized true))
-                      (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
-                      (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
-                     (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
-                         (remove-non-test-items &ids)
-                         remove-non-personal-collections
-                         mt/boolean-ids-and-timestamps))))))))
+              (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
+                                  :collection_preview false, :display "table"}
+                                 default-item
+                                 (assoc :fully_parametrized true))
+                             (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
+                             (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
+                            (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
+                                (remove-non-test-items &ids)
+                                remove-non-personal-collections
+                                mt/boolean-ids-and-timestamps))))))))
 
     (testing "Personal collections do not show up as collection items"
       (is (= []
@@ -1273,21 +1274,21 @@
     (testing "Do top-level collections show up as children of the Root Collection?"
       (with-collection-hierarchy [a b c d e f g]
         (testing "children"
-          (is (= (map collection-item ["A"])
-                 (remove-non-test-collections (api-get-root-collection-children)))))))
+          (is (partial= (map collection-item ["A"])
+                        (remove-non-test-collections (api-get-root-collection-children)))))))
 
     (testing "...and collapsing children should work for the Root Collection as well"
       (with-collection-hierarchy [b d e f g]
         (testing "children"
-          (is (= (map collection-item ["B" "D" "F"])
-                 (remove-non-test-collections (api-get-root-collection-children)))))))
+          (is (partial= (map collection-item ["B" "D" "F"])
+                        (remove-non-test-collections (api-get-root-collection-children)))))))
 
     (testing "does `archived` work on Collections as well?"
       (with-collection-hierarchy [a b d e f g]
         (t2/update! Collection (u/the-id a) {:archived true})
         (testing "children"
-          (is (= [(collection-item "A")]
-                 (remove-non-test-collections (api-get-root-collection-children :archived true)))))))
+          (is (partial= [(collection-item "A")]
+                        (remove-non-test-collections (api-get-root-collection-children :archived true)))))))
 
     (testing "\n?namespace= parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
@@ -1330,15 +1331,15 @@
                     (if (sequential? items)
                       (map :name items)
                       items)))]
-          (is (= [{:id        (:id snippet)
-                   :name      "My Snippet"
-                   :entity_id (:entity_id snippet)
-                   :model     "snippet"}
-                  {:id        (:id snippet-2)
-                   :name      "My Snippet 2"
-                   :entity_id (:entity_id snippet-2)
-                   :model     "snippet"}]
-                 (only-test-items (:data (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=snippets")))))
+          (is (partial= [{:id        (:id snippet)
+                          :name      "My Snippet"
+                          :entity_id (:entity_id snippet)
+                          :model     "snippet"}
+                         {:id        (:id snippet-2)
+                          :name      "My Snippet 2"
+                          :entity_id (:entity_id snippet-2)
+                          :model     "snippet"}]
+                        (only-test-items (:data (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=snippets")))))
 
           (testing "\nSnippets should not come back for the default namespace"
             (is (= ["My Dashboard"]
