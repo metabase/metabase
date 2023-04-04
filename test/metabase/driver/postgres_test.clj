@@ -37,7 +37,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.sql DatabaseMetaData)))
+   (java.sql DatabaseMetaData)
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -1157,7 +1158,7 @@
               (str/ends-with? ".p12"))))))
 
 (deftest load-from-csv-test
-  (testing "Upload a csv file"
+  (testing "Upload a CSV file"
     (mt/test-driver :postgres
       (mt/with-empty-db
         (let [table-name (driver/load-from-csv
@@ -1208,3 +1209,18 @@
                                                     :query {:source-table (:id table)
                                                             :aggregation [[:count]]}})
                                  mt/rows)))))))))))
+
+(deftest load-from-csv-failed-test
+  (mt/test-driver :postgres
+    (mt/with-empty-db
+      (testing "Can't upload a CSV with missing values"
+        (is (thrown-with-msg?
+              ExceptionInfo #"Error executing write query: ERROR: missing data for column \"column_that_doesnt_have_a_value\""
+             (driver/load-from-csv
+              driver/*driver*
+              (mt/id)
+              "public"
+              "upload_test"
+              (str (csv-test/csv-file-with ["id,column_that_doesnt_have_a_value" "2"]))))))
+      (testing "Check that the table isn't created if the upload fails"
+        (is (nil? (t2/select-one Table :schema "public" :db_id (mt/id))))))))

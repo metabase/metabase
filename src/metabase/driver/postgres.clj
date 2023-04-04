@@ -776,9 +776,10 @@
   [driver db-id schema-name table-name file-name]
   (let [col->type   (update-vals (csv/detect-schema file-name) csv->database-type)
         cols        (keys col->type)
-        table-name  (str table-name "_" (t/format "yyyyMMddHHmmss" (t/local-date-time)))]
+        table-name  (str table-name (t/format "_yyyyMMddHHmmss" (t/local-date-time)))]
     (driver/create-table driver db-id schema-name table-name col->type)
     (let [sql (load-from-csv-sql schema-name table-name cols file-name)
           upload-result (qp.writeback/execute-write-sql! db-id sql)]
       (when (pos? (:rows-affected upload-result))
-        table-name))))
+        table-name))
+    (driver/drop-table driver db-id schema-name table-name col->type)))

@@ -800,19 +800,6 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti create-table
-  "Create a table named `table-name` with a given `schema-name`."
-  {:added "0.47.0", :arglists '([driver db-id schema-name table-name col->type])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmulti load-from-csv
-  "Loads a table from a CSV file. If the table does not exist, it will be created.
-   If the table already exists, it will fail. Returns the name of the newly created table."
-  {:arglists '([driver database schema-name table-name file-name]), :added "0.47.0"}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
 (defmulti table-rows-sample
   "Processes a sample of rows produced by `driver`, from the `table`'s `fields`
   using the query result processing function `rff`.
@@ -824,5 +811,28 @@
   `:truncation-size`: size to truncate text fields to if the driver supports
   expressions."
   {:arglists '([driver table fields rff opts]), :added "0.46.0"}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    Upload                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmulti create-table
+  "Create a table named `table-name` with a given `schema-name`. If the table already exists it will throw an error."
+  {:added "0.47.0", :arglists '([driver db-id schema-name table-name col->type])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti drop-table
+  "Drop a table named `table-name` with a given `schema-name`. If the table doesn't exist it will not be dropped."
+  {:added "0.47.0", :arglists '([driver db-id schema-name table-name])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti load-from-csv
+  "Loads a table from a CSV file. If the table already exists, it will fail. Returns the name of the newly created
+   table."
+  {:added "0.47.0", :arglists '([driver database schema-name table-name file-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
