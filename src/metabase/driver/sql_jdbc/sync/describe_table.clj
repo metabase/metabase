@@ -13,12 +13,10 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.database :as database]
    [metabase.models.table :as table]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 
@@ -156,20 +154,20 @@
   "Returns a transducer for computing metatdata about the fields in `table`."
   [driver table]
   (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
-                 (let [base-type      (database-type->base-type-or-warn driver database-type)
-                       semantic-type  (calculated-semantic-type driver column-name database-type)
-                       db             (table/database table)
-                       json-unfolding (boolean (and (isa? base-type :type/JSON)
-                                                    (driver/database-supports? driver :nested-field-columns db)
-                                                    (database/json-unfolding-default db)))]
+                 (let [base-type (database-type->base-type-or-warn driver database-type)
+                       semantic-type (calculated-semantic-type driver column-name database-type)]
                    (merge
                     (u/select-non-nil-keys col [:name :database-type :field-comment :database-required :database-is-auto-increment])
                     {:base-type         base-type
-                     :database-position i
-                     :json-unfolding    json-unfolding}
+                     :database-position i}
                     (when semantic-type
                       {:semantic-type semantic-type})
-                    (when json-unfolding
+                    (when (and
+                           (isa? base-type :type/JSON)
+                           (driver/database-supports?
+                            driver
+                            :nested-field-columns
+                            (table/database table)))
                       {:visibility-type :details-only}))))))
 
 (defmulti describe-table-fields
@@ -387,7 +385,6 @@
                             :base-type         curr-type
                             ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
                             :database-position 0
-                            :json-unfolding    false
                             :visibility-type   :normal
                             :nfc-path          field-path})))
         field-hash   (apply hash-set (filter some? valid-fields))]
@@ -405,33 +402,20 @@
           json-fields           (filter #(isa? (:base-type %) :type/JSON) table-fields)]
       (if (nil? (seq json-fields))
         #{}
-        (let [existing-fields-by-name (m/index-by :name (t2/select 'Field :table_id (u/the-id table)))
-              unfold-json-fields      (filter (fn [field]
-                                                ;; unfold json if the field has json_unfolding = true
-                                                ;; don't unfold json if the field has json_unfolding = false
-                                                ;; otherwise if the field doesn't exist
-                                                ;; use the database default
-                                                (let [existing-field (existing-fields-by-name (:name field))]
-                                                  (or (:json_unfolding existing-field)
-                                                      (and (nil? existing-field)
-                                                           (database/json-unfolding-default (table/database table))))))
-                                              json-fields)]
-          (if (empty? unfold-json-fields)
-            #{}
-            (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
-              (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) unfold-json-fields)
-                    table-identifier (apply hx/identifier :table table-identifier-info)
-                    sql-args         (sql.qp/format-honeysql driver {:select (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)
-                                                                     :from   [(sql.qp/maybe-wrap-unaliased-expr table-identifier)]
-                                                                     :limit  metadata-queries/nested-field-sample-limit})
-                    query            (jdbc/reducible-query spec sql-args {:identifiers identity})
-                    field-types      (transduce describe-json-xform describe-json-rf query)
-                    fields           (field-types->fields field-types)]
-                (if (> (count fields) max-nested-field-columns)
-                  (do
-                    (log/warn
-                     (format
-                      "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
-                      max-nested-field-columns))
-                    (set (take max-nested-field-columns fields)))
-                  fields)))))))))
+        (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+          (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
+                table-identifier (apply hx/identifier :table table-identifier-info)
+                sql-args         (sql.qp/format-honeysql driver {:select (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)
+                                                                 :from   [(sql.qp/maybe-wrap-unaliased-expr table-identifier)]
+                                                                 :limit  metadata-queries/nested-field-sample-limit})
+                query            (jdbc/reducible-query spec sql-args {:identifiers identity})
+                field-types      (transduce describe-json-xform describe-json-rf query)
+                fields           (field-types->fields field-types)]
+            (if (> (count fields) max-nested-field-columns)
+              (do
+                (log/warn
+                 (format
+                  "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
+                  max-nested-field-columns))
+                (set (take max-nested-field-columns fields)))
+              fields)))))))

@@ -1,12 +1,12 @@
 (ns metabase.lib.field
   (:require
-   [metabase.lib.convert :as lib.convert]
-   [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -81,24 +81,29 @@
     (update metadata :name (fn [field-name]
                              (str parent-name \. field-name)))))
 
-(defmethod lib.metadata.calculation/metadata :metadata/field
+(defmethod lib.metadata.calculation/metadata-method :metadata/field
   [_query _stage-number field-metadata]
   field-metadata)
 
 ;;; TODO -- base type should be affected by `temporal-unit`, right?
-(defmethod lib.metadata.calculation/metadata :field
-  [query stage-number [_tag {:keys [base-type temporal-unit], :as opts} :as field-ref]]
+(defmethod lib.metadata.calculation/metadata-method :field
+  [query stage-number [_tag {:keys [source-field effective-type base-type temporal-unit join-alias], :as opts} :as field-ref]]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
         metadata       (merge
-                        {:lib/type  :metadata/field
-                         :field_ref field-ref}
+                        {:lib/type :metadata/field}
                         field-metadata
                         {:display_name (or (:display-name opts)
                                            (lib.metadata.calculation/display-name query stage-number field-ref))}
+                        (when effective-type
+                          {:effective_type effective-type})
                         (when base-type
                           {:base_type base-type})
                         (when temporal-unit
-                          {:unit temporal-unit}))]
+                          {::temporal-unit temporal-unit})
+                        (when join-alias
+                          {::join-alias join-alias})
+                        (when source-field
+                          {:fk_field_id source-field}))]
     (cond->> metadata
       (:parent_id metadata) (add-parent-column-metadata query))))
 
@@ -131,47 +136,67 @@
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))
 
-(defmulti ^:private ->field
-  {:arglists '([query stage-number field])}
-  (fn [_query _stage-number field]
-    (lib.dispatch/dispatch-value field)))
+(defmethod lib.temporal-bucket/current-temporal-bucket-method :field
+  [[_tag opts _id-or-name]]
+  (:temporal-unit opts))
 
-(defmethod ->field :field
-  [_query _stage-number field-clause]
-  field-clause)
+(defmethod lib.temporal-bucket/current-temporal-bucket-method :metadata/field
+  [metadata]
+  (::temporal-unit metadata))
 
-(defmethod ->field :metadata/field
-  [_query _stage-number {base-type :base_type, field-id :id, field-name :name, field-ref :field_ref, :as _field-metadata}]
-  (cond-> (or (when field-ref
-                (lib.convert/->pMBQL field-ref))
-              [:field {} (or field-id
-                             field-name)])
-    base-type (lib.options/update-options assoc :base-type base-type)
-    true      lib.options/ensure-uuid))
+(defmethod lib.temporal-bucket/temporal-bucket-method :field
+  [[_tag options id-or-name] unit]
+  (if unit
+    [:field (assoc options :temporal-unit unit) id-or-name]
+    [:field (dissoc options :temporal-unit) id-or-name]))
 
-(defmethod ->field :dispatch-type/integer
-  [query _stage-number field-id]
-  (lib.metadata/field query field-id))
+(defmethod lib.temporal-bucket/temporal-bucket-method :metadata/field
+  [metadata unit]
+  (assoc metadata ::temporal-unit unit))
 
-;;; Pass in a function that takes `query` and `stage-number` to support ad-hoc usage in tests etc
-(defmethod ->field :dispatch-type/fn
-  [query stage-number f]
-  (f query stage-number))
+(defmethod lib.join/current-join-alias-method :field
+  [[_tag opts]]
+  (get opts :join-alias))
 
-(defmethod lib.temporal-bucket/temporal-bucket* :field
-  [[_field options id-or-name] unit]
-  [:field (assoc options :temporal-unit unit) id-or-name])
-
-(mu/defn field :- :mbql.clause/field
-  "Create a `:field` clause."
-  ([query x]
-   (->field query -1 x))
-  ([query stage-number x]
-   (->field query stage-number x)))
+(defmethod lib.join/current-join-alias-method :metadata/field
+  [metadata]
+  (::join-alias metadata))
 
 (defmethod lib.join/with-join-alias-method :field
-  [field-ref join-alias]
-  (lib.options/update-options field-ref assoc :join-alias join-alias))
+  [[_tag opts id-or-name] join-alias]
+  (if join-alias
+    [:field (assoc opts :join-alias join-alias) id-or-name]
+    [:field (dissoc opts :join-alias) id-or-name]))
+
+(defmethod lib.join/with-join-alias-method :metadata/field
+  [metadata join-alias]
+  (assoc metadata ::join-alias join-alias))
+
+(defmethod lib.ref/ref-method :field
+  [field-clause]
+  field-clause)
+
+(defmethod lib.ref/ref-method :metadata/field
+  [metadata]
+  (case (:lib/source metadata)
+    :source/aggregation (lib.aggregation/column-metadata->aggregation-ref metadata)
+    :source/expressions (lib.expression/column-metadata->expression-ref metadata)
+    (let [options          (merge
+                            {:lib/uuid       (str (random-uuid))
+                             :base-type      (:base_type metadata)
+                             :effective-type ((some-fn :effective_type :base_type) metadata)}
+                            (when-let [join-alias (::join-alias metadata)]
+                              {:join-alias join-alias})
+                            (when-let [temporal-unit (::temporal-unit metadata)]
+                              {:temporal-unit temporal-unit})
+                            (when-let [source-field-id (:fk_field_id metadata)]
+                              {:source-field source-field-id})
+                            ;; TODO -- binning options.
+                            )
+          always-use-name? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))]
+      [:field options (if always-use-name?
+                        (:name metadata)
+                        (or (:id metadata) (:name metadata)))])))
 
 (defn fields
   "Specify the `:fields` for a query."
@@ -183,6 +208,9 @@
    (fields query -1 xs))
 
   ([query stage-number xs]
-   (let [xs (mapv #(->field query stage-number %)
+   (let [xs (mapv (fn [x]
+                    (lib.ref/ref (if (fn? x)
+                                   (x query stage-number)
+                                   x)))
                   xs)]
      (lib.util/update-query-stage query stage-number assoc :fields xs))))

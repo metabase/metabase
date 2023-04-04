@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import cx from "classnames";
 import moment, { Moment } from "moment-timezone";
@@ -13,7 +12,7 @@ import { CalendarDay } from "./Calendar.styled";
 
 export type SelectAll = "after" | "before";
 
-type Props = {
+export type CalendarProps = {
   initial?: Moment;
   selected?: Moment;
   selectedEnd?: Moment;
@@ -33,8 +32,8 @@ type State = {
   current?: Moment;
 };
 
-export default class Calendar extends Component<Props, State> {
-  constructor(props: Props) {
+export default class Calendar extends Component<CalendarProps, State> {
+  constructor(props: CalendarProps) {
     super(props);
     this.state = {
       current: moment(props.initial || undefined),
@@ -45,7 +44,7 @@ export default class Calendar extends Component<Props, State> {
     isRangePicker: true,
   };
 
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: CalendarProps) {
     if (
       // `selected` became null or not null
       (nextProps.selected == null) !== (this.props.selected == null) ||
@@ -157,6 +156,11 @@ export default class Calendar extends Component<Props, State> {
     const weeks = [];
     const firstDayOfWeek = getFirstDayOfWeekIndex();
     const date = moment(current).startOf("month").isoWeekday(firstDayOfWeek);
+
+    // if set week doesn't start with 1st day of month, then add the previous week
+    if (date.date() > 1) {
+      date.add(-1, "w");
+    }
 
     let done = false;
     let monthIndex = date.month();

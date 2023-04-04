@@ -313,12 +313,3 @@
       (let [db (first (t2/insert-returning-instances! Database (dissoc (mt/with-temp-defaults Database) :details)))]
         (is (partial= {:details {}}
                       db))))))
-
-(deftest ^:parallel json-unfolding-default-test
-  (testing "JSON Unfolding database support details behave as they're supposed to"
-    (are [details expected] (= expected
-                               (database/json-unfolding-default {:details details}))
-      {}                      true
-      {:json-unfolding nil}   true
-      {:json-unfolding true}  true
-      {:json-unfolding false} false)))

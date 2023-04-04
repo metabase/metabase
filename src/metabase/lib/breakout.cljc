@@ -37,5 +37,5 @@
    stage-number :- :int]
   (when-let [breakout-exprs (not-empty (:breakout (lib.util/query-stage query stage-number)))]
     (mapv (fn [field-ref]
-            (assoc (lib.metadata.calculation/metadata query stage-number field-ref) :source :breakout))
+            (assoc (lib.metadata.calculation/metadata query stage-number field-ref) :lib/source :source/breakouts))
           breakout-exprs)))

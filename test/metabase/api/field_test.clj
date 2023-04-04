@@ -4,8 +4,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.field :as api.field]
-   [metabase.driver :as driver]
-   [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Field FieldValues Table]]
    [metabase.sync :as sync]
@@ -86,7 +84,6 @@
                       :description
                       :visibility_type
                       :semantic_type
-                      :json_unfolding
                       :fk_target_field_id
                       :nfc_path]))
 
@@ -106,7 +103,6 @@
                     :description        nil
                     :semantic_type      nil
                     :visibility_type    :normal
-                    :json_unfolding     false
                     :fk_target_field_id nil
                     :nfc_path           nil}
                    original-val)))
@@ -115,7 +111,6 @@
                                                                                   :display_name    "yay"
                                                                                   :description     "foobar"
                                                                                   :semantic_type   :type/Name
-                                                                                  :json_unfolding  true
                                                                                   :visibility_type :sensitive
                                                                                   :nfc_path        ["bob" "dobbs"]})
           (let [updated-val (simple-field-details (t2/select-one Field :id field-id))]
@@ -125,7 +120,6 @@
                       :description        "foobar"
                       :semantic_type      :type/Name
                       :visibility_type    :sensitive
-                      :json_unfolding     true
                       :fk_target_field_id nil
                       :nfc_path           ["bob" "dobbs"]}
                      updated-val)))
@@ -139,7 +133,6 @@
                       :description        nil
                       :semantic_type      nil
                       :visibility_type    :sensitive
-                      :json_unfolding     true
                       :fk_target_field_id nil
                       :nfc_path           nil}
                      (simple-field-details (t2/select-one Field :id field-id)))))))))
@@ -515,7 +508,6 @@
                 :visibility_type    :normal
                 :semantic_type      :type/FK
                 :fk_target_field_id true
-                :json_unfolding     false
                 :nfc_path           nil}
                (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one Field :id field-id-2))))))
       (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type nil})
@@ -526,7 +518,6 @@
                 :visibility_type    :normal
                 :semantic_type      nil
                 :fk_target_field_id false
-                :json_unfolding     false
                 :nfc_path           nil}
                (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one Field :id field-id-2)))))))))
 
@@ -545,7 +536,6 @@
                   :visibility_type    :normal
                   :semantic_type      :type/FK
                   :fk_target_field_id true
-                  :json_unfolding     false
                   :nfc_path           nil}
                  (mt/boolean-ids-and-timestamps before-change))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-3) {:fk_target_field_id field-id-2})
@@ -557,7 +547,6 @@
                     :visibility_type    :normal
                     :semantic_type      :type/FK
                     :fk_target_field_id true
-                    :json_unfolding     false
                     :nfc_path           nil}
                    (mt/boolean-ids-and-timestamps after-change)))
             (is (not= (:fk_target_field_id before-change)
@@ -575,7 +564,6 @@
                 :visibility_type    :normal
                 :semantic_type      nil
                 :fk_target_field_id false
-                :json_unfolding     false
                 :nfc_path           nil}
                (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one Field :id field-id-2))))))
       (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type      :type/FK
@@ -587,7 +575,6 @@
                 :visibility_type    :normal
                 :semantic_type      :type/FK
                 :fk_target_field_id true
-                :json_unfolding     false
                 :nfc_path           nil}
                (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one Field :id field-id-2)))))))))
 
@@ -605,7 +592,6 @@
                   :visibility_type    :normal
                   :semantic_type      :type/FK
                   :fk_target_field_id true
-                  :json_unfolding     false
                   :nfc_path           nil}
                  (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one Field :id field-id-2))))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:description "foo"})
@@ -616,7 +602,6 @@
                   :visibility_type    :normal
                   :semantic_type      :type/FK
                   :fk_target_field_id true
-                  :json_unfolding     false
                   :nfc_path           nil}
                  (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one Field :id field-id-2))))))))))
 
@@ -741,71 +726,3 @@
                                     [2 "Small Marble Shoes"]
                                     [3 "Synergistic Granite Chair"]]}
                           (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :orders :product_id)))))))))))
-
-(deftest json-unfolding-default-true-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
-      (mt/dataset json
-        ;; Create a new database with the same details as the json dataset, with json unfolding enabled by default
-        (let [database (t2/select-one Database :id (mt/id))]
-          (mt/with-temp* [Database [database {:engine driver/*driver*, :details (assoc (:details database) :json-unfolding true)}]]
-            (mt/with-db database
-              ;; Sync the new database
-              (sync/sync-database! database)
-              (let [field (t2/select-one Field :id (mt/id :json :json_bit))
-                    enable-json-unfolding! (fn [v]
-                                             (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                   (assoc field :json_unfolding v)))
-                    nested-fields          (fn []
-                                             (->> (t2/select Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
-                                                  (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
-                (testing "json-unfolding is enabled by default"
-                  (is (true? (:json_unfolding field))))
-                (testing "nested fields are present since json unfolding is enabled by default"
-                  (is (seq (nested-fields))))
-                (testing "nested fields are removed when json unfolding is disabled"
-                  (enable-json-unfolding! false)
-                  (sync/sync-database! database)
-                  (is (empty? (nested-fields))))
-                (testing "json_unfolding is not overwritten by another DB sync"
-                  (sync/sync-database! database)
-                  (is (false? (:json_unfolding (t2/select-one Field (mt/id :json :json_bit)))))
-                  (is (empty? (nested-fields))))
-                (testing "nested fields are added when json unfolding is enabled again"
-                  (enable-json-unfolding! true)
-                  (sync/sync-database! database)
-                  (is (seq (nested-fields))))))))))))
-
-(deftest json-unfolding-default-false-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
-      (mt/dataset json
-        (let [database (t2/select-one Database :id (mt/id))]
-          ;; Create a new database with the same details as the json dataset, with json unfolding disabled by default
-          (mt/with-temp* [Database [database {:engine driver/*driver*, :details (assoc (:details database) :json-unfolding false)}]]
-            (mt/with-db database
-              ;; Sync the new database
-              (sync/sync-database! database)
-              (let [field (t2/select-one Field :id (mt/id :json :json_bit))
-                    enable-json-unfolding! (fn [v]
-                                             (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                   (assoc field :json_unfolding v)))
-                    nested-fields (fn []
-                                    (->> (t2/select Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
-                                         (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
-                (testing "json-unfolding is disabled by default"
-                  (is (false? (:json_unfolding field))))
-                (testing "nested fields are not present since json unfolding is disabled by default"
-                  (is (empty? (nested-fields))))
-                (testing "nested fields are added when json unfolding is enabled"
-                  (enable-json-unfolding! true)
-                  (sync/sync-database! database)
-                  (is (seq (nested-fields))))
-                (testing "json_unfolding is not overwritten by another DB sync"
-                  (sync/sync-database! database)
-                  (is (true? (:json_unfolding (t2/select-one Field (mt/id :json :json_bit)))))
-                  (is (seq (nested-fields))))
-                (testing "nested fields are removed when json unfolding is disabled again"
-                  (enable-json-unfolding! false)
-                  (sync/sync-database! database)
-                  (is (empty? (nested-fields))))))))))))
