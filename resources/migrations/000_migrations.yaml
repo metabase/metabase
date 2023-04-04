@@ -14583,7 +14583,7 @@ databaseChangeLog:
       comment: Indexed Entities values table
       changes:
         - createTable:
-            tableName: model_index_values
+            tableName: model_index_value
             remarks: 'Used to keep track of the values indexed in a model'
             columns:
               - column:
@@ -14594,7 +14594,7 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: model_index
                     referencedColumnNames: id
-                    foreignKeyName: fk_model_index_values_model_id
+                    foreignKeyName: fk_model_index_value_model_id
               - column:
                   name: model_pk
                   type: int
@@ -14615,7 +14615,7 @@ databaseChangeLog:
                     nullable: false
       rollback:
         - dropTable:
-            tableName: model_index_values
+            tableName: model_index_value
 
 
   - changeSet:
