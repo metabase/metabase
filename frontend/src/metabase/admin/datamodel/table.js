@@ -19,6 +19,7 @@ export const rescanTableFieldValues = createThunkAction(
         );
         return call;
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.log("error manually re-scanning field values", error);
       }
     };
@@ -37,6 +38,7 @@ export const discardTableFieldValues = createThunkAction(
         );
         return call;
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.log("error discarding field values", error);
       }
     };

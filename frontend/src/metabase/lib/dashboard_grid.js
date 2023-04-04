@@ -75,6 +75,7 @@ function printGrid(cards, width) {
       }
     }
   }
+  // eslint-disable-next-line no-console
   console.log("\n" + grid.map(row => row.join(".")).join("\n") + "\n");
 }
 /*eslint-enable */

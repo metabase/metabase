@@ -32,6 +32,7 @@ export async function loadCard(cardId, { dispatch, getState }) {
     });
     return card;
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.log("error loading card", error);
     throw error;
   }
