@@ -109,8 +109,7 @@
 
 ;; TODO: this assumes schema-name is non-nil and the database supports schemas
 (defmethod driver/create-table :sql-jdbc
-  [_driver db-id schema-name table-name schema ]
+  [_driver db-id schema-name table-name csv-schema]
   (let [sql (str "DROP TABLE IF EXISTS " schema-name "." table-name "; "
-                 (create-table-sql table-name schema))]
-    (prn "create-table" sql)
+                 (create-table-sql table-name csv-schema))]
     (qp.writeback/execute-write-sql! db-id sql)))
