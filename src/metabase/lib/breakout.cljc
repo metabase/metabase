@@ -9,7 +9,7 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-(defmethod lib.metadata.calculation/describe-top-level-key :breakout
+(defmethod lib.metadata.calculation/describe-top-level-key-method :breakout
   [query stage-number _k]
   (when-let [breakouts (not-empty (:breakout (lib.util/query-stage query stage-number)))]
     (i18n/tru "Grouped by {0}"
@@ -37,5 +37,5 @@
    stage-number :- :int]
   (when-let [breakout-exprs (not-empty (:breakout (lib.util/query-stage query stage-number)))]
     (mapv (fn [field-ref]
-            (assoc (lib.metadata.calculation/metadata query stage-number field-ref) :source :breakout))
+            (assoc (lib.metadata.calculation/metadata query stage-number field-ref) :lib/source :source/breakouts))
           breakout-exprs)))

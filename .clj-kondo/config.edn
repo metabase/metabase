@@ -243,7 +243,6 @@
     metabase.api.preview-embed                                      api.preview-embed
     metabase.api.public                                             api.public
     metabase.api.pulse                                              api.pulse
-    metabase.api.query-description                                  api.qd
     metabase.api.revision                                           api.revision
     metabase.api.search                                             api.search
     metabase.api.segment                                            api.segment
@@ -410,6 +409,7 @@
     metabase.test.domain-entities                                   test.de
     metabase.test.mock.util                                         mock.util
     metabase.test.sync                                              test.sync
+    metabase.test.util.js                                           test.js
     metabase.test.util.timezone                                     test.tz
     metabase.timeseries-query-processor-test.util                   tqpt
     metabase.transforms.core                                        tf
@@ -489,6 +489,8 @@
   metabase.query-processor.error-type/deferror                                         clojure.core/def
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results   clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution clojure.core/let
+  metabase.query-processor-test.pipeline-queries-test/pmbql-query                      clojure.core/->
+  metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                  clojure.core/->
   metabase.shared.util.namespaces/import-fns                                           potemkin/import-vars
   metabase.sync.util/sum-for                                                           clojure.core/for
   metabase.sync.util/with-emoji-progress-bar                                           clojure.core/let
@@ -565,6 +567,7 @@
    metabase.test.data/$ids                                                                                                   hooks.metabase.test.data/$ids
    metabase.test.data/dataset                                                                                                hooks.metabase.test.data/dataset
    metabase.test.data/mbql-query                                                                                             hooks.metabase.test.data/mbql-query
+   metabase.test.data/mbql-query-no-test                                                                                     hooks.metabase.test.data/mbql-query
    metabase.test.data/run-mbql-query                                                                                         hooks.metabase.test.data/mbql-query
    metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
@@ -578,6 +581,7 @@
    metabase.test/dataset                                                                                                     hooks.metabase.test.data/dataset
    metabase.test/discard-setting-changes                                                                                     hooks.common/with-ignored-first-arg
    metabase.test/mbql-query                                                                                                  hooks.metabase.test.data/mbql-query
+   metabase.test/mbql-query-no-test                                                                                          hooks.metabase.test.data/mbql-query
    metabase.test/query                                                                                                       hooks.metabase.test.data/mbql-query
    metabase.test/test-drivers                                                                                                hooks.common/do*
    metabase.test/run-mbql-query                                                                                              hooks.metabase.test.data/mbql-query

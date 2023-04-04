@@ -7,14 +7,10 @@ import {
 
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import { getSavedStructuredQuestion } from "metabase-lib/mocks";
 import type Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import {
-  NotebookStep as INotebookStep,
-  NotebookStepType,
-} from "../lib/steps.types";
+import type { NotebookStep as INotebookStep, NotebookStepType } from "../types";
+import { createMockNotebookStep, DEFAULT_QUESTION } from "../test-utils";
 import NotebookStep from "./NotebookStep";
 
 type SetupOpts = {
@@ -22,32 +18,8 @@ type SetupOpts = {
   question?: Question;
 };
 
-const DEFAULT_QUESTION = getSavedStructuredQuestion();
-const DEFAULT_QUERY = DEFAULT_QUESTION.query() as StructuredQuery;
-
-function createNotebookStep(opts = {}): INotebookStep {
-  return {
-    id: "test-step",
-    type: "data",
-    stageIndex: 0,
-    itemIndex: 0,
-    query: DEFAULT_QUERY,
-    valid: true,
-    active: true,
-    visible: true,
-    actions: [],
-    previewQuery: null,
-    next: null,
-    previous: null,
-    revert: jest.fn(),
-    clean: jest.fn(),
-    update: jest.fn(),
-    ...opts,
-  };
-}
-
 function setup({
-  step = createNotebookStep(),
+  step = createMockNotebookStep(),
   question = DEFAULT_QUESTION,
 }: SetupOpts = {}) {
   const openStep = jest.fn();
@@ -62,6 +34,7 @@ function setup({
       sourceQuestion={question}
       isLastStep={false}
       isLastOpened={false}
+      reportTimezone="Europe/London"
       openStep={openStep}
       updateQuery={updateQuery}
     />,
@@ -87,7 +60,7 @@ const STEP_TYPES: NotebookStepType[] = [
 
 describe("NotebookStep", () => {
   test.each(STEP_TYPES)(`renders a %s step correctly`, type => {
-    const step = createNotebookStep({ type });
+    const step = createMockNotebookStep({ type });
     const testId = `step-${type}-${step.stageIndex}-${step.itemIndex}`;
     setup({ step });
 
@@ -98,7 +71,7 @@ describe("NotebookStep", () => {
   });
 
   it("doesn't render the remove button if step revert isn't implemented", () => {
-    const step = createNotebookStep({ type: "data", revert: null });
+    const step = createMockNotebookStep({ type: "data", revert: null });
     setup({ step });
 
     expect(

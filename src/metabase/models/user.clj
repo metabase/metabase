@@ -392,6 +392,7 @@
        ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,
        ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
        ;; do things like automatically set the `is_superuser` flag for a User
+       ;; TODO use multipel insert here
        (doseq [group-id to-add]
          (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))

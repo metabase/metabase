@@ -30,7 +30,6 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]))
@@ -427,7 +426,7 @@
                                 :include_xls       include_xls
                                 :dashboard_card_id dashboard_card_id})
                              card-refs)]
-      (db/insert-many! PulseCard cards))))
+      (t2/insert! PulseCard cards))))
 
 (defn- create-update-delete-channel!
   "Utility function used by [[update-notification-channels!]] which determines how to properly update a single pulse
@@ -590,15 +589,15 @@
 (defmethod serdes/extract-one "Pulse"
   [_model-name _opts pulse]
   (cond-> (serdes/extract-one-basics "Pulse" pulse)
-    (:collection_id pulse) (update :collection_id serdes/export-fk 'Collection)
-    (:dashboard_id  pulse) (update :dashboard_id  serdes/export-fk 'Dashboard)
-    true                   (update :creator_id    serdes/export-user)))
+    (:collection_id pulse) (update :collection_id serdes/*export-fk* 'Collection)
+    (:dashboard_id  pulse) (update :dashboard_id  serdes/*export-fk* 'Dashboard)
+    true                   (update :creator_id    serdes/*export-user*)))
 
 (defmethod serdes/load-xform "Pulse" [pulse]
   (cond-> (serdes/load-xform-basics pulse)
-      true                   (update :creator_id    serdes/import-user)
-      (:collection_id pulse) (update :collection_id serdes/import-fk 'Collection)
-      (:dashboard_id  pulse) (update :dashboard_id  serdes/import-fk 'Dashboard)))
+      true                   (update :creator_id    serdes/*import-user*)
+      (:collection_id pulse) (update :collection_id serdes/*import-fk* 'Collection)
+      (:dashboard_id  pulse) (update :dashboard_id  serdes/*import-fk* 'Dashboard)))
 
 (defmethod serdes/dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
   (filterv some? [(when collection_id [{:model "Collection" :id collection_id}])

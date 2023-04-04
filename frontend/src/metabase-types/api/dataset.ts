@@ -1,7 +1,7 @@
 import { Card } from "./card";
 import { DatabaseId } from "./database";
 import { FieldId } from "./field";
-import { DatetimeUnit, DimensionReference } from "./query";
+import { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import { DownloadPermission } from "./permissions";
 
 export type RowValue = string | number | null | boolean;
@@ -34,8 +34,8 @@ export interface DatasetData {
   download_perms?: DownloadPermission;
 }
 
-export type JsonQuery = {
-  parameters: unknown[];
+export type JsonQuery = DatasetQuery & {
+  parameters?: unknown[];
 };
 
 export interface Dataset {

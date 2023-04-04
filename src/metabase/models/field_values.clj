@@ -468,7 +468,7 @@
                     ;; It's too short, so no schema. Shift them over and add a nil schema.
                     [db nil schema table])]
     (-> (serdes/load-xform-basics fv)
-        (assoc :field_id (serdes/import-field-fk field-ref))
+        (assoc :field_id (serdes/*import-field-fk* field-ref))
         (update :type keyword))))
 
 (defmethod serdes/load-find-local "FieldValues" [path]

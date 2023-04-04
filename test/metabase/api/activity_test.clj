@@ -15,7 +15,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -110,8 +109,8 @@
                         (reverse views)
                         (range))
                    (group-by #(if (:card_id %) :card :other)))]
-    (db/insert-many! ViewLog (:other views))
-    (db/insert-many! QueryExecution (:card views))))
+    (t2/insert! ViewLog (:other views))
+    (t2/insert! QueryExecution (:card views))))
 
 (deftest recent-views-test
   (mt/with-temp* [Card      [card1 {:name                   "rand-name"

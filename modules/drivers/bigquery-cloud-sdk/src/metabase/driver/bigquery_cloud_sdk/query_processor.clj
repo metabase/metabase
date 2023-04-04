@@ -22,7 +22,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [pretty.core :refer [PrettyPrintable]]
    [schema.core :as s])
@@ -92,8 +92,7 @@
     (parse-fn v)))
 
 (defmethod parse-result-of-type :default
-  [column-type column-mode _ v]
-  (log/warn (trs "Warning: missing type mapping for parsing BigQuery results of type {0}." column-type))
+  [_column-type column-mode _ v]
   (parse-value column-mode v identity))
 
 (defmethod parse-result-of-type "STRING"

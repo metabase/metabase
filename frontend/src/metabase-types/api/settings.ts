@@ -201,6 +201,7 @@ export interface Settings {
   "persisted-models-enabled": boolean;
   "premium-embedding-token": string | null;
   "report-timezone-short": string;
+  "report-timezone-long": string;
   "saml-configured"?: boolean;
   "saml-enabled"?: boolean;
   "search-typeahead-enabled": boolean;

@@ -150,20 +150,24 @@
           patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
       (testing "Filtering connections for schemas works as expected"
         (testing " with an inclusion filter"
-          (sync-and-assert-filtered-tables {:name    (format "Test %s DB with dataset inclusion filters" driver)
-                                            :engine  driver
-                                            :details (-> (mt/db)
-                                                         :details
-                                                         (assoc filter-type-prop "inclusion"
-                                                                patterns-type-prop "s*,v*"))}
-            (fn [{schema-name :schema}]
-              (is (contains? #{\s \v} (first schema-name))))))
+          (sync-and-assert-filtered-tables
+           {:name    (format "Test %s DB with dataset inclusion filters" driver)
+            :engine  driver
+            :details (-> (mt/db)
+                         :details
+                         (assoc filter-type-prop "inclusion"
+                                patterns-type-prop "s*,v*,2*"))}
+           (fn [{schema-name :schema}]
+             (testing (format "schema name = %s" (pr-str schema-name))
+               (is (contains? #{\s \v \2} (first schema-name)))))))
         (testing " with an exclusion filter"
-          (sync-and-assert-filtered-tables {:name    (format "Test %s DB with dataset exclusion filters" driver)
-                                            :engine  driver
-                                            :details (-> (mt/db)
-                                                         :details
-                                                         (assoc filter-type-prop "exclusion"
-                                                                patterns-type-prop "v*"))}
-            (fn [{schema-name :schema}]
-              (is (not= \v (first schema-name))))))))))
+          (sync-and-assert-filtered-tables
+           {:name    (format "Test %s DB with dataset exclusion filters" driver)
+            :engine  driver
+            :details (-> (mt/db)
+                         :details
+                         (assoc filter-type-prop "exclusion"
+                                patterns-type-prop "v*"))}
+           (fn [{schema-name :schema}]
+             (testing (format "schema name = %s" (pr-str schema-name))
+               (is (not= \v (first schema-name)))))))))))

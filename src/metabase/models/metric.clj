@@ -5,13 +5,23 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.query :as lib.query]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [methodical.core :as methodical]
    [toucan.models :as models]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (models/defmodel Metric :metric)
 
@@ -40,9 +50,38 @@
                            ::mi/entity-id    true})
   :pre-update pre-update})
 
-(defmethod serdes/hash-fields Metric
-  [_metric]
-  [:name (serdes/hydrated-hash :table) :created_at])
+(mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
+  "Calculate a nice description of a Metric's definition."
+  [metadata-provider :- lib.metadata/MetadataProvider
+   {:keys [definition], table-id :table_id, :as _metric}]
+  (when (seq definition)
+    (when-let [{database-id :db_id} (lib.metadata.protocols/table metadata-provider table-id)]
+      (let [query (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
+        (lib/describe-query query)))))
+
+(defn- warmed-metadata-provider [metrics]
+  (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider)
+                            (lib.metadata.protocols/store-metadatas! :metadata/metric metrics))
+        segment-ids       (into #{} (mbql.u/match (map :definition metrics)
+                                      [:segment (id :guard integer?) & _]
+                                      id))
+        segments          (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/segment segment-ids)
+        field-ids         (mbql.u/referenced-field-ids (into []
+                                                             (comp cat (map :definition))
+                                                             [metrics segments]))
+        fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/field field-ids)
+        table-ids         (into #{}
+                                (comp cat (map :table_id))
+                                [fields segments metrics])]
+    ;; this is done for side-effects
+    (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/table table-ids)
+    metadata-provider))
+
+(methodical/defmethod t2.hydrate/batched-hydrate [Metric :definition_description]
+  [_model _key metrics]
+  (let [metadata-provider (warmed-metadata-provider metrics)]
+    (for [metric metrics]
+      (assoc metric :definition_description (definition-description metadata-provider metric)))))
 
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
@@ -70,18 +109,23 @@
 
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
+
+(defmethod serdes/hash-fields Metric
+  [_metric]
+  [:name (serdes/hydrated-hash :table) :created_at])
+
 (defmethod serdes/extract-one "Metric"
   [_model-name _opts metric]
   (-> (serdes/extract-one-basics "Metric" metric)
-      (update :table_id   serdes/export-table-fk)
-      (update :creator_id serdes/export-user)
+      (update :table_id   serdes/*export-table-fk*)
+      (update :creator_id serdes/*export-user*)
       (update :definition serdes/export-mbql)))
 
 (defmethod serdes/load-xform "Metric" [metric]
   (-> metric
       serdes/load-xform-basics
-      (update :table_id   serdes/import-table-fk)
-      (update :creator_id serdes/import-user)
+      (update :table_id   serdes/*import-table-fk*)
+      (update :creator_id serdes/*import-user*)
       (update :definition serdes/import-mbql)))
 
 (defmethod serdes/dependencies "Metric" [{:keys [definition table_id]}]

@@ -71,7 +71,7 @@
   "Sets the order of bookmarks for user."
   [:as {{:keys [orderings]} :body}]
   {orderings BookmarkOrderings}
-  (bookmark/save-ordering api/*current-user-id* orderings)
+  (bookmark/save-ordering! api/*current-user-id* orderings)
   api/generic-204-no-content)
 
 (api/define-routes)
