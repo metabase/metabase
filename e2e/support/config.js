@@ -1,4 +1,5 @@
 import * as dbTasks from "./db_tasks";
+const replay = require("@replayio/cypress");
 const { verifyDownloadTasks } = require("cy-verify-downloads");
 const {
   NodeModulesPolyfillPlugin,
@@ -98,6 +99,7 @@ const defaultConfig = {
     config.env.TARGET_VERSION = targetVersion;
 
     require("@cypress/grep/src/plugin")(config);
+    replay.default(on, config);
 
     return config;
   },
