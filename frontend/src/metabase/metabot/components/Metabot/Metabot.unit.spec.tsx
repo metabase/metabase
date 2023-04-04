@@ -96,7 +96,7 @@ const setupMetabotModelEndpoints = (couldGenerateCard = true) => {
 
 interface SetupOpts {
   entityId?: MetabotEntityId;
-  entityType?: MetabotEntityType;
+  entityType: MetabotEntityType;
   initialPrompt?: string;
   model?: Question;
   database?: Database;
@@ -110,7 +110,7 @@ const setup = ({
   model,
   database = new Database(ORDERS_DATABASE),
   databases = [new Database(ORDERS_DATABASE)],
-}: SetupOpts = {}) => {
+}: SetupOpts) => {
   renderWithProviders(
     <Metabot
       entityId={entityId}
