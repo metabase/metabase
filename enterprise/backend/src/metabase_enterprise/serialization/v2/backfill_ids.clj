@@ -28,7 +28,7 @@
         (t2/update! model (get entity pk) {:entity_id eid})))))
 
 (defn- has-entity-id? [model]
-  (:entity-id (models/properties model)))
+  (::mi/entity-id (models/properties model)))
 
 (defn backfill-ids
   "Updates all rows of all models that are (a) serialized and (b) have `entity_id` columns to have the
