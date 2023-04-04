@@ -23,10 +23,12 @@
    "Metabot '/api/metabot/model/%s' being called with prompt: '%s'"
    model-id
    question)
-  (let [model          (api/check-404 (t2/select-one Card :id model-id :dataset true))
-        model-metadata (metabot-util/denormalize-model model)]
+  (let [model   (api/check-404 (t2/select-one Card :id model-id :dataset true))
+        context {:model       (metabot-util/denormalize-model model)
+                 :user_prompt question
+                 :prompt_task :infer_sql}]
     (or
-     (metabot/infer-sql model-metadata question)
+     (metabot/infer-sql context)
      (throw
       (let [message (format
                      "Query '%s' didn't produce any SQL. Perhaps try a more detailed query."
@@ -47,10 +49,15 @@
    database-id
    question)
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
-        denormalized-database (metabot-util/denormalize-database database)]
-    (if-some [model (metabot/infer-model denormalized-database question)]
+        context {:database    (metabot-util/denormalize-database database)
+                 :user_prompt question
+                 :prompt_task :infer_model}]
+    (if-some [model (metabot/infer-model context)]
       (or
-       (metabot/infer-sql model question)
+       (metabot/infer-sql (merge
+                           context
+                           {:model       model
+                            :prompt_task :infer_sql}))
        (throw
         (let [message (format
                        "Query '%s' didn't produce any SQL. Perhaps try a more detailed query."
