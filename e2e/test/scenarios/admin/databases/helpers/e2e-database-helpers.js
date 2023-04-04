@@ -4,7 +4,7 @@
  * @param {number} id - Id of the database we're about to visit.
  *
  * @example
- * visitDashboard(3)
+ * visitDatabase(3)
  *
  * @example
  * visitDatabase(42).then(({response: { body }})=> {
