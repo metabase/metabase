@@ -19,6 +19,7 @@ import { color } from "metabase/lib/colors";
 
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { getSetting } from "metabase/selectors/settings";
+import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import Question from "metabase-lib/Question";
 
 import {
@@ -90,7 +91,7 @@ const QuestionActions = ({
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
-  const hasNativeWrite = question.database()?.canWrite();
+  const database = question.database();
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
@@ -120,7 +121,12 @@ const QuestionActions = ({
 
   const extraButtons = [];
 
-  if (isDataset && hasNativeWrite && isMetabotEnabled) {
+  if (
+    isMetabotEnabled &&
+    isDataset &&
+    database &&
+    canUseMetabotOnDatabase(database)
+  ) {
     extraButtons.push({
       title: t`Ask Metabot`,
       icon: "insight",
