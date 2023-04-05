@@ -40,12 +40,6 @@ const WithVizSettingsData = ComposedComponent => {
       dispatch => ({ dispatch }),
     )(
       class WithVizSettingsData extends React.Component {
-        dashcardSettings({ rawSeries }) {
-          const [firstSeries] = rawSeries || [{}];
-          const { visualization_settings } = firstSeries.card || {};
-          return visualization_settings;
-        }
-
         render() {
           return <ComposedComponent {..._.omit(this.props, "dispatch")} />;
         }

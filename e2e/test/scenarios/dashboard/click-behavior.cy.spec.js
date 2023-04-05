@@ -8,7 +8,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
