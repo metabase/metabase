@@ -162,36 +162,3 @@
       (catch #?(:clj Throwable :cljs js/Error) e
         (log/error e (i18n/tru "Error calculating display name for query: {0}" (ex-message e)))
         nil))))
-
-;; (defmulti column-source-table-alias-method
-;;   {:arglists '([query stage-number column-ref-or-metadata])}
-;;   (fn [_query _stage-number column-ref-or-metadata]
-;;     (lib.dispatch/dispatch-value column-ref-or-metadata)))
-
-;; (defn column-source-table-alias
-;;   ([query column-ref-or-metadata]
-;;    (column-source-table-alias query -1 column-ref-or-metadata))
-
-;;   ([query stage-number column-ref-or-metadata]
-;;    (column-source-table-alias-method query stage-number column-ref-or-metadata)))
-
-;; (defmulti column-source-alias-method
-;;   {:arglists '([query stage-number column-ref-or-metadata])}
-;;   (fn [_query _stage-number column-ref-or-metadata]
-;;     (lib.dispatch/dispatch-value column-ref-or-metadata)))
-
-;; (defn column-source-alias
-;;   ([query column-ref-or-metadata]
-;;    (column-source-alias query -1 column-ref-or-metadata))
-
-;;   ([query stage-number column-ref-or-metadata]
-;;    (column-source-alias-method query stage-number column-ref-or-metadata)))
-
-(defmulti column-desired-alias-method
-  {:arglists '([query stage-number column-ref-or-metadata unique-name-fn])}
-  (fn [_query _stage-number column-ref-or-metadata _unique-name-fn]
-    (lib.dispatch/dispatch-value column-ref-or-metadata)))
-
-(defn column-desired-alias
-  [query stage-number column-ref-or-metadata unique-name-fn]
-  (column-desired-alias-method query stage-number column-ref-or-metadata unique-name-fn))
