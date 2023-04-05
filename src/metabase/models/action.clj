@@ -48,6 +48,12 @@
                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
              mi/json-out-with-keywordization))
 
+(mi/define-simple-hydration-method model
+  :model
+  "Return the Card this action uses as a model."
+  [{:keys [model_id]}]
+  (t2/select-one Card :id model_id))
+
 (defn- check-model-is-not-a-saved-question
   [model-id]
   (when-not (db/select-one-field :dataset Card :id model-id)
