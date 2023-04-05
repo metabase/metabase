@@ -149,7 +149,7 @@
           (let [{:keys [inner_query] :as denormalized-model} (metabot-util/denormalize-model model)
                 sql     (metabot-util/bot-sql->final-sql
                          denormalized-model
-                         (format "SELECT * FROM %s LIMIT 1" model-name))
+                         (format "SELECT * FROM %s" model-name))
                 results (qp/process-query
                          {:database (mt/id)
                           :type     "native"
@@ -157,4 +157,4 @@
                                      :template-tags (update-vals
                                                      (lib-native/template-tags inner_query)
                                                      (fn [m] (update m :id str)))}})]
-            (is (= 1 (count (get-in results [:data :rows]))))))))))
+            (is (some? (seq (get-in results [:data :rows]))))))))))
