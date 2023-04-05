@@ -9,14 +9,26 @@ export interface TabButtonProps {
   disabled?: boolean;
 }
 
-export const TabButtonLabel = styled.div`
-  width: 100%;
+export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
+  width: ${props => `${props.value.length}ch`};
+  padding: 0;
+
+  border: none;
+  outline: none;
+  background-color: ${color("bg-light")};
+
+  color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
   font-weight: bold;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: center;
+
+  ${props =>
+    props.disabled &&
+    css`
+      pointer-events: none;
+    `}
 `;
 
-export const TabButtonRoot = styled.button<TabButtonProps>`
+export const TabButtonRoot = styled.div<TabButtonProps>`
   display: flex;
 
   padding: 1rem 0;

@@ -10,8 +10,8 @@ const TestTabRow = () => {
 
   return (
     <TabRow value={value} onChange={setValue}>
-      <TabButton value={1}>Tab 1</TabButton>
-      <TabButton value={2}>Tab 2</TabButton>
+      <TabButton label="Tab 1" value={1} />
+      <TabButton label="Tab 2" value={2} />
     </TabRow>
   );
 };

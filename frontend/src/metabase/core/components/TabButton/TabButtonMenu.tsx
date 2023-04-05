@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { TabContext } from "../Tab/TabContext";
-import { getTabButtonLabelId } from "../Tab/utils";
+import { getTabButtonInputId } from "../Tab/utils";
 import {
   TabButtonMenuAction,
   TabButtonMenuItem,
@@ -29,7 +29,7 @@ export default function TabButtonMenu({
   return (
     <MenuContent
       role="listbox"
-      aria-labelledby={getTabButtonLabelId(context.idPrefix, value)}
+      aria-labelledby={getTabButtonInputId(context.idPrefix, value)}
       tabIndex={0}
     >
       {menuItems.map(({ label, action }) => (
