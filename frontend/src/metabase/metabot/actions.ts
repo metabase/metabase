@@ -21,6 +21,7 @@ import {
   getPromptTemplateVersions,
   getQuestion,
 } from "./selectors";
+import { maybeFixTemplateTags } from "./utils";
 
 export interface InitPayload {
   entityId: MetabotEntityId;
@@ -117,7 +118,12 @@ export const fetchQuestion =
             { cancelled: cancelQueryDeferred.promise },
           );
 
-    dispatch({ type: FETCH_QUESTION, payload });
+    const patchedCard = maybeFixTemplateTags(new Question(payload.card)).card();
+
+    dispatch({
+      type: FETCH_QUESTION,
+      payload: { ...payload, card: patchedCard },
+    });
   };
 
 export const FETCH_QUERY_RESULTS = "metabase/metabot/FETCH_QUERY_RESULTS";
