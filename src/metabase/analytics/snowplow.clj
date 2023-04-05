@@ -134,6 +134,7 @@
    ::dashboard "1-0-0"
    ::database  "1-0-0"
    ::instance  "1-1-0"
+   ::metabot   "1-0-0"
    ::timeline  "1-0-0"
    ::task      "1-0-0"
    ::action    "1-0-0"})
@@ -198,7 +199,8 @@
    ::action-created                 ::action
    ::action-updated                 ::action
    ::action-deleted                 ::action
-   ::action-executed                ::action})
+   ::action-executed                ::action
+   ::metabot-feedback-received      ::metabot})
 
 (defn track-event!
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector

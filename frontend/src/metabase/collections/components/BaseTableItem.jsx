@@ -27,6 +27,7 @@ import {
 } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
+  databases: PropTypes.arrayOf(PropTypes.object),
   bookmarks: PropTypes.arrayOf(PropTypes.object),
   createBookmark: PropTypes.func,
   deleteBookmark: PropTypes.func,
@@ -44,6 +45,7 @@ BaseTableItem.propTypes = {
 };
 
 export function BaseTableItem({
+  databases,
   bookmarks,
   createBookmark,
   deleteBookmark,
@@ -146,6 +148,7 @@ export function BaseTableItem({
         <ItemCell>
           <RowActionsContainer>
             <ActionMenu
+              databases={databases}
               createBookmark={createBookmark}
               deleteBookmark={deleteBookmark}
               bookmarks={bookmarks}
@@ -160,6 +163,7 @@ export function BaseTableItem({
       </tr>
     );
   }, [
+    databases,
     bookmarks,
     createBookmark,
     deleteBookmark,

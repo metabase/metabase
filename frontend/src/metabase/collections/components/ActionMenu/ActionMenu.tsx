@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 
+import { connect } from "react-redux";
 import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
@@ -14,18 +15,29 @@ import {
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 
+import { State } from "metabase-types/store";
+import { getSetting } from "metabase/selectors/settings";
+import Database from "metabase-lib/metadata/Database";
 import { EntityItemMenu } from "./ActionMenu.styled";
 
-export interface ActionMenuProps {
+export interface OwnProps {
   className?: string;
   item: CollectionItem;
   collection: Collection;
+  databases?: Database[];
   bookmarks?: Bookmark[];
   onCopy: (items: CollectionItem[]) => void;
   onMove: (items: CollectionItem[]) => void;
   createBookmark?: (id: string, collection: string) => void;
   deleteBookmark?: (id: string, collection: string) => void;
 }
+
+interface StateProps {
+  isXrayEnabled: boolean;
+  isMetabotEnabled: boolean;
+}
+
+type ActionMenuProps = OwnProps & StateProps;
 
 function getIsBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
   const normalizedItemModel = normalizeItemModel(item);
@@ -42,21 +54,33 @@ function normalizeItemModel(item: CollectionItem) {
   return item.model === "dataset" ? "card" : item.model;
 }
 
+function mapStateToProps(state: State): StateProps {
+  return {
+    isXrayEnabled: getSetting(state, "enable-xrays"),
+    isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
+  };
+}
+
 function ActionMenu({
   className,
   item,
+  databases,
   bookmarks,
   collection,
+  isXrayEnabled,
+  isMetabotEnabled,
   onCopy,
   onMove,
   createBookmark,
   deleteBookmark,
 }: ActionMenuProps) {
+  const database = databases?.find(({ id }) => id === item.database_id);
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
   const canPin = canPinItem(item, collection);
   const canPreview = canPreviewItem(item, collection);
   const canMove = canMoveItem(item, collection);
   const canArchive = canArchiveItem(item, collection);
+  const canUseMetabot = database?.canWrite?.() && isMetabotEnabled;
 
   const handlePin = useCallback(() => {
     item.setPinned?.(!isItemPinned(item));
@@ -93,6 +117,8 @@ function ActionMenu({
         isBookmarked={isBookmarked}
         isPreviewShown={isPreviewShown(item)}
         isPreviewAvailable={isFullyParametrized(item)}
+        isXrayEnabled={isXrayEnabled}
+        canUseMetabot={canUseMetabot}
         onPin={canPin ? handlePin : null}
         onMove={canMove ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}
@@ -105,4 +131,4 @@ function ActionMenu({
   );
 }
 
-export default ActionMenu;
+export default connect(mapStateToProps)(ActionMenu);

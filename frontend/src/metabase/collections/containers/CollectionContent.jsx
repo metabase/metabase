@@ -26,6 +26,7 @@ import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { isSmallScreen } from "metabase/lib/dom";
+import Databases from "metabase/entities/databases";
 import {
   CollectionEmptyContent,
   CollectionMain,
@@ -62,6 +63,7 @@ const mapDispatchToProps = {
 };
 
 function CollectionContent({
+  databases,
   bookmarks,
   collection,
   collections: collectionList = [],
@@ -207,6 +209,7 @@ function CollectionContent({
                 onDeleteBookmark={handleDeleteBookmark}
               />
               <PinnedItemOverview
+                databases={databases}
                 bookmarks={bookmarks}
                 createBookmark={createBookmark}
                 deleteBookmark={deleteBookmark}
@@ -254,6 +257,7 @@ function CollectionContent({
                   return (
                     <CollectionTable>
                       <ItemsTable
+                        databases={databases}
                         bookmarks={bookmarks}
                         createBookmark={createBookmark}
                         deleteBookmark={deleteBookmark}
@@ -317,6 +321,7 @@ function CollectionContent({
 
 export default _.compose(
   Bookmark.loadList(),
+  Databases.loadList(),
   Collection.loadList({
     query: {
       tree: true,

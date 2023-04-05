@@ -219,7 +219,7 @@ describe("scenarios > admin > settings", () => {
     "should display the order of the settings items consistently between OSS/EE versions (metabase#15441)",
     { tags: "@OSS" },
     () => {
-      const lastItem = isEE ? "Appearance" : "Caching";
+      const lastItem = isEE ? "Appearance" : "Metabot";
 
       cy.visit("/admin/settings/setup");
       cy.get(".AdminList .AdminList-item")

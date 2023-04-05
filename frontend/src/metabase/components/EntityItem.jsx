@@ -8,7 +8,13 @@ import Swapper from "metabase/core/components/Swapper";
 import CheckBox from "metabase/core/components/CheckBox";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
-import { isFullyParametrized, isItemPinned } from "metabase/collections/utils";
+import {
+  isFullyParametrized,
+  isItemPinned,
+  isItemModel,
+  isPreviewShown,
+} from "metabase/collections/utils";
+import * as Urls from "metabase/lib/urls";
 
 import {
   EntityIconWrapper,
@@ -83,8 +89,7 @@ function EntityItemName({ name, variant }) {
 function EntityItemMenu({
   item,
   isBookmarked,
-  isPreviewShown,
-  isPreviewAvailable,
+  canUseMetabot,
   onPin,
   onMove,
   onCopy,
@@ -96,6 +101,9 @@ function EntityItemMenu({
 }) {
   const isPinned = isItemPinned(item);
   const isParametrized = isFullyParametrized(item);
+  const isModel = isItemModel(item);
+  const isPreviewed = isPreviewShown(item);
+  const isMetabotShown = isModel && canUseMetabot;
 
   const actions = useMemo(
     () =>
@@ -106,17 +114,22 @@ function EntityItemMenu({
           action: onPin,
           event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
         },
+        isMetabotShown && {
+          title: t`Ask Metabot`,
+          link: Urls.modelMetabot(item.id),
+          icon: "insight",
+          event: `${analyticsContext};Entity Item;Ask Metabot;${item.model}`,
+        },
         onTogglePreview && {
-          title: isPreviewShown
+          title: isPreviewed
             ? t`Don’t show visualization`
             : t`Show visualization`,
-          icon: isPreviewShown ? "eye_crossed_out" : "eye",
+          icon: isPreviewed ? "eye_crossed_out" : "eye",
           action: onTogglePreview,
-          tooltip:
-            !isPreviewAvailable && !isParametrized
-              ? t`Open this question and fill in its variables to see it.`
-              : undefined,
-          disabled: !isPreviewAvailable,
+          tooltip: !isParametrized
+            ? t`Open this question and fill in its variables to see it.`
+            : undefined,
+          disabled: !isParametrized,
           event: `${analyticsContext};Entity Item;Preview Item;${item.model}`,
         },
         onMove && {
@@ -145,12 +158,12 @@ function EntityItemMenu({
         },
       ].filter(action => action),
     [
-      item.model,
+      item,
       isPinned,
+      isMetabotShown,
+      isPreviewed,
       isParametrized,
       isBookmarked,
-      isPreviewShown,
-      isPreviewAvailable,
       onPin,
       onMove,
       onCopy,

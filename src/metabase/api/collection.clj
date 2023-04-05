@@ -322,25 +322,28 @@
             :dataset_query)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                   :c.dataset_query
-                   [(h2x/literal (if dataset? "dataset" "card")) :model]
-                   [:u.id :last_edit_user]
-                   [:u.email :last_edit_email]
-                   [:u.first_name :last_edit_first_name]
-                   [:u.last_name :last_edit_last_name]
-                   [:r.timestamp :last_edit_timestamp]
-                   [{:select   [:status]
-                     :from     [:moderation_review]
-                     :where    [:and
-                                [:= :moderated_item_type "card"]
-                                [:= :moderated_item_id :c.id]
-                                [:= :most_recent true]]
-                     ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                     ;; protecting against potential bugs
-                     :order-by [[:id :desc]]
-                     :limit    1}
-                    :moderated_status]]
+  (-> {:select    (cond->
+                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                     :c.dataset_query
+                     [(h2x/literal (if dataset? "dataset" "card")) :model]
+                     [:u.id :last_edit_user]
+                     [:u.email :last_edit_email]
+                     [:u.first_name :last_edit_first_name]
+                     [:u.last_name :last_edit_last_name]
+                     [:r.timestamp :last_edit_timestamp]
+                     [{:select   [:status]
+                       :from     [:moderation_review]
+                       :where    [:and
+                                  [:= :moderated_item_type "card"]
+                                  [:= :moderated_item_id :c.id]
+                                  [:= :most_recent true]]
+                       ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                       ;; protecting against potential bugs
+                       :order-by [[:id :desc]]
+                       :limit    1}
+                      :moderated_status]]
+                    dataset?
+                    (conj :c.database_id))
        :from      [[:report_card :c]]
        ;; todo: should there be a flag, or a realized view?
        :left-join [[{:select    [:r1.*]
@@ -557,7 +560,7 @@
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
    :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
-   [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
+   [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]])
 
 (defn- add-missing-columns
   "Ensures that all necessary columns are in the select-columns collection, adding `[nil :column]` as necessary."

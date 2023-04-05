@@ -34,6 +34,9 @@ import alert from "metabase/alert/alert";
 /* pulses */
 import * as pulse from "metabase/pulse/reducers";
 
+/* metabot */
+import * as metabot from "metabase/metabot/reducers";
+
 import commonReducers from "./reducers-common";
 
 export default {
@@ -44,6 +47,7 @@ export default {
   dashboard,
   parameters: combineReducers(parameters),
   home: combineReducers(home),
+  metabot: combineReducers(metabot),
   pulse: combineReducers(pulse),
   qb: combineReducers(qb),
   reference,

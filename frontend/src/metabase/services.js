@@ -510,3 +510,9 @@ export const ActionsApi = {
   deletePublicLink: DELETE("/api/action/:id/public_link"),
   listPublic: GET("/api/action/public"),
 };
+
+export const MetabotApi = {
+  modelPrompt: POST("/api/metabot/model/:modelId"),
+  databasePrompt: POST("/api/metabot/database/:databaseId"),
+  sendFeedback: POST("/api/metabot/feedback"),
+};
