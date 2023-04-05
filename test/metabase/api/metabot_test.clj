@@ -38,7 +38,7 @@
               (let [response (mt/user-http-request :rasta :post 200
                                                    (format "/metabot/model/%s" (:id orders-model))
                                                    {:question q})
-                    {:keys [query template-tags]} (get-in response [:card :dataset_query :native])]
+                    {:keys [query]} (get-in response [:card :dataset_query :native])]
                 (is (true? (str/ends-with? query bot-sql)))))))))))
 
 (deftest metabot-model-sad-path-test
@@ -83,7 +83,7 @@
               (let [response (mt/user-http-request :rasta :post 200
                                                    (format "/metabot/database/%s" (mt/id))
                                                    {:question q})
-                    {:keys [query template-tags]} (get-in response [:card :dataset_query :native])]
+                    {:keys [query]} (get-in response [:card :dataset_query :native])]
                 (is (true? (str/ends-with? query bot-sql)))))))))))
 
 (deftest metabot-database-no-model-found-test
