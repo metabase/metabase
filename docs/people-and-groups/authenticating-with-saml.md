@@ -153,7 +153,7 @@ After that, type in the name of the user attribute you added in your SAML provid
 
 ## Creating Metabase accounts with SSO
 
-> Paid plans [charge for each additional account](../cloud/how-billing-works#what-counts-as-a-user-account).
+> Paid plans [charge for each additional account](https://www.metabase.com/docs/latest/cloud/how-billing-works#what-counts-as-a-user-account).
 
 A new SSO login will automatically create a new Metabase account.
 
