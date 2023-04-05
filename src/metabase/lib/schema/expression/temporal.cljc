@@ -1,5 +1,6 @@
 (ns metabase.lib.schema.expression.temporal
   (:require
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
@@ -20,8 +21,7 @@
     #_expr   [:ref ::expression/temporal]
     #_amount :int
     #_unit   [:ref ::temporal-bucketing/unit.date-time.interval])
-
-  (expression/register-type-of-first-arg op))
+  (lib.hierarchy/derive op :lib.type-of/type-is-type-of-first-arg))
 
 (doseq [op [:get-year :get-month :get-day :get-hour :get-minute :get-second :get-quarter]]
   (mbql-clause/define-tuple-mbql-clause op :- :type/Integer
@@ -44,7 +44,7 @@
   #_:target [:string]
   #_:source [:maybe [:string]])
 
-(expression/register-type-of-first-arg :convert-timezone)
+(lib.hierarchy/derive :convert-timezone :lib.type-of/type-is-type-of-first-arg)
 
 (mbql-clause/define-tuple-mbql-clause :now :- :type/DateTimeWithTZ)
 

@@ -40,6 +40,7 @@
            xform)
           (gobject/getKeys obj))))
 
+;;; this intentionally does not use the lib hierarchy since it's not dealing with MBQL/lib keys
 (defmulti ^:private excluded-fields
   {:arglists '([object-type])}
   keyword)

@@ -3,6 +3,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -35,7 +36,8 @@
 (defmulti ^:private ->order-by-clause
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x)))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod ->order-by-clause :asc
   [_query _stage-number clause]

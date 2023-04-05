@@ -141,4 +141,8 @@
                                 :metabase.query-processor.util.add-alias-info/position 1
                                 :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
                 :source-table 224}
-        :type :query}))
+        :type :query}
+
+       [:value nil {:base_type :type/Number}]
+
+       [:case [[[:< [:field 1 nil] 10] [:value nil {:base_type :type/Number}]] [[:> [:field 2 nil] 2] 10]]]))
