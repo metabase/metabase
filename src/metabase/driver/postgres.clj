@@ -35,6 +35,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log])
   (:import
+   (java.io File)
    (java.sql ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (java.util Date UUID)))
@@ -763,10 +764,10 @@
 
 (defn check-for-semicolons [s]
   (when (re-find #";" s)
-    (throw (ex-info (tru "Semi-colons are not allowed. Found one in {0}" s) {}))))
+    (throw (ex-info (tru "Error uploading CSV: \";\" in {0}" s) {}))))
 
-(defn- load-from-csv-sql [schema-name table-name column-names file-name]
-  (str "COPY " schema-name "." table-name "(" (str/join "," column-names) ") FROM '" file-name
+(defn- load-from-csv-sql [schema-name table-name column-names file-path]
+  (str "COPY " schema-name "." table-name "(" (str/join "," column-names) ") FROM '" file-path
        "' WITH (FORMAT CSV, HEADER TRUE, ENCODING 'UTF8', QUOTE '\"', ESCAPE '\\')"))
 
 (def csv->database-type
@@ -777,18 +778,16 @@
    ::csv/boolean     "BOOLEAN"})
 
 (defmethod driver/load-from-csv :postgres
-  [driver db-id schema-name table-name file-name]
-  (let [col->type    (update-vals (csv/detect-schema file-name) csv->database-type)
+  [driver db-id schema-name table-name ^File csv-file]
+  (let [col->type    (update-vals (csv/detect-schema csv-file) csv->database-type)
         column-names (keys col->type)
-        table-name   (str table-name (t/format "_yyyyMMddHHmmss" (t/local-date-time)))]
+        file-name    (.getPath csv-file)]
     (run! check-for-semicolons (concat [schema-name table-name file-name] column-names))
     (driver/create-table driver db-id schema-name table-name col->type)
-    (let [sql           (load-from-csv-sql schema-name table-name column-names file-name)
-          _ (prn sql)
-          upload-result (try
-                          (qp.writeback/execute-write-sql! db-id sql)
-                          (catch Throwable e
-                            (driver/drop-table driver db-id schema-name table-name)
-                            (throw (ex-info (tru "Error uploading CSV: {0}" (ex-message e)) {}))))]
-      (when (pos? (:rows-affected upload-result))
-        table-name))))
+    (let [sql (load-from-csv-sql schema-name table-name column-names file-name)]
+      (try
+        (qp.writeback/execute-write-sql! db-id sql)
+        (catch Throwable e
+          (driver/drop-table driver db-id schema-name table-name)
+          (throw (ex-info (ex-message e) {}))))
+      nil)))

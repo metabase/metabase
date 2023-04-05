@@ -4,9 +4,15 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
+   [java-time :as t]
+   [metabase.driver :as driver]
    [metabase.search.util :as search-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]])
+  (:import
+   (java.io File)))
+
+(set! *warn-on-reflection* true)
 
 ;;           text
 ;;            |
@@ -98,3 +104,14 @@
   (with-open [reader (io/reader csv-file)]
     (let [[header & rows] (csv/read-csv reader)]
       (rows->schema header rows))))
+
+(defn file->table-name [^File file]
+  (str (u/slugify (second (re-matches #"(.*)\.csv$" (.getName file)))) (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
+
+;; TODO: assumes DB supports schema
+(defn load-from-csv
+  "Loads a table from a CSV file. Returns the name of the newly created table."
+  [driver database schema-name ^File file]
+  (let [table-name (file->table-name file)]
+    (driver/load-from-csv driver database schema-name table-name file)
+    table-name))
