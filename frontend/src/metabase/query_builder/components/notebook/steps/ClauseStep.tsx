@@ -1,12 +1,11 @@
 import React from "react";
-
 import Icon from "metabase/components/Icon";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import {
   NotebookCell,
   NotebookCellAdd,
   NotebookCellItem,
 } from "../NotebookCell";
+import { ClauseStepPopover } from "./ClauseStep.styled";
 
 export type RenderPopoverProps<T> = {
   item?: T;
@@ -42,9 +41,8 @@ const ClauseStep = <T,>({
   return (
     <NotebookCell color={color} data-testid={props["data-testid"]}>
       {items.map((item, index) => (
-        <TippyPopoverWithTrigger
+        <ClauseStepPopover
           key={index}
-          sizeToFit
           renderTrigger={({ onClick }) => (
             <NotebookCellItem
               color={color}
@@ -70,9 +68,8 @@ const ClauseStep = <T,>({
         />
       ))}
       {!readOnly && (
-        <TippyPopoverWithTrigger
+        <ClauseStepPopover
           isInitiallyVisible={isLastOpened}
-          sizeToFit
           renderTrigger={({ onClick }) => (
             <NotebookCellAdd
               color={color}
