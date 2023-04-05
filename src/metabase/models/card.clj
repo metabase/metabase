@@ -429,8 +429,8 @@
 
 (t2/define-before-update :m/Card
   [card]
-  (-> (merge (t2/instance :m/Card (t2/changes card))
-             (select-keys (t2/current card) [:id]))
+  (-> (merge {:id card}
+             (t2/changes card))
       maybe-normalize-query
       populate-result-metadata
       pre-update
@@ -450,9 +450,6 @@
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
-(defmethod serdes/hash-fields :m/Card
-  [_card]
-  [:name (serdes/hydrated-hash :collection) :created_at])
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/extract-query "Card" [_ opts]
