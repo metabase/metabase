@@ -2,12 +2,14 @@
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util.honeysql-extensions :as hx]))
 
 (comment sql-jdbc.actions/keep-me)
@@ -97,3 +99,21 @@
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _semantic_type expr]
   (hx/->timestamp expr))
+
+;; TODO: this assumes schema-name is non-nil and the database supports schemas
+(defn- create-table-sql
+  [schema-name table-name col->type]
+  (first (sql/format {:create-table (keyword (str schema-name "." table-name))
+                      :with-columns (map (fn [kv] (map keyword kv)) col->type)})))
+
+;; TODO: this assumes schema-name is non-nil and the database supports schemas
+(defmethod driver/create-table :sql-jdbc
+  [_driver db-id schema-name table-name col->type]
+  (let [sql (create-table-sql schema-name table-name col->type)]
+    (qp.writeback/execute-write-sql! db-id sql)))
+
+;; TODO: this assumes schema-name is non-nil and the database supports schemas
+(defmethod driver/drop-table :sql-jdbc
+  [_driver db-id schema-name table-name]
+  (let [sql (first (sql/format {:drop-table [:if-exists (keyword (str schema-name "." table-name))]}))]
+    (qp.writeback/execute-write-sql! db-id sql)))
