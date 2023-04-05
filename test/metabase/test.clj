@@ -98,6 +98,7 @@
   with-actions-test-data
   with-actions-test-data-tables
   with-actions-test-data-and-actions-enabled
+  with-empty-db
   with-temp-test-data]
 
  [data
