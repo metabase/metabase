@@ -1,22 +1,28 @@
 import React, {
-  ButtonHTMLAttributes,
-  MouseEvent,
+  useEffect,
   useContext,
   useCallback,
   useRef,
   useState,
+  HTMLAttributes,
+  ChangeEventHandler,
+  KeyboardEventHandler,
+  MouseEventHandler,
+  forwardRef,
+  Ref,
 } from "react";
+import { t } from "ttag";
 
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 
 import {
-  getTabButtonLabelId,
+  getTabButtonInputId,
   getTabId,
   getTabPanelId,
   TabContext,
   TabContextType,
 } from "../Tab";
-import { TabButtonLabel, TabButtonRoot, MenuButton } from "./TabButton.styled";
+import { TabButtonInput, TabButtonRoot, MenuButton } from "./TabButton.styled";
 import TabButtonMenu from "./TabButtonMenu";
 
 export type TabButtonValue = string | number;
@@ -31,19 +37,30 @@ export interface TabButtonMenuItem {
   action: TabButtonMenuAction;
 }
 
-export interface TabButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface TabButtonProps extends HTMLAttributes<HTMLDivElement> {
+  label: string;
   value?: TabButtonValue;
   menuItems?: TabButtonMenuItem[];
+  onEdit?: ChangeEventHandler<HTMLInputElement>;
+  onFinishEditing?: () => void;
+  isEditing?: boolean;
+  disabled?: boolean;
 }
 
-function TabButton({
-  value,
-  menuItems,
-  children,
-  onClick,
-  ...props
-}: TabButtonProps) {
+const TabButton = forwardRef(function TabButton(
+  {
+    value,
+    menuItems,
+    label,
+    onClick,
+    onEdit,
+    onFinishEditing,
+    disabled = false,
+    isEditing = false,
+    ...props
+  }: TabButtonProps,
+  inputRef: Ref<HTMLInputElement>,
+) {
   const { value: selectedValue, idPrefix, onChange } = useContext(TabContext);
   const isSelected = value === selectedValue;
 
@@ -51,30 +68,61 @@ function TabButton({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const showMenu = menuItems !== undefined && menuItems.length > 0;
 
-  const handleClick = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      if (menuButtonRef.current?.contains(event.target as Node)) {
+  const handleButtonClick: MouseEventHandler<HTMLDivElement> = useCallback(
+    event => {
+      if (
+        disabled ||
+        menuButtonRef.current?.contains(event.target as Node) ||
+        (typeof inputRef === "object" &&
+          inputRef?.current?.contains(event.target as Node))
+      ) {
         return;
       }
       onClick?.(event);
       onChange?.(value);
     },
-    [value, onClick, onChange],
+    [value, onClick, onChange, disabled, inputRef],
   );
+
+  const handleInputKeyPress: KeyboardEventHandler<HTMLInputElement> =
+    useCallback(
+      event => {
+        if (event.key !== "Enter") {
+          return;
+        }
+        if (typeof inputRef === "object") {
+          inputRef?.current?.blur();
+        }
+        onFinishEditing?.();
+      },
+      [onFinishEditing, inputRef],
+    );
 
   return (
     <TabButtonRoot
       {...props}
-      id={getTabId(idPrefix, value)}
-      role="tab"
+      onClick={handleButtonClick}
       isSelected={isSelected}
+      disabled={disabled}
+      role="tab"
       aria-selected={isSelected}
       aria-controls={getTabPanelId(idPrefix, value)}
-      onClick={handleClick}
+      aria-disabled={disabled}
+      id={getTabId(idPrefix, value)}
     >
-      <TabButtonLabel id={getTabButtonLabelId(idPrefix, value)}>
-        {children}
-      </TabButtonLabel>
+      <TabButtonInput
+        type="text"
+        value={label}
+        isSelected={isSelected}
+        disabled={!isEditing}
+        onChange={onEdit}
+        onKeyPress={handleInputKeyPress}
+        onFocus={e => e.currentTarget.select()}
+        onBlur={onFinishEditing}
+        id={getTabButtonInputId(idPrefix, value)}
+        ref={inputRef}
+      />
+
       {showMenu && (
         <ControlledPopoverWithTrigger
           visible={isMenuOpen}
@@ -88,7 +136,7 @@ function TabButton({
               isOpen={isMenuOpen}
               onClick={onClick}
               ref={menuButtonRef}
-              disabled={props.disabled}
+              disabled={disabled}
             />
           )}
           popoverContent={({ closePopover }) => (
@@ -102,8 +150,70 @@ function TabButton({
       )}
     </TabButtonRoot>
   );
+});
+
+export interface RenameableTabButtonProps
+  extends Omit<TabButtonProps, "onEdit" | "onFinishEditing" | "isEditing"> {
+  onRename: (newLabel: string) => void;
+  renameMenuLabel?: string;
+  renameMenuIndex?: number;
+}
+
+export function RenameableTabButton({
+  label: originalLabel,
+  menuItems: originalMenuItems = [],
+  onRename,
+  renameMenuLabel = t`Rename`,
+  renameMenuIndex = 0,
+  ...props
+}: RenameableTabButtonProps) {
+  const [label, setLabel] = useState(originalLabel);
+  const [prevLabel, setPrevLabel] = useState(label);
+  const [isEditing, setIsEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus();
+    }
+  }, [isEditing]);
+
+  const onFinishEditing = () => {
+    if (label.length === 0) {
+      setLabel(prevLabel);
+    } else if (label !== prevLabel) {
+      setPrevLabel(label);
+      onRename(label);
+    }
+    setIsEditing(false);
+  };
+
+  const renameItem = {
+    label: renameMenuLabel,
+    action: () => {
+      setIsEditing(true);
+    },
+  };
+  const menuItems = [
+    ...originalMenuItems.slice(0, renameMenuIndex),
+    renameItem,
+    ...originalMenuItems.slice(renameMenuIndex),
+  ];
+
+  return (
+    <TabButton
+      label={label}
+      isEditing={isEditing}
+      onEdit={e => setLabel(e.target.value)}
+      onFinishEditing={onFinishEditing}
+      menuItems={menuItems}
+      ref={inputRef}
+      {...props}
+    />
+  );
 }
 
 export default Object.assign(TabButton, {
   Root: TabButtonRoot,
+  Renameable: RenameableTabButton,
 });

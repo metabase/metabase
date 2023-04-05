@@ -1,29 +1,30 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { getIcon } from "__support__/ui";
 
 import TabRow from "../TabRow";
 import TabButton, { TabButtonProps } from "./TabButton";
 
-function setup(props?: TabButtonProps) {
+function setup(props?: Omit<TabButtonProps, "label">) {
   const action = jest.fn();
+  const onRename = jest.fn();
   const value = "some_value";
 
   render(
     <TabRow>
-      <TabButton
+      <TabButton.Renameable
+        label="Tab 1"
         value={value}
         menuItems={[
           { label: "first item", action: (context, value) => action(value) },
         ]}
         {...props}
-      >
-        Tab 1
-      </TabButton>
+        onRename={onRename}
+      />
     </TabRow>,
   );
-  return { action, value };
+  return { action, onRename, value };
 }
 
 describe("TabButton", () => {
@@ -54,5 +55,20 @@ describe("TabButton", () => {
     expect(
       screen.queryByRole("option", { name: "first item" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("should call the onRename function when renaming and update its own label", async () => {
+    const { onRename } = setup();
+
+    userEvent.click(getIcon("chevrondown"));
+    (await screen.findByRole("option", { name: "Rename" })).click();
+
+    const newLabel = "A new label";
+    const inputEl = screen.getByRole("textbox");
+    userEvent.type(inputEl, newLabel);
+    fireEvent.keyPress(inputEl, { key: "Enter", charCode: 13 });
+
+    expect(onRename).toHaveBeenCalledWith(newLabel);
+    expect(await screen.findByDisplayValue(newLabel)).toBeInTheDocument();
   });
 });

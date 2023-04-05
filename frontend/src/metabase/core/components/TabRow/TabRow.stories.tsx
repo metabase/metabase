@@ -18,7 +18,7 @@ const sampleStyle = {
   display: "flex",
   flexDirection: "column" as const,
   gap: "8px",
-  maxWidth: "800px",
+  width: "100%",
   padding: "10px",
   border: "1px solid #ccc",
 };
@@ -45,23 +45,20 @@ const Template: ComponentStory<typeof TabRow> = args => {
   return (
     <div style={sampleStyle}>
       <TabRow {...args} value={value} onChange={handleChange}>
-        <TabButton value={1} menuItems={menuItems}>
-          Tab 1
-        </TabButton>
-        <TabButton value={2}>Tab 2</TabButton>
-        <TabButton value={3} menuItems={menuItems}>
-          Tab 3
-        </TabButton>
-        <TabButton value={4}>Tab 4</TabButton>
-        <TabButton value={5} menuItems={menuItems}>
-          Tab 5
-        </TabButton>
-        <TabButton value={6} disabled>
-          Tab 6
-        </TabButton>
-        <TabButton value={7} menuItems={menuItems} disabled>
-          Tab 7
-        </TabButton>
+        <TabButton label="Tab 1" value={1} menuItems={menuItems} />
+        <TabButton label="Tab 2" value={2} />
+        <TabButton.Renameable
+          label="Tab 3 (Renameable)"
+          value={3}
+          menuItems={menuItems}
+          onRename={newLabel => setMessage(`Renamed to "${newLabel}"`)}
+          renameMenuIndex={2}
+          renameMenuLabel="Edit name"
+        />
+        <TabButton label="Tab 4" value={4} />
+        <TabButton label="Tab 5" value={5} menuItems={menuItems} />
+        <TabButton label="Tab 6" value={6} disabled />
+        <TabButton label="Tab 7" value={7} menuItems={menuItems} disabled />
       </TabRow>
       {message}
     </div>
