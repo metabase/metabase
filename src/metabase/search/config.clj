@@ -2,7 +2,8 @@
   (:require
    [cheshire.core :as json]
    [metabase.models
-    :refer [Action Card Collection Dashboard Database Metric Segment Table]]
+    :refer [Action Card Collection Dashboard Database Metric
+            ModelIndexValue Segment Table]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -39,20 +40,21 @@
 
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
-  {"action"     Action
-   "card"       Card
-   "collection" Collection
-   "dashboard"  Dashboard
-   "database"   Database
-   "dataset"    Card
-   "metric"     Metric
-   "segment"    Segment
-   "table"      Table})
+  {"action"         {:db-model Action, :alias :action}
+   "card"           {:db-model Card, :alias :card}
+   "collection"     {:db-model Collection, :alias :collection}
+   "dashboard"      {:db-model Dashboard, :alias :dashboard}
+   "database"       {:db-model Database, :alias :database}
+   "dataset"        {:db-model Card, :alias :card}
+   "indexed-entity" {:db-model ModelIndexValue :alias :model-index-value}
+   "metric"         {:db-model Metric, :alias :metric}
+   "segment"        {:db-model Segment, :alias :segment}
+   "table"          {:db-model Table, :alias :table}})
 
 (def all-models
   "All valid models to search for. The order of this list also influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "card" "dataset" "collection" "table" "action" "database"])
+  ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "database"])
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."
@@ -100,6 +102,10 @@
   [_]
   [:name
    :display_name])
+
+(defmethod searchable-columns-for-model "indexed-entity"
+  [_]
+  [:value])
 
 (def ^:private default-columns
   "Columns returned for all models."
@@ -155,6 +161,16 @@
           :limit    1}
          :moderated_status]
         bookmark-col dashboardcard-count-col))
+
+(defmethod columns-for-model "indexed-entity" [_]
+  [[:model-index-value.value    :name]
+   [:model-index-value.model_pk :model_pk]
+   [:collection.name            :collection_name]
+   [:model.collection_id        :collection_id]
+   [:model.id                   :model_id]
+   [:model.name                 :model_name]
+   [:model.database_id          :database_id]
+   [:model.dataset_query        :dataset_query]])
 
 (defmethod columns-for-model "dashboard"
   [_]
