@@ -260,7 +260,9 @@
       "create table venues"
       "alter table venues add column address varchar(255)"))
   (testing "Disallowed commands shouldn't pass"
-    (are [query] (nil?
+    (are [query] (thrown-with-msg?
+                  clojure.lang.ExceptionInfo
+                  #"DDL commands are not allowed to be used with H2."
                   (#'h2/check-action-commands-allowed
                    {:database (u/the-id (mt/db))
                     :engine :h2
