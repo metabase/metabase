@@ -167,7 +167,6 @@
                       "ORDER BY ATTEMPTS.DATE ASC")
                  (some-> (qp/compile query) :query pretty-sql))))))))
 
-
 (deftest check-action-commands-test
   (mt/test-driver :h2
     (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
@@ -246,6 +245,29 @@
       (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
                         "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
                         "SELECT * FROM INFORMATION_SCHEMA.Users;"]))))
+
+(deftest allowed-commands-in-action-test
+  (testing "Allowed commands should pass"
+    (are [query] (nil?
+                  (#'h2/check-action-commands-allowed
+                   {:database (u/the-id (mt/db))
+                    :engine :h2
+                    :native {:query query}}))
+      "update venues set name = 'bill'"
+      "insert into venues (name) values ('bill')"
+      "delete venues"
+      "drop table venues"
+      "create table venues"
+      "alter table venues add column address varchar(255)"))
+  (testing "Disallowed commands shouldn't pass"
+    (are [query] (nil?
+                  (#'h2/check-action-commands-allowed
+                   {:database (u/the-id (mt/db))
+                    :engine :h2
+                    :native {:query query}}))
+      "CREATE TRIGGER TRIG_INS BEFORE INSERT ON TEST FOR EACH ROW CALL 'MyTrigger';"
+      "CREATE USER GUEST PASSWORD 'abc'"
+      "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")))
 
 (deftest disallowed-commands-in-action-test
   (mt/test-driver :h2
