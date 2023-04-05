@@ -11,12 +11,16 @@ describe("issue 29795", () => {
     cy.signInAsAdmin();
   });
 
-  it.skip("should allow join based on native query (metabase#29795)", () => {
+  it("should allow join based on native query (metabase#29795)", () => {
     const NATIVE_QUESTION = "native question";
-    cy.createNativeQuestion({
-      name: NATIVE_QUESTION,
-      native: { query: `Select * FROM "PUBLIC"."ORDERS"` },
-    });
+    const LIMIT = 5;
+    cy.createNativeQuestion(
+      {
+        name: NATIVE_QUESTION,
+        native: { query: `SELECT * FROM "PUBLIC"."ORDERS" LIMIT ${LIMIT}` },
+      },
+      { loadMetadata: true },
+    );
 
     openOrdersTable({ mode: "notebook" });
 
@@ -38,6 +42,7 @@ describe("issue 29795", () => {
 
     visualize(response => {
       expect(response.body.error).not.to.exist;
+      cy.findByText(`Showing ${LIMIT} rows`);
     });
   });
 });
