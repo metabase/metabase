@@ -1,8 +1,11 @@
 (ns metabase.csv-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.csv :as csv])
+   [metabase.csv :as csv]
+   [metabase.driver :as driver]
+   [metabase.test :as mt])
   (:import
    [java.io File]))
 
@@ -56,7 +59,7 @@
     (is (= expected (csv/coalesce type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
-(defn- csv-file-with
+(defn csv-file-with
   "Create a temp csv file with the given content and return the file"
   [rows]
   (let [contents (str/join "\n" rows)
@@ -109,3 +112,18 @@
               (csv/detect-schema
                (csv-file-with [header
                                "Luke,ah'm,yer,da,,,missing,columns,should,not,matter"]))))))))
+
+(deftest file->table-name-test
+  (testing "File name is slugified"
+    (is (some? (re-find #"my_file_name_\d+" (#'csv/file->table-name (io/file "my file name.csv")))))))
+
+(deftest load-from-csv-test
+  (testing "Upload a CSV file"
+    (mt/test-driver :postgres
+      (mt/with-empty-db
+        (let [file       (csv-file-with ["id" "2" "3"])]
+          (testing "Can upload two files with the same name"
+            ;; Sleep for a second, because the table name is based on the current second
+            (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))
+            (Thread/sleep 1000)
+            (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))))))))
