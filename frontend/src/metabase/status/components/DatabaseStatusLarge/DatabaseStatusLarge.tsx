@@ -18,6 +18,7 @@ export interface DatabaseStatusLargeProps {
 const DatabaseStatusLarge = ({
   databases,
   onCollapse,
+  isActive,
 }: DatabaseStatusLargeProps): JSX.Element => {
   const status = {
     title: getTitle(databases),
@@ -32,7 +33,9 @@ const DatabaseStatusLarge = ({
     })),
   };
 
-  return <StatusLarge status={status} onCollapse={onCollapse} />;
+  return (
+    <StatusLarge status={status} onCollapse={onCollapse} isActive={isActive} />
+  );
 };
 
 const getTitle = (databases: Database[]): string => {

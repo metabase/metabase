@@ -6,7 +6,6 @@ import FileUploadStatusLarge from "./FileUploadStatusLarge";
 export default {
   title: "Status/FileUploadStatusLarge",
   component: FileUploadStatusLarge,
-  argTypes: { onCollapse: { action: "onCollapse" } },
 };
 
 const Template: ComponentStory<typeof FileUploadStatusLarge> = args => {
@@ -24,6 +23,7 @@ Incomplete.args = {
     },
   ],
   collection: createMockCollection({ name: "Revenue" }),
+  isActive: true,
 };
 
 export const Complete = Template.bind({});
@@ -37,6 +37,7 @@ Complete.args = {
     },
   ],
   collection: createMockCollection({ name: "Revenue" }),
+  isActive: true,
 };
 
 export const Aborted = Template.bind({});
@@ -47,7 +48,9 @@ Aborted.args = {
       name: "Marketing UTM Q4 2022",
       status: "error",
       collectionId: "root",
+      message: "It's dead Jim",
     },
   ],
   collection: createMockCollection({ name: "Revenue" }),
+  isActive: true,
 };
