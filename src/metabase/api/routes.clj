@@ -21,6 +21,7 @@
    [metabase.api.login-history :as api.login-history]
    [metabase.api.metabot :as api.metabot]
    [metabase.api.metric :as api.metric]
+   [metabase.api.model-index :as api.model-index]
    [metabase.api.native-query-snippet :as api.native-query-snippet]
    [metabase.api.notify :as api.notify]
    [metabase.api.permissions :as api.permissions]
@@ -86,6 +87,7 @@
   (context "/premium-features"     [] (+auth api.premium-features/routes))
   (context "/metabot"              [] (+auth api.metabot/routes))
   (context "/metric"               [] (+auth api.metric/routes))
+  (context "/model-index"          [] (+auth api.model-index/routes))
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
   (context "/notify"               [] (+apikey api.notify/routes))
   (context "/permissions"          [] (+auth api.permissions/routes))

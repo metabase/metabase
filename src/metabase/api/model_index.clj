@@ -35,10 +35,13 @@
                             :value_ref  value_ref
                             :generation 0
                             :schedule   (default-schedule)
-                            :created_by api/*current-user-id*})))
+                            :state      "initial"
+                            :creator_id api/*current-user-id*})))
 
 (api/defendpoint DELETE "/:id"
   [id]
   (let [model-index (api/read-check ModelIndex id)]
     (api/read-check Card (:model_id model-index))
     (t2/delete! ModelIndex id)))
+
+(api/define-routes)
