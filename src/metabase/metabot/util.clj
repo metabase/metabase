@@ -19,7 +19,7 @@
 (defn supported?
   "Is metabot supported for the given database."
   [db-id]
-  (let [q "SELECT 1 FROM (SELECT 1) AS TEST"]
+  (let [q "SELECT 1 FROM (SELECT 1 AS ONE) AS TEST"]
     (try
       (some?
        (qp/process-query {:database db-id
