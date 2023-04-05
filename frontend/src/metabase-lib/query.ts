@@ -1,5 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { DatabaseId, DatasetQuery, Field } from "metabase-types/api";
+import type { DatabaseId, DatasetQuery } from "metabase-types/api";
 import type { Clause, MetadataProvider, Query } from "./types";
 
 export function fromLegacyQuery(
