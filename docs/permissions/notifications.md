@@ -4,31 +4,33 @@ title: Notification permissions
 
 # Notification permissions
 
-**Recipients of notifications can see whatever the creator of the notification can see.** That is, people will get to see charts in their email or Slack _as if_ they had the alert or subscription creator's permissions to view those charts, _regardless of whether their groups have permission to view those charts_.
+**Notification recipients can see whatever the notification creator can see.** That is, recipients will see charts in their email or Slack _as if_ they had the alert or subscription creator's permissions to view those charts, _regardless of whether the recipients have permission to view those charts inside Metabase_.
 
 ## All accounts
 
-Anyone can create and manage their own notifications. In addition to the alert and subscription menus on questions and dashboards, people can click on the **gear** icon and go to **Account settings** > **Notifications** to view and unsubscribe from any or all of their dashboard subscriptions and alerts.
+All accounts can:
 
-Anyone can add people via email or Slack to a subscription or alert that they created. Again, the data Metabase sends to the added recipients depends on the person who created the notification, not the recipient.
+- Create [alerts](../questions/sharing/alerts) and [dashboard subscriptions](../dashboards/subscriptions#setting-up-a-dashboard-subscription).
+- Add other people to alerts and subscriptions that they own.
+- Unsubscribe from any alert or subscription.
+
+When a notification creator adds other people to an alert or subscription, Metabase will display data to the new recipients using **the notification creator's [permissions](../permissions/start.md)**. 
+
+Non-admins cannot view notifications created by other people. [Admins](#admins) can view and manage notifications across Metabase.
 
 ## Sandboxed accounts
 
-People who are sandboxed will only see themselves in the list of recipients for dashboard subscriptions and alerts that they create; they won't be able to see other Metabase accounts.
+Same as [all accounts](#all-accounts), but **people using sandboxed accounts will only see themselves in the list of recipients** when creating an alert or subscription.
 
 ## Admins
 
-Admins can see and edit all notifications. Admins can modify recipients, filters, or delete the subscription without affecting the subscription's permissions; the subscription will continue to send data based on whoever originally created the subscription. Admins can edit alerts and subscriptions on the items themselves, or, if they have a paid plan, in the Admin panel under **Audit** > **Subscriptions and alerts**. See [Auditing Metabase](../usage-and-performance-tools/audit.md). 
-
-## Non-admins
-
-Non-admins can only view and edit notifications they created, not notifications created by others.
+**Admins can see and edit all notifications.** Admins can [add or remove](/docs/latest/usage-and-performance-tools/audit#subscriptions-and-alerts) recipients from an alert or subscription without affecting the permissions of the alert or subscription. All recipients will be able to see the same data that the notification creator can see.
 
 ## Restricting email domains
 
 {% include plans-blockquote.html feature="Approved domains for notifications" %}
 
-You can limit email recipients to people within your org by going to **Admin setting** > **General settings** > [Approved domains for notifications](../configuring-metabase/settings.md#approved-domains-for-notifications).
+Admins can limit email recipients to people within your org by going to **Admin setting** > **General settings** > [approved domains for notifications](../configuring-metabase/settings.md#approved-domains-for-notifications).
 
 ## Further reading
 
