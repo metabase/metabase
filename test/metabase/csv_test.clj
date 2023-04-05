@@ -121,9 +121,13 @@
   (testing "Upload a CSV file"
     (mt/test-driver :postgres
       (mt/with-empty-db
-        (let [file       (csv-file-with ["id" "2" "3"])]
+        (let [file (csv-file-with ["id" "2" "3"])]
           (testing "Can upload two files with the same name"
-            ;; Sleep for a second, because the table name is based on the current second
-            (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))
-            (Thread/sleep 1000)
-            (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))))))))
+            (let [table-name-1 (csv/load-from-csv driver/*driver* (mt/id) "public" file)
+                  ;; Sleep for a second, because the table name is based on the current second
+                  _ (Thread/sleep 1000)
+                  table-name-2 (csv/load-from-csv driver/*driver* (mt/id) "public" file)]
+              (is (some? table-name-1))
+              (is (some? table-name-2))
+              (testing "The table names are different, even though the file names are the same"
+                (is (not= table-name-1 table-name-2))))))))))
