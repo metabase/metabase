@@ -13,7 +13,7 @@
   (log/infof "Metabot is inferring sql for model '%s' with prompt '%s'." (:id model) user_prompt)
   (if (metabot-settings/is-metabot-enabled)
     (let [{:keys [prompt_template version prompt]} (metabot-util/create-prompt context)
-          {:keys [database_id inner_query]} model]
+          {:keys [database_id]} model]
       (if-some [bot-sql (metabot-util/find-result
                          metabot-util/extract-sql
                          (metabot-client/invoke-metabot prompt))]
