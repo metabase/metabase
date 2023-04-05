@@ -781,10 +781,10 @@
   [driver db-id schema-name table-name ^File csv-file]
   (let [col->type    (update-vals (csv/detect-schema csv-file) csv->database-type)
         column-names (keys col->type)
-        file-name    (.getPath csv-file)]
-    (run! check-for-semicolons (concat [schema-name table-name file-name] column-names))
+        file-path    (.getAbsolutePath csv-file)]
+    (run! check-for-semicolons (concat [schema-name table-name file-path] column-names))
     (driver/create-table driver db-id schema-name table-name col->type)
-    (let [sql (load-from-csv-sql schema-name table-name column-names file-name)]
+    (let [sql (load-from-csv-sql schema-name table-name column-names file-path)]
       (try
         (qp.writeback/execute-write-sql! db-id sql)
         (catch Throwable e
