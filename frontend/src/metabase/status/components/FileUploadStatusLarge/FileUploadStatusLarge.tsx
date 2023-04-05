@@ -15,7 +15,7 @@ import StatusLarge from "../StatusLarge";
 export interface FileUploadLargeProps {
   collection: Collection;
   uploads: FileUpload[];
-  isActive: boolean;
+  isActive?: boolean;
 }
 
 const FileUploadLarge = ({
