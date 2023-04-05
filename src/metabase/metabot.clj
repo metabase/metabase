@@ -21,7 +21,10 @@
               {:chart-templates
                (mapv
                 #(assoc % :description "%%CHART_TITLE%%")
-                [{:display                :line
+                [{:display                :table
+                  :visualization_settings {}
+                  :description            "A tabular display of data. Best for when you have many columns or no other chart is a good match."}
+                 {:display                :line
                   :visualization_settings {:x-axis "%%SELECT_ONE%%" :y-axis ["%%SELECT_N%%"]}
                   :description            "A line graph showing trends over time."}
                  {:display                :area
@@ -30,15 +33,15 @@
                  {:display                :bar
                   :visualization_settings {:x-axis "%%SELECT_ONE%%" :y-axis ["%%SELECT_N%%"]}
                   :description            "A bar chart used for showing segments of information by groupings."}
-                 {:display                :raw
+                 {:display                :row
                   :visualization_settings {:x-axis "%%SELECT_ONE%%" :y-axis ["%%SELECT_N%%"]}
-                  :description            "IDK"}
+                  :description            "Similar to a bar chart, but showing bars left to right."}
                  {:display                :combo
                   :visualization_settings {:x-axis "%%SELECT_ONE%%" :y-axis ["%%SELECT_N%%"]}
-                  :description            "IDK"}
+                  :description            "A combination of a line chart superimposed on top of a bar chart."}
                  {:display                :waterfall
                   :visualization_settings {:x-axis "%%SELECT_ONE%%" :y-axis ["%%SELECT_N%%"]}
-                  :description            "IDK"}
+                  :description            "A chart showing running totals as values increase and decrease from the initial or baseline value"}
                  {:display                :scalar
                   :visualization_settings {:y-axis "%%SELECT_N%%"}
                   :description            "A chart good for showing single values."}])}
@@ -63,17 +66,17 @@
     (case display
       (:line :bar :area :waterfall) {:display                display
                                      :name                   description
-                                     :visualization_settings {:text             description
+                                     :visualization_settings {:title            description
                                                               :graph.dimensions [x-axis]
                                                               :graph.metrics    y-axis}}
       (:scalar) {:display                display
                  :name                   description
-                 :visualization_settings {:text             description
+                 :visualization_settings {:title            description
                                           :graph.metrics    y-axis
                                           :graph.dimensions []}}
       {:display                :table
        :name                   description
-       :visualization_settings {:text description}})))
+       :visualization_settings {:title description}})))
 
 (defn infer-viz
   "Determine an 'interesting' visualization for this data."

@@ -28,6 +28,7 @@ const MetabotVisualization = ({
 
   return (
     <FullVisualization
+      showTitle
       mode={MetabotMode}
       rawSeries={[{ card, data: result && result.data }]}
       error={result && result.error}
