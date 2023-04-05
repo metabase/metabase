@@ -10,8 +10,10 @@ export const loadMetadataForDashboard = dashCards => async dispatch => {
     .filter(dc => !isVirtualDashCard(dc)) // exclude text cards
     .flatMap(dc => [dc.card].concat(dc.series || []));
 
-  await dispatch(loadMetadataForCards(cards));
-  await dispatch(loadMetadataForLinkedTargets(dashCards));
+  await Promise.all([
+    dispatch(loadMetadataForCards(cards)),
+    dispatch(loadMetadataForLinkedTargets(dashCards)),
+  ]);
 };
 
 const loadMetadataForCards = cards => (dispatch, getState) => {
