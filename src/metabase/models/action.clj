@@ -48,7 +48,7 @@
 
 (mi/define-simple-hydration-method model
   :model
-  "Return the DashboardCard this action uses as a model."
+  "Return the Card this action uses as a model."
   [{:keys [model_id]}]
   (t2/select-one Card :id model_id))
 
