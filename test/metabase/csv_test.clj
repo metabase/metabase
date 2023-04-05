@@ -115,7 +115,7 @@
 
 (deftest file->table-name-test
   (testing "File name is slugified"
-    (is (some? (re-find #"my_file_name_\d+" (csv/file->table-name (io/file "my file name.csv")))))))
+    (is (some? (re-find #"my_file_name_\d+" (#'csv/file->table-name (io/file "my file name.csv")))))))
 
 (deftest load-from-csv-test
   (testing "Upload a CSV file"

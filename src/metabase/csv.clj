@@ -105,7 +105,7 @@
     (let [[header & rows] (csv/read-csv reader)]
       (rows->schema header rows))))
 
-(defn file->table-name [^File file]
+(defn- file->table-name [^File file]
   (str (u/slugify (second (re-matches #"(.*)\.csv$" (.getName file)))) (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
 
 ;; TODO: assumes DB supports schema
