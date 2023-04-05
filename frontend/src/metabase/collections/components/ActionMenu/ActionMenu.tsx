@@ -15,6 +15,7 @@ import EventSandbox from "metabase/components/EventSandbox";
 
 import { State } from "metabase-types/store";
 import { getSetting } from "metabase/selectors/settings";
+import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import Database from "metabase-lib/metadata/Database";
 import { EntityItemMenu } from "./ActionMenu.styled";
 
@@ -75,7 +76,8 @@ function ActionMenu({
   const canPreview = canPreviewItem(item, collection);
   const canMove = canMoveItem(item, collection);
   const canArchive = canArchiveItem(item, collection);
-  const canUseMetabot = database?.canWrite?.() && isMetabotEnabled;
+  const canUseMetabot =
+    database != null && canUseMetabotOnDatabase(database) && isMetabotEnabled;
 
   const handlePin = useCallback(() => {
     item.setPinned?.(!isItemPinned(item));
