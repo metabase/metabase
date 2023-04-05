@@ -590,7 +590,7 @@
    cards [:sequential UpdatedDashboardCard]}
   (let [dashboard     (-> (api/write-check Dashboard id)
                           api/check-not-archived
-                          (t2/hydrate :ordered_cards))
+                          (t2/hydrate [:ordered_cards :series :card]))
         current-cards (:ordered_cards dashboard)
 
         {:keys [to-update to-delete to-create]} (classify-changes current-cards cards)]

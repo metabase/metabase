@@ -206,7 +206,7 @@
 
 (deftest update-dashboard-card!-call-count-test
   (testing "This tracks the call count of update-dashcards! for the purpose of optimizing the
-            PUT /api/dashboard/:id/cards handler"
+           PUT /api/dashboard/:id/cards handler"
     (mt/with-temp* [Dashboard     [{dashboard-id :id :as dashboard}]
                     Card          [{card-id :id}]
                     DashboardCard [dashcard-1 {:dashboard_id dashboard-id, :card_id card-id}]
@@ -214,34 +214,35 @@
                     DashboardCard [dashcard-3 {:dashboard_id dashboard-id, :card_id card-id}]
                     Card          [{series-id-1 :id} {:name "Series Card 1"}]
                     Card          [{series-id-2 :id} {:name "Series Card 2"}]]
-      (testing "Should have fewer DB calls if there are no changes to the dashcards"
-        (t2/with-call-count [call-count]
-          (dashboard/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])
-          (is (= 6 (call-count)))))
-      (testing "Should have more calls if there are changes to the dashcards"
-        (t2/with-call-count [call-count]
-          (dashboard/update-dashcards! dashboard [{:id     (:id dashcard-1)
-                                                   :cardId card-id
-                                                   :row    1
-                                                   :col    2
-                                                   :size_x 3
-                                                   :size_y 4
-                                                   :series [{:id series-id-1}]}
-                                                  {:id     (:id dashcard-2)
-                                                   :cardId card-id
-                                                   :row    1
-                                                   :col    2
-                                                   :size_x 3
-                                                   :size_y 4
-                                                   :series [{:id series-id-2}]}
-                                                  {:id     (:id dashcard-3)
-                                                   :cardId card-id
-                                                   :row    1
-                                                   :col    2
-                                                   :size_x 3
-                                                   :size_y 4
-                                                   :series []}])
-          (is (= 15 (call-count))))))))
+      (let [dashboard (t2/hydrate dashboard [:ordered_cards :series :card])]
+        (testing "Should have fewer DB calls if there are no changes to the dashcards"
+          (t2/with-call-count [call-count]
+            (dashboard/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])
+            (is (= 1 (call-count)))))
+        (testing "Should have more calls if there are changes to the dashcards"
+          (t2/with-call-count [call-count]
+            (dashboard/update-dashcards! dashboard [{:id     (:id dashcard-1)
+                                                     :cardId card-id
+                                                     :row    1
+                                                     :col    2
+                                                     :size_x 3
+                                                     :size_y 4
+                                                     :series [{:id series-id-1}]}
+                                                    {:id     (:id dashcard-2)
+                                                     :cardId card-id
+                                                     :row    1
+                                                     :col    2
+                                                     :size_x 3
+                                                     :size_y 4
+                                                     :series [{:id series-id-2}]}
+                                                    {:id     (:id dashcard-3)
+                                                     :cardId card-id
+                                                     :row    1
+                                                     :col    2
+                                                     :size_x 3
+                                                     :size_y 4
+                                                     :series []}])
+            (is (= 10 (call-count)))))))))
 
 (deftest normalize-parameter-mappings-test
   (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"

@@ -138,8 +138,8 @@
                                 [:= :dashcard.id (:id dashcard)]]}))
 
 (defn update-dashboard-cards-series!
-  "Update the DashboardCardSeries for a given DashboardCard.
-  `card-ids` should be a definitive collection of *all* IDs of cards for the dashboard card in the desired order.
+  "Batch update the DashboardCardSeries for multiple DashboardCards.
+  Each `card-ids` list should be a definitive collection of *all* IDs of cards for the dashboard card in the desired order.
 
   *  If an ID in `card-ids` has no corresponding existing DashboardCardSeries object, one will be created.
   *  If an existing DashboardCardSeries has no corresponding ID in `card-ids`, it will be deleted.

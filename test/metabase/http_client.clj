@@ -36,7 +36,6 @@
   (str *url-prefix* url (when (seq query-parameters)
                           (str "?" (str/join \& (letfn [(url-encode [s]
                                                           (cond-> s
-                                                            (sequential? s)    (json/generate-string s)
                                                             (keyword? s)       u/qualified-name
                                                             true               codec/url-encode))]
                                                   (for [[k v] query-parameters]

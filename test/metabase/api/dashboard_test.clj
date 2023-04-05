@@ -1608,7 +1608,7 @@
            (#'api.dashboard/classify-changes
              [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
              [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}]))))
-  (testing "current changes can't contain neg ids"
+  (testing "current changes must contains only pos int"
     (is (thrown-with-msg?
           clojure.lang.ExceptionInfo
           #".*value must be an integer greater than zero.*"

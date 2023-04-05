@@ -29,6 +29,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
@@ -281,15 +283,23 @@
       (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
         (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
-(defn update-dashcards!
+(def ^:private DashboardWithSeriesAndCard
+  [:map
+   [:id ms/PositiveInt]
+   [:ordered_cards [:sequential [:map
+                                 [:card_id {:optional true} [:maybe ms/PositiveInt]]
+                                 [:card {:optional true} [:maybe [:map
+                                                                  [:id ms/PositiveInt]]]]]]]])
+
+(mu/defn update-dashcards!
   "Update the `dashcards` belonging to `dashboard`.
    This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
    are performed when finished, for example updating FieldValues for On-Demand DBs.
    Returns `nil`."
   {:style/indent 1}
-  [dashboard new-dashcards]
-  (let [dashboard                  (t2/hydrate dashboard [:ordered_cards :series :card])
-        old-dashcards              (:ordered_cards dashboard)
+  [dashboard     :- DashboardWithSeriesAndCard
+   new-dashcards :- [:sequential ms/Map]]
+  (let [old-dashcards              (:ordered_cards dashboard)
         id->old-dashcard           (m/index-by :id old-dashcards)
         old-dashcard-ids           (set (keys id->old-dashcard))
         new-dashcard-ids           (set (map :id new-dashcards))
@@ -299,7 +309,6 @@
       (throw (ex-info (tru "Dashboard {0} does not have a DashboardCard with ID {1}"
                            (u/the-id dashboard) (first only-new))
                       {:status-code 404})))
-    ;; TODO: BULK update
     (doseq [dashcard new-dashcards]
       (let [;; update-dashboard-card! requires series to be a sequence of card IDs
             old-dashcard       (-> (get id->old-dashcard (:id dashcard))
