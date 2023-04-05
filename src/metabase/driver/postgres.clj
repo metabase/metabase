@@ -761,6 +761,10 @@
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
 
+(defn check-for-semicolons [s]
+  (when (re-find #";" s)
+    (throw (ex-info (tru "Semi-colons are not allowed. Found one in {0}" s) {}))))
+
 (defn- load-from-csv-sql [schema-name table-name column-names file-name]
   (str "COPY " schema-name "." table-name "(" (str/join "," column-names) ") FROM '" file-name
        "' WITH (FORMAT CSV, HEADER TRUE, ENCODING 'UTF8', QUOTE '\"', ESCAPE '\\')"))
@@ -774,11 +778,13 @@
 
 (defmethod driver/load-from-csv :postgres
   [driver db-id schema-name table-name file-name]
-  (let [col->type   (update-vals (csv/detect-schema file-name) csv->database-type)
-        cols        (keys col->type)
-        table-name  (str table-name (t/format "_yyyyMMddHHmmss" (t/local-date-time)))]
+  (let [col->type    (update-vals (csv/detect-schema file-name) csv->database-type)
+        column-names (keys col->type)
+        table-name   (str table-name (t/format "_yyyyMMddHHmmss" (t/local-date-time)))]
+    (run! check-for-semicolons (concat [schema-name table-name file-name] column-names))
     (driver/create-table driver db-id schema-name table-name col->type)
-    (let [sql           (load-from-csv-sql schema-name table-name cols file-name)
+    (let [sql           (load-from-csv-sql schema-name table-name column-names file-name)
+          _ (prn sql)
           upload-result (try
                           (qp.writeback/execute-write-sql! db-id sql)
                           (catch Throwable e

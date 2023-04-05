@@ -1210,6 +1210,20 @@
                                                             :aggregation [[:count]]}})
                                  mt/rows)))))))))))
 
+(deftest load-from-csv-sql-injection-test
+  (mt/test-driver :postgres
+    (mt/with-empty-db
+      (testing "Can't upload a CSV with a semi-colon in the file name"
+        (let [file-name (str (csv-test/csv-file-with ["id" "2"]))]
+          (is (thrown-with-msg?
+               ExceptionInfo #"Error uploading CSV:"
+               (driver/load-from-csv
+                driver/*driver*
+                (mt/id)
+                "public"
+                (str "upload_test(id) FROM " file-name "; DROP TABLE users; --")
+                (str (csv-test/csv-file-with ["id" "2"]))))))))))
+
 (deftest load-from-csv-failed-test
   (mt/test-driver :postgres
     (mt/with-empty-db
