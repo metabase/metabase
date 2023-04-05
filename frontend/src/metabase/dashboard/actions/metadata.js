@@ -5,13 +5,13 @@ import { getLinkTargets } from "metabase/lib/click-behavior";
 import Question from "metabase-lib/Question";
 import { isVirtualDashCard } from "../utils";
 
-export const loadMetadataForDashboard = dashCards => dispatch => {
+export const loadMetadataForDashboard = dashCards => async dispatch => {
   const cards = dashCards
     .filter(dc => !isVirtualDashCard(dc)) // exclude text cards
     .flatMap(dc => [dc.card].concat(dc.series || []));
 
-  dispatch(loadMetadataForCards(cards));
-  dispatch(loadMetadataForLinkedTargets(dashCards));
+  await dispatch(loadMetadataForCards(cards));
+  await dispatch(loadMetadataForLinkedTargets(dashCards));
 };
 
 const loadMetadataForCards = cards => (dispatch, getState) => {
