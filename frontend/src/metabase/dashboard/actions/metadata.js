@@ -14,6 +14,21 @@ export const loadMetadataForDashboard = dashCards => dispatch => {
   dispatch(loadMetadataForLinkedTargets(dashCards));
 };
 
+const loadMetadataForCards = cards => (dispatch, getState) => {
+  const metadata = getMetadata(getState());
+
+  const questions = cards
+    .filter(card => card.dataset_query) // exclude queries without perms
+    .map(card => new Question(card, metadata));
+
+  return dispatch(
+    loadMetadataForQueries(
+      questions.map(question => question.query()),
+      questions.map(question => question.dependentMetadata()),
+    ),
+  );
+};
+
 const loadMetadataForLinkedTargets =
   dashCards => async (dispatch, getState) => {
     const linkTargets = dashCards.flatMap(card =>
@@ -36,18 +51,3 @@ const loadMetadataForLinkedTargets =
 
     await dispatch(loadMetadataForCards(cards));
   };
-
-const loadMetadataForCards = cards => (dispatch, getState) => {
-  const metadata = getMetadata(getState());
-
-  const questions = cards
-    .filter(card => card.dataset_query) // exclude queries without perms
-    .map(card => new Question(card, metadata));
-
-  return dispatch(
-    loadMetadataForQueries(
-      questions.map(question => question.query()),
-      questions.map(question => question.dependentMetadata()),
-    ),
-  );
-};
