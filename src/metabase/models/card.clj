@@ -52,9 +52,10 @@
    :parameter_mappings     mi/tf-parameters-list})
 
 ;;; You can read/write a Card if you can read/write its parent Collection
-(derive :m/Card ::perms/use-parent-collection-perms)
-(derive :m/Card :hook/timestamped?)
-(derive :m/Card :hook/entity-id)
+(doto :m/Card
+  (derive ::perms/use-parent-collection-perms)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
