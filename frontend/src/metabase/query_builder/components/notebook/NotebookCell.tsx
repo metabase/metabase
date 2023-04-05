@@ -41,6 +41,8 @@ const NotebookCellItemContainer = styled.div<{
   border-color: ${props =>
     props.inactive ? alpha(props.color, 0.25) : "transparent"};
 
+  cursor: ${props => (props.inactive ? "pointer" : "default")};
+
   &:hover {
     border-color: ${props => props.inactive && alpha(props.color, 0.8)};
   }
