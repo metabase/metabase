@@ -118,7 +118,13 @@ export default function JoinStep({
                 join={join}
                 color={color}
                 showRemove={joins.length > 1}
-                updateQuery={updateQuery}
+                updateQuery={(...args) => {
+                  console.log("### QUERY", {
+                    fromQuery: query.datasetQuery(),
+                    fromJoin: join.parent().datasetQuery(),
+                  });
+                  return updateQuery(...args);
+                }}
                 isLastOpened={isLastOpened && isLast}
                 sourceQuestion={sourceQuestion}
                 readOnly={readOnly}

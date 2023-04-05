@@ -70,6 +70,11 @@ function NotebookSteps({
       if (query instanceof StructuredQuery) {
         const datasetQuery = query.datasetQuery();
         const updatedQuery = step.update(datasetQuery);
+        console.log("### UPDATE QUERY", {
+          currentQuery: question.datasetQuery(),
+          datasetQuery,
+          updatedQuery: updatedQuery.datasetQuery(),
+        });
         await updateQuestion(updatedQuery.question());
       } else {
         const updatedLegacyQuery = Lib.toLegacyQuery(query);

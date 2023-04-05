@@ -391,6 +391,9 @@ function QueryBuilder(props) {
     setIsShowingToaster(false);
   }, []);
 
+  window.question = props.question;
+  window.q = props.question?._getMLv2Query?.();
+
   return (
     <View
       {...props}

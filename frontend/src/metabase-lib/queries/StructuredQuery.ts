@@ -557,7 +557,8 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   hasSorts() {
-    return this.sorts().length > 0;
+    const query = this.getMLv2Query();
+    return ML.orderBys(query).length > 0;
   }
 
   hasLimit() {
