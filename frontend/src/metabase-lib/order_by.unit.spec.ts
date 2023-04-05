@@ -1,17 +1,25 @@
-import type { Field } from "metabase-types/api";
-import { createQuery, SAMPLE_DATABASE } from "./test-helpers";
+import { createQuery } from "./test-helpers";
 import * as ML from "./v2";
 
 // This is a convenience for finding an orderable column (as an opaque object) by name
-const findOrderableColumn = (query, tableName, fieldName) => {
+const findOrderableColumn = (
+  query: ML.Query,
+  tableName: string,
+  fieldName: string,
+): ML.ColumnMetadata => {
   const columns = ML.orderableColumns(query);
-  return columns?.find(column => {
+  const column = columns?.find((column: ML.ColumnMetadata) => {
     const displayInfo = ML.displayInfo(query, column);
     return (
       displayInfo?.table?.name === tableName && displayInfo?.name === fieldName
     );
   });
-  throw new Error("Could not find %s.%s".format(tableName, fieldName));
+
+  if (!column) {
+    throw new Error("Could not find " + tableName + "." + fieldName);
+  }
+
+  return column;
 };
 
 describe("order by", () => {
@@ -60,7 +68,7 @@ describe("order by", () => {
 
     it("should update the query", () => {
       const productTitle = findOrderableColumn(query, "PRODUCTS", "TITLE");
-      const nextQuery = ML.orderBy(query, productTitle as Field);
+      const nextQuery = ML.orderBy(query, productTitle);
       const orderBys = ML.orderBys(nextQuery);
 
       expect(orderBys).toHaveLength(1);
@@ -79,14 +87,14 @@ describe("order by", () => {
         "CATEGORY",
       );
 
-      const orderedQuery = ML.orderBy(query, productTitle as Field);
+      const orderedQuery = ML.orderBy(query, productTitle);
       const orderBys = ML.orderBys(orderedQuery);
 
       expect(orderBys).toHaveLength(1);
       const nextQuery = ML.replaceClause(
         orderedQuery,
         orderBys[0],
-        ML.orderByClause(orderedQuery, -1, productCategory as Field) as Field,
+        ML.orderByClause(orderedQuery, -1, productCategory),
       );
       const nextOrderBys = ML.orderBys(nextQuery);
       expect(ML.displayName(nextQuery, nextOrderBys[0])).toBe(
@@ -102,7 +110,7 @@ describe("order by", () => {
     it("should update the query", () => {
       const productTitle = findOrderableColumn(query, "PRODUCTS", "TITLE");
 
-      const orderedQuery = ML.orderBy(query, productTitle as Field);
+      const orderedQuery = ML.orderBy(query, productTitle);
       const orderBys = ML.orderBys(orderedQuery);
       expect(orderBys).toHaveLength(1);
 

@@ -30,13 +30,13 @@ export const removeClause: typeof RemoveClauseFn = ML.remove_clause;
 declare function ReplaceClauseFn(
   query: Query,
   targetClause: Clause,
-  newClause: Field,
+  newClause: Clause,
 ): Query;
 declare function ReplaceClauseFn(
   query: Query,
   stageIndex: number,
   targetClause: Clause,
-  newClause: Field,
+  newClause: Clause,
 ): Query;
 
 export const replaceClause: typeof ReplaceClauseFn = ML.replace_clause;
