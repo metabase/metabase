@@ -42,7 +42,6 @@
 (defmethod ->pMBQL :mbql/join
   [join]
   (-> join
-      (lib.util/update-legacy-boolean-expression->list :condition :conditions)
       (update :conditions ->pMBQL)
       (update :stages ->pMBQL)))
 

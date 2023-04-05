@@ -22,10 +22,10 @@
                  :source-table 2}
                 {:lib/type :mbql.stage/mbql}
                 {:lib/type :mbql.stage/mbql
-                 :filter   [:=
-                            {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
-                            [:field 3 {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"}]
-                            "wow"]}]}
+                 :filters  [[:=
+                             {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
+                             [:field 3 {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"}]
+                             "wow"]]}]}
 
     ;; native query
     {:database 1
@@ -61,9 +61,9 @@
                        :joins       [{:lib/type    :mbql/join
                                       :lib/options {:lib/uuid string?}
                                       :alias       "CATEGORIES__via__CATEGORY_ID"
-                                      :condition   [:=
-                                                    [:field (meta/id :venues :category-id)]
-                                                    [:field (meta/id :categories :id) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+                                      :conditions  [[:=
+                                                     [:field (meta/id :venues :category-id)]
+                                                     [:field (meta/id :categories :id) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]]
                                       :strategy    :left-join
                                       :fk-field-id (meta/id :venues :category-id)
                                       :stages      [{:lib/type     :mbql.stage/mbql
