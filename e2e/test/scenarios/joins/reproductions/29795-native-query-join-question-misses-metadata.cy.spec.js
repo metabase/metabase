@@ -20,20 +20,20 @@ describe("issue 29795", () => {
 
     openOrdersTable({ mode: "notebook" });
 
-    cy.findByTestId("action-buttons").findByText("Join data").click();
+    cy.button("Join data").click();
 
     popover().within(() => {
       cy.icon("chevronleft").click();
       cy.findByText("Saved Questions").click();
-      cy.findByText(NATIVE_QUESTION).click();
+      cy.findByRole("menuitem", { name: NATIVE_QUESTION }).click();
     });
 
     popover().within(() => {
-      cy.findByText("ID").click();
+      cy.findByRole("option", { name: "ID" }).click();
     });
 
     popover().within(() => {
-      cy.findByText("USER_ID").click();
+      cy.findByRole("option", { name: "USER_ID" }).click();
     });
 
     visualize(response => {
