@@ -1,6 +1,7 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { debounce } from "underscore";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Icon, { IconProps } from "metabase/components/Icon";
 
@@ -10,6 +11,7 @@ import Search from "metabase/entities/search";
 
 import type { Collection } from "metabase-types/api";
 
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import type {
   CollectionPickerItem,
   PickerItem,
@@ -74,13 +76,17 @@ function ItemPickerView({
 
   const isPickingNotCollection = models.some(model => model !== "collection");
 
-  const handleSearchInputKeyPress = useCallback(
-    e => {
-      if (e.key === "Enter") {
-        onSearchStringChange(e.target.value);
-      }
-    },
+  const handleDebouncedSearchInputChange = useMemo(
+    () =>
+      debounce((searchInputText: string) => {
+        onSearchStringChange(searchInputText);
+      }, SEARCH_DEBOUNCE_DURATION),
     [onSearchStringChange],
+  );
+
+  const onSearchInputChange = useCallback(
+    e => handleDebouncedSearchInputChange(e.target.value),
+    [handleDebouncedSearchInputChange],
   );
 
   const handleOpenSearch = useCallback(() => {
@@ -101,7 +107,7 @@ function ItemPickerView({
             className="input"
             placeholder={t`Search`}
             autoFocus
-            onKeyPress={handleSearchInputKeyPress}
+            onChange={onSearchInputChange}
           />
           <SearchToggle onClick={handleCloseSearch}>
             <Icon name="close" />
@@ -126,7 +132,7 @@ function ItemPickerView({
     showSearch,
     handleOpenSearch,
     handleCloseSearch,
-    handleSearchInputKeyPress,
+    onSearchInputChange,
   ]);
 
   const renderCollectionListItem = useCallback(
