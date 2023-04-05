@@ -29,7 +29,8 @@
    [ring.util.codec :as codec]
    [schema.core :as s]
    [toucan.hydrate :as hydrate]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
@@ -1506,3 +1507,57 @@
           (testing "App DB"
             (is (= {:database-enable-actions false}
                    (settings)))))))))
+
+(deftest persist-database-test
+  (mt/with-temp-scheduler
+    (t2.with-temp/with-temp
+      [Database db   {:options {}
+                      :engine "postgres"}
+       Card     card {:database_id (:id db)
+                      :dataset     true}]
+
+      (mt/with-temporary-setting-values [persisted-models-enabled false]
+        (testing "requires persist setting to be enabled"
+          (is (= "Persisting models is not enabled."
+                 (mt/user-http-request :crowberto :post 400 (str "database/" (:id db) "/persist"))))))
+
+      (mt/with-temporary-setting-values [persisted-models-enabled true]
+        (testing "only users with permissions can persist a database"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 (str "database/" (:id db) "/persist")))))
+
+        (testing "should be able to persit an database"
+          (mt/user-http-request :crowberto :post 204 (str "database/" (:id db) "/persist"))
+          (is (= "creating" (t2/select-one-fn :state 'PersistedInfo
+                                              :database_id (:id db)
+                                              :card_id     (:id card))))
+          (is (= true (t2/select-one-fn (comp :persist-models-enabled :options)
+                                        Database
+                                        :id (:id db)))))
+        (testing "it's okay to trigger persist even though the database is already persisted"
+          (mt/user-http-request :crowberto :post 204 (str "database/" (:id db) "/persist")))))))
+
+(deftest unpersist-database-test
+  (mt/with-temp-scheduler
+    (t2.with-temp/with-temp
+      [Database db   {:options {}
+                      :engine "postgres"}
+       Card     card {:database_id (:id db)
+                      :dataset     true}]
+      (testing "only users with permissions can persist a database"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 (str "database/" (:id db) "/unpersist")))))
+
+      (mt/with-temporary-setting-values [persisted-models-enabled true]
+        (testing "should be able to persit an database"
+          ;; trigger persist first
+          (mt/user-http-request :crowberto :post 204 (str "database/" (:id db) "/persist"))
+          (mt/user-http-request :crowberto :post 204 (str "database/" (:id db) "/unpersist"))
+          (is (= "deletable" (t2/select-one-fn :state 'PersistedInfo
+                                               :database_id (:id db)
+                                               :card_id     (:id card))))
+          (is (= nil (t2/select-one-fn (comp :persist-models-enabled :options)
+                                       Database
+                                       :id (:id db)))))
+        (testing "it's okay to unpersist even though the database is not persisted"
+          (mt/user-http-request :crowberto :post 204 (str "database/" (:id db) "/unpersist")))))))
