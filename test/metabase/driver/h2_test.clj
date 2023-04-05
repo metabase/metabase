@@ -182,12 +182,15 @@
       "truncate table venues"
       "insert into venues values (1, 'Chicken Chow')"
       "merge into venues key(1) values (1, 'Chicken Chow')"
-      "merge into venues using (select 1 as id) as source on (venues.id = source.id) when matched then update set name = 'Chicken Chow';")
+      "merge into venues using (select 1 as id) as source on (venues.id = source.id) when matched then update set name = 'Chicken Chow';"
+      "create table venues (id int, name varchar(255))"
+      "drop table venues"
+      "update venues set name = 'bill'"
+      "insert into venues (name) values ('bill')"
+      "create table venues"
+      "alter table venues add column address varchar(255)")
 
     (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
-      "create table venues (id int, name varchar(255))"
-      "alter table venues add column address varchar(255)"
-      "drop table venues"
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
        EXEC ('open -a Calculator.app')"
@@ -245,31 +248,6 @@
       (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
                         "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
                         "SELECT * FROM INFORMATION_SCHEMA.Users;"]))))
-
-(deftest allowed-commands-in-action-test
-  (testing "Allowed commands should pass"
-    (are [query] (nil?
-                  (#'h2/check-action-commands-allowed
-                   {:database (u/the-id (mt/db))
-                    :engine :h2
-                    :native {:query query}}))
-      "update venues set name = 'bill'"
-      "insert into venues (name) values ('bill')"
-      "delete venues"
-      "drop table venues"
-      "create table venues"
-      "alter table venues add column address varchar(255)"))
-  (testing "Disallowed commands shouldn't pass"
-    (are [query] (thrown-with-msg?
-                  clojure.lang.ExceptionInfo
-                  #"DDL commands are not allowed to be used with H2."
-                  (#'h2/check-action-commands-allowed
-                   {:database (u/the-id (mt/db))
-                    :engine :h2
-                    :native {:query query}}))
-      "CREATE TRIGGER TRIG_INS BEFORE INSERT ON TEST FOR EACH ROW CALL 'MyTrigger';"
-      "CREATE USER GUEST PASSWORD 'abc'"
-      "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")))
 
 (deftest disallowed-commands-in-action-test
   (mt/test-driver :h2
