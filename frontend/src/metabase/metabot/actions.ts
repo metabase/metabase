@@ -118,11 +118,9 @@ export const fetchQuestion =
             { cancelled: cancelQueryDeferred.promise },
           );
 
-    const patchedCard = maybeFixTemplateTags(new Question(payload.card)).card();
-
     dispatch({
       type: FETCH_QUESTION,
-      payload: { ...payload, card: patchedCard },
+      payload,
     });
   };
 
@@ -131,7 +129,8 @@ export const fetchQueryResults =
   (cancelQueryDeferred: Deferred) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
-    const payload = await question?.apiGetResults({
+    const patchedQuestion = question && maybeFixTemplateTags(question);
+    const payload = await patchedQuestion?.apiGetResults({
       cancelDeferred: cancelQueryDeferred,
     });
     dispatch({ type: FETCH_QUERY_RESULTS, payload });

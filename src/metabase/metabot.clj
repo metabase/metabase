@@ -24,8 +24,7 @@
                                        final-sql)
               dataset       {:dataset_query          {:database database_id
                                                       :type     "native"
-                                                      :native   {:query         final-sql
-                                                                 :template-tags []}}
+                                                      :native   {:query         final-sql}}
                              :display                :table
                              :visualization_settings {}}]
           {:card                     dataset
