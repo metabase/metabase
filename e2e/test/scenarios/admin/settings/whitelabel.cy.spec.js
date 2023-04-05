@@ -136,7 +136,7 @@ describeEE("formatting > whitelabel", () => {
       cy.findByAltText("Metabot");
 
       cy.visit("/admin/settings/whitelabel");
-      cy.findByText("Display our little friend on the homepage").click();
+      cy.findByText("Display welcome message on the homepage").click();
 
       cy.visit("/");
       cy.findByAltText("Metabot").should("not.exist");
