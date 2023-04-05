@@ -7,10 +7,14 @@
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
    [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.audit_log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.parameter-card :as parameter-card :refer [ParameterCard]]
+   [metabase.models.parameter-card
+    :as parameter-card
+    :refer [ParameterCard]]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
@@ -19,7 +23,10 @@
    [metabase.moderation :as moderation]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
@@ -58,6 +65,7 @@
   (derive ::perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -441,6 +449,7 @@
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
+
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/extract-query "Card" [_ opts]
@@ -539,3 +548,20 @@
       (when (seq snippets)
         (set (for [snippet-id snippets]
                ["NativeQuerySnippet" snippet-id]))))))
+
+
+;;; -------------------------------------------------- Audit Log -------------------------------------------------------
+
+(defmethod audit-log/model-details Card
+  [_model {query :dataset_query, dataset? :dataset :as card} _event-type]
+  (let [query (when (seq query)
+                (try (qp/preprocess query)
+                     (catch Throwable e
+                       (log/error e (tru "Error preprocessing query:")))))
+        database-id (some-> query :database u/the-id)
+        table-id    (mbql.u/query->source-table-id query)]
+    (merge (select-keys card [:name :description])
+           {:database_id database-id
+            :table_id    table-id
+            ;; Use `model` instead of `dataset` to mirror in-product terminology
+            :model dataset?})))

@@ -1,4 +1,6 @@
 (ns metabase.models.activity
+  "Model definition for the Metabase Activity Feed, which tracks a subset of events that occur in Metabase, and is used
+  to power the `/api/activity` endpoints."
   (:require
    [metabase.api.common :as api]
    [metabase.events :as events]
