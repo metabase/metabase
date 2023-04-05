@@ -42,7 +42,7 @@
    [:lib/type    [:= :mbql/join]]
    [:lib/options ::common/options]
    [:stages      [:ref :metabase.lib.schema/stages]]
-   [:condition   [:ref ::expression/boolean]]
+   [:conditions  [:sequential {:min 1} [:ref ::expression/boolean]]]
    [:fields {:optional true} ::fields]
    [:alias  {:optional true} ::alias]])
 

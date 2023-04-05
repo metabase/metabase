@@ -103,16 +103,16 @@
                     (lib/join (-> (lib/join-clause (lib/table (meta/id :categories)))
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all))
-                              (lib/=
-                               (lib/field "VENUES" "CATEGORY_ID")
-                               (-> (lib/field "CATEGORIES" "ID") (lib/with-join-alias "Cat")))))]
-      (is (=? {:stages [{:joins       [{:alias     "Cat"
-                                        :stages    [{:source-table (meta/id :categories)}]
-                                        :condition [:=
-                                                    {}
-                                                    [:field {} (meta/id :venues :category-id)]
-                                                    [:field {:join-alias "Cat"} (meta/id :categories :id)]]
-                                        :fields    :all}]
+                              [(lib/=
+                                 (lib/field "VENUES" "CATEGORY_ID")
+                                 (-> (lib/field "CATEGORIES" "ID") (lib/with-join-alias "Cat")))]))]
+      (is (=? {:stages [{:joins       [{:alias      "Cat"
+                                        :stages     [{:source-table (meta/id :categories)}]
+                                        :conditions [[:=
+                                                      {}
+                                                      [:field {} (meta/id :venues :category-id)]
+                                                      [:field {:join-alias "Cat"} (meta/id :categories :id)]]]
+                                        :fields     :all}]
                          :expressions {"ID + 1" [:+ {} [:field {} (meta/id :venues :id)] 1]
                                        "ID + 2" [:+ {} [:field {} (meta/id :venues :id)] 2]}}]}
               query))

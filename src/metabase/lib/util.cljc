@@ -96,11 +96,15 @@
 (defn- joins->pipeline [joins]
   (mapv join->pipeline joins))
 
-(defn- filter->pipeline [filter]
-  (if (and (vector? filter)
-        (= (first filter) :and))
-    (vec (drop 1 filter))
-    [filter]))
+(defn update-legacy-boolean-expression->list
+  "Updates m with a legacy boolean expression at `legacy-key` into a list with an implied and for pMBQL at `pMBQL-key`"
+  [m legacy-key pMBQL-key]
+  (cond-> m
+    (contains? m legacy-key) (update legacy-key #(if (and (vector? %)
+                                                       (= (first %) :and))
+                                                   (vec (drop 1 %))
+                                                   [%]))
+    (contains? m legacy-key) (set/rename-keys {legacy-key pMBQL-key})))
 
 (defn- inner-query->stages [{:keys [source-query source-metadata], :as inner-query}]
   (let [previous-stages (if source-query
@@ -126,8 +130,7 @@
                                (dissoc inner-query :source-query :source-metadata))
         this-stage      (cond-> this-stage
                           (seq (:joins this-stage)) (update :joins joins->pipeline)
-                          (:filter this-stage) (update :filter filter->pipeline)
-                          (:filter this-stage) (set/rename-keys {:filter :filters}))]
+                          :always (update-legacy-boolean-expression->list :filter :filters))]
     (conj previous-stages this-stage)))
 
 (defn- mbql-query->pipeline

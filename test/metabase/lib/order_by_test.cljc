@@ -258,9 +258,9 @@
     (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
-                                   (lib/=
-                                    (lib/field "VENUES" "CATEGORY_ID")
-                                    (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")))
+                                   [(lib/=
+                                      (lib/field "VENUES" "CATEGORY_ID")
+                                      (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all))))]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
@@ -352,9 +352,9 @@
             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                 (lib/join (-> (lib/join-clause
                                (meta/table-metadata :categories)
-                               (lib/=
-                                (lib/field "VENUES" "CATEGORY_ID")
-                                (lib/field "CATEGORIES" "ID")))
+                               [(lib/=
+                                  (lib/field "VENUES" "CATEGORY_ID")
+                                  (lib/field "CATEGORIES" "ID"))])
                               (lib/with-join-fields :all)))
                 (lib/fields [(lib/field "VENUES" "ID")  (lib/field "CATEGORIES" "ID")])
                 (lib/append-stage)
