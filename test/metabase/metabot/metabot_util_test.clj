@@ -128,8 +128,8 @@
 
 (deftest bot-sql->final-sql-test
   (testing "A simple test of interpolation of denormalized data with bot sql"
-    (is (= "WITH MY_MODEL AS (SELECT * FROM {{#123}}) SELECT * FROM MY_MODEL"
+    (is (= "WITH MY_MODEL AS (SELECT * FROM {{#123}} AS INNER_QUERY) SELECT * FROM MY_MODEL"
            (metabot-util/bot-sql->final-sql
-            {:inner_query "SELECT * FROM {{#123}}"
+            {:inner_query "SELECT * FROM {{#123}} AS INNER_QUERY"
              :sql_name    "MY_MODEL"}
             "SELECT * FROM MY_MODEL")))))
