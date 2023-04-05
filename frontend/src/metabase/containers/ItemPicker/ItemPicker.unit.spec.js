@@ -90,6 +90,23 @@ function mockCollectionEndpoint({ extraCollections = [] } = {}) {
   fetchMock.get("path:/api/collection", collections);
 }
 
+function mockSearchCollectionEndpoint() {
+  fetchMock.get(
+    {
+      url: "path:/api/search",
+    },
+    Object.values(COLLECTION).filter(col => {
+      console.log(
+        col.name,
+        col.name.toLowerCase().includes(COLLECTION.REGULAR.name.toLowerCase()),
+      );
+      return col.name
+        .toLowerCase()
+        .includes(COLLECTION.REGULAR.name.toLowerCase());
+    }),
+  );
+}
+
 function mockCollectionItemsEndpoint() {
   fetchMock.get(/api\/collection\/\d+\/items/, url => {
     const collectionIdParam = url.split("/")[5];
@@ -126,6 +143,7 @@ async function setup({
 } = {}) {
   mockCollectionEndpoint({ extraCollections });
   mockCollectionItemsEndpoint();
+  mockSearchCollectionEndpoint();
 
   const onChange = jest.fn();
 
@@ -253,5 +271,19 @@ describe("ItemPicker", () => {
     expect(list.getByText(COLLECTION_OTHER_USERS.name)).toBeInTheDocument();
     expect(list.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
     expect(list.getAllByTestId("item-picker-item")).toHaveLength(2);
+  });
+
+  it("displays relevant collections after a search", async () => {
+    await setup({ models: ["collections"] });
+
+    userEvent.click(within(getItemPickerHeader()).getByRole("button"));
+
+    userEvent.type(
+      within(getItemPickerHeader()).getByPlaceholderText("Search"),
+      COLLECTION.REGULAR.name,
+    );
+
+    expect(screen.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+    expect(screen.queryAllByTestId("item-picker-item")).toHaveLength(3);
   });
 });

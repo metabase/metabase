@@ -77,10 +77,7 @@ function ItemPickerView({
   const isPickingNotCollection = models.some(model => model !== "collection");
 
   const handleDebouncedSearchInputChange = useMemo(
-    () =>
-      debounce((searchInputText: string) => {
-        onSearchStringChange(searchInputText);
-      }, SEARCH_DEBOUNCE_DURATION),
+    () => debounce(onSearchStringChange, SEARCH_DEBOUNCE_DURATION),
     [onSearchStringChange],
   );
 
