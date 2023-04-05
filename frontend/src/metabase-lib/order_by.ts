@@ -24,12 +24,13 @@ type OrderByDirection = "asc" | "desc";
 
 declare function OrderByClauseFn(
   query: Query,
+  stageNumber: number,
   field: Field,
   direction?: OrderByDirection,
 ): OrderByClause;
 declare function OrderByClauseFn(
   query: Query,
-  stageIndex: number,
+  stageNumber: number,
   field: Field,
   direction?: OrderByDirection,
 ): OrderByClause;
