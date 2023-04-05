@@ -5,6 +5,7 @@ import {
   describeEE,
   setupMetabaseCloud,
   isOSS,
+  isEE,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -218,12 +219,14 @@ describe("scenarios > admin > settings", () => {
     "should display the order of the settings items consistently between OSS/EE versions (metabase#15441)",
     { tags: "@OSS" },
     () => {
+      const lastItem = isEE ? "Appearance" : "Metabot";
+
       cy.visit("/admin/settings/setup");
       cy.get(".AdminList .AdminList-item")
         .as("settingsOptions")
         .first()
         .contains("Setup");
-      cy.get("@settingsOptions").last().contains("Metabot");
+      cy.get("@settingsOptions").last().contains(lastItem);
     },
   );
 
