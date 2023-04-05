@@ -4,6 +4,8 @@ title: Notification permissions
 
 # Notification permissions
 
+Notifications in Metabase include [alerts](../questions/sharing/alerts) and [dashboard subscriptions](../dashboards/subscriptions#setting-up-a-dashboard-subscription).
+
 **Notification recipients can see whatever the notification creator can see.** That is, recipients will see charts in their email or Slack _as if_ they had the alert or subscription creator's permissions to view those charts, _regardless of whether the recipients have permission to view those charts inside Metabase_.
 
 ## All accounts
@@ -11,12 +13,12 @@ title: Notification permissions
 All accounts can:
 
 - Create [alerts](../questions/sharing/alerts) and [dashboard subscriptions](../dashboards/subscriptions#setting-up-a-dashboard-subscription).
-- Add other people to alerts and subscriptions that they own.
+- Add new recipients to alerts and subscriptions that they own.
 - Unsubscribe from any alert or subscription.
 
-When a notification creator adds other people to an alert or subscription, Metabase will display data to the new recipients using **the notification creator's [permissions](../permissions/start.md)**. 
+When a notification creator adds new recipients to an alert or subscription, Metabase will display data to the recipients using **the creator's [permissions](../permissions/start.md)**. 
 
-Non-admins cannot view notifications created by other people. [Admins](#admins) can view and manage notifications across Metabase.
+Non-admins can only view notifications that they've created. [Admins](#admins) can view and manage notifications created by any account.
 
 ## Sandboxed accounts
 
@@ -24,7 +26,7 @@ Same as [all accounts](#all-accounts), but **people using sandboxed accounts wil
 
 ## Admins
 
-**Admins can see and edit all notifications.** Admins can [add or remove](/docs/latest/usage-and-performance-tools/audit#subscriptions-and-alerts) recipients from an alert or subscription without affecting the permissions of the alert or subscription. All recipients will be able to see the same data that the notification creator can see.
+**Admins can edit recipients**. Admins can [add or remove](/docs/latest/usage-and-performance-tools/audit#subscriptions-and-alerts) recipients without affecting the permissions of the alert or subscription. For example, if an admin adds Anya to a subscription created by Beau, Anya will receive emails with the same data that the Beau can see.
 
 ## Restricting email domains
 
