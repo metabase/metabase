@@ -14403,6 +14403,7 @@ databaseChangeLog:
                     referencedTableName: report_card
                     referencedColumnNames: id
                     foreignKeyName: fk_model_index_model_id
+                    deleteCascade: true
               - column:
                   name: pk_ref
                   type: ${text.type}
@@ -14484,6 +14485,7 @@ databaseChangeLog:
                     referencedTableName: model_index
                     referencedColumnNames: id
                     foreignKeyName: fk_model_index_value_model_id
+                    deleteCascade: true
               - column:
                   name: model_pk
                   type: int
