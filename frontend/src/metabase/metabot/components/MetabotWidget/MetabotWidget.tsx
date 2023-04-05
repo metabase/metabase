@@ -11,6 +11,7 @@ import { getUser } from "metabase/selectors/user";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card, CollectionItem, DatabaseId, User } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
+import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
 import DatabasePicker from "../DatabasePicker";
@@ -48,7 +49,7 @@ const mapStateToProps = (
 ): StateProps => ({
   user: getUser(state),
   model: card ? new Question(card, getMetadata(state)) : null,
-  databases: databases.filter(d => d.canWrite()),
+  databases: databases.filter(canUseMetabotOnDatabase),
 });
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({

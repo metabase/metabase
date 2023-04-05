@@ -121,7 +121,12 @@ const QuestionActions = ({
 
   const extraButtons = [];
 
-  if (database && canUseMetabotOnDatabase(database)) {
+  if (
+    isMetabotEnabled &&
+    isDataset &&
+    database &&
+    canUseMetabotOnDatabase(database)
+  ) {
     extraButtons.push({
       title: t`Ask Metabot`,
       icon: "insight",
