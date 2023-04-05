@@ -6,6 +6,8 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.field :as lib.field]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
@@ -17,8 +19,6 @@
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.lib.join :as lib.join]
-   [metabase.lib.field :as lib.field]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 

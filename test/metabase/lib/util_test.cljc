@@ -1,10 +1,10 @@
 (ns metabase.lib.util-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.util :as lib.util]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.string :as str]))
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (deftest ^:parallel pipeline-test
   (are [query expected] (=? expected

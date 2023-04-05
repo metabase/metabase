@@ -220,7 +220,6 @@
   (lib.util/format "%s__%s" join-alias field-name))
 
 (mu/defn desired-alias :- ::lib.schema.common/non-blank-string
-  [field-metadata :- lib.metadata/ColumnMetadata]
   "Desired alias for a Field e.g.
 
     my_field
@@ -230,6 +229,7 @@
     MyJoin__my_field
 
   You should pass the results thru a unique name function."
+  [field-metadata :- lib.metadata/ColumnMetadata]
   (if-let [join-alias (lib.join/current-join-alias field-metadata)]
     (joined-field-desired-alias join-alias (:name field-metadata))
     (:name field-metadata)))
