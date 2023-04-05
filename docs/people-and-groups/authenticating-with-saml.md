@@ -75,7 +75,7 @@ Most IdPs already include these assertions by default, but some (such as [Okta](
 
 Generally you'll need to paste these user attributes (first name, last name, and email) into fields labelled "Name", "Attributes" or "Parameters".
 
-**End-users should not be able to edit the email address attribute**. Your IdP will pass the email address attribute to Metabase in order to log people into their Metabase accounts (or to create an account on the first login). If a person can change the email address attribute, they'll potentially be able to access Metabase accounts other than their own.
+> If you allow end-users to edit their email addresses: make sure to update the corresponding account emails in Metabase. Keeping email addresses in sync will protect people from losing access to their accounts.
 
 ### Settings for signing SSO requests (optional)
 
