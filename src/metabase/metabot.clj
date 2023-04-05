@@ -2,11 +2,90 @@
   "The core metabot namespace. Consists primarily of functions named infer-X,
   where X is the thing we want to extract from the bot response."
   (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
    [metabase.lib.native :as lib-native]
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
    [metabase.util.log :as log]))
+
+(defn viz-prompt [sql]
+  (tap> {:sql sql})
+  [{:role    "system"
+    :content "You are a helpful assistant. Write a json document summarizing how I can present my data."}
+   {:role    "assistant"
+    :content "This is a json document that is a template for each visualization type:"}
+   {:role    "assistant"
+    :content (json/generate-string
+              {:chart-templates
+               (mapv
+                #(assoc % :description "%%CHART_TITLE%%")
+                [{:display                :line
+                  :visualization_settings {:x-axis "%%SELECT_ONE%%" :y-axis ["%%SELECT_N%%"]}
+                  :description            "A line graph showing trends over time."}
+                 {:display                :area
+                  :visualization_settings {:x-axis "%%SELECT_ONE%%" :y-axis ["%%SELECT_N%%"]}
+                  :description            "A stacked area chart good for showing groups of data over time."}
+                 {:display                :bar
+                  :visualization_settings {:x-axis "%%SELECT_ONE%%" :y-axis ["%%SELECT_N%%"]}
+                  :description            "A bar chart used for showing segments of information by groupings."}
+                 {:display                :raw
+                  :visualization_settings {:x-axis "%%SELECT_ONE%%" :y-axis ["%%SELECT_N%%"]}
+                  :description            "IDK"}
+                 {:display                :combo
+                  :visualization_settings {:x-axis "%%SELECT_ONE%%" :y-axis ["%%SELECT_N%%"]}
+                  :description            "IDK"}
+                 {:display                :waterfall
+                  :visualization_settings {:x-axis "%%SELECT_ONE%%" :y-axis ["%%SELECT_N%%"]}
+                  :description            "IDK"}
+                 {:display                :scalar
+                  :visualization_settings {:y-axis "%%SELECT_N%%"}
+                  :description            "A chart good for showing single values."}])}
+              {:pretty true})}
+   {:role    "assistant"
+    :content "The description provides additional details on when you might want to use a specific chart template."}
+   {:role    "assistant"
+    :content (format "This is the SQL describing my data:\n%s" sql)}
+   {:role    "user"
+    :content (str/join
+              "\n"
+              ["Select and fill in the most interesting and relevant template for the data described by my SQL query."
+               "The \"%%CHART_TITLE%%\" will be replaced by a concise description of the chart."
+               "The \"%%SELECT_ONE%%\" values will be replaced with a single column name."
+               "The \"%%SELECT_N%%\" values will be replaced with a comma separated list of one or more column names."
+               "Just return the json document with no explanation."])}])
+
+(defn response->viz [{:keys [display description visualization_settings] :as response}]
+  (tap> {:response response})
+  (let [display (keyword display)
+        {:keys [x-axis y-axis]} visualization_settings]
+    (case display
+      (:line :bar :area :waterfall) {:display                display
+                                     :name                   description
+                                     :visualization_settings {:text             description
+                                                              :graph.dimensions [x-axis]
+                                                              :graph.metrics    y-axis}}
+      (:scalar) {:display                display
+                 :name                   description
+                 :visualization_settings {:text             description
+                                          :graph.metrics    y-axis
+                                          :graph.dimensions []}}
+      {:display                :table
+       :name                   description
+       :visualization_settings {:text description}})))
+
+(defn infer-viz
+  "Determine an 'interesting' visualization for this data."
+  [{sql :sql :as _context}]
+  (log/infof "Metabot is inferring visualization for sql '%s'." sql)
+  (if (metabot-settings/is-metabot-enabled)
+    (let [prompt (viz-prompt sql)]
+      (metabot-util/find-result
+       (fn [message]
+         (json/parse-string message keyword))
+       (metabot-client/invoke-metabot prompt)))
+    (log/warn "Metabot is not enabled")))
 
 (defn infer-sql
   "Given a model and prompt, attempt to generate a native dataset."
@@ -24,12 +103,23 @@
                                        user_prompt
                                        final-sql)
               template-tags (lib-native/template-tags inner_query)
-              dataset       {:dataset_query          {:database database_id
-                                                      :type     "native"
-                                                      :native   {:query         final-sql
-                                                                 :template-tags template-tags}}
-                             :display                :table
-                             :visualization_settings {}}]
+              template      (when-not (str/starts-with?
+                                       (str/replace bot-sql #"\s+" "")
+                                       "SELECT*")
+                              (infer-viz (assoc context :sql bot-sql)))
+              _             (tap> {:chart-templates template})
+              viz           (response->viz template)
+              _             (tap> {:viz viz})
+              dataset       (doto
+                             (merge
+                              {:dataset_query          {:database database_id
+                                                        :type     "native"
+                                                        :native   {:query         final-sql
+                                                                   :template-tags template-tags}}
+                               :display                :table
+                               :visualization_settings {}}
+                              viz)
+                              tap>)]
           {:card                     dataset
            :prompt_template_versions (vec
                                       (conj
