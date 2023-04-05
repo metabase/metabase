@@ -5,3 +5,4 @@ export * from "./limit";
 export * from "./order_by";
 export * from "./query";
 export * from "./types";
+export * from "./util";
