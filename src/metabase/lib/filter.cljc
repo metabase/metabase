@@ -16,10 +16,14 @@
 
 (comment metabase.lib.schema/keep-me)
 
-(defmethod lib.metadata.calculation/describe-top-level-key-method :filter
+(defmethod lib.metadata.calculation/describe-top-level-key-method :filters
   [query stage-number _key]
-  (when-let [filter-clause (:filter (lib.util/query-stage query stage-number))]
-    (i18n/tru "Filtered by {0}" (lib.metadata.calculation/display-name query stage-number filter-clause))))
+  (when-let [filters (clojure.core/not-empty (:filters (lib.util/query-stage query stage-number)))]
+    (i18n/tru "Filtered by {0}"
+              (lib.util/join-strings-with-conjunction
+                (i18n/tru "and")
+                (for [filter filters]
+                  (lib.metadata.calculation/display-name query stage-number filter))))))
 
 ;;; Display names for filter clauses are only really used in generating descriptions for `:case` aggregations or for
 ;;; generating the suggested name for a query.
@@ -199,22 +203,7 @@
     boolean-expression]
    (let [stage-number (clojure.core/or stage-number -1)
          new-filter (lib.common/->op-arg query stage-number boolean-expression)]
-     (lib.util/update-query-stage query stage-number assoc :filter new-filter))))
-
-(defn- and-clause? [clause]
-  (clojure.core/and (vector? clause)
-                    (clojure.core/= (first clause) :and)))
-
-(mu/defn current-filter :- [:maybe ::schema.common/external-op]
-  "Returns the current filter in stage with `stage-number` of `query`.
-  If `stage-number` is omitted, the last stage is used.
-  See also [[metabase.lib.util/query-stage]]."
-  ([query :- :metabase.lib.schema/query] (current-filter query nil))
-  ([query :- :metabase.lib.schema/query
-    stage-number :- [:maybe :int]]
-   (-> (lib.util/query-stage query (clojure.core/or stage-number -1))
-       :filter
-       lib.common/external-op)))
+     (lib.util/update-query-stage query stage-number update :filters (fnil conj []) new-filter))))
 
 (mu/defn current-filters :- [:sequential ::schema.common/external-op]
   "Returns the current filters in stage with `stage-number` of `query`.
@@ -226,29 +215,6 @@
   ([query :- :metabase.lib.schema/query] (current-filters query nil))
   ([query :- :metabase.lib.schema/query
     stage-number :- [:maybe :int]]
-   (if-let [existing-filter (:filter (lib.util/query-stage query (clojure.core/or stage-number -1)))]
-     (if (and-clause? existing-filter)
-       (mapv lib.common/external-op (subvec existing-filter 2))
-       [(lib.common/external-op existing-filter)])
+   (if-let [existing-filters (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))]
+     (mapv lib.common/external-op existing-filters)
      [])))
-
-(defn- conjoin [existing-filter new-filter]
-  (-> (cond
-        (nil? existing-filter)        new-filter
-        (and-clause? existing-filter) (conj existing-filter new-filter)
-        :else                         [:and existing-filter new-filter])
-      lib.options/ensure-uuid))
-
-(mu/defn add-filter :- :metabase.lib.schema/query
-  "Adds `boolean-expression` as a filter on `query` if there is no filter
-  yet, builds a conjunction with the current filter otherwise."
-  ([query :- :metabase.lib.schema/query
-    boolean-expression]
-   (metabase.lib.filter/add-filter query nil boolean-expression))
-
-  ([query :- :metabase.lib.schema/query
-    stage-number :- [:maybe :int]
-    boolean-expression]
-   (let [stage-number (clojure.core/or stage-number -1)
-         new-filter (lib.common/->op-arg query stage-number boolean-expression)]
-     (lib.util/update-query-stage query stage-number update :filter conjoin new-filter))))

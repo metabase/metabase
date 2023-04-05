@@ -27,7 +27,7 @@
   query)
 
 (def ^:private stage-keys
-  [:aggregation :breakout :expressions :fields :filter :order-by :joins])
+  [:aggregation :breakout :expressions :fields :filters :order-by :joins])
 
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
@@ -188,10 +188,13 @@
 
 (defmethod ->legacy-MBQL :mbql.stage/mbql [stage]
   (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
-          (-> stage
-              disqualify
-              (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %)))
-          (remove #{:aggregation} stage-keys)))
+          (cond-> stage
+              :always disqualify
+              :always (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
+              (= (count (:filters stage)) 1) (m/update-existing :filters (comp ->legacy-MBQL first))
+              (> (count (:filters stage)) 1) (m/update-existing :filters #(into [:and] (map ->legacy-MBQL) %))
+              :always (set/rename-keys {:filters :filter}))
+          (remove #{:aggregation :filters} stage-keys)))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage

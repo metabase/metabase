@@ -96,6 +96,12 @@
 (defn- joins->pipeline [joins]
   (mapv join->pipeline joins))
 
+(defn- filter->pipeline [filter]
+  (if (and (vector? filter)
+        (= (first filter) :and))
+    (vec (drop 1 filter))
+    [filter]))
+
 (defn- inner-query->stages [{:keys [source-query source-metadata], :as inner-query}]
   (let [previous-stages (if source-query
                           (inner-query->stages source-query)
@@ -119,7 +125,9 @@
                                 {:lib/type stage-type})
                                (dissoc inner-query :source-query :source-metadata))
         this-stage      (cond-> this-stage
-                          (seq (:joins this-stage)) (update :joins joins->pipeline))]
+                          (seq (:joins this-stage)) (update :joins joins->pipeline)
+                          (:filter this-stage) (update :filter filter->pipeline)
+                          (:filter this-stage) (set/rename-keys {:filter :filters}))]
     (conj previous-stages this-stage)))
 
 (defn- mbql-query->pipeline

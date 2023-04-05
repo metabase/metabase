@@ -111,38 +111,59 @@
 (deftest ^:parallel round-trip-test
   ;; Miscellaneous queries that have caused test failures in the past, captured here for quick feedback.
   (are [query] (= query (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))
-       ;; :aggregation-options on a non-aggregate expression with an inner aggregate.
-       {:database 194
-        :query {:aggregation [[:aggregation-options
-                               [:- [:sum [:field 1677 nil]] 41]
-                               {:name "Sum-41"}]]
-                :breakout [[:field 1677 nil]]
-                :source-table 517}
-        :type :query}
+    ;; :aggregation-options on a non-aggregate expression with an inner aggregate.
+    {:database 194
+     :query {:aggregation [[:aggregation-options
+                            [:- [:sum [:field 1677 nil]] 41]
+                            {:name "Sum-41"}]]
+             :breakout [[:field 1677 nil]]
+             :source-table 517}
+     :type :query}
 
-       ;; :aggregation-options nested, not at the top level under :aggregation
-       {:database 194
-        :query {:aggregation [[:- [:aggregation-options
-                                   [:sum [:field 1677 nil]]
-                                   {:name "Sum-41"}] 41]]
-                :breakout [[:field 1677 nil]]
-                :source-table 517}
-        :type :query}
+    ;; :aggregation-options nested, not at the top level under :aggregation
+    {:database 194
+     :query {:aggregation [[:- [:aggregation-options
+                                [:sum [:field 1677 nil]]
+                                {:name "Sum-41"}] 41]]
+             :breakout [[:field 1677 nil]]
+             :source-table 517}
+     :type :query}
 
-       {:database 67
-        :query {:aggregation [[:aggregation-options
-                               [:avg
-                                [:field
-                                 809
-                                 {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
-                                  :metabase.query-processor.util.add-alias-info/source-table 224}]]
-                               {:name "avg"
-                                :metabase.query-processor.util.add-alias-info/desired-alias "avg"
-                                :metabase.query-processor.util.add-alias-info/position 1
-                                :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
-                :source-table 224}
-        :type :query}
+    {:database 67
+     :query {:aggregation [[:aggregation-options
+                            [:avg
+                             [:field
+                              809
+                              {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
+                               :metabase.query-processor.util.add-alias-info/source-table 224}]]
+                            {:name "avg"
+                             :metabase.query-processor.util.add-alias-info/desired-alias "avg"
+                             :metabase.query-processor.util.add-alias-info/position 1
+                             :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
+             :source-table 224}
+     :type :query}
 
-       [:value nil {:base_type :type/Number}]
+    [:value nil {:base_type :type/Number}]
 
-       [:case [[[:< [:field 1 nil] 10] [:value nil {:base_type :type/Number}]] [[:> [:field 2 nil] 2] 10]]]))
+    [:case [[[:< [:field 1 nil] 10] [:value nil {:base_type :type/Number}]] [[:> [:field 2 nil] 2] 10]]]
+
+    {:database 67
+     :query {:filter [:= [:field
+                          809
+                          {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
+                           :metabase.query-processor.util.add-alias-info/source-table 224}] 1]
+             :source-table 224}
+     :type :query}
+
+    {:database 67
+     :query {:filter [:and
+                      [:= [:field
+                           809
+                           {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
+                            :metabase.query-processor.util.add-alias-info/source-table 224}] 1]
+                      [:= [:field
+                           809
+                           {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
+                            :metabase.query-processor.util.add-alias-info/source-table 224}] 1]]
+             :source-table 224}
+     :type :query}))
