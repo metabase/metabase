@@ -92,7 +92,7 @@
 (defn infer-self-path
   "Returns `{:model \"ModelName\" :id \"id-string\"}`"
   [model-name entity]
-  (let [model (mdb.u/resolve-model (symbol model-name))
+  (let [model (mi/name->toucan-model model-name)
         pk    (mdb.u/primary-key model)]
     {:model model-name
      :id    (or (entity-id model-name entity)
@@ -186,7 +186,7 @@
     (db/select-reducible model)))
 
 (defmethod extract-query :default [model-name _]
-  (db/select-reducible (symbol model-name)))
+  (db/select-reducible (mi/name->toucan-model model-name)))
 
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:
@@ -197,7 +197,7 @@
 
   Returns the Clojure map."
   [model-name entity]
-  (let [model (mdb.u/resolve-model (symbol model-name))
+  (let [model (mi/name->toucan-model model-name)
         pk    (mdb.u/primary-key model)]
     (-> (into {} entity)
         (assoc :serdes/meta (generate-path model-name entity))
@@ -246,7 +246,7 @@
 
 (defmethod load-find-local :default [path]
   (let [{id :id model-name :model} (last path)
-        model                      (mdb.u/resolve-model (symbol model-name))]
+        model                      (mi/name->toucan-model model-name)]
     (when model
       (lookup-by-id model id))))
 
@@ -300,7 +300,7 @@
   (fn [model _ _] model))
 
 (defmethod load-update! :default [model-name ingested local]
-  (let [model    (mdb.u/resolve-model (symbol model-name))
+  (let [model    (mi/name->toucan-model model-name)
         pk       (mdb.u/primary-key model)
         id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
@@ -325,7 +325,7 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s: %s" model-name (pr-str ingested))
-  (first (t2/insert-returning-instances! (symbol model-name) ingested)))
+  (first (t2/insert-returning-instances! (mi/name->toucan-model model-name) ingested)))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -445,7 +445,7 @@
   [id model]
   (when id
     (let [model-name (name model)
-          model      (mdb.u/resolve-model (symbol model-name))
+          model      (mi/name->toucan-model model-name)
           entity     (t2/select-one model (mdb.u/primary-key model) id)
           path       (mapv :id (generate-path model-name entity))]
       (if (= (count path) 1)
@@ -466,7 +466,7 @@
   [eid model]
   (when eid
     (let [model-name (name model)
-          model      (mdb.u/resolve-model (symbol model-name))
+          model      (mi/name->toucan-model model-name)
           eid        (if (vector? eid)
                        (last eid)
                        eid)

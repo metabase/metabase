@@ -6,7 +6,6 @@
    [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
@@ -24,6 +23,7 @@
    [potemkin :as p]
    [schema.core :as schema]
    [taoensso.nippy :as nippy]
+   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.tools.before-insert :as t2.before-insert]
@@ -446,6 +446,20 @@
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 
+(defmulti name->toucan-model
+  "Given a string name, returns the equivalent toucan model."
+  (fn [model-name]
+    (assert (string? model-name))
+    model-name))
+
+(defmethod name->toucan-model :default
+  [model-name]
+  (try
+   #_{:clj-kondo/ignore [:discouraged-var]}
+    (db/resolve-model (symbol model-name))
+    (catch clojure.lang.ExceptionInfo _e
+      (keyword (str "m/" model-name)))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -662,6 +676,6 @@
 (reset! t2.hydrate/global-error-on-unknown-key true)
 
 (methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration :default
-  "In Metabase the FK key used for automagic hydration should use underscores (work around unstream Toucan 2 issue)."
+  "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
   [(csk/->snake_case (keyword (str (name dest-key) "_id")))])

@@ -10,7 +10,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -31,16 +30,24 @@
                                                          (:mysql :postgres) "entity_id"))]
         (into #{} (map (comp u/lower-case-en :table_name)) (resultset-seq rset))))))
 
+(def ^:private
+  table-name->toucan-model
+  "A map of table name to toucan2 models.
+  Currently there is no way to get all possibles models defined by toucan2, so we'll manually keep a list of this.
+  If this feature request is addressed, we should be able to avoid doing this: https://github.com/camsaul/toucan2/issues/143"
+  {"report_card" :m/Card})
+
 (defn- make-table-name->model
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."
   []
-  (into {} (for [model (descendants :toucan1/model)
-                 :when (models/model? model)
-                 :let  [table-name (some-> model t2/table-name name)]
-                 :when table-name
-                 ;; ignore any models defined in test namespaces.
-                 :when (not (str/includes? (namespace model) "test"))]
-             [table-name model])))
+  (into table-name->toucan-model
+        (for [model (descendants :toucan1/model)
+              :when (mdb.u/toucan-model? model)
+              :let  [table-name (some-> model t2/table-name name)]
+              :when table-name
+             ;; ignore any models defined in test namespaces.
+              :when (not (str/includes? (namespace model) "test"))]
+         [table-name model])))
 
 (defn- entity-id-models
   "Return a set of all Toucan models that have an `entity_id` column."

@@ -12,7 +12,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 (defn backfill-ids-for
@@ -28,14 +27,18 @@
         (t2/update! model (get entity pk) {:entity_id eid})))))
 
 (defn- has-entity-id? [model]
-  (::mi/entity-id (models/properties model)))
+  (or
+    ;; toucan1 models
+    (isa? model ::mi/entity-id)
+    ;; toucan2 models
+    (isa? model :hook/entity-id)))
 
 (defn backfill-ids
   "Updates all rows of all models that are (a) serialized and (b) have `entity_id` columns to have the
   `entity_id` set. If the `entity_id` is NULL, it is set based on the [[serdes/identity-hash]] for that
   row."
   []
-  (doseq [model-name (concat serdes.models/exported-models serdes.models/inlined-models)
-          :let [model (mdb.u/resolve-model (symbol model-name))]
+  (doseq [model (concat serdes.models/exported-models serdes.models/inlined-models)
+          :let [model (mi/name->toucan-model model)]
           :when (has-entity-id? model)]
     (backfill-ids-for model)))
