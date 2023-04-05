@@ -5,6 +5,7 @@ import { getAllUploads } from "metabase/redux/uploads";
 import Collections from "metabase/entities/collections/collections";
 import { Collection } from "metabase-types/api";
 import { FileUpload } from "metabase-types/store/upload";
+import { uploadInProgress } from "metabase/lib/uploads";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import FileUploadStatusLarge from "../FileUploadStatusLarge";
@@ -55,14 +56,6 @@ const FileUploadStatusContent = ({
 
   return <FileUploadStatusLarge uploads={uploads} collection={collection} />;
 };
-
-export const uploadInProgress = (upload: FileUpload) =>
-  upload.status === "in-progress";
-
-export const uploadCompleted = (upload: FileUpload) =>
-  upload.status === "complete";
-
-export const uploadAborted = (upload: FileUpload) => upload.status === "error";
 
 export default _.compose(
   Collections.loadList({ loadingAndErrorWrapper: false }),

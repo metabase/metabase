@@ -4,22 +4,24 @@ import Link from "metabase/core/components/Link";
 import { Collection } from "metabase-types/api";
 import { FileUpload } from "metabase-types/store/upload";
 
-import StatusLarge from "../StatusLarge";
-
 import {
   uploadInProgress,
   uploadCompleted,
   uploadAborted,
-} from "../FileUploadStatus/FileUploadStatus";
+} from "metabase/lib/uploads";
+
+import StatusLarge from "../StatusLarge";
 
 export interface FileUploadLargeProps {
   collection: Collection;
   uploads: FileUpload[];
+  isActive: boolean;
 }
 
 const FileUploadLarge = ({
   collection,
   uploads,
+  isActive,
 }: FileUploadLargeProps): JSX.Element => {
   const status = {
     title: getTitle(uploads, collection),
@@ -34,7 +36,7 @@ const FileUploadLarge = ({
     })),
   };
 
-  return <StatusLarge status={status} />;
+  return <StatusLarge status={status} isActive={isActive} />;
 };
 
 const getTitle = (uploads: FileUpload[], collection: Collection) => {
