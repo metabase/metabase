@@ -11,11 +11,14 @@ export const loadMetadataForDashboard = dashCards => dispatch => {
     .flatMap(dc => [dc.card].concat(dc.series || []));
 
   dispatch(loadMetadataForCards(cards));
+  dispatch(loadMetadataForLinkedTargets(dashCards));
 };
 
-export const loadMetadataForLinkedTargets =
-  visualizationSettings => async (dispatch, getState) => {
-    const linkTargets = getLinkTargets(visualizationSettings);
+const loadMetadataForLinkedTargets =
+  dashCards => async (dispatch, getState) => {
+    const linkTargets = dashCards.flatMap(card =>
+      getLinkTargets(card.visualization_settings),
+    );
     const fetchRequests = linkTargets
       .map(({ entity, entityId }) =>
         entity.actions.fetch({ id: entityId }, { noEvent: true }),

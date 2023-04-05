@@ -6,7 +6,6 @@ import _ from "underscore";
 
 import { getUserAttributes } from "metabase/selectors/user";
 import { getLinkTargets } from "metabase/lib/click-behavior";
-import { loadMetadataForLinkedTargets } from "metabase/dashboard/actions/metadata";
 
 // This HOC give access to data referenced in viz settings.
 // We use it to fetch and select entities needed for dashboard drill actions (e.g. clicking through to a question)
@@ -41,27 +40,12 @@ const WithVizSettingsData = ComposedComponent => {
       dispatch => ({ dispatch }),
     )(
       class WithVizSettingsData extends React.Component {
-        fetch() {
-          const { rawSeries, dispatch } = this.props;
+        dashcardSettings({ rawSeries }) {
           const [firstSeries] = rawSeries || [{}];
           const { visualization_settings } = firstSeries.card || {};
-          dispatch(loadMetadataForLinkedTargets(visualization_settings));
+          return visualization_settings;
         }
 
-        componentDidMount() {
-          this.fetch();
-        }
-
-        componentDidUpdate(prevProps) {
-          if (
-            !_.isEqual(
-              this.dashcardSettings(this.props),
-              this.dashcardSettings(prevProps),
-            )
-          ) {
-            this.fetch();
-          }
-        }
         render() {
           return <ComposedComponent {..._.omit(this.props, "dispatch")} />;
         }
