@@ -3,7 +3,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
-   [java-time :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]

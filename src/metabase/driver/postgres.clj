@@ -762,7 +762,7 @@
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
 
-(defn check-for-semicolons [s]
+(defn- check-for-semicolons [s]
   (when (re-find #";" s)
     (throw (ex-info (tru "Error uploading CSV: \";\" in {0}" s) {}))))
 
@@ -770,7 +770,7 @@
   (str "COPY " schema-name "." table-name "(" (str/join "," column-names) ") FROM '" file-path
        "' WITH (FORMAT CSV, HEADER TRUE, ENCODING 'UTF8', QUOTE '\"', ESCAPE '\\')"))
 
-(def csv->database-type
+(def ^:private csv->database-type
   {::csv/varchar_255 "VARCHAR(255)"
    ::csv/text        "TEXT"
    ::csv/int         "INTEGER"
