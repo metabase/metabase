@@ -160,8 +160,8 @@
    toucan.db/resolve-model       {:message "Use metabase.db.util/resolve-model instead of toucan.db/resolve-model"}
    toucan.models/primary-key     {:message "Use metabase.db.util/primary-key instead of toucan.models/primary-key"}
    toucan.models/model?          {:message "Use mdb.u/toucan-model? instead of toucan.models/model?"}
-   metabase.models/Card          {:message "Use :m/card instead of models/Card"}
-   metabase.models.card/Card     {:message "Use :m/card instead of card/Card"}}
+   #_metabase.models/Card          #_{:message "Use :m/card instead of models/Card"}
+   #_metabase.models.card/Card     #_{:message "Use :m/card instead of card/Card"}}
 
   :discouraged-namespace
   {clojure.tools.logging {:message "Use metabase.util.log instead of clojure.tools.logging directly"}

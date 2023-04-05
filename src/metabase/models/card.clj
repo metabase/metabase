@@ -430,7 +430,7 @@
 
 (t2/define-before-update :m/Card
   [card]
-  (-> (merge {:id card}
+  (-> (merge (t2/instance :m/Card {:id (:id card)})
              (t2/changes card))
       maybe-normalize-query
       populate-result-metadata
