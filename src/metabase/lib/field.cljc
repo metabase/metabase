@@ -82,8 +82,8 @@
                              (str parent-name \. field-name)))))
 
 (defmethod lib.metadata.calculation/metadata-method :metadata/field
-  [_query _stage-number field-metadata]
-  field-metadata)
+  [_query _stage-number {field-name :name, :as field-metadata}]
+  (assoc field-metadata :name field-name))
 
 ;;; TODO -- base type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
@@ -128,13 +128,24 @@
       display-name)))
 
 (defmethod lib.metadata.calculation/display-name-method :field
-  [query stage-number [_field {:keys [join-alias temporal-unit], :as _opts} _id-or-name, :as field-clause]]
+  [query stage-number [_tag {:keys [join-alias temporal-unit], :as _opts} _id-or-name, :as field-clause]]
   (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
                             join-alias    (assoc :source_alias join-alias)
                             temporal-unit (assoc :unit temporal-unit))]
     (lib.metadata.calculation/display-name query stage-number field-metadata)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))
+
+(defmethod lib.metadata.calculation/column-name-method :metadata/field
+  [_query _stage-number {field-name :name}]
+  field-name)
+
+(defmethod lib.metadata.calculation/column-name-method :field
+  [query stage-number [_tag _id-or-name, :as field-clause]]
+  (if-let [field-metadata (resolve-field-metadata query stage-number field-clause)]
+    (lib.metadata.calculation/column-name query stage-number field-metadata)
+    ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
+    "unknown_field"))
 
 (defmethod lib.temporal-bucket/current-temporal-bucket-method :field
   [[_tag opts _id-or-name]]
@@ -197,6 +208,31 @@
       [:field options (if always-use-name?
                         (:name metadata)
                         (or (:id metadata) (:name metadata)))])))
+
+(mu/defn ^:private joined-field-desired-alias :- ::lib.schema.common/non-blank-string
+  "Desired alias for a Field that comes from a join, e.g.
+
+    MyJoin__my_field
+
+  You should pass the results thru a unique name function."
+  [join-alias :- ::lib.schema.common/non-blank-string
+   field-name :- ::lib.schema.common/non-blank-string]
+  (lib.util/format "%s__%s" join-alias field-name))
+
+(mu/defn desired-alias :- ::lib.schema.common/non-blank-string
+  [field-metadata :- lib.metadata/ColumnMetadata]
+  "Desired alias for a Field e.g.
+
+    my_field
+
+    OR
+
+    MyJoin__my_field
+
+  You should pass the results thru a unique name function."
+  (if-let [join-alias (lib.join/current-join-alias field-metadata)]
+    (joined-field-desired-alias join-alias (:name field-metadata))
+    (:name field-metadata)))
 
 (defn fields
   "Specify the `:fields` for a query."

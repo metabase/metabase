@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest driver->expected-namespace-test
+(deftest ^:parallel driver->expected-namespace-test
   (testing "expected namespace for a non-namespaced driver should be `metabase.driver.<driver>`"
     (is (= 'metabase.driver.sql-jdbc
            (#'driver.impl/driver->expected-namespace :sql-jdbc))))
@@ -38,7 +38,7 @@
           (is (= true
                  @finished-loading)))))))
 
-(deftest truncate-string-to-byte-count-test
+(deftest ^:parallel truncate-string-to-byte-count-test
   (letfn [(truncate-string-to-byte-count [s byte-length]
             (let [^String truncated (#'driver.impl/truncate-string-to-byte-count s byte-length)]
               (is (<= (count (.getBytes truncated "UTF-8")) byte-length))
@@ -76,7 +76,7 @@
         (is (= expected
                (truncate-string-to-byte-count s max-length)))))))
 
-(deftest truncate-alias-test
+(deftest ^:parallel truncate-alias-test
   (letfn [(truncate-alias [s max-bytes]
             (let [truncated (driver.impl/truncate-alias s max-bytes)]
               (is (<= (count (.getBytes truncated "UTF-8")) max-bytes))

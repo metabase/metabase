@@ -141,7 +141,7 @@
 
 (deftest ^:parallel coalesce-names-test
   (let [clause [:coalesce {} (lib.tu/field-clause :venues :name) "<Venue>"]]
-    (is (= "name"
+    (is (= "NAME"
            (lib.metadata.calculation/column-name lib.tu/venues-query -1 clause)))
     (is (= "Name"
            (lib.metadata.calculation/display-name lib.tu/venues-query -1 clause)))))

@@ -144,7 +144,7 @@
   "Convenience for creating a query from a Saved Question (i.e., a Card)."
   [metadata-provider :- lib.metadata/MetadataProvider
    {mbql-query :dataset_query, metadata :result_metadata}]
-  (let [mbql-query (cond-> (assoc (lib.util/pipeline mbql-query)
+  (let [mbql-query (cond-> (assoc (lib.convert/->pMBQL mbql-query)
                                   :lib/metadata metadata-provider)
                      metadata
                      (lib.util/update-query-stage -1 assoc :lib/stage-metadata metadata))]

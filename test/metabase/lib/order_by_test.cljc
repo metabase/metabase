@@ -143,12 +143,12 @@
                   :base_type          :type/Integer}
                  {:lib/type     :metadata/field
                   :base_type    :type/Integer
-                  :name         "sum_price"
+                  :name         "sum_PRICE"
                   :display_name "Sum of Price"
                   :lib/source   :source/aggregations}
                  {:lib/type     :metadata/field
                   :base_type    :type/Float
-                  :name         "avg_price_plus_1"
+                  :name         "avg_PRICE_plus_1"
                   :display_name "Average of Price + 1"
                   :lib/source   :source/aggregations}]
                 (lib/orderable-columns query)))))))
@@ -169,53 +169,69 @@
 (deftest ^:parallel orderable-columns-test
   (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")]
     (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-      (is (=? [{:lib/type     :metadata/field
-                :name         "ID"
-                :display_name "ID"
-                :id           (meta/id :venues :id)
-                :table_id     (meta/id :venues)
-                :base_type    :type/BigInteger}
-               {:lib/type     :metadata/field
-                :name         "NAME"
-                :display_name "Name"
-                :id           (meta/id :venues :name)
-                :table_id     (meta/id :venues)
-                :base_type    :type/Text}
-               {:lib/type     :metadata/field
-                :name         "CATEGORY_ID"
-                :display_name "Category ID"
-                :id           (meta/id :venues :category-id)
-                :table_id     (meta/id :venues)}
-               {:lib/type     :metadata/field
-                :name         "LATITUDE"
-                :display_name "Latitude"
-                :id           (meta/id :venues :latitude)
-                :table_id     (meta/id :venues)
-                :base_type    :type/Float}
-               {:lib/type     :metadata/field
-                :name         "LONGITUDE"
-                :display_name "Longitude"
-                :id           (meta/id :venues :longitude)
-                :table_id     (meta/id :venues)
-                :base_type    :type/Float}
-               {:lib/type     :metadata/field
-                :name         "PRICE"
-                :display_name "Price"
-                :id           (meta/id :venues :price)
-                :table_id     (meta/id :venues)
-                :base_type    :type/Integer}
-               {:lib/type     :metadata/field
-                :name         "ID"
-                :display_name "ID"
-                :id           (meta/id :categories :id)
-                :table_id     (meta/id :categories)
-                :base_type    :type/BigInteger}
-               {:lib/type     :metadata/field
-                :name         "NAME"
-                :display_name "Name"
-                :id           (meta/id :categories :name)
-                :table_id     (meta/id :categories)
-                :base_type    :type/Text}]
+      (is (=? [{:lib/type                 :metadata/field
+                :name                     "ID"
+                :display_name             "ID"
+                :id                       (meta/id :venues :id)
+                :table_id                 (meta/id :venues)
+                :base_type                :type/BigInteger
+                :lib/source-column-alias  "ID"
+                :lib/desired-column-alias "ID"}
+               {:lib/type                 :metadata/field
+                :name                     "NAME"
+                :display_name             "Name"
+                :id                       (meta/id :venues :name)
+                :table_id                 (meta/id :venues)
+                :base_type                :type/Text
+                :lib/source-column-alias  "NAME"
+                :lib/desired-column-alias "NAME"}
+               {:lib/type                 :metadata/field
+                :name                     "CATEGORY_ID"
+                :display_name             "Category ID"
+                :id                       (meta/id :venues :category-id)
+                :table_id                 (meta/id :venues)
+                :lib/source-column-alias  "CATEGORY_ID"
+                :lib/desired-column-alias "CATEGORY_ID"}
+               {:lib/type                 :metadata/field
+                :name                     "LATITUDE"
+                :display_name             "Latitude"
+                :id                       (meta/id :venues :latitude)
+                :table_id                 (meta/id :venues)
+                :base_type                :type/Float
+                :lib/source-column-alias  "LATITUDE"
+                :lib/desired-column-alias "LATITUDE"}
+               {:lib/type                 :metadata/field
+                :name                     "LONGITUDE"
+                :display_name             "Longitude"
+                :id                       (meta/id :venues :longitude)
+                :table_id                 (meta/id :venues)
+                :base_type                :type/Float
+                :lib/source-column-alias  "LONGITUDE"
+                :lib/desired-column-alias "LONGITUDE"}
+               {:lib/type                 :metadata/field
+                :name                     "PRICE"
+                :display_name             "Price"
+                :id                       (meta/id :venues :price)
+                :table_id                 (meta/id :venues)
+                :base_type                :type/Integer
+                :lib/source-column-alias  "PRICE"
+                :lib/desired-column-alias "PRICE"}
+               {:lib/type                 :metadata/field
+                :name                     "ID"
+                :display_name             "ID"
+                :id                       (meta/id :categories :id)
+                :table_id                 (meta/id :categories)
+                :base_type                :type/BigInteger
+                :lib/source-column-alias  "ID"
+                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"}
+               {:lib/type                 :metadata/field
+                :name                     "NAME"
+                :display_name             "Name"
+                :id                       (meta/id :categories :name)
+                :table_id                 (meta/id :categories)
+                :base_type                :type/Text
+                :lib/source-column-alias  "NAME"
+                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__NAME"}]
               (lib/orderable-columns query))))))
 
 (deftest ^:parallel orderable-expressions-test
@@ -331,32 +347,83 @@
                     [:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]]
                   (lib/order-bys query'))))))))
 
+(deftest ^:parallel orderable-columns-with-join-test
+  (is (=? [{:name                     "ID"
+            :lib/source-column-alias  "ID"
+            :lib/desired-column-alias "ID"
+            :lib/source               :source/table-defaults}
+           {:name                     "NAME"
+            :lib/source-column-alias  "NAME"
+            :lib/desired-column-alias "NAME"
+            :lib/source               :source/table-defaults}
+           {:name                     "CATEGORY_ID"
+            :lib/source-column-alias  "CATEGORY_ID"
+            :lib/desired-column-alias "CATEGORY_ID"
+            :lib/source               :source/table-defaults}
+           {:name                     "LATITUDE"
+            :lib/source-column-alias  "LATITUDE"
+            :lib/desired-column-alias "LATITUDE"
+            :lib/source               :source/table-defaults}
+           {:name                     "LONGITUDE"
+            :lib/source-column-alias  "LONGITUDE"
+            :lib/desired-column-alias "LONGITUDE"
+            :lib/source               :source/table-defaults}
+           {:name                     "PRICE"
+            :lib/source-column-alias  "PRICE"
+            :lib/desired-column-alias "PRICE"
+            :lib/source               :source/table-defaults}
+           {:name                     "ID"
+            :lib/source-column-alias  "ID"
+            :lib/desired-column-alias "Cat__ID"
+            :lib/source               :source/joins}
+           {:name                     "NAME"
+            :lib/source-column-alias  "NAME"
+            :lib/desired-column-alias "Cat__NAME"
+            :lib/source               :source/joins}]
+          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+              (lib/join (-> (lib/join-clause
+                             (meta/table-metadata :categories)
+                             (lib/=
+                              (lib/field "VENUES" "CATEGORY_ID")
+                              (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")))
+                            (lib/with-join-alias "Cat")
+                            (lib/with-join-fields :all)))
+              (lib/fields [(lib/field "VENUES" "ID")
+                           (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")])
+              (lib/orderable-columns)))))
+
 (deftest ^:parallel order-bys-with-duplicate-column-names-test
   (testing "Order by stuff should work with two different columns named ID (#29702)"
-    (is (=? [{:id             (meta/id :venues :id)
-              :name           "ID"
-              :lib/source     :source/previous-stage
-              :lib/type       :metadata/field
-              :base_type      :type/BigInteger
-              :effective_type :type/BigInteger
-              :display_name   "ID"
-              :table_id       (meta/id :venues)}
-             {:id             (meta/id :categories :id)
-              :name           "ID_2"
-              :lib/source     :source/previous-stage
-              :lib/type       :metadata/field
-              :base_type      :type/BigInteger
-              :effective_type :type/BigInteger
-              :display_name   "ID"
-              :table_id       (meta/id :categories)}]
+    (is (=? [{:id                       (meta/id :venues :id)
+              :name                     "ID"
+              :lib/source               :source/previous-stage
+              :lib/type                 :metadata/field
+              :base_type                :type/BigInteger
+              :effective_type           :type/BigInteger
+              :display_name             "ID"
+              :table_id                 (meta/id :venues)
+              :lib/source-column-alias  "ID"
+              :lib/desired-column-alias "ID"}
+             {:id                       (meta/id :categories :id)
+              :name                     "ID"
+              :lib/source               :source/previous-stage
+              :lib/type                 :metadata/field
+              :base_type                :type/BigInteger
+              :effective_type           :type/BigInteger
+              :display_name             "Categories → ID"
+              :table_id                 (meta/id :categories)
+              :lib/source-column-alias  "Cat__ID"
+              :lib/desired-column-alias "Cat__ID"}]
             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                 (lib/join (-> (lib/join-clause
                                (meta/table-metadata :categories)
                                (lib/=
                                 (lib/field "VENUES" "CATEGORY_ID")
-                                (lib/field "CATEGORIES" "ID")))
+                                (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")))
+                              (lib/with-join-alias "Cat")
                               (lib/with-join-fields :all)))
-                (lib/fields [(lib/field "VENUES" "ID")  (lib/field "CATEGORIES" "ID")])
+                (lib/fields [(lib/field "VENUES" "ID")
+                             (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")])
                 (lib/append-stage)
                 (lib/orderable-columns))))))
 
@@ -383,17 +450,16 @@
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                   (lib/fields [(lib/field "VENUES" "ID")]))]
-    (is (= [{:id (meta/id :venues :id),          :name "ID",          :display_name "ID",          :lib/source :source/table-defaults}
-            {:id (meta/id :venues :name),        :name "NAME",        :display_name "Name",        :lib/source :source/table-defaults}
-            {:id (meta/id :venues :category-id), :name "CATEGORY_ID", :display_name "Category ID", :lib/source :source/table-defaults}
-            {:id (meta/id :venues :latitude),    :name "LATITUDE",    :display_name "Latitude",    :lib/source :source/table-defaults}
-            {:id (meta/id :venues :longitude),   :name "LONGITUDE",   :display_name "Longitude",   :lib/source :source/table-defaults}
-            {:id (meta/id :venues :price),       :name "PRICE",       :display_name "Price",       :lib/source :source/table-defaults}
-            {:name "expr", :display_name "expr", :lib/source :source/expressions}
-            {:id (meta/id :categories :id),   :name "ID",   :display_name "ID",   :lib/source :source/implicitly-joinable}
-            {:id (meta/id :categories :name), :name "NAME", :display_name "Name", :lib/source :source/implicitly-joinable}]
-           (map #(select-keys % [:id :name :display_name :lib/source])
-                (lib/orderable-columns query))))
+    (is (=? [{:id (meta/id :venues :id),          :name "ID",          :display_name "ID",          :lib/source :source/table-defaults}
+             {:id (meta/id :venues :name),        :name "NAME",        :display_name "Name",        :lib/source :source/table-defaults}
+             {:id (meta/id :venues :category-id), :name "CATEGORY_ID", :display_name "Category ID", :lib/source :source/table-defaults}
+             {:id (meta/id :venues :latitude),    :name "LATITUDE",    :display_name "Latitude",    :lib/source :source/table-defaults}
+             {:id (meta/id :venues :longitude),   :name "LONGITUDE",   :display_name "Longitude",   :lib/source :source/table-defaults}
+             {:id (meta/id :venues :price),       :name "PRICE",       :display_name "Price",       :lib/source :source/table-defaults}
+             {:name "expr", :display_name "expr", :lib/source :source/expressions}
+             {:id (meta/id :categories :id),   :name "ID",   :display_name "ID",   :lib/source :source/implicitly-joinable}
+             {:id (meta/id :categories :name), :name "NAME", :display_name "Name", :lib/source :source/implicitly-joinable}]
+            (lib/orderable-columns query)))
     (let [expr (m/find-first #(= (:name %) "expr") (lib/orderable-columns query))]
       (is (=? {:lib/type   :metadata/field
                :lib/source :source/expressions

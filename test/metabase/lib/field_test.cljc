@@ -149,3 +149,27 @@
               (lib.temporal-bucket/current-temporal-bucket (lib.metadata.calculation/metadata query -1 field))))
       (is (= "Date (year)"
              (lib.metadata.calculation/display-name query -1 field))))))
+
+(deftest ^:parallel joined-field-column-name-test
+  (let [card  {:dataset_query {:database (meta/id)
+                               :type     :query
+                               :query    {:source-table (meta/id :venues)
+                                          :joins        [{:fields       :all
+                                                          :source-table (meta/id :categories)
+                                                          :condition    [:=
+                                                                         [:field (meta/id :venues :category-id) nil]
+                                                                         [:field (meta/id :categories :id) {:join-alias "Cat"}]]
+                                                          :alias        "Cat"}]}}}
+        query (lib/saved-question-query
+               meta/metadata-provider
+               card)]
+    (is (=? [{:lib/desired-column-alias "ID"}
+             {:lib/desired-column-alias "NAME"}
+             {:lib/desired-column-alias "CATEGORY_ID"}
+             {:lib/desired-column-alias "LATITUDE"}
+             {:lib/desired-column-alias "LONGITUDE"}
+             {:lib/desired-column-alias "PRICE"}
+             {:lib/desired-column-alias "Cat__ID"}
+             {:lib/desired-column-alias "Cat__NAME"}]
+            (for [field (lib.metadata.calculation/metadata query)]
+              field)))))

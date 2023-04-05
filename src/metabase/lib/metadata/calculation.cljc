@@ -47,20 +47,23 @@
 
 (mu/defn column-name :- ::lib.schema.common/non-blank-string
   "Calculate a database-friendly name to use for an expression."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   x]
-  (or
-   ;; if this is an MBQL clause with `:name` in the options map, then use that rather than calculating a name.
-   (:name (lib.options/options x))
-   (try
-     (column-name-method query stage-number x)
-     (catch #?(:clj Throwable :cljs js/Error) e
-       (throw (ex-info (i18n/tru "Error calculating column name for {0}: {1}" (pr-str x) (ex-message e))
-                       {:x            x
-                        :query        query
-                        :stage-number stage-number}
-                       e))))))
+  ([query x]
+   (column-name query -1 x))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    x]
+   (or
+    ;; if this is an MBQL clause with `:name` in the options map, then use that rather than calculating a name.
+    (:name (lib.options/options x))
+    (try
+      (column-name-method query stage-number x)
+      (catch #?(:clj Throwable :cljs js/Error) e
+        (throw (ex-info (i18n/tru "Error calculating column name for {0}: {1}" (pr-str x) (ex-message e))
+                        {:x            x
+                         :query        query
+                         :stage-number stage-number}
+                        e)))))))
 
 (defmethod display-name-method :default
   [_query _stage-number x]
@@ -81,7 +84,7 @@
       (str/replace #"\+" (i18n/tru "plus"))
       (str/replace #"\-" (i18n/tru "minus"))
       (str/replace #"[\(\)]" "")
-      u/slugify))
+      (u/slugify {:unicode? true})))
 
 ;;; default impl just takes the display name and slugifies it.
 (defmethod column-name-method :default
@@ -159,3 +162,36 @@
       (catch #?(:clj Throwable :cljs js/Error) e
         (log/error e (i18n/tru "Error calculating display name for query: {0}" (ex-message e)))
         nil))))
+
+;; (defmulti column-source-table-alias-method
+;;   {:arglists '([query stage-number column-ref-or-metadata])}
+;;   (fn [_query _stage-number column-ref-or-metadata]
+;;     (lib.dispatch/dispatch-value column-ref-or-metadata)))
+
+;; (defn column-source-table-alias
+;;   ([query column-ref-or-metadata]
+;;    (column-source-table-alias query -1 column-ref-or-metadata))
+
+;;   ([query stage-number column-ref-or-metadata]
+;;    (column-source-table-alias-method query stage-number column-ref-or-metadata)))
+
+;; (defmulti column-source-alias-method
+;;   {:arglists '([query stage-number column-ref-or-metadata])}
+;;   (fn [_query _stage-number column-ref-or-metadata]
+;;     (lib.dispatch/dispatch-value column-ref-or-metadata)))
+
+;; (defn column-source-alias
+;;   ([query column-ref-or-metadata]
+;;    (column-source-alias query -1 column-ref-or-metadata))
+
+;;   ([query stage-number column-ref-or-metadata]
+;;    (column-source-alias-method query stage-number column-ref-or-metadata)))
+
+(defmulti column-desired-alias-method
+  {:arglists '([query stage-number column-ref-or-metadata unique-name-fn])}
+  (fn [_query _stage-number column-ref-or-metadata _unique-name-fn]
+    (lib.dispatch/dispatch-value column-ref-or-metadata)))
+
+(defn column-desired-alias
+  [query stage-number column-ref-or-metadata unique-name-fn]
+  (column-desired-alias-method query stage-number column-ref-or-metadata unique-name-fn))
