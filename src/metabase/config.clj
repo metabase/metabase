@@ -99,7 +99,9 @@
      mb-version-info -> {:tag: \"v0.11.1\", :hash: \"afdf863\", :branch: \"about_metabase\", :date: \"2015-10-05\"}"
   (or (version-info-from-properties-file)
       ;; if version info is not defined for whatever reason
-      {}))
+      {:tag "vLOCAL_DEV"
+       :hash "06d1ba2ae111e66253209c01c244d6379acfc6dcb1911fa9ab6012cec9ce52e5"
+       :branch "local"}))
 
 (def ^String mb-version-string
   "A formatted version string representing the currently running application.
