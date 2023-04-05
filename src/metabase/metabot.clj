@@ -2,6 +2,7 @@
   "The core metabot namespace. Consists primarily of functions named infer-X,
   where X is the thing we want to extract from the bot response."
   (:require
+   [metabase.lib.native :as lib-native]
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
@@ -22,9 +23,11 @@
                                        (:id model)
                                        user_prompt
                                        final-sql)
+              template-tags (lib-native/template-tags inner_query)
               dataset       {:dataset_query          {:database database_id
                                                       :type     "native"
-                                                      :native   {:query         final-sql}}
+                                                      :native   {:query         final-sql
+                                                                 :template-tags template-tags}}
                              :display                :table
                              :visualization_settings {}}]
           {:card                     dataset
