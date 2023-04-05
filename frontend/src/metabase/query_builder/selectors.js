@@ -4,7 +4,7 @@ import d3 from "d3";
 import { createSelector } from "reselect";
 import createCachedSelector from "re-reselect";
 import _ from "underscore";
-import { assocIn, getIn, merge, updateIn } from "icepick";
+import { getIn, merge, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
@@ -32,6 +32,7 @@ import {
 import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import * as ML from "metabase-lib/v2";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
   normalizeParameters,
@@ -348,53 +349,16 @@ export const getQuestionFromCard = createCachedSelector(
   (metadata, card) => new Question(card, metadata),
 )((_state, card) => card.id);
 
-function normalizeClause(clause) {
-  return typeof clause?.raw === "function" ? clause.raw() : clause;
-}
-
-// Certain differences in a query should be ignored. `normalizeQuery`
-// standardizes the query before comparison in `getIsResultDirty`.
-export function normalizeQuery(query, tableMetadata) {
-  if (!query) {
-    return query;
-  }
-  if (query.query) {
-    if (tableMetadata) {
-      query = updateIn(query, ["query", "fields"], fields => {
-        fields = fields
-          ? // if the query has fields, copy them before sorting
-            [...fields]
-          : // if the fields aren't set, we get them from the table metadata
-            tableMetadata.fields.map(({ id }) => ["field", id, null]);
-        return fields.sort((a, b) =>
-          JSON.stringify(b).localeCompare(JSON.stringify(a)),
-        );
-      });
-    }
-    ["aggregation", "breakout", "filter", "joins", "order-by"].forEach(
-      clauseList => {
-        if (query.query[clauseList]) {
-          query = updateIn(query, ["query", clauseList], clauses =>
-            clauses.map(normalizeClause),
-          );
-        }
-      },
-    );
-  }
-  if (query.native && query.native["template-tags"] == null) {
-    query = assocIn(query, ["native", "template-tags"], {});
-  }
-  return query;
-}
-
 function isQuestionEditable(question) {
   return !question?.query().readOnly();
 }
 
 function areQueriesEqual(queryA, queryB, tableMetadata) {
-  const normalizedQueryA = normalizeQuery(queryA, tableMetadata);
-  const normalizedQueryB = normalizeQuery(queryB, tableMetadata);
-  return _.isEqual(normalizedQueryA, normalizedQueryB);
+  return ML.areQueriesEqual(
+    queryA,
+    queryB,
+    tableMetadata?.fields.map(({ id }) => id),
+  );
 }
 
 // Model questions may be composed via the `composeDataset` method.
