@@ -120,7 +120,7 @@
          :stages [{:lib/type :mbql.stage/mbql
                    :source-table (meta/id :categories)
                    :lib/options {:lib/uuid string?}
-                   :filter original-filter}]}]
+                   :filters [original-filter]}]}]
     (testing "no filter"
       (is (= [] (lib/current-filters q2))))
 
