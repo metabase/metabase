@@ -158,4 +158,3 @@
                                                      (lib-native/template-tags inner_query)
                                                      (fn [m] (update m :id str)))}})]
             (is (= 1 (count (get-in results [:data :rows]))))))))))
-
