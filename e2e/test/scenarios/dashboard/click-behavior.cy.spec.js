@@ -8,7 +8,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should show filters defined on a question with filter pass-thru (metabase#15993)", () => {
@@ -177,8 +177,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     cy.findByTestId("gauge-arc-1").click();
-    cy.wait("@cardQuery");
-    cy.findByDisplayValue("Orders").should("be.visible");
+    cy.wait("@dataset");
+    cy.findByText("Orders");
   });
 
   it("should navigate to a target from a progress card (metabase#23137)", () => {
@@ -195,8 +195,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     cy.findByTestId("progress-bar").click();
-    cy.wait("@cardQuery");
-    cy.findByDisplayValue("Orders").should("be.visible");
+    cy.wait("@dataset");
+    cy.findByText("Orders");
   });
 });
 
