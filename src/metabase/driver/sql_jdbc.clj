@@ -100,20 +100,17 @@
   [_driver _semantic_type expr]
   (hx/->timestamp expr))
 
-;; TODO: this assumes schema-name is non-nil and the database supports schemas
 (defn- create-table-sql
-  [schema-name table-name col->type]
-  (first (sql/format {:create-table (keyword (str schema-name "." table-name))
+  [table-name col->type]
+  (first (sql/format {:create-table (keyword table-name)
                       :with-columns (map (fn [kv] (map keyword kv)) col->type)})))
 
-;; TODO: this assumes schema-name is non-nil and the database supports schemas
 (defmethod driver/create-table :sql-jdbc
-  [_driver db-id schema-name table-name col->type]
-  (let [sql (create-table-sql schema-name table-name col->type)]
+  [_driver db-id table-name col->type]
+  (let [sql (create-table-sql table-name col->type)]
     (qp.writeback/execute-write-sql! db-id sql)))
 
-;; TODO: this assumes schema-name is non-nil and the database supports schemas
 (defmethod driver/drop-table :sql-jdbc
-  [_driver db-id schema-name table-name]
-  (let [sql (first (sql/format {:drop-table [:if-exists (keyword (str schema-name "." table-name))]}))]
+  [_driver db-id table-name]
+  (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}))]
     (qp.writeback/execute-write-sql! db-id sql)))

@@ -108,10 +108,13 @@
 (defn- file->table-name [^File file]
   (str (u/slugify (second (re-matches #"(.*)\.csv$" (.getName file)))) (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
 
-;; TODO: assumes DB supports schema
 (defn load-from-csv
-  "Loads a table from a CSV file. Returns the name of the newly created table."
+  "Loads a table from a CSV file. Returns the name of the newly created table.
+   `schema-name` can be nil for databases that don't support schemas."
   [driver database schema-name ^File file]
-  (let [table-name (file->table-name file)]
-    (driver/load-from-csv driver database schema-name table-name file)
+  (let [table-name        (file->table-name file)
+        schema+table-name (cond->> table-name
+                            (some? schema-name)
+                            (str schema-name "."))]
+    (driver/load-from-csv driver database schema+table-name file)
     table-name))

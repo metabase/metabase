@@ -766,8 +766,8 @@
   (when (re-find #";" s)
     (throw (ex-info (tru "Error uploading CSV: \";\" in {0}" s) {}))))
 
-(defn- load-from-csv-sql [schema-name table-name column-names file-path]
-  (str "COPY " schema-name "." table-name "(" (str/join "," column-names) ") FROM '" file-path
+(defn- load-from-csv-sql [table-name column-names file-path]
+  (str "COPY " table-name "(" (str/join "," column-names) ") FROM '" file-path
        "' WITH (FORMAT CSV, HEADER TRUE, ENCODING 'UTF8', QUOTE '\"', ESCAPE '\\')"))
 
 (def ^:private csv->database-type
@@ -778,16 +778,16 @@
    ::csv/boolean     "BOOLEAN"})
 
 (defmethod driver/load-from-csv :postgres
-  [driver db-id schema-name table-name ^File csv-file]
+  [driver db-id table-name ^File csv-file]
   (let [col->type    (update-vals (csv/detect-schema csv-file) csv->database-type)
         column-names (keys col->type)
         file-path    (.getAbsolutePath csv-file)]
-    (run! check-for-semicolons (concat [schema-name table-name file-path] column-names))
-    (driver/create-table driver db-id schema-name table-name col->type)
-    (let [sql (load-from-csv-sql schema-name table-name column-names file-path)]
+    (run! check-for-semicolons (concat [table-name file-path] column-names))
+    (driver/create-table driver db-id table-name col->type)
+    (let [sql (load-from-csv-sql table-name column-names file-path)]
       (try
         (qp.writeback/execute-write-sql! db-id sql)
         (catch Throwable e
-          (driver/drop-table driver db-id schema-name table-name)
+          (driver/drop-table driver db-id table-name)
           (throw (ex-info (ex-message e) {}))))
       nil)))

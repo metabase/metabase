@@ -820,18 +820,18 @@
 
 (defmulti create-table
   "Create a table named `table-name` with a given `schema-name`. If the table already exists it will throw an error."
-  {:added "0.47.0", :arglists '([driver db-id schema-name table-name col->type])}
+  {:added "0.47.0", :arglists '([driver db-id table-name col->type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmulti drop-table
   "Drop a table named `table-name` with a given `schema-name`. If the table doesn't exist it will not be dropped."
-  {:added "0.47.0", :arglists '([driver db-id schema-name table-name])}
+  {:added "0.47.0", :arglists '([driver db-id table-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmulti load-from-csv
   "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil."
-  {:added "0.47.0", :arglists '([driver database schema-name table-name file])}
+  {:added "0.47.0", :arglists '([driver database table-name file])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

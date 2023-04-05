@@ -1164,8 +1164,7 @@
         (driver/load-from-csv
          driver/*driver*
          (mt/id)
-         "public"
-         "upload_test"
+         "public.upload_test"
          (csv-test/csv-file-with ["id,empty,string,bool,float" "2,,string,true,1.1" "3,,string,false,1.1"]))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
@@ -1210,8 +1209,7 @@
                (driver/load-from-csv
                 driver/*driver*
                 (mt/id)
-                "public"
-                (str "upload_test(id) FROM " file-name "; DROP TABLE users; --")
+                (str "public.upload_test(id) FROM " file-name "; DROP TABLE users; --")
                 (csv-test/csv-file-with ["id" "2"])))))))))
 
 (deftest load-from-csv-failed-test
@@ -1223,8 +1221,7 @@
              (driver/load-from-csv
               driver/*driver*
               (mt/id)
-              "public"
-              "upload_test"
+              "public.upload_test"
               (csv-test/csv-file-with ["id,column_that_doesnt_have_a_value" "2"])))))
       (testing "Check that the table isn't created if the upload fails"
         (sync/sync-database! (mt/db))
