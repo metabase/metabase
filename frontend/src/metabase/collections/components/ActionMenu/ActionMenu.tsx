@@ -8,10 +8,8 @@ import {
   canMoveItem,
   canPinItem,
   canPreviewItem,
-  isFullyParametrized,
   isItemPinned,
   isPreviewEnabled,
-  isPreviewShown,
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 
@@ -33,7 +31,6 @@ export interface OwnProps {
 }
 
 interface StateProps {
-  isXrayEnabled: boolean;
   isMetabotEnabled: boolean;
 }
 
@@ -56,7 +53,6 @@ function normalizeItemModel(item: CollectionItem) {
 
 function mapStateToProps(state: State): StateProps {
   return {
-    isXrayEnabled: getSetting(state, "enable-xrays"),
     isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
   };
 }
@@ -67,7 +63,6 @@ function ActionMenu({
   databases,
   bookmarks,
   collection,
-  isXrayEnabled,
   isMetabotEnabled,
   onCopy,
   onMove,
@@ -115,9 +110,6 @@ function ActionMenu({
         className={className}
         item={item}
         isBookmarked={isBookmarked}
-        isPreviewShown={isPreviewShown(item)}
-        isPreviewAvailable={isFullyParametrized(item)}
-        isXrayEnabled={isXrayEnabled}
         canUseMetabot={canUseMetabot}
         onPin={canPin ? handlePin : null}
         onMove={canMove ? handleMove : null}
