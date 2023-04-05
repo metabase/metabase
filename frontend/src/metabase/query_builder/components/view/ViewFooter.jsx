@@ -17,7 +17,7 @@ import QuestionTimelineWidget from "./QuestionTimelineWidget";
 
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionLastUpdated from "./QuestionLastUpdated";
-import QuestionTableToggle from "./QuestionTableToggle";
+import QuestionDisplayToggle from "./QuestionDisplayToggle";
 import { ViewFooterRoot, FooterButtonGroup } from "./ViewFooter.styled";
 
 const ViewFooter = ({
@@ -94,7 +94,7 @@ const ViewFooter = ({
         ]}
         center={
           isVisualized && (
-            <QuestionTableToggle
+            <QuestionDisplayToggle
               key="viz-table-toggle"
               className="mx1"
               question={question}
