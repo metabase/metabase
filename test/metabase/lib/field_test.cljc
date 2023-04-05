@@ -171,5 +171,4 @@
              {:lib/desired-column-alias "PRICE"}
              {:lib/desired-column-alias "Cat__ID"}
              {:lib/desired-column-alias "Cat__NAME"}]
-            (for [field (lib.metadata.calculation/metadata query)]
-              field)))))
+            (lib.metadata.calculation/metadata query)))))
