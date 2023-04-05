@@ -8,7 +8,6 @@ import { getUserAttributes } from "metabase/selectors/user";
 import { getLinkTargets } from "metabase/lib/click-behavior";
 
 // This HOC give access to data referenced in viz settings.
-// We use it to fetch and select entities needed for dashboard drill actions (e.g. clicking through to a question)
 const WithVizSettingsData = ComposedComponent => {
   return withRouter(
     connect(
