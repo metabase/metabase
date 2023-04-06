@@ -157,7 +157,8 @@
                           (throw (Exception. (trs "The uploads database does not exist."))))
         schema-name   (get-setting-or-throw! :uploads-schema-name)
         _table-prefix (get-setting-or-throw! :uploads-table-prefix)
-        driver        (value-or-throw! (#{:postgres} (driver.u/database->driver database))
-                                       (trs "The database ID for uploads must correspond to a Postgres database."))]
+        driver        (driver.u/database->driver database)
+        _             (or (driver/database-supports? driver :csv-uploads nil)
+                          (throw (Exception. (trs "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))]
     (load-from-csv driver db-id schema-name csv-file)
     (sync/sync-database! database)))
