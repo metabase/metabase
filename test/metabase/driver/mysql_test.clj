@@ -23,6 +23,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.string-extracts-test
     :as string-extracts-test]
+   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.sync :as sync]
    [metabase.sync.analyze.fingerprint :as fingerprint]
    [metabase.sync.util :as sync-util]
@@ -31,7 +32,6 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan.hydrate :refer [hydrate]]
@@ -644,7 +644,7 @@
          driver/*driver*
          (mt/id)
          "upload_test"
-         (csv-test/csv-file-with ["id,empty,string,bool,number" "2,,string,true,1.1" "3,,string,false,1.1"]))
+         (csv-test/csv-file-with ["id,nulls,string,bool,number" "2,,string,true,1.1" "3,,string,false,1.1"]))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :name "upload_test" :db_id (mt/id))]
@@ -658,7 +658,7 @@
             (is (=? {:database_position 1
                      :database_type     "TEXT"
                      :base_type         :type/Text}
-                    (t2/select-one Field :name "empty" :table_id (:id table))))
+                    (t2/select-one Field :name "nulls" :table_id (:id table))))
             (is (=? {:database_position 2
                      :database_type     "VARCHAR"
                      :base_type         :type/Text}
