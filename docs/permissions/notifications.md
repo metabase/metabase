@@ -4,19 +4,19 @@ title: Notification permissions
 
 # Notification permissions
 
-Notifications in Metabase include [alerts](../questions/sharing/alerts) and [dashboard subscriptions](../dashboards/subscriptions#setting-up-a-dashboard-subscription).
+Notifications in Metabase include [alerts](../questions/sharing/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
 
 Notification **recipients** can see whatever the notification **creator** can see. For example, if:
 
-- Beau creates a subscription to a dashboard saved in their [personal collection](../exploration-and-organization/collections#your-personal-collection).
+- Beau creates a subscription to a dashboard saved in their [personal collection](../exploration-and-organization/collections.md#your-personal-collection).
 - Beau adds Anya to the dashboard subscription.
 - Anya will see the dashboard in her email, even though she doesn't have permissions to view that dashboard in Beau's personal collection.
 
 ## All accounts
 
-From [Account settings](../people-and-groups/account-settings), all accounts can:
+From [Account settings](../people-and-groups/account-settings.md), all accounts can:
 
-- Create [alerts](../questions/sharing/alerts) and [dashboard subscriptions](../dashboards/subscriptions#setting-up-a-dashboard-subscription).
+- Create [alerts](../questions/sharing/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
 - Add new recipients to alerts and subscriptions that they own.
 - Unsubscribe from any alert or subscription.
 
@@ -30,7 +30,7 @@ Same as [all accounts](#all-accounts), but **people using sandboxed accounts wil
 
 {% include plans-blockquote.html feature="Auditing tools" %}
 
-From Metabase's [auditing tools](../usage-and-performance-tools/audit#subscriptions-and-alerts), admins can:
+From Metabase's [auditing tools](../usage-and-performance-tools/audit.md#subscriptions-and-alerts), admins can:
 
 - View all subscriptions and alerts
 - Add or remove recipients from an existing subscription or alert
