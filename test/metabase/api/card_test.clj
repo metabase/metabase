@@ -2468,13 +2468,15 @@
 
 (deftest related-permissions-query-test
   (is (=
-       #{(str "/db/" (:id (perms-group/all-users)) "/schema/")}
+       #{(str "/db/" (:id (perms-group/all-users)) "/")}
        (t2/select-fn-set
               :object
               perms/Permissions
-              (perms/related-permissions-where-clause (perms-group/all-users) "/db/1/")))))
+              (perms/related-permissions-where-clause
+               (perms-group/all-users)
+               (str "/db/" (:id (perms-group/all-users)) "/"))))))
 
-(deftest paramters-using-old-style-field-values
+(deftest parameters-using-old-style-field-values
   (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
     (perms/grant-full-data-permissions! (perms-group/all-users) (mt/db))
     (perms/grant-full-download-permissions! (perms-group/all-users) (mt/db))
