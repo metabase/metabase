@@ -1,6 +1,7 @@
 import {
   describeWithSnowplow,
   enableTracking,
+  ensureDcChartVisibility,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
   openCollectionItemMenu,
@@ -155,8 +156,11 @@ const verifyMetabotFeedback = () => {
   cy.findByRole("button", { name: "This isn’t valid SQL." }).click();
   cy.findByRole("button", { name: "Try again" }).click();
   cy.wait("@dataset");
+  ensureDcChartVisibility();
   cy.findByLabelText("table2 icon").click();
+  cy.findByTestId("TableInteractive-root").should("be.visible");
   cy.findByLabelText("bar icon").click();
+  ensureDcChartVisibility();
 };
 
 const verifyCollectionMetabot = () => {
@@ -167,7 +171,7 @@ const verifyCollectionMetabot = () => {
   cy.findByLabelText("Get Answer").click();
   cy.wait("@modelPrompt");
   cy.wait("@dataset");
-  cy.findByText("Gizmo").should("be.visible");
+  ensureDcChartVisibility();
 };
 
 const verifyQueryBuilderMetabot = () => {
