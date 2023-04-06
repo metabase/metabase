@@ -126,6 +126,7 @@ We use ESLint to enforce additional rules. It is integrated into the Webpack bui
 For the most part we follow the [Airbnb React/JSX Style Guide](https://github.com/airbnb/javascript/tree/master/react). ESLint and Prettier should take care of a majority of the rules in the Airbnb style guide. Exceptions will be noted in this document.
 
 - Prefer React [function components over class components](https://reactjs.org/docs/components-and-props.html#function-and-class-components)
+- Avoid creating new components within the `containers` folder, as this approach has been deprecated. Instead, store both connected and view components in the `components` folder for a more unified and efficient organization. If a connected component grows substantially in size and you need to extract a view component, opt for using the `View` suffix.
 - For control components, typically we use `value` and `onChange`. Controls that have options (e.x. `Radio`, `Select`) usually take an `options` array of objects with `name` and `value` properties.
 - Components named like `FooModal` and `FooPopover` typically refer to the modal/popover _content_ which should be used inside a `Modal`/`ModalWithTrigger` or `Popover`/`PopoverWithTrigger`
 - Components named like `FooWidget` typically include a `FooPopover` inside a `PopoverWithTrigger` with some sort of trigger element, often `FooName`
