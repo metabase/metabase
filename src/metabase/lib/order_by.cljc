@@ -34,6 +34,12 @@
   [query stage-number [_tag _opts expr]]
   (i18n/tru "{0} descending" (lib.metadata.calculation/display-name query stage-number expr)))
 
+(doseq [tag [:asc :desc]]
+  (defmethod lib.metadata.calculation/display-info-method tag
+    [query stage-number [tag _opts expr]]
+    (assoc (lib.metadata.calculation/display-info query stage-number expr)
+           :direction tag)))
+
 (defmulti ^:private ->order-by-clause
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]

@@ -146,6 +146,7 @@
    describe-query
    describe-top-level-key
    display-name
+   display-info
    suggested-name
    type-of]
   [lib.native

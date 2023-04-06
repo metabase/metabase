@@ -13,6 +13,10 @@
       (some->> (:name table-metadata)
                (u.humanization/name->human-readable-name :simple))))
 
+(defmethod lib.metadata.calculation/metadata-method :metadata/table
+  [_query _stage-number table-metadata]
+  table-metadata)
+
 (defn- describe-source-table [query stage-number source-table-id]
   (when-let [table-metadata (lib.metadata/table query source-table-id)]
     (lib.metadata.calculation/display-name query stage-number table-metadata)))
