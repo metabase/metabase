@@ -90,7 +90,7 @@
         (t2/update! ModelIndex (:id model-index)
                     {:generation      new-generation
                      :state_change_at :%now
-                     :status          (if (> (count values) 5000) "overflow" "indexed")})))))
+                     :state           (if (> (count values) 5000) "overflow" "indexed")})))))
 
 (defmethod add-values :postgres
   [model-index]
