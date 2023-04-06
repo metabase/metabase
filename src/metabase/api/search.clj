@@ -95,7 +95,10 @@
    :model_id            :integer
    :model_name          :text
    ;; returned for Card and Action
-   :dataset_query       :text))
+   :dataset_query       :text
+   ;; returned for indexed-entity
+   :model_pk            :integer
+   ))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
