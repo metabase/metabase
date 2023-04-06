@@ -100,6 +100,12 @@ jobs:
         path: bin/docker/
     - name: Move the ${{ matrix.edition }} uberjar to the context dir
       run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
+    # We need it for multi-arch build
+    - name: Set up QEMU
+      if: ${{ github.ref_name == 'master' }}
+      uses: docker/setup-qemu-action@v2
+      with:
+        platforms: 'arm64'
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v1
