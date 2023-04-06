@@ -10,9 +10,9 @@ import {
   getQueryResults,
   getQueryStatus,
 } from "../../selectors";
-import MetabotFeedback from "../MetabotFeedback";
 import MetabotQueryEditor from "../MetabotQueryEditor";
 import MetabotVisualization from "../MetabotVisualization";
+import MetabotQueryFooter from "../MetabotQueryFooter";
 import {
   ErrorStateMessage,
   ErrorStateRoot,
@@ -60,7 +60,7 @@ const MetabotQueryBuilder = ({
       ) : (
         <QueryIdleState />
       )}
-      {hasResults && <MetabotFeedback />}
+      {hasResults && <MetabotQueryFooter />}
     </QueryBuilderRoot>
   );
 };
