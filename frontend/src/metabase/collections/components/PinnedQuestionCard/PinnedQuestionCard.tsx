@@ -7,6 +7,7 @@ import {
 import Visualization from "metabase/visualizations/components/Visualization";
 import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import Metadata from "metabase-lib/metadata/Metadata";
+import Database from "metabase-lib/metadata/Database";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
 import {
   CardActionMenu,
@@ -19,6 +20,7 @@ export interface PinnedQuestionCardProps {
   item: CollectionItem;
   collection: Collection;
   metadata: Metadata;
+  databases?: Database[];
   bookmarks?: Bookmark[];
   onCopy: (items: CollectionItem[]) => void;
   onMove: (items: CollectionItem[]) => void;
@@ -30,6 +32,7 @@ const PinnedQuestionCard = ({
   item,
   collection,
   metadata,
+  databases,
   bookmarks,
   onCopy,
   onMove,
@@ -43,6 +46,7 @@ const PinnedQuestionCard = ({
       <CardActionMenu
         item={item}
         collection={collection}
+        databases={databases}
         bookmarks={bookmarks}
         onCopy={onCopy}
         onMove={onMove}

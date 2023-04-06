@@ -7,7 +7,7 @@
   will not be reflected here, for example if we add new information to the metadata. We'll have to manually update
   these things if that happens and Metabase lib is meant to consume it."
   (:require
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
+   [metabase.lib.metadata.graph-provider :as lib.metadata.graph-provider]))
 
 (defonce ^:private ^{:doc "Generate a random prefix to add to all of the [[id]]s below, so that they change between
   test runs to catch places where people are hardcoding IDs rather than using [[id]]."}
@@ -677,7 +677,7 @@
    :name                "PRICE"
    :fingerprint_version 5
    :has_field_values    :list
-   :settings            nil
+   :settings            {:is_priceless true}
    :caveats             nil
    :fk_target_field_id  nil
    :custom_position     0
@@ -786,7 +786,7 @@
 
 (def metadata-provider
   "[[metabase.lib.metadata.protocols/MetadataProvider]] using the test [[metadata]]."
-  (lib.metadata.protocols/->SimpleGraphMetadataProvider metadata))
+  (lib.metadata.graph-provider/->SimpleGraphMetadataProvider metadata))
 
 (def results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
@@ -801,15 +801,13 @@
   {:lib/type :metadata/results
    :columns  [{:lib/type       :metadata/field
                :display_name   "ID"
-               :field_ref      [:field "ID" {:base-type :type/BigInteger}]
                :name           "ID"
                :base_type      :type/BigInteger
                :effective_type :type/BigInteger
                :semantic_type  :type/PK
                :fingerprint    nil}
               {:lib/type       :metadata/field
-               :display_name   "NAME"
-               :field_ref      [:field "NAME" {:base-type :type/Text}]
+               :display_name   "NAME" ; TODO -- these display names are icky
                :name           "NAME"
                :base_type      :type/Text
                :effective_type :type/Text
@@ -822,7 +820,6 @@
                                                      :average-length 15.63}}}}
               {:lib/type       :metadata/field
                :display_name   "CATEGORY_ID"
-               :field_ref      [:field "CATEGORY_ID" {:base-type :type/Integer}]
                :name           "CATEGORY_ID"
                :base_type      :type/Integer
                :effective_type :type/Integer
@@ -832,7 +829,6 @@
                                          {:min 2.0, :q1 6.89564392373896, :q3 49.240253073352044, :max 74.0, :sd 23.058108414099443, :avg 29.98}}}}
               {:lib/type       :metadata/field
                :display_name   "LATITUDE"
-               :field_ref      [:field "LATITUDE" {:base-type :type/Float}]
                :name           "LATITUDE"
                :base_type      :type/Float
                :effective_type :type/Float
@@ -847,7 +843,6 @@
                                        :avg 35.505891999999996}}}}
               {:lib/type       :metadata/field
                :display_name   "LONGITUDE"
-               :field_ref      [:field "LONGITUDE" {:base-type :type/Float}]
                :name           "LONGITUDE"
                :base_type      :type/Float
                :effective_type :type/Float
@@ -862,7 +857,6 @@
                                           :avg -115.99848699999998}}}}
               {:lib/type       :metadata/field
                :display_name   "PRICE"
-               :field_ref      [:field "PRICE" {:base-type :type/Integer}]
                :name           "PRICE"
                :base_type      :type/Integer
                :effective_type :type/Integer

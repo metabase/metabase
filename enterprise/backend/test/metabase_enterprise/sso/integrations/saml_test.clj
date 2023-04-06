@@ -10,6 +10,7 @@
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
+   [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
@@ -20,7 +21,6 @@
    [ring.util.codec :as codec]
    [saml20-clj.core :as saml]
    [saml20-clj.encode-decode :as encode-decode]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.net URL)
@@ -33,6 +33,7 @@
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- disable-other-sso-types [thunk]
+  (classloader/require 'metabase.api.ldap)
   (mt/with-temporary-setting-values [ldap-enabled false
                                      jwt-enabled  false]
     (thunk)))
@@ -142,8 +143,8 @@
   (try
     (f)
     (finally
-      (u/ignore-exceptions (do (db/update-where! User {} :login_attributes nil)
-                               (db/update-where! User {:email "rasta@metabase.com"} :first_name "Rasta" :last_name "Toucan" :sso_source nil))))))
+      (u/ignore-exceptions (do (t2/update! User {} {:login_attributes nil})
+                               (t2/update! User {:email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil}))))))
 
 (defmacro ^:private with-saml-default-setup [& body]
   `(with-valid-premium-features-token
@@ -563,9 +564,9 @@
   (testing "Redirect URL (RelayState) should work correctly end-to-end (#13666)"
     (with-saml-default-setup
       ;; The test HTTP client will automatically URL encode these for us.
-      (doseq [redirect-url ["/collection/root"
+      (doseq [redirect-url ["http://localhost:3001/collection/root"
                             default-redirect-uri
-                            "/"]]
+                            "http://localhost:3001/"]]
         (testing (format "\nredirect URL = %s" redirect-url)
           (let [result     (client-full-response :get 302 "/auth/sso"
                                                  {:request-options {:redirect-strategy :none}}
@@ -579,10 +580,35 @@
                        (:RelayState params-map))))
               (testing "\nPOST request should redirect to the original redirect URL"
                 (do-with-some-validators-disabled
-                  (fn []
-                    (let [req-options (saml-post-request-options (saml-test-response)
-                                                                 (:RelayState params-map))
-                          response    (client-full-response :post 302 "/auth/sso" req-options)]
-                      (is (successful-login? response))
-                      (is (= redirect-url
-                             (get-in response [:headers "Location"]))))))))))))))
+                 (fn []
+                   (let [req-options (saml-post-request-options (saml-test-response)
+                                                                (:RelayState params-map))
+                         response    (client-full-response :post 302 "/auth/sso" req-options)]
+                     (is (successful-login? response))
+                     (is (= redirect-url
+                            (get-in response [:headers "Location"]))))))))))))))
+
+(deftest sso-subpath-e2e-test
+  (testing "Redirect URL should correcly append the site-url when the redirect is a relative path (#28650)"
+    (with-saml-default-setup
+      (doseq [redirect-url ["/collection/root"
+                            "/test"
+                            "/"]]
+        (testing (format "\nredirect URL = %s" redirect-url)
+          (mt/with-temporary-setting-values [site-url "http://localhost:3001/path"]
+            (let [result     (client-full-response :get 302 "/auth/sso"
+                                                   {:request-options {:redirect-strategy :none}}
+                                                   :redirect redirect-url)
+                  location   (get-in result [:headers "Location"])
+                  _          (is (string? location))
+                  params-map (uri->params-map location)]
+              (testing (format "\nresult =\n%s" (u/pprint-to-str params-map))
+                (testing "\nPOST request should redirect to the original redirect URL with the correct site-url path"
+                  (do-with-some-validators-disabled
+                   (fn []
+                     (let [req-options (saml-post-request-options (saml-test-response)
+                                                                  (:RelayState params-map))
+                           response    (client-full-response :post 302 "/auth/sso" req-options)]
+                       (is (successful-login? response))
+                       (is (= (str "http://localhost:3001/path" redirect-url)
+                              (get-in response [:headers "Location"])))))))))))))))

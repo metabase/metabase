@@ -23,8 +23,8 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
+   [ring.middleware.multipart-params :as mp]
    [schema.core :as schema]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (declare check-403 check-404)
@@ -295,9 +295,11 @@
   "Impl macro for [[defendpoint]]; don't use this directly."
   [{:keys [method route fn-name docstr args body arg->schema]}]
   {:pre [(or (string? route) (vector? route))]}
-  (let [method-kw      (method-symbol->keyword method)
-        allowed-params (keys arg->schema)
-        prep-route     #'compojure/prepare-route]
+  (let [method-kw       (method-symbol->keyword method)
+        allowed-params  (keys arg->schema)
+        prep-route      #'compojure/prepare-route
+        multipart?      (get (meta method) :multipart false)
+        handler-wrapper (if multipart? mp/wrap-multipart-params identity)]
     `(def ~(vary-meta fn-name
                       assoc
                       :doc          docstr
@@ -309,10 +311,11 @@
        (compojure/make-route
         ~method-kw
         ~(prep-route route)
-        (fn [request#]
-          (validate-param-values request# (quote ~allowed-params))
-          (compojure/let-request [~args request#]
-            ~@body))))))
+        (~handler-wrapper
+         (fn [request#]
+           (validate-param-values request# (quote ~allowed-params))
+           (compojure/let-request [~args request#]
+                                  ~@body)))))))
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 ;; e.g. `auto-parse`
@@ -367,9 +370,9 @@
   (let [{:keys [args body arg->schema], :as defendpoint-args} (malli-parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
                            :body `((auto-coerce ~args ~arg->schema
-                                               ~@(malli-validate-params arg->schema)
-                                               (wrap-response-if-needed
-                                                (do ~@body))))))))
+                                                ~@(malli-validate-params arg->schema)
+                                                (wrap-response-if-needed
+                                                 (do ~@body))))))))
 
 (defmacro defendpoint-async-schema
   "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params.
@@ -543,9 +546,9 @@
    new-position  :- (schema/maybe su/IntGreaterThanZero)]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
                      (doseq [model '[Card Dashboard Pulse]]
-                       (db/update-where! model {:collection_id       collection-id
-                                                :collection_position position-update-clause}
-                         :collection_position [plus-or-minus :collection_position 1])))]
+                       (t2/update! model {:collection_id       collection-id
+                                          :collection_position position-update-clause}
+                                   {:collection_position [plus-or-minus :collection_position 1]})))]
     (when (not= new-position old-position)
       (cond
         (and (nil? new-position)

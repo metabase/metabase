@@ -21,7 +21,7 @@ Metabase supports two auth flows that can be used with JWT:
 
 Metabase's auth flows are custom workflows modelled after OAuth 2.0. You can use the auth flow with PKCE to incorporate random keys generated on demand.
 
-Currently, the only algorithm Metabase supports is [HS256](https://en.wikipedia.org/wiki/JSON_Web_Token) ([HMAC](https://en.wikipedia.org/wiki/HMAC) + [SHA-256](https://en.wikipedia.org/wiki/SHA-2).
+Currently, the only algorithm Metabase supports is [HS256](https://en.wikipedia.org/wiki/JSON_Web_Token) ([HMAC](https://en.wikipedia.org/wiki/HMAC) + [SHA-256](https://en.wikipedia.org/wiki/SHA-2)).
 
 ## Typical flow for a JWT-based SSO interaction with Metabase
 
@@ -55,6 +55,8 @@ These are additional settings you can fill in to pass user attributes to Metabas
 - **Email attribute:** the key to retrieve each JWT user's email address.
 - **First Name attribute:** the key to retrieve each JWT user's first name.
 - **Last Name attribute:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
+
+You can send additional user attributes to Metabase by adding the attributes as key/value pairs to your JWT. These attributes will be synced on every login.
 
 ## Group schema
 

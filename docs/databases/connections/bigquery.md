@@ -60,18 +60,20 @@ You can specify which BigQuery datasets you want to sync and scan. Options are:
 - Only these...
 - All except...
 
-For the Only these and All except options, you can input a comma-separated list of values to tell Metabase which datasets you want to include (or exclude). For example:
+> A BigQuery dataset is similar to a schema. Make sure to enter your dataset names (like `marketing`), _not_ your table names (`marketing.campaigns`).
+
+Let's say you have three datasets: foo, bar, and baz.
+
+To sync all three datasets, select **Only these...** and enter:
 
 ```
 foo,bar,baz
 ```
 
-You can use the `*` wildcard to match multiple datasets.
+To sync datasets based on a string match, use the `*` wildcard:
 
-Let's say you have three datasets: foo, bar, and baz.
-
-- If you have **Only these...** set, and enter the string `b*`, you'll sync with bar and baz.
-- If you have **All except...** set, and enter the string `b*`, you'll just sync foo.
+- To sync bar and baz, select **Only these...** and enter the string `b*`.
+- To sync foo only, select **All except...**  and enter the string `b*`.
 
 Note that only the `*` wildcard is supported; you can't use other special characters or regexes.
 
@@ -87,7 +89,7 @@ This can be useful for [auditing](../../usage-and-performance-tools/audit.md) an
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/glossary/action_menu). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when Metabase syncs and scans
 

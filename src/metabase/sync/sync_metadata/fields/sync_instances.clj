@@ -19,7 +19,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -41,7 +40,7 @@
   "Insert new Field rows for for all the Fields described by `new-field-metadatas`."
   [table :- i/TableInstance, new-field-metadatas :- [i/TableMetadataField], parent-id :- common/ParentID]
   (when (seq new-field-metadatas)
-    (db/insert-many! Field
+    (t2/insert-returning-pks! Field
       (for [{:keys [database-type database-is-auto-increment database-required base-type effective-type coercion-strategy
                     field-comment database-position nfc-path visibility-type], field-name :name :as field} new-field-metadatas]
         (do
@@ -81,8 +80,8 @@
   (let [fields-to-reactivate (matching-inactive-fields table new-field-metadatas parent-id)]
     ;; if the fields already exist but were just marked inactive then reäctivate them
     (when (seq fields-to-reactivate)
-      (db/update-where! Field {:id [:in (map u/the-id fields-to-reactivate)]}
-        :active true))
+      (t2/update! Field {:id [:in (map u/the-id fields-to-reactivate)]}
+                  {:active true}))
     (let [reactivated?  (comp (set (map common/canonical-name fields-to-reactivate))
                               common/canonical-name)
           ;; If we reactivated the fields, no need to insert them; insert new rows for any that weren't reactivated

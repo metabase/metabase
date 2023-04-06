@@ -14,7 +14,7 @@ import { ModalExternalLink } from "./PreviewQueryModal.styled";
 
 interface PreviewQueryModalProps {
   question: Question;
-  onLoadQuery: () => Promise<NativeQueryForm>;
+  onLoadQuery: ({ pretty }: { pretty?: boolean }) => Promise<NativeQueryForm>;
   onClose?: () => void;
 }
 
@@ -23,7 +23,9 @@ const PreviewQueryModal = ({
   onLoadQuery,
   onClose,
 }: PreviewQueryModalProps): JSX.Element => {
-  const { query, error, isLoading } = useNativeQuery(question, onLoadQuery);
+  const { query, error, isLoading } = useNativeQuery(question, () =>
+    onLoadQuery({ pretty: false }),
+  );
   const learnUrl = MetabaseSettings.learnUrl("debugging-sql/sql-syntax");
 
   return (

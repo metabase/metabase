@@ -5,15 +5,14 @@ import { color as c } from "metabase/lib/colors";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import Icon from "metabase/components/Icon";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import ExpandingContent from "metabase/components/ExpandingContent";
 
+import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import {
-  NotebookStep as INotebookStep,
-  NotebookStepAction,
-} from "../lib/steps.types";
+import { NotebookStep as INotebookStep, NotebookStepAction } from "../types";
 import NotebookStepPreview from "../NotebookStepPreview";
 
 import { STEP_UI } from "./steps";
@@ -41,9 +40,10 @@ interface NotebookStepProps {
   sourceQuestion?: Question;
   isLastStep: boolean;
   isLastOpened: boolean;
-  reportTimezone?: string;
+  reportTimezone: string;
+  readOnly?: boolean;
   openStep: (id: string) => void;
-  updateQuery: (query: StructuredQuery) => Promise<void>;
+  updateQuery: (query: StructuredQuery | Query) => Promise<void>;
 }
 
 function NotebookStep({
@@ -54,6 +54,7 @@ function NotebookStep({
   reportTimezone,
   openStep,
   updateQuery,
+  readOnly = false,
 }: NotebookStepProps) {
   const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
     useToggle(false);
@@ -89,7 +90,12 @@ function NotebookStep({
   }, [step.query, step.actions, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
-    const reverted = step.revert?.(step.query);
+    const reverted = step.revert?.(
+      step.query,
+      step.itemIndex,
+      step.topLevelQuery,
+      step.stageIndex,
+    );
     if (reverted) {
       updateQuery(reverted);
     }
@@ -104,6 +110,7 @@ function NotebookStep({
   const color = getColor();
   const canPreview = step?.previewQuery?.isValid?.();
   const hasPreviewButton = !isPreviewOpen && canPreview;
+  const canRevert = typeof step.revert === "function" && !readOnly;
 
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
@@ -113,13 +120,18 @@ function NotebookStep({
       >
         <StepHeader color={color}>
           {title}
-          <Icon
-            name="close"
-            className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
-            tooltip={t`Remove`}
-            onClick={handleClickRevert}
-            data-testid="remove-step"
-          />
+          {canRevert && (
+            <IconButtonWrapper
+              className="ml-auto text-light text-medium-hover hover-child"
+              onClick={handleClickRevert}
+            >
+              <Icon
+                name="close"
+                tooltip={t`Remove`}
+                aria-label={t`Remove step`}
+              />
+            </IconButtonWrapper>
+          )}
         </StepHeader>
 
         {NotebookStepComponent && (
@@ -128,26 +140,30 @@ function NotebookStep({
               <NotebookStepComponent
                 color={color}
                 step={step}
+                topLevelQuery={step.topLevelQuery}
                 query={step.query}
                 sourceQuestion={sourceQuestion}
                 updateQuery={updateQuery}
                 isLastOpened={isLastOpened}
                 reportTimezone={reportTimezone}
+                readOnly={readOnly}
               />
             </StepContent>
-            <StepButtonContainer>
-              <ActionButton
-                ml={[1, 2]}
-                className={
-                  !hasPreviewButton ? "hidden disabled" : "text-brand-hover"
-                }
-                icon="play"
-                title={t`Preview`}
-                color={c("text-light")}
-                transparent
-                onClick={openPreview}
-              />
-            </StepButtonContainer>
+            {!readOnly && (
+              <StepButtonContainer>
+                <ActionButton
+                  ml={[1, 2]}
+                  className={
+                    !hasPreviewButton ? "hidden disabled" : "text-brand-hover"
+                  }
+                  icon="play"
+                  title={t`Preview`}
+                  color={c("text-light")}
+                  transparent
+                  onClick={openPreview}
+                />
+              </StepButtonContainer>
+            )}
           </StepBody>
         )}
 
@@ -155,7 +171,7 @@ function NotebookStep({
           <NotebookStepPreview step={step} onClose={closePreview} />
         )}
 
-        {actionButtons.length > 0 && (
+        {actionButtons.length > 0 && !readOnly && (
           <StepActionsContainer data-testid="action-buttons">
             {actionButtons}
           </StepActionsContainer>

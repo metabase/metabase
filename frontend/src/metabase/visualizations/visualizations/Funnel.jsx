@@ -38,10 +38,8 @@ export default class Funnel extends Component {
 
   static noHeader = true;
 
-  static minSize = {
-    width: 5,
-    height: 4,
-  };
+  static minSize = { width: 5, height: 4 };
+  static defaultSize = { width: 5, height: 4 };
 
   static isSensible({ cols, rows }) {
     return cols.length === 2;
