@@ -41,6 +41,9 @@ export const init = (payload: InitPayload) => (dispatch: Dispatch) => {
 export const RESET = "metabase/metabot/RESET";
 export const reset = createAction(RESET);
 
+export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
+export const setUIControls = createAction(SET_UI_CONTROLS);
+
 export const UPDATE_QUESTION = "metabase/metabot/UPDATE_QUESTION";
 export const updateQuestion = createAction(
   UPDATE_QUESTION,
@@ -157,6 +160,3 @@ export const submitFeedback =
 
     dispatch({ type: SUBMIT_FEEDBACK });
   };
-
-export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
-export const setUIControls = createAction(SET_UI_CONTROLS);

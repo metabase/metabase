@@ -14,6 +14,7 @@ import {
   UPDATE_PROMPT,
   UPDATE_QUESTION,
   CANCEL_QUERY,
+  SET_UI_CONTROLS,
 } from "./actions";
 import { DEFAULT_UI_CONTROLS } from "./constants";
 
@@ -127,6 +128,7 @@ export const cancelQueryDeferred = handleActions(
 export const uiControls = handleActions(
   {
     [RUN_PROMPT_QUERY]: { next: () => DEFAULT_UI_CONTROLS },
+    [SET_UI_CONTROLS]: { next: (state, payload) => ({ ...state, ...payload }) },
     [RESET]: { next: () => DEFAULT_UI_CONTROLS },
   },
   DEFAULT_UI_CONTROLS,

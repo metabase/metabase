@@ -5,17 +5,10 @@ import QuestionDisplayToggle from "metabase/query_builder/components/view/Questi
 import { Dispatch, State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import { setUIControls } from "../../actions";
-import {
-  getIsShowingRawTable,
-  getIsVisualized,
-  getQuestion,
-} from "../../selectors";
-import MetabotFeedback from "../MetabotFeedback";
-import { QueryFooterRoot } from "./MetabotQueryFooter.styled";
+import { getIsShowingRawTable, getQuestion } from "../../selectors";
 
 interface StateProps {
   question: Question;
-  isVisualized: boolean;
   isShowingRawTable: boolean;
 }
 
@@ -23,11 +16,10 @@ interface DispatchProps {
   onToggleRawTable: (isShowingRawTable: boolean) => void;
 }
 
-type MetabotQueryFooterProps = StateProps & DispatchProps;
+type MetabotDisplayToggleProps = StateProps & DispatchProps;
 
 const mapStateToProps = (state: State): StateProps => ({
   question: checkNotNull(getQuestion(state)),
-  isVisualized: getIsVisualized(state),
   isShowingRawTable: getIsShowingRawTable(state),
 });
 
@@ -36,24 +28,21 @@ const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
     dispatch(setUIControls({ isShowingRawTable })),
 });
 
-const MetabotQueryFooter = ({
+const MetabotDisplayToggle = ({
   question,
-  isVisualized,
   isShowingRawTable,
   onToggleRawTable,
-}: MetabotQueryFooterProps) => {
+}: MetabotDisplayToggleProps) => {
   return (
-    <QueryFooterRoot>
-      <MetabotFeedback />
-      {isVisualized && (
-        <QuestionDisplayToggle
-          question={question}
-          isShowingRawTable={isShowingRawTable}
-          onToggleRawTable={onToggleRawTable}
-        />
-      )}
-    </QueryFooterRoot>
+    <QuestionDisplayToggle
+      question={question}
+      isShowingRawTable={isShowingRawTable}
+      onToggleRawTable={onToggleRawTable}
+    />
   );
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(MetabotQueryFooter);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(MetabotDisplayToggle);
