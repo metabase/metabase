@@ -3,7 +3,7 @@
             [clojure.test :refer :all]
             [clojurewerkz.quartzite.conversion :as qc]
             [metabase.models.card :refer [Card]]
-            [metabase.models.model-index :refer [ModelIndex ModelIndexValue]]
+            [metabase.models.model-index :as model-index :refer [ModelIndex ModelIndexValue]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
             [metabase.task :as task]
@@ -25,12 +25,10 @@
                                    :name            "Simple MBQL model"
                                    :dataset_query   query
                                    :result_metadata (result-metadata-for-query query)}]]
-        ;; there's a bug in toucan2 and i don't know how to get the newly inserted item
-        (mt/user-http-request :rasta :post 200 "/model-index"
-                              {:model_id  (:id model)
-                               :pk_ref    pk_ref
-                               :value_ref (mt/$ids $products.title)})
-        (let [model-index (t2/select-one ModelIndex :model_id (:id model))
+        (let [model-index (mt/user-http-request :rasta :post 200 "/model-index"
+                                                {:model_id  (:id model)
+                                                 :pk_ref    pk_ref
+                                                 :value_ref (mt/$ids $products.title)})
               by-key      (fn [k xs]
                             (some (fn [x] (when (= (:key x) k) x)) xs))]
           (testing "There's a task to sync the values"
