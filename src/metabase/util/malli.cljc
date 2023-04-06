@@ -7,17 +7,13 @@
    [malli.error :as me]
    [malli.util :as mut]
    [metabase.shared.util.i18n :refer [tru]]
-   [metabase.util :as u]
    #?@(:clj  ([clojure.string :as str]
               [malli.experimental :as mx]
+              [metabase.util :as u]
               [metabase.util.i18n :as i18n]
-              [net.cgrand.macrovich :as macros]
-              [ring.util.codec :as codec])))
+              [net.cgrand.macrovich :as macros])))
   #?(:cljs (:require-macros [metabase.util.malli]))
   #?(:clj (:import [clojure.lang Compiler])))
-
-(core/defn- encode-uri [fragment]
-  (#?(:clj codec/url-encode :cljs js/encodeURI) fragment))
 
 (core/defn humanize-include-value
   "Pass into mu/humanize to include the value received in the error message."
@@ -49,7 +45,9 @@
            (when (not-empty doc) (str "\n\n  " doc))))))
 
 #?(:clj
-   (core/defn defn* [target schema args]
+   (core/defn defn*
+     "mu/defn Implementation."
+     [target schema args]
      (let [{:keys [name return doc arities] body-meta :meta :as parsed} (mc/parse schema args)
            var-meta (meta name)
            _ (when (= ::mc/invalid parsed) (mc/-fail! ::parse-error {:schema schema, :args args}))
@@ -91,8 +89,7 @@
      (defn* (macros/case :clj :clj :cljs :cljs) mx/SchematizedParams args)))
 
 (def ^:private Schema
-  [:and any?
-   [:fn {:description "a malli schema"} mc/schema]])
+  [:fn {:description "a malli schema"} mc/schema])
 
 (def ^:private localized-string-schema
   #?(:clj  [:fn {:error/message "must be a localized string"}
