@@ -317,11 +317,15 @@
 (mu/defn ^:private crc32-checksum :- [:string {:min 8, :max 8}]
   "Return a 4-byte CRC-32 checksum of string `s`, encoded as an 8-character hex string."
   [s :- :string]
-  #?(:clj (Long/toHexString (.getValue (doto (java.util.zip.CRC32.)
-                                         (.update (.getBytes ^String s "UTF-8")))))
-     :cljs (-> (CRC32/str s 0)
-               (unsigned-bit-shift-right 0) ; see https://github.com/SheetJS/js-crc32#signed-integers
-               (.toString 16))))
+  (let [s #?(:clj (Long/toHexString (.getValue (doto (java.util.zip.CRC32.)
+                                                 (.update (.getBytes ^String s "UTF-8")))))
+             :cljs (-> (CRC32/str s 0)
+                       (unsigned-bit-shift-right 0) ; see https://github.com/SheetJS/js-crc32#signed-integers
+                       (.toString 16)))]
+    ;; pad to 8 characters if needed.
+    (if (= (count s) 7)
+      (str \0 s)
+      s)))
 
 (mu/defn truncate-alias :- ::lib.schema.common/non-blank-string
   "Truncate string `s` if it is longer than [[truncate-alias-max-length-bytes]] and append a hex-encoded CRC-32
