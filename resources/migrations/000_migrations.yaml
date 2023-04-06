@@ -14617,7 +14617,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: value
+                  name: name
                   type: ${text.type}
                   remarks: 'The label to display identifying the indexed value.'
                   constraints:
