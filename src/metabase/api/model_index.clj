@@ -30,21 +30,16 @@
                        :present field_refs})))
     ;; todo: do we care if there's already an index on that model?
     ;; todo: `t2/insert-returning-instances!` returns a timestamp :(
-    (t2/insert-returning-instances! ModelIndex
-                                    [{:model_id   model_id
-                                      ;; todo: sanitize these?
-                                      :pk_ref     pk_ref
-                                      :value_ref  value_ref
-                                      :generation 0
-                                      :schedule   (default-schedule)
-                                      :state      "initial"
-                                      :creator_id api/*current-user-id*}])
-    ;; hack: get the model index with the highest id with the model_id. don't know why can't get it from the
-    ;; `insert-returning-instances!` above.
-    (let [model-index (t2/select-one ModelIndex
-                                     :model_id model_id
-                                     {:order-by [[:id :desc]]})]
-      (model-index/add-values model-index)
+    (let [[model-index] (t2/insert-returning-instances! ModelIndex
+                                                        [{:model_id   model_id
+                                                          ;; todo: sanitize these?
+                                                          :pk_ref     pk_ref
+                                                          :value_ref  value_ref
+                                                          :generation 0
+                                                          :schedule   (default-schedule)
+                                                          :state      "initial"
+                                                          :creator_id api/*current-user-id*}])]
+      (model-index/add-values! model-index)
       (t2/select-one ModelIndex :id (:id model-index)))))
 
 (api/defendpoint GET "/"
