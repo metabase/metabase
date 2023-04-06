@@ -122,12 +122,18 @@
                        field-name         :name
                        temporal-unit      :unit
                        join-alias         :source_alias
+                       fk-field-id        :fk_field_id
+                       table-id           :table_id
                        :as                _field-metadata}]
   (let [field-display-name (or field-display-name
                                (u.humanization/name->human-readable-name :simple field-name))
-        join-display-name  (when join-alias
-                             (let [join (lib.join/resolve-join query stage-number join-alias)]
-                               (lib.metadata.calculation/display-name query stage-number join)))
+        join-display-name  (or
+                            (when fk-field-id
+                              (let [table (lib.metadata/table query table-id)]
+                                (lib.metadata.calculation/display-name query stage-number table)))
+                            (when join-alias
+                              (let [join (lib.join/resolve-join query stage-number join-alias)]
+                                (lib.metadata.calculation/display-name query stage-number join))))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)]
@@ -136,10 +142,11 @@
       display-name)))
 
 (defmethod lib.metadata.calculation/display-name-method :field
-  [query stage-number [_tag {:keys [join-alias temporal-unit], :as _opts} _id-or-name, :as field-clause]]
+  [query stage-number [_tag {:keys [join-alias temporal-unit source-field], :as _opts} _id-or-name, :as field-clause]]
   (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
                             join-alias    (assoc :source_alias join-alias)
-                            temporal-unit (assoc :unit temporal-unit))]
+                            temporal-unit (assoc :unit temporal-unit)
+                            source-field  (assoc :fk_field_id source-field))]
     (lib.metadata.calculation/display-name query stage-number field-metadata)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))

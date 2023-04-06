@@ -1,6 +1,7 @@
 (ns metabase.lib.field-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -181,3 +182,14 @@
              (lib.schema.expression/type-of clause)))
       (is (= :type/BigInteger
              (lib.metadata.calculation/type-of lib.tu/venues-query clause))))))
+
+(deftest ^:parallel implicitly-joinable-field-display-name-test
+  (testing "Should be able to calculate a display name for an implicitly joinable Field"
+    (let [query           (lib/query-for-table-name meta/metadata-provider "VENUES")
+          categories-name (m/find-first #(= (:id %) (meta/id :categories :name))
+                                        (lib/orderable-columns query))]
+      (is (= "Categories → Name"
+             (lib/display-name query categories-name)))
+      (let [query' (lib/order-by query categories-name)]
+        (is (= "Venues, Sorted by Categories → Name ascending"
+               (lib/describe-query query')))))))
