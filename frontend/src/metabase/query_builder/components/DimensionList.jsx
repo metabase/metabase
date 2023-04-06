@@ -80,7 +80,6 @@ export default class DimensionList extends Component {
       onRemoveDimension,
     } = this.props;
 
-    // XXX: Likely a typo
     const suppressSubDimensions =
       preventNumberSubDimensions && item.dimension.field().isSummable();
 
@@ -112,7 +111,6 @@ export default class DimensionList extends Component {
             triggerElement={this.renderSubDimensionTrigger(
               item.dimension,
               multiSelect,
-              // XXX: Never used since PR#18800
             )}
             tetherOptions={multiSelect ? null : SUBMENU_TETHER_OPTIONS}
             sizeToFit
@@ -186,8 +184,7 @@ export default class DimensionList extends Component {
     } = this.props;
     const dimension = useOriginalDimension
       ? item.dimension
-      : // XXX: 7. Important note that dimension with binning options is `dimension.defaultDimension()`
-        item.dimension.defaultDimension() || item.dimension;
+      : item.dimension.defaultDimension() || item.dimension;
     const shouldExcludeBinning =
       (!enableSubDimensions &&
         !useOriginalDimension &&
@@ -195,10 +192,6 @@ export default class DimensionList extends Component {
         dimension.binningStrategy()) ||
       (preventNumberSubDimensions && dimension.field().isSummable()) ||
       dimension.field().isFK();
-    // XXX 14. 🎉 dimension.field() after clicking to select each dimension in the `<DimensionList />`
-    // 1. Reviews join native Orders question: this._createFallbackField(), field().isSummable() is `true`
-    // 2. Orders join native Orders question: this._findMatchingQueryField(), field().isSummable() is `false` because it's a FK
-    // 3. Native Orders question join Orders this._findMatchingQueryField(), field().isSummable() is `true`
 
     if (shouldExcludeBinning) {
       // If we don't let user choose the sub-dimension, we don't want to treat the field
