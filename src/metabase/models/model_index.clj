@@ -41,7 +41,8 @@
   [model-index]
   ;; cyclic requires. it needs to know how to populate the index.
   (let [refresh-job (requiring-resolve 'metabase.task.index-values/add-indexing-job)]
-    (refresh-job model-index)))
+    (refresh-job model-index))
+  model-index)
 
 (t2/define-before-delete ModelIndex
   [model-index]
