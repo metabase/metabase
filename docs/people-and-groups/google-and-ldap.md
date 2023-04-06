@@ -31,7 +31,7 @@ Now existing Metabase users signed into a Google account that matches their Meta
 
 ### Creating Metabase accounts with Google Sign-in
 
-> On [paid plans](/pricing), you're [charged for each additional account](../cloud/how-billing-works#what-counts-as-a-user-account).
+> On [paid plans](https://www.metabase.com/pricing), you're [charged for each additional account](https://www.metabase.com/docs/latest/cloud/how-billing-works#what-counts-as-a-user-account).
 
 You can optionally tell Metabase to automatically create an account on a user's first SSO login.
 
