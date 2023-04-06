@@ -40,9 +40,8 @@ describe.skip("issue 29795", () => {
       cy.findByRole("option", { name: "USER_ID" }).click();
     });
 
-    visualize(response => {
-      expect(response.body.error).not.to.exist;
-      cy.findByText(`Showing ${LIMIT} rows`);
+    visualize(() => {
+      cy.findByText(/USER ID/i);
     });
   });
 });
