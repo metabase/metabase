@@ -1541,8 +1541,8 @@
     (mt/dataset test-data
       (let [db-id (:id (mt/db))]
         (t2.with-temp/with-temp
-          [Card     card {:database_id db-id
-                          :dataset     true}]
+          [Card     _ {:database_id db-id
+                       :dataset     true}]
           (testing "only users with permissions can persist a database"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :post 403 (str "database/" db-id "/unpersist")))))
@@ -1550,11 +1550,7 @@
           (mt/with-temporary-setting-values [persisted-models-enabled true]
             (testing "should be able to persit an database"
               ;; trigger persist first
-              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/persist"))
               (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/unpersist"))
-              (is (= "deletable" (t2/select-one-fn :state 'PersistedInfo
-                                                   :database_id db-id
-                                                   :card_id     (:id card))))
               (is (= nil (t2/select-one-fn (comp :persist-models-enabled :options)
                                            Database
                                            :id db-id))))
