@@ -534,7 +534,7 @@
      :to-delete to-delete
      :to-create to-create}))
 
-(defn- create-cards
+(defn- create-cards!
   [dashboard cards]
   (for [{:keys [card_id]} cards
         :when  card_id]
@@ -549,14 +549,14 @@
                              api/*current-user-id*
                              {:dashboard-id (:id dashboard) :question-id card_id}))))
 
-(defn- update-cards [dashboard cards]
+(defn- update-cards! [dashboard cards]
   (check-updated-parameter-mapping-permissions (:id dashboard) cards)
   ;; transform the card data to the format of the DashboardCard model
   ;; so update-dashcards! can compare them with existing cards
   (dashboard/update-dashcards! dashboard (map dashboard-card/from-parsed-json cards))
   (events/publish-event! :dashboard-reposition-cards {:id (:id dashboard) :actor_id api/*current-user-id* :dashcards cards}))
 
-(defn- delete-cards [dashboard dashcard-ids]
+(defn- delete-cards! [dashboard dashcard-ids]
   (when-let [dashboard-cards (t2/select DashboardCard :id [:in dashcard-ids])]
     (dashboard-card/delete-dashboard-cards! dashboard-cards (:id dashboard) api/*current-user-id*)))
 
@@ -597,11 +597,11 @@
     (api/check-500
       (t2/with-transaction [_conn]
         (when (seq to-delete)
-          (delete-cards dashboard (map :id to-delete)))
+          (delete-cards! dashboard (map :id to-delete)))
         (when (seq to-create)
-          (create-cards dashboard to-create))
+          (create-cards! dashboard (map #(dissoc % :id) to-create)))
         (when (seq to-update)
-          (update-cards dashboard to-update))
+          (update-cards! dashboard to-update))
         true))
     (t2/hydrate (dashboard/ordered-cards id) :series)))
 
