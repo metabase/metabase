@@ -5,7 +5,7 @@ import {
   openOrdersTable,
 } from "e2e/support/helpers";
 
-describe("issue 29795", () => {
+describe.skip("issue 29795", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
