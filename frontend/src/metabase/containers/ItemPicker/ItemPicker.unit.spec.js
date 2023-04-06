@@ -7,7 +7,8 @@ import {
   waitForElementToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
+import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+import { setupSearchEndpoints } from "__support__/server-mocks";
 import ItemPicker from "./ItemPicker";
 
 function collection({
@@ -89,24 +90,6 @@ function mockCollectionEndpoint({ extraCollections = [] } = {}) {
   const collections = [...Object.values(COLLECTION), ...extraCollections];
   fetchMock.get("path:/api/collection", collections);
 }
-
-function mockSearchCollectionEndpoint() {
-  fetchMock.get(
-    {
-      url: "path:/api/search",
-    },
-    Object.values(COLLECTION).filter(col => {
-      console.log(
-        col.name,
-        col.name.toLowerCase().includes(COLLECTION.REGULAR.name.toLowerCase()),
-      );
-      return col.name
-        .toLowerCase()
-        .includes(COLLECTION.REGULAR.name.toLowerCase());
-    }),
-  );
-}
-
 function mockCollectionItemsEndpoint() {
   fetchMock.get(/api\/collection\/\d+\/items/, url => {
     const collectionIdParam = url.split("/")[5];
@@ -143,7 +126,6 @@ async function setup({
 } = {}) {
   mockCollectionEndpoint({ extraCollections });
   mockCollectionItemsEndpoint();
-  mockSearchCollectionEndpoint();
 
   const onChange = jest.fn();
 
@@ -275,6 +257,9 @@ describe("ItemPicker", () => {
 
   it("displays relevant collections after a search", async () => {
     await setup({ models: ["collections"] });
+    await setupSearchEndpoints(
+      Object.values(COLLECTION).map(createMockCollection),
+    );
 
     userEvent.click(within(getItemPickerHeader()).getByRole("button"));
 
@@ -283,7 +268,8 @@ describe("ItemPicker", () => {
       COLLECTION.REGULAR.name,
     );
 
+    const list = within(getItemPickerList());
     expect(screen.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
-    expect(screen.queryAllByTestId("item-picker-item")).toHaveLength(3);
+    expect(list.getByTestId("item-picker-item")).toBeInTheDocument();
   });
 });
