@@ -410,3 +410,39 @@
         (testing "description"
           (is (= "Venues, Sorted by expr ascending"
                  (lib/describe-query updated-query))))))))
+
+(deftest ^:parallel orderable-columns-display-info-test
+  (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")]
+    (is (=? [{:semantic_type          :type/PK
+              :is_calculated          false
+              :table                  {:name "VENUES", :display_name "Venues"}
+              :name                   "ID"
+              :is_from_previous_stage false
+              :is_implicitly_joinable false
+              :effective_type         :type/BigInteger
+              :is_from_join           false
+              :display_name           "ID"}
+             {:display_name "Name"}
+             {:display_name "Category ID"}
+             {:display_name "Latitude"}
+             {:display_name "Longitude"}
+             {:display_name "Price"}
+             {:display_name "ID"}
+             {:display_name "Name"}]
+            (for [col (lib/orderable-columns query)]
+              (lib/display-info query col))))))
+
+(deftest ^:parallel order-bys-display-info-test
+  (let [query             (lib/query-for-table-name meta/metadata-provider "VENUES")
+        orderable-columns (lib/orderable-columns query)
+        col               (m/find-first #(= (:id %) (meta/id :venues :name)) orderable-columns)
+        _                 (is (some? col))
+        query'            (lib/order-by query col)]
+    (is (=? [{:name           "NAME"
+              :display_name   "Name"
+              :semantic_type  :type/Name
+              :effective_type :type/Text
+              :table          {:name "VENUES", :display_name "Venues"}
+              :direction      :asc}]
+            (for [order-by (lib/order-bys query')]
+              (lib/display-info query' order-by))))))
