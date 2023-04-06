@@ -151,7 +151,8 @@ export const PLUGIN_MODERATION = {
   QuestionModerationButton: PluginPlaceholder,
   ModerationReviewBanner: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
-  getStatusIcon: (moderated_status?: string) => undefined,
+  getStatusIcon: (moderated_status?: string): string | IconProps | undefined =>
+    undefined,
   getModerationTimelineEvents: array,
   getMenuItems: (
     question?: Question,

@@ -18,7 +18,7 @@ interface SavedQuestionListProps {
   isDatasets: boolean;
   selectedId: string;
   collection?: Collection;
-  onSelect: (collectionOrModel: { id: string }) => void;
+  onSelect: (tableOrModelId: string) => void;
 }
 
 const SavedQuestionList = ({
@@ -50,23 +50,24 @@ const SavedQuestionList = ({
             {({ list }: { list: CollectionItem[] }) => {
               return (
                 <React.Fragment>
-                  {list.map(t => {
-                    const virtualTableId = getQuestionVirtualTableId(t.id);
+                  {list.map(collectionItem => {
+                    const { id, name, moderated_status } = collectionItem;
+                    const virtualTableId = getQuestionVirtualTableId(id);
 
                     return (
                       <SavedQuestionListItem
-                        id={t.id}
+                        key={id}
+                        id={id}
                         isSelected={selectedId === virtualTableId}
-                        key={t.id}
                         size="small"
-                        name={t.name}
+                        name={name}
                         icon={{
                           name: isDatasets ? "model" : "table2",
                           size: 16,
                         }}
-                        onSelect={() => onSelect({ id: virtualTableId })}
+                        onSelect={() => onSelect(virtualTableId)}
                         rightIcon={PLUGIN_MODERATION.getStatusIcon(
-                          t.moderated_status,
+                          moderated_status,
                         )}
                       />
                     );

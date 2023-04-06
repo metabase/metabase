@@ -5,6 +5,7 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -31,68 +32,50 @@ const COLLECTIONS = {
   }),
 };
 
-function mockCollectionTreeEndpoint() {
+function mockCollectionItemsEndpoint() {
   fetchMock.get(
-    { url: "path:/api/collection/tree", query: { tree: true } },
-    Object.values(COLLECTIONS),
+    {
+      url: "path:/api/collection/root/items",
+      query: {
+        sort_column: "name",
+        sort_direction: "asc",
+      },
+    },
+    {
+      total: 3,
+      data: [
+        createMockCollectionItem({
+          id: 2,
+          name: "a",
+        }),
+        createMockCollectionItem({
+          id: 3,
+          name: "A",
+        }),
+        createMockCollectionItem({
+          id: 1,
+          name: "B",
+        }),
+      ],
+      models: ["card"],
+      limit: null,
+      offset: null,
+    },
   );
 }
 
-function mockRootCollectionEndpoint(hasAccess) {
-  if (hasAccess) {
-    fetchMock.get(
-      "path:/api/collection/root",
-      createMockCollection({ id: "root", name: "Our analytics" }),
-    );
-  } else {
-    fetchMock.get(
-      "path:/api/collection/root",
-      "You don't have access to this collection",
-    );
-  }
-}
+async function setup() {
+  setupCollectionsEndpoints([COLLECTIONS.PERSONAL, COLLECTIONS.REGULAR]);
 
-function mockCollectionItems() {
-  return fetchMock.get("path:/api/collection/root/items", {
-    total: 3,
-    data: [
-      createMockCollectionItem({
-        id: 2,
-        name: "a",
-      }),
-      createMockCollectionItem({
-        id: 3,
-        name: "A",
-      }),
-      createMockCollectionItem({
-        id: 1,
-        name: "B",
-      }),
-    ],
-    models: ["card"],
-    limit: null,
-    offset: null,
-  });
-}
-
-async function setup({ canAccessRoot = true } = {}) {
-  mockCollectionTreeEndpoint();
-  mockRootCollectionEndpoint(canAccessRoot);
-  const fetchCollectionItemsMock = mockCollectionItems();
+  mockCollectionItemsEndpoint();
 
   renderWithProviders(
     <SavedQuestionPicker onSelect={jest.fn()} onBack={jest.fn()} />,
   );
   await waitForElementToBeRemoved(() => screen.queryAllByText("Loading..."));
-
-  return { fetchCollectionItemsMock };
 }
 
 describe("SavedQuestionPicker", () => {
-  beforeEach(() => {
-    window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
   it("shows the current user personal collection on the top after the root", async () => {
     await setup();
 
@@ -106,11 +89,7 @@ describe("SavedQuestionPicker", () => {
   });
 
   it("sorts saved questions case-insensitive (metabase#23693)", async () => {
-    const { fetchCollectionItemsMock } = await setup();
-
-    expect(fetchCollectionItemsMock.lastCall()[0]).toMatch(
-      "sort_column=name&sort_direction=asc",
-    );
+    await setup();
 
     expect(
       screen.getAllByTestId("option-text").map(node => node.textContent),
