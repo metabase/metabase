@@ -157,3 +157,6 @@ export const submitFeedback =
 
     dispatch({ type: SUBMIT_FEEDBACK });
   };
+
+export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
+export const setUIControls = createAction(SET_UI_CONTROLS);

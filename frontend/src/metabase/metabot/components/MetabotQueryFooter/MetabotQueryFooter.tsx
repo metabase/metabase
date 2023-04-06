@@ -2,14 +2,20 @@ import React from "react";
 import { connect } from "react-redux";
 import { checkNotNull } from "metabase/core/utils/types";
 import QuestionDisplayToggle from "metabase/query_builder/components/view/QuestionDisplayToggle";
-import { State } from "metabase-types/store";
+import { Dispatch, State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
-import { getQuestion } from "../../selectors";
+import { setUIControls } from "../../actions";
+import {
+  getIsShowingRawTable,
+  getIsVisualized,
+  getQuestion,
+} from "../../selectors";
 import MetabotFeedback from "../MetabotFeedback";
 import { QueryFooterRoot } from "./MetabotQueryFooter.styled";
 
 interface StateProps {
   question: Question;
+  isVisualized: boolean;
   isShowingRawTable: boolean;
 }
 
@@ -21,26 +27,31 @@ type MetabotQueryFooterProps = StateProps & DispatchProps;
 
 const mapStateToProps = (state: State): StateProps => ({
   question: checkNotNull(getQuestion(state)),
-  isShowingRawTable: true,
+  isVisualized: getIsVisualized(state),
+  isShowingRawTable: getIsShowingRawTable(state),
 });
 
-const mapDispatchToProps = (): DispatchProps => ({
-  onToggleRawTable: () => undefined,
+const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
+  onToggleRawTable: isShowingRawTable =>
+    dispatch(setUIControls({ isShowingRawTable })),
 });
 
 const MetabotQueryFooter = ({
   question,
+  isVisualized,
   isShowingRawTable,
   onToggleRawTable,
 }: MetabotQueryFooterProps) => {
   return (
     <QueryFooterRoot>
       <MetabotFeedback />
-      <QuestionDisplayToggle
-        question={question}
-        isShowingRawTable={isShowingRawTable}
-        onToggleRawTable={onToggleRawTable}
-      />
+      {isVisualized && (
+        <QuestionDisplayToggle
+          question={question}
+          isShowingRawTable={isShowingRawTable}
+          onToggleRawTable={onToggleRawTable}
+        />
+      )}
     </QueryFooterRoot>
   );
 };

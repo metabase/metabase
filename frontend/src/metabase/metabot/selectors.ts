@@ -3,6 +3,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
+import { DEFAULT_TABLE_SETTINGS } from "./constants";
 
 export const getEntityId = (state: State) => {
   return state.metabot.entityId;
@@ -34,6 +35,13 @@ export const getQueryResults = (state: State) => {
   return state.metabot.queryResults;
 };
 
+export const getQueryResultsError = createSelector(
+  [getQueryResults],
+  results => {
+    return results?.find(result => result.error)?.error;
+  },
+);
+
 export const getQueryError = (state: State) => {
   return state.metabot.queryError;
 };
@@ -53,3 +61,36 @@ export const getPromptTemplateVersions = (state: State) =>
 export const getCancelQueryDeferred = (state: State) => {
   return state.metabot.cancelQueryDeferred;
 };
+
+export const getUiControls = (state: State) => {
+  return state.metabot.uiControls;
+};
+
+export const getIsShowingRawTable = (state: State) => {
+  return getUiControls(state).isShowingRawTable;
+};
+
+export const getIsVisualized = createSelector([getQuestion], question => {
+  return (
+    question != null &&
+    question.display() !== "table" &&
+    question.display() !== "pivot"
+  );
+});
+
+export const getRawSeries = createSelector(
+  [getQuestion, getQueryResults, getIsShowingRawTable],
+  (question, results, isRawTable) => {
+    if (question && results) {
+      const card = question
+        .setDisplay(isRawTable ? "table" : question.display())
+        .setSettings(isRawTable ? DEFAULT_TABLE_SETTINGS : question.settings())
+        .card();
+
+      return question.atomicQueries().map((_, index) => ({
+        card,
+        data: results[index]?.data,
+      }));
+    }
+  },
+);
