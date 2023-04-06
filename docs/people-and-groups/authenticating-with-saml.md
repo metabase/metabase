@@ -75,7 +75,7 @@ Most IdPs already include these assertions by default, but some (such as [Okta](
 
 Generally you'll need to paste these user attributes (first name, last name, and email) into fields labelled "Name", "Attributes" or "Parameters".
 
-> If you allow end-users to edit their email addresses: make sure to update the corresponding account emails in Metabase. Keeping email addresses in sync will protect people from losing access to their accounts.
+> If you allow people to edit their email addresses: make sure to update the corresponding account emails in Metabase. Keeping email addresses in sync will protect people from losing access to their accounts.
 
 ### Settings for signing SSO requests (optional)
 
