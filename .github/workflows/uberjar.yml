@@ -125,7 +125,7 @@ jobs:
 
       # Build experimental ubuntu-based images only for master
     - name: Build ${{ matrix.edition }} Ubuntu based multi-arch container
-      if: github.ref_name == 'master'
+      if: ${{ github.ref_name == 'master' }}
       uses: docker/build-push-action@v2
       with:
         context: bin/docker/.
@@ -136,14 +136,14 @@ jobs:
         no-cache: true
         push: true
     - name: Launch ${{ matrix.edition }} Ubuntu based container
-      if: github.ref_name == 'master'
+      if: ${{ github.ref_name == 'master' }}
       run: docker run --rm -dp 3001:3000 localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}-ubuntu
       timeout-minutes: 5
     - name: Is Docker with Ubuntu running?
-      if: github.ref_name == 'master'
+      if: ${{ github.ref_name == 'master' }}
       run: docker ps
     - name: Wait for Ubuntu-based Metabase container to start and reach 100% health
-      if: github.ref_name == 'master'
+      if: ${{ github.ref_name == 'master' }}
       run: while ! curl -s 'http://localhost:3001/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       timeout-minutes: 3
 
