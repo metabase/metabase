@@ -4,4 +4,5 @@ export type SearchModelType =
   | "dashboard"
   | "database"
   | "dataset"
-  | "table";
+  | "table"
+  | "indexed-entity";
