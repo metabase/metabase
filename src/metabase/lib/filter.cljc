@@ -4,7 +4,6 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.schema]
    [metabase.lib.schema.common :as schema.common]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
