@@ -20,14 +20,16 @@
 
 (deftest quick-run-through
   (mt/dataset sample-dataset
-    (let [query (mt/mbql-query products)]
-      (mt/with-temp* [Card [model {:dataset true
-                                   :dataset_query query
+    (let [query  (mt/mbql-query products)
+          pk_ref (mt/$ids $products.id)]
+      (mt/with-temp* [Card [model {:dataset         true
+                                   :name            "Simple MBQL model"
+                                   :dataset_query   query
                                    :result_metadata (result-metadata-for-query query)}]]
         ;; there's a bug in toucan2 and i don't know how to get the newly inserted item
         (mt/user-http-request :rasta :post 200 "/model-index"
-                              {:model_id (:id model)
-                               :pk_ref (mt/$ids $products.id)
+                              {:model_id  (:id model)
+                               :pk_ref    pk_ref
                                :value_ref (mt/$ids $products.title)})
         (let [model-index (t2/select-one ModelIndex :model_id (:id model))
               by-key      (fn [k xs]
@@ -43,8 +45,9 @@
               (is (= (:schedule index-trigger) (:schedule model-index)))
               (is (= {"model-index-id" (:id model-index)}
                      (qc/from-job-data (:data index-trigger))))))
-          (testing "There are no values for that model index yet"
-            (is (zero? (count (t2/select ModelIndexValue :model_index_id (:id model-index))))))
+          ;; for now initial is done on thread on post.
+          #_(testing "There are no values for that model index yet"
+              (is (zero? (count (t2/select ModelIndexValue :model_index_id (:id model-index))))))
           (testing "We can invoke the task ourself manually"
             (model-index/add-values model-index)
             (is (= 200 (count (t2/select ModelIndexValue :model_index_id (:id model-index)))))
@@ -53,5 +56,21 @@
                    (t2/select-fn-set :name ModelIndexValue :model_index_id (:id model-index)))))
           (task.index-values/remove-indexing-job model-index)
           (testing "Search"
-            ;; not yet :)
-            ))))))
+            (let [search-results (mt/user-http-request :rasta :get 200 "search"
+                                                       :q "Synergistic"
+                                                       :models "indexed-entity"
+                                                       :archived false)
+                  f              (fn [sr] (-> (select-keys sr [:pk_ref :name :id :model_name])
+                                              (update :pk_ref model-index/normalize-field-ref)))]
+              (is (partial= {"Synergistic Wool Coat"   {:pk_ref     pk_ref
+                                                        :name       "Synergistic Wool Coat"
+                                                        :id         150
+                                                        :model_name "Simple MBQL model"}
+                             "Synergistic Steel Chair" {:pk_ref     [:field 45811 nil]
+                                                        :name       "Synergistic Steel Chair"
+                                                        :id         13
+                                                        :model_name "Simple MBQL model"}}
+                            (->> search-results
+                                 :data
+                                 (filter (comp #{(:id model)} :model_id))
+                                 (into {} (map (juxt :name f)))))))))))))
