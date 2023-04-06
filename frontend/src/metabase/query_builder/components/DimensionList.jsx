@@ -80,14 +80,15 @@ export default class DimensionList extends Component {
       onRemoveDimension,
     } = this.props;
 
-    const surpressSubDimensions =
+    // XXX: Likely a typo
+    const suppressSubDimensions =
       preventNumberSubDimensions && item.dimension.field().isSummable();
 
     const subDimensions =
       enableSubDimensions &&
       // Do not display sub dimension if this is an FK (metabase#16787)
       !item.dimension?.field().isFK() &&
-      !surpressSubDimensions &&
+      !suppressSubDimensions &&
       item.dimension.dimensions();
 
     const multiSelect = !!(onAddDimension || onRemoveDimension);
@@ -111,7 +112,7 @@ export default class DimensionList extends Component {
             triggerElement={this.renderSubDimensionTrigger(
               item.dimension,
               multiSelect,
-              preventNumberSubDimensions,
+              // XXX: Never used since PR#18800
             )}
             tetherOptions={multiSelect ? null : SUBMENU_TETHER_OPTIONS}
             sizeToFit
@@ -185,17 +186,21 @@ export default class DimensionList extends Component {
     } = this.props;
     const dimension = useOriginalDimension
       ? item.dimension
-      : item.dimension.defaultDimension() || item.dimension;
+      : // XXX: 7. Important note that dimension with binning options is `dimension.defaultDimension()`
+        item.dimension.defaultDimension() || item.dimension;
     const shouldExcludeBinning =
-      !enableSubDimensions &&
-      !useOriginalDimension &&
-      dimension instanceof FieldDimension &&
-      dimension.binningStrategy();
+      (!enableSubDimensions &&
+        !useOriginalDimension &&
+        dimension instanceof FieldDimension &&
+        dimension.binningStrategy()) ||
+      (preventNumberSubDimensions && dimension.field().isSummable()) ||
+      dimension.field().isFK();
+    // XXX 14. 🎉 dimension.field() after clicking to select each dimension in the `<DimensionList />`
+    // 1. Reviews join native Orders question: this._createFallbackField(), field().isSummable() is `true`
+    // 2. Orders join native Orders question: this._findMatchingQueryField(), field().isSummable() is `false` because it's a FK
+    // 3. Native Orders question join Orders this._findMatchingQueryField(), field().isSummable() is `true`
 
-    if (
-      shouldExcludeBinning ||
-      (preventNumberSubDimensions && dimension.field().isSummable())
-    ) {
+    if (shouldExcludeBinning) {
       // If we don't let user choose the sub-dimension, we don't want to treat the field
       // as a binned field (which would use the default binning)
       // Let's unwrap the base field of the binned field instead
