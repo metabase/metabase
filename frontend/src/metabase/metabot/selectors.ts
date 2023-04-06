@@ -13,9 +13,19 @@ export const getEntityType = (state: State) => {
   return state.metabot.entityType;
 };
 
-export const getQuestion = (state: State) => {
-  const card = state.metabot.card;
-  return card ? new Question(card, getMetadata(state)) : null;
+export const getCard = (state: State) => {
+  return state.metabot.card;
+};
+
+export const getQuestion = createSelector(
+  [getCard, getMetadata],
+  (card, metadata) => {
+    return card ? new Question(card, metadata) : undefined;
+  },
+);
+
+export const getRawTableQuestion = (question: Question) => {
+  return question.setDisplay("table").setSettings(DEFAULT_TABLE_SETTINGS);
 };
 
 export const getPrompt = (state: State) => {
@@ -82,10 +92,9 @@ export const getRawSeries = createSelector(
   [getQuestion, getQueryResults, getIsShowingRawTable],
   (question, results, isRawTable) => {
     if (question && results) {
-      const card = question
-        .setDisplay(isRawTable ? "table" : question.display())
-        .setSettings(isRawTable ? DEFAULT_TABLE_SETTINGS : question.settings())
-        .card();
+      const card = isRawTable
+        ? getRawTableQuestion(question).card()
+        : question.card();
 
       return question.atomicQueries().map((_, index) => ({
         card,
