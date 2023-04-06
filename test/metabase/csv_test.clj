@@ -194,6 +194,16 @@
                  java.lang.Exception
                  #"^You must set the `uploads-table-prefix` before uploading files\.$"
                  (csv/load! file)))))
+        (testing "Uploads must be supported"
+          (with-redefs [driver/database-supports? (constantly false)]
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (is (thrown-with-msg?
+                   java.lang.Exception
+                   #"^Uploads are not supported on Postgres databases\."
+                   (csv/load! file))))))
         (testing "Happy path"
           (mt/with-temporary-setting-values [uploads-enabled      true
                                              uploads-database-id  db-id
