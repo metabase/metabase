@@ -58,8 +58,6 @@ const mapDispatchToProps = {
 class DashboardHeader extends Component {
   constructor(props) {
     super(props);
-    console.log(props);
-    console.log(props.databases);
     this.addQuestionModal = React.createRef();
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
@@ -217,12 +215,12 @@ class DashboardHeader extends Component {
 
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
-    console.log({ databases });
-
-    const hasModelActionsEnabled = dashboard.ordered_cards
-      .map(card => card.card.database_id)
-      .map(id => databases[id]?.settings?.["database-enable-actions"])
-      .reduce((a, b) => a && b, true);
+    // check the dashboard card's source database,
+    // and check if the database has actions enabled
+    const hasModelActionsEnabled = dashboard.ordered_cards.every(cardData => {
+      const id = cardData.card.database_id;
+      return databases[id]?.settings?.["database-enable-actions"];
+    });
 
     const buttons = [];
     const extraButtons = [];
