@@ -58,7 +58,7 @@ const mapDispatchToProps = {
 class DashboardHeader extends Component {
   constructor(props) {
     super(props);
-
+    console.log(props)
     this.addQuestionModal = React.createRef();
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
@@ -101,6 +101,8 @@ class DashboardHeader extends Component {
     setSidebar: PropTypes.func.isRequired,
     closeSidebar: PropTypes.func.isRequired,
     addActionToDashboard: PropTypes.func.isRequired,
+
+    databases: PropTypes.object,
   };
 
   handleEdit(dashboard) {
@@ -209,9 +211,12 @@ class DashboardHeader extends Component {
       toggleSidebar,
       isShowingDashboardInfoSidebar,
       closeSidebar,
+      databases,
     } = this.props;
 
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
+
+    // const hasModelActionsEnabled = databases && databases[dashboard.database_id] && databases[dashboard.database_id];
 
     const buttons = [];
     const extraButtons = [];
@@ -301,7 +306,7 @@ class DashboardHeader extends Component {
         buttons.push(
           <>
             <DashboardHeaderActionDivider />
-            <Tooltip key="add-action-button" tooltip={t`Add action button`}>
+            <Tooltip key="add-action-button" tooltip={t`Add`}>
               <DashboardHeaderButton
                 onClick={() => this.onAddAction()}
                 aria-label={t`Add action`}
