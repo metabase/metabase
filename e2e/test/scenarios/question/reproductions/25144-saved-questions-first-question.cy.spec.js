@@ -38,7 +38,7 @@ describe("issue 25144", () => {
     cy.wait("@createCard");
     modal().button("Not now").click();
 
-    cy.button("ellipsis icon").click();
+    cy.findByLabelText("Move, archive, and more...").click();
     popover().findByText("Turn into a model").click();
     modal().button("Turn this into a model").click();
     cy.wait("@updateCard");

@@ -1,6 +1,5 @@
 (ns metabase.lib.expression-test
   (:require
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
    [metabase.lib.core :as lib]
@@ -8,21 +7,22 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as schema.common]
-   [metabase.lib.schema.expression :as schema.expression]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (comment lib/keep-me)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel expression-test
-  (is (=? {:lib/type :mbql/query,
-           :database (meta/id) ,
-           :type :pipeline,
-           :stages [{:lib/type :mbql.stage/mbql,
-                     :source-table (meta/id :venues) ,
-                     :lib/options {:lib/uuid string?},
+  (is (=? {:lib/type :mbql/query
+           :database (meta/id)
+           :type :pipeline
+           :stages [{:lib/type :mbql.stage/mbql
+                     :source-table (meta/id :venues)
+                     :lib/options {:lib/uuid string?}
                      :expressions {"myadd" [:+ {:lib/uuid string?}
                                             1
                                             [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]}}]}
@@ -54,7 +54,7 @@
                           (lib/power int-field float-field) :type/Number
                           (lib/interval 1 :month) :type/Integer ;; Need an interval type
                           #_#_(lib/relative-datetime "2020-01-01" :default) :type/DateTime
-                          (lib/time "08:00:00" :hour) :type/TimeWithTZ
+                          (lib/time "08:00:00" :hour) :type/Time
                           #_#_(lib/absolute-datetime "2020-01-01" :default) :type/DateTimeWithTZ
                           (lib/now) :type/DateTimeWithTZ
                           (lib/convert-timezone dt-field "US/Pacific" "US/Eastern") :type/DateTime
@@ -84,7 +84,7 @@
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
           (is (mc/validate ::lib.schema/query query))
           (is (mc/validate ::schema.common/external-op resolved))
-          (is (= typ (schema.expression/type-of resolved))))))))
+          (is (= typ (lib.schema.expression/type-of resolved))))))))
 
 (deftest ^:parallel col-info-expression-ref-test
   (is (=? {:base_type    :type/Integer
@@ -220,6 +220,29 @@
            {:expressions {"one-hundred" 100}})
           -1
           [:expression {:lib/uuid (str (random-uuid))} "double-price"])))))
+
+(deftest ^:parallel arithmetic-expression-type-of-test
+  (testing "Make sure we can calculate correct type information for arithmetic expression"
+    (let [field [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]]
+      (testing "+, -, and * should return common ancestor type of all args")
+      (doseq [tag   [:+ :- :*]
+              arg-2 [1 1.0]
+              :let  [clause [tag {:lib/uuid (str (random-uuid))} field arg-2]]]
+        (testing (str \newline (pr-str clause))
+          (is (= :type/*
+                 (lib.schema.expression/type-of clause)))
+          (is (= (condp = arg-2
+                   1   :type/Integer
+                   1.0 :type/Number)
+                 (lib.metadata.calculation/type-of lib.tu/venues-query clause)))))
+      (testing "/ should always return type/Float"
+        (doseq [arg-2 [1 1.0]
+                :let  [clause [:/ {:lib/uuid (str (random-uuid))} field arg-2]]]
+          (testing (str \newline (pr-str clause))
+            (is (= :type/Float
+                   (lib.schema.expression/type-of clause)))
+            (is (= :type/Float
+                   (lib.metadata.calculation/type-of lib.tu/venues-query clause)))))))))
 
 (deftest ^:parallel expressions-names-test
   (testing "expressions should include the original expression name"

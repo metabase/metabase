@@ -1,4 +1,4 @@
-import { restore, questionInfoButton } from "e2e/support/helpers";
+import { restore, questionInfoButton, visitModel } from "e2e/support/helpers";
 
 describe("scenarios > models > revision history", () => {
   beforeEach(() => {
@@ -18,24 +18,18 @@ describe("scenarios > models > revision history", () => {
 
     openRevisionHistory();
     revertTo("You created this");
-    cy.wait("@dataset");
+    cy.wait("@modelQuery3");
 
     cy.location("pathname").should("match", /^\/question\/3/);
     cy.get(".LineAreaBarChart");
 
     revertTo("^Turned this into a model");
-    cy.wait("@dataset");
+    cy.wait("@modelQuery3");
 
     cy.location("pathname").should("match", /^\/model\/3/);
     cy.get(".cellData");
   });
 });
-
-function visitModel(id) {
-  cy.intercept("POST", "/api/dataset").as("dataset");
-  cy.visit(`/model/${id}`);
-  cy.wait("@dataset");
-}
 
 function openRevisionHistory() {
   cy.intercept("GET", "/api/user").as("user");

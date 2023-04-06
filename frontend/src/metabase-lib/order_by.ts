@@ -20,10 +20,19 @@ declare function OrderByFn(
 
 export const orderBy: typeof OrderByFn = ML.order_by;
 
-export function orderByClause(
+type OrderByDirection = "asc" | "desc";
+
+declare function OrderByClauseFn(
   query: Query,
   stageNumber: number,
   field: Field,
-): Field {
-  return ML.order_by_clause(query, stageNumber, field);
-}
+  direction?: OrderByDirection,
+): OrderByClause;
+declare function OrderByClauseFn(
+  query: Query,
+  stageNumber: number,
+  field: Field,
+  direction?: OrderByDirection,
+): OrderByClause;
+
+export const orderByClause: typeof OrderByClauseFn = ML.order_by_clause;

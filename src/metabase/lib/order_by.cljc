@@ -3,6 +3,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -35,7 +36,8 @@
 (defmulti ^:private ->order-by-clause
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x)))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod ->order-by-clause :asc
   [_query _stage-number clause]
@@ -54,19 +56,31 @@
   [_query _stage-number x]
   (lib.options/ensure-uuid [:asc (lib.ref/ref x)]))
 
-(defn order-by-clause
-  "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
-  ([x]
-   (fn [query stage-number]
-     (order-by-clause query stage-number x)))
-  ([query stage-number x]
-   (->order-by-clause query stage-number x)))
-
 (mu/defn ^:private with-direction :- ::lib.schema.order-by/order-by
   "Update the direction of an order by clause."
   [clause    :- ::lib.schema.order-by/order-by
    direction :- ::lib.schema.order-by/direction]
   (assoc (vec clause) 0 direction))
+
+(mu/defn order-by-clause
+  "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
+  ([x]
+   (fn [query stage-number]
+     (order-by-clause query stage-number x nil)))
+  ([x
+    direction :- [:maybe [:enum :asc :desc]]]
+   (fn [query stage-number]
+     (order-by-clause query stage-number x direction)))
+  ([query :- ::lib.schema/query
+    stage-number :- [:maybe :int]
+    x]
+   (order-by-clause query stage-number x nil))
+  ([query :- ::lib.schema/query
+    stage-number :- [:maybe :int]
+    x
+    direction :- [:maybe [:enum :asc :desc]]]
+   (-> (->order-by-clause query (or stage-number -1) x)
+       (with-direction (or direction :asc)))))
 
 (mu/defn order-by
   "Add an MBQL order-by clause (i.e., `:asc` or `:desc`) from something that you can theoretically sort by -- maybe a

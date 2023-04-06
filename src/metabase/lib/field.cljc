@@ -81,6 +81,14 @@
     (update metadata :name (fn [field-name]
                              (str parent-name \. field-name)))))
 
+(defmethod lib.metadata.calculation/type-of-method :metadata/field
+  [_query _stage-number field-metadata]
+  ((some-fn :effective_type :base_type) field-metadata))
+
+(defmethod lib.metadata.calculation/type-of-method :field
+  [query stage-number field-ref]
+  (lib.metadata.calculation/type-of query stage-number (resolve-field-metadata query stage-number field-ref)))
+
 (defmethod lib.metadata.calculation/metadata-method :metadata/field
   [_query _stage-number {field-name :name, :as field-metadata}]
   (assoc field-metadata :name field-name))

@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -141,7 +142,8 @@
 
 (defmulti ^:private ->metadata-provider*
   {:arglists '([x])}
-  lib.dispatch/dispatch-value)
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod ->metadata-provider* :default
   [x]
