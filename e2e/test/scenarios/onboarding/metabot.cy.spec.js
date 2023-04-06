@@ -138,7 +138,7 @@ const verifyHomeMetabot = () => {
 const verifyManualQueryEditing = () => {
   cy.findByText("Open Editor").click();
   cy.findByTestId("native-query-editor")
-    .type("{selectall}{backspace}")
+    .type("{selectall}{backspace}", { delay: 50 })
     .type(MANUAL_QUERY);
   cy.findByLabelText("Refresh").click();
   cy.wait("@dataset");
