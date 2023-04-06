@@ -1,4 +1,5 @@
 import {
+  addCardToDashboard,
   editDashboard,
   popover,
   restore,
@@ -66,12 +67,9 @@ describe("issue 23024", () => {
 function addModelToDashboardAndVisit() {
   cy.createDashboard().then(({ body: { id } }) => {
     cy.get("@modelId").then(cardId => {
-      cy.request("POST", `/api/dashboard/${id}/cards`, {
-        cardId,
-        row: 0,
-        col: 0,
-        size_x: 16,
-        size_y: 10,
+      addCardToDashboard({
+        dashboard_id: id,
+        card_id: cardId,
       });
     });
 
