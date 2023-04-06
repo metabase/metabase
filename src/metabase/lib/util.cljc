@@ -275,28 +275,34 @@
   "Number of bytes in a string using UTF-8 encoding."
   [s :- :string]
   #?(:clj (count (.getBytes (str s) "UTF-8"))
-     :cljs (js/Buffer.byteLength s "utf8")))
+     :cljs (.. (js/TextEncoder.) (encode s) -length)))
 
-(mu/defn ^:private string-character-at :- [:string {:min 0, :max 1}]
-  [s :- :string
-   i :-[:int {:min 0}]]
-  #?(:clj  (str (.charAt ^String s i))
-     :cljs (.slice s i (inc i))))
+#?(:clj
+   (mu/defn ^:private string-character-at :- [:string {:min 0, :max 1}]
+     [s :- :string
+      i :-[:int {:min 0}]]
+     (str (.charAt ^String s i))))
 
 (mu/defn ^:private truncate-string-to-byte-count :- :string
   "Truncate string `s` to `max-length-bytes` UTF-8 bytes (as opposed to truncating to some number of
   *characters*)."
   [s                :- :string
    max-length-bytes :- [:int {:min 1}]]
-  (loop [i 0, cumulative-byte-count 0]
-    (cond
-      (= cumulative-byte-count max-length-bytes) (subs s 0 i)
-      (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
-      (>= i (count s))                           s
-      :else                                      (recur (inc i)
-                                                        (+
-                                                         cumulative-byte-count
-                                                         (string-byte-count (string-character-at s i)))))))
+  #?(:clj
+     (loop [i 0, cumulative-byte-count 0]
+       (cond
+         (= cumulative-byte-count max-length-bytes) (subs s 0 i)
+         (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
+         (>= i (count s))                           s
+         :else                                      (recur (inc i)
+                                                           (+
+                                                            cumulative-byte-count
+                                                            (string-byte-count (string-character-at s i))))))
+
+     :cljs
+     (let [buf (js/Uint8Array. max-length-bytes)
+           result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
+       (subs s 0 (.-read result)))))
 
 (def ^:private truncate-alias-max-length-bytes
   "Length to truncate column and table identifiers to. See [[metabase.driver.impl/default-alias-max-length-bytes]] for

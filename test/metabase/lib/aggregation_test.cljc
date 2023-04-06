@@ -248,7 +248,7 @@
       (is (=? {:settings     {:is_priceless true}
                :lib/type     :metadata/field
                :base_type    :type/Integer
-               :name         "sum_price"
+               :name         "sum_PRICE"
                :display_name "Sum of Price"
                :lib/source   :source/aggregations}
               (lib.metadata.calculation/metadata query (first (lib/aggregations query -1))))))))

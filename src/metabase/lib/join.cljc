@@ -232,7 +232,7 @@
 (mu/defn implicit-join-name :- ::lib.schema.common/non-blank-string
   "Name for an implicit join against `table-name` via an FK field, e.g.
 
-    CATEGORIES__via_CATEGORY_ID
+    CATEGORIES__via__CATEGORY_ID
 
   You should make sure this gets ran thru a unique-name fn."
   [table-name           :- ::lib.schema.common/non-blank-string
