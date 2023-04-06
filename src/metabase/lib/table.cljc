@@ -64,9 +64,8 @@
   [query stage-number {::keys [join-alias join-fields], :as table-metadata}]
   (cond-> (lib.join/join-clause query
                                 stage-number
-                                (merge
-                                 {:lib/type     :mbql.stage/mbql
-                                  :lib/options  {:lib/uuid (str (random-uuid))}
-                                  :source-table (:id table-metadata)}))
+                                {:lib/type     :mbql.stage/mbql
+                                 :lib/options  {:lib/uuid (str (random-uuid))}
+                                 :source-table (:id table-metadata)})
     join-alias  (lib.join/with-join-alias join-alias)
     join-fields (lib.join/with-join-fields join-fields)))
