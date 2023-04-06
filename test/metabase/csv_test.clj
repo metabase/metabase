@@ -139,4 +139,5 @@
             ;; Sleep for a second, because the table name is based on the current second
             (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" (File. "pokefans.csv"))))
             (Thread/sleep 1000)
-            (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" (File. "pokefans.csv"))))))))))
+            (with-temp-csv "../pokefans.csv" ["name" "Luke" "Han"]
+              (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" (File. "../pokefans.csv")))))))))))
