@@ -41,9 +41,11 @@
                                       :creator_id api/*current-user-id*}])
     ;; hack: get the model index with the highest id with the model_id. don't know why can't get it from the
     ;; `insert-returning-instances!` above.
-    (t2/select-one ModelIndex
-                   :model_id model_id
-                   {:order-by [[:id :desc]]})))
+    (let [model-index (t2/select-one ModelIndex
+                                     :model_id model_id
+                                     {:order-by [[:id :desc]]})]
+      (model-index/add-values model-index)
+      (t2/select-one ModelIndex :id (:id model-index)))))
 
 (api/defendpoint GET "/"
   [model_id]
