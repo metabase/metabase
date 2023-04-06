@@ -179,9 +179,9 @@
    [:map
     [:lib/source ::lib.metadata/column-source]]])
 
-(mu/defn metadata :- [:or
-                      lib.metadata/ColumnMetadata
-                      [:sequential ColumnMetadataWithSource]]
+(mu/defn metadata :- [:maybe [:or
+                              lib.metadata/ColumnMetadata
+                              [:sequential ColumnMetadataWithSource]]]
   "Calculate appropriate metadata for something. What this looks like depends on what we're calculating metadata for.
   If it's a reference or expression of some sort, this should return a single `:metadata/field` map (i.e., something
   satisfying the [[metabase.lib.metadata/ColumnMetadata]] schema. If it's something like a stage of a query or a join

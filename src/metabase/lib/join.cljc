@@ -190,15 +190,27 @@
    (cond-> (join-clause query stage-number x)
      condition (assoc :condition (join-condition query stage-number condition)))))
 
+(defmulti with-join-fields-method
+  "Impl for [[with-join-fields]]."
+  {:arglists '([x fields])}
+  (fn [x _fields]
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod with-join-fields-method :dispatch-type/fn
+  [f fields]
+  (fn [query stage-number]
+    (with-join-fields-method (f query stage-number) fields)))
+
+(defmethod with-join-fields-method :mbql/join
+  [join fields]
+  (assoc join :fields fields))
 
 (mu/defn with-join-fields
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
   references."
   [x fields :- ::lib.schema.join/fields]
-  (if (fn? x)
-    (fn [query stage-number]
-      (with-join-fields (x query stage-number) fields))
-    (assoc x :fields fields)))
+  (with-join-fields-method x fields))
 
 (mu/defn join :- ::lib.schema/query
   "Create a join map as if by [[join-clause]] and add it to a `query`.
