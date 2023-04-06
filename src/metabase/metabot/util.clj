@@ -205,15 +205,23 @@
    of the context interpolating all values from the template. The returned
    value is the template object with the prompt contained in the ':prompt' key."
   [{:keys [prompt_task] :as context}]
-  (if-some [template (get-in (*prompt-templates*) [prompt_task :latest])]
+  (if-some [{:keys [messages] :as template} (get-in (*prompt-templates*) [prompt_task :latest])]
     (assoc template
-      :prompt (prompt-template->messages template context))
+      :message_templates messages
+      :messages (prompt-template->messages template context))
     (throw
      (ex-info
       (format "No prompt inference template found for prompt type: %s" prompt_task)
       {:prompt_type prompt_task}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Results Processing ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn select-all?
+  "Is this a simple SELECT * query?"
+  [sql]
+  (str/starts-with?
+   (str/replace sql #"\s+" "")
+   "SELECT*"))
 
 (defn find-result
   "Given a set of choices returned from the bot, find the first one returned by
@@ -245,3 +253,21 @@
   [{:keys [inner_query sql_name] :as _denormalized-model} outer-query]
   (let [model-with-cte (format "WITH %s AS (%s) %s" sql_name inner_query outer-query)]
     (fix-model-reference model-with-cte)))
+
+(defn response->viz
+  "Given a response from the LLM, map this to visualization settings. Default to a table."
+  [{:keys [display description visualization_settings]}]
+  (let [display (keyword display)
+        {:keys [x-axis y-axis]} visualization_settings]
+    (case display
+      (:line :bar :area :waterfall) {:display                display
+                                     :name                   description
+                                     :visualization_settings {:graph.dimensions [x-axis]
+                                                              :graph.metrics    y-axis}}
+      (:scalar) {:display                display
+                 :name                   description
+                 :visualization_settings {:graph.metrics    y-axis
+                                          :graph.dimensions []}}
+      {:display                :table
+       :name                   description
+       :visualization_settings {:title description}})))
