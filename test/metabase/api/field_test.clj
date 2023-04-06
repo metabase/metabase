@@ -753,7 +753,6 @@
               ;; Sync the new database
               (sync/sync-database! database)
               (let [field (t2/select-one Field :id (mt/id :json :json_bit))
-                    get-field (fn [] (t2/select-one Field :id (mt/id :json :json_bit)))
                     get-database (fn [] (t2/select-one Database :id (mt/id)))
                     set-json-unfolding-for-field! (fn [v]
                                                     (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
