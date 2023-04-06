@@ -109,4 +109,7 @@
                            3 {:name       "lamp"
                               :model_pk   3
                               :generation 2}}
-                          (indexed-values!)))))))))
+                          (indexed-values!))))
+          (testing "Can remove the model index"
+            (mt/user-http-request :rasta :delete 200 (str "/model-index/" (:id model-index)))
+            (is (= {} (indexed-values!)))))))))

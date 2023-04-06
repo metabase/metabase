@@ -54,7 +54,8 @@
 
 (api/defendpoint DELETE "/:id"
   [id]
-  (let [model-index (api/read-check ModelIndex id)]
+  {id ms/PositiveInt}
+  (api/let-404 [model-index (t2/select-one ModelIndex :id id)]
     (api/read-check Card (:model_id model-index))
     (t2/delete! ModelIndex id)))
 
