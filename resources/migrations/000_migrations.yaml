@@ -14585,7 +14585,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                     references: core_user(id)
-                    foreignKeyName: fk_event_creator_id
+                    foreignKeyName: fk_model_index_creator_id
                     deleteCascade: true
       rollback:
         - dropTable:
