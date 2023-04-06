@@ -82,15 +82,15 @@
         ;; we just delete and recreate
         (t2/delete! ModelIndexValue {:model_index_id (:id model-index)})
         (t2/insert! ModelIndexValue (map (fn [[id v]]
-                                           {:value          v
+                                           {:name           v
                                             :model_pk       id
                                             :model_index_id (:id model-index)
                                             :generation     new-generation})
                                          values))
         (t2/update! ModelIndex (:id model-index)
-                    {:generation new-generation
+                    {:generation      new-generation
                      :state_change_at :%now
-                     :status (if (> (count values) 5000) "overflow" "indexed")})))))
+                     :status          (if (> (count values) 5000) "overflow" "indexed")})))))
 
 (defmethod add-values :postgres
   [model-index]
@@ -107,7 +107,7 @@
                    :values        (into []
                                         (comp (filter (fn [[id v]] (and id v)))
                                               (map (fn [[id v]]
-                                                     {:value          v
+                                                     {:name           v
                                                       :model_pk       id
                                                       :model_index_id (:id model-index)
                                                       :generation     new-generation})))
