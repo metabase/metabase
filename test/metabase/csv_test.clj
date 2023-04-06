@@ -123,7 +123,19 @@
   (testing "Completely empty contents are okay"
       (is (= {}
              (csv/detect-schema
-              (csv-file-with [""]))))))
+              (csv-file-with [""])))))
+  (testing "CSV missing data in the top row"
+    (is (= {"name"       vchar-type
+            "height"     int-type
+            "birth_year" float-type}
+           (csv/detect-schema
+            (csv-file-with ["Name, Height, Birth Year"
+                            ;; missing column
+                            "Watto, 137"
+                            "Luke Skywalker, 172, -19"
+                            "Darth Vader, 202, -41.9"
+                            ;; comma, but blank column
+                            "Sebulba, 112,"]))))))
 
 (deftest file->table-name-test
   (testing "File name is slugified"
