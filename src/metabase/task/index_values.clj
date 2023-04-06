@@ -42,7 +42,7 @@
       (u/ignore-exceptions
        (let [trigger-key (model-index-trigger-key model-index-id)]
          (task/delete-trigger! trigger-key)))
-      (model-index/add-values model-index))))
+      (model-index/add-values! model-index))))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Refresh model indexed columns"}

@@ -67,60 +67,52 @@
            (log/warn (trs "Error fetching indexed values for model {0}" (:id model)) e)
            [(ex-message e) []]))))
 
-(defmulti add-values "Index values in a model."
-  (fn [_indexing-info] (mdb.connection/db-type)))
+(defmulti add-values* "Index values in a model."
+  (fn [_model-index values] (mdb.connection/db-type)))
 
-(defmethod add-values :h2
-  [model-index]
-  (let [[error-message values] (fetch-values model-index)
-        new-generation         (inc (:generation model-index 0))]
-    (if-not (str/blank? error-message)
-      (t2/update! ModelIndex (:id model-index) {:status          "error"
-                                                :error           error-message
-                                                :state_change_at :%now
-                                                :generation      new-generation})
-      (do
-        ;; we just delete and recreate
-        (t2/delete! ModelIndexValue :model_index_id (:id model-index))
-        (t2/insert! ModelIndexValue (map (fn [[id v]]
-                                           {:name           v
-                                            :model_pk       id
-                                            :model_index_id (:id model-index)
-                                            :generation     new-generation})
-                                         values))
-        (t2/update! ModelIndex (:id model-index)
-                    {:generation      new-generation
-                     :state_change_at :%now
-                     :state           (if (> (count values) 5000) "overflow" "indexed")})))))
+(defmethod add-values* :h2
+  [model-index values]
+  ;; h2 just deletes and recreates
+  (t2/delete! ModelIndexValue :model_index_id (:id model-index))
+  (t2/insert! ModelIndexValue (map (fn [[id v]]
+                                     {:name           v
+                                      :model_pk       id
+                                      :model_index_id (:id model-index)
+                                      :generation     (inc (:generation model-index))})
+                                   values)))
 
-(defmethod add-values :postgres
+(defmethod add-values* :postgres
+  [model-index values]
+  (let [new-generation (inc (:generation model-index))]
+    ;; use upserts and delete ones with old generations
+   (t2/query {:insert-into   [:model_index_value]
+              :values        (into []
+                                   (comp (filter (fn [[id v]] (and id v)))
+                                         (map (fn [[id v]]
+                                                {:name           v
+                                                 :model_pk       id
+                                                 :model_index_id (:id model-index)
+                                                 :generation     new-generation})))
+                                   values)
+              :on-conflict   [:model_index_id :model_pk]
+              :do-update-set {:generation new-generation}})
+   (t2/delete! ModelIndexValue
+               :model_index_id (:id model-index)
+               :generation     [:< new-generation])))
+
+(defn add-values!
+  "Add indexed values to the model_index_value table."
   [model-index]
-  (let [[error-message values] (fetch-values model-index)
-        new-generation         (inc (:generation model-index 0))]
+  (let [[error-message index-values] (fetch-values model-index)
+        generation' (inc (:generation model-index))]
     (if-not (str/blank? error-message)
-      (t2/update! ModelIndex (:id model-index) {:status          "error"
-                                                :error           error-message
-                                                :state_change_at :%now
-                                                :generation      new-generation})
-      ;; use upserts and delete ones with old generations
-      (do
-        (t2/query {:insert-into   [:model_index_value]
-                   :values        (into []
-                                        (comp (filter (fn [[id v]] (and id v)))
-                                              (map (fn [[id v]]
-                                                     {:name           v
-                                                      :model_pk       id
-                                                      :model_index_id (:id model-index)
-                                                      :generation     new-generation})))
-                                        values)
-                   :on-conflict   [:model_index_id :model_pk]
-                   :do-update-set {:generation new-generation}})
-        (t2/delete! ModelIndexValue
-                    :model_index_id (:id model-index)
-                    :generation     [:< new-generation])
-        (t2/update! ModelIndex (:id model-index)
-                    {:generation      new-generation
-                     :state_change_at :%now
-                     :state           (if (> (count values) 5000) "overflow" "indexed")})))))
+      (t2/update! ModelIndex (:id model-index) {:status "error"
+                                                :error  error-message
+                                                :state_change_at :%now})
+      (do (add-values* model-index index-values)
+          (t2/update! ModelIndex (:id model-index)
+                      {:generation generation'
+                       :state_change_at :%now
+                       :state (if (> (count index-values) 5000) "overflow" "indexed")})))))
 
 ;; todo: mysql

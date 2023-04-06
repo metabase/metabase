@@ -49,7 +49,7 @@
           #_(testing "There are no values for that model index yet"
               (is (zero? (count (t2/select ModelIndexValue :model_index_id (:id model-index))))))
           (testing "We can invoke the task ourself manually"
-            (model-index/add-values model-index)
+            (model-index/add-values! model-index)
             (is (= 200 (count (t2/select ModelIndexValue :model_index_id (:id model-index)))))
             (is (= (into #{} cat (mt/rows (qp/process-query
                                            (mt/mbql-query products {:fields [$title]}))))
