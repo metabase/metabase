@@ -20,7 +20,6 @@ import {
   getPrompt,
   getPromptTemplateVersions,
   getQuestion,
-  getRawTableQuestion,
 } from "./selectors";
 
 export interface InitPayload {
@@ -91,11 +90,6 @@ export const RUN_QUESTION_QUERY_REJECTED =
 export const runQuestionQuery =
   () => async (dispatch: Dispatch, getState: GetState) => {
     try {
-      const question = getQuestion(getState());
-      if (question) {
-        await dispatch(updateQuestion(getRawTableQuestion(question)));
-      }
-
       const cancelQueryDeferred = defer();
       dispatch({ type: RUN_QUESTION_QUERY, payload: cancelQueryDeferred });
       await dispatch(fetchQueryResults(cancelQueryDeferred));
