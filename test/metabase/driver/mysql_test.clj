@@ -6,6 +6,7 @@
    [honey.sql :as sql]
    [java-time :as t]
    [metabase.config :as config]
+   [metabase.csv-test :as csv-test]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -634,3 +635,75 @@
               #"Killed mysql process id [\d,]+ due to timeout."
               (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
         (is (some? (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))
+
+(deftest load-from-csv-test
+  (testing "Upload a CSV file"
+    (mt/test-driver :mysql
+      (mt/with-empty-db
+        (driver/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-test/csv-file-with ["id,empty,string,bool,number" "2,,string,true,1.1" "3,,string,false,1.1"]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :name "upload_test" :db_id (mt/id))]
+            (is (some? table))
+            (is (=? {:database_position 0
+                     :database_type     "INT"
+                     :display_name      "ID"
+                     :semantic_type     :type/PK
+                     :base_type         :type/Integer}
+                    (t2/select-one Field :name "id" :table_id (:id table))))
+            (is (=? {:database_position 1
+                     :database_type     "TEXT"
+                     :base_type         :type/Text}
+                    (t2/select-one Field :name "empty" :table_id (:id table))))
+            (is (=? {:database_position 2
+                     :database_type     "VARCHAR"
+                     :base_type         :type/Text}
+                    (t2/select-one Field :name "string" :table_id (:id table))))
+            (is (=? {:database_position 3
+                     :database_type     "BIT"
+                     :base_type         :type/Boolean}
+                    (t2/select-one Field :name "bool" :table_id (:id table))))
+            (is (=? {:database_position 4
+                     :database_type     "FLOAT"
+                     :base_type         :type/Float}
+                    (t2/select-one Field :name "number" :table_id (:id table))))
+            (testing "Check the data was uploaded into the table"
+              (is (= [[2]] (-> (mt/process-query {:database (mt/id)
+                                                  :type :query
+                                                  :query {:source-table (:id table)
+                                                          :aggregation [[:count]]}})
+                               mt/rows))))))))))
+
+(deftest load-from-csv-sql-injection-test
+  (mt/test-driver :mysql
+    (mt/with-empty-db
+      (testing "Can't upload a CSV with a semi-colon in the file name"
+        (let [file-name (str (csv-test/csv-file-with ["id" "2"]))]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Error uploading CSV: \";\" in "
+               (driver/load-from-csv
+                driver/*driver*
+                (mt/id)
+                (str "public.upload_test(id) FROM " file-name "; DROP TABLE users; --")
+                (csv-test/csv-file-with ["id" "2"])))))))))
+
+(deftest load-from-csv-failed-test
+  (mt/test-driver :mysql
+    (mt/with-empty-db
+      (testing "Can't upload a CSV with missing values"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Column count doesn't match value count at row 1"
+             (driver/load-from-csv
+              driver/*driver*
+              (mt/id)
+              "upload_test"
+              (csv-test/csv-file-with ["id,column_that_doesnt_have_a_value" "2"])))))
+      (testing "Check that the table isn't created if the upload fails"
+        (sync/sync-database! (mt/db))
+        (is (nil? (t2/select-one Table :db_id (mt/id))))))))

@@ -1,12 +1,16 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
   (:require
+   [clojure.data.csv]
+   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [honey.sql :as sql]
    [java-time :as t]
    [metabase.config :as config]
+   [metabase.csv :as csv]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -26,13 +30,23 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log])
   (:import
-   (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
-   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.io File)
+   (java.sql
+     DatabaseMetaData
+     ResultSet
+     ResultSetMetaData
+     Types)
+   (java.time
+     LocalDateTime
+     OffsetDateTime
+     OffsetTime
+     ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -606,3 +620,66 @@
   (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
           (str (t/zone-id t))))
+
+(defn- check-for-semicolons [s]
+  (when (re-find #";" s)
+    (throw (ex-info (tru "Error uploading CSV: \";\" in {0}" s) {}))))
+
+(def ^:private csv->database-type
+  {::csv/varchar_255 "VARCHAR(255)"
+   ::csv/text        "TEXT"
+   ::csv/int         "INTEGER"
+   ::csv/float       "FLOAT"
+   ::csv/boolean     "BOOLEAN"})
+
+(def ^:private csv-type->parser
+  {::csv/varchar_255 identity
+   ::csv/text        identity
+   ::csv/int         #(Integer/parseInt %)
+   ::csv/float       #(Float/parseFloat %)
+   ::csv/boolean     read-string})
+
+(defn- parsed-rows
+  "Returns a vector of parsed rows from a `csv-file`.
+   Replaces empty strings with nil."
+  [col->csv-type csv-file]
+  (with-open [reader (io/reader csv-file)]
+    (let [[_header & rows] (clojure.data.csv/read-csv reader)
+          parsers (map csv-type->parser (vals col->csv-type))]
+      (vec (for [row rows]
+             (for [[v f] (map vector row parsers)]
+               (if (str/blank? v)
+                 nil
+                 (f v))))))))
+
+(defn- load-from-csv-sql
+  [table-name column-names rows]
+  (sql/format {:insert-into (keyword table-name)
+               :columns (map keyword column-names)
+               :values rows}))
+
+;; TODO: if the MySQL variable secure_file_priv=null, we can't use LOAD DATA INFILE,
+;; so we're using INSERT INTO ... VALUES (...) instead, which is much slower.
+;; In the future, we could query the variable with SHOW VARIABLES LIKE "secure_file_priv";
+;; and intelligently choose to use LOAD DATA INFILE.
+;; https://metaboat.slack.com/archives/C04S696LRUM/p1680696120953829
+;; (defn- load-from-csv-sql [table-name column-names file-path]
+;;   (str "LOAD DATA INFILE '" file-path "' INTO TABLE " table-name
+;;        " FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\n'"
+;;        " IGNORE 1 ROWS (" (str/join "," column-names) ")"))
+
+(defmethod driver/load-from-csv :mysql
+  [driver db-id table-name ^File csv-file]
+  (let [col->csv-type      (csv/detect-schema csv-file)
+        col->database-type (update-vals col->csv-type csv->database-type)
+        column-names       (keys col->csv-type)]
+    (run! check-for-semicolons (concat [table-name] column-names))
+    (driver/create-table driver db-id table-name col->database-type)
+    (let [rows (parsed-rows col->csv-type csv-file)
+          sql  (load-from-csv-sql table-name column-names rows)]
+      (try
+        (qp.writeback/execute-write-sql! db-id sql)
+        (catch Throwable e
+          (driver/drop-table driver db-id table-name)
+          (throw (ex-info (ex-message e) {}))))
+      nil)))
