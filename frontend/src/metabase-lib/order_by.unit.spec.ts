@@ -7,16 +7,18 @@ const findOrderableColumn = (
   tableName: string,
   fieldName: string,
 ): ML.ColumnMetadata => {
-  const columns = ML.orderableColumns(query);
-  const column = columns?.find((column: ML.ColumnMetadata) => {
-    const displayInfo = ML.displayInfo(query, column);
-    return (
-      displayInfo?.table?.name === tableName && displayInfo?.name === fieldName
-    );
-  });
+  const column = ML.orderableColumns(query).find(
+    (column: ML.ColumnMetadata) => {
+      const displayInfo = ML.displayInfo(query, column);
+      return (
+        displayInfo?.table?.name === tableName &&
+        displayInfo?.name === fieldName
+      );
+    },
+  );
 
   if (!column) {
-    throw new Error("Could not find " + tableName + "." + fieldName);
+    throw new Error(`Could not find ${tableName}.${fieldName}`);
   }
 
   return column;

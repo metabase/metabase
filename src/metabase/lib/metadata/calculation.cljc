@@ -261,7 +261,7 @@
      ;; everywhere? Determine whether or not this is the case.
      (select-keys x-metadata [:name :display_name :semantic_type])
      ;; don't return `:base_type`, FE should just use `:effective_type` everywhere and not even need to know
-     ;; `:effective_type` exists.
+     ;; `:base_type` exists.
      (when-let [effective-type ((some-fn :effective_type :base_type) x-metadata)]
        {:effective_type effective-type})
      (when-let [table-id (:table_id x-metadata)]
