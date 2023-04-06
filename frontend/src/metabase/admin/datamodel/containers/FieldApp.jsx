@@ -398,7 +398,7 @@ export const BackButton = ({ databaseId, tableId }) => (
   <BackButtonLink
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
   >
-    <Icon name="arrow_left" />
+    <Icon name="arrow_left" size={16} />
   </BackButtonLink>
 );
 
