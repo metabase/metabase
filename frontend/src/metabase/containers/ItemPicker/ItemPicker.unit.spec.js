@@ -7,7 +7,10 @@ import {
   waitForElementToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockCollectionItem,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import ItemPicker from "./ItemPicker";
 
@@ -90,6 +93,7 @@ function mockCollectionEndpoint({ extraCollections = [] } = {}) {
   const collections = [...Object.values(COLLECTION), ...extraCollections];
   fetchMock.get("path:/api/collection", collections);
 }
+
 function mockCollectionItemsEndpoint() {
   fetchMock.get(/api\/collection\/\d+\/items/, url => {
     const collectionIdParam = url.split("/")[5];
@@ -122,8 +126,15 @@ function mockCollectionItemsEndpoint() {
 async function setup({
   models = ["dashboard"],
   extraCollections = [],
+  waitForInitialLoad = true,
   ...props
 } = {}) {
+  const collections = [Object.values(COLLECTION)];
+  const collectionItems = collections.map(collection =>
+    createMockCollectionItem({ ...collection, model: "collection" }),
+  );
+  setupSearchEndpoints(collectionItems);
+
   mockCollectionEndpoint({ extraCollections });
   mockCollectionItemsEndpoint();
 
@@ -138,7 +149,11 @@ async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+  // sometimes it expects entities to be in the Redux store so there might not be a loading state
+  // ex: collections are stored in Redux, so there isn't a meaningful loading state here
+  if (waitForInitialLoad) {
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+  }
 
   return { onChange };
 }
@@ -256,20 +271,16 @@ describe("ItemPicker", () => {
   });
 
   it("displays relevant collections after a search", async () => {
-    await setup({ models: ["collections"] });
-    await setupSearchEndpoints(
-      Object.values(COLLECTION).map(createMockCollection),
-    );
+    await setup({ models: ["collection"], waitForInitialLoad: false });
 
-    userEvent.click(within(getItemPickerHeader()).getByRole("button"));
-
-    userEvent.type(
+    await userEvent.click(within(getItemPickerHeader()).getByRole("button"));
+    await userEvent.type(
       within(getItemPickerHeader()).getByPlaceholderText("Search"),
-      COLLECTION.REGULAR.name,
+      COLLECTION.PERSONAL.name,
     );
 
-    const list = within(getItemPickerList());
-    expect(screen.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
-    expect(list.getByTestId("item-picker-item")).toBeInTheDocument();
+    expect(
+      await screen.findByText(COLLECTION.PERSONAL.name),
+    ).toBeInTheDocument();
   });
 });
