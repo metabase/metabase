@@ -1317,17 +1317,7 @@
                   Card      [{card-id :id}]]
     (with-dashboards-in-writeable-collection [dashboard-id]
       (api.card-test/with-cards-in-readable-collection [card-id]
-        (is (= {:size_x                     4
-                :size_y                     4
-                :col                        4
-                :row                        4
-                :series                     []
-                :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
-                :visualization_settings     {}
-                :created_at                 true
-                :updated_at                 true
-                :collection_authority_level nil}
-               (-> (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+        (let [resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
                                          {:cards [{:id                     -1
                                                    :card_id                card-id
                                                    :row                    4
@@ -1338,20 +1328,34 @@
                                                                              :card_id 123
                                                                              :hash "abc"
                                                                              :target "foo"}]
-                                                   :visualization_settings {}}]})
-                   first
-                   (dissoc :id :dashboard_id :action_id :card_id :entity_id)
-                   (update :created_at boolean)
-                   (update :updated_at boolean))))
-        (is (= [{:size_x                 4
-                 :size_y                 4
-                 :col                    4
-                 :row                    4
-                 :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
-                 :visualization_settings {}}]
-               (map (partial into {})
-                    (t2/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
-                      :dashboard_id dashboard-id))))))))
+                                                   :visualization_settings {}}]})]
+          ;; extra sure here because the dashcard we given has a negative id
+          (testing "the inserted dashcards has ids auto-generated"
+            (is (pos? (:id (first resp)))))
+          (is (= {:size_x                     4
+                  :size_y                     4
+                  :col                        4
+                  :row                        4
+                  :series                     []
+                  :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
+                  :visualization_settings     {}
+                  :created_at                 true
+                  :updated_at                 true
+                  :collection_authority_level nil}
+                 (-> resp
+                     first
+                     (dissoc :id :dashboard_id :action_id :card_id :entity_id)
+                     (update :created_at boolean)
+                     (update :updated_at boolean))))
+          (is (= [{:size_x                 4
+                   :size_y                 4
+                   :col                    4
+                   :row                    4
+                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
+                   :visualization_settings {}}]
+                 (map (partial into {})
+                      (t2/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
+                                 :dashboard_id dashboard-id)))))))))
 
 (deftest new-dashboard-card-with-additional-series-test
   (mt/with-temp* [Dashboard [{dashboard-id :id}]
