@@ -82,7 +82,6 @@ export default class LineAreaBarChart extends Component {
   static supportsSeries = true;
 
   static minSize = { width: 4, height: 3 };
-  static defaultSize = { width: 4, height: 3 };
 
   static isSensible({ cols, rows }) {
     return (

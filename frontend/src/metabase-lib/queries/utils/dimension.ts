@@ -6,7 +6,7 @@ import type NativeQuery from "metabase-lib/queries/NativeQuery";
 
 import Dimension from "metabase-lib/Dimension";
 
-function getDimension(
+export function getDimension(
   fieldRef: ConcreteField | VariableTarget,
   metadata: Metadata,
   query?: StructuredQuery | NativeQuery | null | undefined,
