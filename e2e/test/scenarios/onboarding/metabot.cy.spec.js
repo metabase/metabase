@@ -14,8 +14,9 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const PROMPT = "What's the most popular product category?";
-const PROMPT_QUERY = "SELECT CATEGORY FROM PRODUCTS LIMIT 1";
+const PROMPT = "How many products per category we have?";
+const PROMPT_QUERY =
+  "SELECT COUNT(*), CATEGORY FROM PRODUCTS GROUP BY CATEGORY";
 const MANUAL_QUERY = "SELECT CATEGORY FROM PRODUCTS LIMIT 2";
 
 const MODEL_DETAILS = {
@@ -35,8 +36,12 @@ const PROMPT_RESPONSE = {
         query: PROMPT_QUERY,
       },
     },
-    display: "table",
-    visualization_settings: {},
+    display: "bar",
+    visualization_settings: {
+      "graph.dimensions": ["count"],
+      "graph.metrics": ["CATEGORY"],
+      "graph.x_axis.scale": "ordinal",
+    },
   },
   prompt_template_versions: [],
 };
@@ -131,8 +136,8 @@ const verifyHomeMetabot = () => {
   cy.wait("@databasePrompt");
   cy.wait("@dataset");
   cy.findByDisplayValue(PROMPT).should("be.visible");
-  cy.findByText("Gizmo").should("be.visible");
-  cy.findByText("Doohickey").should("not.exist");
+  cy.findByLabelText("table2 icon").click();
+  cy.findByLabelText("bar icon").click();
 };
 
 const verifyManualQueryEditing = () => {
@@ -142,16 +147,16 @@ const verifyManualQueryEditing = () => {
     .type(MANUAL_QUERY);
   cy.findByLabelText("Refresh").click();
   cy.wait("@dataset");
-  cy.findByText("Gizmo").should("be.visible");
-  cy.findByText("Doohickey").should("be.visible");
+  cy.findByLabelText("table2 icon").should("not.exist");
+  cy.findByLabelText("bar icon").should("not.exist");
 };
 
 const verifyMetabotFeedback = () => {
   cy.findByRole("button", { name: "This isn’t valid SQL." }).click();
   cy.findByRole("button", { name: "Try again" }).click();
   cy.wait("@dataset");
-  cy.findByText("Gizmo").should("be.visible");
-  cy.findByText("Doohickey").should("not.exist");
+  cy.findByLabelText("table2 icon").click();
+  cy.findByLabelText("bar icon").click();
 };
 
 const verifyCollectionMetabot = () => {
