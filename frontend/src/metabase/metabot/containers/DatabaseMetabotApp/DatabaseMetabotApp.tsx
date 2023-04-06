@@ -7,6 +7,7 @@ import { extractEntityId } from "metabase/lib/urls";
 import Databases from "metabase/entities/databases";
 import { DatabaseId } from "metabase-types/api";
 import { MetabotEntityType, State } from "metabase-types/store";
+import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import Database from "metabase-lib/metadata/Database";
 import Metabot from "../../components/Metabot";
 
@@ -41,7 +42,7 @@ const mapStateToProps = (
     entityId,
     entityType: "database",
     database: Databases.selectors.getObject(state, { entityId }),
-    databases: databases.filter(database => database.canWrite()),
+    databases: databases.filter(canUseMetabotOnDatabase),
     initialPrompt: location?.query?.prompt,
   };
 };
