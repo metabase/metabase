@@ -122,6 +122,31 @@ jobs:
     - name: Wait for Metabase to start and reach 100% health
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       timeout-minutes: 3
+
+      # Build experimental ubuntu-based images only for master
+    - name: Build ${{ matrix.edition }} Ubuntu based multi-arch container
+      if: github.ref_name == 'master'
+      uses: docker/build-push-action@v2
+      with:
+        context: bin/docker/.
+        platforms: linux/amd64,linux/arm64
+        file: bin/docker/Dockerfile_ubuntu
+        network: host
+        tags: localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}-ubuntu
+        no-cache: true
+        push: true
+    - name: Launch ${{ matrix.edition }} Ubuntu based container
+      if: github.ref_name == 'master'
+      run: docker run --rm -dp 3001:3000 localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}-ubuntu
+      timeout-minutes: 5
+    - name: Is Docker with Ubuntu running?
+      if: github.ref_name == 'master'
+      run: docker ps
+    - name: Wait for Ubuntu-based Metabase container to start and reach 100% health
+      if: github.ref_name == 'master'
+      run: while ! curl -s 'http://localhost:3001/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      timeout-minutes: 3
+
     - name: Login to Docker Hub
       uses: docker/login-action@v1
       with:
@@ -138,6 +163,15 @@ jobs:
     - name: Retag and push images if dev branch
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
       run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }} && docker push metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+
+      # Push experimental ubuntu image only for versions based on a master
+    - name: Retag and push ubuntu-based images if master (ee)
+      if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee-ubuntu metabase/metabase-enterprise-head-ubuntu:latest && docker push metabase/metabase-enterprise-head-ubuntu:latest
+
+    - name: Retag and push ubuntu-based images if master (oss)
+      if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss-ubuntu metabase/metabase-head-ubuntu:latest && docker push metabase/metabase-head-ubuntu:latest
 
     - name: Run Trivy vulnerability scanner if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
