@@ -311,7 +311,7 @@ export default class LineAreaBarChart extends Component {
     }
   };
 
-  handleSelectSeries = (event, index) => {
+  handleSelectSeries = (event, index, isReversed) => {
     const {
       card,
       series,
@@ -321,7 +321,9 @@ export default class LineAreaBarChart extends Component {
       onChangeCardAndRun,
     } = this.props;
 
-    const single = series[index];
+    const single = isReversed
+      ? series[series.length - index - 1]
+      : series[index];
     const hasBreakout = card._breakoutColumn != null;
 
     if (onEditSeries && !hasBreakout) {

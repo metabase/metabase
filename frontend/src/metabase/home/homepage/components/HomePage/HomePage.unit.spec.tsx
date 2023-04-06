@@ -6,7 +6,7 @@ import HomePage from "./HomePage";
 jest.mock("metabase/lib/dom");
 
 const LayoutMock = () => <div />;
-jest.mock("../../containers/HomeLayout", () => LayoutMock);
+jest.mock("../HomeLayout", () => LayoutMock);
 
 const ContentMock = () => <div />;
 jest.mock("../../containers/HomeContent", () => ContentMock);
@@ -26,7 +26,7 @@ describe("HomePage", () => {
     const onOpenNavbar = jest.fn();
     isSmallScreenSpy.mockReturnValue(false);
 
-    render(<HomePage onOpenNavbar={onOpenNavbar} />);
+    render(<HomePage hasMetabot={false} onOpenNavbar={onOpenNavbar} />);
 
     expect(onOpenNavbar).toHaveBeenCalled();
   });
@@ -35,7 +35,7 @@ describe("HomePage", () => {
     const onOpenNavbar = jest.fn();
     isSmallScreenSpy.mockReturnValue(true);
 
-    render(<HomePage onOpenNavbar={onOpenNavbar} />);
+    render(<HomePage hasMetabot={false} onOpenNavbar={onOpenNavbar} />);
 
     expect(onOpenNavbar).not.toHaveBeenCalled();
   });

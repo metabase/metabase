@@ -81,15 +81,24 @@ class NativeQueryEditor extends Component {
     isOpen: false,
     enableRun: true,
     cancelQueryOnLeave: true,
+    canChangeDatabase: true,
     resizable: true,
+    sidebarFeatures: {
+      dataReference: true,
+      variables: true,
+      snippets: true,
+    },
   };
 
   UNSAFE_componentWillMount() {
     const { question, setIsNativeEditorOpen, isInitiallyOpen } = this.props;
 
-    setIsNativeEditorOpen?.(
-      !question || !question.isSaved() || isInitiallyOpen,
-    );
+    if (typeof isInitiallyOpen !== "undefined") {
+      setIsNativeEditorOpen?.(isInitiallyOpen);
+      return;
+    }
+
+    setIsNativeEditorOpen?.(!question || !question.isSaved());
   }
 
   componentDidMount() {
@@ -519,6 +528,8 @@ class NativeQueryEditor extends Component {
       resizable,
       editorContext = "question",
       setDatasetQuery,
+      sidebarFeatures,
+      canChangeDatabase,
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -537,16 +548,18 @@ class NativeQueryEditor extends Component {
       <NativeQueryEditorRoot className="NativeQueryEditor bg-light full">
         {hasTopBar && (
           <div className="flex align-center" data-testid="native-query-top-bar">
-            <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
-              <DataSourceSelectors
-                isNativeEditorOpen={isNativeEditorOpen}
-                query={query}
-                readOnly={readOnly}
-                setDatabaseId={this.setDatabaseId}
-                setTableId={this.setTableId}
-                editorContext={editorContext}
-              />
-            </div>
+            {canChangeDatabase && (
+              <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
+                <DataSourceSelectors
+                  isNativeEditorOpen={isNativeEditorOpen}
+                  query={query}
+                  readOnly={readOnly}
+                  setDatabaseId={this.setDatabaseId}
+                  setTableId={this.setTableId}
+                  editorContext={editorContext}
+                />
+              </div>
+            )}
             {hasParametersList && (
               <ResponsiveParametersList
                 question={question}
@@ -615,6 +628,7 @@ class NativeQueryEditor extends Component {
           {hasEditingSidebar && !readOnly && (
             <NativeQueryEditorSidebar
               runQuery={this.runQuery}
+              features={sidebarFeatures}
               {...this.props}
             />
           )}

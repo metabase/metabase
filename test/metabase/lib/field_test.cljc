@@ -4,6 +4,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -149,3 +150,11 @@
               (lib.temporal-bucket/current-temporal-bucket (lib.metadata.calculation/metadata query -1 field))))
       (is (= "Date (year)"
              (lib.metadata.calculation/display-name query -1 field))))))
+
+(deftest ^:parallel field-ref-type-of-test
+  (testing "Make sure we can calculate field ref type information correctly"
+    (let [clause [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]]
+      (is (= ::lib.schema.expression/type.unknown
+             (lib.schema.expression/type-of clause)))
+      (is (= :type/BigInteger
+             (lib.metadata.calculation/type-of lib.tu/venues-query clause))))))

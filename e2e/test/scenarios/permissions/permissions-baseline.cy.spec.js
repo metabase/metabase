@@ -35,7 +35,7 @@ describe("scenarios > permissions", () => {
       { autorun: false },
     );
 
-    cy.findAllByRole("button", { name: "refresh icon" }).should("be.disabled");
+    cy.findAllByLabelText("Refresh").should("be.disabled");
   });
 
   it("should display the permissions screen for pulses", () => {
