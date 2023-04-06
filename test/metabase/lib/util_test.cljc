@@ -218,18 +218,16 @@
     ["a" "b" "c"]     "a, b, and c"
     ["a" "b" "c" "d"] "a, b, c, and d"))
 
-(defn- extremely-long-identifier
-  "A thousand-character unicode identifier. Adapted
-  from [[metabase.query-processor-test.explicit-joins-test/very-long-join-name-test]]."
-  []
-  (let [charset (vec "가나다라마바사아자차카타파하")]
-    (str/join (for [i (range 1000)]
-                (nth charset (mod i (count charset)))))))
-
-(deftest ^:parallel c2c32-checksum-test
-  (testing "Pad to 8 characters if needed."
-    (is (= "0d63c681"
-           (#'lib.util/crc32-checksum (extremely-long-identifier))))))
+(deftest ^:parallel crc32-checksum-test
+  (are [s checksum] (= checksum
+                       (#'lib.util/crc32-checksum s))
+    "YMRZFRTHUBOUZHPTZGPD" "2694651f"
+    "MEBRXTJEPWOJJXVZIPDA" "048132cb"
+    "UIOJOTPGUIROVRJYAFPO" "0085cacb"
+    "UCVEWTGNBDANGMZPGNQC" "000e32a0"
+    "ZAFVKSVXQKJNGANBQZMX" "0000d5b8"
+    "NCTFDMQNUEQLJUMAGSYG" "000000ea"
+    "YHQJXDIXGGQTSARGOQZZ" "000000c1"))
 
 (deftest ^:parallel truncate-string-to-byte-count-test
   (letfn [(truncate-string-to-byte-count [s byte-length]

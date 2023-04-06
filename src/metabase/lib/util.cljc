@@ -322,10 +322,11 @@
              :cljs (-> (CRC32/str s 0)
                        (unsigned-bit-shift-right 0) ; see https://github.com/SheetJS/js-crc32#signed-integers
                        (.toString 16)))]
-    ;; pad to 8 characters if needed.
-    (if (= (count s) 7)
-      (str \0 s)
-      s)))
+    ;; pad to 8 characters if needed. Might come out as less than 8 if the first byte is `00` or `0x` or something.
+    (loop [s s]
+      (if (< (count s) 8)
+        (recur (str \0 s))
+        s))))
 
 (mu/defn truncate-alias :- ::lib.schema.common/non-blank-string
   "Truncate string `s` if it is longer than [[truncate-alias-max-length-bytes]] and append a hex-encoded CRC-32
