@@ -12,6 +12,7 @@ import {
   NativeQuerySnippet,
   NativeQuerySnippetId,
   Schema,
+  Segment,
   Table,
   User,
   UserId,
@@ -26,6 +27,7 @@ export interface EntitiesState {
   databases?: Record<number, Database>;
   schemas?: Record<string, Schema>;
   metrics?: Record<string, Metric>;
+  segments?: Record<string, Segment>;
   fields?: Record<FieldId, Field>;
   tables?: Record<number | string, Table>;
   snippets?: Record<NativeQuerySnippetId, NativeQuerySnippet>;

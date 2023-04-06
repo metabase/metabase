@@ -11,6 +11,7 @@ export const createMockEntitiesState = (
   tables: {},
   fields: {},
   metrics: {},
+  segments: {},
   snippets: {},
   users: {},
   questions: {},
