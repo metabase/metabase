@@ -4,7 +4,6 @@
             [clojurewerkz.quartzite.conversion :as qc]
             [metabase.models.card :refer [Card]]
             [metabase.models.model-index :refer [ModelIndex ModelIndexValue]]
-            [metabase.models.model-index :as model-index]
             [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
             [metabase.task :as task]
