@@ -19,7 +19,7 @@
 (defn- find-clause
   [query stage-number target-clause]
   (let [stage (lib.util/query-stage query stage-number)
-        [target-type _ target-id] target-clause]
+        [target-type _opts target-id] target-clause]
     (not-empty
       (reduce
         (fn [accum top-level-clause]
