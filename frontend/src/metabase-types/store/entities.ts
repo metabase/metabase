@@ -8,8 +8,11 @@ import {
   Database,
   Field,
   FieldId,
+  Metric,
   NativeQuerySnippet,
   NativeQuerySnippetId,
+  Schema,
+  Segment,
   Table,
   User,
   UserId,
@@ -22,6 +25,9 @@ export interface EntitiesState {
   collections?: Partial<Record<CollectionId, Collection>>;
   dashboards?: Record<DashboardId, Dashboard>;
   databases?: Record<number, Database>;
+  schemas?: Record<string, Schema>;
+  metrics?: Record<string, Metric>;
+  segments?: Record<string, Segment>;
   fields?: Record<FieldId, Field>;
   tables?: Record<number | string, Table>;
   snippets?: Record<NativeQuerySnippetId, NativeQuerySnippet>;

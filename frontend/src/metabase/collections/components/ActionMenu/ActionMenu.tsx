@@ -8,15 +8,14 @@ import {
   canMoveItem,
   canPinItem,
   canPreviewItem,
-  isFullyParametrized,
   isItemPinned,
   isPreviewEnabled,
-  isPreviewShown,
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 
 import { State } from "metabase-types/store";
 import { getSetting } from "metabase/selectors/settings";
+import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import Database from "metabase-lib/metadata/Database";
 import { EntityItemMenu } from "./ActionMenu.styled";
 
@@ -33,7 +32,6 @@ export interface OwnProps {
 }
 
 interface StateProps {
-  isXrayEnabled: boolean;
   isMetabotEnabled: boolean;
 }
 
@@ -56,7 +54,6 @@ function normalizeItemModel(item: CollectionItem) {
 
 function mapStateToProps(state: State): StateProps {
   return {
-    isXrayEnabled: getSetting(state, "enable-xrays"),
     isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
   };
 }
@@ -67,7 +64,6 @@ function ActionMenu({
   databases,
   bookmarks,
   collection,
-  isXrayEnabled,
   isMetabotEnabled,
   onCopy,
   onMove,
@@ -80,7 +76,8 @@ function ActionMenu({
   const canPreview = canPreviewItem(item, collection);
   const canMove = canMoveItem(item, collection);
   const canArchive = canArchiveItem(item, collection);
-  const canUseMetabot = database?.canWrite?.() && isMetabotEnabled;
+  const canUseMetabot =
+    database != null && canUseMetabotOnDatabase(database) && isMetabotEnabled;
 
   const handlePin = useCallback(() => {
     item.setPinned?.(!isItemPinned(item));
@@ -115,9 +112,6 @@ function ActionMenu({
         className={className}
         item={item}
         isBookmarked={isBookmarked}
-        isPreviewShown={isPreviewShown(item)}
-        isPreviewAvailable={isFullyParametrized(item)}
-        isXrayEnabled={isXrayEnabled}
         canUseMetabot={canUseMetabot}
         onPin={canPin ? handlePin : null}
         onMove={canMove ? handleMove : null}

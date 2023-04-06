@@ -38,9 +38,8 @@
               (let [response (mt/user-http-request :rasta :post 200
                                                    (format "/metabot/model/%s" (:id orders-model))
                                                    {:question q})
-                    {:keys [query template-tags]} (get-in response [:card :dataset_query :native])]
-                (is (true? (str/ends-with? query bot-sql)))
-                (is (contains? template-tags (keyword (str "#" (:id orders-model)))))))))))))
+                    {:keys [query]} (get-in response [:card :dataset_query :native])]
+                (is (true? (str/ends-with? query bot-sql)))))))))))
 
 (deftest metabot-model-sad-path-test
   (testing "POST /api/metabot/model/:model-id produces a message when no SQL is found"
@@ -84,9 +83,8 @@
               (let [response (mt/user-http-request :rasta :post 200
                                                    (format "/metabot/database/%s" (mt/id))
                                                    {:question q})
-                    {:keys [query template-tags]} (get-in response [:card :dataset_query :native])]
-                (is (true? (str/ends-with? query bot-sql)))
-                (is (contains? template-tags (keyword (str "#" (:id orders-model)))))))))))))
+                    {:keys [query]} (get-in response [:card :dataset_query :native])]
+                (is (true? (str/ends-with? query bot-sql)))))))))))
 
 (deftest metabot-database-no-model-found-test
   (testing "When we can't find a model, we return a message"

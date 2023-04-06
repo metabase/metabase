@@ -52,6 +52,18 @@ const TEST_MODEL = createMockCard({
   },
 });
 
+const TEST_QUESTION = createMockCard({
+  name: "Orders Question",
+  dataset: false,
+  dataset_query: {
+    database: TEST_DATABASE.id,
+    type: "query",
+    query: {
+      "source-table": 1,
+    },
+  },
+});
+
 const TEST_MODEL_ITEM = createMockCollectionItem({
   name: TEST_MODEL.name,
   model: "dataset",
@@ -121,6 +133,7 @@ describe("MetabotWidget", () => {
 
   it("should use a generic placeholder if a model is not available", async () => {
     await setup({
+      cards: [TEST_QUESTION],
       collectionItems: [TEST_QUESTION_ITEM],
     });
 
@@ -139,5 +152,23 @@ describe("MetabotWidget", () => {
     });
 
     expect(screen.getByText(/Hey there!/)).toBeInTheDocument();
+  });
+
+  it("should not suggest databases that do not support metabot", async () => {
+    const mongoDbName = "Mongo";
+    await setup({
+      databases: [
+        TEST_DATABASE,
+        TEST_DATABASE_2,
+        createMockDatabase({
+          id: 3,
+          name: mongoDbName,
+          engine: "mongo",
+        }),
+      ],
+    });
+
+    userEvent.click(screen.getByText(TEST_DATABASE.name));
+    expect(screen.queryByText(mongoDbName)).not.toBeInTheDocument();
   });
 });
