@@ -56,21 +56,19 @@
                    (t2/select-fn-set :name ModelIndexValue :model_index_id (:id model-index)))))
           (task.index-values/remove-indexing-job model-index)
           (testing "Search"
-            (let [search-results (mt/user-http-request :rasta :get 200 "search"
-                                                       :q "Synergistic"
-                                                       :models "indexed-entity"
-                                                       :archived false)
+            (let [search-results (->> (mt/user-http-request :rasta :get 200 "search"
+                                                            :q "Synergistic"
+                                                            :models "indexed-entity"
+                                                            :archived false)
+                                      :data
+                                      (filter (comp #{(:id model)} :model_id)))
                   f              (fn [sr] (-> (select-keys sr [:pk_ref :name :id :model_name])
                                               (update :pk_ref model-index/normalize-field-ref)))]
               (is (partial= {"Synergistic Wool Coat"   {:pk_ref     pk_ref
                                                         :name       "Synergistic Wool Coat"
-                                                        :id         150
                                                         :model_name "Simple MBQL model"}
-                             "Synergistic Steel Chair" {:pk_ref     [:field 45811 nil]
+                             "Synergistic Steel Chair" {:pk_ref     pk_ref
                                                         :name       "Synergistic Steel Chair"
-                                                        :id         13
                                                         :model_name "Simple MBQL model"}}
-                            (->> search-results
-                                 :data
-                                 (filter (comp #{(:id model)} :model_id))
-                                 (into {} (map (juxt :name f)))))))))))))
+                            (into {} (map (juxt :name f)) search-results)))
+              (is (every? int? (map :id search-results))))))))))
