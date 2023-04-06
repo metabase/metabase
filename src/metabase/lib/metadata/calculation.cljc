@@ -214,7 +214,8 @@
   "Implementation for [[display-info]]."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x)))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (mr/register! ::display-info
   [:map
