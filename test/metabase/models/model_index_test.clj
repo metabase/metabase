@@ -50,7 +50,7 @@
             (is (= 200 (count (t2/select ModelIndexValue :model_index_id (:id model-index)))))
             (is (= (into #{} cat (mt/rows (qp/process-query
                                            (mt/mbql-query products {:fields [$title]}))))
-                   (t2/select-fn-set :value ModelIndexValue :model_index_id (:id model-index)))))
+                   (t2/select-fn-set :name ModelIndexValue :model_index_id (:id model-index)))))
           (task.index-values/remove-indexing-job model-index)
           (testing "Search"
             ;; not yet :)

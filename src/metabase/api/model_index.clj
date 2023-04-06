@@ -45,6 +45,16 @@
                    :model_id model_id
                    {:order-by [[:id :desc]]})))
 
+(api/defendpoint GET "/"
+  [model_id]
+  {model_id ms/PositiveInt}
+  (let [model (api/read-check Card model_id)]
+    (when-not (:dataset model)
+      (throw (ex-info (tru "Question {0} is not a model" model_id)
+                      {:model_id model_id
+                       :status-code 400})))
+    (t2/select ModelIndex :model_id model_id)))
+
 (api/defendpoint DELETE "/:id"
   [id]
   (let [model-index (api/read-check ModelIndex id)]
