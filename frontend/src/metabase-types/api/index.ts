@@ -13,6 +13,7 @@ export * from "./foreign-key";
 export * from "./group";
 export * from "./metric";
 export * from "./models";
+export * from "./modelIndexes";
 export * from "./notifications";
 export * from "./permissions";
 export * from "./query";

@@ -4,7 +4,9 @@ import {
   Dashboard,
   Database,
   Field,
+  IndexedEntity,
   Metric,
+  ModelIndex,
   NativeQuerySnippet,
   Schema,
   Segment,
@@ -20,6 +22,8 @@ export interface EntitiesState {
   databases: Record<string, Database>;
   schemas: Record<string, Schema>;
   tables: Record<string, Table>;
+  modelIndexes: Record<string, ModelIndex>;
+  indexedEntities: Record<string, IndexedEntity>;
   fields: Record<string, Field>;
   segments: Record<string, Segment>;
   metrics: Record<string, Metric>;

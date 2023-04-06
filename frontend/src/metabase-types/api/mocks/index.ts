@@ -9,6 +9,7 @@ export * from "./dataset";
 export * from "./field";
 export * from "./metric";
 export * from "./models";
+export * from "./modelIndexes";
 export * from "./parameters";
 export * from "./query";
 export * from "./segment";
