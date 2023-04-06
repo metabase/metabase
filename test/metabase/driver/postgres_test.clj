@@ -2,7 +2,6 @@
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   (:require
    [cheshire.core :as json]
-   [clojure.string :as str]
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -39,8 +38,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.sql DatabaseMetaData)
-   (clojure.lang ExceptionInfo)))
+   (clojure.lang ExceptionInfo)
+   (java.sql DatabaseMetaData)))
 
 (set! *warn-on-reflection* true)
 
@@ -1159,22 +1158,10 @@
               absolute-path
               (str/ends-with? ".p12"))))))
 
-(defmacro with-temp-csv
-  "Creates a temp csv file with the given `rows`. The file is deleted after the
-   body is executed. This is needed instead of using File/createTempFile because Postgres might not have access to the temp directory."
-  [file-name rows & body]
-  `(let [csv-data# (str/join "\n" ~rows)]
-     (with-open [writer# (io/writer ~file-name)]
-       (.write writer# csv-data#))
-     (try
-       ~@body
-       (finally
-         (clojure.java.io/delete-file ~file-name)))))
-
 (deftest load-from-csv-test
   (testing "Upload a CSV file"
     (mt/test-driver :postgres
-      (with-temp-csv "temp.csv" ["id,empty,string,bool,float" "2,,string,true,1.1" "3,,string,false,1.1"]
+      (csv-test/with-temp-csv "temp.csv" ["id,empty,string,bool,float" "2,,string,true,1.1" "3,,string,false,1.1"]
         (mt/with-empty-db
           (driver/load-from-csv
            driver/*driver*
@@ -1219,7 +1206,7 @@
   (mt/test-driver :postgres
     (mt/with-empty-db
       (testing "Can't upload a CSV with a semi-colon in the file name"
-        (with-temp-csv "file.csv" ["id" "2"]
+        (csv-test/with-temp-csv "file.csv" ["id" "2"]
           (is (thrown-with-msg?
                ExceptionInfo #"Error uploading CSV: \";\" in "
                (driver/load-from-csv
@@ -1234,7 +1221,7 @@
   (mt/test-driver :postgres
     (mt/with-empty-db
       (testing "Can't upload a CSV with missing values"
-        (with-temp-csv "file.csv" ["id,column_that_doesnt_have_a_value" "2"]
+        (csv-test/with-temp-csv "file.csv" ["id,column_that_doesnt_have_a_value" "2"]
           (is (thrown-with-msg?
                ExceptionInfo #"ERROR: missing data for column"
                (driver/load-from-csv

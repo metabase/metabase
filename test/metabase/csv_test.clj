@@ -59,68 +59,72 @@
     (is (= expected (csv/coalesce type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
-(defn csv-file-with
-  "Create a temp csv file with the given content and return the file"
+(defmacro with-temp-csv
+  "Creates a temp csv file with the given `rows`. The file is deleted after the
+   body is executed. This is needed instead of using File/createTempFile because Postgres might not have access to the temp directory."
+  [file-name rows & body]
+  `(let [csv-data# (str/join "\n" ~rows)]
+     (with-open [writer# (io/writer ~file-name)]
+       (.write writer# csv-data#))
+     (try
+       ~@body
+       (finally
+         (clojure.java.io/delete-file ~file-name)))))
+
+(defn- schema-for
   [rows]
-  (let [contents (str/join "\n" rows)
-        csv-file (File/createTempFile "pokefans" ".csv")]
-    (spit csv-file contents)
-    csv-file))
+  (with-temp-csv "pokefans.csv" rows (csv/detect-schema (File. "pokefans.csv"))))
 
 (deftest detect-schema-test
   (testing "Well-formed CSV file"
     (is (= {"name"             vchar-type
             "age"              int-type
             "favorite_pokemon" vchar-type}
-           (csv/detect-schema
-            (csv-file-with ["Name, Age, Favorite Pokémon"
-                            "Tim, 12, Haunter"
-                            "Ryan, 97, Paras"])))))
+           (schema-for ["Name, Age, Favorite Pokémon"
+                        "Tim, 12, Haunter"
+                        "Ryan, 97, Paras"]))))
   (testing "CSV missing data"
     (is (= {"name"       vchar-type
             "height"     int-type
             "birth_year" float-type}
-           (csv/detect-schema
-            (csv-file-with ["Name, Height, Birth Year"
-                            "Luke Skywalker, 172, -19"
-                            "Darth Vader, 202, -41.9"
-                            "Watto, 137"          ; missing column
-                            "Sebulba, 112,"]))))) ; comma, but blank column
+           (schema-for ["Name, Height, Birth Year"
+                        "Luke Skywalker, 172, -19"
+                        "Darth Vader, 202, -41.9"
+                        ;; missing column
+                        "Watto, 137"
+                        ;; comma, but blank column
+                        "Sebulba, 112,"]))))
   (testing "Type coalescing"
     (is (= {"name"       vchar-type
             "height"     float-type
             "birth_year" vchar-type}
-           (csv/detect-schema
-            (csv-file-with ["Name, Height, Birth Year"
-                            "Rey Skywalker, 170, 15"
-                            "Darth Vader, 202.0, 41.9BBY"])))))
+           (schema-for ["Name, Height, Birth Year"
+                        "Rey Skywalker, 170, 15"
+                        "Darth Vader, 202.0, 41.9BBY"]))))
   (testing "Boolean coalescing"
     (is (= {"name"          vchar-type
             "is_jedi_"      bool-type
             "is_jedi__int_" int-type
             "is_jedi__vc_"  vchar-type}
-           (csv/detect-schema
-            (csv-file-with ["Name, Is Jedi?, Is Jedi (int), Is Jedi (VC)"
-                            "Rey Skywalker, yes, true, t"
-                            "Darth Vader, YES, TRUE, Y"
-                            "Grogu, 1, 9001, probably?"
-                            "Han Solo, no, FaLsE, 0"])))))
+           (schema-for ["Name, Is Jedi?, Is Jedi (int), Is Jedi (VC)"
+                        "Rey Skywalker, yes, true, t"
+                        "Darth Vader, YES, TRUE, Y"
+                        "Grogu, 1, 9001, probably?"
+                        "Han Solo, no, FaLsE, 0"]))))
   (testing "Order is ensured"
-    (let [header "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,zz,yy,xx,ww,vv,uu,tt,ss,rr,qq,pp,oo,nn,mm,ll,kk,jj,ii,hh,gg,ff,ee,dd,cc,bb,aa"]
+    (let [header (str "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,zz,yy,xx,ww,"
+                      "vv,uu,tt,ss,rr,qq,pp,oo,nn,mm,ll,kk,jj,ii,hh,gg,ff,ee,dd,cc,bb,aa")]
       (is (= (str/split header #",")
              (keys
-              (csv/detect-schema
-               (csv-file-with [header
-                               "Luke,ah'm,yer,da,,,missing,columns,should,not,matter"])))))))
+              (schema-for [header
+                           "Luke,ah'm,yer,da,,,missing,columns,should,not,matter"])))))))
   (testing "Empty contents (with header) are okay"
       (is (= {"name"     text-type
               "is_jedi_" text-type}
-             (csv/detect-schema
-              (csv-file-with ["Name, Is Jedi?"])))))
+             (schema-for ["Name, Is Jedi?"]))))
   (testing "Completely empty contents are okay"
       (is (= {}
-             (csv/detect-schema
-              (csv-file-with [""]))))))
+             (schema-for [""]))))
 
 (deftest file->table-name-test
   (testing "File name is slugified"
@@ -130,9 +134,9 @@
   (testing "Upload a CSV file"
     (mt/test-driver :postgres
       (mt/with-empty-db
-        (let [file       (csv-file-with ["id" "2" "3"])]
+        (with-temp-csv "pokefans.csv" ["id" "2" "3"]
           (testing "Can upload two files with the same name"
             ;; Sleep for a second, because the table name is based on the current second
-            (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))
+            (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" (File. "pokefans.csv"))))
             (Thread/sleep 1000)
-            (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))))))))
+            (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" (File. "pokefans.csv"))))))))))
