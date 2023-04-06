@@ -1,17 +1,18 @@
 (ns metabase.lib.util
   (:refer-clojure :exclude [format])
   (:require
-   #?@(:clj
-       ([potemkin :as p]))
-   #?@(:cljs
-       ([goog.string :as gstring]
-        [goog.string.format :as gstring.format]))
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   #?@(:clj
+       ([potemkin :as p]))
+   #?@(:cljs
+       ([goog.string :as gstring]
+        [goog.string.format :as gstring.format]))))
 
 ;; The formatting functionality is only loaded if you depend on goog.string.format.
 #?(:cljs (comment gstring.format/keep-me))
@@ -265,3 +266,10 @@
                      (:joins stage)
                      update-joins)]
          (f query stage-number stage))))))
+
+(mu/defn string-table-id->card-id :- [:maybe ::lib.schema.id/card]
+  "If `table-id` is a `card__<id>`-style string, parse the `<id>` part to an integer Card ID."
+  [table-id]
+  (when (string? table-id)
+    (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
+      (parse-long card-id-str))))

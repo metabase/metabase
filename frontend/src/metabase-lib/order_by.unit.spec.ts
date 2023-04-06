@@ -1,5 +1,4 @@
 import { createMetadata } from "__support__/sample_database_fixture";
-import type { Field } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
 import { createProductsTitleField } from "metabase-types/api/mocks/presets";
 import { createQuery } from "./test-helpers";
@@ -70,42 +69,50 @@ describe("order by", () => {
       const table = createMockTable({
         id: table_id,
         name: "Product Model",
+        display_name: "Product Model",
         fields: [field],
       });
       const metadata = createMetadata(state =>
         state.assocIn(["entities", "tables", table.id], table),
       );
-      const columns = ML.orderableColumns(
-        createQuery({
-          databaseId: table.db_id,
-          metadata,
-          query: {
-            type: "query",
-            database: table.db_id,
-            query: { "source-table": table_id },
-          },
-        }),
-      );
+
+      const query = createQuery({
+        databaseId: table.db_id,
+        metadata,
+        query: {
+          type: "query",
+          database: table.db_id,
+          query: { "source-table": table_id },
+        },
+      });
+
+      const columns = ML.orderableColumns(query);
 
       const productsTitle = columns.find(
-        ({ id }) => id === field.id && field.table_id === table_id,
+        (columnMetadata: ML.ColumnMetadata) => {
+          const displayInfo = ML.displayInfo(query, columnMetadata);
+          return (
+            displayInfo.display_name === "Title" &&
+            displayInfo.table?.display_name === "Product Model"
+          );
+        },
       );
 
-      expect(productsTitle).toEqual(
+      expect(ML.displayInfo(query, productsTitle as ML.ColumnMetadata)).toEqual(
         expect.objectContaining({
-          id: field.id,
-          table_id,
           name: field.name,
           display_name: field.display_name,
-          base_type: field.base_type,
+          effective_type: field.base_type,
+          table: { name: "Product Model", display_name: "Product Model" },
         }),
       );
     });
   });
 
   describe("add order by", () => {
+    const query = createQuery();
+
     it("should handle no order by clauses", () => {
-      const query = createQuery();
       expect(ML.orderBys(query)).toHaveLength(0);
     });
 

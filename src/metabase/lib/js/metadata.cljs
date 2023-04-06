@@ -5,6 +5,7 @@
    [goog]
    [goog.object :as gobject]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -234,9 +235,8 @@
      (obj->clj (comp (filter (fn [[k _v]]
                                (str/starts-with? k "card__")))
                      (map (fn [[s v]]
-                            (when-let [[_ id-str] (re-find #"^card__(\d+)$" s)]
-                              (let [id (parse-long id-str)]
-                                [id (delay (assoc (parse-card v) :id id))])))))
+                            (when-let [id (lib.util/string-table-id->card-id s)]
+                              [id (delay (assoc (parse-card v) :id id))]))))
                (object-get metadata "tables"))
      (obj->clj (comp (map (fn [[k v]]
                             [(parse-long k) (delay (parse-card v))])))
