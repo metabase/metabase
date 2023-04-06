@@ -49,6 +49,7 @@ import {
   getEditorLineHeight,
   getMaxAutoSizeLines,
 } from "./NativeQueryEditor/utils";
+import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
 
 import "./NativeQueryEditor.css";
 import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
@@ -67,6 +68,7 @@ class NativeQueryEditor extends Component {
       initialHeight: calcInitialEditorHeight({ query, viewHeight }),
       isSelectedTextPopoverOpen: false,
       mobileShowParameterList: false,
+      isPromptInputVisible: false,
     };
 
     // Ace sometimes fires multiple "change" events in rapid succession
@@ -87,6 +89,7 @@ class NativeQueryEditor extends Component {
       dataReference: true,
       variables: true,
       snippets: true,
+      promptQueries: true,
     },
   };
 
@@ -144,8 +147,7 @@ class NativeQueryEditor extends Component {
       // will trigger the editor 'change' event, update the query, and cause another rendering loop which we don't want, so
       // we need a way to update the editor without causing the onChange event to go through as well
       this._localUpdate = true;
-      this._editor.setValue(query.queryText());
-      this._editor.clearSelection();
+      this.handleQueryUpdate(query.queryText());
       this._localUpdate = false;
     }
 
@@ -275,12 +277,8 @@ class NativeQueryEditor extends Component {
     };
 
     // initialize the content
-    this._editor.setValue(query?.queryText() ?? "");
-
+    this.handleQueryUpdate(query?.queryText() ?? "");
     this._editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN);
-
-    // clear the editor selection, otherwise we start with the whole editor selected
-    this._editor.clearSelection();
 
     // hmmm, this could be dangerous
     if (!this.props.readOnly) {
@@ -512,6 +510,17 @@ class NativeQueryEditor extends Component {
     });
   };
 
+  togglePromptVisibility = () => {
+    this.setState(prev => ({
+      isPromptInputVisible: !prev.isPromptInputVisible,
+    }));
+  };
+
+  handleQueryUpdate = queryText => {
+    this._editor.setValue(queryText);
+    this._editor.clearSelection();
+  };
+
   render() {
     const {
       question,
@@ -531,6 +540,7 @@ class NativeQueryEditor extends Component {
       sidebarFeatures,
       canChangeDatabase,
     } = this.props;
+    const { isPromptInputVisible } = this.state;
 
     const parameters = query.question().parameters();
 
@@ -577,6 +587,13 @@ class NativeQueryEditor extends Component {
               />
             )}
           </div>
+        )}
+        {isPromptInputVisible && (
+          <NativeQueryEditorPrompt
+            databaseId={query.databaseId()}
+            onQueryGenerated={this.handleQueryUpdate}
+            onClose={this.togglePromptVisibility}
+          />
         )}
         <ResizableBox
           ref={this.resizeBox}
@@ -629,6 +646,8 @@ class NativeQueryEditor extends Component {
             <NativeQueryEditorSidebar
               runQuery={this.runQuery}
               features={sidebarFeatures}
+              onShowPromptInput={this.togglePromptVisibility}
+              isPromptInputVisible={isPromptInputVisible}
               {...this.props}
             />
           )}

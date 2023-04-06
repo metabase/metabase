@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { isMac } from "metabase/lib/browser";
 
+import Button from "metabase/core/components/Button";
 import DataReferenceButton from "metabase/query_builder/components/view/DataReferenceButton";
 import NativeVariablesButton from "metabase/query_builder/components/view/NativeVariablesButton";
 import SnippetSidebarButton from "metabase/query_builder/components/view/SnippetSidebarButton";
@@ -20,6 +21,7 @@ const propTypes = {
   isResultDirty: PropTypes.bool,
   isRunnable: PropTypes.bool,
   isRunning: PropTypes.bool,
+  isPromptInputVisible: PropTypes.bool,
   nativeEditorSelectedText: PropTypes.string,
   runQuery: PropTypes.func,
   snippetCollections: PropTypes.array,
@@ -29,6 +31,7 @@ const propTypes = {
     variables: PropTypes.bool,
     snippets: PropTypes.bool,
   },
+  onShowPromptInput: PropTypes.func,
 };
 
 const ICON_SIZE = 18;
@@ -40,11 +43,13 @@ const NativeQueryEditorSidebar = props => {
     isResultDirty,
     isRunnable,
     isRunning,
+    isPromptInputVisible,
     nativeEditorSelectedText,
     runQuery,
     snippetCollections,
     snippets,
     features,
+    onShowPromptInput,
   } = props;
 
   // hide the snippet sidebar if there aren't any visible snippets/collections
@@ -69,6 +74,15 @@ const NativeQueryEditorSidebar = props => {
 
   return (
     <Container>
+      {features.promptQueries && !isPromptInputVisible ? (
+        <Button
+          className="mt3"
+          onClick={onShowPromptInput}
+          icon="insight"
+          iconSize={20}
+          onlyIcon
+        />
+      ) : null}
       {features.dataReference ? (
         <DataReferenceButton {...props} size={ICON_SIZE} className="mt3" />
       ) : null}

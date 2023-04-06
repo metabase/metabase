@@ -63,3 +63,31 @@
                   (format "%s:%s" prompt_template version)))
         (log/infof "No model inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))
+
+; TODO: implement actual endpoint for generating suggestions in the native query editor.
+; It should be completely isolated from the standalone Metabot and it should use tables instead of models.
+(defn infer-sql-query
+  "Given a model and prompt, attempt to generate a native dataset."
+  [{:keys [model user_prompt] :as context}]
+  (log/infof "Metabot is inferring sql for model '%s' with prompt '%s'." (:id model) user_prompt)
+  (if (metabot-settings/is-metabot-enabled)
+    (let [{:keys [prompt_template version prompt]} (metabot-util/create-prompt context)
+          {:keys [database_id inner_query]} model]
+      (if-some [bot-sql (metabot-util/find-result
+                         metabot-util/extract-sql
+                         (metabot-client/invoke-metabot prompt))]
+        (let [final-sql     (metabot-util/bot-sql->final-sql model bot-sql)
+              _             (log/infof "Inferred sql for model '%s' with prompt '%s':\n%s"
+                                       (:id model)
+                                       user_prompt
+                                       final-sql)
+              template-tags (lib-native/template-tags inner_query)
+              dataset       {:dataset_query          {:database database_id
+                                                      :type     "native"
+                                                      :native   {:query         final-sql
+                                                                 :template-tags template-tags}}
+                             :display                :table
+                             :visualization_settings {}}]
+          final-sql)
+        (log/infof "No sql inferred for model '%s' with prompt '%s'." (:id model) user_prompt)))
+    (log/warn "Metabot is not enabled")))

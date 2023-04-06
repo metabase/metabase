@@ -52,7 +52,7 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/database/:database-id"
-  "Ask Metabot to generate a SQL query given a prompt about a given database."
+  "Ask Metabot to generate a native question given a prompt about a given database."
   [database-id :as {{:keys [question]} :body}]
   {database-id su/IntGreaterThanZero
    question    su/NonBlankString}
@@ -68,6 +68,47 @@
     (if-some [model (metabot/infer-model context)]
       (or
        (metabot/infer-sql (merge
+                           context
+                           {:model       model
+                            :prompt_task :infer_sql}))
+       (throw
+        (let [message (format
+                       "Query '%s' didn't produce any SQL. Perhaps try a more detailed query."
+                       question)]
+          (ex-info
+           message
+           {:status-code 400
+            :message     message}))))
+      (throw
+       (let [message (format
+                      (str/join
+                       " "
+                       ["Query '%s' didn't find a good match to your data."
+                        "Perhaps try a query that mentions the model name or columns more specifically."])
+                      question)]
+         (ex-info
+          message
+          {:status-code 400
+           :message     message}))))))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/database/:database-id/query"
+  "Ask Metabot to generate a SQL query given a prompt about a given database."
+  [database-id :as {{:keys [question]} :body}]
+  {database-id su/IntGreaterThanZero
+   question    su/NonBlankString}
+  (log/infof
+   "Metabot '/api/metabot/database/%s/query' being called with prompt: '%s'"
+   database-id
+   question)
+  (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
+        _       (check-database-support (:id database))
+        context {:database    (metabot-util/denormalize-database database)
+                 :user_prompt question
+                 :prompt_task :infer_model}]
+    (if-some [model (metabot/infer-model context)]
+      (or
+       (metabot/infer-sql-query (merge
                            context
                            {:model       model
                             :prompt_task :infer_sql}))
