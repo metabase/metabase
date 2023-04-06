@@ -106,8 +106,10 @@
 
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
-  [a-query stage-number x]
-  (lib.order-by/order-by-clause a-query stage-number (lib.normalize/normalize (js->clj x :keywordize-keys true))))
+  ([a-query stage-number x]
+   (order-by-clause a-query stage-number x nil))
+  ([a-query stage-number x direction]
+   (lib.order-by/order-by-clause a-query stage-number (lib.normalize/normalize (js->clj x :keywordize-keys true)) direction)))
 
 (defn ^:export order-by
   "Add an `order-by` clause to `a-query`. Returns updated query."

@@ -13,6 +13,8 @@ import { color } from "metabase/lib/colors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { isNumeric } from "metabase-lib/types/utils/isa";
 
+import { getValue } from "./utils";
+
 const BORDER_RADIUS = 5;
 const MAX_BAR_HEIGHT = 65;
 
@@ -136,7 +138,8 @@ export default class Progress extends Component {
       onVisualizationClick,
       visualizationIsClickable,
     } = this.props;
-    const value = rows[0] && typeof rows[0][0] === "number" ? rows[0][0] : 0;
+
+    const value = getValue(rows);
     const column = cols[0];
     const goal = settings["progress.goal"] || 0;
 
