@@ -5,9 +5,7 @@
    [clojure.test :refer :all]
    [metabase.csv :as csv]
    [metabase.driver :as driver]
-   [metabase.test :as mt])
-  (:import
-   [java.io File]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -73,7 +71,7 @@
 
 (defn- schema-for
   [rows]
-  (with-temp-csv "pokefans.csv" rows (csv/detect-schema (File. "pokefans.csv"))))
+  (with-temp-csv "pokefans.csv" rows (csv/detect-schema (io/file "pokefans.csv"))))
 
 (deftest detect-schema-test
   (testing "Well-formed CSV file"
@@ -137,7 +135,7 @@
         (with-temp-csv "pokefans.csv" ["id" "2" "3"]
           (testing "Can upload two files with the same name"
             ;; Sleep for a second, because the table name is based on the current second
-            (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" (File. "pokefans.csv"))))
+            (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" (io/file "pokefans.csv"))))
             (Thread/sleep 1000)
             (with-temp-csv "../pokefans.csv" ["name" "Luke" "Han"]
-              (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" (File. "../pokefans.csv")))))))))))
+              (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" (io/file "../pokefans.csv")))))))))))

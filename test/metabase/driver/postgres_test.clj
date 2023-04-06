@@ -1206,16 +1206,17 @@
   (mt/test-driver :postgres
     (mt/with-empty-db
       (testing "Can't upload a CSV with a semi-colon in the file name"
-        (csv-test/with-temp-csv "file.csv" ["id" "2"]
-          (is (thrown-with-msg?
-               ExceptionInfo #"Error uploading CSV: \";\" in "
-               (driver/load-from-csv
-                driver/*driver*
-                (mt/id)
-                "public"
-                "upload_test"
-                (str "public.upload_test(id) FROM file.csv; DROP TABLE users; --")
-                (io/file "file.csv")))))))))
+        (let [malicious-filename "public.upload_test(id) FROM file.csv; DROP TABLE users; --"]
+          (csv-test/with-temp-csv malicious-filename
+            ["id" "2"]
+            (is (thrown-with-msg?
+                 ExceptionInfo #"Error uploading CSV: \";\" in "
+                 (driver/load-from-csv
+                  driver/*driver*
+                  (mt/id)
+                  "public"
+                  "upload_test"
+                  (io/file malicious-filename))))))))))
 
 (deftest load-from-csv-failed-test
   (mt/test-driver :postgres
