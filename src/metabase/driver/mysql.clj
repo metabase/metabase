@@ -62,6 +62,8 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
+(defmethod driver/database-supports? [:mysql :csv-uploads] [_driver _feat _db] true)
+
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
   (let [json-setting (get-in database [:details :json-unfolding])]
     (if (nil? json-setting)
