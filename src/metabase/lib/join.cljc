@@ -55,12 +55,15 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    join-alias   :- ::lib.schema.common/non-blank-string]
-  (or (m/find-first #(= (:alias %) join-alias)
-                    (:joins (lib.util/query-stage query stage-number)))
-      (throw (ex-info (i18n/tru "No join named {0}" (pr-str join-alias))
-                      {:join-alias   join-alias
-                       :query        query
-                       :stage-number stage-number}))))
+  (let [{:keys [joins]} (lib.util/query-stage query stage-number)]
+    (or (m/find-first #(= (:alias %) join-alias)
+                      joins)
+        (throw (ex-info (i18n/tru "No join named {0}, found: {1}"
+                                  (pr-str join-alias)
+                                  (pr-str (mapv :alias joins)))
+                        {:join-alias   join-alias
+                         :query        query
+                         :stage-number stage-number})))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/join
   [query _stage-number {[first-stage] :stages, :as _join}]

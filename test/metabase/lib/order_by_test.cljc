@@ -455,29 +455,24 @@
 
 (deftest ^:parallel orderable-columns-exclude-already-sorted-implicitly-joinable-columns-test
   (testing "orderable-columns should not return implicitly joinable columns that are already in :order-by (#29807)"
-    (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")]
+    (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
+          query (-> query
+                    (lib/order-by (m/find-first #(= (:id %) (meta/id :categories :name))
+                                   (lib/orderable-columns query))))]
+      (is (=? {:stages [{:order-by [[:asc {} [:field
+                                              {:source-field (meta/id :venues :category-id)}
+                                              (meta/id :categories :name)]]]}]}
+              query))
+      (is (= "Venues, Sorted by Name ascending"
+             (lib/describe-query query)))
       (is (=? [{:display_name "ID",          :lib/source :source/table-defaults}
                {:display_name "Name",        :lib/source :source/table-defaults}
                {:display_name "Category ID", :lib/source :source/table-defaults}
                {:display_name "Latitude",    :lib/source :source/table-defaults}
                {:display_name "Longitude",   :lib/source :source/table-defaults}
                {:display_name "Price",       :lib/source :source/table-defaults}
-               {:display_name "ID",          :lib/source :source/implicitly-joinable}
-               {:display_name "Name",        :lib/source :source/implicitly-joinable}]
-              (lib/orderable-columns query)))
-      (let [query' (lib/order-by query (last (lib/orderable-columns query)))]
-        (is (=? {:stages [{:order-by [[:asc {} [:field
-                                                {:source-field (meta/id :venues :category-id)}
-                                                (meta/id :categories :name)]]]}]}
-                query'))
-        (is (=? [{:display_name "ID",          :lib/source :source/table-defaults}
-                 {:display_name "Name",        :lib/source :source/table-defaults}
-                 {:display_name "Category ID", :lib/source :source/table-defaults}
-                 {:display_name "Latitude",    :lib/source :source/table-defaults}
-                 {:display_name "Longitude",   :lib/source :source/table-defaults}
-                 {:display_name "Price",       :lib/source :source/table-defaults}
-                 {:display_name "ID",          :lib/source :source/implicitly-joinable}]
-                (lib/orderable-columns query')))))))
+               {:display_name "ID",          :lib/source :source/implicitly-joinable}]
+              (lib/orderable-columns query))))))
 
 (deftest ^:parallel orderable-columns-exclude-already-sorted-expression-test
   (testing "orderable-columns should not return expressions that are already in :order-by (#29807)"
