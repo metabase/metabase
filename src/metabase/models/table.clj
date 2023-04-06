@@ -13,7 +13,6 @@
    [metabase.models.segment :refer [Segment]]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -50,7 +49,7 @@
     (merge defaults table)))
 
 (defn- pre-delete [{:keys [db_id schema id]}]
-  (db/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
+  (t2/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
 
 (defmethod mi/perms-objects-set Table
   [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
@@ -94,9 +93,9 @@
   [table]
   (doall
    (map-indexed (fn [new-position field]
-                  (db/update! Field (u/the-id field) :position new-position))
+                  (t2/update! Field (u/the-id field) {:position new-position}))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
-                (db/select [Field :id]
+                (t2/select [Field :id]
                            :table_id  (u/the-id table)
                            {:order-by (case (:field_order table)
                                         :custom       [[:custom_position :asc]]
@@ -113,7 +112,7 @@
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
-  (= (db/select-ids Field
+  (= (t2/select-pks-set Field
        :table_id (u/the-id table)
        :active   true)
      (set field-ordering)))
@@ -122,12 +121,12 @@
   "Set field order to `field-order`."
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
-  (db/update! Table (u/the-id table) :field_order :custom)
+  (t2/update! Table (u/the-id table) {:field_order :custom})
   (doall
-   (map-indexed (fn [position field-id]
-                  (db/update! Field field-id {:position        position
-                                              :custom_position position}))
-                field-order)))
+    (map-indexed (fn [position field-id]
+                   (t2/update! Field field-id {:position        position
+                                               :custom_position position}))
+                 field-order)))
 
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
@@ -136,7 +135,7 @@
   :fields
   "Return the Fields belonging to a single `table`."
   [{:keys [id]}]
-  (db/select Field
+  (t2/select Field
     :table_id        id
     :active          true
     :visibility_type [:not= "retired"]
@@ -146,12 +145,12 @@
   :field_values
   "Return the FieldValues for all Fields belonging to a single `table`."
   [{:keys [id]}]
-  (let [field-ids (db/select-ids Field
+  (let [field-ids (t2/select-pks-set Field
                     :table_id        id
                     :visibility_type "normal"
                     {:order-by field-order-rule})]
     (when (seq field-ids)
-      (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids]))))
+      (t2/select-fn->fn :field_id :values FieldValues, :field_id [:in field-ids]))))
 
 (mi/define-simple-hydration-method ^{:arglists '([table])} pk-field-id
   :pk_field
@@ -175,7 +174,7 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (db/select Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-metrics
@@ -184,7 +183,7 @@
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (db/select Metric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select Metric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (defn with-fields
@@ -192,7 +191,7 @@
   [tables]
   (with-objects :fields
     (fn [table-ids]
-      (db/select Field
+      (t2/select Field
         :active          true
         :table_id        [:in table-ids]
         :visibility_type [:not= "retired"]

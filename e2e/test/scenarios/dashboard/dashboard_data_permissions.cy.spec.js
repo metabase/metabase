@@ -62,11 +62,6 @@ describe("support > permissions (metabase#8472)", () => {
   });
 
   it("should not allow a nocollection user to visit the page, hence cannot see the filter", () => {
-    cy.server();
-    cy.route("GET", "/api/dashboard/1/params/search/100 Main Street").as(
-      "search",
-    );
-
     cy.signIn("nocollection");
     cy.request({
       method: "GET",

@@ -38,12 +38,12 @@
 
 (mu/defn query-for-table-name :- ::lib.schema/query
   "Create a new query for a specific Table with a table name."
-  ([database-metadata-provider :- lib.metadata/DatabaseMetadataProvider
-    table-name                 :- ::lib.schema.common/non-blank-string]
-   (query-for-table-name database-metadata-provider nil table-name))
+  ([metadata-provider :- lib.metadata/MetadataProvider
+    table-name        :- ::lib.schema.common/non-blank-string]
+   (query-for-table-name metadata-provider nil table-name))
 
-  ([database-metadata-provider :- lib.metadata/DatabaseMetadataProvider
-    schema-name                :- [:maybe ::lib.schema.common/non-blank-string]
-    table-name                 :- ::lib.schema.common/non-blank-string]
-   (let [table-metadata (lib.metadata/table database-metadata-provider schema-name table-name)]
-     (lib.query/query database-metadata-provider table-metadata))))
+  ([metadata-provider :- lib.metadata/MetadataProvider
+    schema-name       :- [:maybe ::lib.schema.common/non-blank-string]
+    table-name        :- ::lib.schema.common/non-blank-string]
+   (let [table-metadata (lib.metadata/table metadata-provider schema-name table-name)]
+     (lib.query/query metadata-provider table-metadata))))

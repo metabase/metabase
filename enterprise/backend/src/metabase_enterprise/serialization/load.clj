@@ -36,7 +36,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.util UUID)))
@@ -450,7 +449,7 @@
         ;; until we can come in here and clean things up. -- Cam 2022-03-24
         _               (when (and (= (:mode context) :update)
                                    (seq dashboard-ids))
-                          (db/delete! DashboardCard :dashboard_id [:in (set dashboard-ids)]))
+                          (t2/delete! DashboardCard :dashboard_id [:in (set dashboard-ids)]))
         dashboard-cards (map :dashboard_cards dashboards)
         ;; a function that prepares a dash card for insertion, while also validating to ensure the underlying
         ;; card_id could be resolved from the fully qualified name

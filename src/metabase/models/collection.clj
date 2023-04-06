@@ -153,7 +153,7 @@
    ;; of IDs
    (let [ids (location-path->ids location-path)]
      (= (count ids)
-        (db/count Collection :id [:in ids])))))
+        (t2/count Collection :id [:in ids])))))
 
 (defn- assert-valid-location
   "Assert that the `location` property of a `collection`, if specified, is valid. This checks that it is valid both from
@@ -278,7 +278,7 @@
 
   Guaranteed to always generate a valid HoneySQL form, so this can be used directly in a query without further checks.
 
-    (db/select Card
+    (t2/select Card
       {:where (collection/visible-collection-ids->honeysql-filter-clause
                (collection/permissions-set->visible-collection-ids
                 @*current-user-permissions-set*))})"
@@ -361,7 +361,7 @@
 (s/defn ^:private ancestors* :- [(mi/InstanceOf Collection)]
   [{:keys [location]}]
   (when-let [ancestor-ids (seq (location-path->ids location))]
-    (db/select [Collection :name :id :personal_owner_id]
+    (t2/select [Collection :name :id :personal_owner_id]
       :id [:in ancestor-ids]
       {:order-by [:location]})))
 
@@ -416,7 +416,7 @@
      (children-location collection) ; -> \"/10/20/30/\";
 
      ;; To get children of this collection:
-     (db/select Collection :location \"/10/20/30/\")"
+     (t2/select Collection :location \"/10/20/30/\")"
   [{:keys [location], :as collection} :- CollectionWithLocationAndIDOrRoot]
   (if (collection.root/is-root-collection? collection)
     "/"
@@ -444,7 +444,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
   ;; first, fetch all the descendants of the `collection`, and build a map of location -> children. This will be used
   ;; so we can fetch the immediate children of each Collection
-  (let [location->children (group-by :location (db/select [Collection :name :id :location :description]
+  (let [location->children (group-by :location (t2/select [Collection :name :id :location :description]
                                                  {:where
                                                   (apply
                                                    vector
@@ -473,7 +473,7 @@
 (s/defn descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
   "Return a set of IDs of all descendant Collections of a `collection`."
   [collection :- CollectionWithLocationAndIDOrRoot]
-  (db/select-ids Collection :location [:like (str (children-location collection) \%)]))
+  (t2/select-pks-set Collection :location [:like (str (children-location collection) \%)]))
 
 (s/defn ^:private effective-children-where-clause
   [collection & additional-honeysql-where-clauses]
@@ -523,7 +523,7 @@
 
 (s/defn ^:private effective-children* :- #{(mi/InstanceOf Collection)}
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
-  (set (db/select [Collection :id :name :description]
+  (set (t2/select [Collection :id :name :description]
                   {:where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})))
 
 (mi/define-simple-hydration-method effective-children
@@ -557,14 +557,14 @@
   (when (collection.root/is-root-collection? collection)
     (throw (Exception. (tru "You cannot archive the Root Collection."))))
   ;; also make sure we're not trying to archive a PERSONAL Collection
-  (when (db/exists? Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
+  (when (t2/exists? Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
     (throw (Exception. (tru "You cannot archive a Personal Collection."))))
   (set
    (for [collection-or-id (cons
                            (parent collection)
                            (cons
                             collection
-                            (db/select-ids Collection :location [:like (str (children-location collection) "%")])))]
+                            (t2/select-pks-set Collection :location [:like (str (children-location collection) "%")])))]
      (perms/collection-readwrite-path collection-or-id))))
 
 (s/defn perms-for-moving :- #{perms/PathSchema}
@@ -606,17 +606,17 @@
     ;; first move this Collection
     (log/info (trs "Moving Collection {0} and its descendants from {1} to {2}"
                    (u/the-id collection) (:location collection) new-location))
-    (db/transaction
-      (db/update! Collection (u/the-id collection) :location new-location)
+    (t2/with-transaction [_conn]
+      (t2/update! Collection (u/the-id collection) {:location new-location})
       ;; we need to update all the descendant collections as well...
-      (db/execute!
+      (t2/query-one
        {:update :collection
         :set    {:location [:replace :location orig-children-location new-children-location]}
         :where  [:like :location (str orig-children-location "%")]}))))
 
 (s/defn ^:private collection->descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
-  (apply db/select-ids Collection
+  (apply t2/select-pks-set Collection
          :location [:like (str (children-location collection) "%")]
          additional-conditions))
 
@@ -625,28 +625,30 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived false))]
-    (db/transaction
-      (db/update-where! Collection {:id       [:in affected-collection-ids]
-                                    :archived false}
-        :archived true)
+    (t2/with-transaction [_conn]
+      (t2/update! (t2/table-name Collection)
+                  {:id       [:in affected-collection-ids]
+                   :archived false}
+                  {:archived true})
      (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
-       (db/update-where! model {:collection_id [:in affected-collection-ids]
-                                :archived      false}
-                         :archived true)))))
+       (t2/update! model {:collection_id [:in affected-collection-ids]
+                           :archived      false}
+                    {:archived true})))))
 
 (s/defn ^:private unarchive-collection!
   "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
   [collection :- CollectionWithLocationAndIDOrRoot]
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived true))]
-    (db/transaction
-      (db/update-where! Collection {:id       [:in affected-collection-ids]
-                                    :archived true}
-        :archived false)
+    (t2/with-transaction [_conn]
+      (t2/update! (t2/table-name Collection)
+               {:id       [:in affected-collection-ids]
+                :archived true}
+               {:archived false})
       (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
-        (db/update-where! model {:collection_id [:in affected-collection-ids]
-                                 :archived      true}
-          :archived false)))))
+        (t2/update! model {:collection_id [:in affected-collection-ids]
+                           :archived      true}
+                   {:archived false})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -670,7 +672,7 @@
     ;; Otherwise try to get the ID of its highest-level ancestor, e.g. if `location` is `/1/2/3/` we would get `1`.
     ;; Then see if the root-level ancestor is a Personal Collection (Personal Collections can only got in the Root
     ;; Collection.)
-    (db/exists? Collection
+    (t2/exists? Collection
       :id                (first (location-path->ids (:location collection)))
       :personal_owner_id [:not= nil]))))
 
@@ -687,10 +689,10 @@
   and write perms for every Group with write perms for the source Collection."
   [source-collection-or-id dest-collections-or-ids]
   ;; figure out who has permissions for the source Collection...
-  (let [group-ids-with-read-perms  (db/select-field :group_id Permissions
-                                     :object (perms/collection-read-path source-collection-or-id))
-        group-ids-with-write-perms (db/select-field :group_id Permissions
-                                     :object (perms/collection-readwrite-path source-collection-or-id))]
+  (let [group-ids-with-read-perms  (t2/select-fn-set :group_id Permissions
+                                                     :object (perms/collection-read-path source-collection-or-id))
+        group-ids-with-write-perms (t2/select-fn-set :group_id Permissions
+                                                     :object (perms/collection-readwrite-path source-collection-or-id))]
     ;; ...and insert corresponding rows for each destination Collection
     (db/insert-many! Permissions
       (concat
@@ -797,11 +799,11 @@
 
   This needs to be done recursively for all descendants as well."
   [collection :- (mi/InstanceOf Collection)]
-  (db/execute! {:delete-from :permissions
-                :where       [:in :object (for [collection (cons collection (descendants collection))
-                                                path-fn    [perms/collection-read-path
-                                                            perms/collection-readwrite-path]]
-                                            (path-fn collection))]}))
+  (t2/query-one {:delete-from :permissions
+                 :where       [:in :object (for [collection (cons collection (descendants collection))
+                                                 path-fn    [perms/collection-read-path
+                                                             perms/collection-readwrite-path]]
+                                             (path-fn collection))]}))
 
 (defn- update-perms-when-moving-across-personal-boundry!
   "If a Collection is moving 'across the boundry' and will become a descendant of a Personal Collection, or will cease
@@ -859,7 +861,7 @@
       (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates))
     ;; (5) make sure hex color is valid
     (when (api/column-will-change? :color collection-before-updates collection-updates)
-      (assert-valid-hex-color color))
+     (assert-valid-hex-color color))
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
     ;; (1) archive or unarchive as appropriate
     (maybe-archive-or-unarchive! collection-before-updates collection-updates)
@@ -880,16 +882,16 @@
 
 (defn- pre-delete [collection]
   ;; Delete all the Children of this Collection
-  (db/delete! Collection :location (children-location collection))
+  (t2/delete! Collection :location (children-location collection))
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)
       (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
   ;; Delete permissions records for this Collection
-  (db/execute! {:delete-from :permissions
-                :where       [:or
-                              [:= :object (perms/collection-readwrite-path collection)]
-                              [:= :object (perms/collection-read-path collection)]]}))
+  (t2/query-one {:delete-from :permissions
+                 :where       [:or
+                               [:= :object (perms/collection-readwrite-path collection)]
+                               [:= :object (perms/collection-read-path collection)]]}))
 
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
@@ -984,11 +986,11 @@
 
 (defmethod serdes/descendants "Collection" [_model-name id]
   (let [location    (t2/select-one-fn :location Collection :id id)
-        child-colls (set (for [child-id (db/select-ids Collection {:where [:like :location (str location id "/%")]})]
+        child-colls (set (for [child-id (t2/select-pks-set Collection {:where [:like :location (str location id "/%")]})]
                            ["Collection" child-id]))
-        dashboards  (set (for [dash-id (db/select-ids 'Dashboard :collection_id id)]
+        dashboards  (set (for [dash-id (t2/select-pks-set 'Dashboard :collection_id id)]
                            ["Dashboard" dash-id]))
-        cards       (set (for [card-id (db/select-ids 'Card      :collection_id id)]
+        cards       (set (for [card-id (t2/select-pks-set 'Card      :collection_id id)]
                            ["Card" card-id]))]
     (set/union child-colls dashboards cards)))
 
@@ -1091,11 +1093,11 @@
   [user-or-id]
   (or (user->existing-personal-collection user-or-id)
       (try
-        (db/insert! Collection
-          :name              (user->personal-collection-name user-or-id :site)
-          :personal_owner_id (u/the-id user-or-id)
-          ;; a nice slate blue color
-          :color             "#31698A")
+        (first (t2/insert-returning-instances! Collection
+                                               :name              (user->personal-collection-name user-or-id :site)
+                                               :personal_owner_id (u/the-id user-or-id)
+                                               ;; a nice slate blue color
+                                               :color             "#31698A"))
         ;; if an Exception was thrown why trying to create the Personal Collection, we can assume it was a race
         ;; condition where some other thread created it in the meantime; try one last time to fetch it
         (catch Throwable _
@@ -1135,7 +1137,7 @@
   [users]
   (when (seq users)
     ;; efficiently create a map of user ID -> personal collection ID
-    (let [user-id->collection-id (db/select-field->id :personal_owner_id Collection
+    (let [user-id->collection-id (t2/select-fn->pk :personal_owner_id Collection
                                    :personal_owner_id [:in (set (map u/the-id users))])]
       (assert (map? user-id->collection-id))
       ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal

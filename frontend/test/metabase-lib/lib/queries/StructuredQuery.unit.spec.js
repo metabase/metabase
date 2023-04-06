@@ -4,10 +4,12 @@ import {
   ORDERS,
   PRODUCTS,
   MAIN_METRIC_ID,
+  createMetadata,
 } from "__support__/sample_database_fixture";
 
 import Segment from "metabase-lib/metadata/Segment";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Question from "metabase-lib/Question";
 
 function makeDatasetQuery(query = {}) {
   return {
@@ -26,6 +28,36 @@ function makeQuery(query) {
 
 function makeQueryWithAggregation(agg) {
   return makeQuery({ aggregation: [agg] });
+}
+
+function makeQueryWithoutNumericFields() {
+  const virtualCardId = "card__123";
+
+  const questionDetail = {
+    display: "table",
+    visualization_settings: {},
+    dataset_query: {
+      type: "query",
+      database: SAMPLE_DATABASE.id,
+      query: {
+        "source-table": virtualCardId,
+      },
+    },
+  };
+
+  const metadata = createMetadata(state => {
+    const tableWithWithoutNumericFields = {
+      id: virtualCardId,
+      db_id: SAMPLE_DATABASE.id,
+      fields: [ORDERS.ID.id, ORDERS.CREATED_AT.id],
+    };
+    return state.assocIn(
+      ["entities", "tables", virtualCardId],
+      tableWithWithoutNumericFields,
+    );
+  });
+
+  return new Question(questionDetail, metadata).query();
 }
 
 const query = makeQuery({});
@@ -294,6 +326,96 @@ describe("StructuredQuery", () => {
           "source-table": ORDERS.id,
           aggregation: [["count"]],
         });
+      });
+    });
+
+    describe("aggregationOperators", () => {
+      it("has the same aggregation operators when query have no custom fields", () => {
+        expect(query.aggregationOperators()).toEqual(
+          query.table().aggregationOperators(),
+        );
+        expect(
+          query.aggregationOperators().map(aggregation => aggregation.short),
+        ).toEqual([
+          "rows",
+          "count",
+          "sum",
+          "avg",
+          "median",
+          "distinct",
+          "cum-sum",
+          "cum-count",
+          "stddev",
+          "min",
+          "max",
+        ]);
+      });
+
+      it("only show aggregation operators on available fields", () => {
+        const queryWithoutNumericFields = makeQueryWithoutNumericFields();
+
+        expect(queryWithoutNumericFields.aggregationOperators()).toEqual(
+          queryWithoutNumericFields.table().aggregationOperators(),
+        );
+        expect(
+          queryWithoutNumericFields
+            .aggregationOperators()
+            .map(aggregation => aggregation.short),
+        ).toEqual(["rows", "count", "distinct", "cum-count", "min", "max"]);
+      });
+
+      it("shows `avg` aggregation when having a numeric custom field on table without numeric fields", () => {
+        const query = makeQueryWithoutNumericFields().addExpression(
+          "custom_numeric_field",
+          // Expression: case([ID] = 1, 11, 99)
+          ["case", [["=", ORDERS.ID, 1], 11], { default: 99 }],
+        );
+
+        expect(query.aggregationOperators()).not.toEqual(
+          query.table().aggregationOperators(),
+        );
+        expect(
+          query.aggregationOperators().map(aggregation => aggregation.short),
+        ).toEqual([
+          "rows",
+          "count",
+          "sum",
+          "avg",
+          "median",
+          "distinct",
+          "cum-sum",
+          "cum-count",
+          "stddev",
+          "min",
+          "max",
+        ]);
+      });
+    });
+
+    describe("aggregationOperator", () => {
+      it("has the same aggregation operator when query have no custom fields", () => {
+        const short = "avg";
+        expect(query.aggregationOperator(short)).toEqual(
+          query.table().aggregationOperator(short),
+        );
+      });
+
+      it("can not find `avg` aggregation with table without numeric fields", () => {
+        const query = makeQueryWithoutNumericFields();
+        const short = "avg";
+
+        expect(query.aggregationOperator(short)).toBeUndefined();
+      });
+
+      it("can find `avg` aggregation when having a numeric custom field on table without numeric fields", () => {
+        const query = makeQueryWithoutNumericFields().addExpression(
+          "custom_numeric_field",
+          // Expression: case([ID] = 1, 11, 99)
+          ["case", [["=", ORDERS.ID, 1], 11], { default: 99 }],
+        );
+        const short = "avg";
+
+        expect(query.aggregationOperator(short)).not.toBeUndefined();
       });
     });
   });

@@ -48,7 +48,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
@@ -140,7 +139,7 @@
       (doseq [card-or-id (if (sequential? card-or-cards-or-ids)
                            card-or-cards-or-ids
                            [card-or-cards-or-ids])]
-        (db/update! Card (u/the-id card-or-id) {:collection_id (u/the-id collection)}))
+        (t2/update! Card (u/the-id card-or-id) {:collection_id (u/the-id collection)}))
       ;; now use `grant-perms-fn!` to grant appropriate perms
       (grant-perms-fn! (perms-group/all-users) collection)
       ;; call (f)
@@ -1751,10 +1750,10 @@
   in."
   [cards-or-card-ids]
   (when (seq cards-or-card-ids)
-    (let [cards               (db/select [Card :collection_id] :id [:in (map u/the-id cards-or-card-ids)])
+    (let [cards               (t2/select [Card :collection_id] :id [:in (map u/the-id cards-or-card-ids)])
           collection-ids      (set (filter identity (map :collection_id cards)))
           collection-id->name (when (seq collection-ids)
-                                (db/select-id->field :name Collection :id [:in collection-ids]))]
+                                (t2/select-pk->fn :name Collection :id [:in collection-ids]))]
       (for [card cards]
         (get collection-id->name (:collection_id card))))))
 
@@ -1813,7 +1812,7 @@
                 (-> card (hydrate [:moderation_reviews :moderator_details])
                     :moderation_reviews first :status #{"verified"} boolean))
               (reviews [card]
-                (db/select ModerationReview
+                (t2/select ModerationReview
                            :moderated_item_type "card"
                            :moderated_item_id (u/the-id card)
                            {:order-by [[:id :desc]]}))
@@ -1991,7 +1990,7 @@
       (mt/with-temp Card [card]
         (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card)))]
           (is (= true
-                 (boolean (db/exists? Card :id (u/the-id card), :public_uuid uuid)))))))))
+                 (boolean (t2/exists? Card :id (u/the-id card), :public_uuid uuid)))))))))
 
 (deftest share-card-preconditions-test
   (testing "POST /api/card/:id/public_link"
@@ -2038,7 +2037,7 @@
 
         (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (u/the-id card)))
         (is (= false
-               (db/exists? Card :id (u/the-id card), :public_uuid (:public_uuid card))))))))
+               (t2/exists? Card :id (u/the-id card), :public_uuid (:public_uuid card))))))))
 
 (deftest unshare-card-preconditions-test
   (testing "DELETE /api/card/:id/public_link\n"
@@ -2162,7 +2161,7 @@
           (let [metadata (t2/select-one-fn :result_metadata Card :id card-id)
                 ;; simulate updating metadat with user changed stuff
                 user-edited (add-preserved metadata)]
-            (db/update! Card card-id :result_metadata user-edited)
+            (t2/update! Card card-id {:result_metadata user-edited})
             (testing "Saved metadata preserves user edits"
               (is (= (map only-user-edits user-edited)
                      (map only-user-edits (t2/select-one-fn :result_metadata Card :id card-id)))))
@@ -2484,7 +2483,7 @@
   (testing "Old style, inferred parameters from native template-tags"
     (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
       ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
-      (db/update! Card (:id field-filter-card) :parameters [])
+      (t2/update! Card (:id field-filter-card) {:parameters []})
       (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
         (testing "without search query"
           (let [response (mt/user-http-request :rasta :get 200

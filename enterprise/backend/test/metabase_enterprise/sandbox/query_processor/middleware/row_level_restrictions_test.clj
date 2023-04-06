@@ -30,7 +30,6 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -719,8 +718,6 @@
                 (is (= [[9]]
                        (mt/rows result)))))))))))
 
-
-
 (deftest remapped-fks-test
   (testing "Sandboxing should work with remapped FK columns (#14629)"
     (mt/dataset sample-dataset
@@ -768,6 +765,19 @@
                         "2018-05-15T20:25:48.517Z"
                         "Rustic Paper Wallet"] ; <- Includes the remapped column
                        (first (mt/rows result))))))))))))
+
+(deftest sandboxing-linked-table-perms
+  (testing "Sandboxing based on a column in a linked table should work even if the user doesn't have self-service query
+           permissions for the linked table (#15105)"
+    (mt/dataset sample-dataset
+      (met/with-gtaps (mt/$ids orders
+                        {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                         :attributes {"user_id" 1}})
+        (mt/with-test-user :rasta
+          (is (= [11]
+                 (-> (mt/run-mbql-query orders {:aggregation [[:count]]})
+                     mt/rows
+                     first))))))))
 
 (deftest drill-thru-on-joins-test
   (testing "should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (#13642)"
@@ -912,7 +922,7 @@
                                                                :value  param-value}])))
         metadata (get-in results [:data :results_metadata :columns])]
     (is (seq metadata))
-    (db/update! Card card-id :result_metadata metadata)))
+    (t2/update! Card card-id {:result_metadata metadata})))
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
@@ -1014,7 +1024,7 @@
                           {:cached?  (boolean (:cached results))
                            :num-rows (count (mt/rows results))}))]
         (mt/with-temporary-setting-values [enable-query-caching  true
-                                           query-caching-min-ttl 0]          #_(db/update! Card card-id :cache_ttl 100)
+                                           query-caching-min-ttl 0]
           (testing "Make sure the underlying card for the GTAP returns cached results without sandboxing"
             (mt/with-current-user nil
               (testing "First run -- should not be cached"

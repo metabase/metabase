@@ -77,7 +77,6 @@ class QueryModals extends React.Component {
         <SaveQuestionModal
           question={this.props.question}
           originalQuestion={this.props.originalQuestion}
-          tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
           onSave={async question => {
             // if saving modified question, don't show "add to dashboard" modal
@@ -110,7 +109,6 @@ class QueryModals extends React.Component {
         <SaveQuestionModal
           question={this.props.question}
           originalQuestion={this.props.originalQuestion}
-          tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
           onSave={async question => {
             await this.props.onSave(question);
@@ -144,7 +142,6 @@ class QueryModals extends React.Component {
         <SaveQuestionModal
           question={this.props.question}
           originalQuestion={this.props.originalQuestion}
-          tableMetadata={this.props.tableMetadata}
           onSave={async question => {
             await this.props.onSave(question, false);
             this.showAlertsAfterQuestionSaved();
@@ -163,7 +160,6 @@ class QueryModals extends React.Component {
         <SaveQuestionModal
           question={this.props.question}
           originalQuestion={this.props.originalQuestion}
-          tableMetadata={this.props.tableMetadata}
           onSave={async question => {
             await this.props.onSave(question, false);
             onOpenModal(MODAL_TYPES.EMBED);

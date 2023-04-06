@@ -11,7 +11,7 @@ import {
   Aggregation,
   Breakout,
   Filter,
-  LimitClause,
+  Join,
   OrderBy,
   DependentMetadataItem,
   ExpressionClause,
@@ -32,24 +32,32 @@ import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
-import { isCompatibleAggregationOperatorForField } from "metabase-lib/operators/utils";
+import {
+  getAggregationOperators,
+  isCompatibleAggregationOperatorForField,
+} from "metabase-lib/operators/utils";
 import { TYPE } from "metabase-lib/types/constants";
 import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import { isSegment } from "metabase-lib/queries/utils/filter";
 import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
 import * as Q from "metabase-lib/queries/utils/query";
-import { memoizeClass } from "metabase-lib/utils";
+import { createLookupByProperty, memoizeClass } from "metabase-lib/utils";
 import Dimension, {
   FieldDimension,
   ExpressionDimension,
   AggregationDimension,
 } from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
+
+import * as MLv2 from "..";
+import type { Limit, Query } from "../types";
+
 import Segment from "../metadata/Segment";
 import Database from "../metadata/Database";
 import Question from "../Question";
 import Table from "../metadata/Table";
 import Field from "../metadata/Field";
+
 import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
@@ -94,6 +102,10 @@ export interface SegmentOption {
   query: StructuredQuery;
 }
 
+function unwrapJoin(join: Join | JoinWrapper): Join {
+  return join instanceof JoinWrapper ? join.raw() : join;
+}
+
 /**
  * A wrapper around an MBQL (`query` type @type {DatasetQuery}) object
  */
@@ -115,6 +127,15 @@ class StructuredQueryInner extends AtomicQuery {
   ) {
     super(question, datasetQuery);
     this._structuredDatasetQuery = datasetQuery as StructuredDatasetQuery;
+  }
+
+  private getMLv2Query(): Query {
+    return this.question()._getMLv2Query();
+  }
+
+  private updateWithMLv2(nextQuery: Query) {
+    const nextMLv1Query = MLv2.toLegacyQuery(nextQuery);
+    return this.setDatasetQuery(nextMLv1Query);
   }
 
   /* Query superclass methods */
@@ -366,7 +387,6 @@ class StructuredQueryInner extends AtomicQuery {
       .cleanAggregations()
       .cleanBreakouts()
       .cleanSorts()
-      .cleanLimit()
       .cleanFields()
       .cleanEmpty();
   }
@@ -411,10 +431,6 @@ class StructuredQueryInner extends AtomicQuery {
 
   cleanSorts(): StructuredQuery {
     return this._cleanClauseList("sorts");
-  }
-
-  cleanLimit(): StructuredQuery {
-    return this; // TODO
   }
 
   cleanFields(): StructuredQuery {
@@ -545,8 +561,8 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   hasLimit() {
-    const limit = this.limit();
-    return limit != null && limit > 0;
+    const query = this.getMLv2Query();
+    return MLv2.hasLimit(query);
   }
 
   hasFields() {
@@ -610,11 +626,11 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   addJoin(join) {
-    return this._updateQuery(Q.addJoin, arguments);
+    return this._updateQuery(Q.addJoin, [unwrapJoin(join)]);
   }
 
   updateJoin(index, join) {
-    return this._updateQuery(Q.updateJoin, arguments);
+    return this._updateQuery(Q.updateJoin, [index, unwrapJoin(join)]);
   }
 
   removeJoin(index) {
@@ -640,7 +656,27 @@ class StructuredQueryInner extends AtomicQuery {
    * @returns an array of aggregation options for the currently selected table
    */
   aggregationOperators(): AggregationOperator[] {
-    return (this.table() && this.table().aggregationOperators()) || [];
+    const expressionFields = this.expressionDimensions().map(
+      expressionDimension => expressionDimension.field(),
+    );
+
+    const table = this.table();
+    return (
+      (table &&
+        getAggregationOperators(table, [
+          ...expressionFields,
+          ...table.fields,
+        ])) ||
+      []
+    );
+  }
+
+  aggregationOperatorsLookup(): Record<string, AggregationOperator> {
+    return createLookupByProperty(this.aggregationOperators(), "short");
+  }
+
+  aggregationOperator(short: string): AggregationOperator {
+    return this.aggregationOperatorsLookup()[short];
   }
 
   /**
@@ -657,7 +693,7 @@ class StructuredQueryInner extends AtomicQuery {
    */
   aggregationFieldOptions(agg: string | AggregationOperator): DimensionOptions {
     const aggregation: AggregationOperator =
-      typeof agg === "string" ? this.table().aggregationOperator(agg) : agg;
+      typeof agg === "string" ? this.aggregationOperator(agg) : agg;
 
     if (aggregation) {
       const fieldOptions = this.fieldOptions(field => {
@@ -1068,16 +1104,19 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   // LIMIT
-  limit(): number | null | undefined {
-    return Q.getLimit(this.query());
+  limit(): Limit {
+    const query = this.getMLv2Query();
+    return MLv2.currentLimit(query);
   }
 
-  updateLimit(limit: LimitClause) {
-    return this._updateQuery(Q.updateLimit, arguments);
+  updateLimit(limit: Limit) {
+    const query = this.getMLv2Query();
+    const nextQuery = MLv2.limit(query, limit);
+    return this.updateWithMLv2(nextQuery);
   }
 
   clearLimit() {
-    return this._updateQuery(Q.clearLimit, arguments);
+    return this.updateLimit(null);
   }
 
   // EXPRESSIONS
@@ -1260,8 +1299,6 @@ class StructuredQueryInner extends AtomicQuery {
     const table = this.table();
 
     if (table) {
-      const dimensionIsFKReference = dimension => dimension.field?.().isFK();
-
       const filteredNonFKDimensions = this.dimensions().filter(dimensionFilter);
 
       for (const dimension of filteredNonFKDimensions) {
@@ -1272,6 +1309,7 @@ class StructuredQueryInner extends AtomicQuery {
       // de-duplicate explicit and implicit joined tables
       const explicitJoins = this._getExplicitJoinsSet(joins);
 
+      const dimensionIsFKReference = dimension => dimension.field?.().isFK();
       const fkDimensions = this.dimensions().filter(dimensionIsFKReference);
 
       for (const dimension of fkDimensions) {
@@ -1719,6 +1757,7 @@ class StructuredQuery extends memoizeClass<StructuredQueryInner>(
   "joinedDimensions",
   "breakoutDimensions",
   "aggregationDimensions",
+  "aggregationOperatorsLookup",
   "fieldDimensions",
   "columnDimensions",
   "columnNames",

@@ -6,7 +6,7 @@
    [metabase.integrations.google :as google]
    [metabase.models.setting :as setting]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/settings"
@@ -17,7 +17,7 @@
    google-auth-auto-create-accounts-domain (s/maybe s/Str)}
   (api/check-superuser)
   ;; Set google-auth-enabled in a separate step because it requires the client ID to be set first
-  (db/transaction
+  (t2/with-transaction [_conn]
    (setting/set-many! {:google-auth-client-id                   google-auth-client-id
                        :google-auth-auto-create-accounts-domain google-auth-auto-create-accounts-domain})
    (google/google-auth-enabled! google-auth-enabled)))

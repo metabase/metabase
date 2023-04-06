@@ -62,7 +62,8 @@
 (defn- upload-version-info! []
   (u/step "Upload version info"
     (u/s3-copy! (format "s3://%s" (version-info-url)) (format "s3://%s.previous" (version-info-url)))
-    (u/s3-copy! (u/assert-file-exists (tmp-version-info-filename)) (format "s3://%s" (version-info-url)))))
+    (u/s3-copy! (u/assert-file-exists (tmp-version-info-filename)) (format "s3://%s" (version-info-url)))
+    (u/create-cloudfront-invalidation! c/static-cloudfront-distribution-id (format "/%s" (version-info-filename)))))
 
 (defn- validate-version-info []
   (u/step (format "Validate version info at %s" (version-info-url))

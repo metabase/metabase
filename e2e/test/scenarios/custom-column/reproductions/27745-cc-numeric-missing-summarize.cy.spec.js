@@ -8,7 +8,7 @@ import {
 } from "e2e/support/helpers";
 
 ["postgres", "mysql"].forEach(dialect => {
-  describe.skip(`issue 27745 (${dialect})`, { tags: "@external" }, () => {
+  describe(`issue 27745 (${dialect})`, { tags: "@external" }, () => {
     const tableName = "colors27745";
 
     beforeEach(() => {

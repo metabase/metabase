@@ -41,6 +41,13 @@ export const setupSchemaEndpoints = (db: Database) => {
   });
 };
 
+export const setupUnauthorizedSchemaEndpoints = (db: Database) => {
+  fetchMock.get(`path:/api/database/${db.id}/schemas`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
+};
+
 export function setupUnauthorizedDatabaseEndpoints(db: Database) {
   fetchMock.get(`path:/api/database/${db.id}`, {
     status: 403,

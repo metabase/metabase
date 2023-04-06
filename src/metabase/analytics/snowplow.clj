@@ -11,7 +11,6 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (com.snowplowanalytics.snowplow.tracker Snowplow Subject Tracker)
@@ -78,7 +77,7 @@
   :visibility :public
   :setter     :none
   :getter     (fn []
-                (when-not (db/exists? Setting :key "instance-creation")
+                (when-not (t2/exists? Setting :key "instance-creation")
                   ;; For instances that were started before this setting was added (in 0.41.3), use the creation
                   ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
                   ;; is first read.

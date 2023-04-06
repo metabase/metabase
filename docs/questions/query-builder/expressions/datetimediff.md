@@ -26,6 +26,7 @@ title: DatetimeDiff
 - "month"
 - "day"
 - "hour"
+- "minute"
 - "second"
 - "millisecond"
 

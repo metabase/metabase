@@ -16,7 +16,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -98,12 +97,12 @@
         (log/info (trs "Deleting secret ID {0} from app DB because the owning database ({1}) is being deleted"
                        secret-id
                        id))
-        (db/delete! Secret :id secret-id)))))
+        (t2/delete! Secret :id secret-id)))))
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (db/execute! {:delete-from :permissions
-                :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
+  (t2/query-one {:delete-from :permissions
+                 :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
   (delete-orphaned-secrets! database)
   (try
     (driver/notify-database-updated driver database)
@@ -247,14 +246,14 @@
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?
-  (db/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
+  (t2/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
 
 (defn pk-fields
   "Return all the primary key `Fields` associated with this `database`."
   [{:keys [id]}]
-  (let [table-ids (db/select-ids 'Table, :db_id id, :active true)]
+  (let [table-ids (t2/select-pks-set 'Table, :db_id id, :active true)]
     (when (seq table-ids)
-      (db/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
+      (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
 
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------

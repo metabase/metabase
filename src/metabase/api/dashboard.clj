@@ -42,7 +42,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
@@ -51,7 +50,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- dashboards-list [filter-option]
-  (as-> (db/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
+  (as-> (t2/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
                                                 (:all :archived)  true
                                                 :mine [:= :creator_id api/*current-user-id*])
                                          [:= :archived (= (keyword filter-option) :archived)]]
@@ -96,12 +95,12 @@
                         :cache_ttl           cache_ttl
                         :collection_id       collection_id
                         :collection_position collection_position}
-        dash           (db/transaction
+        dash           (t2/with-transaction [_conn]
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
                         ;; position, check that and fix up if needed
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
-                        (db/insert! Dashboard dashboard-data))]
+                        (first (t2/insert-returning-instances! Dashboard dashboard-data)))]
     (events/publish-event! :dashboard-create dash)
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
     (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
@@ -182,7 +181,7 @@
   another, and thus do not work as one would expect when used as map keys.)"
   [hashes]
   (when (seq hashes)
-    (into {} (for [[k v] (db/select-field->field :query_hash :average_execution_time Query :query_hash [:in hashes])]
+    (into {} (for [[k v] (t2/select-fn->fn :query_hash :average_execution_time Query :query_hash [:in hashes])]
                {(vec k) v}))))
 
 (defn- add-query-average-duration-to-card
@@ -335,12 +334,12 @@
                         :collection_id       collection_id
                         :collection_position collection_position}
         new-cards      (atom nil)
-        dashboard      (db/transaction
+        dashboard      (t2/with-transaction [_conn]
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                         ;; collection to change position, check that and fix up if needed
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
-                        (let [dash (db/insert! Dashboard dashboard-data)
+                        (let [dash (first (t2/insert-returning-instances! Dashboard dashboard-data))
                               {id->new-card :copied uncopied :uncopied}
                               (when is_deep_copy
                                 (duplicate-cards existing-dashboard collection_id))]
@@ -407,7 +406,7 @@
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
     (check-allowed-to-change-embedding dash-before-update dash-updates)
-    (db/transaction
+    (t2/with-transaction [_conn]
       ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
       ;; adjust the collection position of other dashboards in the collection
       (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
@@ -417,7 +416,7 @@
                                       :present #{:description :position :collection_id :collection_position :cache_ttl}
                                       :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                                  :embedding_params :archived}))]
-        (db/update! Dashboard id updates))))
+        (t2/update! Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (t2/select-one Dashboard :id id)]
     (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
@@ -434,7 +433,7 @@
   (log/warn (str "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its "
                  "`archived` value via PUT /api/dashboard/:id."))
   (let [dashboard (api/write-check Dashboard id)]
-    (db/delete! Dashboard :id id)
+    (t2/delete! Dashboard :id id)
     (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
@@ -456,7 +455,7 @@
                                             (remove nil?))
                                       parameter-mappings)]
       (when (seq card-ids)
-        (let [card-id->query        (db/select-id->field :dataset_query Card :id [:in card-ids])
+        (let [card-id->query        (t2/select-pk->fn :dataset_query Card :id [:in card-ids])
               field-ids             (set (for [{:keys [target card-id]} parameter-mappings
                                                :when                    card-id
                                                :let                     [query    (or (card-id->query card-id)
@@ -468,9 +467,9 @@
                                                :when                    field-id]
                                            field-id))
               table-ids             (when (seq field-ids)
-                                      (db/select-field :table_id Field :id [:in field-ids]))
+                                      (t2/select-fn-set :table_id Field :id [:in field-ids]))
               table-id->database-id (when (seq table-ids)
-                                      (db/select-id->field :db_id Table :id [:in table-ids]))]
+                                      (t2/select-pk->fn :db_id Table :id [:in table-ids]))]
           (doseq [table-id table-ids
                   :let     [database-id (table-id->database-id table-id)]]
             ;; check whether we'd actually be able to query this Table (do we have ad-hoc data perms for it?)
@@ -515,7 +514,7 @@
   [dashboard-id]
   (m/map-vals (fn [mappings]
                 (into #{} (map #(select-keys % [:target :parameter_id])) mappings))
-              (db/select-id->field :parameter_mappings DashboardCard :dashboard_id dashboard-id)))
+              (t2/select-pk->fn :parameter_mappings DashboardCard :dashboard_id dashboard-id)))
 
 (defn- check-updated-parameter-mapping-permissions
   "In 0.41.0+ you now require data permissions for the Table in question to add or modify Dashboard parameter mappings.
@@ -533,7 +532,7 @@
                                          (assoc mapping :dashcard-id dashcard-id))
         ;; need to add the appropriate `:card-id` for all the new mappings we're going to check.
         dashcard-id->card-id           (when (seq new-mappings)
-                                         (db/select-id->field :card_id DashboardCard
+                                         (t2/select-pk->fn :card_id DashboardCard
                                            :dashboard_id dashboard-id
                                            :id           [:in (set (map :dashcard-id new-mappings))]))
         new-mappings                   (for [{:keys [dashcard-id], :as mapping} new-mappings]
@@ -621,9 +620,9 @@
   (api/check-not-archived (api/read-check Dashboard dashboard-id))
   {:uuid (or (t2/select-one-fn :public_uuid Dashboard :id dashboard-id)
              (u/prog1 (str (UUID/randomUUID))
-               (db/update! Dashboard dashboard-id
-                 :public_uuid       <>
-                 :made_public_by_id api/*current-user-id*)))})
+               (t2/update! Dashboard dashboard-id
+                           {:public_uuid       <>
+                            :made_public_by_id api/*current-user-id*})))})
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:dashboard-id/public_link"
@@ -632,9 +631,9 @@
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-exists? Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
-  (db/update! Dashboard dashboard-id
-    :public_uuid       nil
-    :made_public_by_id nil)
+  (t2/update! Dashboard dashboard-id
+              {:public_uuid       nil
+               :made_public_by_id nil})
   {:status 204, :body nil})
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -644,7 +643,7 @@
   []
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
-  (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+  (t2/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/embeddable"
@@ -653,7 +652,7 @@
   []
   (validation/check-has-application-permission :setting)
   (validation/check-embedding-enabled)
-  (db/select [Dashboard :name :id], :enable_embedding true, :archived false))
+  (t2/select [Dashboard :name :id], :enable_embedding true, :archived false))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/related"

@@ -69,7 +69,7 @@
            [:does-not-contain {:case-sensitive false} "abc" "a"]
            [:time-interval field :last :hour]
            [:time-interval field 4 :hour]
-           [:time-interval {:include-current true} field :next :default]
+           [:time-interval {:include-current true} field :next :day]
            [:segment 1]
            [:segment "segment-id"]]]
       (doseq [op (filter-ops filter-expr)]
@@ -81,7 +81,8 @@
               :let          [filter-clause (ensure-uuids filter-clause)]]
         (testing (pr-str filter-clause)
           (is (= (expression/type-of filter-clause) :type/Boolean))
-          (is (mc/validate ::expression/boolean filter-clause))))
+          (is (mc/validate ::expression/boolean filter-clause))
+          (is (not (mc/explain ::expression/boolean filter-clause)))))
       ;; now test the entire thing
       (is (mc/validate ::expression/boolean (ensure-uuids filter-expr))))))
 

@@ -7,7 +7,6 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [metabase.test.integrations.ldap :as ldap.test]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (com.unboundid.ldap.sdk LDAPConnectionPool)))
@@ -136,7 +135,7 @@
                  :common_name      "John Smith"
                  :email            "john.smith@metabase.com"}
                 (into {} (t2/select-one [User :first_name :last_name :email] :email "john.smith@metabase.com"))))
-         (finally (db/delete! User :email "john.smith@metabase.com"))))
+         (finally (t2/delete! User :email "john.smith@metabase.com"))))
 
       (try
        (testing "a user without a givenName attribute has `nil` for that attribute"
@@ -159,7 +158,7 @@
                  :last_name        nil
                  :common_name      "jane.miller@metabase.com"}
                 (select-keys (t2/select-one User :email "jane.miller@metabase.com") [:first_name :last_name :common_name]))))
-       (finally (db/delete! User :email "jane.miller@metabase.com"))))))
+       (finally (t2/delete! User :email "jane.miller@metabase.com"))))))
 
 (deftest group-matching-test
   (testing "LDAP group matching should identify Metabase groups using DN equality rules"

@@ -17,7 +17,6 @@
    [metabase.models.setting :as setting :refer [Setting]]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -40,13 +39,13 @@
     (when-not (contains? ran-migrations migration-name)
       (log/info (format "Running data migration '%s'..." migration-name))
       (try
-       (db/transaction
+       (t2/with-transaction [_conn]
         (@migration-var))
        (catch Exception e
          (if catch?
            (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
            (throw e))))
-      (db/insert! DataMigrations
+      (t2/insert! DataMigrations
         :id        migration-name
         :timestamp :%now))))
 
@@ -63,7 +62,7 @@
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
-  (let [ran-migrations (db/select-ids DataMigrations)]
+  (let [ran-migrations (t2/select-pks-set DataMigrations)]
     (doseq [migration @data-migrations]
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))
@@ -167,7 +166,7 @@
                    (filter :visualization_settings))
              (completing
               (fn [_ {:keys [id visualization_settings]}]
-                (db/update! DashboardCard id :visualization_settings visualization_settings)))
+                (t2/update! DashboardCard id {:visualization_settings visualization_settings})))
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
              ;; https://github.com/metabase/metabase/issues/15014
@@ -201,12 +200,12 @@
                         (catch Exception _e
                           {}))]
     (when-not (empty? mapping)
-      (db/update! Setting (name mapping-setting-key)
-                  :value
-                  (->> mapping
-                       (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
-                       (into {})
-                       json/generate-string)))))
+      (t2/update! Setting (name mapping-setting-key)
+                  {:value
+                   (->> mapping
+                        (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
+                        (into {})
+                        json/generate-string)}))))
 
 (defmigration
   ^{:author "qnkhuat"

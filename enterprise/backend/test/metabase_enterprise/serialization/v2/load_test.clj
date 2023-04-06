@@ -15,7 +15,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -65,7 +64,7 @@
         (testing "loading into an empty database succeeds"
           (ts/with-dest-db
             (serdes.load/load-metabase (ingestion-in-memory @serialized))
-            (let [colls (db/select Collection)]
+            (let [colls (t2/select Collection)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))
@@ -73,7 +72,7 @@
         (testing "loading again into the same database does not duplicate"
           (ts/with-dest-db
             (serdes.load/load-metabase (ingestion-in-memory @serialized))
-            (let [colls (db/select Collection)]
+            (let [colls (t2/select Collection)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))))))
@@ -108,7 +107,7 @@
               (is (some? child-dest))
               (is (some? grandchild-dest))
               (is (not= (:id parent-dest) (:id @parent)) "should have different primary keys")
-              (is (= 4 (db/count Collection)))
+              (is (= 4 (t2/count Collection)))
               (is (= "/"
                      (:location parent-dest)))
               (is (= (format "/%d/" (:id parent-dest))
@@ -163,13 +162,13 @@
             (reset! db1d (t2/select-one Database :name (:name @db1s)))
             (reset! db2d (t2/select-one Database :name (:name @db2s)))
 
-            (is (= 3 (db/count Database)))
+            (is (= 3 (t2/count Database)))
             (is (= #{"db1" "db2" "test-data"}
-                   (db/select-field :name Database)))
+                   (t2/select-fn-set :name Database)))
             (is (= #{(:id @db1d) (:id @db2d)}
-                   (db/select-field :db_id Table :name "posts")))
-            (is (db/exists? Table :name "posts" :db_id (:id @db1d)))
-            (is (db/exists? Table :name "posts" :db_id (:id @db2d)))))))))
+                   (t2/select-fn-set :db_id Table :name "posts")))
+            (is (t2/exists? Table :name "posts" :db_id (:id @db1d)))
+            (is (t2/exists? Table :name "posts" :db_id (:id @db2d)))))))))
 
 (deftest card-dataset-query-test
   ;; Card.dataset_query is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be
@@ -612,7 +611,7 @@
                                            :time_matters true :timestamp (t/offset-date-time 2022 10 31 19 00 00)))
 
             (testing "expecting 3 events"
-              (is (= 3 (db/count TimelineEvent))))
+              (is (= 3 (t2/count TimelineEvent))))
 
             (reset! serialized (into [] (serdes.extract/extract-metabase {})))
 
@@ -664,8 +663,8 @@
 
             ;; Fetch the relevant bits
             (reset! timeline2d (t2/select-one Timeline :entity_id (:entity_id @timeline2s)))
-            (reset! eventsT1   (db/select TimelineEvent :timeline_id (:id @timeline1d)))
-            (reset! eventsT2   (db/select TimelineEvent :timeline_id (:id @timeline2d)))
+            (reset! eventsT1   (t2/select TimelineEvent :timeline_id (:id @timeline1d)))
+            (reset! eventsT2   (t2/select TimelineEvent :timeline_id (:id @timeline2d)))
 
             (testing "no duplication - there are two timelines with the right event counts"
               (is (some? @timeline2d))
@@ -837,8 +836,8 @@
             (is (not= (:id @field2s) (:id @field2d))))
 
           (testing "there are 2 FieldValues defined under fields of table1d"
-            (let [fields (db/select-ids Field :table_id (:id @table1d))]
-              (is (= 2 (db/count FieldValues :field_id [:in fields])))))
+            (let [fields (t2/select-pks-set Field :table_id (:id @table1d))]
+              (is (= 2 (t2/count FieldValues :field_id [:in fields])))))
 
           (testing "existing FieldValues are properly found and updated"
             (is (= (set (:values @fv1s)) (set (:values @fv1d)))))

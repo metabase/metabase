@@ -260,12 +260,12 @@
         (mt/with-db temp-db
           (testing " for sync"
             (sync/sync-database! temp-db {:scan :schema})
-            (let [[tbl & more-tbl] (db/select Table :db_id db-id)]
+            (let [[tbl & more-tbl] (t2/select Table :db_id db-id)]
               (is (some? tbl))
               (is (nil? more-tbl))
               (is (= "taxi_trips" (:name tbl)))
               ;; make sure all the fields for taxi_tips were synced
-              (is (= 23 (db/count Field :table_id (u/the-id tbl))))))
+              (is (= 23 (t2/count Field :table_id (u/the-id tbl))))))
           (testing " for querying"
             (is (= 23
                    (count (mt/first-row
@@ -333,16 +333,16 @@
     (mt/test-driver :bigquery-cloud-sdk
       (mt/dataset avian-singles
         (try
-          (let [synced-tables (db/select Table :db_id (mt/id))]
+          (let [synced-tables (t2/select Table :db_id (mt/id))]
             (is (= 2 (count synced-tables)))
             (db/insert-many! Table (map #(dissoc % :id :schema) synced-tables))
             (sync/sync-database! (mt/db) {:scan :schema})
-            (let [synced-tables (db/select Table :db_id (mt/id))]
+            (let [synced-tables (t2/select Table :db_id (mt/id))]
               (is (partial= {true [{:name "messages"} {:name "users"}]
                              false [{:name "messages"} {:name "users"}]}
                             (-> (group-by :active synced-tables)
                                 (update-vals #(sort-by :name %)))))))
-          (finally (db/delete! Table :db_id (mt/id) :active false)))))))
+          (finally (t2/delete! Table :db_id (mt/id) :active false)))))))
 
 (deftest retry-certain-exceptions-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -450,7 +450,7 @@
             ;; hence, assert it was not called anymore here
             (is (= 0 @call-count) "convert-dataset-id-to-filters! should not have been called any more times"))
           ;; now, so we need to manually update the temp DB again here, to force the "old" structure
-          (let [updated? (db/update! Database db-id :details {:dataset-id "my-dataset"})]
+          (let [updated? (pos? (t2/update! Database db-id {:details {:dataset-id "my-dataset"}}))]
             (is updated?)
             (let [updated (t2/select-one Database :id db-id)]
               (is (nil? (get-in updated [:details :dataset-id])))

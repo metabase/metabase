@@ -4,7 +4,6 @@
    [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest delete-subscriptions-test
@@ -45,7 +44,7 @@
                         PulseChannelRecipient [_                      {:user_id          (mt/user->id :rasta)
                                                                        :pulse_channel_id dash-sub-chan-id}]]
           (letfn [(describe-objects []
-                    {:num-subscriptions                (db/count PulseChannelRecipient :user_id user-id)
+                    {:num-subscriptions                (t2/count PulseChannelRecipient :user_id user-id)
                      :alert-archived?                  (t2/select-one-fn :archived Pulse :id alert-id)
                      :dashboard-subscription-archived? (t2/select-one-fn :archived Pulse :id dash-sub-id)})
                   (api-delete-subscriptions! [request-user-name-or-id expected-status-code]

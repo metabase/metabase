@@ -26,7 +26,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -85,7 +84,7 @@
                          :error (str (me/humanize explained)
                                      "\n"
                                      (pr-str explained))}))))
-    (db/transaction
+    (t2/with-transaction [_conn]
      (perms/update-data-perms-graph! (dissoc graph :sandboxes))
      (if-let [sandboxes (:sandboxes body)]
        (let [new-sandboxes (upsert-sandboxes! sandboxes)]
@@ -113,7 +112,7 @@
 (defn- ordered-groups
   "Return a sequence of ordered `PermissionsGroups`."
   [limit offset query]
-  (db/select PermissionsGroup
+  (t2/select PermissionsGroup
              (cond-> {:order-by [:%lower.name]}
                (some? limit)  (sql.helpers/limit  limit)
                (some? offset) (sql.helpers/offset offset)
@@ -164,8 +163,8 @@
   [:as {{:keys [name]} :body}]
   {name su/NonBlankString}
   (api/check-superuser)
-  (db/insert! PermissionsGroup
-              :name name))
+  (first (t2/insert-returning-instances! PermissionsGroup
+                                         :name name)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/group/:group-id"
@@ -173,9 +172,9 @@
   [group-id :as {{:keys [name]} :body}]
   {name su/NonBlankString}
   (validation/check-manager-of-group group-id)
-  (api/check-404 (db/exists? PermissionsGroup :id group-id))
-  (db/update! PermissionsGroup group-id
-              :name name)
+  (api/check-404 (t2/exists? PermissionsGroup :id group-id))
+  (t2/update! PermissionsGroup group-id
+              {:name name})
   ;; return the updated group
   (t2/select-one PermissionsGroup :id group-id))
 
@@ -184,7 +183,7 @@
   "Delete a specific `PermissionsGroup`."
   [group-id]
   (validation/check-manager-of-group group-id)
-  (db/delete! PermissionsGroup :id group-id)
+  (t2/delete! PermissionsGroup :id group-id)
   api/generic-204-no-content)
 
 
@@ -199,7 +198,7 @@
                  :is_group_manager boolean}]}"
   []
   (validation/check-group-manager)
-  (group-by :user_id (db/select [PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
+  (group-by :user_id (t2/select [PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
                                 (cond-> {}
                                   (and (not api/*is-superuser?*)
                                        api/*is-group-manager?*)
@@ -222,9 +221,9 @@
       ;; enable `is_group_manager` require advanced-permissions enabled
       (validation/check-advanced-permissions-enabled :group-manager)
       (api/check
-       (db/exists? User :id user_id :is_superuser false)
+       (t2/exists? User :id user_id :is_superuser false)
        [400 (tru "Admin cant be a group manager.")]))
-    (db/insert! PermissionsGroupMembership
+    (t2/insert! PermissionsGroupMembership
                 :group_id         group_id
                 :user_id          user_id
                 :is_group_manager is_group_manager)
@@ -245,10 +244,10 @@
     (api/check-404 old)
     (validation/check-manager-of-group (:group_id old))
     (api/check
-     (db/exists? User :id (:user_id old) :is_superuser false)
+     (t2/exists? User :id (:user_id old) :is_superuser false)
      [400 (tru "Admin cant be a group manager.")])
-    (db/update! PermissionsGroupMembership (:id old)
-                :is_group_manager is_group_manager)
+    (t2/update! PermissionsGroupMembership (:id old)
+                {:is_group_manager is_group_manager})
     (t2/select-one PermissionsGroupMembership :id (:id old))))
 
 (api/defendpoint PUT "/membership/:group-id/clear"
@@ -256,9 +255,9 @@
   [group-id]
   {group-id ms/PositiveInt}
   (validation/check-manager-of-group group-id)
-  (api/check-404 (db/exists? PermissionsGroup :id group-id))
+  (api/check-404 (t2/exists? PermissionsGroup :id group-id))
   (api/check-400 (not= group-id (u/the-id (perms-group/admin))))
-  (db/delete! PermissionsGroupMembership :group_id group-id)
+  (t2/delete! PermissionsGroupMembership :group_id group-id)
   api/generic-204-no-content)
 
 (api/defendpoint DELETE "/membership/:id"
@@ -268,7 +267,7 @@
   (let [membership (t2/select-one PermissionsGroupMembership :id id)]
     (api/check-404 membership)
     (validation/check-manager-of-group (:group_id membership))
-    (db/delete! PermissionsGroupMembership :id id)
+    (t2/delete! PermissionsGroupMembership :id id)
     api/generic-204-no-content))
 
 

@@ -19,7 +19,6 @@
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -205,7 +204,7 @@
             ;; same as test_data, but with schema, so should NOT pick up venues, users, etc.
             (sync/sync-database! db)
             (is (= [{:name t, :schema s, :db_id (mt/id)}]
-                   (map #(select-keys % [:name :schema :db_id]) (db/select Table :db_id (mt/id)))))))
+                   (map #(select-keys % [:name :schema :db_id]) (t2/select Table :db_id (mt/id)))))))
         (execute-ddl! [(format "DROP TABLE %s.%s" s t)
                        (format "DROP SCHEMA %s" s)])))))
 

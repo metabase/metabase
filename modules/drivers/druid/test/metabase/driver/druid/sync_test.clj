@@ -1,14 +1,14 @@
 (ns metabase.driver.druid.sync-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.models.database :refer [Database]]
-            [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
-            [metabase.test :as mt]
-            [metabase.timeseries-query-processor-test.util :as tqpt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan2.core :as t2]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.models.database :refer [Database]]
+   [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
+   [metabase.test :as mt]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan2.core :as t2]))
 
 (deftest sync-test
   (mt/test-driver :druid
@@ -49,7 +49,7 @@
       (tqpt/with-flattened-dbdef
         (let [db                   (mt/db)
               version-on-load      (db-dbms-version db)
-              _                    (db/update! Database (u/the-id db) :dbms_version nil)
+              _                    (t2/update! Database (u/the-id db) {:dbms_version nil})
               db                   (t2/select-one Database :id (u/the-id db))
               version-after-update (db-dbms-version db)
               _                    (sync-dbms-ver/sync-dbms-version! db)]

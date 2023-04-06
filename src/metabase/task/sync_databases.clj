@@ -23,7 +23,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2])
   (:import
@@ -280,7 +279,7 @@
                 counter)
                ([counter db]
                 (try
-                  (db/update! Database (u/the-id db)
+                  (t2/update! Database (u/the-id db)
                     (sync.schedules/schedule-map->cron-strings
                      (sync.schedules/default-randomized-schedule)))
                   (inc counter)

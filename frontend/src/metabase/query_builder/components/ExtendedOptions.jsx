@@ -161,6 +161,7 @@ export class ExtendedOptionsPopover extends Component {
         query={query}
         name={name}
         expression={expression}
+        withName
         onChangeExpression={(newName, newExpression) =>
           this.setExpression(newName, newExpression, name)
         }

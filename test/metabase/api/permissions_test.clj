@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
+   #_{:clj-kondo/ignore [:unused-namespace]}
    [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -223,8 +224,31 @@
       (mt/with-temp* [PermissionsGroup [group]]
         (mt/user-http-request :crowberto :put 200 "permissions/graph"
          (assoc-in (perms/data-perms-graph) [:groups (u/the-id group)] nil))
+        (is (empty? (t2/select Permissions :group_id (u/the-id group))))
         (is (= nil (get-in (perms/data-perms-graph) [:groups (u/the-id group)])))
         (is (= nil (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group)])))))))
+
+(deftest can-delete-permsissions-via-graph-test
+  (testing "PUT /api/permissions/graph"
+    (testing "permissions when group has no permissions"
+      (let [db-id (mt/id :venues)]
+        (mt/with-temp* [PermissionsGroup [group]]
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (assoc-in (perms/data-perms-graph)
+                     [:groups (u/the-id group) (mt/id) :data :schemas] {"PUBLIC" {db-id :all}}))
+          (is (= (set (for [template ["/data/db/%s/schema/PUBLIC/table/%s/"
+                                      "/query/db/%s/schema/PUBLIC/table/%s/"
+                                      "/db/%s/schema/PUBLIC/table/%s/"]]
+                        (format template (mt/id) db-id)))
+                 (set (mapv :object (t2/select Permissions :group_id (u/the-id group))))))
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (assoc-in (perms/data-perms-graph)
+                     [:groups (u/the-id group) (mt/id)]
+                     {:data {:native "none" :schemas "none"}}))
+          (is (= #{}
+                 (set (mapv :object (t2/select Permissions :group_id (u/the-id group)))))))))))
 
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"
@@ -319,7 +343,7 @@
                         :user_id su/IntGreaterThanZero
                         :is_group_manager s/Bool}]}
                      result))
-        (is (= (db/select-field :id 'User) (set (keys result))))))))
+        (is (= (t2/select-fn-set :id 'User) (set (keys result))))))))
 
 (deftest add-group-membership-test
   (testing "POST /api/permissions/membership"
@@ -356,10 +380,10 @@
                (mt/user-http-request :rasta :put 403 (format "permissions/membership/%d/clear" group-id)))))
 
       (testing "Membership of a group can be cleared succesfully, while preserving the group itself"
-        (is (= 1 (db/count PermissionsGroupMembership :group_id group-id)))
+        (is (= 1 (t2/count PermissionsGroupMembership :group_id group-id)))
         (mt/user-http-request :crowberto :put 204 (format "permissions/membership/%d/clear" group-id))
-        (is (true? (db/exists? PermissionsGroup :id group-id)))
-        (is (= 0 (db/count PermissionsGroupMembership :group_id group-id))))
+        (is (true? (t2/exists? PermissionsGroup :id group-id)))
+        (is (= 0 (t2/count PermissionsGroupMembership :group_id group-id))))
 
       (testing "The admin group cannot be cleared using this endpoint"
         (mt/user-http-request :crowberto :put 400 (format "permissions/membership/%d/clear" (u/the-id (perms-group/admin))))))))

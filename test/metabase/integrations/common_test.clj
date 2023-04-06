@@ -13,7 +13,6 @@
    [metabase.test :as mt :refer [with-user-in-groups]]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -21,8 +20,8 @@
 (defn- group-memberships
   "Return set of names of PermissionsGroups `user` currently belongs to."
   [user]
-  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user)))]
-    (db/select-field :name PermissionsGroup :id [:in group-ids])))
+  (when-let [group-ids (seq (t2/select-fn-set :group_id PermissionsGroupMembership :user_id (u/the-id user)))]
+    (t2/select-fn-set :name PermissionsGroup :id [:in group-ids])))
 
 (deftest sync-groups-test
   (testing "does syncing group memberships leave existing memberships in place if nothing has changed?"
@@ -114,7 +113,7 @@
     (mt/with-log-level :warn
       (with-user-in-groups [user [(perms-group/admin)]]
         (let [log-warn-count (atom #{})]
-          (with-redefs [db/delete!
+          (with-redefs [t2/delete!
                         (fn [model & _args]
                           (when (= model PermissionsGroupMembership)
                             (throw (ex-info (str perms-group-membership/fail-to-remove-last-admin-msg)

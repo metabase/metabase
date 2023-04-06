@@ -10,7 +10,6 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.hydrate :as hydrate]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
@@ -24,7 +23,7 @@
                     Dashboard [dash-1]
                     Dashboard [dash-2]]
       (letfn [(add-card-to-dash! [dash]
-                (db/insert! DashboardCard
+                (t2/insert! DashboardCard
                   {:card_id      card-id
                    :dashboard_id (u/the-id dash)
                    :row          0
@@ -73,9 +72,9 @@
     (tt/with-temp* [Dashboard     [dashboard]
                     Card          [card]
                     DashboardCard [_dashcard {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]]
-      (db/update! Card (u/the-id card) :archived true)
+      (t2/update! Card (u/the-id card) {:archived true})
       (is (= 0
-             (db/count DashboardCard :dashboard_id (u/the-id dashboard)))))))
+             (t2/count DashboardCard :dashboard_id (u/the-id dashboard)))))))
 
 (deftest public-sharing-test
   (testing "test that a Card's :public_uuid comes back if public sharing is enabled..."
@@ -102,7 +101,7 @@
     (testing "before update"
       (is (= {:name "some name", :database_id (mt/id)}
              (into {} (t2/select-one [Card :name :database_id] :id id)))))
-    (db/update! Card id {:name          "another name"
+    (t2/update! Card id {:name          "another name"
                          :dataset_query (dummy-dataset-query (mt/id))})
     (testing "after update"
       (is (= {:name "another name" :database_id (mt/id)}
@@ -191,7 +190,7 @@
       ;; now try to make the Card reference itself. Should throw Exception
       (is (thrown?
            Exception
-           (db/update! Card (u/the-id card)
+           (t2/update! Card (u/the-id card)
              (card-with-source-table (str "card__" (u/the-id card))))))))
 
   (testing "Do the same stuff with circular reference between two Cards... (A -> B -> A)"
@@ -199,7 +198,7 @@
                     Card [card-b (card-with-source-table (str "card__" (u/the-id card-a)))]]
       (is (thrown?
            Exception
-           (db/update! Card (u/the-id card-a)
+           (t2/update! Card (u/the-id card-a)
              (card-with-source-table (str "card__" (u/the-id card-b))))))))
 
   (testing "ok now try it with A -> C -> B -> A"
@@ -208,7 +207,7 @@
                     Card [card-c (card-with-source-table (str "card__" (u/the-id card-b)))]]
       (is (thrown?
            Exception
-           (db/update! Card (u/the-id card-a)
+           (t2/update! Card (u/the-id card-a)
              (card-with-source-table (str "card__" (u/the-id card-c)))))))))
 
 (deftest validate-collection-namespace-test
@@ -219,16 +218,16 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Card can only go in Collections in the \"default\" namespace"
-               (db/insert! Card (assoc (tt/with-temp-defaults Card) :collection_id collection-id, :name card-name))))
+               (t2/insert! Card (assoc (tt/with-temp-defaults Card) :collection_id collection-id, :name card-name))))
           (finally
-            (db/delete! Card :name card-name)))))
+            (t2/delete! Card :name card-name)))))
 
     (testing "Shouldn't be able to move a Card to a non-normal Collection"
       (mt/with-temp Card [{card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Card can only go in Collections in the \"default\" namespace"
-             (db/update! Card card-id {:collection_id collection-id})))))))
+             (t2/update! Card card-id {:collection_id collection-id})))))))
 
 (deftest normalize-result-metadata-test
   (testing "Should normalize result metadata keys when fetching a Card from the DB"
@@ -246,8 +245,9 @@
            "updating" (fn [changes f]
                         (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query checkins)
                                                            :result_metadata (qp/query->expected-cols (mt/mbql-query checkins))}]
-                          (db/update! Card card-id changes)
+                          (t2/update! Card card-id changes)
                           (f (t2/select-one-fn :result_metadata Card :id card-id))))}]
+
     (testing (format "When %s a Card\n" creating-or-updating)
       (testing "If result_metadata is empty, we should attempt to populate it"
         (f {:dataset_query (mt/mbql-query venues)}
@@ -354,7 +354,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
-               (db/update! Card card-id bad-card-data))))))))
+               (t2/update! Card card-id bad-card-data))))))))
 
 ;;; ------------------------------------------ Parameters tests ------------------------------------------
 
@@ -375,9 +375,9 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with :id and :type keys"
-             (db/update! Card id :parameters [{:id 100}])))
-        (is (some? (db/update! Card id :parameters [{:id   "new-valid-id"
-                                                     :type "id"}])))))))
+             (t2/update! Card id {:parameters [{:id 100}]})))
+        (is (pos? (t2/update! Card id {:parameters [{:id   "new-valid-id"
+                                                     :type "id"}]})))))))
 
 (deftest normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
@@ -408,10 +408,10 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
-             (db/update! Card id :parameter_mappings [{:parameter_id 100}])))
+             (t2/update! Card id {:parameter_mappings [{:parameter_id 100}]})))
 
-        (is (some? (db/update! Card id :parameter_mappings [{:parameter_id "new-valid-id"
-                                                             :target       [:field 1000 nil]}])))))))
+        (is (pos? (t2/update! Card id {:parameter_mappings [{:parameter_id "new-valid-id"
+                                                             :target       [:field 1000 nil]}]})))))))
 
 (deftest normalize-parameter-mappings-test
   (testing ":parameter_mappings should get normalized when coming out of the DB"
@@ -448,22 +448,22 @@
                   :parameterized_object_type :card
                   :parameterized_object_id   card-id
                   :parameter_id              "_CATEGORY_NAME_"}]
-                (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
+                (t2/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
 
         (testing "update values_source_config.card_id will update ParameterCard"
-          (db/update! Card card-id {:parameters [(merge default-params
+          (t2/update! Card card-id {:parameters [(merge default-params
                                                         {:values_source_type    "card"
                                                          :values_source_config {:card_id source-card-id-2}})]})
           (is (=? [{:card_id                   source-card-id-2
                     :parameterized_object_type :card
                     :parameterized_object_id   card-id
                     :parameter_id              "_CATEGORY_NAME_"}]
-                  (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))
+                  (t2/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))
 
         (testing "delete the card will delete ParameterCard"
-          (db/delete! Card :id card-id)
+          (t2/delete! Card :id card-id)
           (is (= []
-                 (db/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))))
+                 (t2/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))))
 
     (testing "Delete a card will delete any ParameterCard that linked to it"
       (tt/with-temp* [Card  [{source-card-id :id}]
@@ -484,10 +484,10 @@
                   :parameterized_object_type :card
                   :parameterized_object_id   card-id-2
                   :parameter_id              "_CATEGORY_NAME_"}]
-                (db/select 'ParameterCard :card_id source-card-id)))
-        (db/delete! Card :id source-card-id)
+                (t2/select 'ParameterCard :card_id source-card-id)))
+        (t2/delete! Card :id source-card-id)
         (is (= []
-               (db/select 'ParameterCard :card_id source-card-id)))))))
+               (t2/select 'ParameterCard :card_id source-card-id)))))))
 
 (deftest cleanup-parameter-on-card-changes-test
   (mt/dataset sample-dataset
@@ -519,10 +519,10 @@
                 :parameter_id              "param_2"
                 :parameterized_object_type :dashboard
                 :parameterized_object_id   (:id dashboard)}]
-              (db/select ParameterCard :card_id source-card-id)))
+              (t2/select ParameterCard :card_id source-card-id)))
       ;; update card with removing the products.category
       (testing "on update result_metadata"
-        (db/update! Card source-card-id
+        (t2/update! Card source-card-id
                     (mt/card-with-source-metadata-for-query
                       (mt/mbql-query products {:fields [(mt/$ids $products.title)]
                                                :limit 5})))
@@ -532,7 +532,7 @@
                     :parameter_id              "param_1"
                     :parameterized_object_type :card
                     :parameterized_object_id   (:id card)}]
-                  (db/select ParameterCard :card_id source-card-id))))
+                  (t2/select ParameterCard :card_id source-card-id))))
 
         (testing "update the dashboard parameter and remove values_config of dashboard"
           (is (=? [{:id   "param_2"
@@ -550,10 +550,10 @@
                     (t2/select-one-fn :parameters Card :id (:id card)))))))
 
       (testing "on archive card"
-        (db/update! Card source-card-id {:archived true})
+        (t2/update! Card source-card-id {:archived true})
 
         (testing "ParameterCard for card is removed"
-          (is (=? [] (db/select ParameterCard :card_id source-card-id))))
+          (is (=? [] (t2/select ParameterCard :card_id source-card-id))))
 
         (testing "update the dashboard parameter and remove values_config of card"
           (is (=? [{:id   "param_1"
@@ -608,8 +608,10 @@
                (t2/select-one-fn :visualization_settings Card :id card-id)))))
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 and persisted on update"
     (mt/with-temp Card [{card-id :id} {:visualization_settings {:pie.show_legend true}}]
-      (db/update! Card card-id :name "Favorite Toucan Foods")
+      (t2/update! Card card-id {:name "Favorite Toucan Foods"})
       (is (= {:version 2
               :pie.show_legend true
               :pie.percent_visibility "inside"}
-             (:visualization_settings (db/simple-select-one Card {:where [:= :id card-id]})))))))
+             (-> (t2/select-one (t2/table-name Card) {:where [:= :id card-id]})
+                 :visualization_settings
+                 (json/parse-string keyword)))))))

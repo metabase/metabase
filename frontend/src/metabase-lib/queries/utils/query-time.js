@@ -139,7 +139,7 @@ export function generateTimeFilterValuesDescriptions(filter) {
   }
 }
 
-export function generateTimeIntervalDescription(n, unit) {
+function generateTimeIntervalDescription(n, unit) {
   if (unit === "day") {
     switch (n) {
       case "current":
@@ -179,7 +179,7 @@ export function generateTimeIntervalDescription(n, unit) {
   }
 }
 
-export function generateTimeValueDescription(value, bucketing, isExclude) {
+function generateTimeValueDescription(value, bucketing, isExclude) {
   if (typeof value === "number" && bucketing === "hour-of-day") {
     return moment().hour(value).format("h A");
   } else if (typeof value === "string") {
@@ -294,29 +294,6 @@ export function parseFieldBucketing(field, defaultUnit = null) {
   return defaultUnit;
 }
 
-// returns field with temporal bucketing removed
-export function parseFieldTarget(field) {
-  const dimension = FieldDimension.parseMBQLOrWarn(field);
-  if (dimension) {
-    return dimension.withoutTemporalBucketing();
-  }
-  return field;
-}
-
-/**
- * Get the raw integer ID from a `field` clause, otherwise return the clause as-is. (TODO: Why would we want to
- * return the clause as-is?)
- */
-export function parseFieldTargetId(field) {
-  const dimension = FieldDimension.parseMBQLOrWarn(field);
-  if (dimension) {
-    if (dimension.isIntegerFieldId()) {
-      return dimension.fieldIdOrName();
-    }
-  }
-  return field;
-}
-
 // 271821 BC and 275760 AD and should be far enough in the past/future
 function max() {
   return moment(new Date(864000000000000));
@@ -330,7 +307,7 @@ export function isRelativeDatetime(value) {
   return Array.isArray(value) && value[0] === "relative-datetime";
 }
 
-export function isInterval(mbql) {
+function isInterval(mbql) {
   if (!Array.isArray(mbql)) {
     return false;
   }
@@ -394,7 +371,7 @@ export function formatStartingFrom(bucketing, n) {
   return "";
 }
 
-export function getTimeInterval(mbql) {
+function getTimeInterval(mbql) {
   if (Array.isArray(mbql) && mbql[0] === "time-interval") {
     return [mbql[1], mbql[2], mbql[3] || "day"];
   }
@@ -576,11 +553,6 @@ export const getTimeComponent = value => {
     date = moment();
   }
   return { hours, minutes, date };
-};
-
-export const hasTimeComponent = value => {
-  const { hours, minutes } = getTimeComponent(value);
-  return typeof hours === "number" && typeof minutes === "number";
 };
 
 export const setTimeComponent = (value, hours, minutes) => {

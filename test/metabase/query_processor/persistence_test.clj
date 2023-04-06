@@ -1,18 +1,19 @@
 (ns metabase.query-processor.persistence-test
-  (:require [clojure.core.async :as a]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.models :refer [Card]]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.async :as qp.async]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.middleware.fix-bad-references
-             :as fix-bad-refs]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.models :refer [Card]]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.async :as qp.async]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.fix-bad-references
+    :as fix-bad-refs]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest can-persist-test
   (testing "Can each database that allows for persistence actually persist"
@@ -57,7 +58,7 @@
 (defn- populate-metadata [{query :dataset_query id :id :as _model}]
   (let [updater (a/thread
                   (let [metadata (a/<!! (qp.async/result-metadata-for-query-async query))]
-                    (db/update! 'Card id :result_metadata metadata)))]
+                    (t2/update! 'Card id {:result_metadata metadata})))]
     ;; 4 seconds is long but redshift can be a little slow
     (when (= ::timed-out (mt/wait-for-result updater 4000 ::timed-out))
       (throw (ex-info "Query metadata not set in time for querying against model"

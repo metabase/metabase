@@ -109,13 +109,13 @@
 (defn clear-advanced-field-values-for-field!
   "Remove all advanced FieldValues for a `field-or-id`."
   [field-or-id]
-  (db/delete! FieldValues :field_id (u/the-id field-or-id)
+  (t2/delete! FieldValues :field_id (u/the-id field-or-id)
                           :type     [:in advanced-field-values-types]))
 
 (defn clear-field-values-for-field!
   "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
   [field-or-id]
-  (db/delete! FieldValues :field_id (u/the-id field-or-id)))
+  (t2/delete! FieldValues :field_id (u/the-id field-or-id)))
 
 (defn- pre-insert [{:keys [field_id] :as field-values}]
   (u/prog1 (merge {:type :full}
@@ -348,7 +348,7 @@
         (log/info (trs "Field {0} was previously automatically set to show a list widget, but now has {1} values."
                        field-name (count values))
                   (trs "Switching Field to use a search widget instead."))
-        (db/update! 'Field (u/the-id field) :has_field_values nil)
+        (t2/update! 'Field (u/the-id field) {:has_field_values nil})
         (clear-field-values-for-field! field)
         ::fv-deleted)
 
@@ -372,12 +372,12 @@
       values
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
-        (db/insert! FieldValues
-          :type :full
-          :field_id              (u/the-id field)
-          :has_more_values       has_more_values
-          :values                values
-          :human_readable_values human-readable-values)
+        (t2/insert! FieldValues
+                    :type :full
+                    :field_id              (u/the-id field)
+                    :has_more_values       has_more_values
+                    :values                values
+                    :human_readable_values human-readable-values)
         ::fv-created)
 
       ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
@@ -404,10 +404,10 @@
 
           (do
             (when existing
-              (db/update! FieldValues (:id existing) :last_used_at :%now))
+              (t2/update! FieldValues (:id existing) {:last_used_at :%now}))
             (t2/select-one FieldValues :field_id field-id :type :full)))
         (do
-          (db/update! FieldValues (:id existing) :last_used_at :%now)
+          (t2/update! FieldValues (:id existing) {:last_used_at :%now})
           existing)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -421,9 +421,9 @@
   [table-ids]
   (let [table-ids            (set table-ids)
         table-id->db-id      (when (seq table-ids)
-                               (db/select-id->field :db_id 'Table :id [:in table-ids]))
+                               (t2/select-pk->fn :db_id 'Table :id [:in table-ids]))
         db-id->is-on-demand? (when (seq table-id->db-id)
-                               (db/select-id->field :is_on_demand 'Database
+                               (t2/select-pk->fn :is_on_demand 'Database
                                  :id [:in (set (vals table-id->db-id))]))]
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
@@ -434,7 +434,7 @@
   [field-ids]
   (let [fields (when (seq field-ids)
                  (filter field-should-have-field-values?
-                         (db/select ['Field :name :id :base_type :effective_type :coercion_strategy
+                         (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
                                      :semantic_type :visibility_type :table_id :has_field_values]
                            :id [:in field-ids])))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]

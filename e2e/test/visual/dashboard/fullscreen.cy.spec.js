@@ -14,15 +14,17 @@ const filter = {
   type: "category",
 };
 
+const dashboardDetails = {
+  parameters: [filter],
+};
+
 describe("visual tests > dashboard > fullscreen", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({ questionDetails }).then(
+    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
-        cy.addFilterToDashboard({ filter, dashboard_id });
-
         // Connect filter to the card
         cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
           cards: [

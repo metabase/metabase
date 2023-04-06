@@ -22,7 +22,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :as hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -159,7 +158,7 @@
              (mt/user-http-request :rasta :get 403 "user", :status "all"))))
 
     (testing "Pagination gets the total users _in query_"
-      (is (= (db/count User)
+      (is (= (t2/count User)
              ((mt/user-http-request :crowberto :get 200 "user" :status "all") :total))))
     (testing "for admins, it should include those inactive users as we'd expect"
       (is (= (->> [{:email                  "trashbird@metabase.com"
@@ -247,7 +246,7 @@
       (is (= (mt/user-http-request :crowberto :get 200 "user" :limit "50" :offset "1")
              (mt/user-http-request :crowberto :get 200 "user" :offset "1"))))
     (testing "Limit and offset pagination get the total"
-      (is (= (db/count User :is_active true)
+      (is (= (t2/count User :is_active true)
              ((mt/user-http-request :crowberto :get 200 "user" :offset "1" :limit "1") :total))))
     (testing "Limit and offset pagination works for user list"
       (let [first-three-users (:data (mt/user-http-request :rasta :get 200 "user" :limit "3", :offset "0"))]
@@ -401,7 +400,7 @@
   (let [email (mt/random-email)]
     (try
       (f email)
-      (finally (db/delete! User :email email)))))
+      (finally (t2/delete! User :email email)))))
 
 (defmacro ^:private with-temp-user-email [[email-binding] & body]
   `(do-with-temp-user-email (fn [~email-binding] ~@body)))
@@ -432,11 +431,11 @@
                                  :email                  email
                                  :user_group_memberships (group-or-ids->user-group-memberships [group])})
           (is (= false
-                 (db/exists? User :%lower.email (u/lower-case-en email)))))))))
+                 (t2/exists? User :%lower.email (u/lower-case-en email)))))))))
 
 (defn- superuser-and-admin-pgm-info [email]
   {:is-superuser? (t2/select-one-fn :is_superuser User :%lower.email (u/lower-case-en email))
-   :pgm-exists?   (db/exists? PermissionsGroupMembership
+   :pgm-exists?   (t2/exists? PermissionsGroupMembership
                     :user_id  (t2/select-one-pk User :%lower.email (u/lower-case-en email))
                     :group_id (u/the-id (perms-group/admin)))})
 
@@ -481,7 +480,7 @@
                                                    :login_attributes {:test "value"}}))
                            (finally
                              ;; clean up after ourselves
-                             (db/delete! User :email email)))))))))
+                             (t2/delete! User :email email)))))))))
 
     (testing "attempting to create a new user with an email with case mutations of an existing email should fail"
       (is (= {:errors {:email "Email address already in use."}}
@@ -918,8 +917,8 @@
       (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
                                          google-auth-enabled    true]
         (mt/with-temp User [user {:google_auth true}]
-          (db/update! User (u/the-id user)
-            :is_active false)
+          (t2/update! User (u/the-id user)
+                      {:is_active false})
           (mt/with-temporary-setting-values [google-auth-enabled false]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :google_auth false}

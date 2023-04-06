@@ -18,7 +18,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
 
@@ -43,7 +42,7 @@
                                                                        collection-id))))))))
 
 (defn- clear-graph-revisions! []
-  (db/delete! CollectionPermissionGraphRevision))
+  (t2/delete! CollectionPermissionGraphRevision))
 
 (defn- only-groups
   "Remove entries for non-'magic' groups from a fetched perms `graph`."
@@ -430,5 +429,5 @@
 (deftest mega-graph-test
   (testing "A truly insane amount of Personal Collections shouldn't cause a Stack Overflow (#13211)"
     (with-n-temp-users-with-personal-collections 2000
-      (is (>= (db/count Collection :personal_owner_id [:not= nil]) 2000))
+      (is (>= (t2/count Collection :personal_owner_id [:not= nil]) 2000))
       (is (map? (graph/graph))))))

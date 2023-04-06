@@ -36,7 +36,7 @@ export function openNativeEditor({
 
   databaseName && cy.findByText(databaseName).click();
 
-  return cy.get(".ace_content").as(alias).should("be.visible");
+  return cy.findByTestId("native-query-editor").as(alias).should("be.visible");
 }
 
 /**
@@ -137,7 +137,7 @@ export function visitQuestion(id) {
  *
  * @param {number} dashboard_id
  */
-export function visitDashboard(dashboard_id) {
+export function visitDashboard(dashboard_id, { params = {} } = {}) {
   // Some users will not have permissions for this request
   cy.request({
     method: "GET",
@@ -172,7 +172,10 @@ export function visitDashboard(dashboard_id) {
         },
       );
 
-      cy.visit(`/dashboard/${dashboard_id}`);
+      cy.visit({
+        url: `/dashboard/${dashboard_id}`,
+        qs: params,
+      });
 
       cy.wait(aliases);
     } else {
@@ -253,11 +256,14 @@ export function visitPublicQuestion(id) {
   );
 }
 
-export function visitPublicDashboard(id) {
+export function visitPublicDashboard(id, { params = {} } = {}) {
   cy.request("POST", `/api/dashboard/${id}/public_link`).then(
     ({ body: { uuid } }) => {
       cy.signOut();
-      cy.visit(`/public/dashboard/${uuid}`);
+      cy.visit({
+        url: `/public/dashboard/${uuid}`,
+        qs: params,
+      });
     },
   );
 }
@@ -270,5 +276,5 @@ export function visitPublicDashboard(id) {
  * cy.findByText(getBrokenUpTextMatcher("my text with a styled word"))
  */
 export function getBrokenUpTextMatcher(textToFind) {
-  return (content, element) => element?.textContent === textToFind
+  return (content, element) => element?.textContent === textToFind;
 }

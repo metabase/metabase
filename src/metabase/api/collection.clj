@@ -35,7 +35,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -76,7 +75,7 @@
    namespace (s/maybe su/NonBlankString)}
   (let [archived? (Boolean/parseBoolean archived)
         exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)]
-    (as-> (db/select Collection
+    (as-> (t2/select Collection
             {:where    [:and
                         [:= :archived archived?]
                         [:= :namespace namespace]
@@ -139,7 +138,7 @@
                                                           :from            [:report_card]
                                                           :where           [:= :archived false]}))
         colls (cond->>
-                (db/select Collection
+                (t2/select Collection
                   {:where [:and
                            (when exclude-archived?
                              [:= :archived false])
@@ -166,7 +165,7 @@
                                                                                :from            [:report_card]
                                                                                :where           [:= :archived false]}))
            colls                           (cond->>
-                                             (db/select Collection
+                                             (t2/select Collection
                                                {:where [:and
                                                         (when exclude-archived?
                                                           [:= :archived false])
@@ -833,15 +832,17 @@
   ;; Now create the new Collection :)
   (api/check-403 (or (nil? authority_level)
                      (and api/*is-superuser?* authority_level)))
-  (db/insert! Collection
-    (merge
-     {:name        name
-      :color       color
-      :description description
-      :authority_level authority_level
-      :namespace   namespace}
-     (when parent_id
-       {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))}))))
+  (first
+    (t2/insert-returning-instances!
+      Collection
+      (merge
+        {:name        name
+         :color       color
+         :description description
+         :authority_level authority_level
+         :namespace   namespace}
+        (when parent_id
+          {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -899,7 +900,7 @@
   [collection-before-update collection-updates]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
     (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
-                            {:card-ids (db/select-ids Card :collection_id (u/the-id collection-before-update))}))]
+                            {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
       (api.card/delete-alert-and-notify-archived! alerts))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -927,7 +928,7 @@
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :authority_level])]
       (when (seq updates)
-        (db/update! Collection id updates)))
+        (t2/update! Collection id updates)))
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
     (move-collection-if-needed! collection-before-update collection-updates)
     ;; if we *did* end up archiving this Collection, we most post a few notifications

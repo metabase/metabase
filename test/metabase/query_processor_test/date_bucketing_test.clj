@@ -35,7 +35,6 @@
    [metabase.util.regex :as u.regex]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import [java.time LocalDate LocalDateTime]))
 
@@ -952,7 +951,7 @@
     (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
       (binding [*recreate-db-if-stale?* false]
         (log/infof "DB for %s is stale! Deleteing and running test again\n" dataset)
-        (db/delete! Database :id (mt/id))
+        (t2/delete! Database :id (mt/id))
         (apply count-of-grouping dataset field-grouping relative-datetime-args))
       (let [results (mt/run-mbql-query checkins
                       {:aggregation [[:count]]

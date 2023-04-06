@@ -139,10 +139,4 @@ If you're running Docker, the command would be:
 docker run --rm metabase/metabase migrate down
 ```
 
-The default is to migrate down by one major version, but you can also specify a major version (as an integer) to downgrade to:
-
-```
-java -jar metabase.jar migrate down 44
-```
-
 Once the migration process completes, start up Metabase using the JAR or Docker image for the version you want to run.

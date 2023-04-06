@@ -76,8 +76,10 @@ const AuditDrill = ({ question, clicked }) => {
           name: "detail",
           title: `View this`,
           default: true,
-          url() {
-            return `/admin/audit/query/${encodeURIComponent(String(value))}`;
+          action() {
+            return push(
+              `/admin/audit/query/${encodeURIComponent(String(value))}`,
+            );
           },
         },
       ];

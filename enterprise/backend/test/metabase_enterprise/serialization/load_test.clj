@@ -36,7 +36,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (org.apache.commons.io FileUtils)))
@@ -58,7 +57,7 @@
   (into {} (for [model [Database Table Field Metric Segment Collection Dashboard DashboardCard Pulse
                         Card DashboardCardSeries FieldValues Dimension PulseCard PulseChannel User
                         NativeQuerySnippet]]
-             [model (db/select-field :id model)])))
+             [model (t2/select-fn-set :id model)])))
 
 (defmacro with-world-cleanup
   [& body]
@@ -70,7 +69,7 @@
            (some->> ids#
                     not-empty
                     (vector :in)
-                    (db/delete! model# :id)))))))
+                    (t2/delete! model# :id)))))))
 
 (defn- card-query-results [card]
   (let [query (:dataset_query card)]
@@ -218,8 +217,8 @@
   [dashboard _]
   (testing "The dashboard card series were loaded correctly"
     (when (= "My Dashboard" (:name dashboard))
-      (doseq [dashcard (db/select DashboardCard :dashboard_id (u/the-id dashboard))]
-        (doseq [series (db/select DashboardCardSeries :dashboardcard_id (u/the-id dashcard))]
+      (doseq [dashcard (t2/select DashboardCard :dashboard_id (u/the-id dashboard))]
+        (doseq [series (t2/select DashboardCardSeries :dashboardcard_id (u/the-id dashcard))]
           ;; check that the linked :card_id matches the expected name for each in the series
           ;; based on the entities declared in test_util.clj
           (let [series-pos    (:position series)
@@ -274,7 +273,7 @@
 (defmethod assert-loaded-entity Pulse
   [pulse _]
   (is (some? pulse))
-  (let [pulse-cards (db/select PulseCard :pulse_id (u/the-id pulse))]
+  (let [pulse-cards (t2/select PulseCard :pulse_id (u/the-id pulse))]
     (is (= 2 (count pulse-cards)))
     (is (= #{ts/root-card-name "My Card"}
            (into #{} (map (partial t2/select-one-fn :name Card :id) (map :card_id pulse-cards)))))))

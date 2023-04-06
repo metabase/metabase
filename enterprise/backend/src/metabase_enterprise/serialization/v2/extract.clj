@@ -24,7 +24,7 @@
   (b) owned by this user (when user ID is non-nil); or
   (c) descended from one of the above."
   [user-or-nil]
-  (let [roots    (db/select ['Collection :id :location :personal_owner_id] :location "/")
+  (let [roots    (t2/select ['Collection :id :location :personal_owner_id] :location "/")
         unowned  (remove :personal_owner_id roots)
         owned    (when user-or-nil
                    (filter #(= user-or-nil (:personal_owner_id %)) roots))
@@ -83,20 +83,20 @@
   Returns a data structure detailing the gaps. Use [[escape-report]] to output this data in a human-friendly format.
   Returns nil if there are no escaped values, which is useful for a test."
   [collection-ids]
-  (let [collection-set (->> (db/select Collection :id [:in (set collection-ids)])
+  (let [collection-set (->> (t2/select Collection :id [:in (set collection-ids)])
                             (mapcat metabase.models.collection/descendant-ids)
                             set
                             (set/union (set collection-ids)))
-        dashboards     (db/select Dashboard :collection_id [:in collection-set])
+        dashboards     (t2/select Dashboard :collection_id [:in collection-set])
         ;; All cards that are in this collection set.
         cards          (reduce set/union (for [coll-id collection-set]
-                                           (db/select-ids Card :collection_id coll-id)))
+                                           (t2/select-pks-set Card :collection_id coll-id)))
 
         ;; Map of {dashboard-id #{DashboardCard}} for dashcards whose cards OR parameter-bound cards are outside the
         ;; transitive collection set.
         escaped-dashcards  (into {}
                                  (for [dash  dashboards
-                                       :let [dcs (db/select DashboardCard :dashboard_id (:id dash))
+                                       :let [dcs (t2/select DashboardCard :dashboard_id (:id dash))
                                              escapees (->> dcs
                                                            (keep :card_id) ; Text cards have a nil card_id
                                                            set)

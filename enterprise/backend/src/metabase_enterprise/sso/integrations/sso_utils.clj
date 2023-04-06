@@ -1,9 +1,9 @@
 (ns metabase-enterprise.sso.integrations.sso-utils
   "Functions shared by the various SSO implementations"
   (:require
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.email.messages :as messages]
+   [metabase.integrations.common :as integrations.common]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
@@ -11,7 +11,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.net MalformedURLException URL URLDecoder)
@@ -33,10 +32,10 @@
   to refactor the `core_user` table structure and the function used to populate it so that the enterprise product can
   reuse it"
   [user :- UserAttributes]
-  (u/prog1 (db/insert! User (merge user {:password (str (UUID/randomUUID))}))
+  (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (UUID/randomUUID))})))
     (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))
     ;; send an email to everyone including the site admin if that's set
-    (when (sso-settings/send-new-sso-user-admin-email?)
+    (when (integrations.common/send-new-sso-user-admin-email?)
       (messages/send-user-joined-admin-notification-email! <>, :google-auth? true))))
 
 (defn fetch-and-update-login-attributes!
@@ -50,7 +49,7 @@
       (if (= (select-keys user user-keys) user-data)
         user
         (do
-          (db/update! User id user-data)
+          (t2/update! User id user-data)
           (t2/select-one User :id id))))))
 
 (defn check-sso-redirect

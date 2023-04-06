@@ -620,7 +620,7 @@ describe("Question", () => {
             filter: [
               "and",
               ["=", ["field", ORDERS.ID.id, null], 1],
-              [">", ORDERS.TOTAL.id, 50],
+              [">", ["field", ORDERS.TOTAL.id, null], 50],
             ],
           },
         });
@@ -645,7 +645,7 @@ describe("Question", () => {
             filter: [
               "and",
               ["=", ["field", ORDERS.ID.id, null], 1],
-              [">", ORDERS.TOTAL.id, 20],
+              [">", ["field", ORDERS.TOTAL.id, null], 20],
             ],
           },
         });
@@ -1570,19 +1570,14 @@ describe("Question", () => {
   });
 
   describe("Question.generateQueryDescription", () => {
-    const mockTableMetadata = {
-      display_name: "Order",
-      fields: [{ id: 1, display_name: "Total" }],
-    };
-
     it("should work with multiple aggregations", () => {
       const question = base_question.setDatasetQuery({
         query: {
           "source-table": ORDERS.id,
-          aggregation: [["count"], ["sum", ["field", 1, null]]],
+          aggregation: [["count"], ["sum", ["field", 6, null]]],
         },
       });
-      expect(question.generateQueryDescription(mockTableMetadata)).toEqual(
+      expect(question.generateQueryDescription()).toEqual(
         "Orders, Count and Sum of Total",
       );
     });
@@ -1600,50 +1595,7 @@ describe("Question", () => {
           ],
         },
       });
-      expect(question.generateQueryDescription(mockTableMetadata)).toEqual(
-        "Orders, Revenue",
-      );
-    });
-  });
-
-  describe("Question._getOrderByDescription", () => {
-    it("should work with fields", () => {
-      const query = {
-        "source-table": PRODUCTS.id,
-        "order-by": [["asc", ["field", PRODUCTS.CATEGORY.id, null]]],
-      };
-
-      expect(base_question._getOrderByDescription(PRODUCTS, query)).toEqual([
-        "Sorted by ",
-        ["Category ascending"],
-      ]);
-    });
-
-    it("should work with aggregations", () => {
-      const query = {
-        "source-table": PRODUCTS.id,
-        aggregation: [["count"]],
-        breakout: [["field", PRODUCTS.CATEGORY.id, null]],
-        "order-by": [["asc", ["aggregation", 0, null]]],
-      };
-      expect(base_question._getOrderByDescription(PRODUCTS, query)).toEqual([
-        "Sorted by ",
-        ["Count ascending"],
-      ]);
-    });
-
-    it("should work with expressions", () => {
-      const query = {
-        "source-table": PRODUCTS.id,
-        expressions: {
-          Foo: ["concat", "Foo ", ["field", 4, null]],
-        },
-        "order-by": [["asc", ["expression", "Foo", null]]],
-      };
-      expect(base_question._getOrderByDescription(PRODUCTS, query)).toEqual([
-        "Sorted by ",
-        ["Foo ascending"],
-      ]);
+      expect(question.generateQueryDescription()).toEqual("Orders, Revenue");
     });
   });
 });

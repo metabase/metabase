@@ -42,8 +42,27 @@
   that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want
   to differentiate between the two versions."
   [:map
-   [:lib/type [:= :metadata/field]]
+   [:lib/type [:= :metadata/field]] ; TODO -- should this be changed to `:metadata/column`?
    [:id {:optional true} ::lib.schema.id/field]
+   [:name ::lib.schema.common/non-blank-string]
+   [:display_name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+
+(def ^:private CardMetadata
+  [:map
+   [:lib/type [:= :metadata/card]]
+   [:id ::lib.schema.id/card]
+   [:name ::lib.schema.common/non-blank-string]])
+
+(def ^:private SegmentMetadata
+  [:map
+   [:lib/type [:= :metadata/segment]]
+   [:id ::lib.schema.id/segment]
+   [:name ::lib.schema.common/non-blank-string]])
+
+(def ^:private MetricMetadata
+  [:map
+   [:lib/type [:= :metadata/metric]]
+   [:id ::lib.schema.id/metric]
    [:name ::lib.schema.common/non-blank-string]])
 
 (def ^:private TableMetadata
@@ -51,10 +70,13 @@
    [:lib/type [:= :metadata/table]]
    [:id ::lib.schema.id/table]
    [:name ::lib.schema.common/non-blank-string]
-   [:schema {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   ;; This is now optional! If the [[DatabaseMetadataProvider]] provides it, great, but if not we can always make the
+   [:display_name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:schema       {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   ;; This is now optional! If the [[MetadataProvider]] provides it, great, but if not we can always make the
    ;; subsequent request to fetch fields separately.
-   [:fields {:optional true} [:sequential ColumnMetadata]]])
+   [:fields   {:optional true} [:maybe [:sequential ColumnMetadata]]]
+   [:segments {:optional true} [:maybe [:sequential SegmentMetadata]]]
+   [:metrics  {:optional true} [:maybe [:sequential MetricMetadata]]]])
 
 (def DatabaseMetadata
   "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
@@ -65,46 +87,43 @@
    ;; Like `:fields` for [[TableMetadata]], this is now optional -- we can fetch the Tables separately if needed.
    [:tables {:optional true} [:sequential TableMetadata]]])
 
-(def DatabaseMetadataProvider
-  "Schema for something that satisfies the [[lib.metadata.protocols/DatabaseMetadataProvider]] protocol."
-  [:fn lib.metadata.protocols/database-metadata-provider?])
+(def MetadataProvider
+  "Schema for something that satisfies the [[lib.metadata.protocols/MetadataProvider]] protocol."
+  [:fn lib.metadata.protocols/metadata-provider?])
 
-(defmulti ^:private ->database-metadata-provider*
+(defmulti ^:private ->metadata-provider*
   {:arglists '([x])}
   lib.dispatch/dispatch-value)
 
-(defmethod ->database-metadata-provider* :default
+(defmethod ->metadata-provider* :default
   [x]
   x)
 
-(defmethod ->database-metadata-provider* :mbql/query
+(defmethod ->metadata-provider* :mbql/query
   [query]
-  (->database-metadata-provider* (:lib/metadata query)))
+  (->metadata-provider* (:lib/metadata query)))
 
-(mu/defn ^:private ->database-metadata-provider :- DatabaseMetadataProvider
+(mu/defn ^:private ->metadata-provider :- MetadataProvider
   [x :- some?]
-  (if (lib.metadata.protocols/database-metadata-provider? x)
+  (if (lib.metadata.protocols/metadata-provider? x)
     x
-    (->database-metadata-provider* x)))
+    (->metadata-provider* x)))
 
 (mu/defn database :- DatabaseMetadata
   "Get metadata about the Database we're querying."
   [metadata-provider]
-  (lib.metadata.protocols/database (->database-metadata-provider metadata-provider)))
+  (lib.metadata.protocols/database (->metadata-provider metadata-provider)))
 
 (mu/defn tables :- [:sequential TableMetadata]
   "Get metadata about all Tables for the Database we're querying."
   [metadata-provider]
-  (lib.metadata.protocols/tables (->database-metadata-provider metadata-provider)))
+  (lib.metadata.protocols/tables (->metadata-provider metadata-provider)))
 
 (mu/defn table :- TableMetadata
   "Find metadata for a specific Table, either by string `table-name`, and optionally `schema`, or by ID."
   ([metadata-provider
     table-id          :- ::lib.schema.id/table]
-   (some (fn [table-metadata]
-           (when (= (:id table-metadata) table-id)
-             table-metadata))
-         (tables metadata-provider)))
+   (lib.metadata.protocols/table (->metadata-provider metadata-provider) table-id))
 
   ([metadata-provider
     table-schema      :- [:maybe ::lib.schema.common/non-blank-string]
@@ -120,7 +139,7 @@
   "Get metadata about all the Fields belonging to a specific Table."
   ([metadata-provider
     table-id          :- ::lib.schema.id/table]
-   (lib.metadata.protocols/fields (->database-metadata-provider metadata-provider) table-id))
+   (lib.metadata.protocols/fields (->metadata-provider metadata-provider) table-id))
 
   ([metadata-provider
     table-schema      :- [:maybe ::lib.schema.common/non-blank-string]
@@ -132,12 +151,7 @@
   "Get metadata about a specific Field in the Database we're querying."
   ([metadata-provider
     field-id          :- ::lib.schema.id/field]
-   (some (fn [table-metadata]
-           (some (fn [field-metadata]
-                   (when (= (:id field-metadata) field-id)
-                     field-metadata))
-                 (fields metadata-provider (:id table-metadata))))
-         (tables metadata-provider)))
+   (lib.metadata.protocols/field (->metadata-provider metadata-provider) field-id))
 
   ;; TODO -- we need to figure out how to deal with nested fields... should field-name be a varargs thing?
   ([metadata-provider
@@ -223,3 +237,21 @@
            (when (= (:name column) column-name)
              column))
          (:columns (stage query stage-number)))))
+
+(mu/defn card :- [:maybe CardMetadata]
+  "Get metadata for a Card, aka Saved Question, with `card-id`, if it can be found."
+  [metadata-provider
+   card-id :- ::lib.schema.id/card]
+  (lib.metadata.protocols/card (->metadata-provider metadata-provider) card-id))
+
+(mu/defn segment :- [:maybe SegmentMetadata]
+  "Get metadata for the Segment with `segment-id`, if it can be found."
+  [metadata-provider
+   segment-id :- ::lib.schema.id/segment]
+  (lib.metadata.protocols/segment (->metadata-provider metadata-provider) segment-id))
+
+(mu/defn metric :- [:maybe MetricMetadata]
+  "Get metadata for the Metric with `metric-id`, if it can be found."
+  [metadata-provider
+   metric-id :- ::lib.schema.id/metric]
+  (lib.metadata.protocols/metric (->metadata-provider metadata-provider) metric-id))

@@ -244,7 +244,7 @@ export type Join = {
   fields?: JoinFields;
 };
 
-export type LimitClause = number;
+type LimitClause = number;
 
 export type Field = ConcreteField | AggregateField;
 

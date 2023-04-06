@@ -13,7 +13,7 @@
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]
    [talltale.core :as tt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -387,10 +387,10 @@
       (rs/visit-ents-once
        :insert! (fn [sm-db {:keys [schema-opts attrs] :as visit-opts}]
                   (try
-                    (db/insert! (:model schema-opts)
-                                (rsg/spec-gen-assoc-relations
-                                 sm-db
-                                 (assoc visit-opts :visit-val (:spec-gen attrs))))
+                    (first (t2/insert-returning-instances! (:model schema-opts)
+                                                           (rsg/spec-gen-assoc-relations
+                                                             sm-db
+                                                             (assoc visit-opts :visit-val (:spec-gen attrs)))))
                     (catch Throwable e
                       (log/error e)))))
       (rs/attr-map :insert!)))

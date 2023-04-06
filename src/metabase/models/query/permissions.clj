@@ -15,7 +15,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
@@ -83,7 +82,7 @@
            native-perms-fn]} :- PermsOptions]
   (let [table-ids           (filter integer? tables-or-ids)
         table-id->schema    (when (seq table-ids)
-                              (db/select-id->field :schema Table :id [:in table-ids]))
+                              (t2/select-pk->fn :schema Table :id [:in table-ids]))
         table-or-id->schema #(if (integer? %)
                                (table-id->schema %)
                                (:schema %))

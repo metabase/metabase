@@ -24,7 +24,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -41,14 +40,14 @@
   :dashboard_count
   "Return the number of Dashboards this Card is in."
   [{:keys [id]}]
-  (db/count 'DashboardCard, :card_id id))
+  (t2/count 'DashboardCard, :card_id id))
 
 (mi/define-simple-hydration-method parameter-usage-count
   :parameter_usage_count
   "Return the number of dashboard/card filters and other widgets that use this card to populate their available
   values (via ParameterCards)"
   [{:keys [id]}]
-  (db/count ParameterCard, :card_id id))
+  (t2/count ParameterCard, :card_id id))
 
 (mi/define-simple-hydration-method average-query-time
   :average_query_time
@@ -282,7 +281,7 @@
   - card is archived
   - card.result_metadata changes and the parameter values source field can't be found anymore"
   [{id :id, :as changes}]
-  (let [parameter-cards   (db/select ParameterCard :card_id id)]
+  (let [parameter-cards   (t2/select ParameterCard :card_id id)]
     (doseq [[[po-type po-id] param-cards]
             (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
       (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
@@ -313,7 +312,7 @@
                                     parameter))
                                 parameters)]
         (when-not (= parameters new-parameters)
-          (db/update! model po-id {:parameters new-parameters}))))))
+          (t2/update! model po-id {:parameters new-parameters}))))))
 
 (defn model-supports-implicit-actions?
   "A model with implicit action supported iff they are a raw table,
@@ -329,11 +328,11 @@
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
   [model-id]
-  (when-let [action-ids (t2/select-pks-set 'Action {:select [:action.id]
-                                                    :from   [:action]
-                                                    :join   [:implicit_action
-                                                             [:= :action.id :implicit_action.action_id]]
-                                                    :where  [:= :action.model_id model-id]})]
+  (when-let [action-ids (t2/select-pks-set  'Action {:select [:action.id]
+                                                     :from   [:action]
+                                                     :join   [:implicit_action
+                                                              [:= :action.id :implicit_action.action_id]]
+                                                     :where  [:= :action.model_id model-id]})]
     (t2/delete! 'Action :id [:in action-ids])))
 
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
@@ -347,7 +346,7 @@
                           (t2/select-one [Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
       (when archived?
-        (db/delete! 'DashboardCard :card_id id))
+        (t2/delete! 'DashboardCard :card_id id))
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (get-in changes [:dataset_query :native])
@@ -391,9 +390,9 @@
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
-  (db/delete! ParameterCard :card_id id)
-  (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (db/delete! 'Revision :model "Card", :model_id id))
+  (t2/delete! ParameterCard :card_id id)
+  (t2/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
+  (t2/delete! 'Revision :model "Card", :model_id id))
 
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."

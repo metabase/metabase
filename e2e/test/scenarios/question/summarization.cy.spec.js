@@ -71,7 +71,7 @@ describe("scenarios > question > summarize sidebar", () => {
     });
   });
 
-  it("selected dimensions from another table includes the table name when becomes pinned to the top", () => {
+  it("selected dimensions from another table includes the table alias when becomes pinned to the top", () => {
     getDimensionByName({ name: "State" }).click();
 
     cy.button("Done").click();
@@ -79,16 +79,16 @@ describe("scenarios > question > summarize sidebar", () => {
     summarize();
 
     cy.findByTestId("pinned-dimensions").within(() => {
-      getDimensionByName({ name: "People → State" }).should(
+      getDimensionByName({ name: "User → State" }).should(
         "have.attr",
         "aria-selected",
         "true",
       );
     });
 
-    getRemoveDimensionButton({ name: "People → State" }).click();
+    getRemoveDimensionButton({ name: "User → State" }).click();
 
-    cy.findByText("People → State").should("not.exist");
+    cy.findByText("User → State").should("not.exist");
   });
 
   it("selecting a binning adds a dimension", () => {
@@ -165,7 +165,7 @@ describe("scenarios > question > summarize sidebar", () => {
     popover().contains("Custom Expression").click();
     popover().within(() => {
       enterCustomColumnDetails({ formula: "2 * Max([Total])" });
-      cy.findByPlaceholderText("Name (required)").type("twice max total");
+      cy.findByPlaceholderText("Something nice and descriptive").type("twice max total");
       cy.findByText("Done").click();
     });
 
@@ -174,19 +174,24 @@ describe("scenarios > question > summarize sidebar", () => {
     cy.findByText("318.7");
   });
 
-  it.skip("should keep manually entered parenthesis intact (metabase#13306)", () => {
-    const FORMULA =
-      "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))";
-
+  it("should keep manually entered parenthesis intact if they affect the result (metabase#13306)", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
+
     popover().contains("Custom Expression").click();
     popover().within(() => {
-      cy.get(".ace_text-input").type(FORMULA).blur();
+      enterCustomColumnDetails({
+        formula:
+          "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
+      });
+      cy.get("@formula").blur();
+    });
 
-      cy.log("Fails after blur in v0.36.6");
-      // Implicit assertion
-      cy.contains(FORMULA);
+    popover().within(() => {
+      cy.get(".ace_text-layer").should(
+        "have.text",
+        "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))",
+      );
     });
   });
 
@@ -201,7 +206,7 @@ describe("scenarios > question > summarize sidebar", () => {
       "**The point of failure for ANY non-numeric value reported in v0.36.4**",
     );
     // the default type for "Reviewer" is "No semantic type"
-    popover().within(() => {
+    cy.findByTestId("expression-suggestions-list").within(() => {
       cy.contains("Reviewer");
     });
   });

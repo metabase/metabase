@@ -1,11 +1,8 @@
 (ns metabase.lib.metadata.protocols
   (:require
-   [metabase.shared.util.i18n :as i18n]
-   #?@(:clj
-       ([potemkin :as p]
-        [pretty.core :as pretty]))))
+   #?@(:clj ([potemkin :as p]))))
 
-(#?(:clj p/defprotocol+ :cljs defprotocol) DatabaseMetadataProvider
+(#?(:clj p/defprotocol+ :cljs defprotocol) MetadataProvider
   "Protocol for something that we can get information about Tables and Fields from. This can be provided in various ways
   various ways:
 
@@ -21,57 +18,80 @@
 
   This protocol is pretty limited at this point; in the future, we'll probably want to add:
 
-  - methods to facilitate more fine-grained access in the future, such as methods that let us fetch more limited info
-    about a large number of objects, then other methods to let you fetch more complete information for a single object
-    once you make a selection. E.g. the first method might be used to power a list of Tables to choose from to join
-    against, then once you choose a Table we hit the second method to get more info about it
-
   - methods for searching for Tables or Fields matching some string
 
   - paging, so if you have 10k Tables we don't do crazy requests that fetch them all at once
 
-  But things like fine grained-access and search can be implemented with just the basic `tables` and `fields`
-  methods for the time being, so we don't need to figure out all of this stuff upfront."
-  (database [this]
+  For all of these methods: if no matching object can be found, you should generally return `nil` rather than throwing
+  an Exception. Let [[metabase.lib.metadata]] worry about throwing exceptions."
+  (database [metadata-provider]
     "Metadata about the Database we're querying. Should match the [[metabase.lib.metadata/DatabaseMetadata]] schema.
   This includes important info such as the supported `:features` and the like.")
-  (tables [this]
+
+  (table [metadata-provider table-id]
+    "Return metadata for a specific Table. Metadata should satisfy [[metabase.lib.metadata/TableMetadata]].")
+
+  (field [metadata-provider field-id]
+    "Return metadata for a specific Field. Metadata should satisfy [[metabase.lib.metadata/ColumnMetadata]].")
+
+  (card [metadata-provider card-id]
+    "Return information about a specific Saved Question, aka a Card. This should
+    match [[metabase.lib.metadata/CardMetadata]. Currently just used for display name purposes if you have a Card as a
+    source query.")
+
+  (metric [metadata-provider metric-id]
+    "Return metadata for a particular capital-M Metric, i.e. something from the `metric` table in the application
+    database. Metadata should match [[metabase.lib.metadata/MetricMetadata]].")
+
+  (segment [metadata-provider segment-id]
+    "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
+    database. Metadata should match [[metabase.lib.metadata/SegmentMetadata]]." )
+
+  ;; these methods are only needed for using the methods BUILDING queries, so they're sort of optional I guess? Things
+  ;; like the Query Processor, which is only manipulating already-built queries, shouldn't need to use these methods.
+  ;; I'm on the fence about maybe putting these in a different protocol. They're part of this protocol for now tho so
+  ;; implement them anyway.
+
+  (tables [metadata-provider]
     "Return a sequence of Tables in this Database. Tables should satisfy the [[metabase.lib.metadata/TableMetadata]]
   schema. This should also include things that serve as 'virtual' tables, e.g. Saved Questions or Models. But users of
   MLv2 should not need to know that! If we add support for Super Models or Quantum Questions in the future, they can
   just come back from this method in the same shape as everything else, the Query Builder can display them, and the
   internals can be tucked away here in MLv2.")
-  (fields [this table-id]
+
+  (fields [metadata-provider table-id]
     "Return a sequence of Fields associated with a Table with the given `table-id`. Fields should satisfy
   the [[metabase.lib.metadata/ColumnMetadata]] schema. If no such Table exists, this should error."))
 
-(defn database-metadata-provider?
-  "Whether `x` is a valid [[DatabaseMetadataProvider]]."
+(defn metadata-provider?
+  "Whether `x` is a valid [[MetadataProvider]]."
   [x]
-  (satisfies? DatabaseMetadataProvider x))
+  (satisfies? MetadataProvider x))
 
-(defrecord ^{:doc "A simple implementation of [[DatabaseMetadataProvider]] that returns data from a complete graph
-  e.g. the response provided by `GET /api/database/:id/metadata`."} SimpleGraphDatabaseMetadataProvider [metadata]
-  DatabaseMetadataProvider
-  (database [_this]
-    (dissoc metadata :tables))
+(#?(:clj p/defprotocol+ :cljs defprotocol) CachedMetadataProvider
+  "Optional. A protocol for a MetadataProvider that some sort of internal cache. This is mostly useful for MetadataProviders that
+  can hit some sort of relatively expensive external service,
+  e.g. [[metabase.lib.metadata.jvm/application-database-metadata-provider]].
 
-  (tables [_this]
-    (for [table (:tables metadata)]
-      (dissoc table :fields)))
+  See [[cached-metadata-provider]] below to wrap for a way to wrap an existing MetadataProvider to add caching on top
+  of it."
+  (cached-database [cached-metadata-provider]
+    "Get cached metadata for the query's Database.")
+  (cached-metadata [cached-metadata-provider metadata-type id]
+    "Get cached metadata of a specific type, e.g. `:metadata/table`.")
+  (store-database! [cached-metadata-provider database-metadata]
+    "Store metadata for the query's Database.")
+  (store-metadata! [cached-metadata-provider metadata-type id metadata]
+    "Store metadata of a specific type, e.g. `:metadata/table`."))
 
-  (fields [_this table-id]
-    (or (some (fn [table]
-                (when (= (:id table) table-id)
-                  (:fields table)))
-              (:tables metadata))
-        (throw (ex-info (i18n/tru "Cannot find Table {0}" (pr-str table-id))
-                        {:table-id     table-id
-                         :valid-tables (map #(select-keys % [:name :id])
-                                            (:tables metadata))}))))
-  #?@(:clj
-      [pretty/PrettyPrintable
-       (pretty [_this]
-               ;; don't actually print the whole thing because it's going to make my eyes bleed to see all
-               ;; of [[metabase.lib.test-metadata]] every single time a test fails
-               `SimpleGraphDatabaseMetadataProvider)]))
+(#?(:clj p/defprotocol+ :cljs defprotocol) BulkMetadataProvider
+  "A protocol for a MetadataProvider that can fetch several objects in a single batched operation. This is mostly
+  useful for MetadataProviders e.g. [[metabase.lib.metadata.jvm/application-database-metadata-provider]]."
+  (bulk-metadata [bulk-metadata-provider metadata-type ids]
+    "Fetch lots of metadata of a specific type, e.g. `:metadata/table`, in a single bulk operation."))
+
+(defn store-metadatas!
+  "Convenience. Store several metadata maps at once."
+  [cached-metadata-provider metadata-type metadatas]
+  (doseq [metadata metadatas]
+    (store-metadata! cached-metadata-provider metadata-type (:id metadata) metadata)))

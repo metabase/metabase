@@ -8,6 +8,8 @@ import {
   resetTestTable,
   resyncDatabase,
   getTableId,
+  visitPublicQuestion,
+  visitPublicDashboard,
 } from "e2e/support/helpers";
 
 import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -322,6 +324,50 @@ function changeSorting(columnName, direction) {
         cy.icon('chevrondown').click();
         cy.findAllByText("Horse").should('have.length', 2);
       });
+    });
+  });
+});
+
+describe(`Object Detail > public`, () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it('can view a public object detail question', () => {
+
+    cy.createQuestion({ ...TEST_QUESTION, display: 'object' }).then(
+      ({ body: { id: questionId } }) => {
+        visitPublicQuestion(questionId);
+      },
+    );
+    cy.icon('warning').should('not.exist');
+
+    cy.findByTestId('object-detail').within(() => {
+      cy.findByText('User ID').should('be.visible');
+      cy.findByText('1283').should('be.visible');
+    });
+
+    cy.findByTestId('pagination-footer').within(() => {
+      cy.findByText("Item 1 of 3").should('be.visible');
+    });
+  });
+
+  it('can view an object detail question on a public dashboard', () => {
+    cy.createQuestionAndDashboard({ questionDetails: { ...TEST_QUESTION, display: 'object' } }).then(
+      ({ body: { dashboard_id } }) => {
+        visitPublicDashboard(dashboard_id);
+      });
+
+    cy.icon('warning').should('not.exist');
+
+    cy.findByTestId('object-detail').within(() => {
+      cy.findByText('User ID').should('be.visible');
+      cy.findByText('1283').should('be.visible');
+    });
+
+    cy.findByTestId('pagination-footer').within(() => {
+      cy.findByText("Item 1 of 3").should('be.visible');
     });
   });
 });

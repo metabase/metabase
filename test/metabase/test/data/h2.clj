@@ -15,7 +15,7 @@
    [metabase.test.data.sql-jdbc.spec :as spec]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (sql-jdbc.tx/add-test-extensions! :h2)
 
@@ -30,7 +30,7 @@
     (locking h2-test-dbs-created-by-this-instance
       (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
         (mdb/setup-db!)                 ; if not already setup
-        (db/delete! Database :engine "h2", :name database-name)
+        (t2/delete! Database :engine "h2", :name database-name)
         (swap! h2-test-dbs-created-by-this-instance conj database-name)))))
 
 (defmethod data.impl/get-or-create-database! :h2

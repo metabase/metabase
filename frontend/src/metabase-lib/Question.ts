@@ -2,12 +2,10 @@
 // @ts-nocheck
 import _ from "underscore";
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
-import inflection from "inflection";
-import { t } from "ttag";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
-import { format as formatExpression } from "metabase-lib/expressions/format";
+import * as MLv2 from "cljs/metabase.lib.js";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/queries/StructuredQuery";
@@ -16,7 +14,7 @@ import NativeQuery, {
 } from "metabase-lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/queries/InternalQuery";
-import Query from "metabase-lib/queries/Query";
+import BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
@@ -27,8 +25,6 @@ import { memoizeClass, sortObject } from "metabase-lib/utils";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import * as FILTER from "metabase-lib/queries/utils/filter";
-import * as DESCRIPTION from "metabase-lib/queries/utils/description";
-import * as FIELD_REF from "metabase-lib/queries/utils/field-ref";
 import * as QUERY from "metabase-lib/queries/utils/query";
 
 // TODO: remove these dependencies
@@ -88,6 +84,8 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/Alert";
 import { getBaseDimensionReference } from "metabase-lib/references";
+
+import { Query } from "./types";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -234,7 +232,7 @@ class QuestionInner {
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
    */
-  setQuery(newQuery: Query): Question {
+  setQuery(newQuery: BaseQuery): Question {
     if (this._card.dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
@@ -1339,216 +1337,38 @@ class QuestionInner {
     return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
-  generateQueryDescription(tableMetadata, options = {}) {
-    if (!tableMetadata || (this.isNative() && !this.displayName())) {
-      return "";
+  _getMLv2Query(metadata = this._metadata): Query {
+    // cache the metadata provider we create for our metadata.
+    if (metadata === this._metadata) {
+      if (!this.__mlv2MetadataProvider) {
+        this.__mlv2MetadataProvider = MLv2.metadataProvider(
+          this.databaseId(),
+          metadata,
+        );
+      }
+      metadata = this.__mlv2MetadataProvider;
     }
 
-    options = {
-      sections: [
-        "table",
-        "aggregation",
-        "breakout",
-        "filter",
-        "order-by",
-        "limit",
-      ],
-      ...options,
-    };
+    if (this.__mlv2QueryMetadata !== metadata) {
+      this.__mlv2QueryMetadata = null;
+      this.__mlv2Query = null;
+    }
 
-    const sectionFns = {
-      table: this._getTableDescription.bind(this),
-      aggregation: this._getAggregationDescription.bind(this),
-      breakout: this._getBreakoutDescription.bind(this),
-      filter: this._getFilterDescription.bind(this),
-      "order-by": this._getOrderByDescription.bind(this),
-      limit: this._getLimitDescription.bind(this),
-    };
-
-    // these array gymnastics are needed to support JSX formatting
-    const query = this.datasetQuery().query;
-    const sections = options.sections
-      .map(section =>
-        _.flatten(sectionFns[section](tableMetadata, query, options)).filter(
-          s => !!s,
-        ),
-      )
-      .filter(s => s && s.length > 0);
-
-    const description = _.flatten(DESCRIPTION.joinList(sections, ", "));
-    return description.join("");
-  }
-
-  private _getFieldName(tableMetadata, field, options) {
-    try {
-      const target = FIELD_REF.getFieldTarget(field, tableMetadata);
-      const components = [];
-      if (target.path) {
-        for (const fieldDef of target.path) {
-          components.push(DESCRIPTION.formatField(fieldDef, options), " → ");
-        }
-      }
-      components.push(DESCRIPTION.formatField(target.field, options));
-      if (target.unit) {
-        components.push(` (${target.unit})`);
-      }
-      return components;
-    } catch (e) {
-      console.warn(
-        "Couldn't format field name for field",
-        field,
-        "in table",
-        tableMetadata,
+    if (!this.__mlv2Query) {
+      this.__mlv2QueryMetadata = metadata;
+      this.__mlv2Query = MLv2.query(
+        this.databaseId(),
+        metadata,
+        this.datasetQuery(),
       );
     }
-    // TODO: This is untranslated.
-    return "[Unknown Field]";
+
+    return this.__mlv2Query;
   }
 
-  private _getTableDescription(tableMetadata) {
-    return [inflection.pluralize(tableMetadata.display_name)];
-  }
-
-  private _getAggregationDescription(tableMetadata, query, options) {
-    return DESCRIPTION.conjunctList(
-      QUERY.getAggregations(query).map(aggregation => {
-        if (AGGREGATION.hasOptions(aggregation)) {
-          if (AGGREGATION.isNamed(aggregation)) {
-            return [AGGREGATION.getName(aggregation)];
-          }
-          aggregation = AGGREGATION.getContent(aggregation);
-        }
-        if (AGGREGATION.isMetric(aggregation)) {
-          const metric = _.findWhere(tableMetadata.metrics, {
-            id: AGGREGATION.getMetric(aggregation),
-          });
-          // TODO: This is untranslated.
-          return metric ? metric.name : "[Unknown Metric]";
-        }
-        switch (aggregation[0]) {
-          case "rows":
-            return [t`Raw data`];
-          case "count":
-            return [t`Count`];
-          case "cum-count":
-            return [t`Cumulative count`];
-          case "avg":
-            return [
-              t`Average of `,
-              this._getFieldName(tableMetadata, aggregation[1], options),
-            ];
-          case "median":
-            return [
-              t`Median of `,
-              this._getFieldName(tableMetadata, aggregation[1], options),
-            ];
-          case "distinct":
-            return [
-              t`Distinct values of `,
-              this._getFieldName(tableMetadata, aggregation[1], options),
-            ];
-          case "stddev":
-            return [
-              t`Standard deviation of `,
-              this._getFieldName(tableMetadata, aggregation[1], options),
-            ];
-          case "sum":
-            return [
-              t`Sum of `,
-              this._getFieldName(tableMetadata, aggregation[1], options),
-            ];
-          case "cum-sum":
-            return [
-              t`Cumulative sum of `,
-              this._getFieldName(tableMetadata, aggregation[1], options),
-            ];
-          case "max":
-            return [
-              t`Maximum of `,
-              this._getFieldName(tableMetadata, aggregation[1], options),
-            ];
-          case "min":
-            return [
-              t`Minimum of `,
-              this._getFieldName(tableMetadata, aggregation[1], options),
-            ];
-          default:
-            return [formatExpression(aggregation, { tableMetadata })];
-        }
-      }),
-      // TODO: This is untranslated. See if there's an i18n-friendly way to do a comma-separated list.
-      "and",
-    );
-  }
-
-  private _getBreakoutDescription(tableMetadata, { breakout }, options) {
-    if (breakout && breakout.length > 0) {
-      return [
-        t`Grouped by `,
-        DESCRIPTION.joinList(
-          breakout.map(b => this._getFieldName(tableMetadata, b, options)),
-          // TODO: This is untranslated. See if there's an i18n-friendly way to do a comma-separated list.
-          " and ",
-        ),
-      ];
-    }
-  }
-
-  private _getFilterDescription(tableMetadata, query, options) {
-    // getFilters returns list of filters without the implied "and"
-    // TODO: This is untranslated. See if there's an i18n-friendly way to do a comma-separated list.
-    const filters = ["and"].concat(QUERY.getFilters(query));
-    if (filters && filters.length > 1) {
-      return [
-        t`Filtered by `,
-        this._getFilterClauseDescription(tableMetadata, filters, options),
-      ];
-    }
-  }
-
-  private _getFilterClauseDescription(tableMetadata, filter, options) {
-    if (filter[0] === "and" || filter[0] === "or") {
-      const clauses = filter
-        .slice(1)
-        .map(f => this._getFilterClauseDescription(tableMetadata, f, options));
-      return DESCRIPTION.conjunctList(clauses, filter[0].toLowerCase());
-    } else if (filter[0] === "segment") {
-      const segment = _.findWhere(tableMetadata.segments, { id: filter[1] });
-      return segment ? segment.name : "[Unknown Segment]";
-    } else if (filter[0] === "between" && filter[1][0] === "+") {
-      return this._getFieldName(tableMetadata, filter[1][1], options);
-    } else {
-      return this._getFieldName(tableMetadata, filter[1], options);
-    }
-  }
-
-  private _getOrderByDescription(tableMetadata, query, options) {
-    const orderBy = query["order-by"];
-    if (orderBy && orderBy.length > 0) {
-      return [
-        t`Sorted by `,
-        DESCRIPTION.joinList(
-          orderBy.map(([direction, field]) => {
-            const name = FIELD_REF.isAggregateField(field)
-              ? this._getAggregationDescription(tableMetadata, query, options)
-              : this._getFieldName(tableMetadata, field, options);
-
-            return (
-              // TODO: This is untranslated.
-              name + " " + (direction === "asc" ? "ascending" : "descending")
-            );
-          }),
-          // TODO: This is untranslated. See if there's an i18n-friendly way to do lists.
-          " and ",
-        ),
-      ];
-    }
-  }
-
-  private _getLimitDescription(tableMetadata, { limit }) {
-    if (limit != null) {
-      return [limit, " ", inflection.inflect("row", limit)];
-    }
+  generateQueryDescription() {
+    const query = this._getMLv2Query();
+    return MLv2.suggestedName(query);
   }
 
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {

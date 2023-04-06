@@ -26,7 +26,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (clojure.lang PersistentList)
@@ -419,13 +418,13 @@
     (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
                     db-id))
     (try
-      (db/execute! {:update (t2/table-name MetabaseTable)
-                    :set    {:schema dataset-id}
-                    :where  [:and
-                             [:= :db_id db-id]
-                             [:or
-                              [:= :schema nil]
-                              [:not= :schema dataset-id]]]})
+      (t2/query-one {:update (t2/table-name MetabaseTable)
+                     :set    {:schema dataset-id}
+                     :where  [:and
+                              [:= :db_id db-id]
+                              [:or
+                               [:= :schema nil]
+                               [:not= :schema dataset-id]]]})
       ;; if we are upgrading to the sdk driver after having downgraded back to the old driver we end up with
       ;; duplicated tables with nil schema. Happily only in the "dataset-id" schema and not all schemas. But just
       ;; leave them with nil schemas and they will get deactivated in sync.
@@ -433,7 +432,7 @@
     (let [updated-db (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
                          (assoc-in [:details :dataset-filters-patterns] dataset-id)
                          (m/dissoc-in [:details :dataset-id]))]
-      (db/update! Database db-id :details (:details updated-db))
+      (t2/update! Database db-id {:details (:details updated-db)})
       updated-db)))
 
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk

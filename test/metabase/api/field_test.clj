@@ -13,7 +13,6 @@
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [ring.util.codec :as codec]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -216,8 +215,8 @@
       (mt/with-temp-copy-of-db
         ;; clear out existing human_readable_values in case they're set
         (when-let [id (field-values-id :venues :price)]
-          (db/update! FieldValues id :human_readable_values nil))
-        (db/update! Field (mt/id :venues :price) :has_field_values "list")
+          (t2/update! FieldValues id {:human_readable_values nil}))
+        (t2/update! Field (mt/id :venues :price) {:has_field_values "list"})
         ;; now update the values via the API
         (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
                (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))

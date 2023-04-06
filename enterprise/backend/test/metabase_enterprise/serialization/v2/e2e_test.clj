@@ -22,7 +22,6 @@
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
    [reifyhealth.specmonstah.core :as rs]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
  (:import
@@ -171,8 +170,10 @@
                                                 {:table_id      [:t    10]
                                                  :collection_id [:coll 10]
                                                  :creator_id    [:u    10]}))
-               :dashboard               (many-random-fks 100 {} {:collection_id [:coll 100]
-                                                                 :creator_id    [:u    10]})
+               :dashboard               (concat (many-random-fks 100 {} {:collection_id [:coll 100]
+                                                                         :creator_id    [:u    10]})
+                                                ;; create some root collection dashboards
+                                                (many-random-fks 50 {} {:creator_id    [:u 10]}))
                :dashboard-card          (many-random-fks 300 {} {:card_id      [:c 100]
                                                                  :dashboard_id [:d 100]})
                :dimension               (vec (concat
@@ -220,7 +221,7 @@
                :pulse-channel-recipient (many-random-fks 40 {} {:pulse_channel_id [:pulse-channel 30]
                                                                 :user_id          [:u 100]})}))
 
-          (is (= 100 (count (db/select-field :email 'User))))
+          (is (= 100 (count (t2/select-fn-set :email 'User))))
 
           (testing "extraction"
             (reset! extraction (into [] (extract/extract-metabase {})))
@@ -271,7 +272,7 @@
                               (reduce +)))))
 
             (testing "for dashboards"
-              (is (= 100 (->> (io/file dump-dir "collections")
+              (is (= 150 (->> (io/file dump-dir "collections")
                               collections
                               (map (comp count dir->file-set #(io/file % "dashboards")))
                               (reduce +)))))
@@ -458,7 +459,7 @@
 
             (testing "make sure we insert ParameterCard when insert Dashboard/Card"
               ;; one for parameter on card card2s, and one for parmeter on dashboard dash1s
-              (is (= 2 (db/count ParameterCard))))
+              (is (= 2 (t2/count ParameterCard))))
 
             (testing "extract and store"
               (let [extraction (into [] (extract/extract-metabase {}))]
@@ -606,7 +607,7 @@
                          [model-name 'Card]
                          [dash-name  'Dashboard]]]
                   (testing (format "model %s from link cards are loaded properly" model)
-                   (is (some? (db/select model :name name)))))
+                   (is (some? (t2/select model :name name)))))
 
                 (testing "linkcards are loaded with correct fk"
                   (let [new-db-id    (t2/select-one-pk Database :name db-name)

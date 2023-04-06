@@ -1387,3 +1387,16 @@
                     ["Widget"    5061]]
                    (mt/formatted-rows [str int]
                      (qp/process-query query))))))))))
+
+(deftest unfolded-json-with-custom-expression-test
+  (testing "Should keep roots of unfolded JSON fields in the nested query (#29184)"
+    (mt/test-driver :postgres
+      (mt/dataset json
+        (let [db    (t2/select-one 'Database :name "json" :engine driver/*driver*)
+              table (t2/select-one 'Table :db_id (:id db) :name "json")
+              field (t2/select-one 'Field :table_id (:id table)
+                                   :name "json_bit → title")]
+          (is (seq (mt/run-mbql-query json
+                                      {:expressions  {"substring" [:substring [:field (:id field) nil] 1 10]}
+                                       :fields       [[:expression "substring"]
+                                                      [:field (:id field) nil]]}))))))))

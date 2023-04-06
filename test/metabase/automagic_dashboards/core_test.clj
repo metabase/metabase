@@ -23,7 +23,6 @@
    [metabase.util.i18n :refer [tru]]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -85,7 +84,7 @@
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
       (doseq [[table cardinality] (map vector
-                                       (db/select Table :db_id (mt/id) {:order-by [[:id :asc]]})
+                                       (t2/select Table :db_id (mt/id) {:order-by [[:id :asc]]})
                                        [7 5 8 2])]
         (test-automagic-analysis table cardinality)))
 
@@ -108,8 +107,8 @@
 (deftest mass-field-test
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup
-        (doseq [field (db/select Field
-                                 :table_id [:in (db/select-field :id Table :db_id (mt/id))]
+        (doseq [field (t2/select Field
+                                 :table_id [:in (t2/select-fn-set :id Table :db_id (mt/id))]
                                  :visibility_type "normal"
                                  {:order-by [[:id :asc]]})]
           (is (pos? (count (:ordered_cards (magic/automagic-analysis field {})))))))))
@@ -356,7 +355,7 @@
         ;; These can be matched against dimension definitions with simple 1-element vector table specs
         ;; Example: {:field_type [:type/CreationTimestamp]}
         ;; More context is needed (see below test) for two-element dimension definitions
-        (let [context    {:source {:fields (db/select Field :id [:in [(mt/id :people :created_at)
+        (let [context    {:source {:fields (t2/select Field :id [:in [(mt/id :people :created_at)
                                                                       (mt/id :people :latitude)
                                                                       (mt/id :orders :created_at)]])}}
               ;; Lifted from the GenericTable dimensions definition
@@ -770,7 +769,7 @@
       @api/*current-user-permissions-set*
       (automagic-dashboards.test/with-dashboard-cleanup
         (let [database (t2/select-one Database :id db-id)]
-          (db/with-call-counting [call-count]
+          (t2/with-call-count [call-count]
             (magic/candidate-tables database)
             (is (= 4
                    (call-count)))))))))

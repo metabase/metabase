@@ -12,7 +12,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (com.unboundid.ldap.sdk DN Filter LDAPConnectionPool)))
@@ -135,7 +134,7 @@
                                           (when (not= last-name old-last-name) {:last_name last-name}))]
                      (if (seq user-changes)
                        (do
-                         (db/update! User (:id user) user-changes)
+                         (t2/update! User (:id user) user-changes)
                          (t2/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
                        user))
                    (-> (user/create-new-ldap-auth-user! {:first_name first-name

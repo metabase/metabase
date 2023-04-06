@@ -26,7 +26,6 @@
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -75,12 +74,15 @@
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp Collection [collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
-      ;; use db/execute! instead of db/update! so the updated_at field doesn't get automatically updated!
+      ;; use db/execute! instead of t2/update! so the updated_at field doesn't get automatically updated!
       (when (seq pulses-or-ids)
-        (db/execute! {:update :pulse
-                      :set    {:collection_id (u/the-id collection)}
-                      :where  [:in :id (set (map u/the-id pulses-or-ids))]}))
+        (t2/query-one {:update :pulse
+                       :set    {:collection_id (u/the-id collection)}
+                       :where  [:in :id (set (map u/the-id pulses-or-ids))]}))
       (f))))
+
+(defmacro ^:private with-pulses-in-nonreadable-collection [pulses-or-ids & body]
+  `(do-with-pulses-in-a-collection (constantly nil) ~pulses-or-ids (fn [] ~@body)))
 
 (defmacro ^:private with-pulses-in-readable-collection [pulses-or-ids & body]
   `(do-with-pulses-in-a-collection perms/grant-collection-read-permissions! ~pulses-or-ids (fn [] ~@body)))
@@ -539,7 +541,7 @@
 
     (testing "...and unset (unpin) it as well?"
       (pulse-test/with-pulse-in-collection [_ collection pulse]
-        (db/update! Pulse (u/the-id pulse) :collection_position 1)
+        (t2/update! Pulse (u/the-id pulse) {:collection_position 1})
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:collection_position nil})
@@ -554,7 +556,7 @@
                (t2/select-one-fn :collection_position Pulse :id (u/the-id pulse))))
 
         (testing "shouldn't be able to unset (unpin) a Pulse"
-          (db/update! Pulse (u/the-id pulse) :collection_position 1)
+          (t2/update! Pulse (u/the-id pulse) {:collection_position 1})
           (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse))
                                 {:collection_position nil})
           (is (= 1
@@ -573,7 +575,7 @@
   (testing "Can we unarchive a Pulse?"
     (pulse-test/with-pulse-in-collection [_ collection pulse]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-      (db/update! Pulse (u/the-id pulse) :archived true)
+      (t2/update! Pulse (u/the-id pulse) {:archived true})
       (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                             {:archived false})
       (is (= false
@@ -591,8 +593,8 @@
                               {:archived true})
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:archived false})
-        (is (db/exists? PulseChannel :id (u/the-id pc)))
-        (is (db/exists? PulseChannelRecipient :id (u/the-id pcr)))))))
+        (is (t2/exists? PulseChannel :id (u/the-id pc)))
+        (is (t2/exists? PulseChannelRecipient :id (u/the-id pcr)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -784,22 +786,34 @@
                  [(assoc (pulse-details pulse-1) :can_write true, :collection_id true)]
                  (map #(update % :collection_id boolean) results)))))
 
-        (testing "when `can_read=true`, all users only see pulses they created or are a recipient of"
-          (let [results (-> (mt/user-http-request :crowberto :get 200 "pulse?can_read=true")
-                            (filter-pulse-results :id #{pulse-1-id pulse-2-id pulse-3-id}))]
-            (is (= 2 (count results)))
-            (is (partial=
-                 [(assoc (pulse-details pulse-2) :can_write true, :collection_id true)
-                  (assoc (pulse-details pulse-3) :can_write true, :collection_id true)]
-                 (map #(update % :collection_id boolean) results))))
+        (testing "when `creator_or_recipient=true`, all users only see pulses they created or are a recipient of"
+          (let [expected-pulse-shape (fn [pulse] (-> pulse
+                                                     pulse-details
+                                                     (assoc :can_write true, :collection_id true)
+                                                     (dissoc :cards)))]
+            (let [results (-> (mt/user-http-request :crowberto :get 200 "pulse?creator_or_recipient=true")
+                              (filter-pulse-results :id #{pulse-1-id pulse-2-id pulse-3-id}))]
+              (is (= 2 (count results)))
+              (is (partial=
+                   [(expected-pulse-shape pulse-2) (expected-pulse-shape pulse-3)]
+                   (map #(update % :collection_id boolean) results))))
 
-          (let [results (-> (mt/user-http-request :rasta :get 200 "pulse?can_read=true")
-                            (filter-pulse-results :id #{pulse-1-id pulse-2-id pulse-3-id}))]
-            (is (= 2 (count results)))
-            (is (partial=
-                 [(assoc (pulse-details pulse-1) :can_write true, :collection_id true)
-                  (assoc (pulse-details pulse-3) :can_write false, :collection_id true)]
-                 (map #(update % :collection_id boolean) results)))))))
+            (let [results (-> (mt/user-http-request :rasta :get 200 "pulse?creator_or_recipient=true")
+                              (filter-pulse-results :id #{pulse-1-id pulse-2-id pulse-3-id}))]
+              (is (= 2 (count results)))
+              (is (partial=
+                   [(expected-pulse-shape pulse-1)
+                    (assoc (expected-pulse-shape pulse-3) :can_write false)]
+                   (map #(update % :collection_id boolean) results)))))))
+
+      (with-pulses-in-nonreadable-collection [pulse-3]
+        (testing "when `creator_or_recipient=true`, cards and recipients are not included in results if the user
+                 does not have collection perms"
+          (let [result (-> (mt/user-http-request :rasta :get 200 "pulse?creator_or_recipient=true")
+                           (filter-pulse-results :id #{pulse-3-id})
+                           first)]
+            (is (nil? (:cards result)))
+            (is (nil? (get-in result [:channels 0 :recipients])))))))
 
     (testing "should not return alerts"
       (mt/with-temp* [Pulse [pulse-1 {:name "ABCDEF"}]
@@ -844,6 +858,23 @@
                       :collection_id true)
                (-> (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse)))
                    (update :collection_id boolean))))))
+
+    (testing "cannot normally fetch a pulse without collection permissions"
+      (mt/with-temp Pulse [pulse {:creator_id (mt/user->id :crowberto)}]
+        (with-pulses-in-nonreadable-collection [pulse]
+          (mt/user-http-request :rasta :get 403 (str "pulse/" (u/the-id pulse))))))
+
+    (testing "can fetch a pulse without collection permissions if you are the creator or a recipient"
+      (mt/with-temp Pulse [pulse {:creator_id (mt/user->id :rasta)}]
+        (with-pulses-in-nonreadable-collection [pulse]
+          (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse)))))
+
+      (mt/with-temp* [Pulse                 [pulse {:creator_id (mt/user->id :crowberto)}]
+                      PulseChannel          [pc {:pulse_id (u/the-id pulse)}]
+                      PulseChannelRecipient [_ {:pulse_channel_id (u/the-id pc)
+                                                :user_id          (mt/user->id :rasta)}]]
+        (with-pulses-in-nonreadable-collection [pulse]
+          (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse))))))
 
     (testing "should 404 for an Alert"
       (mt/with-temp Pulse [{pulse-id :id} {:alert_condition "rows"}]

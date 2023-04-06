@@ -2,8 +2,6 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import * as Errors from "metabase/core/utils/errors";
-import { slugify, humanize } from "metabase/lib/formatting";
-import { isEmpty } from "metabase/lib/validate";
 
 import type {
   ActionDashboardCard,
@@ -17,8 +15,6 @@ import type {
   InputComponentType,
   InputSettingType,
   Parameter,
-  ParameterId,
-  ParametersForActionExecution,
   WritebackAction,
   WritebackActionBase,
   WritebackImplicitQueryAction,
@@ -149,92 +145,6 @@ export const getDefaultFieldSettings = (
   ...overrides,
 });
 
-export const generateFieldSettingsFromParameters = (
-  params: Parameter[],
-  fields?: Field[],
-) => {
-  const fieldSettings: Record<ParameterId, LocalFieldSettings> = {};
-
-  const fieldMetadataMap = Object.fromEntries(
-    fields?.map(f => [slugify(f.name), f]) ?? [],
-  );
-
-  params.forEach((param, index) => {
-    const field = fieldMetadataMap[param.id]
-      ? new Field(fieldMetadataMap[param.id])
-      : new Field({
-          id: param.id,
-          name: param.id,
-          slug: param.id,
-          display_name: humanize(param.id),
-          base_type: param.type,
-          semantic_type: param.type,
-        });
-
-    const name = param["display-name"] ?? param.name ?? param.id;
-    const displayName = field?.displayName?.() ?? name;
-
-    fieldSettings[param.id] = getDefaultFieldSettings({
-      id: param.id,
-      name,
-      title: displayName,
-      placeholder: displayName,
-      required: !!param?.required,
-      order: index,
-      description: field?.description ?? "",
-      fieldType: getFieldType(param),
-      inputType: getInputType(param, field),
-    });
-  });
-  return fieldSettings;
-};
-
-const getFieldType = (param: Parameter): "number" | "string" => {
-  return isNumericParameter(param) ? "number" : "string";
-};
-
-const isNumericParameter = (param: Parameter): boolean =>
-  /integer|float/gi.test(param.type);
-
-export const getInputType = (param: Parameter, field?: Field) => {
-  if (!field) {
-    return isNumericParameter(param) ? "number" : "string";
-  }
-
-  if (field.isFK()) {
-    return field.isNumeric() ? "number" : "string";
-  }
-  if (field.isNumeric()) {
-    return "number";
-  }
-  if (field.isBoolean()) {
-    return "boolean";
-  }
-  if (field.isTime()) {
-    return "time";
-  }
-  if (field.isDate()) {
-    return field.isDateWithoutTime() ? "date" : "datetime";
-  }
-  if (
-    field.semantic_type === TYPE.Description ||
-    field.semantic_type === TYPE.Comment ||
-    field.base_type === TYPE.Structured
-  ) {
-    return "text";
-  }
-  if (
-    field.semantic_type === TYPE.Title ||
-    field.semantic_type === TYPE.Email
-  ) {
-    return "string";
-  }
-  if (field.isCategory() && field.semantic_type !== TYPE.Name) {
-    return "string";
-  }
-  return "string";
-};
-
 export function isSavedAction(
   action?: Partial<WritebackActionBase>,
 ): action is WritebackAction {
@@ -253,19 +163,6 @@ export const isActionCard = (card: Card) => card?.display === "action";
 export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;
 };
-
-export function setNumericValues(
-  params: ParametersForActionExecution,
-  fieldSettings: FieldSettingsMap,
-) {
-  Object.entries(params).forEach(([key, value]) => {
-    if (fieldSettings[key]?.fieldType === "number" && !isEmpty(value)) {
-      params[key] = Number(value) ?? null;
-    }
-  });
-
-  return params;
-}
 
 function hasDataFromExplicitAction(result: any) {
   const isInsert = result["created-row"];
@@ -432,5 +329,5 @@ export const getSubmitButtonLabel = (action: WritebackAction): string => {
     }
   }
 
-  return t`Run`;
+  return action.name;
 };

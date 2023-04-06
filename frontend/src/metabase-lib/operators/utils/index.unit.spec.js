@@ -202,7 +202,7 @@ describe("metabase-lib/operators/utils", () => {
           features: ["basic-aggregations", "standard-deviation-aggregations"],
         },
       };
-      const fullOperators = getAggregationOperators(table);
+      const fullOperators = getAggregationOperators(table, fields);
       return {
         fullOperators,
         operators: fullOperators.map(operator => operator.short),
