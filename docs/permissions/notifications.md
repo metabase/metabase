@@ -6,11 +6,11 @@ title: Notification permissions
 
 Notifications in Metabase include [alerts](../questions/sharing/alerts) and [dashboard subscriptions](../dashboards/subscriptions#setting-up-a-dashboard-subscription).
 
-Notification **recipients** can see whatever the notification **creator** can see. For example:
+Notification **recipients** can see whatever the notification **creator** can see. For example, if:
 
 - Beau creates a subscription to a dashboard saved in their [personal collection](../exploration-and-organization/collections#your-personal-collection).
 - Beau adds Anya to the dashboard subscription.
-- Anya will see the dashboard in her email, even though she doesn't have permissions to view the dashboard in Beau's personal collection.
+- Anya will see the dashboard in her email, even though she doesn't have permissions to view that dashboard in Beau's personal collection.
 
 ## All accounts
 
@@ -42,7 +42,7 @@ Admins can add recipients without changing the permissions of the alert or subsc
 
 {% include plans-blockquote.html feature="Approved domains for notifications" %}
 
-Admins can limit email recipients to people within your org by going to **Admin setting** > **General settings** > [approved domains for notifications](../configuring-metabase/settings.md#approved-domains-for-notifications). 
+Admins can limit email recipients to people within an org by going to **Admin setting** > **General settings** > [Approved domains for notifications](../configuring-metabase/settings.md#approved-domains-for-notifications). 
 
 ## Further reading
 

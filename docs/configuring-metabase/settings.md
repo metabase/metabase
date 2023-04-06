@@ -36,8 +36,6 @@ This email address will be displayed in various messages throughout Metabase whe
 
 {% include plans-blockquote.html feature="Approved domains for notifications" %}
 
-> This setting doesn't affect existing subscriptions.
-
 Allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/sharing/alerts.md). 
 
 Adding approved domains allows you to restrict which email addresses people can send alerts and subscriptions to.
@@ -47,6 +45,8 @@ To allow all domains, leave the field empty (allowing all domains is the default
 To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2"). 
 
 You can also set this property using the environment variable [`MB_SUBSCRIPTION_ALLOWED_DOMAIN`](../configuring-metabase/environment-variables#mb_subscription_allowed_domains).
+
+> This setting doesn't affect existing subscriptions.
 
 ## Anonymous tracking
 
