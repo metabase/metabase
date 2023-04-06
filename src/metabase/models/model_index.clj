@@ -80,7 +80,7 @@
                                                 :generation      new-generation})
       (do
         ;; we just delete and recreate
-        (t2/delete! ModelIndexValue {:model_index_id (:id model-index)})
+        (t2/delete! ModelIndexValue :model_index_id (:id model-index))
         (t2/insert! ModelIndexValue (map (fn [[id v]]
                                            {:name           v
                                             :model_pk       id
