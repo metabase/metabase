@@ -164,7 +164,8 @@
 
 (defmethod columns-for-model "indexed-entity" [_]
   [[:model-index-value.name     :name]
-   [:model-index-value.model_pk :model_pk]
+   [:model-index-value.model_pk :id]
+   [:model-index.pk_ref         :pk_ref]
    [:collection.name            :collection_name]
    [:model.collection_id        :collection_id]
    [:model.id                   :model_id]

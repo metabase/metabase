@@ -1,5 +1,6 @@
 (ns metabase.api.search
   (:require
+   [cheshire.core :as json]
    [compojure.core :refer [GET]]
    [flatland.ordered.map :as ordered-map]
    [honey.sql.helpers :as sql.helpers]
@@ -97,8 +98,7 @@
    ;; returned for Card and Action
    :dataset_query       :text
    ;; returned for indexed-entity
-   :model_pk            :integer
-   ))
+   :pk_ref              :text))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
@@ -457,6 +457,7 @@
                             ;; needed
                             (map #(update % :bookmark api/bit->boolean))
                             (map #(update % :archived api/bit->boolean))
+                            (map #(update % :pk_ref json/parse-string))
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
                             (filter #(pos? (:score %))))
         total-results      (scoring/top-results reducible-results search-config/max-filtered-results xf)]
