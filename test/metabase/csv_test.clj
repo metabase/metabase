@@ -63,8 +63,7 @@
   "Create a temp csv file with the given content and return the file"
   [rows]
   (let [contents (str/join "\n" rows)
-        csv-file (File/createTempFile "pokefans" ".csv" (io/file "/var/tmp"))]
-    (.deleteOnExit csv-file)
+        csv-file (File/createTempFile "pokefans" ".csv")]
     (spit csv-file contents)
     csv-file))
 
