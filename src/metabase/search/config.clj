@@ -105,7 +105,7 @@
 
 (defmethod searchable-columns-for-model "indexed-entity"
   [_]
-  [:value])
+  [:name])
 
 (def ^:private default-columns
   "Columns returned for all models."
@@ -163,7 +163,7 @@
         bookmark-col dashboardcard-count-col))
 
 (defmethod columns-for-model "indexed-entity" [_]
-  [[:model-index-value.value    :name]
+  [[:model-index-value.name     :name]
    [:model-index-value.model_pk :model_pk]
    [:collection.name            :collection_name]
    [:model.collection_id        :collection_id]
