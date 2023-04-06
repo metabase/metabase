@@ -227,7 +227,9 @@
     "UCVEWTGNBDANGMZPGNQC" "000e32a0"
     "ZAFVKSVXQKJNGANBQZMX" "0000d5b8"
     "NCTFDMQNUEQLJUMAGSYG" "000000ea"
-    "YHQJXDIXGGQTSARGOQZZ" "000000c1"))
+    "YHQJXDIXGGQTSARGOQZZ" "000000c1"
+    "0601246074"           "00000001"
+    "2915035893"           "00000000"))
 
 (deftest ^:parallel truncate-string-to-byte-count-test
   (letfn [(truncate-string-to-byte-count [s byte-length]
