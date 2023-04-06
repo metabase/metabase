@@ -53,8 +53,8 @@
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
-  [_driver _feat _db]
-  true)
+  [_driver _feat db]
+  (driver.common/json-unfolding-default db))
 
 (defmethod driver/database-supports? [:postgres :datetime-diff]
   [_driver _feat _db]

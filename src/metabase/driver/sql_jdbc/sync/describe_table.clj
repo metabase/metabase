@@ -159,17 +159,16 @@
                  (let [base-type      (database-type->base-type-or-warn driver database-type)
                        semantic-type  (calculated-semantic-type driver column-name database-type)
                        db             (table/database table)
-                       json-unfolding (boolean (and (isa? base-type :type/JSON)
-                                                    (driver/database-supports? driver :nested-field-columns db)
-                                                    (database/json-unfolding-default db)))]
+                       json?          (isa? base-type :type/JSON)]
                    (merge
                     (u/select-non-nil-keys col [:name :database-type :field-comment :database-required :database-is-auto-increment])
                     {:base-type         base-type
                      :database-position i
-                     :json-unfolding    json-unfolding}
+                     ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
+                     :json-unfolding    json?}
                     (when semantic-type
                       {:semantic-type semantic-type})
-                    (when json-unfolding
+                    (when (and json? (driver/database-supports? driver :nested-field-columns db))
                       {:visibility-type :details-only}))))))
 
 (defmulti describe-table-fields
@@ -409,12 +408,10 @@
               unfold-json-fields      (filter (fn [field]
                                                 ;; unfold json if the field has json_unfolding = true
                                                 ;; don't unfold json if the field has json_unfolding = false
-                                                ;; otherwise if the field doesn't exist
-                                                ;; use the database default
+                                                ;; otherwise if the field doesn't exist, unfold json by default
                                                 (let [existing-field (existing-fields-by-name (:name field))]
                                                   (or (:json_unfolding existing-field)
-                                                      (and (nil? existing-field)
-                                                           (database/json-unfolding-default (table/database table))))))
+                                                      (nil? existing-field))))
                                               json-fields)]
           (if (empty? unfold-json-fields)
             #{}

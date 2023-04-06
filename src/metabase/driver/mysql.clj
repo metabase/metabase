@@ -51,7 +51,8 @@
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
 ;; And MariaDB doesn't have the JSON type at all, though `JSON` was introduced as an alias for LONGTEXT in 10.2.7.
 ;; But since JSON unfolding will only apply columns with JSON types, this won't cause any problems during sync.
-(defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat _db] true)
+(defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat db]
+  (driver.common/json-unfolding-default db))
 
 (defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
 

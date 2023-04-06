@@ -349,11 +349,3 @@
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
-
-(defn json-unfolding-default
-  "Returns true if JSON fields should be unfolded by default for this database, and false otherwise."
-  [database]
-  ;; If json-unfolding=nil in the database details, return true. This allows adding support for
-  ;; nested-field-columns for drivers in the future and have json-unfolding enabled by default, without
-  ;; needing a migration to add the `json-unfolding=true` key to the database details.
-  ((fnil identity true) (get-in database [:details :json-unfolding])))
