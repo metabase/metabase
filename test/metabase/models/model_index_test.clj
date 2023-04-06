@@ -72,3 +72,44 @@
                                                         :model_name "Simple MBQL model"}}
                             (into {} (map (juxt :name f)) search-results)))
               (is (every? int? (map :id search-results))))))))))
+
+(deftest generation-tests
+  (mt/dataset sample-dataset
+    (let [query  (mt/mbql-query products)
+          pk_ref (mt/$ids $products.id)]
+      (mt/with-temp* [Card [model {:dataset         true
+                                   :name            "Simple MBQL model"
+                                   :dataset_query   query
+                                   :result_metadata (result-metadata-for-query query)}]
+                      ModelIndex [model-index {:model_id   (:id model)
+                                               :pk_ref     pk_ref
+                                               :schedule   "0 0 23 * * ? *"
+                                               :state      "initial"
+                                               :value_ref  (mt/$ids $products.title)
+                                               :generation 0
+                                               :creator_id (mt/user->id :rasta)}]]
+        (let [indexed-values! (fn fetch-indexed-values []
+                                (into {}
+                                      (map (juxt :model_pk identity))
+                                      (t2/select ModelIndexValue :model_index_id (:id model-index))))]
+          (testing "Populates indexed values"
+            (#'model-index/add-values* model-index
+                                       [[1 "chair"] [2 "desk"]])
+            (is (partial= {1 {:name       "chair"
+                              :model_pk   1
+                              :generation 1}
+                           2 {:name       "desk"
+                              :model_pk   2
+                              :generation 1}}
+                          (indexed-values!))))
+          (testing "Removes values no longer present"
+            ;; drop desk and add lamp
+            (#'model-index/add-values* (update model-index :generation inc)
+                                       [[1 "chair"] [3 "lamp"]])
+            (is (partial= {1 {:name       "chair"
+                              :model_pk   1
+                              :generation 2}
+                           3 {:name       "lamp"
+                              :model_pk   3
+                              :generation 2}}
+                          (indexed-values!)))))))))

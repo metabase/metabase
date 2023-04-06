@@ -68,7 +68,7 @@
            [(ex-message e) []]))))
 
 (defmulti add-values* "Index values in a model."
-  (fn [_model-index values] (mdb.connection/db-type)))
+  (fn [_model-index _values] (mdb.connection/db-type)))
 
 (defmethod add-values* :h2
   [model-index values]
@@ -85,20 +85,38 @@
   [model-index values]
   (let [new-generation (inc (:generation model-index))]
     ;; use upserts and delete ones with old generations
-   (t2/query {:insert-into   [:model_index_value]
-              :values        (into []
-                                   (comp (filter (fn [[id v]] (and id v)))
-                                         (map (fn [[id v]]
-                                                {:name           v
-                                                 :model_pk       id
-                                                 :model_index_id (:id model-index)
-                                                 :generation     new-generation})))
-                                   values)
-              :on-conflict   [:model_index_id :model_pk]
-              :do-update-set {:generation new-generation}})
+    (t2/query {:insert-into   [:model_index_value]
+               :values        (into []
+                                    (comp (filter (fn [[id v]] (and id v)))
+                                          (map (fn [[id v]]
+                                                 {:name           v
+                                                  :model_pk       id
+                                                  :model_index_id (:id model-index)
+                                                  :generation     new-generation})))
+                                    values)
+               :on-conflict   [:model_index_id :model_pk]
+               :do-update-set {:generation new-generation}})
    (t2/delete! ModelIndexValue
                :model_index_id (:id model-index)
                :generation     [:< new-generation])))
+
+(defmethod add-values* :mysql
+  [model-index values]
+  (let [new-generation (inc (:generation model-index))]
+    ;; use upserts and delete ones with old generations
+    (t2/query {:insert-into             [:model_index_value]
+               :values                  (into []
+                                    (comp (filter (fn [[id v]] (and id v)))
+                                          (map (fn [[id v]]
+                                                 {:name           v
+                                                  :model_pk       id
+                                                  :model_index_id (:id model-index)
+                                                  :generation     new-generation})))
+                                    values)
+               :on-duplicate-key-update {:generation new-generation}})
+    (t2/delete! ModelIndexValue
+                :model_index_id (:id model-index)
+                :generation     [:< new-generation])))
 
 (defn add-values!
   "Add indexed values to the model_index_value table."
@@ -114,5 +132,3 @@
                       {:generation generation'
                        :state_change_at :%now
                        :state (if (> (count index-values) 5000) "overflow" "indexed")})))))
-
-;; todo: mysql
