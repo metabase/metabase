@@ -189,9 +189,11 @@
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base (disqualify join)]
     (merge (-> base
-               (dissoc :stages)
-               (update-list->legacy-boolean-expression :conditions :condition)
+               (dissoc :stages :conditions)
                (update-vals ->legacy-MBQL))
+           (-> base
+               (select-keys [:conditions])
+               (update-list->legacy-boolean-expression :conditions :condition))
            (chain-stages base))))
 
 (defmethod ->legacy-MBQL :mbql.stage/mbql [stage]
