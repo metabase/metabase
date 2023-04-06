@@ -21,10 +21,13 @@ declare function OrderByFn(
 
 export const orderBy: typeof OrderByFn = ML.order_by;
 
-export function orderByClause(
+type OrderByDirection = "asc" | "desc";
+
+declare function OrderByClauseFn(
   query: Query,
   stageNumber: number,
   column: ColumnMetadata,
-): OrderByClause {
-  return ML.order_by_clause(query, stageNumber, column);
-}
+  direction?: OrderByDirection,
+): OrderByClause;
+
+export const orderByClause: typeof OrderByClauseFn = ML.order_by_clause;
