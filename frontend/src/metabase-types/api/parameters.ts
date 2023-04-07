@@ -45,6 +45,11 @@ export interface Parameter extends ParameterValuesConfig {
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
+  options?: ParameterOptions;
+}
+
+export interface ParameterOptions {
+  "case-sensitive"?: boolean;
 }
 
 export interface ParameterValuesConfig {
