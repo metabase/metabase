@@ -5,7 +5,7 @@ import {
   openOrdersTable,
 } from "e2e/support/helpers";
 
-describe.skip("issue 29795", () => {
+describe("issue 29795", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -41,7 +41,7 @@ describe.skip("issue 29795", () => {
     });
 
     visualize(() => {
-      cy.findByText(/USER ID/i);
+      cy.findAllByText(/USER ID/i).should("have.length", 2);
     });
   });
 });
