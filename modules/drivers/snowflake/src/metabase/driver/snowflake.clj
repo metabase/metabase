@@ -1,6 +1,8 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
   (:require
+   [buddy.core.codecs :as codecs]
+   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -19,9 +21,11 @@
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.driver.sync :as driver.s]
    [metabase.models.secret :as secret]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -513,3 +517,21 @@
 (defmethod sql-jdbc.execute/set-parameter [:snowflake java.time.ZonedDateTime]
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
+
+(defmethod sql-jdbc.execute/inject-remark :snowflake
+  "Snowflake strips comments prepended to the SQL statement (default remark injection behavior). We should append the
+  remark instead."
+  [_ sql remark]
+  (str sql "\n\n-- " remark))
+
+(defmethod qp.util/query->remark :snowflake
+  [_ {{:keys [executed-by card-id dashboard-id query-hash context]} :info, query-type :type, database-id :database}]
+  (json/generate-string {:client      "Metabase"
+                         :context     context
+                         :queryType   (case (keyword query-type) :query "MBQL" :native "native")
+                         :userId      executed-by
+                         :cardId      card-id
+                         :dashboardId dashboard-id
+                         :databaseId  database-id
+                         :queryHash   (codecs/bytes->hex query-hash)
+                         :serverId    (public-settings/site-uuid)}))

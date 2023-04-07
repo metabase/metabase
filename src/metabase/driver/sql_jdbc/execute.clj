@@ -486,13 +486,24 @@
   (let [row-thunk (row-thunk driver rs rsmeta)]
     (qp.reducible/reducible-rows row-thunk canceled-chan)))
 
+(defmulti inject-remark
+  "Injects the remark into the SQL query text."
+  {:arglists '(^String [driver sql remark])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod inject-remark :default
+  "Most databases using sql-jdbc based drivers support prepending the remark to the SQL statement, but not all of them."
+  [_ sql remark]
+  (str "-- " remark "\n" sql))
+
 (defn execute-reducible-query
   "Default impl of `execute-reducible-query` for sql-jdbc drivers."
   {:added "0.35.0", :arglists '([driver query context respond] [driver sql params max-rows context respond])}
   ([driver {{sql :query, params :params} :native, :as outer-query} context respond]
    {:pre [(string? sql) (seq sql)]}
    (let [remark   (qp.util/query->remark driver outer-query)
-         sql      (str "-- " remark "\n" sql)
+         sql      (inject-remark driver sql remark)
          max-rows (limit/determine-query-max-rows outer-query)]
      (execute-reducible-query driver sql params max-rows context respond)))
 
