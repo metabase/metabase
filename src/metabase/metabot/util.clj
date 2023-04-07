@@ -8,7 +8,7 @@
    [honey.sql :as sql]
    [metabase.db.query :as mdb.query]
    [metabase.metabot.settings :as metabot-settings]
-   [metabase.models :refer [Card FieldValues]]
+   [metabase.models :refer [Card Field FieldValues Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -151,6 +151,47 @@
 (defn- add-model-json-summary [database]
   (assoc database :model_json_summary (models->json-summary database)))
 
+(defn- table->pseudo-ddl [{table-name :name table-id :id}]
+  (let [fields       (t2/select [Field
+                                 :database_required
+                                 :database_type
+                                 :fk_target_field_id
+                                 :name
+                                 :semantic_type]
+                                :table_id table-id)
+        columns      (vec
+                      (for [{column-name :name :keys [database_required database_type]} fields]
+                        (cond-> [column-name database_type]
+                          database_required
+                          (conj [:not nil]))))
+        primary-keys [[(into [:primary-key]
+                             (->> fields
+                                  (filter (comp #{:type/PK} :semantic_type))
+                                  (map :name)))]]
+        foreign-keys (for [{field-name :name :keys [semantic_type fk_target_field_id]} fields
+                           :when (= :type/FK semantic_type)
+                           :let [{fk-field-name :name fk-table-id :table_id} (t2/select-one [Field :name :table_id]
+                                                                                            :id fk_target_field_id)
+                                 {fk-table-name :name} (t2/select-one [Table :name]
+                                                                      :id fk-table-id)]]
+                       [[:foreign-key field-name]
+                        [:references fk-table-name fk-field-name]])]
+    (->
+     (sql/format
+      {:create-table table-name
+       :with-columns (reduce into columns [primary-keys foreign-keys])}
+      {:dialect :ansi :pretty true})
+     first
+     mdb.query/format-sql)))
+
+(defn- database->pseudo-ddl [{db_id :id :as _database}]
+  (->> (t2/select Table :db_id db_id)
+       (map table->pseudo-ddl)
+       (str/join "\n")))
+
+(defn- add-pseudo-database-ddl [database]
+  (assoc database :create_database_ddl (database->pseudo-ddl database)))
+
 (defn denormalize-database
   "Create a 'denormalized' version of the database which is optimized for querying.
   Adds in denormalized models, sql-friendly names, and a json summary of the models
@@ -160,7 +201,8 @@
     (-> database
         (assoc :sql_name (normalize-name database-name))
         (assoc :models (mapv denormalize-model models))
-        add-model-json-summary)))
+        add-model-json-summary
+        add-pseudo-database-ddl)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Prompt Input ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
