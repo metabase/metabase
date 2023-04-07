@@ -219,9 +219,7 @@
 (defn select-all?
   "Is this a simple SELECT * query?"
   [sql]
-  (str/starts-with?
-   (str/replace sql #"\s+" "")
-   "SELECT*"))
+  (some? (re-find #"(?i)^select\s*\*" sql)))
 
 (defn find-result
   "Given a set of choices returned from the bot, find the first one returned by
