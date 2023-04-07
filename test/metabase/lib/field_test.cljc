@@ -158,3 +158,14 @@
              (lib.schema.expression/type-of clause)))
       (is (= :type/BigInteger
              (lib.metadata.calculation/type-of lib.tu/venues-query clause))))))
+
+(deftest ^:parallel source-card-table-display-info-test
+  (let [query (assoc lib.tu/venues-query :lib/metadata lib.tu/metadata-provider-with-card)
+        field (lib.metadata.calculation/metadata query (assoc (lib.metadata/field query (meta/id :venues :name))
+                                                              :table_id "card__1"))]
+    (is (=? {:name           "NAME"
+             :display_name   "Name"
+             :semantic_type  :type/Name
+             :effective_type :type/Text
+             :table          {:name "My Card", :display_name "My Card"}}
+            (lib/display-info query field)))))

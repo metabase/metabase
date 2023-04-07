@@ -71,8 +71,8 @@
     (if (integer? source-table)
       (:display_name (lib.metadata/table query source-table))
       ;; handle card__<id> source tables.
-      (let [[_ card-id-str] (re-matches #"^card__(\d+)$" source-table)]
-        (i18n/tru "Saved Question #{0}" card-id-str)))
+      (let [card-id (lib.util/string-table-id->card-id source-table)]
+        (i18n/tru "Saved Question #{0}" card-id)))
     (i18n/tru "Native Query")))
 
 (mu/defn ^:private column-from-join-fields :- lib.metadata.calculation/ColumnMetadataWithSource
