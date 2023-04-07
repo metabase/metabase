@@ -16,7 +16,6 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
@@ -84,7 +83,7 @@
   []
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
-  (db/select [Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
+  (t2/select [Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
 
 (api/defendpoint GET "/:action-id"
   [action-id]
@@ -140,7 +139,7 @@
                                                                             :num_parameters (count parameters)})
     (if action-id
       (action/select-action :id action-id)
-      ;; db/insert! does not return a value when used with h2
+      ;; t2/insert! does not return a value when used with h2
       ;; so we return the most recently updated http action.
       (last (action/select-actions nil :type type)))))
 

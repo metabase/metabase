@@ -13,7 +13,6 @@
    [metabase.models.segment :refer [Segment]]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -96,7 +95,7 @@
    (map-indexed (fn [new-position field]
                   (t2/update! Field (u/the-id field) {:position new-position}))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
-                (db/select [Field :id]
+                (t2/select [Field :id]
                            :table_id  (u/the-id table)
                            {:order-by (case (:field_order table)
                                         :custom       [[:custom_position :asc]]
@@ -136,7 +135,7 @@
   :fields
   "Return the Fields belonging to a single `table`."
   [{:keys [id]}]
-  (db/select Field
+  (t2/select Field
     :table_id        id
     :active          true
     :visibility_type [:not= "retired"]
@@ -175,7 +174,7 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (db/select Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-metrics
@@ -184,7 +183,7 @@
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (db/select Metric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select Metric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (defn with-fields
@@ -192,7 +191,7 @@
   [tables]
   (with-objects :fields
     (fn [table-ids]
-      (db/select Field
+      (t2/select Field
         :active          true
         :table_id        [:in table-ids]
         :visibility_type [:not= "retired"]

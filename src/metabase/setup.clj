@@ -4,7 +4,6 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.user :refer [User]]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.util UUID)))
@@ -51,7 +50,7 @@
   :getter     (let [app-db-id->user-exists? (atom {})]
                 (fn []
                   (or (get @app-db-id->user-exists? (mdb.connection/unique-identifier))
-                      (let [exists? (db/exists? User)]
+                      (let [exists? (t2/exists? User)]
                         (swap! app-db-id->user-exists? assoc (mdb.connection/unique-identifier) exists?)
                         exists?))))
   :doc        false)

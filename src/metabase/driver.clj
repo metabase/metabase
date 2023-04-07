@@ -15,7 +15,7 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [potemkin :as p]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,7 +29,7 @@
   `nil` (meaning subsequent queries will not attempt to change the session timezone) or something considered invalid
   by a given Database (meaning subsequent queries will fail to change the session timezone)."
   []
-  (doseq [{driver :engine, id :id, :as database} (db/select 'Database)]
+  (doseq [{driver :engine, id :id, :as database} (t2/select 'Database)]
     (try
       (notify-database-updated driver database)
       (catch Throwable e
@@ -139,7 +139,7 @@
     (the-driver \"h2\") ; -> :h2
 
     ;; Ensuring a driver you are passed is valid
-    (db/insert! Database :engine (name (the-driver driver)))
+    (t2/insert! Database :engine (name (the-driver driver)))
 
     (the-driver :postgres) ; -> :postgres
     (the-driver :baby)     ; -> Exception"

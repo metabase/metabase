@@ -38,7 +38,7 @@
             [:not (mdb.u/isa :semantic_type :type/PK)]
             [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
-           [:not= :base_type "type/Structured"]
+           [:not (mdb.u/isa :base_type :type/Structured)]
            [:or
             [:and
              [:< :fingerprint_version 1]
@@ -53,7 +53,7 @@
             [:not (mdb.u/isa :semantic_type :type/PK)]
             [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
-           [:not= :base_type "type/Structured"]
+           [:not (mdb.u/isa :base_type :type/Structured)]
            [:or
             [:and
              [:< :fingerprint_version 2]
@@ -73,7 +73,7 @@
               [:not (mdb.u/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not= :base_type "type/Structured"]
+             [:not (mdb.u/isa :base_type :type/Structured)]
              [:or
               [:and
                [:< :fingerprint_version 2]
@@ -94,7 +94,7 @@
               [:not (mdb.u/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not= :base_type "type/Structured"]
+             [:not (mdb.u/isa :base_type :type/Structured)]
              [:or
               [:and
                [:< :fingerprint_version 4]
@@ -120,7 +120,7 @@
                      [:not (mdb.u/isa :semantic_type :type/PK)]
                      [:= :semantic_type nil]]
                     [:not-in :visibility_type ["retired" "sensitive"]]
-                    [:not= :base_type "type/Structured"]]}
+                    [:not (mdb.u/isa :base_type :type/Structured)]]}
            (binding [fingerprint/*refingerprint?* true]
              (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
 
@@ -143,13 +143,19 @@
 (def ^:private one-updated-map
   (merge default-stat-map {:updated-fingerprints 1, :fingerprints-attempted 1}))
 
-;; Field is a subtype of newer fingerprint version
 (deftest fingerprint-fields!-test
   (testing "field is a substype of newer fingerprint version"
     (is (= [one-updated-map true]
            (field-was-fingerprinted?
              {2 #{:type/Float}}
              {:base_type :type/Decimal, :fingerprint_version 1}))))
+
+  (testing "field is a substype of newer fingerprint version, but it is a subtype of :type/Structured"
+    (doseq [base-type (descendants :type/Structured)]
+     (is (= [default-stat-map false]
+            (field-was-fingerprinted?
+             {2 #{:type/Structured}}
+             {:base_type base-type, :fingerprint_version 1})))))
 
   (testing "field is *not* a subtype of newer fingerprint version"
     (is (= [default-stat-map false]

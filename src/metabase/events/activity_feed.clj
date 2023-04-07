@@ -11,7 +11,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (def ^:private activity-feed-topics
@@ -149,8 +148,8 @@
 
 (defmethod process-activity! :install
   [& _]
-  (when-not (db/exists? Activity :topic "install")
-    (db/insert! Activity, :topic "install", :model "install")))
+  (when-not (t2/exists? Activity :topic "install")
+    (t2/insert! Activity, :topic "install", :model "install")))
 
 (defn process-activity-event!
   "Handle processing for a single event notification received on the activity-feed-channel"

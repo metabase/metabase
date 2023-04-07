@@ -5,7 +5,6 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]))
@@ -39,8 +38,6 @@
   [{:keys [timeline_id]}]
   (t2/select-one 'Timeline :id timeline_id))
 
-;(hydrate (t2/select-one 'TimelineEvent))
-
 (defn- fetch-events
   "Fetch events for timelines in `timeline-ids`. Can include optional `start` and `end` dates in the options map, as
   well as `all?`. By default, will return only unarchived events, unless `all?` is truthy and will return all events
@@ -68,7 +65,7 @@
                               [:<= (h2x/->date start) (h2x/->date :timestamp)])
                             (when end
                               [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}]
-    (hydrate (db/select TimelineEvent clause) :creator)))
+    (hydrate (t2/select TimelineEvent clause) :creator)))
 
 (defn include-events
   "Include events on `timelines` passed in. Options are optional and include whether to return unarchived events or all
@@ -104,7 +101,7 @@
 (defmethod serdes/load-xform "TimelineEvent" [event]
   (-> event
       serdes/load-xform-basics
-      (update :timeline_id serdes/import-fk 'Timeline)
-      (update :creator_id  serdes/import-user)
+      (update :timeline_id serdes/*import-fk* 'Timeline)
+      (update :creator_id  serdes/*import-user*)
       (update :timestamp   u.date/parse)
       (update :created_at  #(if (string? %) (u.date/parse %) %))))

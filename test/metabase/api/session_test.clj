@@ -23,7 +23,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.util UUID)))
@@ -474,7 +473,7 @@
                        (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
           (testing "PermissionsGroupMembership should exist"
             (let [user-id (t2/select-one-pk User :email "fred.taylor@metabase.com")]
-              (is (db/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))
+              (is (t2/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))
 
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"

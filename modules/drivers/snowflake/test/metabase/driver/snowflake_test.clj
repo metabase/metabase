@@ -20,7 +20,6 @@
    [metabase.util :as u]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -118,7 +117,7 @@
             ;; now take a look at the Tables in the database, there should be an entry for the view
             (is (= [{:name "example_view"}]
                    (map (partial into {})
-                        (db/select [Table :name] :db_id (u/the-id database)))))))))))
+                        (t2/select [Table :name] :db_id (u/the-id database)))))))))))
 
 (deftest describe-table-test
   (mt/test-driver :snowflake

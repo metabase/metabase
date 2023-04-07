@@ -15,7 +15,7 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- db-graph-keypath [group]
   [:groups (u/the-id group) (mt/id) :data])
@@ -78,7 +78,7 @@
                                       :attribute_remappings (s/eq nil)
                                       s/Keyword             s/Any}
                                      "GTAP")]
-                             (db/select GroupTableAccessPolicy :group_id (u/the-id &group))))))
+                             (t2/select GroupTableAccessPolicy :group_id (u/the-id &group))))))
             (let [graph    (mt/user-http-request :crowberto :get 200 "permissions/graph")
                   graph'   (assoc-in graph (db-graph-keypath &group) (updated-db-perms))
                   response (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')]
@@ -99,7 +99,7 @@
                                    (db-graph-keypath &group))))))
                 (testing "GTAP should be deleted from application DB"
                   (is (= []
-                         (db/select GroupTableAccessPolicy
+                         (t2/select GroupTableAccessPolicy
                                     :group_id (u/the-id &group)
                                     :table_id (mt/id :venues)))))
                 (testing "GTAP for same group, other database should not be affected"
@@ -110,7 +110,7 @@
                                         :permission_id        (s/eq nil)
                                         :attribute_remappings (s/eq nil)}
                                        "GTAP")]
-                               (db/select GroupTableAccessPolicy
+                               (t2/select GroupTableAccessPolicy
                                           :group_id (u/the-id &group)
                                           :table_id (u/the-id db-2-table)))))
                 (testing "GTAP for same table, other group should not be affected"
@@ -121,7 +121,7 @@
                                         :permission_id        (s/eq nil)
                                         :attribute_remappings (s/eq nil)}
                                        "GTAP")]
-                               (db/select GroupTableAccessPolicy :group_id (u/the-id other-group)))))))))))))
+                               (t2/select GroupTableAccessPolicy :group_id (u/the-id other-group)))))))))))))
 
 (deftest grant-sandbox-perms-dont-delete-gtaps-test
   (testing "PUT /api/permissions/graph"
@@ -137,18 +137,18 @@
                                       {:read :all, :query :segmented}}}})]
             (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')
             (testing "GTAP should not have been deleted"
-              (is (db/exists? GroupTableAccessPolicy :group_id (u/the-id (perms-group/all-users)), :table_id (mt/id :venues))))))))))
+              (is (t2/exists? GroupTableAccessPolicy :group_id (u/the-id (perms-group/all-users)), :table_id (mt/id :venues))))))))))
 
 (defn- fake-persist-card! [card]
   (let [persisted-info (persisted-info/turn-on-model! (mt/user->id :rasta) card)]
-    (db/update-where! PersistedInfo {:card_id (u/the-id card)}
-                      :definition (json/encode
-                                    (persisted-info/metadata->definition
-                                      (:result_metadata card)
-                                      (:table_name persisted-info)))
-                      :active true
-                      :state "persisted"
-                      :query_hash (persisted-info/query-hash (:dataset_query card)))))
+    (t2/update! PersistedInfo {:card_id (u/the-id card)}
+                {:definition (json/encode
+                               (persisted-info/metadata->definition
+                                 (:result_metadata card)
+                                 (:table_name persisted-info)))
+                 :active true
+                 :state "persisted"
+                 :query_hash (persisted-info/query-hash (:dataset_query card))})))
 
 (deftest persistence-and-permissions
   (mt/with-model-cleanup [PersistedInfo]

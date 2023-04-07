@@ -5,7 +5,6 @@
    [metabase.models.task-history :refer [TaskHistory]]
    [metabase.sync :as sync]
    [metabase.test.data :as data]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn sync-steps-run-to-completion
@@ -14,7 +13,7 @@
   (data/with-temp-copy-of-db
     ;; `sync-database!` does both sync an analysis steps
     (sync/sync-database! (t2/select-one Database :id (data/id)))
-    (db/count TaskHistory :db_id (data/id))))
+    (t2/count TaskHistory :db_id (data/id))))
 
 (defn crash-fn
   "A function that always crashes"

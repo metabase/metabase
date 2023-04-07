@@ -6,12 +6,9 @@
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
-(defn- test-clause [result-filter f ->f & args]
-  (testing "with query/stage-number, return clause right away"
-    (is (=? result-filter
-            (apply f {:lib/metadata meta/metadata} -1 args))))
-  (testing "without query/stage-number, return a function for later resolution"
-    (let [f' (apply ->f args)]
+(defn- test-clause [result-filter f & args]
+  (testing "return a function for later resolution"
+    (let [f' (apply f args)]
       (is (fn? f'))
       (is (=? result-filter
               (f' {:lib/metadata meta/metadata} -1))))))
@@ -27,79 +24,73 @@
         categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")
         checkins-date-metadata      (lib.metadata/field q3 nil "CHECKINS" "DATE")]
     (testing "comparisons"
-      (doseq [[op f ->f] [[:= lib/= lib/->=]
-                          [:!= lib/!= lib/->!=]
-                          [:< lib/< lib/-><]
-                          [:<= lib/<= lib/-><=]
-                          [:> lib/> lib/->>]
-                          [:>= lib/>=  lib/->>=]]]
+      (doseq [[op f] [[:=  lib/=]
+                      [:!= lib/!=]
+                      [:<  lib/<]
+                      [:<= lib/<=]
+                      [:>  lib/>]
+                      [:>= lib/>=]]]
         (test-clause
-         [op
-          {:lib/uuid string?}
-          [:field {:lib/uuid string?} (meta/id :venues :category-id)]
-          [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
-         f ->f
+         {:operator op
+          :args [[:field {:lib/uuid string?} (meta/id :venues :category-id)]
+                 [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]}
+         f
          venues-category-id-metadata
          categories-id-metadata)))
 
     (testing "between"
       (test-clause
-       [:between
-        {:lib/uuid string?}
-        [:field {:lib/uuid string?} (meta/id :venues :category-id)]
-        42
-        [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
-       lib/between lib/->between
+       {:operator :between
+        :args [[:field {:lib/uuid string?} (meta/id :venues :category-id)]
+               42
+               [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]}
+       lib/between
        venues-category-id-metadata
        42
        categories-id-metadata))
 
     (testing "inside"
       (test-clause
-       [:inside
-        {:lib/uuid string?}
-        [:field {:base-type :type/Float, :lib/uuid string?} (meta/id :venues :latitude)]
-        [:field {:base-type :type/Float, :lib/uuid string?} (meta/id :venues :longitude)]
-        42.7 13 4 27.3]
-       lib/inside lib/->inside
+       {:operator :inside
+        :args [[:field {:base-type :type/Float, :lib/uuid string?} (meta/id :venues :latitude)]
+               [:field {:base-type :type/Float, :lib/uuid string?} (meta/id :venues :longitude)]
+               42.7 13 4 27.3]}
+       lib/inside
        venues-latitude-metadata
        venues-longitude-metadata
        42.7 13 4 27.3))
 
     (testing "emptiness"
-      (doseq [[op f ->f] [[:is-null lib/is-null  lib/->is-null]
-                          [:not-null lib/not-null lib/->not-null]
-                          [:is-empty lib/is-empty lib/->is-empty]
-                          [:not-empty lib/not-empty lib/->not-empty]]]
+      (doseq [[op f] [[:is-null   lib/is-null]
+                      [:not-null  lib/not-null]
+                      [:is-empty  lib/is-empty]
+                      [:not-empty lib/not-empty]]]
         (test-clause
-         [op
-          {:lib/uuid string?}
-          [:field {:lib/uuid string?} (meta/id :venues :name)]]
-         f ->f
+         {:operator op
+          :args [[:field {:lib/uuid string?} (meta/id :venues :name)]]}
+         f
          venues-name-metadata)))
 
     (testing "string tests"
-      (doseq [[op f ->f] [[:starts-with lib/starts-with  lib/->starts-with]
-                          [:ends-with lib/ends-with lib/->ends-with]
-                          [:contains lib/contains lib/->contains]
-                          [:does-not-contain lib/does-not-contain lib/->does-not-contain]]]
+      (doseq [[op f] [[:starts-with      lib/starts-with]
+                      [:ends-with        lib/ends-with]
+                      [:contains         lib/contains]
+                      [:does-not-contain lib/does-not-contain]]]
         (test-clause
-         [op
-          {:lib/uuid string?}
-          [:field {:lib/uuid string?} (meta/id :venues :name)]
-          "part"]
-         f ->f
+         {:operator op
+          :args [[:field {:lib/uuid string?} (meta/id :venues :name)]
+                 "part"]}
+         f
          venues-name-metadata
          "part")))
 
     (testing "time-interval"
       (test-clause
-       [:time-interval
-        {:lib/uuid string?}
-        [:field {:base-type :type/Date, :lib/uuid string?} (meta/id :checkins :date)]
-        3
-        :day]
-       lib/time-interval lib/->time-interval
+       {:operator :time-interval
+        :args [[:field {:base-type :type/Date, :lib/uuid string?} (meta/id :checkins :date)]
+               3
+               :day]}
+       lib/time-interval
        checkins-date-metadata
        3
        :day))
@@ -107,77 +98,125 @@
     (testing "segment"
       (doseq [id [7 "6"]]
         (test-clause
-         [:segment {:lib/uuid string?} id]
-         lib/segment lib/->segment
+         {:operator :segment
+          :args [id]}
+         lib/segment
          id)))))
 
 (deftest ^:parallel filter-test
   (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
         q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
         venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
-        venues-name-metadata        (lib.metadata/field q1 nil "VENUES" "NAME")
-        categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")
+        original-filter
+        [:between
+         {:lib/uuid string?}
+         [:field {:base-type :type/Integer :lib/uuid string?} (meta/id :venues :category-id)]
+         42
+         100]
         simple-filtered-query
-        {:lib/type :mbql/query,
+        {:lib/type :mbql/query
          :database (meta/id)
          :type :pipeline
          :stages [{:lib/type :mbql.stage/mbql
                    :source-table (meta/id :categories)
-                   :lib/options {:lib/uuid string?},
-                   :filter [:between
-                            {:lib/uuid string?}
-                            [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]
-                            42
-                            100]}]}]
-    (testing "setting a simple filter"
-      (is (=? simple-filtered-query
-              (-> q1
-                  (lib/filter (lib/between {:lib/metadata meta/metadata} -1 venues-category-id-metadata 42 100))
-                  (dissoc :lib/metadata)))))
+                   :lib/options {:lib/uuid string?}
+                   :filter original-filter}]}]
+    (testing "no filter"
+      (is (nil? (lib/current-filter q1)))
+      (is (= [] (lib/current-filters q2))))
 
-    (testing "setting a simple filter thunk"
-      (is (=? simple-filtered-query
-              (-> q1
-                  (lib/filter (lib/->between venues-category-id-metadata 42 100))
-                  (dissoc :lib/metadata)))))
+    (testing "setting a simple filter via the helper function"
+      (let [result-query
+            (lib/filter q1 (lib/between venues-category-id-metadata 42 100))
+            result-filter {:operator (-> original-filter first name)
+                          :options (second original-filter)
+                          :args (subvec original-filter 2)}]
+       (is (=? simple-filtered-query
+               (dissoc result-query :lib/metadata)))
+       (testing "and getting the current filter"
+         (is (=? result-filter
+                 (lib/current-filter result-query)))
+         (is (=? [result-filter]
+                 (lib/current-filters result-query))))))
 
     (testing "setting a simple filter expression"
       (is (=? simple-filtered-query
               (-> q1
-                  (lib/filter [:between venues-category-id-metadata 42 100])
-                  (dissoc :lib/metadata)))))
-
-    (testing "setting a nested filter expression"
-      (is (=? {:lib/type :mbql/query,
-               :database (meta/id),
-               :type :pipeline,
-               :stages
-               [{:lib/type :mbql.stage/mbql,
-                 :source-table (meta/id :categories)
-                 :lib/options #:lib{:uuid string?}
-                 :filter
-                 [:or
-                  #:lib{:uuid string?}
-                  [:between
-                   #:lib{:uuid string?}
-                   [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]
-                   42
-                   100]
-                  [:and
-                   #:lib{:uuid string?}
-                   [:=
-                    #:lib{:uuid string?}
-                    [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]
-                    242
-                    [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
-                   [:contains
-                    #:lib{:uuid string?}
-                    [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
-                    "part"]]]}]}
-              (-> q1
-                  (lib/filter [:or
-                               [:between venues-category-id-metadata 42 100]
-                               [:and
-                                [:= venues-category-id-metadata 242 categories-id-metadata]
-                                [:contains venues-name-metadata "part"]]])
+                  (lib/filter {:operator :between
+                               :args [(lib/ref venues-category-id-metadata) 42 100]})
                   (dissoc :lib/metadata)))))))
+
+(deftest ^:parallel add-filter-test
+  (let [simple-query         (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+        venues-name-metadata (lib.metadata/field simple-query nil "VENUES" "NAME")
+        first-filter
+        [:between
+         {:lib/uuid string?}
+         [:field
+          {:base-type :type/Integer, :lib/uuid string?}
+          (meta/id :venues :category-id)]
+         42
+         100]
+        first-result-filter
+        {:operator (-> first-filter first name)
+         :options (second first-filter)
+         :args (subvec first-filter 2)}
+        second-filter
+        [:starts-with
+         {:lib/uuid string?}
+         [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+         "prefix"]
+        second-result-filter
+        {:operator (-> second-filter first name)
+         :options (second second-filter)
+         :args (subvec second-filter 2)}
+        third-filter
+        [:contains
+         {:lib/uuid string?}
+         [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+         "part"]
+        third-result-filter
+        {:operator (-> third-filter first name)
+         :options (second third-filter)
+         :args (subvec third-filter 2)}
+        first-add
+        (lib/add-filter simple-query
+                        (lib/between
+                         (lib/field "VENUES" "CATEGORY_ID")
+                         42
+                         100))
+        filtered-query
+        (assoc-in simple-query [:stages 0 :filter] first-filter)
+        second-add
+        (lib/add-filter first-add {:operator "starts-with"
+                                   :args [(lib/ref venues-name-metadata) "prefix"]})
+        and-query
+        (assoc-in filtered-query
+                  [:stages 0 :filter]
+                  [:and {:lib/uuid string?} first-filter second-filter])
+        third-add
+        (lib/add-filter second-add {:operator :contains
+                                    :args [(lib/ref venues-name-metadata) "part"]})
+        extended-and-query
+        (assoc-in filtered-query
+                  [:stages 0 :filter]
+                  [:and
+                   {:lib/uuid string?}
+                   first-filter
+                   second-filter
+                   [:contains
+                    {:lib/uuid string?}
+                    [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+                    "part"]])]
+    (testing "adding an initial filter"
+      (is (=? filtered-query first-add))
+      (is (=? [first-result-filter]
+              (lib/current-filters first-add))))
+    (testing "conjoining to filter"
+      (is (=? and-query second-add))
+      (is (=? [first-result-filter second-result-filter]
+              (lib/current-filters second-add))))
+    (testing "conjoining to conjunction filter"
+      (is (=? extended-and-query third-add))
+      (is (=? [first-result-filter second-result-filter third-result-filter]
+              (lib/current-filters third-add))))))

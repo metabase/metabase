@@ -48,7 +48,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
@@ -1751,7 +1750,7 @@
   in."
   [cards-or-card-ids]
   (when (seq cards-or-card-ids)
-    (let [cards               (db/select [Card :collection_id] :id [:in (map u/the-id cards-or-card-ids)])
+    (let [cards               (t2/select [Card :collection_id] :id [:in (map u/the-id cards-or-card-ids)])
           collection-ids      (set (filter identity (map :collection_id cards)))
           collection-id->name (when (seq collection-ids)
                                 (t2/select-pk->fn :name Collection :id [:in collection-ids]))]
@@ -1813,7 +1812,7 @@
                 (-> card (hydrate [:moderation_reviews :moderator_details])
                     :moderation_reviews first :status #{"verified"} boolean))
               (reviews [card]
-                (db/select ModerationReview
+                (t2/select ModerationReview
                            :moderated_item_type "card"
                            :moderated_item_id (u/the-id card)
                            {:order-by [[:id :desc]]}))
@@ -1991,7 +1990,7 @@
       (mt/with-temp Card [card]
         (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card)))]
           (is (= true
-                 (boolean (db/exists? Card :id (u/the-id card), :public_uuid uuid)))))))))
+                 (boolean (t2/exists? Card :id (u/the-id card), :public_uuid uuid)))))))))
 
 (deftest share-card-preconditions-test
   (testing "POST /api/card/:id/public_link"
@@ -2038,7 +2037,7 @@
 
         (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (u/the-id card)))
         (is (= false
-               (db/exists? Card :id (u/the-id card), :public_uuid (:public_uuid card))))))))
+               (t2/exists? Card :id (u/the-id card), :public_uuid (:public_uuid card))))))))
 
 (deftest unshare-card-preconditions-test
   (testing "DELETE /api/card/:id/public_link\n"

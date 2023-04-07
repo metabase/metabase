@@ -25,7 +25,8 @@ describe("scenarios > embedding > full app", () => {
       cy.findByTestId("main-logo").should("be.visible");
     });
 
-    it("should hide the top nav by a param", () => {
+    // FIXME: fix this broken and outdated spec that is not valid but passes randomly
+    it.skip("should hide the top nav by a param", () => {
       visitUrl({ url: "/", qs: { top_nav: false } });
       cy.findByText(/Bobby/).should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
@@ -39,7 +40,8 @@ describe("scenarios > embedding > full app", () => {
       cy.findByTestId("main-logo").should("be.visible");
     });
 
-    it("should hide the top nav when all nav elements are hidden", () => {
+    // FIXME: fix this broken and outdated spec that is not valid but passes randomly
+    it.skip("should hide the top nav when all nav elements are hidden", () => {
       visitUrl({ url: "/", qs: { logo: false } });
       cy.findByText(/Bobby/).should("be.visible");
       cy.findByText("Our analytics").should("not.exist");

@@ -3,12 +3,12 @@ import _ from "underscore";
 import { add, update, remove, clear } from "./util";
 
 // returns canonical list of Fields, with nulls removed
-export function getFields(fields) {
+function getFields(fields) {
   return (fields || []).filter(b => b != null);
 }
 
 // turns a list of Fields into the canonical FieldClause
-export function getFieldClause(fields) {
+function getFieldClause(fields) {
   fields = getFields(fields);
   if (fields.length === 0) {
     return undefined;
@@ -64,9 +64,4 @@ export function getRemappings(field) {
   const remappings = (field && field.remappings) || [];
   const fieldValues = getFieldValues(field);
   return [...fieldValues, ...remappings];
-}
-
-export function getHumanReadableValue(value, fieldValues = []) {
-  const fieldValue = _.findWhere(fieldValues, { [0]: value });
-  return fieldValue && fieldValue.length === 2 ? fieldValue[1] : String(value);
 }

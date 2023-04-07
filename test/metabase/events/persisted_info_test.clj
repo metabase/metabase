@@ -5,7 +5,6 @@
    [metabase.models :refer [Card Database PersistedInfo]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest event-test
@@ -14,7 +13,7 @@
                     Card     [card {:database_id (u/the-id db)}]]
       (events.persisted-info/process-event {:topic :card-create
                                             :item  card})
-      (is (zero? (count (db/select PersistedInfo :card_id (u/the-id card)))))
+      (is (zero? (count (t2/select PersistedInfo :card_id (u/the-id card)))))
 
       (events.persisted-info/process-event {:topic :card-update
                                             :item (assoc card :dataset true)})

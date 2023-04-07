@@ -23,7 +23,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -96,12 +95,12 @@
   (filter #(isa? (:semantic_type %) :type/PK) fields))
 
 (def ^:private Field:params-columns-only
-  "Form for use in Toucan `db/select` expressions (as a drop-in replacement for using `Field`) that returns Fields with
+  "Form for use in Toucan `t2/select` expressions (as a drop-in replacement for using `Field`) that returns Fields with
   only the columns that are appropriate for returning in public/embedded API endpoints, which make heavy use of the
   functions in this namespace. Use `conj` to add additional Fields beyond the ones already here. Use `rest` to get
   just the column identifiers, perhaps for use with something like `select-keys`. Clutch!
 
-    (db/select Field:params-columns-only)"
+    (t2/select Field:params-columns-only)"
   ['Field :id :table_id :display_name :base_type :semantic_type :has_field_values])
 
 (defn- fields->table-id->name-field
@@ -109,7 +108,7 @@
   cases where more than one name Field exists for a Table, this just adds the first one it finds."
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
-    (m/index-by :table_id (-> (db/select Field:params-columns-only
+    (m/index-by :table_id (-> (t2/select Field:params-columns-only
                                 :table_id      [:in table-ids]
                                 :semantic_type (mdb.u/isa :type/Name))
                               ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
@@ -155,7 +154,7 @@
   parameter widgets."
   [field-ids :- (s/maybe #{su/IntGreaterThanZero})]
   (when (seq field-ids)
-    (m/index-by :id (-> (db/select Field:params-columns-only :id [:in field-ids])
+    (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
                         (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
                         remove-dimensions-nonpublic-columns))))
 

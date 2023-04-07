@@ -48,7 +48,6 @@
    [metabase.util :as u]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -867,10 +866,10 @@
                                             :collection_id (u/the-id dest-coll)})]
             (is (= (:collection_id resp) (u/the-id dest-coll))
                 "Dashboard should go into the destination collection")
-            (is (= 3 (count (db/select 'Card :collection_id (u/the-id source-coll)))))
-            (let [copied-cards (db/select 'Card :collection_id (u/the-id dest-coll))
-                  copied-db-cards (db/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))
-                  source-db-cards (db/select 'DashboardCard :dashboard_id (u/the-id dashboard))]
+            (is (= 3 (count (t2/select 'Card :collection_id (u/the-id source-coll)))))
+            (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
+                  copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))
+                  source-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id dashboard))]
               (testing "Copies all of the questions on the dashboard"
                 (is (= 2 (count copied-cards))))
               (testing "Copies all of the dashboard cards"
@@ -946,8 +945,8 @@
                                               :collection_id (u/the-id dest-coll)})]
               (is (= (:collection_id resp) (u/the-id dest-coll))
                   "Dashboard should go into the destination collection")
-              (let [copied-cards (db/select 'Card :collection_id (u/the-id dest-coll))
-                    copied-db-cards (db/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))]
+              (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
+                    copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))]
                 (testing "Copies only one of the questions on the dashboard"
                   (is (= 1 (count copied-cards))))
                 (testing "Copies one of the dashboard cards"
@@ -957,7 +956,7 @@
                          (into #{} (map :name) copied-cards))
                       "Should preserve the titles of the original cards"))
                 (testing "Should not create dashboardcardseries because the base card lacks permissions"
-                  (is (empty? (db/select DashboardCardSeries :card_id [:in (map :id copied-cards)]))))
+                  (is (empty? (t2/select DashboardCardSeries :card_id [:in (map :id copied-cards)]))))
                 (testing "Response includes uncopied cards"
                   ;; cards might be full cards or just a map {:id 1} due to permissions Any card with lack of
                   ;; permissions is just {:id 1}. Cards in a series which you have permissions for, but the base card
@@ -1019,7 +1018,7 @@
                                                :description "A new description"
                                                :is_deep_copy true
                                                :collection_id (u/the-id source-coll)})
-                  cards-in-coll (db/select 'Card :collection_id (u/the-id source-coll))]
+                  cards-in-coll (t2/select 'Card :collection_id (u/the-id source-coll))]
               ;; original 3 plust 3 duplicates
               (is (= 6 (count cards-in-coll)) "Not all cards were copied")
               (is (= (into #{} (comp (map :name)
@@ -1219,7 +1218,7 @@
                  :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
                  :visualization_settings {}}]
                (map (partial into {})
-                    (db/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
+                    (t2/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
                       :dashboard_id dashboard-id))))))))
 
 (deftest new-dashboard-card-with-additional-series-test
@@ -1254,7 +1253,7 @@
                    :col    4
                    :row    4}]
                  (map (partial into {})
-                      (db/select [DashboardCard :size_x :size_y :col :row], :dashboard_id dashboard-id))))
+                      (t2/select [DashboardCard :size_x :size_y :col :row], :dashboard_id dashboard-id))))
           (is (= #{0}
                  (t2/select-fn-set :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
 
@@ -1283,7 +1282,7 @@
                                                    :size_x             4
                                                    :size_y             4
                                                    :parameter_mappings mappings}))
-            :dashcards    (fn [] (db/select DashboardCard :dashboard_id dashboard-id))})))))
+            :dashcards    (fn [] (t2/select DashboardCard :dashboard_id dashboard-id))})))))
 
 (deftest add-card-parameter-mapping-permissions-test
   (testing "POST /api/dashboard/:id/cards"
@@ -1482,7 +1481,7 @@
           ;; Only action card should change
           (is (partial= [{:card_id model-id-2}
                          {:card_id model-id}]
-                        (db/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]}))))))))
+                        (t2/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        GET /api/dashboard/:id/revisions                                        |
@@ -1617,7 +1616,7 @@
       (mt/with-temp Dashboard [dashboard]
         (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200
                                                  (format "dashboard/%d/public_link" (u/the-id dashboard)))]
-          (is (db/exists? Dashboard :id (u/the-id dashboard), :public_uuid uuid))
+          (is (t2/exists? Dashboard :id (u/the-id dashboard), :public_uuid uuid))
           (testing "Test that if a Dashboard has already been shared we reuse the existing UUID"
             (is (= uuid
                    (:uuid (mt/user-http-request :crowberto :post 200
@@ -1644,7 +1643,7 @@
         (mt/with-temp Dashboard [dashboard (shared-dashboard)]
           (mt/user-http-request :crowberto :delete 204 (format "dashboard/%d/public_link" (u/the-id dashboard)))
           (is (= false
-                 (db/exists? Dashboard :id (u/the-id dashboard), :public_uuid (:public_uuid dashboard))))))
+                 (t2/exists? Dashboard :id (u/the-id dashboard), :public_uuid (:public_uuid dashboard))))))
 
       (testing "Test that we *cannot* unshare a Dashboard if we are not admins"
         (mt/with-temp Dashboard [dashboard (shared-dashboard)]
@@ -2084,10 +2083,10 @@
         (let [metadata (-> (qp/process-query (:dataset_query native-card))
                            :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
-          (db/update-where! 'Card {:id model-id}
-                            :result_metadata (json/generate-string
-                                              (assoc-in metadata [0 :id]
-                                                        (mt/id :products :category)))))
+          (t2/update! 'Card {:id model-id}
+                      {:result_metadata (json/generate-string
+                                         (assoc-in metadata [0 :id]
+                                                    (mt/id :products :category)))}))
         ;; ...so instead we create a question on top of this model (note that
         ;; metadata must be present on the model) and use the question on the
         ;; dashboard.
@@ -2348,9 +2347,10 @@
       ;; card with agggregation and binning columns
       [Card [{mbql-card-id :id}
              (merge (mt/card-with-source-metadata-for-query
-                      (mt/mbql-query venues {:limit 5
-                                             :aggregation [:count]
-                                             :breakout [[:field %latitude {:binning {:strategy :num-bins :num-bins 10}}]]}))
+                      (mt/mbql-query-no-test venues
+                        {:limit 5
+                         :aggregation [:count]
+                         :breakout [[:field %latitude {:binning {:strategy :num-bins :num-bins 10}}]]}))
                     {:name        "MBQL question"
                      :database_id (mt/id)
                      :table_id    (mt/id :venues)})]

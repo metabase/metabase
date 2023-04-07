@@ -6,7 +6,6 @@
    [metabase.models :refer [User]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.util.password :as u.password]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -31,7 +30,7 @@
                        :email      "cam+config-file-test@metabase.com"}
                       (t2/select-one User :email "cam+config-file-test@metabase.com")))
         (is (= 1
-               (db/count User :email "cam+config-file-test@metabase.com"))))
+               (t2/count User :email "cam+config-file-test@metabase.com"))))
       (testing "upsert if User already exists"
         (let [hashed-password          (fn [] (t2/select-one-fn :password User :email "cam+config-file-test@metabase.com"))
               salt                     (fn [] (t2/select-one-fn :password_salt User :email "cam+config-file-test@metabase.com"))
@@ -44,7 +43,7 @@
             (is (= :ok
                    (advanced-config.file/initialize!)))
             (is (= 1
-                   (db/count User :email "cam+config-file-test@metabase.com")))
+                   (t2/count User :email "cam+config-file-test@metabase.com")))
             (is (partial= {:first_name "Cam"
                            :last_name  "Saul"
                            :email      "cam+config-file-test@metabase.com"}
@@ -80,7 +79,7 @@
                            :is_superuser true}
                           (t2/select-one User :email "cam+config-file-admin-test@metabase.com")))
             (is (= 1
-                   (db/count User :email "cam+config-file-admin-test@metabase.com"))))))
+                   (t2/count User :email "cam+config-file-admin-test@metabase.com"))))))
       (testing "Create the another User, DO NOT force them to be an admin"
         (binding [advanced-config.file/*config* {:version 1
                                                  :config  {:users [{:first_name   "Cam"
@@ -96,7 +95,7 @@
                          :is_superuser false}
                         (t2/select-one User :email "cam+config-file-admin-test-2@metabase.com")))
           (is (= 1
-                 (db/count User :email "cam+config-file-admin-test-2@metabase.com")))))
+                 (t2/count User :email "cam+config-file-admin-test-2@metabase.com")))))
       (finally (t2/delete! User :email [:in #{"cam+config-file-admin-test@metabase.com"
                                               "cam+config-file-admin-test-2@metabase.com"}])))))
 

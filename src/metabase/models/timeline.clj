@@ -8,7 +8,6 @@
    [metabase.models.timeline-event :as timeline-event]
    [metabase.util.date-2 :as u.date]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]))
@@ -45,7 +44,7 @@
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
   [collection-id {:keys [:timeline/events? :timeline/archived?] :as options}]
-  (cond-> (hydrate (db/select Timeline
+  (cond-> (hydrate (t2/select Timeline
                               :collection_id collection-id
                               :archived (boolean archived?))
                    :creator
@@ -72,7 +71,7 @@
            (for [event events]
              (-> (into (sorted-map) event)
                  (dissoc :creator :id :timeline_id :updated_at)
-                 (update :creator_id  serdes/export-user)
+                 (update :creator_id  serdes/*export-user*)
                  (update :timestamp   #(u.date/format (t/offset-date-time %)))))))
 
 (defmethod serdes/extract-one "Timeline"
@@ -82,14 +81,14 @@
                    (timeline-event/include-events-singular timeline {:all? true}))]
     (-> (serdes/extract-one-basics "Timeline" timeline)
         (update :events        extract-events)
-        (update :collection_id serdes/export-fk 'Collection)
-        (update :creator_id    serdes/export-user))))
+        (update :collection_id serdes/*export-fk* 'Collection)
+        (update :creator_id    serdes/*export-user*))))
 
 (defmethod serdes/load-xform "Timeline" [timeline]
   (-> timeline
       serdes/load-xform-basics
-      (update :collection_id serdes/import-fk 'Collection)
-      (update :creator_id    serdes/import-user)))
+      (update :collection_id serdes/*import-fk* 'Collection)
+      (update :creator_id    serdes/*import-user*)))
 
 (defmethod serdes/load-one! "Timeline" [ingested maybe-local]
   (let [timeline ((get-method serdes/load-one! :default) (dissoc ingested :events) maybe-local)]

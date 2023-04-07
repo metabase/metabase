@@ -205,7 +205,8 @@ class Dashboard extends Component {
   };
 
   onAddQuestion = () => {
-    this.setEditing(true);
+    const { dashboard } = this.props;
+    this.setEditing(dashboard);
     this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
   };
 

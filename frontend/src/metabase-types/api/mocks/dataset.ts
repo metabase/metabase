@@ -18,7 +18,10 @@ export type MockDatasetOpts = Partial<Omit<Dataset, "data">> & {
   data?: Partial<DatasetData>;
 };
 
-export const createMockDataset = ({ data = {}, ...opts }: MockDatasetOpts) => ({
+export const createMockDataset = ({
+  data = {},
+  ...opts
+}: MockDatasetOpts = {}) => ({
   data: {
     rows: [],
     cols: [

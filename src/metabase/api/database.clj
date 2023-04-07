@@ -30,6 +30,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.sample-data :as sample-data]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
@@ -64,7 +65,7 @@
 ;;; ----------------------------------------------- GET /api/database ------------------------------------------------
 
 (defn- add-tables [dbs]
-  (let [db-id->tables (group-by :db_id (filter mi/can-read? (db/select Table
+  (let [db-id->tables (group-by :db_id (filter mi/can-read? (t2/select Table
                                                               :active          true
                                                               :db_id           [:in (map :id dbs)]
                                                               :visibility_type nil
@@ -229,7 +230,7 @@
              include-saved-questions-tables?
              include-editable-data-model?
              exclude-uneditable-details?]}]
-  (let [dbs (db/select Database {:order-by [:%lower.name :%lower.engine]})
+  (let [dbs (t2/select Database {:order-by [:%lower.name :%lower.engine]})
         filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
@@ -409,7 +410,7 @@
   [id]
   {id ms/PositiveInt}
   (api/check-superuser)
-  (api/check-404 (db/exists? Database :id id))
+  (api/check-404 (t2/exists? Database :id id))
   (let [table-ids (t2/select-pks-set Table :db_id id)]
     (first (mdb.query/query
              {:select [:*]
@@ -481,7 +482,7 @@
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
 (defn- autocomplete-tables [db-id search-string limit]
-  (db/select [Table :id :db_id :schema :name]
+  (t2/select [Table :id :db_id :schema :name]
     {:where    [:and [:= :db_id db-id]
                      [:= :active true]
                      [:like :%lower.name (u/lower-case-en search-string)]
@@ -503,7 +504,7 @@
                         second
                         (str/replace #"-" " ")
                         u/lower-case-en)]
-    (db/select [Card :id :dataset :database_id :name :collection_id [:collection.name :collection_name]]
+    (t2/select [Card :id :dataset :database_id :name :collection_id [:collection.name :collection_name]]
                {:where    [:and
                            [:= :report_card.database_id database-id]
                            [:= :report_card.archived false]
@@ -529,7 +530,7 @@
                 :limit    50})))
 
 (defn- autocomplete-fields [db-id search-string limit]
-  (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
+  (t2/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
              :metabase_field.active          true
              :%lower.metabase_field/name     [:like (u/lower-case-en search-string)]
              :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
@@ -634,7 +635,7 @@
   "Get a list of all `Fields` in `Database`."
   [id]
   (api/read-check Database id)
-  (let [fields (filter mi/can-read? (-> (db/select [Field :id :name :display_name :table_id :base_type :semantic_type]
+  (let [fields (filter mi/can-read? (-> (t2/select [Field :id :name :display_name :table_id :base_type :semantic_type]
                                           :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
                                           :visibility_type [:not-in ["sensitive" "retired"]])
                                         (hydrate :table)))]
@@ -745,6 +746,10 @@
    auto_run_queries (s/maybe s/Bool)
    cache_ttl        (s/maybe su/IntGreaterThanZero)}
   (api/check-superuser)
+  (when cache_ttl
+    (api/check (premium-features/enable-advanced-config?)
+               [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
+                              "advanced-config feature."))]))
   (let [is-full-sync?    (or (nil? is_full_sync)
                              (boolean is_full_sync))
         details-or-error (test-connection-details engine details)
@@ -752,21 +757,22 @@
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
-      (u/prog1 (api/check-500 (db/insert! Database
-                                (merge
-                                  {:name         name
-                                   :engine       engine
-                                   :details      details-or-error
-                                   :is_full_sync is-full-sync?
-                                   :is_on_demand (boolean is_on_demand)
-                                   :cache_ttl    cache_ttl
-                                   :creator_id   api/*current-user-id*}
-                                  (sync.schedules/schedule-map->cron-strings
-                                    (if (:let-user-control-scheduling details)
-                                      (sync.schedules/scheduling schedules)
-                                      (sync.schedules/default-randomized-schedule)))
-                                  (when (some? auto_run_queries)
-                                    {:auto_run_queries auto_run_queries}))))
+      (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
+                                       Database
+                                       (merge
+                                         {:name         name
+                                          :engine       engine
+                                          :details      details-or-error
+                                          :is_full_sync is-full-sync?
+                                          :is_on_demand (boolean is_on_demand)
+                                          :cache_ttl    cache_ttl
+                                          :creator_id   api/*current-user-id*}
+                                         (sync.schedules/schedule-map->cron-strings
+                                           (if (:let-user-control-scheduling details)
+                                             (sync.schedules/scheduling schedules)
+                                             (sync.schedules/default-randomized-schedule)))
+                                         (when (some? auto_run_queries)
+                                           {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :database-create <>)
         (snowplow/track-event! ::snowplow/database-connection-successful
                                api/*current-user-id*
@@ -928,8 +934,10 @@
         ;; do nothing in the case that user is not in control of
         ;; scheduling. leave them as they are in the db
 
-        ;; unlike the other fields, folks might want to nil out cache_ttl
-        (t2/update! Database id {:cache_ttl cache_ttl})
+        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
+        ;; with the advanced-config feature enabled.
+        (when (premium-features/enable-advanced-config?)
+          (t2/update! Database id {:cache_ttl cache_ttl}))
 
         (let [db (t2/select-one Database :id id)]
           (events/publish-event! :database-update db)
@@ -989,7 +997,7 @@
         tables (map api/write-check (:tables (first (add-tables [db]))))]
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
-    (db/update-where! Table {:id [:in (map :id tables)]} :initial_sync_status "complete"))
+    (t2/update! Table {:id [:in (map :id tables)]} {:initial_sync_status "complete"}))
   {:status :ok})
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
@@ -1025,8 +1033,8 @@
 
 (defn- delete-all-field-values-for-database! [database-or-id]
   (when-let [field-values-ids (seq (database->field-values-ids database-or-id))]
-    (db/execute! {:delete-from :metabase_fieldvalues
-                  :where       [:in :id field-values-ids]})))
+    (t2/query-one {:delete-from :metabase_fieldvalues
+                   :where       [:in :id field-values-ids]})))
 
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
@@ -1094,7 +1102,7 @@
 (defn- schema-tables-list [db-id schema]
   (api/read-check Database db-id)
   (api/check-403 (can-read-schema? db-id schema))
-  (filter mi/can-read? (db/select Table
+  (filter mi/can-read? (t2/select Table
                          :db_id           db-id
                          :schema          schema
                          :active          true

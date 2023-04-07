@@ -19,7 +19,6 @@
    [metabase.test.data :as data]
    [metabase.test.sync :as test.sync :refer [sync-survives-crash?]]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
 
@@ -27,10 +26,10 @@
   (testing "Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current"
     (data/with-temp-copy-of-db
       ;; mark all the Fields as analyzed with so they won't be subject to analysis
-      (db/update-where! Field {:table_id (data/id :venues)}
-        :last_analyzed       #t "2017-08-01T00:00"
-        :semantic_type       nil
-        :fingerprint_version Short/MAX_VALUE)
+      (t2/update! Field {:table_id (data/id :venues)}
+                  {:last_analyzed       #t "2017-08-01T00:00"
+                   :semantic_type       nil
+                   :fingerprint_version Short/MAX_VALUE})
       ;; the type of the value that comes back may differ a bit between different application DBs
       (let [analysis-date (t2/select-one-fn :last_analyzed Field :table_id (data/id :venues))]
         ;; ok, NOW run the analysis process
@@ -39,7 +38,7 @@
         ;; PK is ok because it gets marked as part of metadata sync
         (is (= (zipmap ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
                        (repeat {:semantic_type nil, :last_analyzed analysis-date}))
-               (into {} (for [field (db/select [Field :name :semantic_type :last_analyzed] :table_id (data/id :venues))]
+               (into {} (for [field (t2/select [Field :name :semantic_type :last_analyzed] :table_id (data/id :venues))]
                           [(:name field) (into {} (dissoc field :name))]))))))))
 
 ;; ...but they *SHOULD* get analyzed if they ARE newly created (expcept for PK which we skip)
@@ -57,7 +56,7 @@
              {:name "LONGITUDE", :semantic_type :type/Longitude, :last_analyzed true}
              {:name "CATEGORY_ID", :semantic_type :type/Category, :last_analyzed true}
              {:name "NAME", :semantic_type :type/Name, :last_analyzed true}}
-           (set (for [field (db/select [Field :name :semantic_type :last_analyzed] :table_id (u/the-id table))]
+           (set (for [field (t2/select [Field :name :semantic_type :last_analyzed] :table_id (u/the-id table))]
                   (into {} (update field :last_analyzed boolean))))))))
 
 (deftest mark-fields-as-analyzed-test
@@ -152,8 +151,8 @@
 (defn- fake-field-was-analyzed? [field]
   ;; don't let ourselves be fooled if the test passes because the table is
   ;; totally broken or has no fields. Make sure we actually test something
-  (assert (db/exists? Field :id (u/the-id field)))
-  (db/exists? Field :id (u/the-id field), :last_analyzed [:not= nil]))
+  (assert (t2/exists? Field :id (u/the-id field)))
+  (t2/exists? Field :id (u/the-id field), :last_analyzed [:not= nil]))
 
 (defn- latest-sync-time [table]
   (t2/select-one-fn :last_analyzed Field

@@ -7,7 +7,7 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest chain-filter-sandboxed-field-values-test
   (testing "When chain-filter would normally return cached FieldValues (#13832), make sure sandboxing is respected"
@@ -18,7 +18,7 @@
           (is (= {:values          ["African" "American"]
                   :has_more_values false}
                  (mt/$ids (chain-filter/chain-filter %categories.name nil))))
-          (is (= 1 (db/count FieldValues :field_id (mt/id :categories :name) :type :sandbox))))
+          (is (= 1 (t2/count FieldValues :field_id (mt/id :categories :name) :type :sandbox))))
 
         (testing "search"
           (is (= {:values          ["African" "American"]
@@ -33,10 +33,10 @@
               (is (= {:values          ["Artisan"]
                       :has_more_values false}
                      (mt/$ids (chain-filter/chain-filter %categories.name {%categories.id 3})))))
-            (is (= 1 (db/count FieldValues :field_id (mt/id :categories :name) :type :linked-filter))))
+            (is (= 1 (t2/count FieldValues :field_id (mt/id :categories :name) :type :linked-filter))))
 
           (testing "creates another linked-filter FieldValues if  sandboxed"
             (is (= {:values          []
                     :has_more_values false}
                    (mt/$ids (chain-filter/chain-filter %categories.name {%categories.id 3}))))
-            (is (= 2 (db/count FieldValues :field_id (mt/id :categories :name) :type :linked-filter)))))))))
+            (is (= 2 (t2/count FieldValues :field_id (mt/id :categories :name) :type :linked-filter)))))))))

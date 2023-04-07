@@ -20,7 +20,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -111,7 +110,7 @@
   on GTAPs (the Card cannot add fields or change types vs. the original Table)."
   [{new-result-metadata :result_metadata, card-id :id}]
   (when new-result-metadata
-    (when-let [gtaps-using-this-card (not-empty (db/select [GroupTableAccessPolicy :id :table_id] :card_id card-id))]
+    (when-let [gtaps-using-this-card (not-empty (t2/select [GroupTableAccessPolicy :id :table_id] :card_id card-id))]
       (let [original-result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
         (when-not (= original-result-metadata new-result-metadata)
           (doseq [{table-id :table_id} gtaps-using-this-card]
@@ -145,7 +144,7 @@
         (t2/select-one GroupTableAccessPolicy :id id))
       (let [expected-permission-path (perms/table-segmented-query-path (:table_id sandbox))]
         (when-let [permission-path-id (t2/select-one-fn :id Permissions :object expected-permission-path)]
-          (db/insert! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id)))))))
+          (first (t2/insert-returning-instances! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id))))))))
 
 (defn- pre-insert [gtap]
   (u/prog1 gtap

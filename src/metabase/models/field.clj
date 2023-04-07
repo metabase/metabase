@@ -207,7 +207,7 @@
 (defn values
   "Return the `FieldValues` associated with this `field`."
   [{:keys [id]}]
-  (db/select [FieldValues :field_id :values], :field_id id))
+  (t2/select [FieldValues :field_id :values], :field_id id))
 
 (defn- select-field-id->instance
   "Select instances of `model` related by `field_id` FK to a Field in `fields`, and return a map of Field ID -> model
@@ -221,7 +221,7 @@
   [fields model & conditions]
   (let [field-ids (set (map :id fields))]
     (m/index-by :field_id (when (seq field-ids)
-                            (apply db/select model :field_id [:in field-ids] conditions)))))
+                            (apply t2/select model :field_id [:in field-ids] conditions)))))
 
 (mi/define-batched-hydration-method with-values
   :values
@@ -320,7 +320,7 @@
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (m/index-by :id (when (seq target-field-ids)
-                                           (readable-fields-only (db/select Field :id [:in target-field-ids]))))]
+                                           (readable-fields-only (t2/select Field :id [:in target-field-ids]))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
@@ -389,7 +389,8 @@
   name)
 
 (defmethod serdes/extract-query "Field" [_model-name _opts]
-  (let [dimensions (->> (db/select Dimension)
+  (let [d (t2/select Dimension)
+        dimensions (->> d
                         (group-by :field_id))]
     (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
               (db/select-reducible Field))))
@@ -412,24 +413,24 @@
   (->> (for [dim dimensions]
          (-> (into (sorted-map) dim)
              (dissoc :field_id :updated_at) ; :field_id is implied by the nesting under that field.
-             (update :human_readable_field_id serdes/export-field-fk)))
+             (update :human_readable_field_id serdes/*export-field-fk*)))
        (sort-by :created_at)))
 
 (defmethod serdes/extract-one "Field"
   [_model-name _opts field]
   (let [field (if (contains? field :dimensions)
                 field
-                (assoc field :dimensions (db/select Dimension :field_id (:id field))))]
+                (assoc field :dimensions (t2/select Dimension :field_id (:id field))))]
     (-> (serdes/extract-one-basics "Field" field)
         (update :dimensions         extract-dimensions)
-        (update :table_id           serdes/export-table-fk)
-        (update :fk_target_field_id serdes/export-field-fk))))
+        (update :table_id           serdes/*export-table-fk*)
+        (update :fk_target_field_id serdes/*export-field-fk*))))
 
 (defmethod serdes/load-xform "Field"
   [field]
   (-> (serdes/load-xform-basics field)
-      (update :table_id           serdes/import-table-fk)
-      (update :fk_target_field_id serdes/import-field-fk)))
+      (update :table_id           serdes/*import-table-fk*)
+      (update :fk_target_field_id serdes/*import-field-fk*)))
 
 (defmethod serdes/load-find-local "Field"
   [path]

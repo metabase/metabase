@@ -7,7 +7,6 @@
    [metabase.models :refer [Field FieldValues User]]
    [metabase.models.field-values :as field-values]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest fetch-field-test
@@ -48,7 +47,7 @@
               (letfn [(fetch-values [user field]
                         (-> (mt/user-http-request user :get 200 (format "field/%d/values" (mt/id :venues field)))
                             (update :values (partial take 3))))]
-                ;; Rasta Toucan is only allowed to see Venues that are in the "Mexican" category [category_id = 50]. n
+                ;; Rasta Toucan is only allowed to see Venues that are in the "Mexican" category [category_id = 50]. When
                 ;; fetching FieldValues for `venue.name` should do an ad-hoc fetch and only return the names of venues in
                 ;; that category.
                 (is (= {:field_id        (mt/id :venues :name)
@@ -151,7 +150,7 @@
       (testing "Do we use cached values when available?"
         (with-redefs [field-values/distinct-values (fn [_] (assert false "Should not be called"))]
           (is (some? (:values (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values")))))
-          (is (= 1 (db/count FieldValues
+          (is (= 1 (t2/count FieldValues
                              :field_id (:id field)
                              :type :sandbox)))))
 
@@ -164,7 +163,7 @@
                                                    :attributes {:cat 5}}
               (mt/user-http-request another-user :get 200 (str "field/" (:id field) "/values"))
               ;; create another one for the new user
-              (is (= 2 (db/count FieldValues
+              (is (= 2 (t2/count FieldValues
                                  :field_id (:id field)
                                  :type :sandbox)))))))
 
@@ -194,6 +193,6 @@
                                                                       (= (:id fv) old-sandbox-fv-id))]
             (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
             ;; did the old one get deleted?
-            (is (not (db/exists? FieldValues :id old-sandbox-fv-id)))
+            (is (not (t2/exists? FieldValues :id old-sandbox-fv-id)))
             ;; make sure we created a new one
-            (is (= 1 (db/count FieldValues :field_id (:id field) :type :sandbox)))))))))
+            (is (= 1 (t2/count FieldValues :field_id (:id field) :type :sandbox)))))))))

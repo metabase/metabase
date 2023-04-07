@@ -12,7 +12,6 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -38,7 +37,7 @@
             {:creator_id api/*current-user-id*}
             (when-not icon
               {:icon timeline/DefaultIcon}))]
-    (db/insert! Timeline tl)))
+    (first (t2/insert-returning-instances! Timeline tl))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
@@ -47,7 +46,7 @@
   {include  (s/maybe Include)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)
-        timelines (->> (db/select Timeline
+        timelines (->> (t2/select Timeline
                          {:where    [:and
                                      [:= :archived archived?]
                                      (collection/visible-collection-ids->honeysql-filter-clause
@@ -99,7 +98,7 @@
         :present #{:description :icon :collection_id :default :archived}
         :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
-      (db/update-where! TimelineEvent {:timeline_id id} :archived archived))
+      (t2/update! TimelineEvent {:timeline_id id} {:archived archived}))
     (hydrate (t2/select-one Timeline :id id) :creator [:collection :can_write])))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

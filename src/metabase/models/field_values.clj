@@ -372,12 +372,12 @@
       values
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
-        (db/insert! FieldValues
-          :type :full
-          :field_id              (u/the-id field)
-          :has_more_values       has_more_values
-          :values                values
-          :human_readable_values human-readable-values)
+        (t2/insert! FieldValues
+                    :type :full
+                    :field_id              (u/the-id field)
+                    :has_more_values       has_more_values
+                    :values                values
+                    :human_readable_values human-readable-values)
         ::fv-created)
 
       ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
@@ -434,7 +434,7 @@
   [field-ids]
   (let [fields (when (seq field-ids)
                  (filter field-should-have-field-values?
-                         (db/select ['Field :name :id :base_type :effective_type :coercion_strategy
+                         (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
                                      :semantic_type :visibility_type :table_id :has_field_values]
                            :id [:in field-ids])))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
@@ -468,7 +468,7 @@
                     ;; It's too short, so no schema. Shift them over and add a nil schema.
                     [db nil schema table])]
     (-> (serdes/load-xform-basics fv)
-        (assoc :field_id (serdes/import-field-fk field-ref))
+        (assoc :field_id (serdes/*import-field-fk* field-ref))
         (update :type keyword))))
 
 (defmethod serdes/load-find-local "FieldValues" [path]

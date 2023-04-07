@@ -20,7 +20,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -46,7 +45,7 @@
   (testing "After deleting a Database, no permissions for the DB should still exist"
     (mt/with-temp Database [{db-id :id}]
       (t2/delete! Database :id db-id)
-      (is (= [] (db/select Permissions :object [:like (str "%" (perms/data-perms-path db-id) "%")]))))))
+      (is (= [] (t2/select Permissions :object [:like (str "%" (perms/data-perms-path db-id) "%")]))))))
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
@@ -311,6 +310,6 @@
 (deftest create-database-with-null-details-test
   (testing "Details should get a default value of {} if unspecified"
     (mt/with-model-cleanup [Database]
-      (let [db (db/insert! Database (dissoc (mt/with-temp-defaults Database) :details))]
+      (let [db (first (t2/insert-returning-instances! Database (dissoc (mt/with-temp-defaults Database) :details)))]
         (is (partial= {:details {}}
                       db))))))

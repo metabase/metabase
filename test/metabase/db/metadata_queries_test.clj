@@ -80,7 +80,7 @@
                    {:base_type :type/Text :semantic_type :type/State}
                    {:base_type :type/Text :semantic_type :type/URL}]]
       (is (#'metadata-queries/text-field? field)))
-    (doseq [field [{:base_type :type/Structured} ; json fields in pg
+    (doseq [field [{:base_type :type/JSON} ; json fields in pg
                    {:base_type :type/Text :semantic_type :type/SerializedJSON} ; "legacy" json fields in pg
                    {:base_type :type/Text :semantic_type :type/XML}]]
       (is (not (#'metadata-queries/text-field? field))))))

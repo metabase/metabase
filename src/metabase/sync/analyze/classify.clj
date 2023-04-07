@@ -32,7 +32,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -114,7 +113,7 @@
   "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- i/TableInstance]
-  (seq (db/select Field
+  (seq (t2/select Field
          :table_id            (u/the-id table)
          :fingerprint_version i/latest-fingerprint-version
          :last_analyzed       nil)))

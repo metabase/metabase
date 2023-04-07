@@ -18,15 +18,17 @@ const filter = {
   sectionId: "location",
 };
 
+const dashboardDetails = {
+  parameters: [filter],
+};
+
 describe("issue 17211", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({ questionDetails }).then(
+    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
-        cy.addFilterToDashboard({ filter, dashboard_id });
-
         cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
           cards: [
             {

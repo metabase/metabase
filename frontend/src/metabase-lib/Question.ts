@@ -5,7 +5,6 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
-import * as MLv2 from "cljs/metabase.lib.js";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/queries/StructuredQuery";
@@ -14,7 +13,7 @@ import NativeQuery, {
 } from "metabase-lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/queries/InternalQuery";
-import Query from "metabase-lib/queries/Query";
+import BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
@@ -22,6 +21,12 @@ import Field from "metabase-lib/metadata/Field";
 import { AggregationDimension, FieldDimension } from "metabase-lib/Dimension";
 import { isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/utils";
+import {
+  Dataset,
+  CollectionId,
+  Parameter as ParameterObject,
+  ParameterId,
+} from "metabase-types/api";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import * as FILTER from "metabase-lib/queries/utils/filter";
@@ -39,7 +44,7 @@ import {
 import { ParameterValues } from "metabase-types/types/Parameter";
 import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
-import { Column, Dataset, Value } from "metabase-types/types/Dataset";
+import { Column, Value } from "metabase-types/types/Dataset";
 import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
 import {
@@ -48,11 +53,6 @@ import {
 } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import {
-  CollectionId,
-  Parameter as ParameterObject,
-  ParameterId,
-} from "metabase-types/api";
 
 import {
   getParameterValuesBySlug,
@@ -84,6 +84,9 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/Alert";
 import { getBaseDimensionReference } from "metabase-lib/references";
+
+import type { Query } from "./types";
+import * as ML from "./v2";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -230,7 +233,7 @@ class QuestionInner {
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
    */
-  setQuery(newQuery: Query): Question {
+  setQuery(newQuery: BaseQuery): Question {
     if (this._card.dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
@@ -1335,17 +1338,15 @@ class QuestionInner {
     return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
-  _getMLv2Query(metadata = this._metadata) {
+  _getMLv2Query(metadata = this._metadata): Query {
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
       if (!this.__mlv2MetadataProvider) {
-        console.log("Caching MLv2 metadata");
-        this.__mlv2MetadataProvider = MLv2.metadataProvider(
+        this.__mlv2MetadataProvider = ML.metadataProvider(
           this.databaseId(),
           metadata,
         );
       }
-      console.log("Using cached MLv2 metadata");
       metadata = this.__mlv2MetadataProvider;
     }
 
@@ -1355,40 +1356,20 @@ class QuestionInner {
     }
 
     if (!this.__mlv2Query) {
-      console.log("Caching MLv2 query based on", this.datasetQuery());
       this.__mlv2QueryMetadata = metadata;
-      this.__mlv2Query = MLv2.query(
+      this.__mlv2Query = ML.fromLegacyQuery(
         this.databaseId(),
         metadata,
         this.datasetQuery(),
       );
     }
 
-    console.log("Using cached MLv2 query");
     return this.__mlv2Query;
   }
 
-  generateQueryDescription(tableMetadata) {
-    let metadata =
-      tableMetadata?.id != null
-        ? assocIn(
-            this._metadata,
-            ["tables", String(tableMetadata.id)],
-            tableMetadata,
-          )
-        : this._metadata;
-
-    if (tableMetadata) {
-      for (const fieldMetadata of tableMetadata?.fields) {
-        metadata = assocIn(
-          metadata,
-          ["fields", String(fieldMetadata.id)],
-          fieldMetadata,
-        );
-      }
-    }
-
-    return MLv2.suggestedName(this._getMLv2Query(metadata));
+  generateQueryDescription() {
+    const query = this._getMLv2Query();
+    return ML.suggestedName(query);
   }
 
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
@@ -1397,7 +1378,7 @@ class QuestionInner {
     if (this.isStructured()) {
       const questionWithParameters = this.setParameters(parameters);
 
-      if (!this.query().readOnly()) {
+      if (this.query().isEditable()) {
         return questionWithParameters
           .setParameterValues(parameterValues)
           ._convertParametersToMbql()

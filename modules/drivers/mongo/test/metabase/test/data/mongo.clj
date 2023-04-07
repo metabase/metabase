@@ -6,6 +6,8 @@
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mongo.util :refer [with-mongo-connection]]
    [metabase.test.data.interface :as tx]
@@ -20,6 +22,9 @@
 
 (defmethod tx/supports-time-type? :mongo [_driver] false)
 (defmethod tx/supports-timestamptz-type? :mongo [_driver] false)
+
+;; during unit tests don't treat Mongo as having FK support
+(defmethod driver/supports? [:mongo :foreign-keys] [_ _] (not config/is-test?))
 
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."
@@ -53,7 +58,7 @@
                    {:pass password}))))
 
 (defn- destroy-db! [driver dbdef]
-  (with-mongo-connection [mongo-connection (tx/dbdef->connection-details driver :server dbdef)]
+  (with-mongo-connection [^com.mongodb.DB mongo-connection (tx/dbdef->connection-details driver :server dbdef)]
     (mg/drop-db (.getMongo mongo-connection) (tx/escaped-database-name dbdef))))
 
 (def ^:dynamic *remove-nil?*

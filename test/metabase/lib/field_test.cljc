@@ -1,18 +1,28 @@
 (ns metabase.lib.field-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.field :as lib.field]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(deftest ^:parallel field-from-database-metadata-test
-  (is (=? [:field {:base-type :type/BigInteger, :lib/uuid string?} (meta/id :venues :id)]
-          (lib.field/field {:lib/metadata meta/metadata-provider} (meta/field-metadata :venues :id)))))
+(deftest ^:parallel field-from-results-metadata-test
+  (let [field-metadata (lib.metadata/stage-column (lib/saved-question-query
+                                                   meta/metadata-provider
+                                                   meta/saved-question)
+                                                  "ID")]
+    (is (=? {:lib/type :metadata/field
+             :name     "ID"}
+            field-metadata))
+    (is (=? [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]
+            (lib/ref field-metadata)))))
 
 (defn- grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)
@@ -23,17 +33,20 @@
 
 (def ^:private grandparent-parent-child-metadata-provider
   "A MetadataProvider for a Table that nested Fields: grandparent, parent, and child"
-  (let [grandparent {:lib/type :metadata/field
-                     :name     "grandparent"
-                     :id       (grandparent-parent-child-id :grandparent)}
+  (let [grandparent {:lib/type  :metadata/field
+                     :name      "grandparent"
+                     :id        (grandparent-parent-child-id :grandparent)
+                     :base_type :type/Text}
         parent      {:lib/type  :metadata/field
                      :name      "parent"
                      :parent_id (grandparent-parent-child-id :grandparent)
-                     :id        (grandparent-parent-child-id :parent)}
+                     :id        (grandparent-parent-child-id :parent)
+                     :base_type :type/Text}
         child       {:lib/type  :metadata/field
                      :name      "child"
                      :parent_id (grandparent-parent-child-id :parent)
-                     :id        (grandparent-parent-child-id :child)}]
+                     :id        (grandparent-parent-child-id :child)
+                     :base_type :type/Text}]
     (lib.tu/mock-metadata-provider
      {:database meta/metadata
       :tables   [(meta/table-metadata :venues)]
@@ -58,7 +71,6 @@
     (testing "For fields with parents we should return them with a combined name including parent's name"
       (is (=? {:table_id          (meta/id :venues)
                :name              "grandparent.parent"
-               :field_ref         [:field {} (grandparent-parent-child-id :parent)]
                :parent_id         (grandparent-parent-child-id :grandparent)
                :id                (grandparent-parent-child-id :parent)
                :visibility_type   :normal}
@@ -66,7 +78,6 @@
     (testing "nested-nested fields should include grandparent name (etc)"
       (is (=? {:table_id          (meta/id :venues)
                :name              "grandparent.parent.child"
-               :field_ref         [:field {} (grandparent-parent-child-id :child)]
                :parent_id         (grandparent-parent-child-id :parent)
                :id                (grandparent-parent-child-id :child)
                :visibility_type   :normal}
@@ -77,22 +88,22 @@
     (is (=? {:name          "sum"
              :display_name  "sum of User ID"
              :base_type     :type/Integer
-             :field_ref     [:field {:base-type :type/Integer} "sum"]
              :semantic_type :type/FK}
             (lib.metadata.calculation/metadata
              (lib.tu/venues-query-with-last-stage
-              {:lib/stage-metadata
-               {:lib/type :metadata/results
-                :columns  [{:lib/type      :metadata/field
-                            :name          "abc"
-                            :display_name  "another Field"
-                            :base_type     :type/Integer
-                            :semantic_type :type/FK}
-                           {:lib/type      :metadata/field
-                            :name          "sum"
-                            :display_name  "sum of User ID"
-                            :base_type     :type/Integer
-                            :semantic_type :type/FK}]}})
+              {:lib/type           :mbql.stage/native
+               :lib/stage-metadata {:lib/type :metadata/results
+                                    :columns  [{:lib/type      :metadata/field
+                                                :name          "abc"
+                                                :display_name  "another Field"
+                                                :base_type     :type/Integer
+                                                :semantic_type :type/FK}
+                                               {:lib/type      :metadata/field
+                                                :name          "sum"
+                                                :display_name  "sum of User ID"
+                                                :base_type     :type/Integer
+                                                :semantic_type :type/FK}]}
+               :native             "SELECT whatever"})
              -1
              [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "sum"])))))
 
@@ -136,7 +147,60 @@
     (let [field (f query -1)]
       (is (=? [:field {:temporal-unit :year} (meta/id :checkins :date)]
               field))
-      (is (=? {:unit :year}
-              (lib.metadata.calculation/metadata query -1 field)))
+      (is (=? :year
+              (lib.temporal-bucket/current-temporal-bucket (lib.metadata.calculation/metadata query -1 field))))
       (is (= "Date (year)"
              (lib.metadata.calculation/display-name query -1 field))))))
+
+(deftest ^:parallel joined-field-column-name-test
+  (let [card  {:dataset_query {:database (meta/id)
+                               :type     :query
+                               :query    {:source-table (meta/id :venues)
+                                          :joins        [{:fields       :all
+                                                          :source-table (meta/id :categories)
+                                                          :condition    [:=
+                                                                         [:field (meta/id :venues :category-id) nil]
+                                                                         [:field (meta/id :categories :id) {:join-alias "Cat"}]]
+                                                          :alias        "Cat"}]}}}
+        query (lib/saved-question-query
+               meta/metadata-provider
+               card)]
+    (is (=? [{:lib/desired-column-alias "ID"}
+             {:lib/desired-column-alias "NAME"}
+             {:lib/desired-column-alias "CATEGORY_ID"}
+             {:lib/desired-column-alias "LATITUDE"}
+             {:lib/desired-column-alias "LONGITUDE"}
+             {:lib/desired-column-alias "PRICE"}
+             {:lib/desired-column-alias "Cat__ID"}
+             {:lib/desired-column-alias "Cat__NAME"}]
+            (lib.metadata.calculation/metadata query)))))
+
+(deftest ^:parallel field-ref-type-of-test
+  (testing "Make sure we can calculate field ref type information correctly"
+    (let [clause [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]]
+      (is (= ::lib.schema.expression/type.unknown
+             (lib.schema.expression/type-of clause)))
+      (is (= :type/BigInteger
+             (lib.metadata.calculation/type-of lib.tu/venues-query clause))))))
+
+(deftest ^:parallel implicitly-joinable-field-display-name-test
+  (testing "Should be able to calculate a display name for an implicitly joinable Field"
+    (let [query           (lib/query-for-table-name meta/metadata-provider "VENUES")
+          categories-name (m/find-first #(= (:id %) (meta/id :categories :name))
+                                        (lib/orderable-columns query))]
+      (is (= "Categories → Name"
+             (lib/display-name query categories-name)))
+      (let [query' (lib/order-by query categories-name)]
+        (is (= "Venues, Sorted by Categories → Name ascending"
+               (lib/describe-query query')))))))
+
+(deftest ^:parallel source-card-table-display-info-test
+  (let [query (assoc lib.tu/venues-query :lib/metadata lib.tu/metadata-provider-with-card)
+        field (lib.metadata.calculation/metadata query (assoc (lib.metadata/field query (meta/id :venues :name))
+                                                              :table_id "card__1"))]
+    (is (=? {:name           "NAME"
+             :display_name   "Name"
+             :semantic_type  :type/Name
+             :effective_type :type/Text
+             :table          {:name "My Card", :display_name "My Card"}}
+            (lib/display-info query field)))))

@@ -7,7 +7,7 @@ import { t } from "ttag";
 import visualizations from "metabase/visualizations";
 import * as Urls from "metabase/lib/urls";
 
-import S from "metabase/components/List.css";
+import S from "metabase/components/List/List.css";
 
 import List from "metabase/components/List";
 import ListItem from "metabase/components/ListItem";

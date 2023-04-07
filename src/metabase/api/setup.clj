@@ -32,7 +32,7 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
@@ -57,19 +57,19 @@
             (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
             {:status-code 403})))
   (let [session-id (str (UUID/randomUUID))
-        new-user   (db/insert! User
-                               :email        email
-                               :first_name   first-name
-                               :last_name    last-name
-                               :password     (str (UUID/randomUUID))
-                               :is_superuser true)
+        new-user   (first (t2/insert-returning-instances! User
+                                                          :email        email
+                                                          :first_name   first-name
+                                                          :last_name    last-name
+                                                          :password     (str (UUID/randomUUID))
+                                                          :is_superuser true))
         user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! user-id password)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
-    (let [session (db/insert! Session
-                              :id      session-id
-                              :user_id user-id)]
+    (let [session (first (t2/insert-returning-instances! Session
+                                                         :id      session-id
+                                                         :user_id user-id))]
       ;; return user ID, session ID, and the Session object itself
       {:session-id session-id, :user-id user-id, :session session})))
 
@@ -89,12 +89,12 @@
     (when-not (some-> (u/ignore-exceptions (driver/the-driver driver)) driver/available?)
       (let [msg (tru "Cannot create Database: cannot find driver {0}." driver)]
         (throw (ex-info msg {:errors {:database {:engine msg}}, :status-code 400}))))
-    (db/insert! Database
-      (merge
-       {:name name, :engine driver, :details details, :creator_id creator-id}
-       (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
-       (when schedules
-         (sync.schedules/schedule-map->cron-strings schedules))))))
+    (first (t2/insert-returning-instances! Database
+                                           (merge
+                                             {:name name, :engine driver, :details details, :creator_id creator-id}
+                                             (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
+                                             (when schedules
+                                               (sync.schedules/schedule-map->cron-strings schedules)))))))
 
 (defn- setup-set-settings! [_request {:keys [email site-name site-locale allow-tracking?]}]
   ;; set a couple preferences
@@ -136,7 +136,7 @@
    auto_run_queries   (s/maybe s/Bool)}
   (letfn [(create! []
             (try
-              (db/transaction
+              (t2/with-transaction [_conn]
                (let [user-info (setup-create-user!
                                 {:email email, :first-name first_name, :last-name last_name, :password password})
                      db        (setup-create-database! {:name name
@@ -198,7 +198,7 @@
    :group       (tru "Get connected")
    :description (tru "Connect to your data so your whole team can start to explore.")
    :link        "/admin/databases/create"
-   :completed   (db/exists? Database, :is_sample false)
+   :completed   (t2/exists? Database, :is_sample false)
    :triggered   :always})
 
 (defmethod admin-checklist-entry :set-up-email
@@ -225,10 +225,10 @@
    :group       (tru "Get connected")
    :description (tru "Share answers and data with the rest of your team.")
    :link        "/admin/people/"
-   :completed   (> (db/count User) 1)
-   :triggered   (or (db/exists? Dashboard)
-                    (db/exists? Pulse)
-                    (>= (db/count Card) 5))})
+   :completed   (> (t2/count User) 1)
+   :triggered   (or (t2/exists? Dashboard)
+                    (t2/exists? Pulse)
+                    (>= (t2/count Card) 5))})
 
 (defmethod admin-checklist-entry :hide-irrelevant-tables
   [_]
@@ -236,8 +236,8 @@
    :group       (tru "Curate your data")
    :description (tru "If your data contains technical or irrelevant info you can hide it.")
    :link        "/admin/datamodel/database"
-   :completed   (db/exists? Table, :visibility_type [:not= nil])
-   :triggered   (>= (db/count Table) 20)})
+   :completed   (t2/exists? Table, :visibility_type [:not= nil])
+   :triggered   (>= (t2/count Table) 20)})
 
 (defmethod admin-checklist-entry :organize-questions
   [_]
@@ -245,8 +245,8 @@
    :group       (tru "Curate your data")
    :description (tru "Have a lot of saved questions in {0}? Create collections to help manage them and add context." (tru "Metabase"))
    :link        "/collection/root"
-   :completed   (db/exists? Collection)
-   :triggered   (>= (db/count Card) 30)})
+   :completed   (t2/exists? Collection)
+   :triggered   (>= (t2/count Card) 30)})
 
 
 (defmethod admin-checklist-entry :create-metrics
@@ -255,8 +255,8 @@
    :group       (tru "Curate your data")
    :description (tru "Define canonical metrics to make it easier for the rest of your team to get the right answers.")
    :link        "/admin/datamodel/metrics"
-   :completed   (db/exists? Metric)
-   :triggered   (>= (db/count Card) 30)})
+   :completed   (t2/exists? Metric)
+   :triggered   (>= (t2/count Card) 30)})
 
 (defmethod admin-checklist-entry :create-segments
   [_]
@@ -264,8 +264,8 @@
    :group       (tru "Curate your data")
    :description (tru "Keep everyone on the same page by creating canonical sets of filters anyone can use while asking questions.")
    :link        "/admin/datamodel/segments"
-   :completed   (db/exists? Segment)
-   :triggered   (>= (db/count Card) 30)})
+   :completed   (t2/exists? Segment)
+   :triggered   (>= (t2/count Card) 30)})
 
 (defn- admin-checklist-values []
   (map

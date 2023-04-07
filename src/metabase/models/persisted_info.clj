@@ -8,7 +8,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -91,7 +90,7 @@
   ([conditions-map]
    (mark-for-pruning! conditions-map "deletable"))
   ([conditions-map state]
-   (db/update-where! PersistedInfo conditions-map :active false, :state state, :state_change_at :%now)))
+   (t2/update! PersistedInfo conditions-map {:active false, :state state, :state_change_at :%now})))
 
 (defn- create-row
   "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."
@@ -113,16 +112,13 @@
 (defn ready-unpersisted-models!
   "Looks for all new models in database and creates a persisted-info ready to be synced."
   [database-id]
-  (let [cards (db/select Card {:where [:and
+  (let [cards (t2/select Card {:where [:and
                                        [:= :database_id database-id]
                                        [:= :dataset true]
                                        [:not [:exists {:select [1]
                                                        :from [:persisted_info]
                                                        :where [:= :persisted_info.card_id :report_card.id]}]]]})]
-    (db/insert-many! PersistedInfo (map #(create-row nil %) cards))))
-
-(comment
-  (ready-unpersisted-models! 183))
+    (t2/insert! PersistedInfo (map #(create-row nil %) cards))))
 
 (defn turn-on-model!
   "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."
@@ -131,7 +127,7 @@
         existing-persisted-info (t2/select-one PersistedInfo :card_id card-id)
         persisted-info (cond
                          (not existing-persisted-info)
-                         (db/insert! PersistedInfo (create-row user-id card))
+                         (first (t2/insert-returning-instances! PersistedInfo (create-row user-id card)))
 
                          (contains? #{"deletable" "off"} (:state existing-persisted-info))
                          (do

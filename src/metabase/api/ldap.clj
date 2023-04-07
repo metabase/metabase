@@ -9,7 +9,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -112,7 +112,7 @@
         ldap-details  (set/rename-keys ldap-settings ldap/mb-settings->ldap-details)
         results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
-      (db/transaction
+      (t2/with-transaction [_conn]
        (setting/set-many! ldap-settings)
        (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
       ;; test failed, return result message

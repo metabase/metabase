@@ -21,7 +21,6 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.sql Connection PreparedStatement)))
@@ -77,7 +76,7 @@
         column->field  (actions/cached-value
                         [::cast-values table-id]
                         (fn []
-                          (m/index-by :name (db/select Field :table_id table-id))))]
+                          (m/index-by :name (t2/select Field :table_id table-id))))]
     (m/map-kv-vals (fn [col-name value]
                      (let [col-name                         (u/qualified-name col-name)
                            {base-type :base_type :as field} (get column->field col-name)]

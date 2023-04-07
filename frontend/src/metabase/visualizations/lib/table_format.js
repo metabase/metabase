@@ -156,16 +156,16 @@ export function compileFormatter(
 
 // NOTE: implement `extent` like this rather than using d3.extent since rows may
 // be a Java `List` rather than a JavaScript Array when used in Pulse formatting
-function extent(rows, colIndex) {
+export function extent(rows, colIndex) {
   let min = Infinity;
   let max = -Infinity;
   const length = rows.length;
   for (let i = 0; i < length; i++) {
     const value = rows[i][colIndex];
-    if (value < min) {
+    if (value != null && value < min) {
       min = value;
     }
-    if (value > max) {
+    if (value != null && value > max) {
       max = value;
     }
   }

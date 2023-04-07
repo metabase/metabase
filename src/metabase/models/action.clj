@@ -46,6 +46,12 @@
                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
              mi/json-out-with-keywordization))
 
+(mi/define-simple-hydration-method model
+  :model
+  "Return the Card this action uses as a model."
+  [{:keys [model_id]}]
+  (t2/select-one Card :id model_id))
+
 (defn- check-model-is-not-a-saved-question
   [model-id]
   (when-not (t2/select-one-fn :dataset Card :id model-id)
@@ -100,10 +106,10 @@
 (defn insert!
   "Inserts an Action and related type table. Returns the action id."
   [action-data]
-  (db/transaction
-    (let [action (db/insert! Action (select-keys action-data action-columns))
+  (t2/with-transaction [_conn]
+    (let [action (first (t2/insert-returning-instances! Action (select-keys action-data action-columns)))
           model  (type->model (:type action))]
-      (db/execute! {:insert-into (t2/table-name model)
+      (t2/query-one {:insert-into (t2/table-name model)
                     :values [(-> (apply dissoc action-data action-columns)
                                  (assoc :action_id (:id action))
                                  (cond->
@@ -130,7 +136,7 @@
       (if (and (:type action) (not= (:type action) (:type existing-action)))
         (let [new-model (type->model (:type action))]
           (t2/delete! existing-model :action_id id)
-          (db/insert! new-model (assoc type-row :action_id id)))
+          (t2/insert! new-model (assoc type-row :action_id id)))
         (t2/update! existing-model id type-row)))))
 
 (defn- hydrate-subtype [action]
@@ -141,14 +147,14 @@
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)
-    (let [query-actions (db/select QueryAction :action_id [:in (map :id actions)])
+    (let [query-actions (t2/select QueryAction :action_id [:in (map :id actions)])
           action-id->query-actions (m/index-by :action_id query-actions)]
       (for [action actions]
         (merge action (-> action :id action-id->query-actions (dissoc :action_id)))))))
 
 (defn- normalize-http-actions [actions]
   (when (seq actions)
-    (let [http-actions (db/select HTTPAction :action_id [:in (map :id actions)])
+    (let [http-actions (t2/select HTTPAction :action_id [:in (map :id actions)])
           http-actions-by-action-id (m/index-by :action_id http-actions)]
       (map (fn [action]
              (let [http-action (get http-actions-by-action-id (:id action))]
@@ -161,7 +167,7 @@
 
 (defn- normalize-implicit-actions [actions]
   (when (seq actions)
-    (let [implicit-actions (db/select ImplicitAction :action_id [:in (map :id actions)])
+    (let [implicit-actions (t2/select ImplicitAction :action_id [:in (map :id actions)])
           implicit-actions-by-action-id (m/index-by :action_id implicit-actions)]
       (map (fn [action]
              (let [implicit-action (get implicit-actions-by-action-id (:id action))]
@@ -172,9 +178,9 @@
 (defn- select-actions-without-implicit-params
   "Select Actions and fill in sub type information. Don't use this if you need implicit parameters
    for implicit actions, use [[select-action]] instead.
-   `options` is passed to `db/select` `& options` arg."
+   `options` is passed to `t2/select` `& options` arg."
   [& options]
-  (let [{:keys [query http implicit]} (group-by :type (apply db/select Action options))
+  (let [{:keys [query http implicit]} (group-by :type (apply t2/select Action options))
         query-actions                 (normalize-query-actions query)
         http-actions                  (normalize-http-actions http)
         implicit-actions              (normalize-implicit-actions implicit)]
@@ -194,7 +200,7 @@
                                      :when table-id]
                                  [table-id card]))
         tables (when-let [table-ids (seq (keys card-by-table-id))]
-                 (hydrate (db/select 'Table :id [:in table-ids]) :fields))]
+                 (hydrate (t2/select 'Table :id [:in table-ids]) :fields))]
     (into {}
           (for [table tables
                 :let [fields (:fields table)]
@@ -235,7 +241,7 @@
                                              (filter #(contains? implicit-action-model-ids (:id %)))
                                              distinct)
                                         (when (seq implicit-action-model-ids)
-                                          (db/select 'Card :id [:in implicit-action-model-ids])))
+                                          (t2/select 'Card :id [:in implicit-action-model-ids])))
         model-id->db-id               (into {} (for [card implicit-action-models]
                                                  [(:id card) (:database_id card)]))
         model-id->implicit-parameters (when (seq implicit-action-models)
@@ -269,7 +275,7 @@
 
 (defn select-action
   "Selects an Action and fills in the subtype data and implicit parameters.
-   `options` is passed to `db/select-one` `& options` arg."
+   `options` is passed to `t2/select-one` `& options` arg."
   [& options]
   (first (apply select-actions nil options)))
 
@@ -293,20 +299,20 @@
 
 (defmethod serdes/extract-one "Action" [_model-name _opts action]
   (-> (serdes/extract-one-basics "Action" action)
-      (update :creator_id serdes/export-user)
-      (update :model_id serdes/export-fk 'Card)
+      (update :creator_id serdes/*export-user*)
+      (update :model_id serdes/*export-fk* 'Card)
       (update :type name)
       (cond-> (= (:type action) :query)
-        (update :database_id serdes/export-fk-keyed 'Database :name))))
+        (update :database_id serdes/*export-fk-keyed* 'Database :name))))
 
 (defmethod serdes/load-xform "Action" [action]
   (-> action
       serdes/load-xform-basics
-      (update :creator_id serdes/import-user)
-      (update :model_id serdes/import-fk 'Card)
+      (update :creator_id serdes/*import-user*)
+      (update :model_id serdes/*import-fk* 'Card)
       (update :type keyword)
       (cond-> (= (:type action) "query")
-        (update :database_id serdes/import-fk-keyed 'Database :name))))
+        (update :database_id serdes/*import-fk-keyed* 'Database :name))))
 
 (defmethod serdes/load-update! "Action" [_model-name ingested local]
   (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))

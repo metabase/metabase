@@ -24,7 +24,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -41,14 +40,14 @@
   :dashboard_count
   "Return the number of Dashboards this Card is in."
   [{:keys [id]}]
-  (db/count 'DashboardCard, :card_id id))
+  (t2/count 'DashboardCard, :card_id id))
 
 (mi/define-simple-hydration-method parameter-usage-count
   :parameter_usage_count
   "Return the number of dashboard/card filters and other widgets that use this card to populate their available
   values (via ParameterCards)"
   [{:keys [id]}]
-  (db/count ParameterCard, :card_id id))
+  (t2/count ParameterCard, :card_id id))
 
 (mi/define-simple-hydration-method average-query-time
   :average_query_time
@@ -282,7 +281,7 @@
   - card is archived
   - card.result_metadata changes and the parameter values source field can't be found anymore"
   [{id :id, :as changes}]
-  (let [parameter-cards   (db/select ParameterCard :card_id id)]
+  (let [parameter-cards   (t2/select ParameterCard :card_id id)]
     (doseq [[[po-type po-id] param-cards]
             (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
       (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
@@ -330,10 +329,10 @@
   "Delete all implicit actions of a model if exists."
   [model-id]
   (when-let [action-ids (t2/select-pks-set  'Action {:select [:action.id]
-                                                    :from   [:action]
-                                                    :join   [:implicit_action
-                                                             [:= :action.id :implicit_action.action_id]]
-                                                    :where  [:= :action.model_id model-id]})]
+                                                     :from   [:action]
+                                                     :join   [:implicit_action
+                                                              [:= :action.id :implicit_action.action_id]]
+                                                     :where  [:= :action.model_id model-id]})]
     (t2/delete! 'Action :id [:in action-ids])))
 
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
@@ -439,16 +438,16 @@
   (when metadata
     (for [m metadata]
       (-> m
-          (m/update-existing :table_id  serdes/export-table-fk)
-          (m/update-existing :id        serdes/export-field-fk)
+          (m/update-existing :table_id  serdes/*export-table-fk*)
+          (m/update-existing :id        serdes/*export-field-fk*)
           (m/update-existing :field_ref serdes/export-mbql)))))
 
 (defn- import-result-metadata [metadata]
   (when metadata
     (for [m metadata]
       (-> m
-          (m/update-existing :table_id  serdes/import-table-fk)
-          (m/update-existing :id        serdes/import-field-fk)
+          (m/update-existing :table_id  serdes/*import-table-fk*)
+          (m/update-existing :id        serdes/*import-field-fk*)
           (m/update-existing :field_ref serdes/import-mbql)))))
 
 (defn- result-metadata-deps [metadata]
@@ -466,11 +465,11 @@
   ;; :creator_id as the user's email.
   (try
     (-> (serdes/extract-one-basics "Card" card)
-        (update :database_id            serdes/export-fk-keyed 'Database :name)
-        (update :table_id               serdes/export-table-fk)
-        (update :collection_id          serdes/export-fk 'Collection)
-        (update :creator_id             serdes/export-user)
-        (update :made_public_by_id      serdes/export-user)
+        (update :database_id            serdes/*export-fk-keyed* 'Database :name)
+        (update :table_id               serdes/*export-table-fk*)
+        (update :collection_id          serdes/*export-fk* 'Collection)
+        (update :creator_id             serdes/*export-user*)
+        (update :made_public_by_id      serdes/*export-user*)
         (update :dataset_query          serdes/export-mbql)
         (update :parameters             serdes/export-parameters)
         (update :parameter_mappings     serdes/export-parameter-mappings)
@@ -483,11 +482,11 @@
   [card]
   (-> card
       serdes/load-xform-basics
-      (update :database_id            serdes/import-fk-keyed 'Database :name)
-      (update :table_id               serdes/import-table-fk)
-      (update :creator_id             serdes/import-user)
-      (update :made_public_by_id      serdes/import-user)
-      (update :collection_id          serdes/import-fk 'Collection)
+      (update :database_id            serdes/*import-fk-keyed* 'Database :name)
+      (update :table_id               serdes/*import-table-fk*)
+      (update :creator_id             serdes/*import-user*)
+      (update :made_public_by_id      serdes/*import-user*)
+      (update :collection_id          serdes/*import-fk* 'Collection)
       (update :dataset_query          serdes/import-mbql)
       (update :parameters             serdes/import-parameters)
       (update :parameter_mappings     serdes/import-parameter-mappings)

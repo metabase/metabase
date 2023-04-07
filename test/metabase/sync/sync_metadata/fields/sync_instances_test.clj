@@ -8,7 +8,6 @@
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
 
@@ -22,7 +21,7 @@
              "name"    nil}})
 
 (defn- actual-fields-hierarchy [table-or-id]
-  (let [parent-id->children (group-by :parent_id (db/select [Field :id :parent_id :name] :table_id (u/the-id table-or-id)))
+  (let [parent-id->children (group-by :parent_id (t2/select [Field :id :parent_id :name] :table_id (u/the-id table-or-id)))
         format-fields       (fn format-fields [fields]
                               (into {} (for [field fields]
                                          [(:name field) (when-let [nested-fields (seq (parent-id->children (:id field)))]
@@ -113,13 +112,13 @@
       (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))
             toucan-field-id       (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "toucan"))
             details-field-id      (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
-            gender-field-id       (u/the-id (db/insert! Field
-                                              :name          "gender"
-                                              :database_type "VARCHAR"
-                                              :base_type     "type/Text"
-                                              :table_id      transactions-table-id
-                                              :parent_id     details-field-id
-                                              :active        true))]
+            gender-field-id       (u/the-id (first (t2/insert-returning-instances! Field
+                                                                                   :name          "gender"
+                                                                                   :database_type "VARCHAR"
+                                                                                   :base_type     "type/Text"
+                                                                                   :table_id      transactions-table-id
+                                                                                   :parent_id     details-field-id
+                                                                                   :active        true)))]
 
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
@@ -134,20 +133,20 @@
       (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))
             toucan-field-id       (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "toucan"))
             details-field-id      (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
-            food-likes-field-id   (u/the-id (db/insert! Field
-                                              :name          "food-likes"
-                                              :database_type "OBJECT"
-                                              :base_type     "type/Dictionary"
-                                              :table_id      transactions-table-id
-                                              :parent_id     details-field-id
-                                              :active        true))
-            blueberries-field-id  (u/the-id (db/insert! Field
-                                              :name          "blueberries"
-                                              :database_type "BOOLEAN"
-                                              :base_type     "type/Boolean"
-                                              :table_id      transactions-table-id
-                                              :parent_id     food-likes-field-id
-                                              :active        true))]
+            food-likes-field-id   (u/the-id (first (t2/insert-returning-instances! Field
+                                                                                   :name          "food-likes"
+                                                                                   :database_type "OBJECT"
+                                                                                   :base_type     "type/Dictionary"
+                                                                                   :table_id      transactions-table-id
+                                                                                   :parent_id     details-field-id
+                                                                                   :active        true)))
+            blueberries-field-id  (first (t2/insert-returning-pks! Field
+                                                                   :name          "blueberries"
+                                                                   :database_type "BOOLEAN"
+                                                                   :base_type     "type/Boolean"
+                                                                   :table_id      transactions-table-id
+                                                                   :parent_id     food-likes-field-id
+                                                                   :active        true))]
 
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)

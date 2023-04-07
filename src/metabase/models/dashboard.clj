@@ -31,7 +31,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]))
@@ -134,11 +133,11 @@
                                     :card_id           card-id
                                     :dashboard_card_id dashcard-id
                                     :position          position})]
-        (db/transaction
+        (t2/with-transaction [_conn]
           (binding [pulse/*allow-moving-dashboard-subscriptions* true]
-            (db/update-where! Pulse {:dashboard_id dashboard-id}
-              :name (:name dashboard)
-              :collection_id (:collection_id dashboard))
+            (t2/update! Pulse {:dashboard_id dashboard-id}
+                        {:name (:name dashboard)
+                         :collection_id (:collection_id dashboard)})
             (pulse-card/bulk-create! new-pulse-cards)))))))
 
 (defn- post-update
@@ -179,7 +178,7 @@
   ;; Now update the cards as needed
   (let [serialized-cards    (:cards serialized-dashboard)
         id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)
-        current-cards       (db/select [DashboardCard :size_x :size_y :row :col :id :card_id :dashboard_id]
+        current-cards       (t2/select [DashboardCard :size_x :size_y :row :col :id :card_id :dashboard_id]
                                        :dashboard_id dashboard-id)
         id->current-card    (zipmap (map :id current-cards) current-cards)
         all-dashcard-ids    (concat (map :id serialized-cards)
@@ -328,12 +327,13 @@
 
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
-    (let [card (db/insert! 'Card
-                 (-> card
-                     (update :result_metadata #(or % (-> card
-                                                         :dataset_query
-                                                         result-metadata-for-query)))
-                     (dissoc :id)))]
+    (let [card (first (t2/insert-returning-instances!
+                        'Card
+                        (-> card
+                            (update :result_metadata #(or % (-> card
+                                                                :dataset_query
+                                                                result-metadata-for-query)))
+                            (dissoc :id))))]
       (events/publish-event! :card-create card)
       (hydrate card :creator :dashboard_count :can_write :collection))))
 
@@ -348,7 +348,7 @@
 
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
-  (let [c (db/count Collection
+  (let [c (t2/count Collection
             :name     [:like (format "%s%%" collection-name)]
             :location (collection/children-location (t2/select-one [Collection :location :id]
                                                       :id parent-collection-id)))]
@@ -366,15 +366,16 @@
                     (rand-nth (populate/colors))
                     "Automatically generated cards."
                     parent-collection-id)
-        dashboard  (db/insert! Dashboard
-                     (-> dashboard
-                         (dissoc :ordered_cards :rule :related :transient_name
-                                 :transient_filters :param_fields :more)
-                         (assoc :description         (->> dashboard
-                                                          :transient_filters
-                                                          applied-filters-blurb)
-                                :collection_id       (:id collection)
-                                :collection_position 1)))]
+        dashboard  (first (t2/insert-returning-instances!
+                            Dashboard
+                            (-> dashboard
+                                (dissoc :ordered_cards :rule :related :transient_name
+                                        :transient_filters :param_fields :more)
+                                (assoc :description         (->> dashboard
+                                                                 :transient_filters
+                                                                 applied-filters-blurb)
+                                       :collection_id       (:id collection)
+                                       :collection_position 1))))]
     (doseq [dashcard dashcards]
       (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
             series   (some->> dashcard :series (map (fn [card]
@@ -443,8 +444,8 @@
   [dashcard]
   (-> (into (sorted-map) dashcard)
       (dissoc :id :collection_authority_level :dashboard_id :updated_at)
-      (update :card_id                serdes/export-fk 'Card)
-      (update :action_id              serdes/export-fk 'Action)
+      (update :card_id                serdes/*export-fk* 'Card)
+      (update :action_id              serdes/*export-fk* 'Action)
       (update :parameter_mappings     serdes/export-parameter-mappings)
       (update :visualization_settings serdes/export-visualization-settings)))
 
@@ -456,19 +457,19 @@
     (-> (serdes/extract-one-basics "Dashboard" dash)
         (update :ordered_cards     #(mapv extract-dashcard %))
         (update :parameters        serdes/export-parameters)
-        (update :collection_id     serdes/export-fk Collection)
-        (update :creator_id        serdes/export-user)
-        (update :made_public_by_id serdes/export-user))))
+        (update :collection_id     serdes/*export-fk* Collection)
+        (update :creator_id        serdes/*export-user*)
+        (update :made_public_by_id serdes/*export-user*))))
 
 (defmethod serdes/load-xform "Dashboard"
   [dash]
   (-> dash
       serdes/load-xform-basics
       ;; Deliberately not doing anything to :ordered_cards - they get handled by load-insert! and load-update! below.
-      (update :collection_id     serdes/import-fk Collection)
+      (update :collection_id     serdes/*import-fk* Collection)
       (update :parameters        serdes/import-parameters)
-      (update :creator_id        serdes/import-user)
-      (update :made_public_by_id serdes/import-user)))
+      (update :creator_id        serdes/*import-user*)
+      (update :made_public_by_id serdes/*import-user*)))
 
 (defn- dashcard-for [dashcard dashboard]
   (assoc dashcard
@@ -481,7 +482,7 @@
   (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :ordered_cards) maybe-local)]
     (doseq [dashcard (:ordered_cards ingested)]
       (serdes/load-one! (dashcard-for dashcard dashboard)
-                             (t2/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
+                        (t2/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
 
 (defn- serdes-deps-dashcard
   [{:keys [card_id parameter_mappings visualization_settings]}]
@@ -494,11 +495,11 @@
   [{:keys [collection_id ordered_cards parameters]}]
   (->> (map serdes-deps-dashcard ordered_cards)
        (reduce set/union)
-       (set/union #{[{:model "Collection" :id collection_id}]})
+       (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
        (set/union (serdes/parameters-deps parameters))))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id]
-  (let [dashcards (db/select ['DashboardCard :card_id :action_id :parameter_mappings]
+  (let [dashcards (t2/select ['DashboardCard :card_id :action_id :parameter_mappings]
                              :dashboard_id id)
         dashboard (t2/select-one Dashboard :id id)]
     (set/union

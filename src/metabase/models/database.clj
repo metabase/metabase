@@ -16,7 +16,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -102,8 +101,8 @@
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (db/execute! {:delete-from :permissions
-                :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
+  (t2/query-one {:delete-from :permissions
+                 :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
   (delete-orphaned-secrets! database)
   (try
     (driver/notify-database-updated driver database)
@@ -247,14 +246,14 @@
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?
-  (db/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
+  (t2/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
 
 (defn pk-fields
   "Return all the primary key `Fields` associated with this `database`."
   [{:keys [id]}]
   (let [table-ids (t2/select-pks-set 'Table, :db_id id, :active true)]
     (when (seq table-ids)
-      (db/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
+      (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
 
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
@@ -306,7 +305,7 @@
   ;; TODO Support alternative encryption of secret database details.
   ;; There's one optional foreign key: creator_id. Resolve it as an email.
   (cond-> (serdes/extract-one-basics "Database" entity)
-    true                 (update :creator_id serdes/export-user)
+    true                 (update :creator_id serdes/*export-user*)
     true                 (dissoc :features) ; This is a synthetic column that isn't in the real schema.
     (= :exclude secrets) (dissoc :details)))
 
@@ -326,7 +325,7 @@
   [database]
   (-> database
       serdes/load-xform-basics
-      (update :creator_id serdes/import-user)))
+      (update :creator_id serdes/*import-user*)))
 
 (defmethod serdes/load-insert! "Database" [_ ingested]
   (let [m (get-method serdes/load-insert! :default)]

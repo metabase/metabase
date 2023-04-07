@@ -8,7 +8,6 @@
    [metabase.task.task-history-cleanup :as cleanup-task]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest cleanup-test
@@ -30,7 +29,7 @@
                   (#'cleanup-task/task-history-cleanup!))
                 (thunk)))
             (task-history-tasks []
-              (set (map :task (db/select TaskHistory))))]
+              (set (map :task (t2/select TaskHistory))))]
       (testing "Basic run of the cleanup task when it needs to remove rows. Should also add a TaskHistory row once complete"
         (do-with-tasks
          {:rows-to-keep 2}

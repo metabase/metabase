@@ -6,7 +6,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/first_name
@@ -36,7 +35,7 @@
   create that User as a superuser, regardless of what is specified in the config file. (It doesn't make sense to
   create the first User as anything other than a superuser)."
   []
-  (zero? (db/count User)))
+  (zero? (t2/count User)))
 
 (defn- init-from-config-file!
   [user]
@@ -52,7 +51,7 @@
       (log/info (u/colorize :green (trs "Creating new User {0} with email {1}"
                                         (pr-str (str (:first_name user) \space (:last_name user)))
                                         (pr-str (:email user)))))
-      (db/insert! User user))))
+      (t2/insert! User user))))
 
 (defmethod advanced-config.file.i/initialize-section! :users
   [_section-name users]

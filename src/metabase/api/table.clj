@@ -24,7 +24,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -41,7 +40,7 @@
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
-  (as-> (db/select Table, :active true, {:order-by [[:name :asc]]}) tables
+  (as-> (t2/select Table, :active true, {:order-by [[:name :asc]]}) tables
     (hydrate tables :db)
     (filterv mi/can-read? tables)))
 
@@ -89,10 +88,10 @@
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
-  (let [existing-tables (db/select Table :id [:in ids])]
+  (let [existing-tables (t2/select Table :id [:in ids])]
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
-    (let [updated-tables (db/transaction (mapv #(update-table!* % body) existing-tables))
+    (let [updated-tables (t2/with-transaction [_conn] (mapv #(update-table!* % body) existing-tables))
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync-unhidden-tables newly-unhidden)
@@ -135,6 +134,43 @@
 (def ^:private hour-str (deferred-tru "Hour"))
 (def ^:private day-str (deferred-tru "Day"))
 
+
+;; note the order of these options corresponds to the order they will be shown to the user in the UI
+(def ^:private time-options
+  [[minute-str "minute"]
+   [hour-str "hour"]
+   [(deferred-tru "Minute of Hour") "minute-of-hour"]])
+
+(def ^:private datetime-options
+  [[minute-str "minute"]
+   [hour-str "hour"]
+   [day-str "day"]
+   [(deferred-tru "Week") "week"]
+   [(deferred-tru "Month") "month"]
+   [(deferred-tru "Quarter") "quarter"]
+   [(deferred-tru "Year") "year"]
+   [(deferred-tru "Minute of Hour") "minute-of-hour"]
+   [(deferred-tru "Hour of Day") "hour-of-day"]
+   [(deferred-tru "Day of Week") "day-of-week"]
+   [(deferred-tru "Day of Month") "day-of-month"]
+   [(deferred-tru "Day of Year") "day-of-year"]
+   [(deferred-tru "Week of Year") "week-of-year"]
+   [(deferred-tru "Month of Year") "month-of-year"]
+   [(deferred-tru "Quarter of Year") "quarter-of-year"]])
+
+(def ^:private date-options
+  [[day-str "day"]
+   [(deferred-tru "Week") "week"]
+   [(deferred-tru "Month") "month"]
+   [(deferred-tru "Quarter") "quarter"]
+   [(deferred-tru "Year") "year"]
+   [(deferred-tru "Day of Week") "day-of-week"]
+   [(deferred-tru "Day of Month") "day-of-month"]
+   [(deferred-tru "Day of Year") "day-of-year"]
+   [(deferred-tru "Week of Year") "week-of-year"]
+   [(deferred-tru "Month of Year") "month-of-year"]
+   [(deferred-tru "Quarter of Year") "quarter-of-year"]])
+
 (def ^:private dimension-options
   (let [default-entry [auto-bin-str ["default"]]]
     (zipmap (range)
@@ -142,51 +178,39 @@
              (map (fn [[name param]]
                     {:name name
                      :mbql [:field nil {:temporal-unit param}]
-                     :type "type/DateTime"})
-                  ;; note the order of these options corresponds to the order they will be shown to the user in the UI
-                  [[minute-str "minute"]
-                   [hour-str "hour"]
-                   [day-str "day"]
-                   [(deferred-tru "Week") "week"]
-                   [(deferred-tru "Month") "month"]
-                   [(deferred-tru "Quarter") "quarter"]
-                   [(deferred-tru "Year") "year"]
-                   [(deferred-tru "Minute of Hour") "minute-of-hour"]
-                   [(deferred-tru "Hour of Day") "hour-of-day"]
-                   [(deferred-tru "Day of Week") "day-of-week"]
-                   [(deferred-tru "Day of Month") "day-of-month"]
-                   [(deferred-tru "Day of Year") "day-of-year"]
-                   [(deferred-tru "Week of Year") "week-of-year"]
-                   [(deferred-tru "Month of Year") "month-of-year"]
-                   [(deferred-tru "Quarter of Year") "quarter-of-year"]])
+                     :type :type/Date})
+                  date-options)
              (map (fn [[name param]]
                     {:name name
                      :mbql [:field nil {:temporal-unit param}]
-                     :type "type/Time"})
-                  [[minute-str "minute"]
-                   [hour-str "hour"]
-                   [(deferred-tru "Minute of Hour") "minute-of-hour"]])
+                     :type :type/DateTime})
+                  datetime-options)
+             (map (fn [[name param]]
+                    {:name name
+                     :mbql [:field nil {:temporal-unit param}]
+                     :type :type/Time})
+                  time-options)
              (conj
               (mapv (fn [[name [strategy param]]]
                       {:name name
                        :mbql [:field nil {:binning (merge {:strategy strategy}
                                                           (when param
                                                             {strategy param}))}]
-                       :type "type/Number"})
+                       :type :type/Number})
                     [default-entry
                      [(deferred-tru "10 bins") ["num-bins" 10]]
                      [(deferred-tru "50 bins") ["num-bins" 50]]
                      [(deferred-tru "100 bins") ["num-bins" 100]]])
               {:name dont-bin-str
                :mbql nil
-               :type "type/Number"})
+               :type :type/Number})
              (conj
               (mapv (fn [[name [strategy param]]]
                       {:name name
                        :mbql [:field nil {:binning (merge {:strategy strategy}
                                                           (when param
                                                             {strategy param}))}]
-                       :type "type/Coordinate"})
+                       :type :type/Coordinate})
                     [default-entry
                      [(deferred-tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
                      [(deferred-tru "Bin every 1 degree") ["bin-width" 1.0]]
@@ -194,7 +218,7 @@
                      [(deferred-tru "Bin every 20 degrees") ["bin-width" 20.0]]])
               {:name dont-bin-str
                :mbql nil
-               :type "type/Coordinate"})))))
+               :type :type/Coordinate})))))
 
 (def ^:private dimension-options-for-response
   (m/map-keys str dimension-options))
@@ -207,33 +231,40 @@
        (map str)))
 
 (def ^:private datetime-dimension-indexes
-  (create-dim-index-seq "type/DateTime"))
+  (create-dim-index-seq :type/DateTime))
 
 (def ^:private time-dimension-indexes
-  (create-dim-index-seq "type/Time"))
+  (create-dim-index-seq :type/Time))
+
+(def ^:private date-dimension-indexes
+  (create-dim-index-seq :type/Date))
 
 (def ^:private numeric-dimension-indexes
-  (create-dim-index-seq "type/Number"))
+  (create-dim-index-seq :type/Number))
 
 (def ^:private coordinate-dimension-indexes
-  (create-dim-index-seq "type/Coordinate"))
+  (create-dim-index-seq :type/Coordinate))
 
 (defn- dimension-index-for-type [dim-type pred]
-  (first (m/find-first (fn [[_k v]]
-                         (and (= dim-type (:type v))
-                              (pred v))) dimension-options-for-response)))
+  (let [dim' (keyword dim-type)]
+    (first (m/find-first (fn [[_k v]]
+                           (and (= dim' (:type v))
+                                (pred v))) dimension-options-for-response))))
+
+(def ^:private datetime-default-index
+  (dimension-index-for-type :type/DateTime #(= (str day-str) (str (:name %)))))
 
 (def ^:private date-default-index
-  (dimension-index-for-type "type/DateTime" #(= (str day-str) (str (:name %)))))
+  (dimension-index-for-type :type/Date #(= (str day-str) (str (:name %)))))
 
 (def ^:private time-default-index
-  (dimension-index-for-type "type/Time" #(= (str hour-str) (str (:name %)))))
+  (dimension-index-for-type :type/Time #(= (str hour-str) (str (:name %)))))
 
 (def ^:private numeric-default-index
-  (dimension-index-for-type "type/Number" #(.contains ^String (str (:name %)) (str auto-bin-str))))
+  (dimension-index-for-type :type/Number #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (def ^:private coordinate-default-index
-  (dimension-index-for-type "type/Coordinate" #(.contains ^String (str (:name %)) (str auto-bin-str))))
+  (dimension-index-for-type :type/Coordinate #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (defn- supports-numeric-binning? [driver]
   (and driver (driver/supports? driver :binning)))
@@ -244,8 +275,11 @@
                                        (types/field-is-type? :type/Time field)
                                        [time-default-index time-dimension-indexes]
 
+                                       (types/field-is-type? :type/Date field)
+                                       [date-default-index date-dimension-indexes]
+
                                        (types/temporal-field? field)
-                                       [date-default-index datetime-dimension-indexes]
+                                       [datetime-default-index datetime-dimension-indexes]
 
                                        (and min_value max_value
                                             (isa? semantic_type :type/Coordinate)
@@ -325,7 +359,7 @@
   [card-id database-id metadata]
   (let [add-field-dimension-options #(assoc-field-dimension-options (driver.u/database->driver database-id) %)
         underlying (m/index-by :id (when-let [ids (seq (keep :id metadata))]
-                                     (db/select Field :id [:in ids])))
+                                     (t2/select Field :id [:in ids])))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
                      (update :base_type keyword)
@@ -415,7 +449,7 @@
   {id ms/PositiveInt}
   (api/read-check Table id)
   (when-let [field-ids (seq (t2/select-pks-set Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
-    (for [origin-field (db/select Field, :fk_target_field_id [:in field-ids], :active true)]
+    (for [origin-field (t2/select Field, :fk_target_field_id [:in field-ids], :active true)]
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)
@@ -446,7 +480,7 @@
   {id ms/PositiveInt}
   (api/write-check (t2/select-one Table :id id))
   (when-let [field-ids (t2/select-pks-set Field :table_id id)]
-    (db/simple-delete! FieldValues :field_id [:in field-ids]))
+    (t2/delete! (t2/table-name FieldValues) :field_id [:in field-ids]))
   {:status :success})
 
 (api/defendpoint GET "/:id/related"

@@ -23,7 +23,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -67,7 +66,7 @@
       (testing msg
         (is (thrown?
              Exception
-             (db/insert! Collection {:name "My Favorite Cards", :color input})))))))
+             (t2/insert! Collection {:name "My Favorite Cards", :color input})))))))
 
 (deftest with-temp-defaults-test
   (testing "double-check that `with-temp-defaults` are working correctly for Collection"
@@ -360,7 +359,7 @@
 (defmacro ^:private with-collection-in-location [[collection-binding location] & body]
   `(let [name# (mt/random-name)]
      (try
-       (let [~collection-binding (db/insert! Collection :name name#, :color "#ABCDEF", :location ~location)]
+       (let [~collection-binding (first (t2/insert-returning-instances! Collection :name name#, :color "#ABCDEF", :location ~location))]
          ~@body)
        (finally
          (t2/delete! Collection :name name#)))))
@@ -419,7 +418,7 @@
       (is (= 1
              (t2/delete! Collection :id (u/the-id a))))
       (is (= 0
-             (db/count Collection :id [:in (map u/the-id [a b c d e f g])])))))
+             (t2/count Collection :id [:in (map u/the-id [a b c d e f g])])))))
 
   (testing "parents & siblings should be untouched"
     ;; ...put
@@ -432,7 +431,7 @@
     (with-collection-hierarchy [{:keys [a b c d e f g]}]
       (t2/delete! Collection :id (u/the-id c))
       (is (= 2
-             (db/count Collection :id [:in (map u/the-id [a b c d e f g])]))))))
+             (t2/count Collection :id [:in (map u/the-id [a b c d e f g])]))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -885,7 +884,7 @@
   [collections & additional-conditions]
   (apply
    merge-with combine
-   (for [collection (-> (apply db/select Collection, :id [:in (map u/the-id collections)], additional-conditions)
+   (for [collection (-> (apply t2/select Collection, :id [:in (map u/the-id collections)], additional-conditions)
                         format-collections)]
      (assoc-in {} (concat (filter seq (str/split (:location collection) #"/"))
                           [(:name collection)])
@@ -1201,14 +1200,14 @@
     (testing (str "Make sure that when creating a new Collection as child of a Personal Collection, no group "
                   "permissions are created")
       (mt/with-temp Collection [child {:name "{child}", :location (lucky-collection-children-location)}]
-        (is (not (db/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))))
+        (is (not (t2/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))))
 
     (testing (str "Make sure that when creating a new Collection as grandchild of a Personal Collection, no group "
                   "permissions are created")
       (mt/with-temp* [Collection [child {:location (lucky-collection-children-location)}]
                       Collection [grandchild {:location (collection/children-location child)}]]
-        (is (not (db/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))
-        (is (not (db/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id grandchild))])))))))
+        (is (not (t2/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))
+        (is (not (t2/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id grandchild))])))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1432,7 +1431,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Collection must be in the same namespace as its parent"
-             (db/insert! Collection
+             (t2/insert! Collection
                {:location  (format "/%d/" (:id parent-collection))
                 :color     "#F38630"
                 :name      "Child Collection"
@@ -1459,7 +1458,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Personal Collections must be in the default namespace"
-           (db/insert! Collection
+           (t2/insert! Collection
              {:color             "#F38630"
               :name              "Personal Collection"
               :namespace         "x"
@@ -1492,16 +1491,16 @@
                     Dashboard  [{dashboard-id :id} {:collection_id coll-id}]
                     Pulse      [{pulse-id :id}     {:collection_id coll-id}]]
       (t2/delete! Collection :id coll-id)
-      (is (db/exists? Card :id card-id)
+      (is (t2/exists? Card :id card-id)
           "Card")
-      (is (db/exists? Dashboard :id dashboard-id)
+      (is (t2/exists? Dashboard :id dashboard-id)
           "Dashboard")
-      (is (db/exists? Pulse :id pulse-id)
+      (is (t2/exists? Pulse :id pulse-id)
           "Pulse"))
     (mt/with-temp* [Collection         [{coll-id :id}    {:namespace "snippets"}]
                     NativeQuerySnippet [{snippet-id :id} {:collection_id coll-id}]]
       (t2/delete! Collection :id coll-id)
-      (is (db/exists? NativeQuerySnippet :id snippet-id)
+      (is (t2/exists? NativeQuerySnippet :id snippet-id)
           "Snippet"))))
 
 (deftest collections->tree-test

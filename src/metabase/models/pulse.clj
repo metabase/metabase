@@ -30,7 +30,6 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]))
@@ -129,9 +128,8 @@
   (if (is-alert? notification)
    (mi/current-user-has-full-permissions? :read notification)
    (or api/*is-superuser?*
-       (and (mi/current-user-has-full-permissions? :read notification)
-            (or (current-user-is-creator? notification)
-                (current-user-is-recipient? notification))))))
+       (or (current-user-is-creator? notification)
+           (current-user-is-recipient? notification)))))
 
 ;; Non-admins should be able to create subscriptions, and update subscriptions that they created, but not edit anyone
 ;; else's subscriptions (except for unsubscribing themselves, which uses a custom API).
@@ -166,7 +164,7 @@
   deleted. Archives `Pulse` if the channel being deleted is its last channel."
   [{pulse-id :pulse_id, pulse-channel-id :id}]
   (when *automatically-archive-when-last-channel-is-deleted*
-    (let [other-channels-count (db/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
+    (let [other-channels-count (t2/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
       (when (zero? other-channels-count)
         (t2/update! Pulse pulse-id {:archived true})))))
 
@@ -218,7 +216,7 @@
   :channels
   "Return the PulseChannels associated with this `notification`."
   [notification-or-id]
-  (db/select PulseChannel, :pulse_id (u/the-id notification-or-id)))
+  (t2/select PulseChannel, :pulse_id (u/the-id notification-or-id)))
 
 (s/defn ^:private cards* :- [HybridPulseCard]
   [notification-or-id]
@@ -263,7 +261,7 @@
   [notification :- (mi/InstanceOf Pulse)]
   (dissoc notification :alert_condition :alert_above_goal :alert_first_only))
 
-;; TODO - do we really need this function? Why can't we just use `db/select` and `hydrate` like we do for everything
+;; TODO - do we really need this function? Why can't we just use `t2/select` and `hydrate` like we do for everything
 ;; else?
 (s/defn retrieve-pulse :- (s/maybe (mi/InstanceOf Pulse))
   "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
@@ -329,15 +327,15 @@
        alert))))
 
 (s/defn retrieve-pulses :- [(mi/InstanceOf Pulse)]
-  "Fetch all `Pulses`."
-  [{:keys [archived? dashboard-id can-read? user-id]
-    :or   {archived? false
-           can-read? false}}]
+  "Fetch all `Pulses`. When `user-id` is included, only fetches `Pulses` for which the provided user is the creator
+  or a recipient."
+  [{:keys [archived? dashboard-id user-id]
+    :or   {archived? false}}]
   (let [query {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
                :from            [[:pulse :p]]
                :left-join       (concat
                                  [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
-                                 (when can-read?
+                                 (when user-id
                                    [[:pulse_channel :pchan]         [:= :p.id :pchan.pulse_id]
                                     [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
                :where           [:and
@@ -349,9 +347,9 @@
                                   [:= :d.archived false]]
                                  (when dashboard-id
                                    [:= :p.dashboard_id dashboard-id])
-                                 ;; Only return dashboard subscriptions when `can-read?` is `true` so that legacy
+                                 ;; Only return dashboard subscriptions when `user-id` is passed, so that legacy
                                  ;; pulses don't show up in the notification management page
-                                 (when can-read?
+                                 (when user-id
                                    [:and
                                     [:not= :p.dashboard_id nil]
                                     [:or
@@ -428,7 +426,7 @@
                                 :include_xls       include_xls
                                 :dashboard_card_id dashboard_card_id})
                              card-refs)]
-      (db/insert-many! PulseCard cards))))
+      (t2/insert! PulseCard cards))))
 
 (defn- create-update-delete-channel!
   "Utility function used by [[update-notification-channels!]] which determines how to properly update a single pulse
@@ -465,7 +463,7 @@
    * All previously existing channels will be updated with their most recent information."
   [notification-or-id channels :- [su/Map]]
   (let [new-channels   (group-by (comp keyword :channel_type) channels)
-        old-channels   (group-by (comp keyword :channel_type) (db/select PulseChannel
+        old-channels   (group-by (comp keyword :channel_type) (t2/select PulseChannel
                                                                 :pulse_id (u/the-id notification-or-id)))
         handle-channel #(create-update-delete-channel! (u/the-id notification-or-id)
                                                        (first (get new-channels %))
@@ -483,8 +481,8 @@
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
   add the Notification to `channels`. Returns the `id` of the newly created Notification."
   [notification card-refs :- (s/maybe [CardRef]) channels]
-  (db/transaction
-    (let [notification (db/insert! Pulse notification)]
+  (t2/with-transaction [_conn]
+    (let [notification (first (t2/insert-returning-instances! Pulse notification))]
       (update-notification-cards! notification card-refs)
       (update-notification-channels! notification channels)
       (u/the-id notification))))
@@ -519,7 +517,7 @@
 
 (s/defn ^:private notification-or-id->existing-card-refs :- [CardRef]
   [notification-or-id]
-  (db/select [PulseCard [:card_id :id] :include_csv :include_xls :dashboard_card_id]
+  (t2/select [PulseCard [:card_id :id] :include_csv :include_xls :dashboard_card_id]
     :pulse_id (u/the-id notification-or-id)
     {:order-by [[:position :asc]]}))
 
@@ -591,15 +589,15 @@
 (defmethod serdes/extract-one "Pulse"
   [_model-name _opts pulse]
   (cond-> (serdes/extract-one-basics "Pulse" pulse)
-    (:collection_id pulse) (update :collection_id serdes/export-fk 'Collection)
-    (:dashboard_id  pulse) (update :dashboard_id  serdes/export-fk 'Dashboard)
-    true                   (update :creator_id    serdes/export-user)))
+    (:collection_id pulse) (update :collection_id serdes/*export-fk* 'Collection)
+    (:dashboard_id  pulse) (update :dashboard_id  serdes/*export-fk* 'Dashboard)
+    true                   (update :creator_id    serdes/*export-user*)))
 
 (defmethod serdes/load-xform "Pulse" [pulse]
   (cond-> (serdes/load-xform-basics pulse)
-      true                   (update :creator_id    serdes/import-user)
-      (:collection_id pulse) (update :collection_id serdes/import-fk 'Collection)
-      (:dashboard_id  pulse) (update :dashboard_id  serdes/import-fk 'Dashboard)))
+      true                   (update :creator_id    serdes/*import-user*)
+      (:collection_id pulse) (update :collection_id serdes/*import-fk* 'Collection)
+      (:dashboard_id  pulse) (update :dashboard_id  serdes/*import-fk* 'Dashboard)))
 
 (defmethod serdes/dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
   (filterv some? [(when collection_id [{:model "Collection" :id collection_id}])

@@ -50,7 +50,6 @@ import {
   getIsNew,
   getIsObjectDetail,
   getTables,
-  getTableMetadata,
   getTableForeignKeys,
   getTableForeignKeyReferences,
   getUiControls,
@@ -122,7 +121,6 @@ const mapStateToProps = (state, props) => {
     databases: getDatabasesList(state),
     nativeDatabases: getNativeDatabases(state),
     tables: getTables(state),
-    tableMetadata: getTableMetadata(state),
 
     query: getQuery(state),
     metadata: getMetadata(state),

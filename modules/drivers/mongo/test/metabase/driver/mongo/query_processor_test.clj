@@ -11,7 +11,6 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
-            [toucan.db :as db]
             [toucan2.core :as t2]))
 
 (deftest query->collection-name-test
@@ -238,7 +237,7 @@
                      :breakout    [$tips.source.username]}))))
           (testing "Parent fields are removed from projections when child fields are included (#19135)"
             (let [table       (t2/select-one Table :db_id (mt/id))
-                  fields      (db/select Field :table_id (u/the-id table))
+                  fields      (t2/select Field :table_id (u/the-id table))
                   projections (-> (mongo.qp/mbql->native
                                     (mt/mbql-query tips {:fields (mapv (fn [f]
                                                                          [:field (u/the-id f) nil])

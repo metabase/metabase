@@ -1,3 +1,4 @@
+import { TextEncoder, TextDecoder } from "util";
 import "cross-fetch/polyfill";
 import "raf/polyfill";
 import "jest-localstorage-mock";
@@ -23,3 +24,9 @@ if (process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_FRONTEND"]) {
     trace: jest.fn(),
   };
 }
+
+// global TextEncoder is not available in jsdom + Jest, see
+// https://stackoverflow.com/questions/70808405/how-to-set-global-textdecoder-in-jest-for-jsdom-if-nodes-util-textdecoder-is-ty
+// (hacky fix)
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;

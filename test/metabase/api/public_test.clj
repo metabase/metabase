@@ -98,17 +98,17 @@
       ~@body)))
 
 (defn- add-card-to-dashboard! [card dashboard & {parameter-mappings :parameter_mappings, :as kvs}]
-  (db/insert! DashboardCard (merge {:dashboard_id       (u/the-id dashboard)
-                                    :card_id            (u/the-id card)
-                                    :row                0
-                                    :col                0
-                                    :size_x             4
-                                    :size_y             4
-                                    :parameter_mappings (or parameter-mappings
-                                                            [{:parameter_id "_VENUE_ID_"
-                                                              :card_id      (u/the-id card)
-                                                              :target       [:dimension [:field (mt/id :venues :id) nil]]}])}
-                                   kvs)))
+  (first (t2/insert-returning-instances! DashboardCard (merge {:dashboard_id       (u/the-id dashboard)
+                                                               :card_id            (u/the-id card)
+                                                               :row                0
+                                                               :col                0
+                                                               :size_x             4
+                                                               :size_y             4
+                                                               :parameter_mappings (or parameter-mappings
+                                                                                       [{:parameter_id "_VENUE_ID_"
+                                                                                         :card_id      (u/the-id card)
+                                                                                         :target       [:dimension [:field (mt/id :venues :id) nil]]}])}
+                                                              kvs))))
 
 ;; TODO -- we can probably use [[metabase.api.dashboard-test/with-chain-filter-fixtures]] for mocking this stuff
 ;; instead since it does mostly the same stuff anyway
