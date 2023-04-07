@@ -155,6 +155,8 @@ jobs:
         uses: ./.github/actions/prepare-cypress
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
+      - name: Install Replay.io browser
+        run: npx @replayio/cypress install
 
       - uses: actions/download-artifact@v3
         name: Retrieve uberjar artifact for ${{ matrix.edition }}
