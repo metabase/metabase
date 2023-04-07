@@ -41,7 +41,7 @@ describe("issue 29795", () => {
     });
 
     visualize(() => {
-      cy.findAllByText(/USER ID/i).should("have.length", 2);
+      cy.findAllByText(/User ID/i).should("have.length", 2);
     });
   });
 });
