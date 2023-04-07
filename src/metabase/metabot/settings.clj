@@ -1,7 +1,6 @@
 (ns metabase.metabot.settings
   (:require
    [clojure.core.memoize :as memoize]
-   [clojure.string :as str]
    [metabase.models.setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
