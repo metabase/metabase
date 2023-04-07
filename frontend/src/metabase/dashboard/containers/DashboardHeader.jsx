@@ -354,7 +354,7 @@ class DashboardHeader extends Component {
       });
 
       extraButtons.push({
-        title: t`Export as PNG`,
+        title: t`Export as PDF`,
         icon: "png",
         action: () => {
           this.saveAsImage();
@@ -418,8 +418,7 @@ class DashboardHeader extends Component {
   saveAsImage = async () => {
     const { dashboard } = this.props;
     const cardNodeSelector = `[data-testid="Dashboard-Cards-Container"]`;
-    const name = `${dashboard.name}.pdf`;
-    await saveDashboardPdf(cardNodeSelector, name);
+    await saveDashboardPdf(cardNodeSelector, dashboard.name);
   };
 
   render() {
