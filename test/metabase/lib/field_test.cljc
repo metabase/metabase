@@ -193,3 +193,14 @@
       (let [query' (lib/order-by query categories-name)]
         (is (= "Venues, Sorted by Categories → Name ascending"
                (lib/describe-query query')))))))
+
+(deftest ^:parallel source-card-table-display-info-test
+  (let [query (assoc lib.tu/venues-query :lib/metadata lib.tu/metadata-provider-with-card)
+        field (lib.metadata.calculation/metadata query (assoc (lib.metadata/field query (meta/id :venues :name))
+                                                              :table_id "card__1"))]
+    (is (=? {:name           "NAME"
+             :display_name   "Name"
+             :semantic_type  :type/Name
+             :effective_type :type/Text
+             :table          {:name "My Card", :display_name "My Card"}}
+            (lib/display-info query field)))))

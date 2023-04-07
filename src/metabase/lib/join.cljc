@@ -55,12 +55,15 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    join-alias   :- ::lib.schema.common/non-blank-string]
-  (or (m/find-first #(= (:alias %) join-alias)
-                    (:joins (lib.util/query-stage query stage-number)))
-      (throw (ex-info (i18n/tru "No join named {0}" (pr-str join-alias))
-                      {:join-alias   join-alias
-                       :query        query
-                       :stage-number stage-number}))))
+  (let [{:keys [joins]} (lib.util/query-stage query stage-number)]
+    (or (m/find-first #(= (:alias %) join-alias)
+                      joins)
+        (throw (ex-info (i18n/tru "No join named {0}, found: {1}"
+                                  (pr-str join-alias)
+                                  (pr-str (mapv :alias joins)))
+                        {:join-alias   join-alias
+                         :query        query
+                         :stage-number stage-number})))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/join
   [query _stage-number {[first-stage] :stages, :as _join}]
@@ -68,8 +71,8 @@
     (if (integer? source-table)
       (:display_name (lib.metadata/table query source-table))
       ;; handle card__<id> source tables.
-      (let [[_ card-id-str] (re-matches #"^card__(\d+)$" source-table)]
-        (i18n/tru "Saved Question #{0}" card-id-str)))
+      (let [card-id (lib.util/string-table-id->card-id source-table)]
+        (i18n/tru "Saved Question #{0}" card-id)))
     (i18n/tru "Native Query")))
 
 (mu/defn ^:private column-from-join-fields :- lib.metadata.calculation/ColumnMetadataWithSource
@@ -190,15 +193,27 @@
    (cond-> (join-clause query stage-number x)
      condition (assoc :condition (join-condition query stage-number condition)))))
 
+(defmulti with-join-fields-method
+  "Impl for [[with-join-fields]]."
+  {:arglists '([x fields])}
+  (fn [x _fields]
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod with-join-fields-method :dispatch-type/fn
+  [f fields]
+  (fn [query stage-number]
+    (with-join-fields-method (f query stage-number) fields)))
+
+(defmethod with-join-fields-method :mbql/join
+  [join fields]
+  (assoc join :fields fields))
 
 (mu/defn with-join-fields
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
   references."
   [x fields :- ::lib.schema.join/fields]
-  (if (fn? x)
-    (fn [query stage-number]
-      (with-join-fields (x query stage-number) fields))
-    (assoc x :fields fields)))
+  (with-join-fields-method x fields))
 
 (mu/defn join :- ::lib.schema/query
   "Create a join map as if by [[join-clause]] and add it to a `query`.

@@ -6,6 +6,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    #?@(:clj
@@ -347,3 +348,10 @@
      (let [checksum  (crc32-checksum s)
            truncated (truncate-string-to-byte-count s (- max-bytes truncated-alias-hash-suffix-length))]
        (str truncated \_ checksum)))))
+
+(mu/defn string-table-id->card-id :- [:maybe ::lib.schema.id/card]
+  "If `table-id` is a `card__<id>`-style string, parse the `<id>` part to an integer Card ID."
+  [table-id]
+  (when (string? table-id)
+    (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
+      (parse-long card-id-str))))

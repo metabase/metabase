@@ -80,8 +80,7 @@
     (or (::cached-metadata stage)
         (when-let [metadata (:lib/stage-metadata stage)]
           (when (or (= stage-type :mbql.stage/native)
-                    (and (string? source-table)
-                         (str/starts-with? source-table "card__")))
+                    (lib.util/string-table-id->card-id source-table))
             (let [source-type (case stage-type
                                 :mbql.stage/native :source/native
                                 :mbql.stage/mbql   :source/card)]
@@ -240,16 +239,18 @@
   [query           :- ::lib.schema/query
    source-table-id :- [:or ::lib.schema.id/table ::lib.schema.id/table-card-id-string]
    unique-name-fn  :- fn?]
-  (when (string? source-table-id)
-    (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" source-table-id)]
-      (when-let [card-id (parse-long card-id-str)]
-        (when-let [result-metadata (:result_metadata (lib.metadata/card query card-id))]
-          (when-let [cols (not-empty (:columns result-metadata))]
-            (for [col cols]
-              (assoc col
-                     :lib/source               :source/card
-                     :lib/source-column-alias  (:name col)
-                     :lib/desired-column-alias (unique-name-fn (:name col))))))))))
+  (when-let [card-id (lib.util/string-table-id->card-id source-table-id)]
+    ;; it seems like in some cases the FE is renaming `:result_metadata` to `:fields`, not 100% sure why but
+    ;; handle that case anyway. (#29739)
+    (when-let [result-metadata ((some-fn :result_metadata :fields) (lib.metadata/card query card-id))]
+      (when-let [cols (not-empty (cond
+                                   (map? result-metadata)        (:columns result-metadata)
+                                   (sequential? result-metadata) result-metadata))]
+        (for [col cols]
+          (assoc col
+                 :lib/source               :source/card
+                 :lib/source-column-alias  (:name col)
+                 :lib/desired-column-alias (unique-name-fn (:name col))))))))
 
 (mu/defn ^:private expressions-metadata :- [:maybe StageMetadataColumns]
   [query           :- ::lib.schema/query

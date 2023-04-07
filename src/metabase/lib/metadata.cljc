@@ -169,11 +169,15 @@
   [metadata-provider]
   (lib.metadata.protocols/tables (->metadata-provider metadata-provider)))
 
-(mu/defn table :- TableMetadata
+(mu/defn table :- [:or TableMetadata CardMetadata]
   "Find metadata for a specific Table, either by string `table-name`, and optionally `schema`, or by ID."
   ([metadata-provider
-    table-id          :- ::lib.schema.id/table]
-   (lib.metadata.protocols/table (->metadata-provider metadata-provider) table-id))
+    table-id :- [:or
+                 ::lib.schema.id/table
+                 ::lib.schema.id/table-card-id-string]]
+   (if-let [card-id (lib.util/string-table-id->card-id table-id)]
+     (lib.metadata.protocols/card  (->metadata-provider metadata-provider) card-id)
+     (lib.metadata.protocols/table (->metadata-provider metadata-provider) table-id)))
 
   ([metadata-provider
     table-schema      :- [:maybe ::lib.schema.common/non-blank-string]

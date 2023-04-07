@@ -3,6 +3,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -148,9 +149,19 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [breakouts    (not-empty (lib.breakout/breakouts query stage-number))
-         aggregations (not-empty (lib.aggregation/aggregations query stage-number))]
-     (filter orderable-column?
-             (if (or breakouts aggregations)
-               (concat breakouts aggregations)
-               (lib.stage/visible-columns query stage-number))))))
+   (let [existing-order-bys (mapv (fn [[_tag _opts expr]]
+                                    expr)
+                                  (order-bys query stage-number))
+         existing-order-by? (fn [x]
+                              (some (fn [existing-order-by]
+                                      (lib.equality/= (lib.ref/ref x) existing-order-by))
+                                    existing-order-bys))
+         breakouts          (not-empty (lib.breakout/breakouts query stage-number))
+         aggregations       (not-empty (lib.aggregation/aggregations query stage-number))
+         columns            (if (or breakouts aggregations)
+                              (concat breakouts aggregations)
+                              (lib.stage/visible-columns query stage-number))]
+     (into []
+           (comp (filter orderable-column?)
+                 (remove existing-order-by?))
+           columns))))
