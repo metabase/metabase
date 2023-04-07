@@ -1,4 +1,4 @@
-(ns metabase.server.request.util-test
+(ns ^:mb/once metabase.server.request.util-test
   (:require
    [clojure.test :refer :all]
    [clojure.tools.reader.edn :as edn]
@@ -8,12 +8,7 @@
    [ring.mock.request :as ring.mock]
    [schema.core :as s]))
 
-;; don't run these tests when running driver tests (i.e., `DRIVERS` is set) because they tend to flake
-(use-fixtures :each (fn [thunk]
-                      (mt/disable-flaky-test-when-running-driver-tests-in-ci
-                        (thunk))))
-
-(deftest https?-test
+(deftest ^:parallel https?-test
   (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
                               {"x-forwarded-proto" "http"}     false
                               {"x-forwarded-protocol" "https"} true
@@ -33,13 +28,13 @@
 (def ^:private mock-request
   (delay (edn/read-string (slurp "test/metabase/server/request/sample-request.edn"))))
 
-(deftest device-info-test
+(deftest ^:parallel device-info-test
   (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
           :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
           :ip_address         "0:0:0:0:0:0:0:1"}
          (request.u/device-info @mock-request))))
 
-(deftest describe-user-agent-test
+(deftest ^:parallel describe-user-agent-test
   (are [user-agent expected] (= expected (request.u/describe-user-agent user-agent))
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"
     "Browser (Chrome/Windows)"
@@ -59,7 +54,7 @@
     nil
     nil))
 
-(deftest ip-address-test
+(deftest ^:parallel ip-address-test
   (let [request (ring.mock/request :get "api/session")]
     (testing "request with no forwarding"
       (is (= "127.0.0.1"
@@ -81,7 +76,7 @@
             (is (= "1.2.3.4"
                    (request.u/ip-address mock-request)))))))))
 
-(deftest geocode-ip-addresses-test
+(deftest ^:parallel geocode-ip-addresses-test
   (are [ip-addresses expected] (schema= expected (request.u/geocode-ip-addresses ip-addresses))
     ["8.8.8.8"]
     {(s/required-key "8.8.8.8") {:description (s/eq "United States")
