@@ -67,7 +67,7 @@
   [sql]
   (str/replace
    sql
-   #"\{\s*\{\s*#\s*\d+\s*\}\s*\}\s*"
+   #"\{\s*\{\s*#\s*\d+\s*\}\s*\}"
    (fn [match] (str/replace match #"\s*" ""))))
 
 (defn inner-query
@@ -77,7 +77,7 @@
   (let [column-aliases (->> (aliases model)
                             (map (partial apply format "\"%s\" AS %s"))
                             (str/join ","))]
-    (->> (format "SELECT %s FROM {{#%s}}" column-aliases id)
+    (->> (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column-aliases id)
          mdb.query/format-sql
          fix-model-reference)))
 

@@ -128,8 +128,31 @@
 
 (deftest bot-sql->final-sql-test
   (testing "A simple test of interpolation of denormalized data with bot sql"
-    (is (= "WITH MY_MODEL AS (SELECT * FROM {{#123}}) SELECT * FROM MY_MODEL"
+    (is (= "WITH MY_MODEL AS (SELECT * FROM {{#123}} AS INNER_QUERY) SELECT * FROM MY_MODEL"
            (metabot-util/bot-sql->final-sql
-            {:inner_query "SELECT * FROM {{#123}}"
+            {:inner_query "SELECT * FROM {{#123}} AS INNER_QUERY"
              :sql_name    "MY_MODEL"}
             "SELECT * FROM MY_MODEL")))))
+
+(deftest ensure-generated-sql-works-test
+  (testing "Ensure the generated sql (including creating a CTE and querying from it) is valid (i.e. produces a result)."
+    (mt/test-drivers #{:h2 :postgres :redshift}
+      (mt/dataset sample-dataset
+        (mt/with-temp* [Card [{model-name :name :as model}
+                              {:dataset_query
+                               {:database (mt/id)
+                                :type     :query
+                                :query    {:source-table (mt/id :people)}}
+                               :dataset true}]]
+          (let [{:keys [inner_query] :as denormalized-model} (metabot-util/denormalize-model model)
+                sql     (metabot-util/bot-sql->final-sql
+                         denormalized-model
+                         (format "SELECT * FROM %s" model-name))
+                results (qp/process-query
+                         {:database (mt/id)
+                          :type     "native"
+                          :native   {:query         sql
+                                     :template-tags (update-vals
+                                                     (lib-native/template-tags inner_query)
+                                                     (fn [m] (update m :id str)))}})]
+            (is (some? (seq (get-in results [:data :rows]))))))))))
