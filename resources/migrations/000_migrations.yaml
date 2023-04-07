@@ -14377,7 +14377,7 @@ databaseChangeLog:
                   nullable: false
             tableName: metabase_field
 
-  - changeSet
+  - changeSet:
       id: v47.00-003
       author: calherries
       comment: Added 0.47.0 - Populate metabase_field.json_unfolding based on base_type
