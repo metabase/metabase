@@ -3,6 +3,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [metabase.models.setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [wkok.openai-clojure.api :as openai.api]))
@@ -52,7 +53,9 @@
               :organization organization})
             :data
             (map #(select-keys % [:id :owned_by]))
-            (filter (fn [{:keys [id]}] (str/starts-with? id "gpt")))
+            (filter (fn [{:keys [id]}] (str/starts-with?
+                                        (u/lower-case-en id)
+                                        "gpt")))
             (sort-by :id))
        (catch Exception _
          (log/warn "Unable to fetch openai models.")
