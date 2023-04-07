@@ -122,7 +122,9 @@ describe("order by", () => {
       const orderBys = ML.orderBys(nextQuery);
 
       expect(orderBys).toHaveLength(1);
-      expect(ML.displayName(nextQuery, orderBys[0])).toBe("Title ascending");
+      expect(ML.displayName(nextQuery, orderBys[0])).toBe(
+        "Products → Title ascending",
+      );
     });
   });
 
@@ -148,7 +150,7 @@ describe("order by", () => {
       );
       const nextOrderBys = ML.orderBys(nextQuery);
       expect(ML.displayName(nextQuery, nextOrderBys[0])).toBe(
-        "Category descending",
+        "Products → Category descending",
       );
       expect(orderBys[0]).not.toEqual(nextOrderBys[0]);
     });

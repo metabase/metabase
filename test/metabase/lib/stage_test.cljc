@@ -36,18 +36,22 @@
       (let [query (lib.tu/venues-query-with-last-stage
                    {:aggregation [[:*
                                    {}
-                                   0.9
+                                   0.8
                                    [:avg {} (lib.tu/field-clause :venues :price)]]
                                   [:*
                                    {}
                                    0.8
                                    [:avg {} (lib.tu/field-clause :venues :price)]]]})]
-        (is (=? [{:base_type    :type/Float
-                  :name         "0_9_times_avg_price"
-                  :display_name "0.9 × Average of Price"}
-                 {:base_type    :type/Float
-                  :name         "0_8_times_avg_price"
-                  :display_name "0.8 × Average of Price"}]
+        (is (=? [{:base_type                :type/Float
+                  :name                     "0_8_times_avg_PRICE"
+                  :display_name             "0.8 × Average of Price"
+                  :lib/source-column-alias  "0_8_times_avg_PRICE"
+                  :lib/desired-column-alias "0_8_times_avg_PRICE"}
+                 {:base_type                :type/Float
+                  :name                     "0_8_times_avg_PRICE"
+                  :display_name             "0.8 × Average of Price"
+                  :lib/source-column-alias  "0_8_times_avg_PRICE"
+                  :lib/desired-column-alias "0_8_times_avg_PRICE_2"}]
                 (lib.metadata.calculation/metadata query -1 query)))))))
 
 (deftest ^:parallel stage-display-name-card-source-query
@@ -81,9 +85,9 @@
                    :stages       [{:lib/type     :mbql.stage/mbql
                                    :lib/options  {:lib/uuid (str (random-uuid))}
                                    :source-table "card__1"}]}]
-        (is (= (for [col (:columns meta/results-metadata)]
-                 (assoc col :lib/source :source/card))
-               (lib.metadata.calculation/metadata query -1 query)))))))
+        (is (=? (for [col (:columns meta/results-metadata)]
+                  (assoc col :lib/source :source/card))
+                (lib.metadata.calculation/metadata query -1 query)))))))
 
 (deftest ^:parallel adding-and-removing-stages
   (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
@@ -147,16 +151,20 @@
                {:id (meta/id :venues :price),       :name "PRICE",       :lib/source :source/table-defaults}
                {:name "ID + 1", :lib/source :source/expressions}
                {:name "ID + 2", :lib/source :source/expressions}
-               {:id           (meta/id :categories :id)
-                :name         "ID_2"
-                :lib/source   :source/joins
-                :source_alias "Cat"
-                :display_name "Categories → ID"}
-               {:id           (meta/id :categories :name)
-                :name         "NAME_2"
-                :lib/source   :source/joins
-                :source_alias "Cat"
-                :display_name "Categories → Name"}]
+               {:id                       (meta/id :categories :id)
+                :name                     "ID"
+                :lib/source               :source/joins
+                :source_alias             "Cat"
+                :display_name             "Categories → ID"
+                :lib/source-column-alias  "ID"
+                :lib/desired-column-alias "Cat__ID"}
+               {:id                       (meta/id :categories :name)
+                :name                     "NAME"
+                :lib/source               :source/joins
+                :source_alias             "Cat"
+                :display_name             "Categories → Name"
+                :lib/source-column-alias  "NAME"
+                :lib/desired-column-alias "Cat__NAME"}]
               (lib.metadata.calculation/metadata query))))))
 
 (deftest ^:parallel metadata-with-fields-only-include-expressions-in-fields-test
@@ -185,3 +193,36 @@
             (let [[id-plus-1] (lib.metadata.calculation/metadata query')]
               (is (=? [:expression {:base-type :type/Integer, :effective-type :type/Integer} "ID + 1"]
                       (lib/ref id-plus-1))))))))))
+
+(deftest ^:parallel joins-source-and-desired-aliases-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/join (-> (lib/join-clause
+                                 (meta/table-metadata :categories)
+                                 (lib/=
+                                  (lib/field "VENUES" "CATEGORY_ID")
+                                  (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")))
+                                (lib/with-join-alias "Cat")
+                                (lib/with-join-fields :all)))
+                  (lib/fields [(lib/field "VENUES" "ID")
+                               (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")]))]
+    (is (=? [{:name                     "ID"
+              :lib/source-column-alias  "ID"
+              :lib/desired-column-alias "ID"
+              :lib/source               :source/fields}
+             {:name                          "ID"
+              :lib/source-column-alias       "ID"
+              :lib/desired-column-alias      "Cat__ID"
+              :metabase.lib.field/join-alias "Cat"
+              :lib/source                    :source/fields}]
+            (lib.metadata.calculation/metadata query)))
+    (testing "Introduce a new stage"
+      (let [query' (lib/append-stage query)]
+        (is (=? [{:name                     "ID"
+                  :lib/source-column-alias  "ID"
+                  :lib/desired-column-alias "ID"
+                  :lib/source               :source/previous-stage}
+                 {:name                          "ID"
+                  :lib/source-column-alias       "Cat__ID"
+                  :lib/desired-column-alias      "Cat__ID"
+                  :lib/source                    :source/previous-stage}]
+                (lib.metadata.calculation/metadata query')))))))

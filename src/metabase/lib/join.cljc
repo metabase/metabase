@@ -85,7 +85,7 @@
   (let [column-metadata (assoc column-metadata :source_alias join-alias)
         col             (-> (assoc column-metadata
                                    :display_name (lib.metadata.calculation/display-name query stage-number column-metadata)
-                                   :lib/source :source/fields)
+                                   :lib/source   :source/joins)
                             (with-join-alias join-alias))]
     (assert (= (current-join-alias col) join-alias))
     col))
@@ -243,3 +243,13 @@
   ([query        :- ::lib.schema/query
     stage-number :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
    (not-empty (get (lib.util/query-stage query stage-number) :joins))))
+
+(mu/defn implicit-join-name :- ::lib.schema.common/non-blank-string
+  "Name for an implicit join against `table-name` via an FK field, e.g.
+
+    CATEGORIES__via__CATEGORY_ID
+
+  You should make sure this gets ran thru a unique-name fn."
+  [table-name           :- ::lib.schema.common/non-blank-string
+   source-field-id-name :- ::lib.schema.common/non-blank-string]
+  (lib.util/format "%s__via__%s" table-name source-field-id-name))

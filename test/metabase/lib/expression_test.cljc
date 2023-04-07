@@ -119,7 +119,7 @@
                 (lib.tu/field-clause :checkins :date {:base-type :type/Date})
                 -1
                 :day]]
-    (is (= "date_minus_1_day"
+    (is (= "DATE_minus_1_day"
            (lib.metadata.calculation/column-name lib.tu/venues-query -1 clause)))
     (is (= "Date - 1 day"
            (lib.metadata.calculation/display-name lib.tu/venues-query -1 clause)))))
@@ -141,7 +141,7 @@
 
 (deftest ^:parallel coalesce-names-test
   (let [clause [:coalesce {} (lib.tu/field-clause :venues :name) "<Venue>"]]
-    (is (= "name"
+    (is (= "NAME"
            (lib.metadata.calculation/column-name lib.tu/venues-query -1 clause)))
     (is (= "Name"
            (lib.metadata.calculation/display-name lib.tu/venues-query -1 clause)))))
