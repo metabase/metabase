@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.join :as lib.join]
@@ -28,7 +29,7 @@
   (comp (mbql.u/unique-name-generator
          ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
          :name-key-fn     u/lower-case-en
-         ;; truncate alias to 30 characters (actually 21 characters plus a hash).
+         ;; truncate alias to 60 characters (actually 51 characters plus a hash).
          :unique-alias-fn (fn [original suffix]
                             (lib.util/truncate-alias (str original \_ suffix))))))
 
@@ -60,7 +61,7 @@
      lib.metadata.calculation/ColumnMetadataWithSource
      [:map
       [:lib/source-column-alias  ::lib.schema.common/non-blank-string]
-      [:lib/desired-column-alias ::lib.schema.common/non-blank-string]]]]
+      [:lib/desired-column-alias [:string {:min 1, :max 60}]]]]]
    [:fn
     ;; should be dev-facing only, so don't need to i18n
     {:error/message "Column :lib/desired-column-alias values must be distinct, regardless of case, for each stage!"
@@ -240,17 +241,10 @@
    source-table-id :- [:or ::lib.schema.id/table ::lib.schema.id/table-card-id-string]
    unique-name-fn  :- fn?]
   (when-let [card-id (lib.util/string-table-id->card-id source-table-id)]
-    ;; it seems like in some cases the FE is renaming `:result_metadata` to `:fields`, not 100% sure why but
-    ;; handle that case anyway. (#29739)
-    (when-let [result-metadata ((some-fn :result_metadata :fields) (lib.metadata/card query card-id))]
-      (when-let [cols (not-empty (cond
-                                   (map? result-metadata)        (:columns result-metadata)
-                                   (sequential? result-metadata) result-metadata))]
-        (for [col cols]
-          (assoc col
-                 :lib/source               :source/card
-                 :lib/source-column-alias  (:name col)
-                 :lib/desired-column-alias (unique-name-fn (:name col))))))))
+    (when-let [cols (not-empty (lib.card/saved-question-metadata query card-id))]
+      (mapv (fn [col]
+              (assoc col :lib/desired-column-alias (unique-name-fn (:name col))))
+            cols))))
 
 (mu/defn ^:private expressions-metadata :- [:maybe StageMetadataColumns]
   [query           :- ::lib.schema/query

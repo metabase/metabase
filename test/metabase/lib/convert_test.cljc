@@ -5,6 +5,8 @@
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (deftest ^:parallel ->pMBQL-test
   (is (=? {:lib/type :mbql/query
            :type     :pipeline

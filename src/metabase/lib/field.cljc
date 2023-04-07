@@ -1,5 +1,6 @@
 (ns metabase.lib.field
   (:require
+   [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
@@ -40,36 +41,50 @@
   "Integer Field ID: get metadata from the metadata provider. This is probably not 100% the correct thing to do if
   this isn't the first stage of the query, but we can fix that behavior in a follow-on"
   [query         :- ::lib.schema/query
-   _stage-number :- :int
    field-id      :- ::lib.schema.id/field]
   (lib.metadata/field query field-id))
 
-(mu/defn ^:private resolve-field-name :- lib.metadata/ColumnMetadata
+(mu/defn ^:private resolve-column-name-in-metadata :- lib.metadata/ColumnMetadata
+  [column-name      :- ::lib.schema.common/non-blank-string
+   column-metadatas :- [:sequential lib.metadata/ColumnMetadata]]
+  (or (m/find-first #(= (:lib/desired-column-alias %) column-name)
+                    column-metadatas)
+      (throw (ex-info (i18n/tru "Invalid :field clause: column {0} does not exist. Found: {1}"
+                                (pr-str column-name)
+                                (pr-str (mapv :lib/desired-column-alias column-metadatas)))
+                      {:name    column-name
+                       :columns column-metadatas}))))
+
+(mu/defn ^:private resolve-column-name :- lib.metadata/ColumnMetadata
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
   have a native query or a Saved Question source query or whatever get it from our results metadata."
   [query        :- ::lib.schema/query
    stage-number :- :int
    column-name  :- ::lib.schema.common/non-blank-string]
-  (or (some (fn [column]
-              (when (= (:name column) column-name)
-                column))
-            (let [stage (if-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-                          (lib.util/query-stage query previous-stage-number)
-                          (lib.util/query-stage query stage-number))]
-              (get-in stage [:lib/stage-metadata :columns])))
-      (throw (ex-info (i18n/tru "Invalid :field clause: column {0} does not exist" (pr-str column-name))
-                      {:name         column-name
-                       :query        query
-                       :stage-number stage-number}))))
+  (let [stage         (if-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+                        (lib.util/query-stage query previous-stage-number)
+                        (lib.util/query-stage query stage-number))
+        stage-columns (get-in stage [:lib/stage-metadata :columns])]
+    (resolve-column-name-in-metadata column-name stage-columns)))
 
-(mu/defn resolve-field-metadata :- lib.metadata/ColumnMetadata
-  "Resolve metadata for a `:field` ref."
-  [query                                        :- ::lib.schema/query
-   stage-number                                 :- :int
-   [_field _opts id-or-name, :as _field-clause] :- :mbql.clause/field]
-  (if (integer? id-or-name)
-    (resolve-field-id query stage-number id-or-name)
-    (resolve-field-name query stage-number id-or-name)))
+(mu/defn ^:private resolve-column-name-in-join :- lib.metadata/ColumnMetadata
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column-name  :- ::lib.schema.common/non-blank-string
+   join-alias   :- [:maybe ::lib.schema.common/non-blank-string]]
+  (let [join-metadata (lib.metadata.calculation/metadata query stage-number (lib.join/resolve-join query stage-number join-alias))]
+    (resolve-column-name-in-metadata column-name join-metadata)))
+
+(mu/defn ^:private resolve-field-metadata :- lib.metadata/ColumnMetadata
+  "Resolve metadata for a `:field` ref. This is part of the implementation
+  for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
+  [query                                                                  :- ::lib.schema/query
+   stage-number                                                           :- :int
+   [_field {:keys [join-alias], :as _opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
+  (cond
+    (integer? id-or-name) (resolve-field-id query id-or-name)
+    join-alias            (resolve-column-name-in-join query stage-number id-or-name join-alias)
+    :else                 (resolve-column-name query stage-number id-or-name)))
 
 (mu/defn ^:private add-parent-column-metadata
   "If this is a nested column, add metadata about the parent column."
