@@ -262,7 +262,7 @@
                                      :name                   description
                                      :visualization_settings {:graph.dimensions [x-axis]
                                                               :graph.metrics    y-axis}}
-      (:scalar) {:display                display
+      :scalar {:display                display
                  :name                   description
                  :visualization_settings {:graph.metrics    y-axis
                                           :graph.dimensions []}}
