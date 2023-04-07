@@ -107,7 +107,25 @@ describe("TagEditorParam", () => {
   });
 
   describe("tag dimension", () => {
-    it("should default to string/= for a new string field filter", async () => {
+    it("should default to string/= for a new low cardinality string field filter", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: undefined,
+        "widget-type": undefined,
+      });
+      const { setTemplateTag } = setup({ tag });
+
+      userEvent.click(await screen.findByText("People"));
+      userEvent.click(await screen.findByText("Source"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        dimension: ["field", PEOPLE.SOURCE, null],
+        "widget-type": "string/=",
+      });
+    });
+
+    it("should default to string/contains for a new high cardinality string field filter", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
         dimension: undefined,
@@ -121,7 +139,7 @@ describe("TagEditorParam", () => {
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
         dimension: ["field", PEOPLE.NAME, null],
-        "widget-type": "string/=",
+        "widget-type": "string/contains",
       });
     });
 
