@@ -1,19 +1,20 @@
 import React from "react";
 import { t } from "ttag";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import Tooltip from "metabase/core/components/Tooltip";
 import MetabaseSettings from "metabase/lib/settings";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { HelpText } from "metabase-lib/expressions/types";
 import { getHelpDocsUrl } from "./ExpressionEditorTextfield/helper-text-strings";
 import {
+  ArgumentItem,
+  ArgumentsGrid,
   BlockSubtitleText,
   Container,
   Divider,
-  ExampleBlock,
+  DocumentationLink,
   ExampleCode,
   FunctionHelpCode,
   FunctionHelpCodeArgument,
+  LearnMoreIcon,
 } from "./ExpressionEditorHelpText.styled";
 
 export interface ExpressionEditorHelpTextProps {
@@ -46,18 +47,16 @@ const ExpressionEditorHelpText = ({
             onMouseDown={e => e.preventDefault()}
             data-testid="expression-helper-popover"
           >
-            <FunctionHelpCode data-testid="expression-helper-popover-arguments">
+            <FunctionHelpCode data-testid="expression-helper-popover-structure">
               {structure}
               {args != null && (
                 <>
                   (
-                  {args.map(({ name, description }, index) => (
+                  {args.map(({ name }, index) => (
                     <span key={name}>
-                      <Tooltip tooltip={description} placement="bottom-start">
-                        <FunctionHelpCodeArgument>
-                          {name}
-                        </FunctionHelpCodeArgument>
-                      </Tooltip>
+                      <FunctionHelpCodeArgument>
+                        {name}
+                      </FunctionHelpCodeArgument>
                       {index + 1 < args.length && ", "}
                     </span>
                   ))}
@@ -67,17 +66,28 @@ const ExpressionEditorHelpText = ({
             </FunctionHelpCode>
             <Divider />
 
-            <BlockSubtitleText>{t`About ${structure}`}</BlockSubtitleText>
             <div>{description}</div>
-            <ExternalLink
+
+            {args != null && (
+              <ArgumentsGrid data-testid="expression-helper-popover-arguments">
+                {args.map(({ name, description }, index) => (
+                  <React.Fragment key={name}>
+                    <ArgumentItem>{name}</ArgumentItem>
+                    <div>{description}</div>
+                  </React.Fragment>
+                ))}
+              </ArgumentsGrid>
+            )}
+
+            <BlockSubtitleText>{t`Example`}</BlockSubtitleText>
+            <ExampleCode>{helpText.example}</ExampleCode>
+            <DocumentationLink
               href={MetabaseSettings.docsUrl(getHelpDocsUrl(helpText))}
               target="_blank"
-            >{t`Documentation`}</ExternalLink>
-
-            <ExampleBlock>
-              <BlockSubtitleText>{t`Example`}</BlockSubtitleText>
-              <ExampleCode>{helpText.example}</ExampleCode>
-            </ExampleBlock>
+            >
+              <LearnMoreIcon name="reference" size={12} />
+              {t`Learn more`}
+            </DocumentationLink>
           </Container>
         </>
       }

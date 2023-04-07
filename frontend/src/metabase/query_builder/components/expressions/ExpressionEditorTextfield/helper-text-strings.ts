@@ -491,12 +491,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`datetime1`,
         description: t`The column or expression with your datetime value.`,
-        example: formatIdentifier(t`created_at`),
+        example: formatIdentifier(t`Created At`),
       },
       {
         name: t`datetime2`,
         description: t`The column or expression with your datetime value.`,
-        example: formatIdentifier(t`shipped_at`),
+        example: formatIdentifier(t`Shipped At`),
       },
       {
         name: t`unit`,

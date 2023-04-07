@@ -1,6 +1,5 @@
 import React from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { getBrokenUpTextMatcher } from "__support__/ui";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import Database from "metabase-lib/metadata/Database";
@@ -12,18 +11,11 @@ import ExpressionEditorHelpText, {
 const DATABASE = new Database(createMockDatabase());
 
 describe("ExpressionEditorHelpText", () => {
-  it("should render expression function info and example", async () => {
-    setup();
-
-    // have to wait for TippyPopover to render content
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("expression-helper-popover"),
-      ).toBeInTheDocument();
-    });
+  it("should render expression function info, example and documentation link", async () => {
+    await setup();
 
     expect(
-      screen.getByText('datetimeDiff([created_at], [shipped_at], "month")'),
+      screen.getByText('datetimeDiff([Created At], [Shipped At], "month")'),
     ).toBeInTheDocument();
 
     expect(
@@ -37,22 +29,22 @@ describe("ExpressionEditorHelpText", () => {
         "Get the difference between two datetime values (datetime2 minus datetime1) using the specified unit of time.",
       ),
     ).toBeInTheDocument();
+
+    const link = screen.getByRole("link");
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveProperty(
+      "href",
+      "https://www.metabase.com/docs/latest/questions/query-builder/expressions/datetimediff.html",
+    );
   });
 
   it("should handle expression function without arguments", async () => {
-    setup({ helpText: getHelpText("cum-count", DATABASE, "UTC") });
-
-    // have to wait for TippyPopover to render content
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("expression-helper-popover"),
-      ).toBeInTheDocument();
-    });
+    await setup({ helpText: getHelpText("cum-count", DATABASE, "UTC") });
 
     expect(screen.getAllByText("CumulativeCount")).toHaveLength(2);
 
     const exampleCodeEl = screen.getByTestId(
-      "expression-helper-popover-arguments",
+      "expression-helper-popover-structure",
     );
     expect(
       within(exampleCodeEl).getByText("CumulativeCount"),
@@ -63,35 +55,23 @@ describe("ExpressionEditorHelpText", () => {
     ).toBeInTheDocument();
   });
 
-  it("should render function arguments with tooltip", async () => {
+  it("should render function arguments", async () => {
     const {
       props: { helpText },
-    } = setup({ helpText: getHelpText("concat", DATABASE, "UTC") });
+    } = await setup({ helpText: getHelpText("concat", DATABASE, "UTC") });
 
-    // have to wait for TippyPopover to render content
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("expression-helper-popover-arguments"),
-      ).toBeInTheDocument();
-    });
-
-    const argumentsCodeBlock = screen.getByTestId(
+    const argumentsBlock = screen.getByTestId(
       "expression-helper-popover-arguments",
     );
 
     helpText?.args?.forEach(({ name, description }) => {
-      const argumentEl = within(argumentsCodeBlock).getByText(name);
-
-      expect(argumentEl).toBeInTheDocument();
-
-      userEvent.hover(argumentEl);
-
-      expect(screen.getByText(description)).toBeInTheDocument();
+      expect(within(argumentsBlock).getByText(name)).toBeInTheDocument();
+      expect(within(argumentsBlock).getByText(description)).toBeInTheDocument();
     });
   });
 });
 
-function setup(additionalProps?: Partial<ExpressionEditorHelpTextProps>) {
+async function setup(additionalProps?: Partial<ExpressionEditorHelpTextProps>) {
   const target = { current: null };
 
   const props: ExpressionEditorHelpTextProps = {
@@ -104,6 +84,11 @@ function setup(additionalProps?: Partial<ExpressionEditorHelpTextProps>) {
   };
 
   render(<ExpressionEditorHelpText {...props} />);
+
+  // have to wait for TippyPopover to render content
+  await waitFor(() => {
+    expect(screen.getByTestId("expression-helper-popover")).toBeInTheDocument();
+  });
 
   return { props };
 }
