@@ -56,13 +56,16 @@
   [table-metadata]
   (::join-alias table-metadata))
 
+(defmethod lib.join/with-join-fields-method :metadata/table
+  [table-metadata fields]
+  (assoc table-metadata ::join-fields fields))
+
 (defmethod lib.join/join-clause-method :metadata/table
-  [query stage-number {::keys [join-alias], :as table-metadata}]
-  (lib.join/join-clause-method query
-                               stage-number
-                               (merge
+  [query stage-number {::keys [join-alias join-fields], :as table-metadata}]
+  (cond-> (lib.join/join-clause query
+                                stage-number
                                 {:lib/type     :mbql.stage/mbql
                                  :lib/options  {:lib/uuid (str (random-uuid))}
-                                 :source-table (:id table-metadata)}
-                                (when join-alias
-                                  {:alias join-alias}))))
+                                 :source-table (:id table-metadata)})
+    join-alias  (lib.join/with-join-alias join-alias)
+    join-fields (lib.join/with-join-fields join-fields)))
