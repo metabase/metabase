@@ -874,7 +874,7 @@
   {name               (s/maybe su/NonBlankString)
    engine             (s/maybe DBEngineString)
    refingerprint      (s/maybe s/Bool)
-   details            (s/maybe s/Map)
+   details            (s/maybe su/Map)
    schedules          (s/maybe sync.schedules/ExpandedSchedulesMap)
    description        (s/maybe s/Str)   ; s/Str instead of su/NonBlankString because we don't care
    caveats            (s/maybe s/Str)   ; whether someone sets these to blank strings
