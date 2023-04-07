@@ -82,7 +82,7 @@
                                {:role    "assistant",
                                 :content "Use this information to write a SQL query to answer my question.'"}
                                {:role    "assistant",
-                                :content "Do not explain the SQL statement, just give me the raw SELECT statement."}
+                                :content "Do not explain the SQL statement, just give me the raw SELECT statement as ANSI SQL."}
                                {:role "user", :content "%%USER_PROMPT%%"}]}
           x (assoc x :prompt (#'metabot-util/prompt-template->messages x context))
           {:keys [prompt_template version prompt]} x
