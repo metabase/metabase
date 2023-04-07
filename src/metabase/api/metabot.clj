@@ -41,7 +41,7 @@
 (defn- add-viz-to-dataset
   "Given a calling context and resulting dataset, add a more interesting visual to the card."
   [context {:keys [bot-sql] :as dataset}]
-  (let [context (merge context {:sql bot-sql :prompt_task :infer_viz})
+  (let [context (assoc context :sql bot-sql :prompt_task :infer_viz)
         {:keys [template prompt_template_version]} (metabot/infer-viz context)]
     (cond-> (update dataset :card merge template)
       prompt_template_version
