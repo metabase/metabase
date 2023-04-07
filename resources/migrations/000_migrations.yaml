@@ -14377,13 +14377,17 @@ databaseChangeLog:
                   nullable: false
             tableName: metabase_field
 
-  - changeSet:
+  - changeSet  - changeSet:
       id: v47.00-003
       author: calherries
-      comment: Added 0.47.0 - Populate metabase_field.json_unfolding based on database details
+      comment: Added 0.47.0 - Populate metabase_field.json_unfolding based on base_type
       changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.FillJSONUnfoldingDefault"
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET json_unfolding = true
+              WHERE base_type = 'type/JSON':
+      rollback: # nothing to do, since json_unfolding is new in 47
 
   - changeSet:
       id: v47.00-004
