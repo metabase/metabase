@@ -64,10 +64,8 @@
         (log/infof "No model inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))
 
-; TODO: implement actual endpoint for generating suggestions in the native query editor.
-; It should be completely isolated from the standalone Metabot and it should use tables instead of models.
 (defn infer-sql-query
-  "Given a model and prompt, attempt to generate a native dataset."
+  "Given a database and user prompt, determine a sql query to answer my question."
   [{:keys [database user_prompt] :as context}]
   (log/infof "Metabot is inferring sql for database '%s' with prompt '%s'." (:id database) user_prompt)
   (if (metabot-settings/is-metabot-enabled)
@@ -80,25 +78,21 @@
                                {:role    "assistant",
                                 :content "%%DATABASE:CREATE_DATABASE_DDL%%"}
                                {:role    "assistant",
-                                :content "All tables in the database '%%DATABASE:SQL_NAME%%' has data in them."}
+                                :content "All tables in the database '%%DATABASE:SQL_NAME%%' have data in them."}
                                {:role    "assistant",
                                 :content "Use this information to write a SQL query to answer my question.'"}
                                {:role    "assistant",
                                 :content "Do not explain the SQL statement, just give me the raw SELECT statement."}
                                {:role "user", :content "%%USER_PROMPT%%"}]}
-          x (assoc x
-              :prompt (#'metabot-util/prompt-template->messages x context))
+          x (assoc x :prompt (#'metabot-util/prompt-template->messages x context))
           {:keys [prompt_template version prompt]} x
           ;{:keys [prompt_template version prompt]} (metabot-util/create-prompt context)
           ;{:keys [database_id inner_query]} model
           ]
-      (tap> {:prompt x})
-      (if-some [bot-sql (doto
-                         (metabot-util/find-result
-                          metabot-util/extract-sql
-                          (metabot-client/invoke-metabot prompt))
-                          tap>)]
-        bot-sql
-        (log/infof "No sql inferred for database '%s' with prompt '%s'." (:id database) user_prompt)))
+      (or
+       (metabot-util/find-result
+        metabot-util/extract-sql
+        (metabot-client/invoke-metabot prompt))
+       (log/infof "No sql inferred for database '%s' with prompt '%s'." (:id database) user_prompt)))
     (log/warn "Metabot is not enabled")))
 

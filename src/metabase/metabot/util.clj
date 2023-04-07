@@ -151,17 +151,39 @@
 (defn- add-model-json-summary [database]
   (assoc database :model_json_summary (models->json-summary database)))
 
-(defn- table->pseudo-ddl [{table-name :name table-id :id}]
+(defn- field->pseudo-enums
+  "For a field, determine any potential enumerated values."
+  [{table-name :name :as _table} {field-name :name field-id :id :keys [base_type]}]
+  (when-let [values (and
+                     (not= :type/Boolean base_type)
+                     (:values (t2/select-one FieldValues :field_id field-id)))]
+    (when
+     (< (count values) 60)
+      (format "create type %s_%s_t as enum %s;"
+             table-name
+             field-name
+             (str/join ", " (map (partial format "'%s'") values))))))
+
+(defn- table->pseudo-ddl
+  "Create a reasonable ddl to represent how this table might be created as SQL."
+  [{table-name :name table-id :id :as table}]
   (let [fields       (t2/select [Field
+                                 :base_type
                                  :database_required
                                  :database_type
                                  :fk_target_field_id
+                                 :id
                                  :name
                                  :semantic_type]
                                 :table_id table-id)
+        enums        (zipmap (map :name fields)
+                             (map (partial field->pseudo-enums table) fields))
         columns      (vec
                       (for [{column-name :name :keys [database_required database_type]} fields]
-                        (cond-> [column-name database_type]
+                        (cond-> [column-name
+                                 (if (enums column-name)
+                                   (format "%s_%s_t" table-name column-name)
+                                   database_type)]
                           database_required
                           (conj [:not nil]))))
         primary-keys [[(into [:primary-key]
@@ -175,19 +197,27 @@
                                  {fk-table-name :name} (t2/select-one [Table :name]
                                                                       :id fk-table-id)]]
                        [[:foreign-key field-name]
-                        [:references fk-table-name fk-field-name]])]
-    (->
-     (sql/format
-      {:create-table table-name
-       :with-columns (reduce into columns [primary-keys foreign-keys])}
-      {:dialect :ansi :pretty true})
-     first
-     mdb.query/format-sql)))
+                        [:references fk-table-name fk-field-name]])
+        enum-strs    (->> (vals enums) (filterv identity))
+        create-sql   (->
+                      (sql/format
+                       {:create-table table-name
+                        :with-columns (reduce into columns [primary-keys foreign-keys])}
+                       {:dialect :ansi :pretty true})
+                      first
+                      mdb.query/format-sql)]
+    (str/join "\n\n" (conj enum-strs create-sql))))
 
-(defn- database->pseudo-ddl [{db_id :id :as _database}]
+(defn- database->pseudo-ddl
+  "Create a reasonable ddl to represent how this database might be created as SQL."
+  [{db_id :id :as _database}]
   (->> (t2/select Table :db_id db_id)
        (map table->pseudo-ddl)
-       (str/join "\n")))
+       (str/join "\n\n")))
+
+(comment
+  (database->pseudo-ddl {:id 1})
+  )
 
 (defn- add-pseudo-database-ddl [database]
   (assoc database :create_database_ddl (database->pseudo-ddl database)))

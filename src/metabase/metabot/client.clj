@@ -1,5 +1,6 @@
 (ns metabase.metabot.client
   (:require
+   [cheshire.core :as json]
    [clojure.pprint :as pprint]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.util.log :as log]
@@ -15,6 +16,7 @@
   "Call the bot and return the response.
   Takes messages to be used as instructions and a function that will find the first valid result from the messages."
   [messages]
+  (tap> messages)
   (try
     (*bot-endpoint*
      {:model    (metabot-settings/openai-model)
@@ -25,12 +27,19 @@
     (catch Exception e
       (log/warn "Exception when calling invoke-metabot: %s" (.getMessage e))
       (when (ex-data e)
+        (tap> (ex-data e))
         #_{:clj-kondo/ignore [:discouraged-var]}
         (log/warnf "Exception data:\n%s" (with-out-str (pprint/pprint (ex-data e)))))
       (throw
        ;; If we have ex-data, we'll assume were intercepting an openai.api/create-chat-completion response
        (if-some [status (:status (ex-data e))]
          (case (int status)
+           400 (let [{:keys [body]} (ex-data e)
+                     message (get-in (json/parse-string body keyword) [:error :message])]
+                 (ex-info
+                  message
+                  {:message     message
+                   :status-code 400}))
            401 (ex-info
                 "Bot credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
                 {:message     "Bot credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
