@@ -117,7 +117,6 @@ describe("scenarios > question > joined questions", () => {
     cy.icon("join_left_outer").click();
 
     popover().within(() => {
-      cy.findByTextEnsureVisible("Sample Database").click({ force: true });
       cy.findByTextEnsureVisible("Saved Questions").click();
       cy.findByText("question b").click();
     });
@@ -277,7 +276,6 @@ describe("scenarios > question > joined questions", () => {
     cy.icon("join_left_outer").click();
 
     popover().within(() => {
-      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Saved Questions").click();
     });
 
