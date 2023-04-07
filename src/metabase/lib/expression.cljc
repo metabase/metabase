@@ -53,6 +53,10 @@
    :base_type    (lib.metadata.calculation/type-of query stage-number expression-ref)
    :lib/source   :source/expressions})
 
+(defmethod lib.metadata.calculation/display-name-method :dispatch-type/integer
+  [_query _stage-number n]
+  (str n))
+
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/number
   [_query _stage-number n]
   (str n))

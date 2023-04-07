@@ -1,3 +1,6 @@
+import { createMetadata } from "__support__/sample_database_fixture";
+import { createMockTable } from "metabase-types/api/mocks";
+import { createProductsTitleField } from "metabase-types/api/mocks/presets";
 import { createQuery } from "./test-helpers";
 import * as ML from "./v2";
 
@@ -59,6 +62,51 @@ describe("order by", () => {
         }),
       );
     });
+
+    it("returns metadata for columns in source question/model", () => {
+      const table_id = "card__1";
+      const field = createProductsTitleField({ table_id });
+      const table = createMockTable({
+        id: table_id,
+        name: "Product Model",
+        display_name: "Product Model",
+        fields: [field],
+      });
+      const metadata = createMetadata(state =>
+        state.assocIn(["entities", "tables", table.id], table),
+      );
+
+      const query = createQuery({
+        databaseId: table.db_id,
+        metadata,
+        query: {
+          type: "query",
+          database: table.db_id,
+          query: { "source-table": table_id },
+        },
+      });
+
+      const columns = ML.orderableColumns(query);
+
+      const productsTitle = columns.find(
+        (columnMetadata: ML.ColumnMetadata) => {
+          const displayInfo = ML.displayInfo(query, columnMetadata);
+          return (
+            displayInfo.display_name === "Title" &&
+            displayInfo.table?.display_name === "Product Model"
+          );
+        },
+      );
+
+      expect(ML.displayInfo(query, productsTitle as ML.ColumnMetadata)).toEqual(
+        expect.objectContaining({
+          name: field.name,
+          display_name: field.display_name,
+          effective_type: field.base_type,
+          table: { name: "Product Model", display_name: "Product Model" },
+        }),
+      );
+    });
   });
 
   describe("add order by", () => {
@@ -74,7 +122,9 @@ describe("order by", () => {
       const orderBys = ML.orderBys(nextQuery);
 
       expect(orderBys).toHaveLength(1);
-      expect(ML.displayName(nextQuery, orderBys[0])).toBe("Title ascending");
+      expect(ML.displayName(nextQuery, orderBys[0])).toBe(
+        "Products → Title ascending",
+      );
     });
   });
 
@@ -100,7 +150,7 @@ describe("order by", () => {
       );
       const nextOrderBys = ML.orderBys(nextQuery);
       expect(ML.displayName(nextQuery, nextOrderBys[0])).toBe(
-        "Category descending",
+        "Products → Category descending",
       );
       expect(orderBys[0]).not.toEqual(nextOrderBys[0]);
     });
