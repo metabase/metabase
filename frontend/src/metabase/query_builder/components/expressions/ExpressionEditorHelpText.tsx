@@ -2,12 +2,16 @@ import React from "react";
 import { t } from "ttag";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Tooltip from "metabase/core/components/Tooltip";
+import MetabaseSettings from "metabase/lib/settings";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { HelpText } from "metabase-lib/expressions/types";
+import { getHelpDocsUrl } from "./ExpressionEditorTextfield/helper-text-strings";
 import {
+  BlockSubtitleText,
   Container,
+  Divider,
   ExampleBlock,
   ExampleCode,
-  ExampleTitleText,
   FunctionHelpCode,
   FunctionHelpCodeArgument,
 } from "./ExpressionEditorHelpText.styled";
@@ -42,7 +46,6 @@ const ExpressionEditorHelpText = ({
             onMouseDown={e => e.preventDefault()}
             data-testid="expression-helper-popover"
           >
-            <div>{description}</div>
             <FunctionHelpCode data-testid="expression-helper-popover-arguments">
               {structure}
               {args != null && (
@@ -62,8 +65,17 @@ const ExpressionEditorHelpText = ({
                 </>
               )}
             </FunctionHelpCode>
+            <Divider />
+
+            <BlockSubtitleText>{t`About ${structure}`}</BlockSubtitleText>
+            <div>{description}</div>
+            <ExternalLink
+              href={MetabaseSettings.docsUrl(getHelpDocsUrl(helpText))}
+              target="_blank"
+            >{t`Documentation`}</ExternalLink>
+
             <ExampleBlock>
-              <ExampleTitleText>{t`Example`}</ExampleTitleText>
+              <BlockSubtitleText>{t`Example`}</BlockSubtitleText>
               <ExampleCode>{helpText.example}</ExampleCode>
             </ExampleBlock>
           </Container>

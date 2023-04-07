@@ -1000,3 +1000,9 @@ const getHelpExample = ({ structure, args }: HelpTextConfig): string => {
 
   return `${structure}${exampleParameters ? `(${exampleParameters})` : ""}`;
 };
+
+export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
+  return docsPage
+    ? `questions/query-builder/expressions/${docsPage}`
+    : "questions/query-builder/expressions";
+};
