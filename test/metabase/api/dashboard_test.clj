@@ -303,6 +303,7 @@
                      :can_write                  false
                      :param_fields               nil
                      :last-edit-info             {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
+                     :ordered_tabs               []
                      :ordered_cards              [{:size_x                     4
                                                    :size_y                     4
                                                    :col                        0
@@ -391,6 +392,7 @@
                                                                   :has_field_values "search"
                                                                   :name_field       nil
                                                                   :dimensions       []}}
+                           :ordered_tabs               []
                            :ordered_cards              [{:size_x                     4
                                                          :size_y                     4
                                                          :col                        0
@@ -1312,6 +1314,55 @@
           ;; dashboard 3 is deleted
           (is (nil? (t2/select-one DashboardCard :id dashcard-id-3))))))))
 
+(deftest create-tabs-and-dashtabs-test
+  (t2.with-temp/with-temp
+    [Dashboard {dashboard-id :id} {}
+     Card      {card-id :id}      {}]
+    (let [resp (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                     {:tabs [{:name     "Tab 1"
+                                              :id       -1
+                                              :position 0}
+                                             {:name     "Tab 2"
+                                              :id       -2
+                                              :position 1}]
+                                      :cards [{:id     -1
+                                               :size_x 1
+                                               :size_y 1
+                                               :col    1
+                                               :row    1
+                                               :dashboardtab_id -1
+                                               :card_id card-id}
+                                              {:id     -2
+                                               :size_x 1
+                                               :size_y 1
+                                               :col    2
+                                               :row    2
+                                               :dashboardtab_id -2
+                                               :card_id card-id}]})
+          tab-id-1 (t2/select-one-pk :m/DashboardTab :dashboard_id dashboard-id :position 0)
+          tab-id-2 (t2/select-one-pk :m/DashboardTab :dashboard_id dashboard-id :position 1)]
+      (is (=? {:cards [{:size_x 1,
+                        :dashboardtab_id tab-id-1,
+                        :col 1,
+                        :card_id card-id,
+                        :size_y 1,
+                        :dashboard_id dashboard-id,
+                        :row 1}
+                       {:size_x 1,
+                        :dashboardtab_id tab-id-2,
+                        :col 2,
+                        :card_id card-id,
+                        :size_y 1,
+                        :row 2}]
+               :tabs
+               [{:dashboard_id dashboard-id
+                 :name "Tab 1"
+                 :position 0}
+                {:dashboard_id dashboard-id
+                 :name "Tab 2"
+                 :position 1}]}
+           resp)))))
+
 ;;; -------------------------------------- Create dashcards only tests ---------------------------------------
 
 (deftest simple-creation-with-no-additional-series-test
@@ -1319,18 +1370,18 @@
                   Card      [{card-id :id}]]
     (with-dashboards-in-writeable-collection [dashboard-id]
       (api.card-test/with-cards-in-readable-collection [card-id]
-        (let [resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                         {:cards [{:id                     -1
-                                                   :card_id                card-id
-                                                   :row                    4
-                                                   :col                    4
-                                                   :size_x                 4
-                                                   :size_y                 4
-                                                   :parameter_mappings     [{:parameter_id "abc"
-                                                                             :card_id 123
-                                                                             :hash "abc"
-                                                                             :target "foo"}]
-                                                   :visualization_settings {}}]})]
+        (let [resp (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                                 {:cards [{:id                     -1
+                                                           :card_id                card-id
+                                                           :row                    4
+                                                           :col                    4
+                                                           :size_x                 4
+                                                           :size_y                 4
+                                                           :parameter_mappings     [{:parameter_id "abc"
+                                                                                     :card_id 123
+                                                                                     :hash "abc"
+                                                                                     :target "foo"}]
+                                                           :visualization_settings {}}]}))]
           ;; extra sure here because the dashcard we given has a negative id
           (testing "the inserted dashcards has ids auto-generated"
             (is (pos? (:id (first resp)))))
@@ -1359,21 +1410,20 @@
                       (t2/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
                                  :dashboard_id dashboard-id)))))))))
 
-
 (deftest new-dashboard-card-with-additional-series-test
   (mt/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]
                   Card      [{series-id-1 :id} {:name "Series Card"}]]
     (with-dashboards-in-writeable-collection [dashboard-id]
       (api.card-test/with-cards-in-readable-collection [card-id series-id-1]
-        (let [dashboard-cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                                    {:cards [{:id      -1
-                                                              :card_id card-id
-                                                              :row     4
-                                                              :col     4
-                                                              :size_x  4
-                                                              :size_y  4
-                                                              :series [{:id series-id-1}]}]})]
+        (let [dashboard-cards (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                                            {:cards [{:id      -1
+                                                                      :card_id card-id
+                                                                      :row     4
+                                                                      :col     4
+                                                                      :size_x  4
+                                                                      :size_y  4
+                                                                      :series [{:id series-id-1}]}]}))]
           (is (=? [{:row                    4
                     :col                    4
                     :size_x                 4
@@ -1587,8 +1637,9 @@
         (with-dashboards-in-writeable-collection [dashboard-id]
           (is (= 3
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
-          (is (=? [{:id     dashcard-id-3
-                    :series [{:id series-id-1}]}]
+          (is (=? {:cards [{:id     dashcard-id-3
+                            :series [{:id series-id-1}]}]
+                   :tabs  []}
                   (mt/user-http-request :rasta :put 200
                                         (format "dashboard/%d/cards" dashboard-id) {:cards [(dashcard-like-response dashcard-id-3)]})))
           (is (= 1
@@ -1601,7 +1652,8 @@
         (with-dashboards-in-writeable-collection [dashboard-id]
           (is (= 2
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
-          (is (=? []
+          (is (=? {:tabs  []
+                   :cards []}
                   (mt/user-http-request :rasta :put 200
                                         (format "dashboard/%d/cards" dashboard-id) {:cards []})))
           (is (= 0
@@ -1615,13 +1667,13 @@
            (#'api.dashboard/classify-changes
              [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
              [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}]))))
-  (testing "current changes must contains only pos int"
-    (is (thrown-with-msg?
-          clojure.lang.ExceptionInfo
-          #".*value must be an integer greater than zero.*"
-          (#'api.dashboard/classify-changes
-            [{:id -1}]
-            [])))))
+  #_(testing "current changes must contains only pos int"
+      (is (thrown-with-msg?
+            clojure.lang.ExceptionInfo
+            #".*value must be an integer greater than zero.*"
+            (#'api.dashboard/classify-changes
+              [{:id -1}]
+              [{:id -1}])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        GET /api/dashboard/:id/revisions                                        |

@@ -217,7 +217,8 @@
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
-      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series :dashcard/action :dashcard/linkcard-info]
+      (hydrate :ordered_tabs
+               [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series :dashcard/action :dashcard/linkcard-info]
                :collection_authority_level :can_write :param_fields)
       api/read-check
       api/check-not-archived
@@ -534,6 +535,52 @@
      :to-delete to-delete
      :to-create to-create}))
 
+(mu/defn ^:private create-tabs! :- [:map-of neg-int? pos-int?]
+  "Create the new tabs and returned a mapping from temporary tab ID to the new tab ID."
+  [dashboard
+   new-tabs :- [:sequential [:map
+                             [:id neg-int?]]]]
+  (let [new-tab-ids (t2/insert-returning-pks! :m/DashboardTab (->> new-tabs
+                                                                   (map #(dissoc % :id))
+                                                                   (map #(assoc % :dashboard_id (:id dashboard)))))]
+
+    (zipmap (map :id new-tabs) new-tab-ids)))
+
+(mu/defn ^:private update-tabs! :- nil?
+  [dashboard new-tabs]
+  (let [current-tabs    (:ordered_tabs dashboard)
+        keys-to-update  [:name :position]
+        id->current-tab (group-by :id current-tabs)
+        to-update-tabs  (filter (fn [new-tab]
+                                  (let [current-tab (get id->current-tab (:id new-tab))]
+                                    (not= (select-keys current-tab keys-to-update)
+                                          (select-keys new-tab keys-to-update))))
+
+                                new-tabs)]
+    (for [tab to-update-tabs]
+      (t2/update! :m/DashboardTab (:id tab) (select-keys tab keys-to-update)))
+    nil))
+
+(mu/defn ^:private delete-tabs! :- nil?
+  [tab-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :m/DashboardTab [:id [:in tab-ids]])
+  nil)
+
+(mu/defn ^:private update-dashtabs! :- [:maybe [:map-of neg-int? pos-int?]]
+  [dashboard current-tabs new-tabs]
+  (when-not (= (range (count new-tabs))
+               (sort (map :position new-tabs)))
+    (throw (ex-info (tru "Tab positions must be sequential and start at 0")
+                    {:status-code 400})))
+  (let [{:keys [to-create to-update to-delete]} (classify-changes current-tabs new-tabs)
+        _                                       (when (seq to-delete)
+                                                  (delete-tabs! (map :id to-delete)))
+        temp-tab-id->tab-id                     (when (seq to-create)
+                                                  (create-tabs! dashboard to-create))
+        _                                       (when (seq to-update)
+                                                  (update-tabs! dashboard to-update))]
+    temp-tab-id->tab-id))
+
 (defn- create-cards!
   [dashboard cards]
   (for [{:keys [card_id]} cards
@@ -560,6 +607,16 @@
   (when-let [dashboard-cards (t2/select DashboardCard :id [:in dashcard-ids])]
     (dashboard-card/delete-dashboard-cards! dashboard-cards (:id dashboard) api/*current-user-id*)))
 
+(defn- update-dashcards!
+  [dashboard current-cards new-cards]
+  (let [{:keys [to-create to-update to-delete]} (classify-changes current-cards new-cards)]
+    (when (seq to-delete)
+      (delete-cards! dashboard (map :id to-delete)))
+    (when (seq to-create)
+      (create-cards! dashboard to-create))
+    (when (seq to-update)
+      (update-cards! dashboard to-update))))
+
 (def ^:private UpdatedDashboardCard
   [:map
    ;; id can be negative, it indicates a new card and BE should create them
@@ -573,6 +630,13 @@
                                                                 [:target       :any]]]]]
    [:series             {:optional true} [:maybe [:sequential map?]]]])
 
+(def ^:private UpdatedDashboardTab
+  [:map
+   ;; id can be negative, it indicates a new card and BE should create them
+   [:id           int?]
+   [:name         ms/NonBlankString]
+   [:position     ms/IntGreaterThanOrEqualToZero]])
+
 (api/defendpoint PUT "/:id/cards"
   "Update `Cards` on a Dashboard. Request body should have the form:
 
@@ -585,25 +649,32 @@
               :series             [{:id 123
                                     ...}]}
              ...]}"
-  [id :as {{:keys [cards]} :body}]
+  [id :as {{:keys [cards tabs]} :body}]
   {id    ms/PositiveInt
-   cards [:sequential UpdatedDashboardCard]}
+   cards [:maybe (ms/maps-with-unique-key
+                   [:sequential UpdatedDashboardCard] :id)]
+   tabs  [:maybe (ms/maps-with-unique-key
+                   [:sequential UpdatedDashboardTab] :id)]}
   (let [dashboard     (-> (api/write-check Dashboard id)
                           api/check-not-archived
-                          (t2/hydrate [:ordered_cards :series :card]))
+                          (t2/hydrate [:ordered_cards :series :card] :ordered_tabs))
         current-cards (:ordered_cards dashboard)
-
-        {:keys [to-update to-delete to-create]} (classify-changes current-cards cards)]
+        current-tabs  (:ordered_tabs dashboard)]
     (api/check-500
       (t2/with-transaction [_conn]
-        (when (seq to-delete)
-          (delete-cards! dashboard (map :id to-delete)))
-        (when (seq to-create)
-          (create-cards! dashboard (map #(dissoc % :id) to-create)))
-        (when (seq to-update)
-          (update-cards! dashboard to-update))
-        true))
-    (t2/hydrate (dashboard/ordered-cards id) :series)))
+        (let [temp-tab-id->tab-id (when tabs
+                                    (update-dashtabs! dashboard current-tabs tabs))
+              cards               (if-not (empty? temp-tab-id->tab-id)
+                                    ;; fixup cards with temporary tab id with real id after we created the tabs
+                                    (map (fn [{:keys [dashboardtab_id] :as card}]
+                                           (if (< dashboardtab_id 0)
+                                             (assoc card :dashboardtab_id (get temp-tab-id->tab-id dashboardtab_id))
+                                             card)) cards)
+                                    cards)]
+          (update-dashcards! dashboard current-cards cards)
+          true)))
+    {:cards (t2/hydrate (dashboard/ordered-cards id) :series)
+     :tabs  (dashboard/ordered-tabs id)}))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/revisions"
