@@ -18,7 +18,8 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 const PROMPT = "How many products per category we have?";
 const PROMPT_QUERY =
   "SELECT COUNT(*), CATEGORY FROM PRODUCTS GROUP BY CATEGORY";
-const MANUAL_QUERY = "SELECT CATEGORY FROM PRODUCTS LIMIT 2";
+const MANUAL_QUERY =
+  "SELECT COUNT(*), CATEGORY FROM PRODUCTS GROUP BY CATEGORY LIMIT 2";
 
 const MODEL_DETAILS = {
   name: "Products",
@@ -130,6 +131,10 @@ const enableMetabot = () => {
   cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
 };
 
+const verifyTableVisibility = () => {
+  cy.findByTestId("TableInteractive-root").should("be.visible");
+};
+
 const verifyHomeMetabot = () => {
   cy.visit("/");
   cy.findByPlaceholderText(/Ask something/).type(PROMPT);
@@ -137,8 +142,13 @@ const verifyHomeMetabot = () => {
   cy.wait("@databasePrompt");
   cy.wait("@dataset");
   cy.findByDisplayValue(PROMPT).should("be.visible");
+  ensureDcChartVisibility();
+  cy.findByText("Gadget").should("be.visible");
+  cy.findByText("Widget").should("be.visible");
   cy.findByLabelText("table2 icon").click();
+  verifyTableVisibility();
   cy.findByLabelText("bar icon").click();
+  ensureDcChartVisibility();
 };
 
 const verifyManualQueryEditing = () => {
@@ -148,18 +158,15 @@ const verifyManualQueryEditing = () => {
     .type(MANUAL_QUERY);
   cy.findByLabelText("Refresh").click();
   cy.wait("@dataset");
-  cy.findByLabelText("table2 icon").should("not.exist");
-  cy.findByLabelText("bar icon").should("not.exist");
+  ensureDcChartVisibility();
+  cy.findByText("Gadget").should("be.visible");
+  cy.findByText("Widget").should("not.exist");
 };
 
 const verifyMetabotFeedback = () => {
   cy.findByRole("button", { name: "This isn’t valid SQL." }).click();
   cy.findByRole("button", { name: "Try again" }).click();
   cy.wait("@dataset");
-  ensureDcChartVisibility();
-  cy.findByLabelText("table2 icon").click();
-  cy.findByTestId("TableInteractive-root").should("be.visible");
-  cy.findByLabelText("bar icon").click();
   ensureDcChartVisibility();
 };
 

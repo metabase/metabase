@@ -194,7 +194,8 @@ export default class DimensionList extends Component {
 
     if (
       shouldExcludeBinning ||
-      (preventNumberSubDimensions && dimension.field().isSummable())
+      (preventNumberSubDimensions && dimension.field().isSummable()) ||
+      dimension?.field().isFK()
     ) {
       // If we don't let user choose the sub-dimension, we don't want to treat the field
       // as a binned field (which would use the default binning)

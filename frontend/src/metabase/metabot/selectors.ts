@@ -24,10 +24,6 @@ export const getQuestion = createSelector(
   },
 );
 
-export const getRawTableQuestion = (question: Question) => {
-  return question.setDisplay("table").setSettings(DEFAULT_TABLE_SETTINGS);
-};
-
 export const getPrompt = (state: State) => {
   return state.metabot.prompt;
 };
@@ -93,7 +89,10 @@ export const getRawSeries = createSelector(
   (question, results, isRawTable) => {
     if (question && results) {
       const card = isRawTable
-        ? getRawTableQuestion(question).card()
+        ? question
+            .setDisplay("table")
+            .setSettings(DEFAULT_TABLE_SETTINGS)
+            .card()
         : question.card();
 
       return question.atomicQueries().map((_, index) => ({

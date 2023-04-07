@@ -92,7 +92,7 @@
 (defn- slugify [s]
   (-> s
       (str/replace #"[\(\)]" "")
-      u/slugify))
+      (u/slugify {:unicode? true})))
 
 ;;; default impl just takes the display name and slugifies it.
 (defmethod column-name-method :default
