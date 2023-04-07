@@ -170,6 +170,7 @@ export const createOrdersIdField = (opts?: Partial<Field>): Field =>
     display_name: "ID",
     base_type: "type/BigInteger",
     semantic_type: "type/PK",
+    fingerprint: null,
     ...opts,
   });
 
@@ -181,6 +182,11 @@ export const createOrdersUserIdField = (opts?: Partial<Field>): Field =>
     display_name: "User Id",
     base_type: "type/Integer",
     semantic_type: "type/FK",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 929,
+      }),
+    }),
     ...opts,
   });
 
@@ -192,6 +198,11 @@ export const createOrdersProductIdField = (opts?: Partial<Field>): Field =>
     display_name: "Product ID",
     base_type: "type/Integer",
     semantic_type: "type/FK",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 200,
+      }),
+    }),
     ...opts,
   });
 
@@ -203,6 +214,21 @@ export const createOrdersSubtotalField = (opts?: Partial<Field>): Field =>
     display_name: "Subtotal",
     base_type: "type/Float",
     semantic_type: null,
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 340,
+      }),
+      type: {
+        "type/Number": createMockNumberFieldFingerprint({
+          min: 15.691943673970439,
+          q1: 49.74894519060184,
+          q3: 105.42965746993103,
+          max: 148.22900526552291,
+          sd: 32.53705013056317,
+          avg: 77.01295465356547,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -214,6 +240,21 @@ export const createOrdersTaxField = (opts?: Partial<Field>): Field =>
     display_name: "Tax",
     base_type: "type/Float",
     semantic_type: null,
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 797,
+      }),
+      type: {
+        "type/Number": createMockNumberFieldFingerprint({
+          min: 0,
+          q1: 2.273340386603857,
+          q3: 5.337275338216307,
+          max: 11.12,
+          sd: 2.3206651358900316,
+          avg: 3.8722100000000004,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -225,6 +266,21 @@ export const createOrdersTotalField = (opts?: Partial<Field>): Field =>
     display_name: "Total",
     base_type: "type/Float",
     semantic_type: null,
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 4426,
+      }),
+      type: {
+        "type/Number": createMockNumberFieldFingerprint({
+          min: 8.93914247937167,
+          q1: 51.34535490743823,
+          q3: 110.29428389265787,
+          max: 159.34900526552292,
+          sd: 34.26469575709948,
+          avg: 80.35871658771228,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -236,6 +292,22 @@ export const createOrdersDiscountField = (opts?: Partial<Field>): Field =>
     display_name: "Discount",
     base_type: "type/Float",
     semantic_type: null,
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 701,
+        "nil%": 0.898,
+      }),
+      type: {
+        "type/Number": createMockNumberFieldFingerprint({
+          min: 0.17088996672584322,
+          q1: 2.9786226681458743,
+          q3: 7.338187788658235,
+          max: 61.69684269960571,
+          sd: 3.053663125001991,
+          avg: 5.161255547580326,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -247,6 +319,17 @@ export const createOrdersCreatedAtField = (opts?: Partial<Field>): Field =>
     display_name: "Created At",
     base_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 9998,
+      }),
+      type: {
+        "type/DateTime": createMockDateTimeFieldFingerprint({
+          earliest: "2016-04-30T18:56:13.352Z",
+          latest: "2020-04-19T14:07:15.657Z",
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -258,6 +341,21 @@ export const createOrdersQuantityField = (opts?: Partial<Field>): Field =>
     display_name: "Quantity",
     base_type: "type/Integer",
     semantic_type: "type/Quantity",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 62,
+      }),
+      type: {
+        "type/Number": createMockNumberFieldFingerprint({
+          min: 0,
+          q1: 1.755882607764982,
+          q3: 4.882654507928044,
+          max: 100,
+          sd: 4.214258386403798,
+          avg: 3.7015,
+        }),
+      },
+    }),
     ...opts,
   });
 
