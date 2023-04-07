@@ -7,13 +7,8 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.db.schema-migrations-test.impl :as impl]
-   [metabase.models
-    :refer [Database
-            Field
-            Table]]
    [metabase.task :as task]
-   [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
 

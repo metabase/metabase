@@ -13,7 +13,6 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.models.database :as database]
    [metabase.models.table :as table]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]

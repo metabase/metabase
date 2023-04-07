@@ -14386,7 +14386,7 @@ databaseChangeLog:
             sql: >-
               UPDATE metabase_field
               SET json_unfolding = true
-              WHERE base_type = 'type/JSON':
+              WHERE base_type = 'type/JSON';
       rollback: # nothing to do, since json_unfolding is new in 47
 
   - changeSet:
