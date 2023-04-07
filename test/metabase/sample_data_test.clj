@@ -155,6 +155,7 @@
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
               get-tables (fn [] (set (mapv :table_name (jdbc/query conn-spec "SHOW TABLES;"))))
+              show-columns-from (fn [table-name] (set (mapv :field (jdbc/query conn-spec (str "SHOW COLUMNS FROM " table-name ";")))))
               get-schemas (fn [] (set (mapv :schema_name (jdbc/query conn-spec "SHOW SCHEMAS;"))))]
           (testing "create schema"
             (is (not (contains? (get-schemas) "NEW_SCHEMA")))
@@ -167,6 +168,13 @@
             (is (not (contains? (get-tables) "NEW_TABLE")))
             (jdbc/execute! conn-spec "CREATE TABLE NEW_TABLE (id INTEGER);")
             (is (contains? (get-tables) "NEW_TABLE"))
+          (testing "add column"
+            (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
+            (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE ADD COLUMN NEW_COLUMN VARCHAR(255);")
+            (is (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN"))
+          (testing "remove column"
+            (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE DROP COLUMN NEW_COLUMN;")
+            (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
           (testing "drop table"
               (jdbc/execute! conn-spec "DROP TABLE NEW_TABLE;")
-              (is (not (contains? (get-tables) "NEW_TABLE"))))))))))
+              (is (not (contains? (get-tables) "NEW_TABLE"))))))))))))
