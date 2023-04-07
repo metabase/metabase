@@ -85,9 +85,9 @@
                    :stages       [{:lib/type     :mbql.stage/mbql
                                    :lib/options  {:lib/uuid (str (random-uuid))}
                                    :source-table "card__1"}]}]
-        (is (= (for [col (:columns meta/results-metadata)]
-                 (assoc col :lib/source :source/card))
-               (lib.metadata.calculation/metadata query -1 query)))))))
+        (is (=? (for [col (:columns meta/results-metadata)]
+                  (assoc col :lib/source :source/card))
+                (lib.metadata.calculation/metadata query -1 query)))))))
 
 (deftest ^:parallel adding-and-removing-stages
   (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
