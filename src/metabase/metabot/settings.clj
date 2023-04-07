@@ -52,12 +52,17 @@
                 (let [version (parse-double v)]
                   (assoc m
                     :version version
+                    :version-string v
                     :generation (int version)
                     :details r)))))
        ;; Drop anything that doesn't match
        (filter identity)
-       ;; Order by generation (desc), version (asc), length of details string (desc)
-       (sort-by (juxt :generation (comp - :version) (comp count :details)))
+       ;; Order by generation (asc), version (desc),
+       ;; length of details string (asc), length of version string (desc)
+       (sort-by (juxt :generation
+                      (comp - :version)
+                      (comp count :details)
+                      (comp - count :version-string)))
        ;; Split out each generation
        (partition-by :generation)
        ;; Take the top item in each partition and select what we want
