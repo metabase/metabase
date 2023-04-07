@@ -73,14 +73,14 @@
                           [y x])]
     (lib.options/ensure-uuid [:aggregation options index])))
 
+(defmethod ->pMBQL :value
+  [[_tag value opts]]
+  (lib.options/ensure-uuid [:value opts value]))
+
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
   (let [[tag opts & args] (->pMBQL aggregation)]
     (into [tag (merge opts options)] args)))
-
-(defmethod ->pMBQL :value
-  [[_tag value _type-info]]
-  value)
 
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
@@ -184,6 +184,12 @@
     [:field
      (->legacy-MBQL id)
      (not-empty (disqualify opts))]))
+
+(defmethod ->legacy-MBQL :value
+  [[_tag opts value]]
+  (if-let [opts (not-empty (disqualify opts))]
+    [:value value opts]
+    [:value value]))
 
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base (disqualify join)]

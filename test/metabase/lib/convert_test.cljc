@@ -145,7 +145,11 @@
 
     {:query {:aggregation [[:count]]
              :order-by    [[:asc [:aggregation 0]]]
-             :filter      [:between [:field 1 nil] "2019-01-01" "2021-01-01"]}}))
+             :filter      [:between [:field 1 nil] "2019-01-01" "2021-01-01"]}}
+
+    [:value nil {:base_type :type/Number}]
+
+    [:case [[[:< [:field 1 nil] 10] [:value nil {:base_type :type/Number}]] [[:> [:field 2 nil] 2] 10]]]))
 
 (deftest ^:parallel convert-aggregation-reference-test
   (is (=? [:aggregation {:lib/uuid string?} 0]

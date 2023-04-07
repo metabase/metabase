@@ -9,10 +9,10 @@ import {
 import HomeContent, { HomeContentProps } from "./HomeContent";
 
 const PopularSectionMock = () => <div>PopularSection</div>;
-jest.mock("../../containers/HomePopularSection", () => PopularSectionMock);
+jest.mock("../HomePopularSection", () => PopularSectionMock);
 
 const RecentSectionMock = () => <div>RecentSection</div>;
-jest.mock("../../containers/HomeRecentSection", () => RecentSectionMock);
+jest.mock("../HomeRecentSection", () => RecentSectionMock);
 
 const XraySectionMock = () => <div>XraySection</div>;
 jest.mock("../../containers/HomeXraySection", () => XraySectionMock);

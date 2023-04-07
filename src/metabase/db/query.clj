@@ -23,6 +23,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
+   [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -40,15 +41,17 @@
 
   (^String [^String sql db-type]
    (when sql
-     (let [formatter (SqlFormatter/of (case db-type
-                                        :mysql     Dialect/MySql
-                                        :postgres  Dialect/PostgreSql
-                                        :redshift  Dialect/Redshift
-                                        :sparksql  Dialect/SparkSql
-                                        :sqlserver Dialect/TSql
-                                        :oracle    Dialect/PlSql
-                                        Dialect/StandardSql))]
-       (.format formatter sql)))))
+     (if (isa? driver.impl/hierarchy db-type :sql)
+       (let [formatter (SqlFormatter/of (case db-type
+                                          :mysql Dialect/MySql
+                                          :postgres Dialect/PostgreSql
+                                          :redshift Dialect/Redshift
+                                          :sparksql Dialect/SparkSql
+                                          :sqlserver Dialect/TSql
+                                          :oracle Dialect/PlSql
+                                          Dialect/StandardSql))]
+         (.format formatter sql))
+       sql))))
 
 (defmulti compile
   "Compile a `query` (e.g. a Honey SQL map) to `[sql & args]`."

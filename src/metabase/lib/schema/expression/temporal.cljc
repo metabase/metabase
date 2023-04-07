@@ -122,8 +122,8 @@
   #_unit [:ref ::temporal-bucketing/unit.date-time.interval])
 
 (mbql-clause/define-tuple-mbql-clause :time :- :type/Time
-  #_:timestr [:ref ::expression/string]
-  #_:unit    [:ref ::temporal-bucketing/unit.time.interval])
+  #_:timestr [:schema [:ref ::expression/string]]
+  #_:unit [:ref ::temporal-bucketing/unit.time.interval])
 
 (mr/def ::temporal-extract.unit
   [:enum
