@@ -920,13 +920,14 @@ saved later when it is ready."
 
 (defn mapping->field-values
   "Get param values for the \"old style\" parameters. This mimic's the api/dashboard version except we don't have
-  chain-filter issues or dashcards to worry about."
+  chain-filter issues or dashcards to worry about.
+  Also allows access when `passed-block-check?` is true."
   ([card param query]
    (mapping->field-values card param query false))
-  ([card param query skip-filter-view-perm?]
+  ([card param query passed-block-check?]
    (when-let [field-clause (params/param-target->field-clause (:target param) card)]
      (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
-       (api.field/field-id->values field-id query skip-filter-view-perm?)))))
+       (api.field/field-id->values field-id query passed-block-check?)))))
 
 (mu/defn param-values
   "Fetch values for a parameter.
@@ -936,22 +937,21 @@ saved later when it is ready."
   - card: values is result of running a card"
   ([card param-key] (param-values card param-key nil))
   ([card param-key query] (param-values card param-key query true))
-  ([card                   :- ms/Map
-    param-key              :- ms/NonBlankString
-    query                  :- [:maybe ms/NonBlankString]
-    skip-filter-view-perm? :- [:maybe :boolean]]
-   (let [param (get (m/index-by :id (or (seq (:parameters card))
-                                        ;; some older cards or cards in e2e just use the template tags on native
-                                        ;; queries
-                                        (card/template-tag-parameters card)))
-                    param-key)]
-     (when-not param
-       (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
-                       {:status-code 400})))
-     (custom-values/parameter->values
-      param query
-      (fn mapping->field-values-backup []
-        (mapping->field-values card param query skip-filter-view-perm?))))))
+  ([card                :- ms/Map
+    param-key           :- ms/NonBlankString
+    query               :- [:maybe ms/NonBlankString]
+    passed-block-check? :- [:maybe :boolean]]
+   (let [param (u/seek #(= param-key (:id %))
+                     (or (seq (:parameters card))
+                         ;; some older cards or cards in e2e just use the template tags on native queries
+                         (card/template-tag-parameters card)))
+         _ (when-not param
+             (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
+                             {:status-code 400})))
+         param-values (custom-values/parameter->values param query)]
+     (if (= param-values ::custom-values/not-found)
+       (mapping->field-values card param query passed-block-check?)
+       param-values))))
 
 (api/defendpoint GET "/:card-id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`.

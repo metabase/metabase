@@ -2466,173 +2466,173 @@
                (perms-group/all-users)
                (str "/db/" (:id (perms-group/all-users)) "/"))))))
 
-(deftest playing-with-with-temp
-  (let [db (mt/db)]
-    (mt/with-temp* [;;Database [db {}]
+(deftest permissions-X-parameters-rewrite-test
+  (mt/with-temp* [;;Database [db {}]
 
-                    PermissionsGroup [admin-pg {:name "Test Administrators"}]
-                    Permissions [_admin-perms {:group_id (:id admin-pg) :object "/"}]
+                  PermissionsGroup [admin-pg {:name "Test Administrators"}]
+                  Permissions [_admin-perms {:group_id (:id admin-pg) :object "/"}]
 
-                    PermissionsGroup [all-pg {:name "Test All Users"}]
-                    Permissions [_v2-data-perms {:group_id (:id all-pg) :object (str "/data/db/" (:id db) "/")}]
-                    Permissions [_v2-query-perms {:group_id (:id all-pg) :object (str "/query/db/" (:id db) "/")}]
-                    Permissions [_data-perms {:group_id (:id all-pg) :object (str "/db/" (:id db) "/")}]
+                  PermissionsGroup [all-pg {:name "Test All Users"}]
+                  Permissions [_v2-data-perms {:group_id (:id all-pg) :object (str "/data/db/" (:id (mt/db)) "/")}]
+                  Permissions [_v2-query-perms {:group_id (:id all-pg) :object (str "/query/db/" (:id (mt/db)) "/")}]
+                  Permissions [_data-perms {:group_id (:id all-pg) :object (str "/db/" (:id (mt/db)) "/")}]
 
-                    ;; Permissions [_v2-data-perms {:group_id (:id all-pg) :object (str "/data/db/" (:id db) "/")}]
-                    ;; Permissions [_v2-query-perms {:group_id (:id all-pg) :object (str "/query/db/" (:id db) "/")}]
-                    ;; Permissions [_data-perms {:group_id (:id all-pg) :object (str "/db/" (:id db) "/")}]
+                  ;; Permissions [_v2-data-perms {:group_id (:id all-pg) :object (str "/data/db/" (:id db) "/")}]
+                  ;; Permissions [_v2-query-perms {:group_id (:id all-pg) :object (str "/query/db/" (:id db) "/")}]
+                  ;; Permissions [_data-perms {:group_id (:id all-pg) :object (str "/db/" (:id db) "/")}]
 
-                    User [user {:first_name "Mr. All-User"}]
-                    PermissionsGroupMembership [_pgm {:user_id  (:id user)
-                                                      :group_id (:id all-pg)}]
+                  User [user {:first_name "Mr. All-User" :email "mr.all@user.com"}]
+                  PermissionsGroupMembership [_pgm {:user_id  (:id user)
+                                                    :group_id (:id all-pg)}]
 
-                    Table [table {:name "table" :db_id (:id db)}]
-                    Field [field {:name "field" :table_id (:id table)}]
+                  Table [table {:name "table" :db_id (:id (mt/db))}]
+                  Field [field {:name "field" :table_id (:id table)}]
 
-                    Card [source-card {:database_id   (:id db)
-                                       :table_id      (:id table)
-                                       :dataset_query {:database (:id db)
-                                                       :type     :query
-                                                       :query    {:limit 5 :source-table (:id table)}}}]
-                    Card [field-filter-card  {:dataset_query
-                                              {:database (:id db)
-                                               :type     :native
-                                               :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
-                                                          :template-tags {"NAME" {:id           "name_param_id"
-                                                                                  :name         "NAME"
-                                                                                  :display_name "Name"
-                                                                                  :type         :dimension
-                                                                                  :dimension    [:field (:id field) nil]
-                                                                                  :required     true}}}}
-                                              :name       "native card with field filter"
-                                              :parameters [{:id     "name_param_id"
-                                                            :type   :string/=
-                                                            :target [:dimension [:template-tag "NAME"]]
-                                                            :name   "Name"
-                                                            :slug   "NAME"}]}]
-                    Card [card        {:database_id   (:id db),
-                                       :dataset_query {:database (:id db),
-                                                       :type     :query,
-                                                       :query    {:source-table (:id table)}},
-                                       :parameters    [{:name                 "Static Category",
-                                                        :slug                 "static_category",
-                                                        :id                   "_STATIC_CATEGORY_",
-                                                        :type                 "category",
-                                                        :values_source_type   "static-list",
-                                                        :values_source_config {:values ["African"
-                                                                                        "American"
-                                                                                        "Asian"]}}
-                                                       {:name                 "Static Category label",
-                                                        :slug                 "static_category_label",
-                                                        :id                   "_STATIC_CATEGORY_LABEL_",
-                                                        :type                 "category",
-                                                        :values_source_type   "static-list",
-                                                        :values_source_config {:values [["African" "Af"]
-                                                                                        ["American" "Am"]
-                                                                                        ["Asian" "As"]]}}
-                                                       {:name                 "Card as source",
-                                                        :slug                 "card",
-                                                        :id                   "_CARD_",
-                                                        :type                 "category",
-                                                        :values_source_type   "card",
-                                                        :values_source_config {:card_id     (:id source-card),
-                                                                               :value_field (mt/$ids $venues.name)}}],
-                                       :table_id      (mt/id :venues)}]]
-      (is (= #{(str "/db/" (:id db) "/") (str "/data/db/" (:id db) "/") (str "/query/db/" (:id db) "/")}
-             (t2/select-fn-set :object :permissions {:where [:= :group_id (:id all-pg)]})))
+                  Card [source-card {:database_id   (:id (mt/db))
+                                     :table_id      (:id table)
+                                     :dataset_query {:database (:id (mt/db))
+                                                     :type     :query
+                                                     :query    {:limit 5 :source-table (:id table)}}}]
+                  Card [field-filter-card  {:dataset_query
+                                            {:database (:id (mt/db))
+                                             :type     :native
+                                             :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
+                                                        :template-tags {"NAME" {:id           "name_param_id"
+                                                                                :name         "NAME"
+                                                                                :display_name "Name"
+                                                                                :type         :dimension
+                                                                                :dimension    [:field (:id field) nil]
+                                                                                :required     true}}}}
+                                            :name       "native card with field filter"
+                                            :parameters [{:id     "name_param_id"
+                                                          :type   :string/=
+                                                          :target [:dimension [:template-tag "NAME"]]
+                                                          :name   "Name"
+                                                          :slug   "NAME"}]}]
+                  Card [card        {:database_id   (:id (mt/db))
+                                     :dataset_query {:database (:id (mt/db))
+                                                     :type     :query
+                                                     :query    {:source-table (:id table)}},
+                                     :parameters    [{:name                 "Static Category",
+                                                      :slug                 "static_category",
+                                                      :id                   "_STATIC_CATEGORY_",
+                                                      :type                 "category",
+                                                      :values_source_type   "static-list",
+                                                      :values_source_config {:values ["African" "American" "Asian"]}}
+                                                     {:name                 "Static Category label",
+                                                      :slug                 "static_category_label",
+                                                      :id                   "_STATIC_CATEGORY_LABEL_",
+                                                      :type                 "category",
+                                                      :values_source_type   "static-list",
+                                                      :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}
+                                                     {:name                 "Card as source",
+                                                      :slug                 "card",
+                                                      :id                   "_CARD_",
+                                                      :type                 "category",
+                                                      :values_source_type   "card",
+                                                      :values_source_config {:card_id     (:id source-card),
+                                                                             :value_field (mt/$ids $venues.name)}}],
+                                     :table_id      (mt/id :venues)}]]
+    (is (= #{(str "/db/" (:id (mt/db)) "/")
+             (str "/data/db/" (:id (mt/db)) "/")
+             (str "/query/db/" (:id (mt/db)) "/")}
+           (t2/select-fn-set :object :permissions {:where [:= :group_id (:id all-pg)]})))
 
-      (is (= (str "card/" (:id field-filter-card) "/params/name_param_id/values")
-             (param-values-url field-filter-card "name_param_id")))
+    (is (= (str "card/" (:id field-filter-card) "/params/name_param_id/values")
+           (param-values-url field-filter-card "name_param_id")))
 
+    (is (= {:values []
+            :field_id (:id field)
+            :has_more_values false}
+           (mt/user-http-request user :get 200 (param-values-url field-filter-card "name_param_id"))))
 
-      (is (= {:values          ["African" "American" "Asian"]
-              :has_more_values false} (mt/user-http-request user :get 200 (param-values-url card "_STATIC_CATEGORY_"))))
+    (is (= {:values          ["African" "American" "Asian"]
+            :has_more_values false} (mt/user-http-request user :get 200 (param-values-url card "_STATIC_CATEGORY_"))))
 
-      (is (= {:values          [["African" "Af"] ["American" "Am"] ["Asian" "As"]]
-              :has_more_values false} (mt/user-http-request user :get 200 (param-values-url card "_STATIC_CATEGORY_LABEL_"))))
+    (is (= {:values          [["African" "Af"] ["American" "Am"] ["Asian" "As"]]
+            :has_more_values false} (mt/user-http-request user :get 200 (param-values-url card "_STATIC_CATEGORY_LABEL_"))))
 
-      ;; CARD points to an empty table.
-      (is (= nil (mt/user-http-request user :get 204 (param-values-url card "_CARD_"))))
+    (is (= nil (mt/user-http-request user :get 204 (param-values-url card "_CARD_"))))))
 
-      )))
+;; TODO: these cannot work this way:
+;; the way to do it is to temporarily setup permissions via mt/with-temp* some way or another.
+;; (deftest parameters-using-old-style-field-values
+;;     (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+;;       (perms/grant-full-data-permissions! (perms-group/all-users) (mt/db))
+;;       (perms/grant-full-download-permissions! (perms-group/all-users) (mt/db))
+;;       (kill-block-perms! (perms-group/all-users) (mt/db))
+;;       ;; #{"/download/db/2/native/"
+;;       ;;   "/collection/namespace/snippets/root/"
+;;       ;;   "/"
+;;       ;;   "/download/db/2/"
+;;       ;;   "/download/db/1/native/"
+;;       ;;   "/collection/root/"
+;;       ;;   "/download/db/1/"
+;;       ;;   "/db/2/"
+;;       ;;   "/application/subscription/"
+;;       ;;   "/db/1/"}
+;;       (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
+;;         (testing "without search query"
+;;           (let [response (mt/user-http-request :rasta :get 201 (param-values-url field-filter-card (:field-values param-keys)))]
+;;             (is (false? (:has_more_values response)))
+;;             (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+;;                              (-> response :values set)))))
+;;         (testing "with search query"
+;;           (let [response (mt/user-http-request :rasta :get 202
+;;                                                (param-values-url field-filter-card
+;;                                                                  (:field-values param-keys)
+;;                                                                  "bar"))]
+;;             (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+;;                              (-> response :values set)))
+;;             (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))
+;;     #_#_#_#_
+;;     (testing "Old style, inferred parameters from native template-tags"
+;;       (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+;;         ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
+;;         (t2/update! Card (:id field-filter-card) {:parameters []})
+;;         (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
+;;           (testing "without search query"
+;;             (let [response (mt/user-http-request :rasta :get 200
+;;                                                  (param-values-url field-filter-card (:field-values param-keys)))]
+;;               (is (false? (:has_more_values response)))
+;;               (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+;;                                (-> response :values set)))))
+;;           (testing "with search query"
+;;             (let [response (mt/user-http-request :rasta :get 200
+;;                                                  (param-values-url field-filter-card
+;;                                                                    (:field-values param-keys)
+;;                                                                    "bar"))]
+;;               (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+;;                                (-> response :values set)))
+;;               (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil"))))))))
 
-(deftest parameters-using-old-style-field-values
-  (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
-    (perms/grant-full-data-permissions! (perms-group/all-users) (mt/db))
-    (perms/grant-full-download-permissions! (perms-group/all-users) (mt/db))
-    (kill-block-perms! (perms-group/all-users) (mt/db))
-    ;; #{"/download/db/2/native/"
-    ;;   "/collection/namespace/snippets/root/"
-    ;;   "/"
-    ;;   "/download/db/2/"
-    ;;   "/download/db/1/native/"
-    ;;   "/collection/root/"
-    ;;   "/download/db/1/"
-    ;;   "/db/2/"
-    ;;   "/application/subscription/"
-    ;;   "/db/1/"}
-    (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
-      (testing "without search query"
-        (let [response (mt/user-http-request :rasta :get 201 (param-values-url field-filter-card (:field-values param-keys)))]
-          (is (false? (:has_more_values response)))
-          (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
-                           (-> response :values set)))))
-      (testing "with search query"
-        (let [response (mt/user-http-request :rasta :get 202
-                                             (param-values-url field-filter-card
-                                                               (:field-values param-keys)
-                                                               "bar"))]
-          (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
-                           (-> response :values set)))
-          (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))
-#_#_#_#_
-  (testing "Old style, inferred parameters from native template-tags"
-    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
-      ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
-      (t2/update! Card (:id field-filter-card) {:parameters []})
-      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
-        (testing "without search query"
-          (let [response (mt/user-http-request :rasta :get 200
-                                               (param-values-url field-filter-card (:field-values param-keys)))]
-            (is (false? (:has_more_values response)))
-            (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
-                             (-> response :values set)))))
-        (testing "with search query"
-          (let [response (mt/user-http-request :rasta :get 200
-                                               (param-values-url field-filter-card
-                                                                 (:field-values param-keys)
-                                                                 "bar"))]
-            (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
-                             (-> response :values set)))
-            (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil"))))))))
+;;     (testing "Old style, inferred parameters from native template-tags with no-self-service"
+;;       (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+;;         (perms/grant-full-data-permissions! (perms-group/all-users) (mt/db))
+;;         (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user has no-self-service"
+;;           (testing "without search query"
+;;             (mt/user-http-request :rasta :get 200 (param-values-url field-filter-card (:field-values param-keys))))
+;;           (testing "with search query"
+;;             (mt/user-http-request :rasta :get 200 (param-values-url field-filter-card (:field-values param-keys) "bar"))))))
 
-  (testing "Old style, inferred parameters from native template-tags with no-self-service"
-    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
-      (perms/grant-full-data-permissions! (perms-group/all-users) (mt/db))
-      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user has no-self-service"
-        (testing "without search query"
-          (mt/user-http-request :rasta :get 200 (param-values-url field-filter-card (:field-values param-keys))))
-        (testing "with search query"
-          (mt/user-http-request :rasta :get 200 (param-values-url field-filter-card (:field-values param-keys) "bar"))))))
+;;     (testing "Old style, inferred parameters from native template-tags with no-self-service"
+;;       (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+;;         (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
+;;         (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user has no-self-service"
+;;           (testing "without search query"
+;;             (mt/user-http-request :rasta :get 200 (param-values-url field-filter-card (:field-values param-keys))))
+;;           (testing "with search query"
+;;             (mt/user-http-request :rasta :get 200 (param-values-url field-filter-card (:field-values param-keys) "bar"))))))
 
-  (testing "Old style, inferred parameters from native template-tags with no-self-service"
-    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
-      (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user has no-self-service"
-        (testing "without search query"
-          (mt/user-http-request :rasta :get 200 (param-values-url field-filter-card (:field-values param-keys))))
-        (testing "with search query"
-          (mt/user-http-request :rasta :get 200 (param-values-url field-filter-card (:field-values param-keys) "bar"))))))
-
-  (testing "Old style, inferred parameters from native template-tags when blocked"
-    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
-      (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (perms/grant-permissions! (perms-group/all-users) (perms/database-block-perms-path (mt/db)))
-      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user is blocked is unauthorized"
-        (testing "without search query"
-          (mt/user-http-request :rasta :get 403 (param-values-url field-filter-card (:field-values param-keys))))
-        (testing "with search query"
-          (mt/user-http-request :rasta :get 403 (param-values-url field-filter-card (:field-values param-keys) "bar")))))))
+;;     (testing "Old style, inferred parameters from native template-tags when blocked"
+;;       (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+;;         (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
+;;         (perms/grant-permissions! (perms-group/all-users) (perms/database-block-perms-path (mt/db)))
+;;         (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user is blocked is unauthorized"
+;;           (testing "without search query"
+;;             (mt/user-http-request :rasta :get 403 (param-values-url field-filter-card (:field-values param-keys))))
+;;           (testing "with search query"
+;;             (mt/user-http-request :rasta :get 403 (param-values-url field-filter-card (:field-values param-keys) "bar")))))))
 
 (deftest parameters-with-source-is-static-list-test
   (with-card-param-values-fixtures [{:keys [card param-keys]}]

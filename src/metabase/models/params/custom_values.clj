@@ -119,7 +119,7 @@
   `default-case-thunk` is a 0-arity function that returns values list when:
   - :values_source_type = card but the card is archived or the card no longer contains the value-field.
   - :values_source_type = nil."
-  [parameter query default-case-thunk]
+  [parameter query]
   (case (:values_source_type parameter)
     "static-list" (static-list-values parameter query)
     "card"        (let [card (t2/select-one Card :id (get-in parameter [:values_source_config :card_id]))]
@@ -127,8 +127,8 @@
                       (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
                     (if (can-get-card-values? card (get-in parameter [:values_source_config :value_field]))
                       (card-values parameter query)
-                      (default-case-thunk)))
-    nil           (default-case-thunk)
+                      ::not-found))
+    nil           ::not-found
     (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
                     {:status-code 400
-                     :parameter parameter}))))
+                     :parameter   parameter}))))

@@ -736,3 +736,16 @@
     (regexp? x)     :dispatch-type/regex
     ;; we should add more mappings here as needed
     :else           :dispatch-type/*))
+
+(defn seek
+  "Returns the first item from coll for which (pred item) returns true.
+   Returns nil if no such item is present, or the not-found value if supplied.
+
+   see: https://clojure.atlassian.net/browse/CLJ-2056"
+  ([pred coll] (seek pred coll nil))
+  ([pred coll not-found]
+   (reduce (fn [_ x]
+             (if (pred x)
+               (reduced x)
+               not-found))
+           not-found coll)))
