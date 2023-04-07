@@ -44,7 +44,7 @@
   :default 3)
 
 (defn- select-models
-  "Downselect the avaiable openai models to only the latest version of each GPT family."
+  "Downselect the available openai models to only the latest version of each GPT family."
   [models]
   (->> models
        (map (fn [{:keys [id] :as m}]
@@ -55,9 +55,13 @@
                     :version version
                     :generation (int version)
                     :details r)))))
+       ;; Drop anything that doesn't match
        (filter identity)
+       ;; Order by generation (desc), version (asc), length of details string (desc)
        (sort-by (juxt :generation (comp - :version) (comp count :details)))
+       ;; Split out each generation
        (partition-by :generation)
+       ;; Take the top item in each partition and select what we want
        (map (comp #(select-keys % [:id :owned_by]) first))
        reverse))
 
