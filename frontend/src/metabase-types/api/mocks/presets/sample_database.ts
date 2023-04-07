@@ -269,6 +269,7 @@ export const createPeopleIdField = (opts?: Partial<Field>): Field =>
     display_name: "ID",
     base_type: "type/BigInteger",
     semantic_type: "type/PK",
+    fingerprint: null,
     ...opts,
   });
 
@@ -548,6 +549,7 @@ export const createProductsIdField = (opts?: Partial<Field>): Field =>
     display_name: "ID",
     base_type: "type/BigInteger",
     semantic_type: "type/PK",
+    fingerprint: null,
     ...opts,
   });
 
@@ -717,6 +719,7 @@ export const createReviewsIdField = (opts?: Partial<Field>): Field =>
     display_name: "ID",
     base_type: "type/BigInteger",
     semantic_type: "type/PK",
+    fingerprint: null,
     ...opts,
   });
 
@@ -728,6 +731,12 @@ export const createReviewsProductIdField = (opts?: Partial<Field>): Field =>
     display_name: "Product ID",
     base_type: "type/Integer",
     semantic_type: "type/FK",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 176,
+        "nil%": 0,
+      }),
+    }),
     ...opts,
   });
 
@@ -739,6 +748,17 @@ export const createReviewsReviewerField = (opts?: Partial<Field>): Field =>
     display_name: "Reviewer",
     base_type: "type/Text",
     semantic_type: null,
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 1076,
+      }),
+      type: {
+        "type/Text": createMockTextFieldFingerprint({
+          "percent-state": 0.001798561151079137,
+          "average-length": 9.972122302158274,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -750,6 +770,21 @@ export const createReviewsRatingField = (opts?: Partial<Field>): Field =>
     display_name: "Rating",
     base_type: "type/Integer",
     semantic_type: "type/Score",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 5,
+      }),
+      type: {
+        "type/Number": createMockNumberFieldFingerprint({
+          min: 1,
+          q1: 3.54744353181696,
+          q3: 4.764807071650455,
+          max: 5,
+          sd: 1.0443899855660577,
+          avg: 3.987410071942446,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -761,6 +796,16 @@ export const createReviewsBodyField = (opts?: Partial<Field>): Field =>
     display_name: "Body",
     base_type: "type/Text",
     semantic_type: "type/Description",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 1112,
+      }),
+      type: {
+        "type/Text": createMockTextFieldFingerprint({
+          "average-length": 177.41996402877697,
+        }),
+      },
+    }),
     ...opts,
   });
 
@@ -772,5 +817,16 @@ export const createReviewsCreatedAtField = (opts?: Partial<Field>): Field =>
     display_name: "Created At",
     base_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
+    fingerprint: createMockFingerprint({
+      global: createMockGlobalFieldFingerprint({
+        "distinct-count": 1112,
+      }),
+      type: {
+        "type/DateTime": createMockDateTimeFieldFingerprint({
+          earliest: "2016-06-03T00:37:05.818Z",
+          latest: "2020-04-19T14:15:25.677Z",
+        }),
+      },
+    }),
     ...opts,
   });
