@@ -43,6 +43,24 @@
   :visibility :internal
   :default 3)
 
+(defn- select-models
+  "Downselect the avaiable openai models to only the latest version of each GPT family."
+  [models]
+  (->> models
+       (map (fn [{:keys [id] :as m}]
+              (when-some [[_ v r] (re-matches #"gpt-([\d\.]+)(.*)"
+                                              (u/lower-case-en id))]
+                (let [version (parse-double v)]
+                  (assoc m
+                    :version version
+                    :generation (int version)
+                    :details r)))))
+       (filter identity)
+       (sort-by (juxt :generation (comp - :version) (comp count :details)))
+       (partition-by :generation)
+       (map (comp #(select-keys % [:id :owned_by]) first))
+       reverse))
+
 (def ^:private memoized-fetch-openai-models
   (memoize/ttl
    ^{::memoize/args-fn (fn [[api-key organization]] [api-key organization])}
@@ -52,11 +70,7 @@
              {:api-key      api-key
               :organization organization})
             :data
-            (map #(select-keys % [:id :owned_by]))
-            (filter (fn [{:keys [id]}] (str/starts-with?
-                                        (u/lower-case-en id)
-                                        "gpt")))
-            (sort-by :id))
+            select-models)
        (catch Exception _
          (log/warn "Unable to fetch openai models.")
          [])))
