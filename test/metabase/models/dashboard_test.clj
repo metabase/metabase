@@ -288,14 +288,14 @@
 
     (testing (str "Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under "
                   "the old artifact-permissions regime will *NOT* be able to see it if they don't have permissions for "
-                  "that Collection"))
-    (binding [api/*current-user-permissions-set* (atom #{(perms/data-perms-path (u/the-id db))})]
-      (is (= false
-             (mi/can-read? dash))))
+                  "that Collection")
+     (binding [api/*current-user-permissions-set* (atom #{(perms/data-perms-path (u/the-id db))})]
+       (is (= false
+              (mi/can-read? dash)))))
 
     (testing "Do we have *write* Permissions for a Dashboard if we have *write* Permissions for the Collection its in?"
       (binding [api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]
-        (mi/can-write? dash)))))
+        (is (= true (mi/can-write? dash)))))))
 
 (deftest transient-dashboards-test
   (testing "test that we save a transient dashboard"

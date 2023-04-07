@@ -136,6 +136,11 @@
    DashboardCardSeries
    (constantly {:position 0})
 
+   :m/DashboardTab
+   (fn [_]
+     {:name     (tu.random/random-name)
+      :position 0})
+
    Database
    (fn [_] {:details   {}
             :engine    :h2
