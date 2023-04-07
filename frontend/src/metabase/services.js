@@ -217,7 +217,7 @@ export const LdapApi = {
 };
 
 export const SamlApi = {
-  updateSettings: PUT("/api/saml/settings"),
+  updateSettings: PUT("/auth/saml/settings"),
 };
 
 export const GoogleApi = {

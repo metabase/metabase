@@ -32,7 +32,6 @@
    [metabase.api.revision :as api.revision]
    [metabase.api.routes.common
     :refer [+apikey +auth +public-exceptions +message-only-exceptions]]
-   [metabase.api.saml :as api.saml]
    [metabase.api.search :as api.search]
    [metabase.api.segment :as api.segment]
    [metabase.api.session :as api.session]
@@ -95,7 +94,6 @@
   (context "/public"               [] (+public-exceptions api.public/routes))
   (context "/pulse"                [] (+auth api.pulse/routes))
   (context "/revision"             [] (+auth api.revision/routes))
-  (context "/saml"                 [] (+auth api.saml/routes))
   (context "/search"               [] (+auth api.search/routes))
   (context "/segment"              [] (+auth api.segment/routes))
   (context "/session"              [] api.session/routes)

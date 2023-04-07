@@ -130,7 +130,7 @@
                                          saml-identity-provider-certificate nil]
         (is (some? (client :get 400 "/auth/sso")))))))
 
-(defn- call-with-default-saml-config [f]
+(defn call-with-default-saml-config [f]
   (mt/with-temporary-setting-values [saml-enabled                       true
                                      saml-identity-provider-uri         default-idp-uri
                                      saml-identity-provider-certificate default-idp-cert]
@@ -146,7 +146,7 @@
       (u/ignore-exceptions (do (t2/update! User {} {:login_attributes nil})
                                (t2/update! User {:email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil}))))))
 
-(defmacro ^:private with-saml-default-setup [& body]
+(defmacro with-saml-default-setup [& body]
   `(with-valid-premium-features-token
      (call-with-login-attributes-cleared!
       (fn []
