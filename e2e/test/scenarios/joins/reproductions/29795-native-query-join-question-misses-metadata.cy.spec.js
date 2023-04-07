@@ -22,9 +22,9 @@ describe("issue 29795", () => {
       { loadMetadata: true },
     );
 
-    openOrdersTable({ mode: "notebook" });
+    openOrdersTable({ mode: "notebook", limit: LIMIT });
 
-    cy.button("Join data").click();
+    cy.icon("join_left_outer").click();
 
     popover().within(() => {
       cy.icon("chevronleft").click();
