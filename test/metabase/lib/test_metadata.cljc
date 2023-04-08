@@ -1899,7 +1899,7 @@
    :initial_sync_status     "complete"
    :display_name            "People"
    :points_of_interest      nil
-   :lib/type                :metadata/people
+   :lib/type                :metadata/table
    :fields                  [(field-metadata :people :id)
                              (field-metadata :people :state)
                              (field-metadata :people :city)
@@ -2134,7 +2134,7 @@
    :initial_sync_status     "complete"
    :display_name            "Reviews"
    :points_of_interest      nil
-   :lib/type                :metadata/reviews
+   :lib/type                :metadata/table
    :fields                  [(field-metadata :reviews :id)
                              (field-metadata :reviews :created-at)
                              (field-metadata :reviews :rating)
