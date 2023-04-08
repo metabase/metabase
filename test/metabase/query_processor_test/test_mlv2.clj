@@ -25,27 +25,50 @@
 (defn- skip-conversion-tests? [query]
   (or
    ;; #29898: `:joins` with `:fields` other than `:all` or `:none` are not normalized correctly.
-   (mbql.u/match query
+   (mbql.u/match-one query
      {:joins joins}
-     (mbql.u/match joins
+     (mbql.u/match-one joins
        {:fields fields}
-       (mbql.u/match fields
+       (mbql.u/match-one fields
          :field
          "#29898")))
    ;; #29897: `:datetime-diff` is not handled correctly.
-   (mbql.u/match query
+   (mbql.u/match-one query
      :datetime-diff
      "#29897")
    ;; #29904: `:fields` in `:joins` are supposed to be returned even if `:fields` is specified.
-   (mbql.u/match query
+   (mbql.u/match-one query
      {:fields fields, :joins joins}
-     (mbql.u/match joins
+     (mbql.u/match-one joins
        {:fields (join-fields :guard (partial not= :none))}
        "#29904"))
    ;; #29895: `:value` is not supported
-   (mbql.u/match query
+   (mbql.u/match-one query
      :value
-     "#29895")))
+     "#29895")
+   ;; #29907: wrong column name for joined columns in `:breakout`
+   (mbql.u/match-one query
+     {:breakout breakouts}
+     (mbql.u/match-one breakouts
+       [:field _id-or-name {:join-alias _join-alias}]
+       "#29907"))
+   ;; #29908: native queries do not round trip correctly
+   (when (:native query)
+     "#29908")
+   ;; #29909: these clauses are not implemented yet.
+   (mbql.u/match-one query
+     #{:get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second}
+     "#29909")
+   ;; #29770: `:absolute-datetime` does not work correctly
+   (mbql.u/match-one query
+     :absolute-datetime
+     "#29770")
+   ;; #29910: `:datetime-add` and `:datetime-subtract` broken with strings literals
+   (mbql.u/match-one query
+     #{:datetime-add :datetime-subtract}
+     (mbql.u/match-one &match
+       [_tag (_literal :guard string?) & _]
+       "#29910"))))
 
 (defn- test-mlv2-metadata [original-query qp-metadata]
   {:pre [(map? original-query)]}
