@@ -113,7 +113,7 @@
                       :id         800
                       :created-at 801
                       :rating     802
-                      :reviewier  803
+                      :reviewer   803
                       :body       804
                       :product-id 805)))))
 
@@ -803,7 +803,8 @@
     :database_required          false
     :fingerprint                nil
     :base_type                  :type/BigInteger
-    :points_of_interest         nil})
+    :points_of_interest         nil
+    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:products :rating]
   [_table-name _field-name]
@@ -839,7 +840,8 @@
                                                        :sd  1.3605488657451452
                                                        :avg 3.4715}}}
    :base_type                  :type/Float
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
  (defmethod field-metadata [:products :category]
    [_table-name _field-name]
@@ -868,13 +870,14 @@
     :database_position          3
     :database_required          false
     :fingerprint                {:global {:distinct-count 4, :nil% 0.0}
-                                 :type {:type/Text {:percent-json   0.0
-                                                    :percent-url    0.0
-                                                    :percent-email  0.0
-                                                    :percent-state  0.0
-                                                    :average-length 6.375}}}
+                                 :type   {:type/Text {:percent-json   0.0
+                                                      :percent-url    0.0
+                                                      :percent-email  0.0
+                                                      :percent-state  0.0
+                                                      :average-length 6.375}}}
     :base_type                  :type/Text
-    :points_of_interest         nil})
+    :points_of_interest         nil
+    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:products :price]
   [_table-name _field-name]
@@ -910,7 +913,8 @@
                                                        :sd  21.711152906916283
                                                        :avg 55.746399999999994}}}
    :base_type                  :type/Float
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
  (defmethod field-metadata [:products :title]
    [_table-name _field-name]
@@ -945,7 +949,8 @@
                                                       :percent-state  0.0
                                                       :average-length 21.495}}}
     :base_type                  :type/Text
-    :points_of_interest         nil})
+    :points_of_interest         nil
+    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:products :created-at]
   [_table-name _field-name]
@@ -977,7 +982,8 @@
                                 :type   {:type/DateTime {:earliest "2016-04-26T19:29:55.147Z"
                                                          :latest   "2019-04-15T13:34:19.931Z"}}}
    :base_type                  :type/DateTimeWithLocalTZ
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:products :vendor]
   [_table-name _field-name]
@@ -1012,7 +1018,8 @@
                                                      :percent-state  0.0
                                                      :average-length 20.6}}}
    :base_type                  :type/Text
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:products :ean]
   [_table-name _field-name]
@@ -1047,7 +1054,8 @@
                                                      :percent-state  0.0
                                                      :average-length 13.0}}}
    :base_type                  :type/Text
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod table-metadata :products
   [_table-name]
@@ -1065,7 +1073,15 @@
    :initial_sync_status     "complete"
    :display_name            "Products"
    :points_of_interest      nil
-   :lib/type                :metadata/table})
+   :lib/type                :metadata/table
+   :fields                  [(field-metadata :products :id)
+                             (field-metadata :products :rating)
+                             (field-metadata :products :category)
+                             (field-metadata :products :price)
+                             (field-metadata :products :title)
+                             (field-metadata :products :created-at)
+                             (field-metadata :products :vendor)
+                             (field-metadata :products :ean)]})
 
 (defmethod field-metadata [:orders :id]
   [_table-name _field-name]
@@ -1095,7 +1111,8 @@
    :database_required          false
    :fingerprint                nil
    :base_type                  :type/BigInteger
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :subtotal]
   [_table-name _field-name]
@@ -1132,7 +1149,8 @@
                                           :sd  32.536819823931104
                                           :avg 77.012717}}}
    :base_type                  :type/Float
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :total]
   [_table-name _field-name]
@@ -1169,7 +1187,8 @@
                                           :sd  34.264752087910324
                                           :avg 80.35850400000001}}}
    :base_type                  :type/Float
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :tax]
   [_table-name _field-name]
@@ -1206,7 +1225,8 @@
                                           :sd  2.3206651358900316
                                           :avg 3.8722100000000004}}}
    :base_type                  :type/Float
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :discount]
   [_table-name _field-name]
@@ -1242,7 +1262,8 @@
                                                        :sd  3.053736975739119
                                                        :avg 5.161009803921569}}}
    :base_type                  :type/Float
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :quantity]
   [_table-name _field-name]
@@ -1278,7 +1299,8 @@
                                                        :sd  4.214258386403798
                                                        :avg 3.7015}}}
    :base_type                  :type/Integer
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :created-at]
   [_table-name _field-name]
@@ -1310,7 +1332,8 @@
                                 :type   {:type/DateTime {:earliest "2016-04-30T18:56:13.352Z"
                                                          :latest   "2020-04-19T14:07:15.657Z"}}}
    :base_type                  :type/DateTimeWithLocalTZ
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :product-id]
   [_table-name _field-name]
@@ -1340,7 +1363,8 @@
    :database_required          false
    :fingerprint                {:global {:distinct-count 200, :nil% 0.0}}
    :base_type                  :type/Integer
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :user-id]
   [_table-name _field-name]
@@ -1370,7 +1394,8 @@
    :database_required          false
    :fingerprint                {:global {:distinct-count 929, :nil% 0.0}}
    :base_type                  :type/Integer
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod table-metadata :orders
   [_table-name]
@@ -1388,7 +1413,16 @@
    :initial_sync_status     "complete"
    :display_name            "Orders"
    :points_of_interest      nil
-   :lib/type                :metadata/table})
+   :lib/type                :metadata/table
+   :fields                  [(field-metadata :orders :id)
+                             (field-metadata :orders :subtotal)
+                             (field-metadata :orders :total)
+                             (field-metadata :orders :tax)
+                             (field-metadata :orders :discount)
+                             (field-metadata :orders :quantity)
+                             (field-metadata :orders :created-at)
+                             (field-metadata :orders :product-id)
+                             (field-metadata :orders :user-id)]})
 
 (defmethod field-metadata [:people :id]
   [_table-name _field-name]
@@ -1418,7 +1452,8 @@
    :database_required          false
    :fingerprint                nil
    :base_type                  :type/BigInteger
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :state]
   [_table-name _field-name]
@@ -1453,7 +1488,8 @@
                                                      :percent-state  1.0
                                                      :average-length 2.0}}}
    :base_type                  :type/Text
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :city]
   [_table-name _field-name]
@@ -1488,7 +1524,8 @@
                                                      :percent-state  0.002
                                                      :average-length 8.284}}}
    :base_type                  :type/Text
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :address]
   [_table-name _field-name]
@@ -1523,7 +1560,8 @@
                                                      :percent-state  0.0
                                                      :average-length 20.85}}}
    :base_type                  :type/Text
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :name]
   [_table-name _field-name]
@@ -1558,7 +1596,8 @@
                                                      :percent-state  0.0
                                                      :average-length 13.532}}}
    :base_type                  :type/Text
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :source]
   [_table-name _field-name]
@@ -1593,7 +1632,8 @@
                                                      :percent-state  0.0
                                                      :average-length 7.4084}}}
    :base_type                  :type/Text
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :zip]
   [_table-name _field-name]
@@ -1628,7 +1668,8 @@
                                                      :percent-state  0.0
                                                      :average-length 5.0}}}
    :base_type                  :type/Text
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :latitude]
   [_table-name _field-name]
@@ -1664,7 +1705,8 @@
                                                        :sd  6.390832341883712
                                                        :avg 39.87934670484002}}}
    :base_type                  :type/Float
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :password]
   [_table-name _field-name]
@@ -1699,7 +1741,8 @@
                                                      :percent-state  0.0
                                                      :average-length 36.0}}}
    :base_type                  :type/Text
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :birth-date]
   [_table-name _field-name]
@@ -1731,7 +1774,8 @@
    {:global {:distinct-count 2308, :nil% 0.0}
     :type   {:type/DateTime {:earliest "1958-04-26", :latest "2000-04-03"}}}
    :base_type                  :type/Date
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :longitude]
   [_table-name _field-name]
@@ -1767,7 +1811,8 @@
                                                        :sd  15.399698968175663
                                                        :avg -95.18741780363999}}}
    :base_type                  :type/Float
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :email]
   [_table-name _field-name]
@@ -1802,7 +1847,8 @@
                                                      :percent-state  0.0
                                                      :average-length 24.1824}}}
    :base_type                  :type/Text
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :created-at]
   [_table-name _field-name]
@@ -1834,7 +1880,8 @@
                                 :type   {:type/DateTime {:earliest "2016-04-19T21:35:18.752Z"
                                                          :latest   "2019-04-19T14:06:27.3Z"}}}
    :base_type                  :type/DateTimeWithLocalTZ
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod table-metadata :people
   [_table-name]
@@ -1851,7 +1898,21 @@
    :field_order             :database
    :initial_sync_status     "complete"
    :display_name            "People"
-   :points_of_interest      nil})
+   :points_of_interest      nil
+   :lib/type                :metadata/people
+   :fields                  [(field-metadata :people :id)
+                             (field-metadata :people :state)
+                             (field-metadata :people :city)
+                             (field-metadata :people :address)
+                             (field-metadata :people :name)
+                             (field-metadata :people :source)
+                             (field-metadata :people :zip)
+                             (field-metadata :people :latitude)
+                             (field-metadata :people :password)
+                             (field-metadata :people :birth-date)
+                             (field-metadata :people :longitude)
+                             (field-metadata :people :email)
+                             (field-metadata :people :created-at)]})
 
 (defmethod field-metadata [:reviews :id]
   [_table-name _field-name]
@@ -1881,7 +1942,8 @@
    :database_required          false
    :fingerprint                nil
    :base_type                  :type/BigInteger
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:reviews :created-at]
   [_table-name _field-name]
@@ -1913,7 +1975,8 @@
                                 :type   {:type/DateTime {:earliest "2016-06-03T00:37:05.818Z"
                                                          :latest   "2020-04-19T14:15:25.677Z"}}}
    :base_type                  :type/DateTimeWithLocalTZ
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:reviews :rating]
   [_table-name _field-name]
@@ -1949,7 +2012,8 @@
                                                        :sd  1.0443899855660577
                                                        :avg 3.987410071942446}}}
    :base_type                  :type/Integer
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:reviews :reviewer]
   [_table-name _field-name]
@@ -1984,7 +2048,8 @@
                                                      :percent-state  0.001798561151079137
                                                      :average-length 9.972122302158274}}}
    :base_type                  :type/Text
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:reviews :body]
   [_table-name _field-name]
@@ -2019,7 +2084,8 @@
                                                      :percent-state  0.0
                                                      :average-length 177.41996402877697}}}
    :base_type                  :type/Text
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:reviews :product-id]
   [_table-name _field-name]
@@ -2049,7 +2115,8 @@
    :database_required          false
    :fingerprint                {:global {:distinct-count 176, :nil% 0.0}}
    :base_type                  :type/Integer
-   :points_of_interest         nil})
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod table-metadata :reviews
   [_table-name]
@@ -2066,7 +2133,14 @@
    :field_order             :database
    :initial_sync_status     "complete"
    :display_name            "Reviews"
-   :points_of_interest      nil})
+   :points_of_interest      nil
+   :lib/type                :metadata/reviews
+   :fields                  [(field-metadata :reviews :id)
+                             (field-metadata :reviews :created-at)
+                             (field-metadata :reviews :rating)
+                             (field-metadata :reviews :reviewer)
+                             (field-metadata :reviews :body)
+                             (field-metadata :reviews :product-id)]})
 
 (def metadata
   "Complete Database metadata for testing, captured from a call to `GET /api/database/:id/metadata`. For the H2 version
@@ -2106,7 +2180,11 @@
    :tables                      [(table-metadata :categories)
                                  (table-metadata :checkins)
                                  (table-metadata :users)
-                                 (table-metadata :venues)]
+                                 (table-metadata :venues)
+                                 (table-metadata :products)
+                                 (table-metadata :orders)
+                                 (table-metadata :people)
+                                 (table-metadata :reviews)]
    :creator_id                  nil
    :is_full_sync                true
    :cache_ttl                   nil
