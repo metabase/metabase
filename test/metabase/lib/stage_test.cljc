@@ -226,3 +226,22 @@
                   :lib/desired-column-alias      "Cat__ID"
                   :lib/source                    :source/previous-stage}]
                 (lib.metadata.calculation/metadata query')))))))
+
+(deftest ^:parallel broken-test
+  {:source-query {:source-table (meta/id :orders)
+                  :aggregation  [[:count]]
+                  :breakout     [[:field {:lib/uuid "00000000-0000-0000-0000-000000000010"} (meta/id :orders :product_id)]]
+                  :filter       [:= [:field {:lib/uuid "00000000-0000-0000-0000-000000000010"} (meta/id :orders :product_id)] 4]}
+   :joins        [{:fields       :all
+                   :source-query {:source-table (meta/id :orders)
+                                  :aggregation  [[:count]]
+                                  :breakout     [[:field {:lib/uuid "00000000-0000-0000-0000-000000000010"} (meta/id :orders :product_id)]]
+                                  :filter       [:and
+                                                 [:= [:field {:lib/uuid "00000000-0000-0000-0000-000000000010"} (meta/id :orders :product_id)] 4]
+                                                 [:> $quantity 3]]}
+                   :condition    [:= [:field {:lib/uuid "00000000-0000-0000-0000-000000000010"} (meta/id :orders :product_id)] &Q2.orders.product_id]
+                   :alias        "Q2"}]
+   :expressions {:expr [:/
+                        [:field "count" {:base-type :type/BigInteger, :join-alias "Q2"}]
+                        [:field "count" {:base-type :type/BigInteger}]]}
+   :limit        2})

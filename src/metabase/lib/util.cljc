@@ -30,6 +30,53 @@
    :cljs
    (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
 
+(def ^:private mbql-clause->sort-order
+  (into {}
+        (map-indexed (fn [i k]
+                       [k i]))
+        [;; lib keys
+         :lib/type
+         :lib/options
+         :lib/metadata
+         :lib/stage-metadata
+         ;; metadata keys
+         :lib/source
+         :lib/source-column-alias
+         :lib/desired-column-alias
+         ;; top-level keys
+         :database
+         :type
+         :stages
+         ;; stage and join keys
+         :source-table
+         :alias
+         :joins
+         :expressions
+         :breakout
+         :aggregation
+         :condition
+         :fields
+         :strategy
+         :filter
+         :order-by
+         :page
+         :limit]))
+
+(defn- sorted-mbql-query-map []
+  ;; stuff in [[mbql-clause->sort-order]] should always get sorted according to that order. Everything else should go at
+  ;; the end, with non-namespaced stuff first and namespaced stuff last; otherwise sort alphabetically
+  (sorted-map-by (fn [x y]
+                   (let [order   (fn [k]
+                                   (or (mbql-clause->sort-order k)
+                                       (when (and (keyword? k) (namespace k))
+                                         100000)
+                                       (dec 100000)))
+                         x-order (order x)
+                         y-order (order y)]
+                     (if (= x-order y-order)
+                       (compare (str x) (str y))
+                       (compare x-order y-order))))))
+
 (defn- clause? [clause]
   (and (vector? clause)
        (> (count clause) 1)
@@ -80,11 +127,13 @@
   "Convert a `:type` `:native` QP MBQL query to a `:type` `:pipeline` pMBQL query. See docstring
   for [[mbql-query->pipeline]] for an explanation of what this means."
   [query]
-  (merge {:lib/type :mbql/query
+  (merge (sorted-mbql-query-map)
+         {:lib/type :mbql/query
           :type     :pipeline
           ;; we're using `merge` here instead of threading stuff so the `:lib/` keys are the first part of the map for
           ;; readability in the REPL.
-          :stages   [(merge (lib.options/ensure-uuid {:lib/type :mbql.stage/native})
+          :stages   [(merge (sorted-mbql-query-map)
+                            {:lib/type :mbql.stage/native}
                             (set/rename-keys (:native query) {:query :native}))]}
          (dissoc query :type :native)))
 
@@ -93,7 +142,8 @@
 (defn- join->pipeline [join]
   (let [source (select-keys join [:source-table :source-query])
         stages (inner-query->stages source)]
-    (-> join
+    (-> (merge (sorted-mbql-query-map)
+               join)
         (dissoc :source-table :source-query)
         (assoc :lib/type :mbql/join
                :stages stages)
@@ -121,8 +171,8 @@
                           :mbql.stage/mbql)
         ;; we're using `merge` here instead of threading stuff so the `:lib/` keys are the first part of the map for
         ;; readability in the REPL.
-        this-stage      (merge (lib.options/ensure-uuid
-                                {:lib/type stage-type})
+        this-stage      (merge (sorted-mbql-query-map)
+                               {:lib/type stage-type}
                                (dissoc inner-query :source-query :source-metadata))
         this-stage      (cond-> this-stage
                           (seq (:joins this-stage)) (update :joins joins->pipeline))]
@@ -137,7 +187,8 @@
   https://metaboat.slack.com/archives/C04DN5VRQM6/p1677118410961169?thread_ts=1677112778.742589&cid=C04DN5VRQM6 for
   more information."
   [query]
-  (merge {:lib/type :mbql/query
+  (merge (sorted-mbql-query-map)
+         {:lib/type :mbql/query
           :type     :pipeline
           :stages   (inner-query->stages (:query query))}
          (dissoc query :type :query)))

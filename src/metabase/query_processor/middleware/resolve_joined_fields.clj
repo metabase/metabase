@@ -103,8 +103,13 @@
 (defn resolve-joined-fields
   "Add `:join-alias` info to `:field` clauses where needed."
   [query]
-  (let [query' (add-join-alias-to-fields-if-needed query)]
-    (when-not (= query query')
-      (let [[before after] (data/diff query query')]
-        (log/tracef "Inferred :field :join-alias info: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))
-    query'))
+  (try
+    (let [query' (add-join-alias-to-fields-if-needed query)]
+      (when-not (= query query')
+        (let [[before after] (data/diff query query')]
+          (log/tracef "Inferred :field :join-alias info: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))
+      query')
+    (catch Throwable e
+      (throw (ex-info (tru "Error resolving joined fields: {0}" (ex-message e))
+                      {:query query, :type qp.error-type/qp}
+                      e)))))

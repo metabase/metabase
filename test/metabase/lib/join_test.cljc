@@ -203,3 +203,99 @@
               :lib/source-column-alias  "count"
               :lib/desired-column-alias "count"}]
             (lib.metadata.calculation/metadata query -1 join)))))
+
+(deftest ^:parallel metadata-for-join-in-previous-stage-test
+  (let [query {:lib/type     :mbql/query
+               :lib/metadata meta/metadata-provider
+               :database     (meta/id)
+               :type         :pipeline
+               :stages       [{:lib/type     :mbql.stage/mbql
+                               :source-table (meta/id :orders)
+                               :joins        [{:lib/type    :mbql/join
+                                               :lib/options {:lib/uuid (str (random-uuid))}
+                                               :stages      [{:lib/type :mbql.stage/mbql, :source-table (meta/id :products)}]
+                                               :alias       "P1"
+                                               :condition   [:=
+                                                             {:lib/uuid (str (random-uuid))}
+                                                             [:field
+                                                              {:lib/uuid (str (random-uuid))}
+                                                              (meta/id :orders :product-id)]
+                                                             [:field
+                                                              {:join-alias "P1"
+                                                               :lib/uuid   (str (random-uuid))}
+                                                              (meta/id :products :id)]]
+                                               :fields      :all}
+                                              {:lib/type    :mbql/join
+                                               :lib/options {:lib/uuid (str (random-uuid))}
+                                               :stages      [{:lib/type :mbql.stage/mbql, :source-table (meta/id :people)}]
+                                               :alias       "People"
+                                               :condition   [:=
+                                                             {:lib/uuid (str (random-uuid))}
+                                                             [:field
+                                                              {:lib/uuid (str (random-uuid))}
+                                                              (meta/id :orders :user-id)]
+                                                             [:field
+                                                              {:join-alias "People"
+                                                               :lib/uuid   (str (random-uuid))}
+                                                              (meta/id :people :id)]]
+                                               :fields      :all}]
+                               :breakout     [[:field
+                                               {:join-alias "P1", :lib/uuid (str (random-uuid))}
+                                               (meta/id :products :category)]
+                                              [:field
+                                               {:join-alias "People", :lib/uuid (str (random-uuid))}
+                                               (meta/id :people :source)]]
+                               :aggregation  [[:count {:lib/uuid (str (random-uuid))}]]}
+                              {:lib/type :mbql.stage/mbql
+                               :joins    [{:lib/type    :mbql/join
+                                           :lib/options {:lib/uuid (str (random-uuid))}
+                                           :stages      [{:lib/type     :mbql.stage/mbql
+                                                          :source-table (meta/id :reviews)
+                                                          :joins        [{:lib/type    :mbql/join
+                                                                          :lib/options {:lib/uuid (str (random-uuid))}
+                                                                          :stages      [{:lib/type     :mbql.stage/mbql
+                                                                                         :source-table (meta/id :products)}]
+                                                                          :alias       "P2"
+                                                                          :condition   [:=
+                                                                                        {:lib/uuid (str (random-uuid))}
+                                                                                        [:field
+                                                                                         {:lib/uuid (str (random-uuid))}
+                                                                                         (meta/id :reviews :product-id)]
+                                                                                        [:field
+                                                                                         {:join-alias "P2"
+                                                                                          :lib/uuid   (str (random-uuid))}
+                                                                                         (meta/id :products :id)]]
+                                                                          :fields      :all}]
+                                                          :breakout     [[:field
+                                                                          {:join-alias "P2"
+                                                                           :lib/uuid   (str (random-uuid))}
+                                                                          (meta/id :products :category)]]
+                                                          :aggregation  [[:avg
+                                                                          {:lib/uuid (str (random-uuid))}
+                                                                          [:field
+                                                                           {:lib/uuid (str (random-uuid))}
+                                                                           (meta/id :reviews :rating)]]]}
+                                                         {:lib/type :mbql.stage/mbql}]
+                                           :alias       "Q2"
+                                           :condition   [:=
+                                                         {:lib/uuid (str (random-uuid))}
+                                                         [:field
+                                                          {:join-alias "P1", :lib/uuid (str (random-uuid))}
+                                                          (meta/id :products :category)]
+                                                         [:field
+                                                          {:join-alias "Q2", :lib/uuid (str (random-uuid))}
+                                                          (meta/id :products :category)]]
+                                           :fields      :all}]
+                               :order-by [[:asc
+                                           {:lib/uuid (str (random-uuid))}
+                                           [:field
+                                            {:join-alias "P1", :lib/uuid (str (random-uuid))}
+                                            (meta/id :products :category)]]
+                                          [:asc
+                                           {:lib/uuid (str (random-uuid))}
+                                           [:field
+                                            {:join-alias "People", :lib/uuid (str (random-uuid))}
+                                            (meta/id :people :source)]]]
+                               :limit    2}]}]
+    (is (= :wow
+           (lib.metadata.calculation/metadata query)))))

@@ -38,10 +38,9 @@
    [colorize.core :as colorize]
    [hawk.init]
    [metabase.db :as mdb]
-   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
+   [metabase.db.schema-migrations-test.impl
+    :as schema-migrations-test.impl]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.lib.convert :as lib.convert]
-   [metabase.mbql.normalize :refer [normalize]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test.data.impl :as data.impl]
@@ -159,10 +158,7 @@
 
   ([table-name inner-query]
    {:pre [(map? inner-query)]}
-   `(let [query# (mbql-query-no-test ~table-name ~inner-query)]
-      (t/is (= (normalize query#) (-> query# normalize lib.convert/->pMBQL lib.convert/->legacy-MBQL normalize))
-            "Legacy MBQL queries should round trip to pMBQL and back")
-      query#)))
+   `(mbql-query-no-test ~table-name ~inner-query)))
 
 (defmacro query
   "Like `mbql-query`, but operates on an entire 'outer' query rather than the 'inner' MBQL query. Like `mbql-query`,

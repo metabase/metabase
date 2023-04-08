@@ -27,19 +27,21 @@
   ;; name and display name can be blank because some wacko DBMSes like SQL Server return blank column names for
   ;; unaliased aggregations like COUNT(*) (this only applies to native queries, since we determine our own names for
   ;; MBQL.)
-  {:name                           s/Str
-   :display_name                   s/Str
+  {:name                            s/Str
+   :display_name                    s/Str
+   ;; the ACTUAL name returned by the query processor.
+   (s/optional-key :qp/actual-name) s/Str
    ;; type of the Field. For Native queries we look at the values in the first 100 rows to make an educated guess
-   :base_type                      su/FieldType
+   :base_type                       su/FieldType
    ;; effective_type, coercion, etc don't go here. probably best to rename base_type to effective type in the return
    ;; from the metadata but that's for another day
    ;; where this column came from in the original query.
-   :source                         (s/enum :aggregation :fields :breakout :native)
+   :source                          (s/enum :aggregation :fields :breakout :native)
    ;; a field clause that can be used to refer to this Field if this query is subsequently used as a source query.
    ;; Added by this middleware as one of the last steps.
-   (s/optional-key :field_ref)     mbql.s/FieldOrAggregationReference
+   (s/optional-key :field_ref)      mbql.s/FieldOrAggregationReference
    ;; various other stuff from the original Field can and should be included such as `:settings`
-   s/Any                           s/Any})
+   s/Any                            s/Any})
 
 ;; TODO - I think we should change the signature of this to `(column-info query cols rows)`
 (defmulti column-info
@@ -88,6 +90,7 @@
               ;; valid `:field`, omit the `:field_ref`.
               (when-not (str/blank? col-name)
                 {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
+              {:qp/actual-name col-name}
               driver-col-metadata))))))
 
 (defmethod column-info :native
@@ -305,7 +308,7 @@
     ;; something the user should expect to see
     _
     (throw (ex-info (tru "Don''t know how to get information about Field: {0}" &match)
-                    {:field &match}))))
+                    {:type qp.error-type/qp :field &match}))))
 
 
 ;;; ---------------------------------------------- Aggregate Field Info ----------------------------------------------
@@ -334,7 +337,7 @@
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
   [ag-clause :- mbql.s/Aggregation]
   (when-not driver/*driver*
-    (throw (Exception. (tru "*driver* is unbound."))))
+    (throw (ex-info (tru "*driver* is unbound.") {:type qp.error-type/qp})))
   (mbql.u/match-one ag-clause
     [:aggregation-options _ (options :guard :name)]
     (:name options)
@@ -521,8 +524,6 @@
    (cols-for-ags-and-breakouts inner-query)
    (cols-for-fields inner-query)))
 
-
-
 (s/defn ^:private merge-source-metadata-col :- (s/maybe su/Map)
   [source-metadata-col :- (s/maybe su/Map) col :- (s/maybe su/Map)]
   (merge
@@ -572,10 +573,10 @@
                         (mbql-cols source-query results))]
     (qp.util/combine-metadata columns source-metadata)))
 
-(defn mbql-cols
+(defn- mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
   query."
-  [{:keys [source-metadata source-query :source-query/dataset? fields], :as inner-query}, results]
+  [{:keys [source-metadata source-query :source-query/dataset? fields], :as inner-query} results]
   (let [cols (cols-for-mbql-query inner-query)]
     (cond
       (and (empty? cols) source-query)
@@ -637,6 +638,7 @@
            non-nil-driver-col-metadata
            our-base-type
            our-name
+           {:qp/actual-name (:name driver-col-metadata)}
            effective-type)))
 
 (defn- merge-cols-returned-by-driver

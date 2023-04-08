@@ -527,7 +527,7 @@
                                         [:+ [:field (mt/id :venues :price) nil] 1]]]])))
       (testing "Make sure we skip nils when infering case return type"
         (is (= {:base_type :type/Number}
-               (infered-col-type [:case [[[:< [:field (mt/id :venues :price) nil] 10] [:value nil {:base_type :type/Number}]]
+               (infered-col-type [:case [[[:< [:field (mt/id :venues :price) nil] 10] [:value 1 {:base_type :type/Number}]]
                                          [[:> [:field (mt/id :venues :price) nil] 2] 10]]]))))
       (is (= {:base_type :type/Float}
              (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]]]))))))

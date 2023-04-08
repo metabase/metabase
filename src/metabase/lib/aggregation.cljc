@@ -99,21 +99,18 @@
   (lib.hierarchy/derive tag ::unary-aggregation))
 
 (defmethod lib.metadata.calculation/column-name-method ::unary-aggregation
-  [query stage-number [tag _opts arg]]
-  (let [arg (lib.metadata.calculation/column-name-method query stage-number arg)]
-    (str
-     (case tag
-       :avg       "avg_"
-       :cum-count "cum_count_"
-       :cum-sum   "cum_sum_"
-       :distinct  "distinct_"
-       :max       "max_"
-       :median    "median_"
-       :min       "min_"
-       :stddev    "std_dev_"
-       :sum       "sum_"
-       :var       "var_")
-     arg)))
+  [_query _stage-number [tag _opts _arg]]
+  (case tag
+    :avg       "avg"
+    :cum-count "cum_count"
+    :cum-sum   "cum_sum"
+    :distinct  "count"
+    :max       "max"
+    :median    "median"
+    :min       "min"
+    :stddev    "stddev"
+    :sum       "sum"
+    :var       "var"))
 
 (defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
   [query stage-number [tag _opts arg]]
@@ -149,8 +146,8 @@
   (i18n/tru "Sum of {0} matching condition" (lib.metadata.calculation/display-name query stage-number x)))
 
 (defmethod lib.metadata.calculation/column-name-method :sum-where
-  [query stage-number [_sum-where _opts x _pred]]
-  (str "sum_where_" (lib.metadata.calculation/column-name query stage-number x)))
+  [_query _stage-number _clause]
+  "sum-where")
 
 (lib.hierarchy/derive :sum-where ::aggregation)
 

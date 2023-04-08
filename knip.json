@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/knip@1/schema.json",
+  "entry": ["frontend/src/metabase/app-main.js"],
+  "project": [
+    "frontend/src/**/*.ts",
+    "frontend/src/**/*.js",
+    "frontend/src/**/*.tsx",
+    "frontend/src/**/*.jsx",
+    "enterprise/frontend/src/**/*.ts",
+    "enterprise/frontend/src/**/*.js",
+    "enterprise/frontend/src/**/*.tsx",
+    "enterprise/frontend/src/**/*.jsx"
+  ]
+}

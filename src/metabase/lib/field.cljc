@@ -40,9 +40,14 @@
 (mu/defn ^:private resolve-field-id :- lib.metadata/ColumnMetadata
   "Integer Field ID: get metadata from the metadata provider. This is probably not 100% the correct thing to do if
   this isn't the first stage of the query, but we can fix that behavior in a follow-on"
-  [query         :- ::lib.schema/query
-   field-id      :- ::lib.schema.id/field]
-  (lib.metadata/field query field-id))
+  [query    :- ::lib.schema/query
+   field-id :- ::lib.schema.id/field]
+  (try
+    (lib.metadata/field query field-id)
+    (catch #?(:clj Throwable :cljs js/Error) e
+      (throw (ex-info (i18n/tru "Error resolving Field {0}: {1}" field-id (ex-message e))
+                      {:query query, :field-id field-id}
+                      e)))))
 
 (mu/defn ^:private resolve-column-name-in-metadata :- lib.metadata/ColumnMetadata
   [column-name      :- ::lib.schema.common/non-blank-string
@@ -64,7 +69,12 @@
   (let [stage         (if-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
                         (lib.util/query-stage query previous-stage-number)
                         (lib.util/query-stage query stage-number))
-        stage-columns (get-in stage [:lib/stage-metadata :columns])]
+        stage-columns (or (not-empty (:metabase.lib.stage/cached-metadata stage)) ; FIXME: it seems icky that the cached metadata is leaking like this
+                          (not-empty (get-in stage [:lib/stage-metadata :columns]))
+                          (throw (ex-info (i18n/tru "Cannot resolve field: (previous) stage does not have metadata!")
+                                          {:query        query
+                                           :stage-number stage-number
+                                           :column-name  column-name})))]
     (resolve-column-name-in-metadata column-name stage-columns)))
 
 (mu/defn ^:private resolve-column-name-in-join :- lib.metadata/ColumnMetadata
