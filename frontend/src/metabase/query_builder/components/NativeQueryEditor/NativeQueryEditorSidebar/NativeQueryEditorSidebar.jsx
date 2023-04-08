@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { isMac } from "metabase/lib/browser";
 
-import Button from "metabase/core/components/Button";
+import Tooltip from "metabase/core/components/Tooltip";
 import DataReferenceButton from "metabase/query_builder/components/view/DataReferenceButton";
 import NativeVariablesButton from "metabase/query_builder/components/view/NativeVariablesButton";
 import SnippetSidebarButton from "metabase/query_builder/components/view/SnippetSidebarButton";
@@ -13,6 +13,7 @@ import PreviewQueryButton from "metabase/query_builder/components/view/PreviewQu
 import {
   Container,
   RunButtonWithTooltipStyled,
+  SidebarButton,
 } from "./NativeQueryEditorSidebar.styled";
 
 const propTypes = {
@@ -30,6 +31,7 @@ const propTypes = {
     dataReference: PropTypes.bool,
     variables: PropTypes.bool,
     snippets: PropTypes.bool,
+    promptQueries: PropTypes.bool,
   },
   onShowPromptInput: PropTypes.func,
 };
@@ -75,13 +77,15 @@ const NativeQueryEditorSidebar = props => {
   return (
     <Container>
       {features.promptQueries && !isPromptInputVisible ? (
-        <Button
-          className="mt3"
-          onClick={onShowPromptInput}
-          icon="insight"
-          iconSize={20}
-          onlyIcon
-        />
+        <Tooltip tooltip={t`Ask a question`}>
+          <SidebarButton
+            aria-label={t`Ask a question`}
+            onClick={onShowPromptInput}
+            icon="insight"
+            iconSize={20}
+            onlyIcon
+          />
+        </Tooltip>
       ) : null}
       {features.dataReference ? (
         <DataReferenceButton {...props} size={ICON_SIZE} className="mt3" />

@@ -22,3 +22,17 @@ export const PromptInput = styled(Input)`
 
   background-color: transparent;
 `;
+
+export const ErrorRoot = styled.div`
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  font-weight: 700;
+`;
+
+export const ButtonsContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+`;

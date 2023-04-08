@@ -11,7 +11,10 @@ import Button from "metabase/core/components/Button";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { DatabaseId } from "metabase-types/api";
 import { MetabotApi } from "metabase/services";
+import Tooltip from "metabase/core/components/Tooltip";
 import {
+  ButtonsContainer,
+  ErrorRoot,
   NativeQueryEditorPromptRoot,
   PromptInput,
 } from "./NativeQueryEditorPrompt.styled";
@@ -28,14 +31,21 @@ const NativeQueryEditorPrompt = ({
   onClose,
 }: NativeQueryEditorPromptProps) => {
   const [prompt, setPrompt] = useState("");
-  const [{ loading }, generateQuery] = useAsyncFn(async () => {
-    const queryText = await MetabotApi.databasePromptQuery({
-      databaseId,
-      question: prompt,
-    });
+  const [{ loading, error }, generateQuery] = useAsyncFn(
+    async (reset = false) => {
+      if (reset) {
+        return Promise.resolve(undefined);
+      }
 
-    onQueryGenerated(queryText);
-  }, [prompt]);
+      const queryText = await MetabotApi.databasePromptQuery({
+        databaseId,
+        question: prompt,
+      });
+
+      onQueryGenerated(queryText);
+    },
+    [prompt],
+  );
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => setPrompt(event.target.value),
@@ -55,19 +65,55 @@ const NativeQueryEditorPrompt = ({
     <NativeQueryEditorPromptRoot>
       {loading ? <LoadingSpinner size={20} /> : <Icon name="insight" />}
 
-      <PromptInput
-        autoFocus
-        fullWidth
-        disabled={loading}
-        placeholder={t`Ask anything...`}
-        value={prompt}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-      />
+      {error != null ? (
+        <ErrorContent
+          error={error?.message}
+          onRerun={() => generateQuery(false)}
+          onRephrase={() => generateQuery(true)}
+        />
+      ) : (
+        <>
+          <PromptInput
+            autoFocus
+            fullWidth
+            disabled={loading}
+            placeholder={t`Ask anything...`}
+            value={prompt}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+          />
 
-      <Button icon="close" onlyIcon iconSize={18} onClick={onClose} />
+          <Tooltip tooltip={t`Close`}>
+            <Button
+              aria-label={t`Close prompt`}
+              icon="close"
+              onlyIcon
+              iconSize={18}
+              onClick={onClose}
+            />
+          </Tooltip>
+        </>
+      )}
     </NativeQueryEditorPromptRoot>
   );
 };
 
 export default NativeQueryEditorPrompt;
+
+interface ErrorContentProps {
+  onRephrase: () => void;
+  onRerun: () => void;
+  error?: string;
+}
+
+const ErrorContent = ({ error, onRephrase, onRerun }: ErrorContentProps) => {
+  return (
+    <ErrorRoot>
+      {error ?? t`Could not generate a query`}
+      <ButtonsContainer>
+        <Button small onClick={onRerun}>{t`Try again`}</Button>
+        <Button small onClick={onRephrase}>{t`Rephrase`}</Button>
+      </ButtonsContainer>
+    </ErrorRoot>
+  );
+};
