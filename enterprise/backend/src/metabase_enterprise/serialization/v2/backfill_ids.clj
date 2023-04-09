@@ -39,6 +39,6 @@
   row."
   []
   (doseq [model (concat serdes.models/exported-models serdes.models/inlined-models)
-          :let [model (mi/name->toucan-model model)]
+          :let [model (mdb.u/resolve-model (symbol model))]
           :when (has-entity-id? model)]
     (backfill-ids-for model)))

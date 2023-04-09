@@ -36,6 +36,7 @@
   :m/Card)
 
 (methodical/defmethod t2/table-name :m/Card [_model] :report_card)
+(derive :m/Card :metabase/models)
 
 (methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
   [_original-model _k]

@@ -68,7 +68,7 @@
   [{:keys [model], :as revision}]
   ;; in some cases (such as tests) we have 'fake' models that cannot be resolved normally; don't fail entirely in
   ;; those cases
-  (let [model (u/ignore-exceptions (mi/name->toucan-model model))]
+  (let [model (u/ignore-exceptions (mdb.u/resolve-model (symbol model)))]
     (cond-> revision
       model (update :object (partial models/do-post-select model)))))
 

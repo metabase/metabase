@@ -446,19 +446,15 @@
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 
-(defmulti name->toucan-model
-  "Given a string name, returns the equivalent toucan model."
-  (fn [model-name]
-    (assert (string? model-name))
-    model-name))
-
-(defmethod name->toucan-model :default
-  [model-name]
-  (try
-   #_{:clj-kondo/ignore [:discouraged-var]}
-    (db/resolve-model (symbol model-name))
-    (catch clojure.lang.ExceptionInfo _e
-      (keyword (str "m/" model-name)))))
+(methodical/defmethod toucan2.model/resolve-model :around clojure.lang.Symbol
+  "Handle models deriving from :metabase/models."
+  [symb]
+  (or
+    (when (simple-symbol? symb)
+      (let [metabase-models-keyword (keyword "m" (name symb))]
+        (when (isa? metabase-models-keyword :metabase/models)
+          metabase-models-keyword)))
+    (next-method symb)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
