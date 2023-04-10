@@ -101,13 +101,23 @@
   ([a-query]
    (orderable-columns a-query -1))
   ([a-query stage-number]
-   (-> (lib.order-by/orderable-columns a-query stage-number)
+   (to-array (lib.order-by/orderable-columns a-query stage-number))))
+
+(defn ^:export display-info
+  "Given an opaque Cljs object, return a plain JS object with info you'd need to implement UI for it.
+  See `:metabase.lib.metadata.calculation/display-info` for the keys this might contain."
+  ([a-query x]
+   (display-info a-query -1 x))
+  ([a-query stage-number x]
+   (-> (lib.metadata.calculation/display-info a-query stage-number x)
        (clj->js :keyword-fn u/qualified-name))))
 
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
-  [a-query stage-number x]
-  (lib.order-by/order-by-clause a-query stage-number (lib.normalize/normalize (js->clj x :keywordize-keys true))))
+  ([a-query stage-number x]
+   (order-by-clause a-query stage-number x nil))
+  ([a-query stage-number x direction]
+   (lib.order-by/order-by-clause a-query stage-number (lib.normalize/normalize (js->clj x :keywordize-keys true)) direction)))
 
 (defn ^:export order-by
   "Add an `order-by` clause to `a-query`. Returns updated query."
@@ -118,11 +128,7 @@
    (order-by a-query -1 x direction))
 
   ([a-query stage-number x direction]
-   (lib.order-by/order-by
-    a-query
-    stage-number
-    (lib.normalize/normalize (js->clj x :keywordize-keys true))
-    (js->clj direction))))
+   (lib.order-by/order-by a-query stage-number x (js->clj direction))))
 
 (defn ^:export order-bys
   "Get the order-by clauses (as an array of opaque objects) in `a-query` at a given `stage-number`. Returns `nil` if
@@ -130,9 +136,7 @@
   ([a-query]
    (order-bys a-query -1))
   ([a-query stage-number]
-   (some-> (lib.order-by/order-bys a-query stage-number)
-           not-empty
-           to-array)))
+   (to-array (lib.order-by/order-bys a-query stage-number))))
 
 (defn ^:export remove-clause
   "Removes the `target-clause` in the filter of the `query`."

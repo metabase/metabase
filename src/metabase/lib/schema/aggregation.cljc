@@ -1,5 +1,6 @@
 (ns metabase.lib.schema.aggregation
   (:require
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.util.malli.registry :as mr]))
@@ -20,23 +21,23 @@
 (mbql-clause/define-tuple-mbql-clause :max
   [:schema [:ref ::expression/number]])
 
-(expression/register-type-of-first-arg :max)
+(lib.hierarchy/derive :max :lib.type-of/type-is-type-of-first-arg)
 
 (mbql-clause/define-tuple-mbql-clause :median
   [:schema [:ref ::expression/number]])
 
-(expression/register-type-of-first-arg :median)
+(lib.hierarchy/derive :median :lib.type-of/type-is-type-of-first-arg)
 
 (mbql-clause/define-tuple-mbql-clause :min
   [:schema [:ref ::expression/number]])
 
-(expression/register-type-of-first-arg :min)
+(lib.hierarchy/derive :min :lib.type-of/type-is-type-of-first-arg)
 
 (mbql-clause/define-tuple-mbql-clause :percentile
   #_expr [:schema [:ref ::expression/number]]
   #_percentile [:schema [:ref ::expression/non-integer-real]])
 
-(expression/register-type-of-first-arg :percentile)
+(lib.hierarchy/derive :percentile :lib.type-of/type-is-type-of-first-arg)
 
 (mbql-clause/define-tuple-mbql-clause :share :- :type/Float
   [:schema [:ref ::expression/boolean]])
@@ -47,13 +48,13 @@
 (mbql-clause/define-tuple-mbql-clause :sum
   [:schema [:ref ::expression/number]])
 
-(expression/register-type-of-first-arg :sum)
+(lib.hierarchy/derive :sum :lib.type-of/type-is-type-of-first-arg)
 
 (mbql-clause/define-tuple-mbql-clause :sum-where
   [:schema [:ref ::expression/number]]
   [:schema [:ref ::expression/boolean]])
 
-(expression/register-type-of-first-arg :sum-where)
+(lib.hierarchy/derive :sum-where :lib.type-of/type-is-type-of-first-arg)
 
 (mr/def ::aggregation
   ;; placeholder!

@@ -6,6 +6,7 @@
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.dev :as lib.dev]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
@@ -27,6 +28,7 @@
 
 (comment lib.aggregation/keep-me
          lib.breakout/keep-me
+         lib.card/keep-me
          lib.dev/keep-me
          lib.expression/keep-me
          lib.field/keep-me
@@ -47,6 +49,7 @@
 
 (shared.ns/import-fns
   [lib.aggregation
+   aggregations
    aggregate
    count
    avg
@@ -146,7 +149,9 @@
    describe-query
    describe-top-level-key
    display-name
-   suggested-name]
+   display-info
+   suggested-name
+   type-of]
   [lib.native
    #?@(:cljs [->TemplateTags
               TemplateTags->])

@@ -14,7 +14,7 @@ describe("issue 26091", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/database/*/datasets/*").as("getModels");
+    cy.intercept("GET", "/api/collection/*/items?*").as("getCollectionContent");
     cy.intercept("POST", "/api/card").as("saveQuestion");
   });
 
@@ -25,7 +25,7 @@ describe("issue 26091", () => {
     startNewQuestion();
     popover().within(() => {
       cy.findByText("Models").click();
-      cy.wait("@getModels");
+      cy.wait("@getCollectionContent");
     });
 
     startNewQuestion();

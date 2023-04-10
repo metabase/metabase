@@ -10,7 +10,7 @@ import {
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > bar chart", () => {
   beforeEach(() => {
@@ -275,6 +275,32 @@ describe("scenarios > visualizations > bar chart", () => {
       });
 
       cy.get("g.axis.yr").should("not.exist");
+    });
+  });
+
+  describe("with stacked bars", () => {
+    it("should drill-through correctly when stacking", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", PRODUCTS.CATEGORY],
+              ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+        },
+        display: "bar",
+        visualization_settings: { "stackable.stack_type": "stacked" },
+      });
+
+      cy.findAllByTestId("legend-item").findByText("Doohickey").click();
+      cy.findByText("View these Products").click();
+
+      cy.findByText("Category is Doohickey").should("be.visible");
     });
   });
 

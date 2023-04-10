@@ -1,6 +1,7 @@
 (ns metabase.lib.temporal-bucket
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
@@ -41,7 +42,8 @@
   particular MBQL clause."
   {:arglists '([x unit])}
   (fn [x _unit]
-    (lib.dispatch/dispatch-value x)))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod temporal-bucket-method :dispatch-type/fn
   [f unit]

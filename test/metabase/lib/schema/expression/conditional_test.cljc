@@ -49,7 +49,6 @@
     (case-expr 1 1.1)
     :type/Number))
 
-
 (deftest ^:parallel coalesce-test
   (is (mc/validate
        :mbql.clause/coalesce
@@ -64,7 +63,6 @@
         :type         :pipeline
         :database     (meta/id)
         :stages       [{:lib/type     :mbql.stage/mbql,
-                        :lib/options  {:lib/uuid "455a9f5e-4996-4df9-82aa-01bc083b2efe"}
                         :source-table (meta/id :venues)
                         :expressions  {"expr"
                                        [:coalesce

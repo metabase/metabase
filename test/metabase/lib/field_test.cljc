@@ -1,9 +1,11 @@
 (ns metabase.lib.field-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -149,3 +151,56 @@
               (lib.temporal-bucket/current-temporal-bucket (lib.metadata.calculation/metadata query -1 field))))
       (is (= "Date (year)"
              (lib.metadata.calculation/display-name query -1 field))))))
+
+(deftest ^:parallel joined-field-column-name-test
+  (let [card  {:dataset_query {:database (meta/id)
+                               :type     :query
+                               :query    {:source-table (meta/id :venues)
+                                          :joins        [{:fields       :all
+                                                          :source-table (meta/id :categories)
+                                                          :condition    [:=
+                                                                         [:field (meta/id :venues :category-id) nil]
+                                                                         [:field (meta/id :categories :id) {:join-alias "Cat"}]]
+                                                          :alias        "Cat"}]}}}
+        query (lib/saved-question-query
+               meta/metadata-provider
+               card)]
+    (is (=? [{:lib/desired-column-alias "ID"}
+             {:lib/desired-column-alias "NAME"}
+             {:lib/desired-column-alias "CATEGORY_ID"}
+             {:lib/desired-column-alias "LATITUDE"}
+             {:lib/desired-column-alias "LONGITUDE"}
+             {:lib/desired-column-alias "PRICE"}
+             {:lib/desired-column-alias "Cat__ID"}
+             {:lib/desired-column-alias "Cat__NAME"}]
+            (lib.metadata.calculation/metadata query)))))
+
+(deftest ^:parallel field-ref-type-of-test
+  (testing "Make sure we can calculate field ref type information correctly"
+    (let [clause [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]]
+      (is (= ::lib.schema.expression/type.unknown
+             (lib.schema.expression/type-of clause)))
+      (is (= :type/BigInteger
+             (lib.metadata.calculation/type-of lib.tu/venues-query clause))))))
+
+(deftest ^:parallel implicitly-joinable-field-display-name-test
+  (testing "Should be able to calculate a display name for an implicitly joinable Field"
+    (let [query           (lib/query-for-table-name meta/metadata-provider "VENUES")
+          categories-name (m/find-first #(= (:id %) (meta/id :categories :name))
+                                        (lib/orderable-columns query))]
+      (is (= "Categories → Name"
+             (lib/display-name query categories-name)))
+      (let [query' (lib/order-by query categories-name)]
+        (is (= "Venues, Sorted by Categories → Name ascending"
+               (lib/describe-query query')))))))
+
+(deftest ^:parallel source-card-table-display-info-test
+  (let [query (assoc lib.tu/venues-query :lib/metadata lib.tu/metadata-provider-with-card)
+        field (lib.metadata.calculation/metadata query (assoc (lib.metadata/field query (meta/id :venues :name))
+                                                              :table_id "card__1"))]
+    (is (=? {:name           "NAME"
+             :display_name   "Name"
+             :semantic_type  :type/Name
+             :effective_type :type/Text
+             :table          {:name "My Card", :display_name "My Card"}}
+            (lib/display-info query field)))))

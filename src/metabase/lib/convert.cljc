@@ -61,11 +61,12 @@
   [[_tag x y]]
   (let [[id-or-name options] (if (map? x)
                                [y x]
-                               [x y])
-        options              (cond-> options
-                               (not (:lib/uuid options))
-                               (assoc :lib/uuid (str (random-uuid))))]
-    [:field options id-or-name]))
+                               [x y])]
+    (lib.options/ensure-uuid [:field options id-or-name])))
+
+(defmethod ->pMBQL :value
+  [[_tag value opts]]
+  (lib.options/ensure-uuid [:value opts value]))
 
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
@@ -171,6 +172,12 @@
     [:field
      (->legacy-MBQL id)
      (not-empty (disqualify opts))]))
+
+(defmethod ->legacy-MBQL :value
+  [[_tag opts value]]
+  (if-let [opts (not-empty (disqualify opts))]
+    [:value value opts]
+    [:value value]))
 
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base (disqualify join)]

@@ -1,4 +1,5 @@
 (ns metabase.lib.segment
+  "A Metric is a saved MBQL query stage snippet with `:filter`. Segments are always boolean expressions."
   (:require
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]

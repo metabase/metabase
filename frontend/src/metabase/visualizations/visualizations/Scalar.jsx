@@ -233,10 +233,11 @@ export default class Scalar extends Component {
         >
           <span
             onClick={
-              isClickable &&
-              (() =>
-                this._scalar &&
-                onVisualizationClick({ ...clicked, element: this._scalar }))
+              isClickable
+                ? () =>
+                    this._scalar &&
+                    onVisualizationClick({ ...clicked, element: this._scalar })
+                : undefined
             }
             ref={scalar => (this._scalar = scalar)}
           >
@@ -262,8 +263,9 @@ export default class Scalar extends Component {
               title={settings["card.title"]}
               description={settings["card.description"]}
               onClick={
-                onChangeCardAndRun &&
-                (() => onChangeCardAndRun({ nextCard: card }))
+                onChangeCardAndRun
+                  ? () => onChangeCardAndRun({ nextCard: card })
+                  : undefined
               }
             />
           ))}
