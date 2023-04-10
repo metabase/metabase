@@ -1,5 +1,6 @@
 import {
   fetchDataOrError,
+  isEditDashboardActionsEnabled,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
 
@@ -13,6 +14,9 @@ describe("Dashboard utils", () => {
       const successfulFetch = Promise.resolve(data);
 
       const result = await fetchDataOrError(successfulFetch);
+
+      console.log(result);
+
       expect(result.error).toBeUndefined();
       expect(result).toEqual(data);
     });
@@ -78,6 +82,32 @@ describe("Dashboard utils", () => {
 
       const result = syncParametersAndEmbeddingParams(before, after);
       expect(result).toEqual(expectation);
+    });
+
+    it("should return true if database has actions enabled", () => {
+      const dashboard = {
+        ordered_cards: [
+          {
+            card: {
+              database_id: 1,
+            },
+          },
+        ],
+      };
+      const databases = {
+        1: {
+          settings: {
+            "database-enable-actions": true,
+          },
+        },
+        2: {
+          settings: {
+            "database-enable-actions": false,
+          },
+        },
+      };
+      const result = isEditDashboardActionsEnabled(dashboard, databases);
+      expect(result).toBe(true);
     });
   });
 });
