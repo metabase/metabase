@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { getBrokenUpTextMatcher } from "__support__/ui";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import Database from "metabase-lib/metadata/Database";
@@ -86,9 +86,9 @@ async function setup(additionalProps?: Partial<ExpressionEditorHelpTextProps>) {
   render(<ExpressionEditorHelpText {...props} />);
 
   // have to wait for TippyPopover to render content
-  await waitFor(() => {
-    expect(screen.getByTestId("expression-helper-popover")).toBeInTheDocument();
-  });
+  expect(
+    await screen.findByTestId("expression-helper-popover"),
+  ).toBeInTheDocument();
 
   return { props };
 }

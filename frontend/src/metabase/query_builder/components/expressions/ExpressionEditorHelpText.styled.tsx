@@ -7,8 +7,8 @@ import { color } from "metabase/lib/colors";
 export const Container = styled.div`
   padding: 1.25rem 1rem 1.25rem;
 
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 `;
 
 export const FunctionHelpCode = styled.div`
@@ -37,8 +37,8 @@ export const ArgumentsGrid = styled.div`
 export const ArgumentItem = styled.div`
   color: ${color("accent3")};
 
-  font-size: 12px;
-  line-height: 20px;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
   text-align: right;
 `;
 
