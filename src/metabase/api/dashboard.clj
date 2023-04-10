@@ -646,18 +646,18 @@
 (api/defendpoint PUT "/:id/cards"
   "Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
 
-  {:cards [{:id                 ... ; DashboardCard ID
-  :size_x             ...
-  :size_y             ...
-  :row                ...
-  :col                ...
-  :parameter_mappings ...
-  :series             [{:id 123
-  ...}]}
-  ...]
-  :tabs   [{:id       ... ; DashboardTab ID
-  :name     ...
-  :position ...}]}"
+    {:cards [{:id                 ... ; DashboardCard ID
+              :size_x             ...
+              :size_y             ...
+              :row                ...
+              :col                ...
+              :parameter_mappings ...
+              :series             [{:id 123
+                                    ...}]}
+              ...]
+              :tabs   [{:id       ... ; DashboardTab ID
+                        :name     ...
+                        :position ...}]}"
   [id :as {{:keys [cards tabs]} :body}]
   {id    ms/PositiveInt
    cards [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]
@@ -669,20 +669,28 @@
         current-cards (:ordered_cards dashboard)]
     (api/check-500
       (t2/with-transaction [_conn]
-        (let [{:keys [temp->real-tab-ids deleted-tab-ids]} (update-dashtabs! dashboard current-tabs tabs)
-              new-cards     (map (fn [card]
-                                   (if-let [real-tab-id (get temp->real-tab-ids (:dashboardtab_id card))]
-                                     (assoc card :dashboardtab_id real-tab-id)
-                                     card))
-                                 cards)
-              new-cards     (remove (fn [card]
-                                     (contains? deleted-tab-ids (:dashboardtab_id card)))
-                                new-cards)
-              current-cards (remove (fn [card]
-                                      (contains? deleted-tab-ids (:dashboardtab_id card)))
-                                    current-cards)]
-          (update-dashcards! dashboard current-cards new-cards)
-          true)))
+        (if-not (nil? tabs)
+          (let [{:keys [temp->real-tab-ids deleted-tab-ids]} (update-dashtabs! dashboard current-tabs tabs)
+                new-cards     (cond->> cards
+                                (seq temp->real-tab-ids)
+                                (map (fn [card]
+                                       (if-let [real-tab-id (get temp->real-tab-ids (:dashboardtab_id card))]
+                                         (assoc card :dashboardtab_id real-tab-id)
+                                         card)))
+
+                                (seq deleted-tab-ids)
+                                (remove (fn [card]
+                                          (contains? deleted-tab-ids (:dashboardtab_id card)))))
+
+                current-cards (if (seq deleted-tab-ids)
+                                (remove (fn [card]
+                                          (contains? deleted-tab-ids (:dashboardtab_id card)))
+                                        current-cards)
+                                current-cards)]
+            (update-dashcards! dashboard current-cards new-cards))
+          ;; dashboard with no tabs cases
+          (update-dashcards! dashboard current-cards cards))
+        true))
     {:cards (t2/hydrate (dashboard/ordered-cards id) :series)
      :tabs  (dashboard/ordered-tabs id)}))
 
