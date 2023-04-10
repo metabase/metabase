@@ -1,6 +1,7 @@
 import React from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import { waitFor } from "@testing-library/react";
 import {
   renderWithProviders,
   screen,
@@ -126,7 +127,6 @@ function mockCollectionItemsEndpoint() {
 async function setup({
   models = ["dashboard"],
   extraCollections = [],
-  waitForInitialLoad = true,
   ...props
 } = {}) {
   const collections = [Object.values(COLLECTION)];
@@ -151,9 +151,9 @@ async function setup({
 
   // sometimes it expects entities to be in the Redux store so there might not be a loading state
   // ex: collections are stored in Redux, so there isn't a meaningful loading state here
-  if (waitForInitialLoad) {
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
-  }
+  await waitFor(() => {
+    expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+  });
 
   return { onChange };
 }
@@ -271,7 +271,7 @@ describe("ItemPicker", () => {
   });
 
   it("displays relevant collections after a search", async () => {
-    await setup({ models: ["collection"], waitForInitialLoad: false });
+    await setup({ models: ["collection"] });
 
     await userEvent.click(within(getItemPickerHeader()).getByRole("button"));
     await userEvent.type(
