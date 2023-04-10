@@ -41,12 +41,24 @@ describe("Dashboard utils", () => {
         { id: 1, settings: { "database-enable-actions": true } },
         { id: 2, settings: { "database-enable-actions": true } },
         { id: 3, settings: { "database-enable-actions": false } },
+        { id: 4 },
       ];
 
       const databases = dbData.map(createMockDatabase);
-
-      const result = databases.some(isDatabaseActionEnabled());
+      const result = databases.some(isDatabaseActionEnabled);
       expect(result).toBe(true);
+    });
+
+    it("should return false if all databases have actions disabled", () => {
+      const dbData = [
+        { id: 1, settings: { "database-enable-actions": false } },
+        { id: 2 },
+        { id: 3, settings: { "database-enable-actions": false } },
+      ];
+
+      const databases = dbData.map(createMockDatabase);
+      const result = databases.some(isDatabaseActionEnabled);
+      expect(result).toBe(false);
     });
   });
 
