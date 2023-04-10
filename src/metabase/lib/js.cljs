@@ -8,6 +8,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
