@@ -996,8 +996,6 @@
           mysql-field-2-id :type/Text)
         ;; TODO: this is commented out temporarily because it flakes for MySQL
         #_(testing "Rollback restores the original state"
-          ;; sleep to avoid race condition
-          (Thread/sleep 1000)
           (migrate! :down 46)
           (let [new-base-types (t2/select-pk->fn :base_type Field)]
             (are [field-id expected] (= expected (get new-base-types field-id))
