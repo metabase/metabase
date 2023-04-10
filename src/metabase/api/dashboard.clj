@@ -543,8 +543,8 @@
 
 (defn- create-cards!
   [dashboard cards]
-  (for [{:keys [card_id]} cards
-        :when  card_id]
+  (doseq [{:keys [card_id]} cards
+          :when  (pos-int? card_id)]
     (api/check-not-archived (api/read-check Card card_id)))
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} cards
                                              mapping parameter_mappings]
