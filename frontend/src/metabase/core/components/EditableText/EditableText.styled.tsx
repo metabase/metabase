@@ -1,11 +1,10 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-
 import { color } from "metabase/lib/colors";
 
 export interface EditableTextRootProps {
   isEditing?: boolean;
-  isDisabled: boolean;
+  isDisabled?: boolean;
 }
 
 export const EditableTextRoot = styled.div<EditableTextRootProps>`

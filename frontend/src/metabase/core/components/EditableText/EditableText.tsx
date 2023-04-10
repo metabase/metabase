@@ -8,6 +8,7 @@ import React, {
   useEffect,
   useState,
   useRef,
+  useImperativeHandle,
 } from "react";
 
 import { usePrevious } from "react-use";
@@ -32,6 +33,11 @@ export interface EditableTextProps extends EditableTextAttributes {
   "data-testid"?: string;
 }
 
+export interface TextareaComponentRef {
+  focusInput: () => void;
+  getRoot: () => HTMLDivElement | null;
+}
+
 const EditableText = forwardRef(function EditableText(
   {
     initialValue,
@@ -43,15 +49,18 @@ const EditableText = forwardRef(function EditableText(
     onChange,
     onFocus,
     onBlur,
+    children,
     "data-testid": dataTestId,
     ...props
   }: EditableTextProps,
-  ref: Ref<HTMLDivElement>,
+  ref: Ref<TextareaComponentRef>,
 ) {
   const [inputValue, setInputValue] = useState(initialValue ?? "");
   const [submitValue, setSubmitValue] = useState(initialValue ?? "");
   const displayValue = inputValue ? inputValue : placeholder;
   const submitOnBlur = useRef(true);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const previousInitialValue = usePrevious(initialValue);
 
   useEffect(() => {
@@ -59,6 +68,15 @@ const EditableText = forwardRef(function EditableText(
       setInputValue(initialValue);
     }
   }, [initialValue, previousInitialValue]);
+
+  useImperativeHandle(ref, () => ({
+    focusInput() {
+      inputRef.current?.focus();
+    },
+    getRoot() {
+      return rootRef.current;
+    },
+  }));
 
   const handleBlur = useCallback(
     e => {
@@ -99,21 +117,24 @@ const EditableText = forwardRef(function EditableText(
   return (
     <EditableTextRoot
       {...props}
-      ref={ref}
+      ref={rootRef}
       isEditing={isEditing}
       isDisabled={isDisabled}
       data-value={`${displayValue}\u00A0`}
     >
-      <EditableTextArea
-        value={inputValue}
-        placeholder={placeholder}
-        disabled={isDisabled}
-        data-testid={dataTestId}
-        onFocus={onFocus}
-        onBlur={handleBlur}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-      />
+      {children ?? (
+        <EditableTextArea
+          ref={inputRef}
+          value={inputValue}
+          placeholder={placeholder}
+          disabled={isDisabled}
+          data-testid={dataTestId}
+          onFocus={onFocus}
+          onBlur={handleBlur}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+        />
+      )}
     </EditableTextRoot>
   );
 });

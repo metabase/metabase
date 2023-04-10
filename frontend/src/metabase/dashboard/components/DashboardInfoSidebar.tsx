@@ -7,7 +7,7 @@ import { PLUGIN_CACHING } from "metabase/plugins";
 import MetabaseSettings from "metabase/lib/settings";
 
 import DefaultTimeline from "metabase/components/Timeline";
-import EditableText from "metabase/core/components/EditableText";
+import EditableTextWithMarkdown from "metabase/core/components/EditableTextWithMarkdown";
 
 import { Dashboard, Revision as RevisionType, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
@@ -72,7 +72,7 @@ const DashboardInfoSidebar = ({
     <DashboardInfoSidebarRoot data-testid="sidebar-right">
       <ContentSection>
         <DescriptionHeader>{t`About`}</DescriptionHeader>
-        <EditableText
+        <EditableTextWithMarkdown
           initialValue={dashboard.description}
           isDisabled={!dashboard.can_write}
           onChange={handleDescriptionChange}

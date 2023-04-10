@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
-import EditableText from "metabase/core/components/EditableText";
+import EditableTextWithMarkdown from "metabase/core/components/EditableTextWithMarkdown";
 
 import { PLUGIN_MODERATION, PLUGIN_CACHING } from "metabase/plugins";
 
@@ -61,7 +61,7 @@ export const QuestionInfoSidebar = ({
             >{t`Model details`}</HeaderLink>
           )}
         </HeaderContainer>
-        <EditableText
+        <EditableTextWithMarkdown
           initialValue={description}
           placeholder={
             !description && !canWrite ? t`No description` : t`Add description`
