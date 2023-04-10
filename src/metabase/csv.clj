@@ -4,10 +4,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
-   [honey.sql :as sql]
    [java-time :as t]
    [metabase.driver :as driver]
-   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.search.util :as search-util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]])
@@ -138,19 +136,16 @@
 
 (defn- load-from-csv*
   "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil."
-  [driver db-id schema-name table-name ^File csv-file]
+  [driver db-id table-name ^File csv-file]
   (let [col->upload-type   (detect-schema csv-file)
         col->database-type (update-vals col->upload-type (partial driver/upload-type->database-type driver))
         column-names       (keys col->upload-type)]
-    (driver/create-table driver db-id schema-name table-name col->database-type)
+    (driver/create-table driver db-id table-name col->database-type)
     (try
-      (let [rows (parsed-rows col->upload-type csv-file)
-            sql  (sql/format {:insert-into (keyword (str schema-name "." table-name))
-                              :columns (map keyword column-names)
-                              :values rows})]
-        (qp.writeback/execute-write-sql! db-id sql))
+      (let [rows (parsed-rows col->upload-type csv-file)]
+        (driver/insert-into driver db-id table-name column-names rows))
       (catch Throwable e
-        (driver/drop-table driver db-id schema-name table-name)
+        (driver/drop-table driver db-id table-name)
         (throw (ex-info (ex-message e) {}))))
     nil))
 
@@ -158,6 +153,6 @@
   "Loads a table from a CSV file. Creates a unique table name based on the name of the file.
    Returns the name of the newly created table."
   [driver database schema-name ^File file]
-  (let [table-name (file->table-name file)]
-    (load-from-csv* driver database schema-name table-name file)
+  (let [table-name (str schema-name "." (file->table-name file))]
+    (load-from-csv* driver database table-name file)
     table-name))
