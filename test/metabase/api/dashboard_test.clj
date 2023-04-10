@@ -28,6 +28,7 @@
             Revision
             Table
             User]]
+   [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-test :as dashboard-test]
    [metabase.models.field-values :as field-values]
@@ -1219,6 +1220,18 @@
   [id]
   (t2/hydrate (t2/select-one DashboardCard :id id) :series))
 
+(defn- current-cards
+  "Retursn the current ordered cards of a dashboard."
+  [dashboard-id]
+  (-> dashboard-id
+      dashboard/ordered-cards
+      (t2/hydrate :series)))
+
+(defn- current-tabs
+  "Retursn the current ordered tabs of a dashboard."
+  [dashboard-id]
+  (dashboard/ordered-tabs dashboard-id))
+
 (defn do-with-update-cards-parameter-mapping-permissions-fixtures [f]
   (do-with-add-card-parameter-mapping-permissions-fixtures
    (fn [{:keys [dashboard-id card-id mappings]}]
@@ -1244,7 +1257,40 @@
                                                              (format "dashboard/%d/cards" dashboard-id)
                                                              {:cards [new-dashcard-info]}))}))))))
 
-(deftest e2e-update-cards-test
+(defn- do-with-simple-dashboard-with-tabs
+  [f]
+  (t2.with-temp/with-temp
+    [Dashboard       {dashboard-id :id} {}
+
+     Card            {card-id-1 :id}    {}
+
+     Card            {card-id-2 :id}    {}
+     :m/DashboardTab {dashtab-id-1 :id} {:name         "Tab 1"
+                                         :dashboard_id dashboard-id
+                                         :position     0}
+     :m/DashboardTab {dashtab-id-2 :id} {:name         "Tab 2"
+                                         :dashboard_id dashboard-id
+                                         :position     1}
+     DashboardCard   {dashcard-id-1 :id} {:dashboard_id    dashboard-id
+                                          :card_id         card-id-1
+                                          :dashboardtab_id dashtab-id-1}
+     DashboardCard   {dashcard-id-2 :id} {:dashboard_id    dashboard-id
+                                          :card_id         card-id-2
+                                          :dashboardtab_id dashtab-id-2}]
+    (f {:dashboard-id  dashboard-id
+        :card-id-1     card-id-1
+        :card-id-2     card-id-1
+        :dashtab-id-1  dashtab-id-1
+        :dashtab-id-2  dashtab-id-2
+        :dashcard-id-1 dashcard-id-1
+        :dashcard-id-2 dashcard-id-2})))
+
+(defmacro ^:private with-simple-dashboard-with-tabs
+  "Create a simple dashboard with 2 tabs and 2 cards in each tab and run `body` with the dashboard and cards ids bound to"
+  [[bindings] & body]
+  `(do-with-simple-dashboard-with-tabs (fn [~bindings] ~@body)))
+
+(deftest e2e-update-cards-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
     (t2.with-temp/with-temp
       [Dashboard           {dashboard-id :id}  {}
@@ -1311,59 +1357,50 @@
                    updated-card-2
                    new-card]
                   cards))
-;; dashboard 3 is deleted
+         ;; dashboard 3 is deleted
          (is (nil? (t2/select-one DashboardCard :id dashcard-id-3))))))))
 
-(deftest create-tabs-and-dashtabs-test
-  (t2.with-temp/with-temp
-    [Dashboard {dashboard-id :id} {}
-     Card      {card-id :id}      {}]
-    (let [resp (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                     {:tabs [{:name     "Tab 1"
-                                              :id       -1
-                                              :position 0}
-                                             {:name     "Tab 2"
-                                              :id       -2
-                                              :position 1}]
-                                      :cards [{:id     -1
-                                               :size_x 1
-                                               :size_y 1
-                                               :col    1
-                                               :row    1
-                                               :dashboardtab_id -1
-                                               :card_id card-id}
-                                              {:id     -2
-                                               :size_x 1
-                                               :size_y 1
-                                               :col    2
-                                               :row    2
-                                               :dashboardtab_id -2
-                                               :card_id card-id}]})
-          tab-id-1 (t2/select-one-pk :m/DashboardTab :dashboard_id dashboard-id :position 0)
-          tab-id-2 (t2/select-one-pk :m/DashboardTab :dashboard_id dashboard-id :position 1)]
-      (is (=? {:cards [{:size_x 1,
-                        :dashboardtab_id tab-id-1,
-                        :col 1,
-                        :card_id card-id,
-                        :size_y 1,
-                        :dashboard_id dashboard-id,
-                        :row 1}
-                       {:size_x 1,
-                        :dashboardtab_id tab-id-2,
-                        :col 2,
-                        :card_id card-id,
-                        :size_y 1,
-                        :row 2}]
-               :tabs
-               [{:dashboard_id dashboard-id
-                 :name "Tab 1"
-                 :position 0}
-                {:dashboard_id dashboard-id
-                 :name "Tab 2"
-                 :position 1}]}
-           resp)))))
+(deftest e2e-update-tabs-only-test
+  (testing "PUT /api/dashboard/:id/cards with create/update/delete tabs in a single req"
+    (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
+      (with-dashboards-in-writeable-collection [dashboard-id]
+        ;; send a request that update and create and delete some cards at the same time
+        (let [tabs (:tabs (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                                {:tabs [{:name     "Tab new"
+                                                         :id       -1
+                                                         :position 1}
+                                                        {:name     "Tab 1 edited"
+                                                         :id       dashtab-id-1
+                                                         :position 0}]}))]
 
-;;; -------------------------------------- Create dashcards only tests ---------------------------------------
+          (is (=? [{:id           dashtab-id-1
+                    :dashboard_id dashboard-id
+                    :name         "Tab 1 edited"
+                    :position     0}
+                   {:dashboard_id dashboard-id
+                    :name         "Tab new"
+                    :position     1}]
+                  tabs))
+          ;; dashtab 2 is deleted
+          (is (nil? (t2/select-one :m/DashboardTab :id dashtab-id-2))))))))
+
+;;; -------------------------------------- Create dashcards tests ---------------------------------------
+
+(deftest create-update-tabs-test
+  (testing "PUT /api/dashboard/:id/cards"
+    (testing "tabs position in a dashboard has to be incremental from 0"
+      (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
+        (is (= "Tab positions must be sequential and start at 0"
+               (mt/user-http-request :rasta :put 400 (format "dashboard/%d/cards" dashboard-id)
+                                     {:tabs [{:id           dashtab-id-1
+                                              :name         "Tab 1"
+                                              :dashboard_id dashboard-id
+                                              :position     0}
+                                             {:id           dashtab-id-2
+                                              :name         "Tab 2"
+                                              :dashboard_id dashboard-id
+                                              ;; update position to 2 (was 1)
+                                              :position     2}]})))))))
 
 (deftest simple-creation-with-no-additional-series-test
   (mt/with-temp* [Dashboard [{dashboard-id :id}]
@@ -1618,7 +1655,7 @@
                          {:card_id model-id}]
                         (t2/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]}))))))))
 
-;;; -------------------------------------- Delete dashcards only tests ---------------------------------------
+;;; -------------------------------------- Delete dashcards tests ---------------------------------------
 
 (deftest delete-cards-test
   (testing "PUT /api/dashboard/id/:cards to delete"
@@ -1658,6 +1695,28 @@
                                         (format "dashboard/%d/cards" dashboard-id) {:cards []})))
           (is (= 0
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))))
+
+(deftest delete-tabs-test
+  (testing "PUT /api/dashboard/id/:cards to delete"
+    (testing "partial delete"
+      (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
+        (testing "we have 2 tabs, each has 1 card to begin with"
+          (is (= 2
+                 (t2/count DashboardCard, :dashboard_id dashboard-id)))
+          (is (= 2
+                 (t2/count :m/DashboardTab :dashboard_id dashboard-id))))
+        (is (=? {:tabs [{:id dashtab-id-1}]}
+                (mt/user-http-request :rasta :put 200
+                                      (format "dashboard/%d/cards" dashboard-id)
+                                      {:tabs [(t2/select-one :m/DashboardTab :id dashtab-id-1)]
+                                       :cards (current-cards dashboard-id)})))
+        (testing "deteted 1 tab, we should have"
+          (testing "1 card left"
+            (is (= 1
+                   (t2/count DashboardCard :dashboard_id dashboard-id))))
+          (testing "1 tab left"
+            (is (= 1
+                   (t2/count :m/DashboardTab :dashboard_id dashboard-id)))))))))
 
 (deftest classify-changes-test
   (testing "classify correctly"

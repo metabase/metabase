@@ -275,8 +275,8 @@
   [{route :compojure/route body :body} expected-params]
   (when (and (not config/is-prod?)
              (map? body))
-    (let [extraneous-params (set/difference (set (keys body))
-                                            (set expected-params))]
+    (let [extraneous-params (set/difference (set (map name (keys body)))
+                                            (set (map name expected-params)))]
       (when (seq extraneous-params)
         (log/warnf "Unexpected parameters at %s: %s\nPlease add them to the schema or remove them from the API client"
                    route (vec extraneous-params))))))
