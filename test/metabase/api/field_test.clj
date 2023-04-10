@@ -778,11 +778,9 @@
                   (is (seq (nested-fields))))
                 (testing "nested fields are removed when json unfolding is disabled for the field"
                   (set-json-unfolding-for-field! false)
-                  (sync/sync-database! (get-database))
                   (is (empty? (nested-fields))))
                 (testing "nested fields are added when json unfolding is enabled again for the field"
                   (set-json-unfolding-for-field! true)
-                  (sync/sync-database! (get-database))
                   (is (seq (nested-fields))))))))))))
 
 (deftest json-unfolding-initially-false-test
