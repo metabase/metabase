@@ -1458,18 +1458,18 @@
     [Dashboard {dashboard-id :id} {}
      Card      {card-id :id}      {:archived true}]
     (is (= "The object has been archived."
-           (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                 {:cards [{:id                     -1
-                                           :card_id                card-id
-                                           :row                    4
-                                           :col                    4
-                                           :size_x                 4
-                                           :size_y                 4
-                                           :parameter_mappings     [{:parameter_id "abc"
-                                                                     :card_id 123
-                                                                     :hash "abc"
-                                                                     :target "foo"}]
-                                           :visualization_settings {}}]})))))
+           (:message (mt/user-http-request :rasta :put 404 (format "dashboard/%d/cards" dashboard-id)
+                                           {:cards [{:id                     -1
+                                                     :card_id                card-id
+                                                     :row                    4
+                                                     :col                    4
+                                                     :size_x                 4
+                                                     :size_y                 4
+                                                     :parameter_mappings     [{:parameter_id "abc"
+                                                                               :card_id 123
+                                                                               :hash "abc"
+                                                                               :target "foo"}]
+                                                     :visualization_settings {}}]}))))))
 
 ;;; -------------------------------------- Update dashcards only tests ---------------------------------------
 
