@@ -10,23 +10,21 @@
 
 (set! *warn-on-reflection* true)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/settings"
-  "Update SAML related settings. You must be a superuser or have `setting` permission to do this."
+(api/defendpoint PUT "/settings"
+  "Update SAML related settings. You must be a superuser to do this."
   [:as {settings :body}]
-  {settings su/Map}
+  {settings :map}
   (api/check-superuser)
   (let [filename (:saml-keystore-path settings)
         password (:saml-keystore-password settings)
         alias (:saml-keystore-alias settings)]
-    (if (or (every? empty? [filename password alias])
+    (if (or (every? clojure.string/blank? [filename password alias])
             (saml/has-private-key? {:filename filename
                                     :password password
                                     :alias    alias}))
-      (t2/with-transaction [_conn]
-        (setting/set-many! settings))
+      (setting/set-many! settings)
       ;; test failed, return result message
-      {:status 500
+      {:status 400
        :body   "Error finding private key in provided keystore and alias."})))
 
 (api/define-routes)
