@@ -1,13 +1,16 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { exportFormats } from "metabase/lib/urls";
 import { canSavePng } from "metabase/visualizations";
-import { downloadImage } from "metabase/query_builder/actions/downloading";
+import {
+  downloadChartImage,
+  DownloadQueryContext,
+  downloadQueryResults,
+} from "metabase/query_builder/actions/downloading";
 import { Dataset } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
 import {
   DownloadButtonIcon,
   DownloadButtonRoot,
@@ -17,7 +20,7 @@ import {
 } from "./QueryDownloadPopover.styled";
 
 interface OwnProps {
-  question: Question;
+  context: DownloadQueryContext;
   result: Dataset;
 }
 
@@ -28,16 +31,17 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onDownloadImage: (question: Question) => void;
+  onDownloadQueryResults: (type: string, context: DownloadQueryContext) => void;
+  onDownloadChartImage: (context: DownloadQueryContext) => void;
 }
 
 type QueryDownloadPopoverProps = OwnProps & StateProps & DispatchProps;
 
 const mapStateToProps = (
   state: State,
-  { question, result }: OwnProps,
+  { context, result }: OwnProps,
 ): StateProps => ({
-  canDownloadImage: canSavePng(question.display()),
+  canDownloadImage: canSavePng(context.question.display()),
   hasTruncatedResults:
     result.data != null && result.data.rows_truncated != null,
   limitedDownloadSizeText:
@@ -46,14 +50,28 @@ const mapStateToProps = (
 });
 
 const mapDispatchToProps: DispatchProps = {
-  onDownloadImage: downloadImage,
+  onDownloadQueryResults: downloadQueryResults,
+  onDownloadChartImage: downloadChartImage,
 };
 
 const QueryDownloadPopover = ({
+  context,
   canDownloadImage,
   hasTruncatedResults,
   limitedDownloadSizeText,
+  onDownloadQueryResults,
+  onDownloadChartImage,
 }: QueryDownloadPopoverProps) => {
+  const handleQueryResultsDownload = useCallback(
+    (type: string) => onDownloadQueryResults(type, context),
+    [context, onDownloadQueryResults],
+  );
+
+  const handleChartImageDownload = useCallback(
+    () => onDownloadChartImage(context),
+    [context, onDownloadChartImage],
+  );
+
   return (
     <DownloadPopoverRoot isExpanded={hasTruncatedResults}>
       <DownloadPopoverHeader>
@@ -65,24 +83,32 @@ const QueryDownloadPopover = ({
           <div>{limitedDownloadSizeText}</div>
         </DownloadPopoverMessage>
       )}
-      {exportFormats.map(format => (
-        <DownloadButton key={format} format={format} />
+      {exportFormats.map(type => (
+        <DownloadButton
+          key={type}
+          type={type}
+          onDownload={handleQueryResultsDownload}
+        />
       ))}
-      {canDownloadImage && <DownloadButton format="png" />}
+      {canDownloadImage && (
+        <DownloadButton type="png" onDownload={handleChartImageDownload} />
+      )}
     </DownloadPopoverRoot>
   );
 };
 
 interface DownloadButtonProps {
-  format: string;
-  onClick?: () => void;
+  type: string;
+  onDownload: (type: string) => void;
 }
 
-const DownloadButton = ({ format, onClick }: DownloadButtonProps) => {
+const DownloadButton = ({ type, onDownload }: DownloadButtonProps) => {
+  const handleClick = useCallback(() => onDownload(type), [type, onDownload]);
+
   return (
-    <DownloadButtonRoot onClick={onClick}>
-      <DownloadButtonIcon name={format} />
-      {format}
+    <DownloadButtonRoot onClick={handleClick}>
+      <DownloadButtonIcon name={type} />
+      {type}
     </DownloadButtonRoot>
   );
 };
