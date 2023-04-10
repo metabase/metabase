@@ -100,7 +100,7 @@
   (slugify (display-name query stage-number x)))
 
 (defmulti describe-top-level-key-method
-  "Implementation for [[describe-top-level-key]]. Describe part of a stage of a query, e.g. the `:filter` part or the
+  "Implementation for [[describe-top-level-key]]. Describe part of a stage of a query, e.g. the `:filters` part or the
   `:aggregation` part. Return `nil` if there is nothing to describe."
   {:arglists '([query stage-number top-level-key])}
   (fn [_query _stage-number top-level-key]
@@ -109,7 +109,7 @@
 
 (def ^:private TopLevelKey
   "In the interest of making this easy to use in JS-land we'll accept either strings or keywords."
-  [:enum :aggregation :breakout :filter :limit :order-by :source-table])
+  [:enum :aggregation :breakout :filters :limit :order-by :source-table])
 
 (mu/defn describe-top-level-key :- [:maybe ::lib.schema.common/non-blank-string]
   "'top-level' here means the top level of an individual stage. Generate a human-friendly string describing a specific
