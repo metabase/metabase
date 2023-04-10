@@ -242,13 +242,13 @@
   (fn [path]
     (-> path last :model)))
 
-(declare lookup-by-id)
+(declare *lookup-by-id*)
 
 (defmethod load-find-local :default [path]
   (let [{id :id model-name :model} (last path)
         model                      (mdb.u/resolve-model (symbol model-name))]
     (when model
-      (lookup-by-id model id))))
+      (*lookup-by-id* model id))))
 
 (defmulti dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
@@ -372,7 +372,7 @@
                       (take 1)))
        first))
 
-(defn lookup-by-id
+(defn ^:dynamic ^::cache *lookup-by-id*
   "Given an ID string, this endeavours to find the matching entity, whether it's an entity ID or identity hash.
   This is useful when writing [[load-xform]] to turn a foreign key from a portable form to an appdb ID.
   Returns a Toucan entity or nil."
@@ -385,8 +385,8 @@
 
 (defn- truncate-label [s]
   (if (> (count s) max-label-length)
-      (subs s 0 max-label-length)
-      s))
+    (subs s 0 max-label-length)
+    s))
 
 (defn- lower-plural [s]
   (-> s u/lower-case-en (str "s")))
@@ -435,7 +435,7 @@
 ;; utils
 
 ;; -------------------------------------------- General Foreign Keys -------------------------------------------------
-(defn export-fk
+(defn ^:dynamic ^::cache *export-fk*
   "Given a numeric foreign key and its model (symbol, name or IModel), looks up the entity by ID and gets its entity ID
   or identity hash.
   Unusual parameter order means this can be used as `(update x :some_id export-fk 'SomeModel)`.
@@ -452,7 +452,7 @@
         (first path)
         path))))
 
-(defn import-fk
+(defn ^:dynamic ^::cache *import-fk*
   "Given an identifier, and the model it represents (symbol, name or IModel), looks up the corresponding
   entity and gets its primary key.
 
@@ -470,13 +470,13 @@
           eid        (if (vector? eid)
                        (last eid)
                        eid)
-          entity     (lookup-by-id model eid)]
+          entity     (*lookup-by-id* model eid)]
       (if entity
         (get entity (mdb.u/primary-key model))
         (throw (ex-info "Could not find foreign key target - bad serdes-dependencies or other serialization error"
                         {:entity_id eid :model (name model)}))))))
 
-(defn export-fk-keyed
+(defn ^:dynamic ^::cache *export-fk-keyed*
   "Given a numeric ID, look up a different identifying field for that entity, and return it as a portable ID.
   Eg. `Database.name`.
   [[import-fk-keyed]] is the inverse.
@@ -486,7 +486,7 @@
   [id model field]
   (t2/select-one-fn field model :id id))
 
-(defn import-fk-keyed
+(defn ^:dynamic ^::cache *import-fk-keyed*
   "Given a single, portable, identifying field and the model it refers to, this resolves the entity and returns its
   numeric `:id`.
   Eg. `Database.name`.
@@ -497,26 +497,26 @@
   (t2/select-one-pk model field portable))
 
 ;; -------------------------------------------------- Users ----------------------------------------------------------
-(defn export-user
+(defn ^:dynamic ^::cache *export-user*
   "Exports a user as the email address.
   This just calls [[export-fk-keyed]], but the counterpart [[import-user]] is more involved. This is a unique function
   so they form a pair."
   [id]
-  (when id (export-fk-keyed id 'User :email)))
+  (when id (*export-fk-keyed* id 'User :email)))
 
-(defn import-user
+(defn ^:dynamic ^::cache *import-user*
   "Imports a user by their email address.
   If a user with that email address exists, returns its primary key.
   If no such user exists, creates a dummy one with the default settings, blank name, and randomized password.
   Does not send any invite emails."
   [email]
   (when email
-    (or (import-fk-keyed email 'User :email)
+    (or (*import-fk-keyed* email 'User :email)
         ;; Need to break a circular dependency here.
         (:id ((resolve 'metabase.models.user/serdes-synthesize-user!) {:email email})))))
 
 ;; -------------------------------------------------- Tables ---------------------------------------------------------
-(defn export-table-fk
+(defn ^:dynamic ^::cache *export-table-fk*
   "Given a numeric `table_id`, return a portable table reference.
   If the `table_id` is `nil`, return `nil`. This is legal for a native question.
   That has the form `[db-name schema table-name]`, where the `schema` might be nil.
@@ -527,7 +527,7 @@
           db-name                     (t2/select-one-fn :name 'Database :id db_id)]
       [db-name schema name])))
 
-(defn import-table-fk
+(defn ^:dynamic ^::cache *import-table-fk*
   "Given a `table_id` as exported by [[export-table-fk]], resolve it back into a numeric `table_id`.
   The input might be nil, in which case so is the output. This is legal for a native question."
   [[db-name schema table-name :as table-id]]
@@ -560,21 +560,21 @@
             ["tables" table-name])))
 
 ;; -------------------------------------------------- Fields ---------------------------------------------------------
-(defn export-field-fk
+(defn ^:dynamic ^::cache *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
   [[import-field-fk]] is the inverse."
   [field-id]
   (when field-id
     (let [{:keys [name table_id]}     (t2/select-one 'Field :id field-id)
-          [db-name schema field-name] (export-table-fk table_id)]
+          [db-name schema field-name] (*export-table-fk* table_id)]
       [db-name schema field-name name])))
 
-(defn import-field-fk
+(defn ^:dynamic ^::cache *import-field-fk*
   "Given a `field_id` as exported by [[export-field-fk]], resolve it back into a numeric `field_id`."
   [[db-name schema table-name field-name :as field-id]]
   (when field-id
-    (let [table_id (import-table-fk [db-name schema table-name])]
+    (let [table_id (*import-table-fk* [db-name schema table-name])]
       (t2/select-one-pk 'Field :table_id table_id :name field-name))))
 
 (defn field->path
@@ -599,44 +599,44 @@
       (mbql.u/replace
         ;; `integer?` guard is here to make the operation idempotent
        [:field (id :guard integer?) opts]
-       [:field (export-field-fk id) (mbql-id->fully-qualified-name opts)]
+       [:field (*export-field-fk* id) (mbql-id->fully-qualified-name opts)]
 
         ;; `integer?` guard is here to make the operation idempotent
        [:field (id :guard integer?)]
-       [:field (export-field-fk id)]
+       [:field (*export-field-fk* id)]
 
         ;; field-id is still used within parameter mapping dimensions
         ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
        [:field-id (id :guard integer?)]
-       [:field-id (export-field-fk id)]
+       [:field-id (*export-field-fk* id)]
 
        {:source-table (id :guard integer?)}
-       (assoc &match :source-table (export-table-fk id))
+       (assoc &match :source-table (*export-table-fk* id))
 
         ;; source-field is also used within parameter mapping dimensions
         ;; example relevant clause - [:field 2 {:source-field 1}]
        {:source-field (id :guard integer?)}
-       (assoc &match :source-field (export-field-fk id))
+       (assoc &match :source-field (*export-field-fk* id))
 
        [:dimension (dim :guard vector?)]
        [:dimension (mbql-id->fully-qualified-name dim)]
 
        [:metric (id :guard integer?)]
-       [:metric (export-fk id 'Metric)]
+       [:metric (*export-fk* id 'Metric)]
 
        [:segment (id :guard integer?)]
-       [:segment (export-fk id 'Segment)])))
+       [:segment (*export-fk* id 'Segment)])))
 
 (defn- export-source-table
   [source-table]
   (if (and (string? source-table)
            (str/starts-with? source-table "card__"))
-    (export-fk (-> source-table
+    (*export-fk* (-> source-table
                    (str/split #"__")
                    second
                    Integer/parseInt)
                'Card)
-    (export-table-fk source-table)))
+    (*export-table-fk* source-table)))
 
 (defn- ids->fully-qualified-names
   [entity]
@@ -653,8 +653,8 @@
                                                           (if (= db-id mbql.s/saved-questions-virtual-database-id)
                                                             "database/__virtual"
                                                             (t2/select-one-fn :name 'Database :id db-id))))
-                    (m/update-existing entity :card_id #(export-fk % 'Card)) ; attibutes that refer to db fields use _
-                    (m/update-existing entity :card-id #(export-fk % 'Card)) ; template-tags use dash
+                    (m/update-existing entity :card_id #(*export-fk* % 'Card)) ; attibutes that refer to db fields use _
+                    (m/update-existing entity :card-id #(*export-fk* % 'Card)) ; template-tags use dash
                     (m/update-existing entity :source-table export-source-table)
                     (m/update-existing entity :source_table export-source-table)
                     (m/update-existing entity :breakout    (fn [breakout]
@@ -662,9 +662,9 @@
                     (m/update-existing entity :aggregation (fn [aggregation]
                                                              (mapv mbql-id->fully-qualified-name aggregation)))
                     (m/update-existing entity :filter      ids->fully-qualified-names)
-                    (m/update-existing entity ::mb.viz/param-mapping-source export-field-fk)
-                    (m/update-existing entity :segment    export-fk 'Segment)
-                    (m/update-existing entity :snippet-id export-fk 'NativeQuerySnippet)
+                    (m/update-existing entity ::mb.viz/param-mapping-source *export-field-fk*)
+                    (m/update-existing entity :segment    *export-fk* 'Segment)
+                    (m/update-existing entity :snippet-id *export-fk* 'NativeQuerySnippet)
                     (merge entity
                            (m/map-vals ids->fully-qualified-names
                                        (dissoc entity
@@ -694,15 +694,15 @@
                   (mbql-fully-qualified-names->ids* [:field fully-qualified-name])
 
                   [(:or :field "field") (fully-qualified-name :guard vector?) opts]
-                  [:field (import-field-fk fully-qualified-name) (mbql-fully-qualified-names->ids* opts)]
+                  [:field (*import-field-fk* fully-qualified-name) (mbql-fully-qualified-names->ids* opts)]
                   [(:or :field "field") (fully-qualified-name :guard vector?)]
-                  [:field (import-field-fk fully-qualified-name)]
+                  [:field (*import-field-fk* fully-qualified-name)]
 
 
     ;; source-field is also used within parameter mapping dimensions
     ;; example relevant clause - [:field 2 {:source-field 1}]
                   {:source-field (fully-qualified-name :guard vector?)}
-                  (assoc &match :source-field (import-field-fk fully-qualified-name))
+                  (assoc &match :source-field (*import-field-fk* fully-qualified-name))
 
                   {:database (fully-qualified-name :guard string?)}
                   (-> &match
@@ -713,38 +713,38 @@
 
                   {:card-id (entity-id :guard portable-id?)}
                   (-> &match
-                      (assoc :card-id (import-fk entity-id 'Card))
+                      (assoc :card-id (*import-fk* entity-id 'Card))
                       mbql-fully-qualified-names->ids*) ; Process other keys
 
                   [(:or :metric "metric") (fully-qualified-name :guard portable-id?)]
-                  [:metric (import-fk fully-qualified-name 'Metric)]
+                  [:metric (*import-fk* fully-qualified-name 'Metric)]
 
                   [(:or :segment "segment") (fully-qualified-name :guard portable-id?)]
-                  [:segment (import-fk fully-qualified-name 'Segment)]
+                  [:segment (*import-fk* fully-qualified-name 'Segment)]
 
                   (_ :guard (every-pred map? #(vector? (:source-table %))))
                   (-> &match
-                      (assoc :source-table (import-table-fk (:source-table &match)))
+                      (assoc :source-table (*import-table-fk* (:source-table &match)))
                       mbql-fully-qualified-names->ids*)
 
                   (_ :guard (every-pred map? #(vector? (:source_table %))))
                   (-> &match
-                      (assoc :source_table (import-table-fk (:source_table &match)))
+                      (assoc :source_table (*import-table-fk* (:source_table &match)))
                       mbql-fully-qualified-names->ids*)
 
                   (_ :guard (every-pred map? (comp portable-id? :source-table)))
                   (-> &match
-                      (assoc :source-table (str "card__" (import-fk (:source-table &match) 'Card)))
+                      (assoc :source-table (str "card__" (*import-fk* (:source-table &match) 'Card)))
                       mbql-fully-qualified-names->ids*)
 
                   (_ :guard (every-pred map? (comp portable-id? :source_table)))
                   (-> &match
-                      (assoc :source_table (str "card__" (import-fk (:source_table &match) 'Card)))
+                      (assoc :source_table (str "card__" (*import-fk* (:source_table &match) 'Card)))
                       mbql-fully-qualified-names->ids*) ;; process other keys
 
                   (_ :guard (every-pred map? (comp portable-id? :snippet-id)))
                   (-> &match
-                      (assoc :snippet-id (import-fk (:snippet-id &match) 'NativeQuerySnippet))
+                      (assoc :snippet-id (*import-fk* (:snippet-id &match) 'NativeQuerySnippet))
                       mbql-fully-qualified-names->ids*)))
 
 (defn- mbql-fully-qualified-names->ids
@@ -818,7 +818,7 @@
   [mappings]
   (->> mappings
        (map mbql-fully-qualified-names->ids)
-       (map #(m/update-existing % :card_id import-fk 'Card))))
+       (map #(m/update-existing % :card_id *import-fk* 'Card))))
 
 (defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
@@ -833,7 +833,7 @@
   (for [param parameters]
     (-> param
         mbql-fully-qualified-names->ids
-        (m/update-existing-in [:values_source_config :card_id] import-fk 'Card))))
+        (m/update-existing-in [:values_source_config :card_id] *import-fk* 'Card))))
 
 (defn parameters-deps
   "Given the :parameters (possibly nil) for an entity, return any embedded serdes-deps as a set.
@@ -867,32 +867,32 @@
    (fn [{:keys [id model] :as entity}]
      (merge entity
             {:id (case model
-                   "table"    (export-table-fk id)
-                   "database" (export-fk-keyed id 'Database :name)
-                   (export-fk id (link-card-model->toucan-model model)))}))))
+                   "table"    (*export-table-fk* id)
+                   "database" (*export-fk-keyed* id 'Database :name)
+                   (*export-fk* id (link-card-model->toucan-model model)))}))))
 
 (defn- export-visualizations [entity]
   (mbql.u/replace
    entity
    ["field-id" (id :guard number?)]
-   ["field-id" (export-field-fk id)]
+   ["field-id" (*export-field-fk* id)]
    [:field-id (id :guard number?)]
-   [:field-id (export-field-fk id)]
+   [:field-id (*export-field-fk* id)]
 
    ["field-id" (id :guard number?) tail]
-   ["field-id" (export-field-fk id) (export-visualizations tail)]
+   ["field-id" (*export-field-fk* id) (export-visualizations tail)]
    [:field-id (id :guard number?) tail]
-   [:field-id (export-field-fk id) (export-visualizations tail)]
+   [:field-id (*export-field-fk* id) (export-visualizations tail)]
 
    ["field" (id :guard number?)]
-   ["field" (export-field-fk id)]
+   ["field" (*export-field-fk* id)]
    [:field (id :guard number?)]
-   [:field (export-field-fk id)]
+   [:field (*export-field-fk* id)]
 
    ["field" (id :guard number?) tail]
-   ["field" (export-field-fk id) (export-visualizations tail)]
+   ["field" (*export-field-fk* id) (export-visualizations tail)]
    [:field (id :guard number?) tail]
-   [:field (export-field-fk id) (export-visualizations tail)]
+   [:field (*export-field-fk* id) (export-visualizations tail)]
 
    (_ :guard map?)
    (m/map-vals export-visualizations &match)
@@ -924,22 +924,22 @@
    (fn [{:keys [id model] :as entity}]
      (merge entity
             {:id (case model
-                   "table"    (import-table-fk id)
-                   "database" (import-fk-keyed id 'Database :name)
-                   (import-fk id (link-card-model->toucan-model model)))}))))
+                   "table"    (*import-table-fk* id)
+                   "database" (*import-fk-keyed* id 'Database :name)
+                   (*import-fk* id (link-card-model->toucan-model model)))}))))
 
 (defn- import-visualizations [entity]
   (mbql.u/replace
    entity
    [(:or :field-id "field-id") (fully-qualified-name :guard vector?) tail]
-   [:field-id (import-field-fk fully-qualified-name) (import-visualizations tail)]
+   [:field-id (*import-field-fk* fully-qualified-name) (import-visualizations tail)]
    [(:or :field-id "field-id") (fully-qualified-name :guard vector?)]
-   [:field-id (import-field-fk fully-qualified-name)]
+   [:field-id (*import-field-fk* fully-qualified-name)]
 
    [(:or :field "field") (fully-qualified-name :guard vector?) tail]
-   [:field (import-field-fk fully-qualified-name) (import-visualizations tail)]
+   [:field (*import-field-fk* fully-qualified-name) (import-visualizations tail)]
    [(:or :field "field") (fully-qualified-name :guard vector?)]
-   [:field (import-field-fk fully-qualified-name)]
+   [:field (*import-field-fk* fully-qualified-name)]
 
    (_ :guard map?)
    (m/map-vals import-visualizations &match)
@@ -981,3 +981,14 @@
     (->> (concat vis-column-settings [(mbql-deps viz) link-card-deps])
          (filter some?)
          (reduce set/union))))
+
+(defmacro with-cache
+  "Runs body with all functions marked with ::cache re-bound to memoized versions for performance."
+  [& body]
+  (let [ns* 'metabase.models.serialization]
+    `(binding ~(reduce into []
+                       (for [[var-sym var] (ns-interns ns*)
+                             :when (::cache (meta var))
+                             :let  [fq-sym (symbol (name ns*) (name var-sym))]]
+                         [fq-sym `(memoize ~fq-sym)]))
+       ~@body)))

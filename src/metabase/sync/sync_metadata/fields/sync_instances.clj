@@ -19,7 +19,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -41,7 +40,7 @@
   "Insert new Field rows for for all the Fields described by `new-field-metadatas`."
   [table :- i/TableInstance, new-field-metadatas :- [i/TableMetadataField], parent-id :- common/ParentID]
   (when (seq new-field-metadatas)
-    (db/insert-many! Field
+    (t2/insert-returning-pks! Field
       (for [{:keys [database-type database-is-auto-increment database-required base-type effective-type coercion-strategy
                     field-comment database-position nfc-path visibility-type json-unfolding], field-name :name :as field} new-field-metadatas]
         (do

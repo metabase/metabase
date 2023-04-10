@@ -19,7 +19,6 @@
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.fetch-source-query
@@ -245,24 +244,38 @@
       preprocess-source-query
       (source-query-form-ensure-metadata table-id card-id)))
 
-(s/defn ^:private gtap->perms-set :- #{perms/PathSchema}
-  "Calculate the set of permissions needed to run the query associated with a GTAP; this set of permissions is excluded
+(defn- sandbox->table-ids
+  "Returns the set of table IDs which are used by the given sandbox. These are the sandboxed table itself, as well as
+  any linked tables referenced via fields in the attribute remappings. This is the set of tables which need to be
+  excluded from subsequent permission checks in order to run the sandboxed query."
+  [{table-id :table_id, attribute-remappings :attribute_remappings}]
+  (->>
+   (for [target-field-clause (vals attribute-remappings)]
+     (mbql.u/match-one target-field-clause
+                       [:field (field-id :guard integer?) _]
+                       (t2/select-one-fn :table_id Field :id field-id)))
+   (cons table-id)
+   (remove nil?)
+   set))
+
+(s/defn ^:private sandbox->perms-set :- #{perms/PathSchema}
+  "Calculate the set of permissions needed to run the query associated with a sandbox; this set of permissions is excluded
   during the normal QP perms check.
 
-  Background: when applying GTAPs, we don't want the QP perms check middleware to throw an Exception if the Current
-  User doesn't have permissions to run the underlying GTAP query, which will likely be greater than what they actually
-  have. (For example, a User might have segmented query perms for Table 15, which is why we're applying a GTAP in the
-  first place; the actual perms required to normally run the underlying GTAP query is more likely something like
-  *full* query perms for Table 15.) The QP perms check middleware subtracts this set from the set of required
-  permissions, allowing the user to run their GTAPped query."
-  [{card-id :card_id, table-id :table_id}]
+  Background: when applying sandboxing, we don't want the QP perms check middleware to throw an Exception if the Current
+  User doesn't have permissions to run the underlying sandboxed query, which will likely be greater than what they
+  actually have. (For example, a User might have sandboxed query perms for Table 15, which is why we're applying a
+  sandbox in the first place; the actual perms required to normally run the underlying sandbox query is more likely
+  something like *full* query perms for Table 15.) The QP perms check middleware subtracts this set from the set of
+  required permissions, allowing the user to run their sandboxed query."
+  [{card-id :card_id :as sandbox}]
   (if card-id
     (qp.store/cached card-id
       (query-perms/perms-set (t2/select-one-fn :dataset_query Card :id card-id), :throw-exceptions? true))
-    #{(perms/table-query-path (t2/select-one Table :id table-id))}))
+    (set (map perms/table-query-path (sandbox->table-ids sandbox)))))
 
-(defn- gtaps->perms-set [gtaps]
-  (set (mapcat gtap->perms-set gtaps)))
+(defn- sandboxes->perms-set [sandboxes]
+  (set (mapcat sandbox->perms-set sandboxes)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -319,7 +332,7 @@
       original-query
       (-> sandboxed-query
           (assoc ::original-metadata (expected-cols original-query))
-          (update-in [::qp.perms/perms :gtaps] (fn [perms] (into (set perms) (gtaps->perms-set (vals table-id->gtap)))))))))
+          (update-in [::qp.perms/perms :gtaps] (fn [perms] (into (set perms) (sandboxes->perms-set (vals table-id->gtap)))))))))
 
 (def ^:private default-recursion-limit 20)
 (def ^:private ^:dynamic *recursion-limit* default-recursion-limit)

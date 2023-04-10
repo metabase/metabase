@@ -2,7 +2,7 @@ import moment from "moment-timezone";
 import _ from "underscore";
 import { getIn } from "icepick";
 import { normalize } from "normalizr";
-import { compose } from "redux";
+import { compose } from "@reduxjs/toolkit";
 import { createSelectorCreator } from "reselect";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -14,7 +14,7 @@ import {
 } from "metabase/redux/requests";
 
 // convienence
-export { combineReducers, compose } from "redux";
+export { combineReducers, compose } from "@reduxjs/toolkit";
 export { handleActions, createAction } from "redux-actions";
 
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether

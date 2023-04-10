@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -144,7 +143,7 @@
       (is (=? simple-filtered-query
               (-> q1
                   (lib/filter {:operator :between
-                               :args [(lib.field/field q1 venues-category-id-metadata) 42 100]})
+                               :args [(lib/ref venues-category-id-metadata) 42 100]})
                   (dissoc :lib/metadata)))))))
 
 (deftest ^:parallel add-filter-test
@@ -190,14 +189,14 @@
         (assoc-in simple-query [:stages 0 :filter] first-filter)
         second-add
         (lib/add-filter first-add {:operator "starts-with"
-                                   :args [(lib.field/field simple-query venues-name-metadata) "prefix"]})
+                                   :args [(lib/ref venues-name-metadata) "prefix"]})
         and-query
         (assoc-in filtered-query
                   [:stages 0 :filter]
                   [:and {:lib/uuid string?} first-filter second-filter])
         third-add
         (lib/add-filter second-add {:operator :contains
-                                    :args [(lib.field/field simple-query venues-name-metadata) "part"]})
+                                    :args [(lib/ref venues-name-metadata) "part"]})
         extended-and-query
         (assoc-in filtered-query
                   [:stages 0 :filter]
@@ -221,40 +220,3 @@
       (is (=? extended-and-query third-add))
       (is (=? [first-result-filter second-result-filter third-result-filter]
               (lib/current-filters third-add))))))
-
-(deftest ^:parallel replace-filter-test
-  (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
-        venues-name-metadata        (lib.metadata/field q1 nil "VENUES" "NAME")
-        venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
-        simple-filtered-query
-        (-> q1
-            (lib/filter (lib/between venues-category-id-metadata 42 100)))
-        between-uuid (-> (lib/current-filter simple-filtered-query)
-                         :options
-                         :lib/uuid)
-        result-query
-        (assoc-in simple-filtered-query
-                  [:stages 0 :filter]
-                  [:starts-with
-                   {:lib/uuid string?}
-                   [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
-                   "part"])]
-    (testing "sanity"
-      (is (string? between-uuid)))
-    (testing "replacing a simple filter"
-      (is (=? result-query
-              (lib/replace-filter simple-filtered-query
-                                  between-uuid
-                                  (lib/starts-with venues-name-metadata "part")))))
-    (testing "setting a simple filter thunk"
-      (is (=? result-query
-              (lib/replace-filter simple-filtered-query
-                                  between-uuid
-                                  {:operator "starts-with"
-                                   :args [(lib.field/field q1 venues-name-metadata) "part"]}))))
-    (testing "setting a simple filter expression"
-      (is (=? result-query
-              (lib/replace-filter simple-filtered-query
-                                  between-uuid
-                                  {:operator :starts-with
-                                   :args [(lib.field/field q1 venues-name-metadata) "part"]}))))))

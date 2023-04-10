@@ -718,8 +718,6 @@
                 (is (= [[9]]
                        (mt/rows result)))))))))))
 
-
-
 (deftest remapped-fks-test
   (testing "Sandboxing should work with remapped FK columns (#14629)"
     (mt/dataset sample-dataset
@@ -767,6 +765,19 @@
                         "2018-05-15T20:25:48.517Z"
                         "Rustic Paper Wallet"] ; <- Includes the remapped column
                        (first (mt/rows result))))))))))))
+
+(deftest sandboxing-linked-table-perms
+  (testing "Sandboxing based on a column in a linked table should work even if the user doesn't have self-service query
+           permissions for the linked table (#15105)"
+    (mt/dataset sample-dataset
+      (met/with-gtaps (mt/$ids orders
+                        {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                         :attributes {"user_id" 1}})
+        (mt/with-test-user :rasta
+          (is (= [11]
+                 (-> (mt/run-mbql-query orders {:aggregation [[:count]]})
+                     mt/rows
+                     first))))))))
 
 (deftest drill-thru-on-joins-test
   (testing "should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (#13642)"

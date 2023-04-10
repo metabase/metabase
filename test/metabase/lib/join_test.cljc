@@ -1,8 +1,8 @@
 (ns metabase.lib.join-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -46,8 +46,8 @@
             (-> q
                 (lib/join (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
                           {:operator :=
-                           :args [(lib.field/field q (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))
-                                  (lib.field/field q (lib.metadata/field q nil "CATEGORIES" "ID"))]})
+                           :args [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))
+                                  (lib/ref (lib.metadata/field q nil "CATEGORIES" "ID"))]})
                 (dissoc :lib/metadata))))))
 
 (deftest ^:parallel join-saved-question-test
@@ -104,18 +104,21 @@
                   (lib/join q2 (lib/= venues-category-id-metadata categories-id-metadata))
                   (dissoc :lib/metadata)))))))
 
-;;; FIXME
-#_(deftest ^:parallel col-info-implicit-join-test
+(deftest ^:parallel col-info-implicit-join-test
   (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk_field_id` "
                 "info about the source Field")
-    (is (=? [(merge (dissoc (meta/field-metadata :categories :name) :database_type)
-                    {:fk_field_id (meta/id :venues :category-id)
-                     :source      :fields
-                     :field_ref   [:field {:fk-field-id (meta/id :venues :category-id)} (meta/id :categories :name)]})]
-            (stage-metadata
-             {:type  :query
-              :query {:source-table (meta/id :venues)
-                      :fields       [[:field (meta/id :categories :name) {:fk-field-id (meta/id :venues :category-id)}]]}})))))
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.convert/->pMBQL
+                  {:database (meta/id)
+                   :type     :query
+                   :query    {:source-table (meta/id :venues)
+                              :fields       [[:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]]}}))]
+      (is (=? [{:name        "NAME"
+                :id          (meta/id :categories :name)
+                :fk_field_id (meta/id :venues :category-id)
+                :lib/source  :source/fields}]
+              (lib.metadata.calculation/metadata query -1 query))))))
 
 (deftest ^:parallel col-info-explicit-join-test
   (testing "Display name for a joined field should include a nice name for the join; include other info like :source_alias"
@@ -142,10 +145,15 @@
                                                                 :source-table (meta/id :categories)}]}]}]
                  :database     (meta/id)
                  :lib/metadata meta/metadata-provider}]
-      (is (=? [(merge (meta/field-metadata :categories :name)
-                      {:display_name "Categories → Name"
-                       :source       :fields
-                       :field_ref    [:field
-                                      {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
-                                      (meta/id :categories :name)]})]
-              (lib.metadata.calculation/metadata query -1 query))))))
+      (let [metadata (lib.metadata.calculation/metadata query)]
+        (is (=? [(merge (meta/field-metadata :categories :name)
+                        {:display_name                  "Categories → Name"
+                         :lib/source                    :source/fields
+                         :metabase.lib.field/join-alias "CATEGORIES__via__CATEGORY_ID"})]
+                metadata))
+        (is (=? "CATEGORIES__via__CATEGORY_ID"
+                (lib.join/current-join-alias (first metadata))))
+        (is (=? [:field
+                 {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
+                 (meta/id :categories :name)]
+                (lib/ref (first metadata))))))))

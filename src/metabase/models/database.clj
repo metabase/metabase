@@ -311,7 +311,7 @@
   ;; TODO Support alternative encryption of secret database details.
   ;; There's one optional foreign key: creator_id. Resolve it as an email.
   (cond-> (serdes/extract-one-basics "Database" entity)
-    true                 (update :creator_id serdes/export-user)
+    true                 (update :creator_id serdes/*export-user*)
     true                 (dissoc :features) ; This is a synthetic column that isn't in the real schema.
     (= :exclude secrets) (dissoc :details)))
 
@@ -331,7 +331,7 @@
   [database]
   (-> database
       serdes/load-xform-basics
-      (update :creator_id serdes/import-user)))
+      (update :creator_id serdes/*import-user*)))
 
 (defmethod serdes/load-insert! "Database" [_ ingested]
   (let [m (get-method serdes/load-insert! :default)]

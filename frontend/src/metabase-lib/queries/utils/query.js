@@ -2,7 +2,6 @@ import * as A from "./aggregation";
 import * as B from "./breakout";
 import * as F from "./filter";
 import * as J from "./join";
-import * as L from "./limit";
 import * as O from "./order-by";
 import * as E from "./expression";
 import * as FIELD from "./field";
@@ -87,14 +86,6 @@ export const removeField = (query, index) =>
 export const clearFields = query =>
   setFieldsClause(query, FIELD.clearFields(query.fields));
 
-// LIMIT
-
-export const getLimit = query => L.getLimit(query.limit);
-export const updateLimit = (query, limit) =>
-  setLimitClause(query, L.updateLimit(query.limit, limit));
-export const clearLimit = query =>
-  setLimitClause(query, L.clearLimit(query.limit));
-
 // EXPRESSIONS
 
 export const getExpressions = query => E.getExpressions(query.expressions);
@@ -169,9 +160,6 @@ function setOrderByClause(query, orderByClause) {
 }
 function setFieldsClause(query, fieldsClause) {
   return setClause("fields", query, fieldsClause);
-}
-function setLimitClause(query, limitClause) {
-  return setClause("limit", query, limitClause);
 }
 function setExpressionClause(query, expressionClause) {
   if (expressionClause && Object.keys(expressionClause).length === 0) {

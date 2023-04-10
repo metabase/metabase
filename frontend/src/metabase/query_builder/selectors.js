@@ -965,8 +965,12 @@ export const getNativeQueryFn = createSelector(
   (datasetQuery, parameters) => {
     let lastResult = undefined;
 
-    return async () => {
-      lastResult ??= await MetabaseApi.native({ ...datasetQuery, parameters });
+    return async (options = {}) => {
+      lastResult ??= await MetabaseApi.native({
+        ...datasetQuery,
+        parameters,
+        ...options,
+      });
       return lastResult;
     };
   },

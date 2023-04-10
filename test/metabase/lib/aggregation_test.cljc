@@ -3,10 +3,10 @@
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -50,10 +50,10 @@
     {:column-name "count", :display-name "Count"}
 
     [:distinct {} (lib.tu/field-clause :venues :id)]
-    {:column-name "distinct_id", :display-name "Distinct values of ID"}
+    {:column-name "distinct_ID", :display-name "Distinct values of ID"}
 
     [:sum {} (lib.tu/field-clause :venues :id)]
-    {:column-name "sum_id", :display-name "Sum of ID"}
+    {:column-name "sum_ID", :display-name "Sum of ID"}
 
     [:+ {} [:count {}] 1]
     {:column-name "count_plus_1", :display-name "Count + 1"}
@@ -62,7 +62,7 @@
      {}
      [:min {} (lib.tu/field-clause :venues :id)]
      [:* {} 2 [:avg {} (lib.tu/field-clause :venues :price)]]]
-    {:column-name  "min_id_plus_2_times_avg_price"
+    {:column-name  "min_ID_plus_2_times_avg_PRICE"
      :display-name "Min of ID + (2 × Average of Price)"}
 
     [:+
@@ -74,7 +74,7 @@
       [:avg {} (lib.tu/field-clause :venues :price)]
       3
       [:- {} [:max {} (lib.tu/field-clause :venues :category-id)] 4]]]
-    {:column-name  "min_id_plus_2_times_avg_price_times_3_times_max_category_id_minus_4"
+    {:column-name  "min_ID_plus_2_times_avg_PRICE_times_3_times_max_CATEGORY_ID_minus_4"
      :display-name "Min of ID + (2 × Average of Price × 3 × (Max of Category ID - 4))"}
 
     ;; user-specified names
@@ -94,7 +94,7 @@
      {:display-name "User-specified Name"}
      [:min {} (lib.tu/field-clause :venues :id)]
      [:* {} 2 [:avg {} (lib.tu/field-clause :venues :price)]]]
-    {:column-name  "min_id_plus_2_times_avg_price"
+    {:column-name  "min_ID_plus_2_times_avg_PRICE"
      :display-name "User-specified Name"}))
 
 ;;; the following tests use raw legacy MBQL because they're direct ports of JavaScript tests from MLv1 and I wanted to
@@ -144,16 +144,16 @@
     ;; :sum
     [:sum {} [:+ {} (lib.tu/field-clause :venues :price) 1]]
     {:base_type    :type/Integer
-     :name         "sum_price_plus_1"
+     :name         "sum_PRICE_plus_1"
      :display_name "Sum of Price + 1"}
 
     ;; options map
     [:sum
      {:name "sum_2", :display-name "My custom name", :base-type :type/BigInteger}
      (lib.tu/field-clause :venues :price)]
-    {:base_type     :type/BigInteger
-     :name          "sum_2"
-     :display_name  "My custom name"}))
+    {:base_type    :type/BigInteger
+     :name         "sum_2"
+     :display_name "My custom name"}))
 
 (deftest ^:parallel col-info-named-aggregation-test
   (testing "col info for an `expression` aggregation w/ a named expression should work as expected"
@@ -173,12 +173,12 @@
 (deftest ^:parallel aggregate-test
   (let [q (lib/query-for-table-name meta/metadata-provider "VENUES")
         result-query
-        {:lib/type :mbql/query,
-         :database (meta/id) ,
-         :type :pipeline,
-         :stages [{:lib/type :mbql.stage/mbql,
-                   :source-table (meta/id :venues) ,
-                   :lib/options {:lib/uuid string?},
+        {:lib/type :mbql/query
+         :database (meta/id)
+         :type :pipeline
+         :stages [{:lib/type :mbql.stage/mbql
+                   :source-table (meta/id :venues)
+                   :lib/options {:lib/uuid string?}
                    :aggregation [[:sum {:lib/uuid string?}
                                   [:field
                                    {:base-type :type/Integer, :lib/uuid string?}
@@ -193,5 +193,62 @@
       (is (=? result-query
               (-> q
                   (lib/aggregate {:operator :sum
-                                  :args [(lib.field/field q (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))]})
+                                  :args [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))]})
                   (dissoc :lib/metadata)))))))
+
+(deftest ^:parallel type-of-sum-test
+  (is (= :type/BigInteger
+         (lib.metadata.calculation/type-of
+          lib.tu/venues-query
+          [:sum
+           {:lib/uuid (str (random-uuid))}
+           [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]]))))
+
+(deftest ^:parallel type-of-test
+  (testing "Make sure we can calculate correct type information for an aggregation clause like"
+    (doseq [tag  [:max
+                  :median
+                  :percentile
+                  :sum
+                  :sum-where]
+            arg  (let [field [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]]
+                   [field
+                    [:+ {:lib/uuid (str (random-uuid))} field 1]
+                    [:- {:lib/uuid (str (random-uuid))} field 1]
+                    [:* {:lib/uuid (str (random-uuid))} field 1]])
+            :let [clause [tag
+                          {:lib/uuid (str (random-uuid))}
+                          arg]]]
+      (testing (str \newline (pr-str clause))
+        (is (= (condp = (first arg)
+                 :field :metabase.lib.schema.expression/type.unknown
+                 :type/*)
+               (lib.schema.expression/type-of clause)))
+        (is (= (condp = (first arg)
+                 :field :type/BigInteger
+                 :type/Integer)
+               (lib.metadata.calculation/type-of lib.tu/venues-query clause)))))))
+
+(deftest ^:parallel expression-ref-inside-aggregation-type-of-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/expression "double-price" (lib/* (lib/field (meta/id :venues :price)) 2))
+                  (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))]
+    (is (=? [{:lib/type     :metadata/field
+              :base_type    :type/Integer
+              :name         "sum_double-price"
+              :display_name "Sum of double-price"}]
+            (lib/aggregations query)))
+    (is (= :type/Integer
+           (lib/type-of query (first (lib/aggregations query)))))))
+
+(deftest ^:parallel preserve-field-settings-metadata-test
+  (testing "Aggregation metadata should return the `:settings` for the field being aggregated, for some reason."
+    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/aggregate (lib/sum (lib/field (meta/id :venues :price)))))]
+      (is (=? {:settings     {:is_priceless true}
+               :lib/type     :metadata/field
+               :base_type    :type/Integer
+               :name         "sum_PRICE"
+               :display_name "Sum of Price"
+               :lib/source   :source/aggregations}
+              (lib.metadata.calculation/metadata query (first (lib/aggregations query -1))))))))

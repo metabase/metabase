@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import type { ComponentStory } from "@storybook/react";
 
 import { createMockDatabase } from "metabase-types/api/mocks";
+import Database from "metabase-lib/metadata/Database";
 
 import { getHelpText } from "./ExpressionEditorTextfield/helper-text-strings";
 import ExpressionEditorHelpText, {
@@ -17,7 +18,11 @@ const Template: ComponentStory<typeof ExpressionEditorHelpText> = args => {
   const target = useRef(null);
 
   const props: ExpressionEditorHelpTextProps = {
-    helpText: getHelpText("datetime-diff", createMockDatabase(), "UTC"),
+    helpText: getHelpText(
+      "datetime-diff",
+      new Database(createMockDatabase()),
+      "UTC",
+    ),
     width: 397,
     target,
   };
