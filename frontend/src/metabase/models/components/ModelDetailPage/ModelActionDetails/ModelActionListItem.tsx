@@ -95,7 +95,7 @@ function ModelActionListItem({
           <ActionTitle to={actionUrl}>{action.name}</ActionTitle>
           <ActionSubtitle>
             {action.type === "implicit" && (
-              <ActionSubtitlePart>{t`Basic`}</ActionSubtitlePart>
+              <ActionSubtitlePart>{t`Basic action`}</ActionSubtitlePart>
             )}
             {action.public_uuid && (
               <ActionSubtitlePart>{t`Public action form`}</ActionSubtitlePart>
