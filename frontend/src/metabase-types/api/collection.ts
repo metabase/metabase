@@ -62,6 +62,7 @@ export interface CollectionItem<T = CollectionItemModel> {
   display?: CardDisplayType;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
+  moderated_status?: string;
   getIcon: () => { name: string };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;
