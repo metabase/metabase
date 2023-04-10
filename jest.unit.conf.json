@@ -35,7 +35,8 @@
   "globalSetup": "<rootDir>/frontend/test/global-setup.js",
   "globals": {
     "ace": {},
-    "ga": {}
+    "ga": {},
+    "document": {}
   },
   "coverageDirectory": "./coverage",
   "coverageReporters": ["html", "lcov"],
