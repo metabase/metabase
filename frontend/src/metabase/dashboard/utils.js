@@ -103,6 +103,13 @@ export function getAllDashboardCards(dashboard) {
   return results;
 }
 
+export function isEditDashboardActionsEnabled(dashboard, databases) {
+  return dashboard.ordered_cards.every(cardData => {
+    const id = cardData.card.database_id;
+    return databases[id]?.settings?.["database-enable-actions"];
+  });
+}
+
 export function getDashboardType(id) {
   if (id == null || typeof id === "object") {
     // HACK: support inline dashboards

@@ -30,6 +30,7 @@ import {
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
+import { isEditDashboardActionsEnabled } from "metabase/dashboard/utils";
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
 import {
@@ -215,12 +216,12 @@ class DashboardHeader extends Component {
 
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
-    // check the dashboard card's source database,
+    // check each dashboard card's source database,
     // and check if the database has actions enabled
-    const hasModelActionsEnabled = dashboard.ordered_cards.every(cardData => {
-      const id = cardData.card.database_id;
-      return databases[id]?.settings?.["database-enable-actions"];
-    });
+    const hasModelActionsEnabled = isEditDashboardActionsEnabled(
+      dashboard,
+      databases,
+    );
 
     const buttons = [];
     const extraButtons = [];
