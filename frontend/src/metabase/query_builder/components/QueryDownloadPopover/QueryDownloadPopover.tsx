@@ -6,6 +6,7 @@ import { exportFormats } from "metabase/lib/urls";
 import { canSavePng } from "metabase/visualizations";
 import { Dataset } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Question from "metabase-lib/Question";
 import {
   DownloadButtonIcon,
   DownloadButtonRoot,
@@ -15,7 +16,7 @@ import {
 } from "./QueryDownloadPopover.styled";
 
 interface OwnProps {
-  display: string;
+  question: Question;
   result: Dataset;
 }
 
@@ -29,9 +30,9 @@ type QueryDownloadPopoverProps = StateProps;
 
 const mapStateToProps = (
   state: State,
-  { display, result }: OwnProps,
+  { question, result }: OwnProps,
 ): StateProps => ({
-  canDownloadImage: canSavePng(display),
+  canDownloadImage: canSavePng(question.display()),
   hasTruncatedResults:
     result.data != null && result.data.rows_truncated != null,
   limitedDownloadSizeText:
