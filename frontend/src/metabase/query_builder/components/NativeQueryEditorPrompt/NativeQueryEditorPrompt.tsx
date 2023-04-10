@@ -37,12 +37,12 @@ const NativeQueryEditorPrompt = ({
         return Promise.resolve(undefined);
       }
 
-      const queryText = await MetabotApi.databasePromptQuery({
+      const { sql } = await MetabotApi.databasePromptQuery({
         databaseId,
         question: prompt,
       });
 
-      onQueryGenerated(queryText);
+      onQueryGenerated(sql);
     },
     [prompt],
   );
