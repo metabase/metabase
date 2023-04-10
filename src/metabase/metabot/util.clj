@@ -99,7 +99,9 @@
   [{:keys [result_metadata]}]
   (into {}
         (for [{:keys [sql_name possible_values]} result_metadata
-              :when (seq possible_values)]
+              :when (and (seq possible_values)
+                         (<= (count possible_values)
+                             (metabot-settings/enum-cardinality-threshold)))]
           [sql_name
            (format "create type %s_t as enum %s;"
                    sql_name

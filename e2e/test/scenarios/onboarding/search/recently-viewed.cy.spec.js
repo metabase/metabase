@@ -30,12 +30,15 @@ describe("search > recently viewed", () => {
     // which elicits a ViewLog entry
 
     cy.visit("/");
+
+    cy.intercept(`/api/activity/recent_views`).as("recent");
     cy.findByPlaceholderText("Search…").click();
+    cy.wait("@recent");
+
+    cy.findByTestId("loading-spinner").should("not.exist");
   });
 
   it("shows list of recently viewed items", () => {
-    cy.findByTestId("loading-spinner").should("not.exist");
-
     assertRecentlyViewedItem(
       0,
       "Orders in a dashboard",
