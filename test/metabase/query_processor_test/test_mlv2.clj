@@ -117,10 +117,12 @@
   "Tests only: save the original legacy MBQL query immediately after normalization to `::original-query`."
   [qp]
   (fn [query rff context]
-    ;; don't run these tests inside of fixtures when we're initializing things, we're going to have a bad time because
-    ;; test assertions apparently don't work inside fixtures.
-    ;;
-    ;; we can tell if we're inside of a fixture because [[t/*testing-vars*]] will be empty.
-    (when (seq t/*testing-vars*)
+    ;; there seems to be a issue in Hawk JUnit output if it encounters a test assertion when [[t/*testing-vars*]] is
+    ;; empty, which can be the case if the assertion happens inside of a fixture before a test is ran (e.g. queries ran
+    ;; as the result of syncing a database happening inside a test fixture); in this case we still want to run our
+    ;; tests, so create some fake test var context so it doesn't fail.
+    (if (empty? t/*testing-vars*)
+      (binding [t/*testing-vars* [#'test-mlv2-conversion]]
+        (test-mlv2-conversion query))
       (test-mlv2-conversion query))
     (qp query rff context)))
