@@ -67,7 +67,7 @@ const NativeQueryEditorPrompt = ({
 
       {error != null ? (
         <ErrorContent
-          error={error?.message}
+          error={(error as any)?.data?.message}
           onRerun={() => generateQuery(false)}
           onRephrase={() => generateQuery(true)}
         />

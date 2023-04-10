@@ -23,10 +23,14 @@ import { connect } from "react-redux";
 import slugg from "slugg";
 
 import { isEventOverElement } from "metabase/lib/dom";
-import { getEngineNativeAceMode } from "metabase/lib/engine";
+import {
+  getEngineNativeAceMode,
+  getEngineNativeType,
+} from "metabase/lib/engine";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
+import { getSetting } from "metabase/selectors/settings";
 
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
@@ -89,7 +93,7 @@ class NativeQueryEditor extends Component {
       dataReference: true,
       variables: true,
       snippets: true,
-      promptQueries: true,
+      promptInput: true,
     },
   };
 
@@ -521,10 +525,25 @@ class NativeQueryEditor extends Component {
     this._editor.clearSelection();
   };
 
+  handleQueryGenerated = queryText => {
+    this.handleQueryUpdate(queryText);
+    this._editor.focus();
+  };
+
+  isPromptInputVisible = () => {
+    const { canUsePromptInput } = this.props;
+    const database = this.props.query.database();
+    const isSupported =
+      database != null && getEngineNativeType(database.engine) === "sql";
+
+    return isSupported && canUsePromptInput && this.state.isPromptInputVisible;
+  };
+
   render() {
     const {
       question,
       query,
+
       setParameterValue,
       readOnly,
       isNativeEditorOpen,
@@ -540,7 +559,8 @@ class NativeQueryEditor extends Component {
       sidebarFeatures,
       canChangeDatabase,
     } = this.props;
-    const { isPromptInputVisible } = this.state;
+
+    const isPromptInputVisible = this.isPromptInputVisible();
 
     const parameters = query.question().parameters();
 
@@ -591,7 +611,7 @@ class NativeQueryEditor extends Component {
         {isPromptInputVisible && (
           <NativeQueryEditorPrompt
             databaseId={query.databaseId()}
-            onQueryGenerated={this.handleQueryUpdate}
+            onQueryGenerated={this.handleQueryGenerated}
             onClose={this.togglePromptVisibility}
           />
         )}
@@ -657,6 +677,10 @@ class NativeQueryEditor extends Component {
   }
 }
 
+const mapStateToProps = state => ({
+  canUsePromptInput: getSetting(state, "is-metabot-enabled"),
+});
+
 const mapDispatchToProps = dispatch => ({
   fetchQuestion: async id => {
     const action = await dispatch(
@@ -674,5 +698,5 @@ export default _.compose(
   Databases.loadList({ loadingAndErrorWrapper: false }),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
-  connect(null, mapDispatchToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(NativeQueryEditor);

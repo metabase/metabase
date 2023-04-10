@@ -276,9 +276,11 @@ describe("scenarios > question > native", () => {
 
   describe("prompts", () => {
     const PROMPT = "orders count";
-    const PROMPT_RESPONSE = "select count(*) from orders";
+    const PROMPT_RESPONSE = { sql: "select count(*) from orders" };
 
     beforeEach(() => {
+      cy.signInAsAdmin();
+      cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
       cy.intercept(
         "POST",
         "/api/metabot/database/**/query",
@@ -318,6 +320,7 @@ describe("scenarios > question > native", () => {
       openNativeEditor();
       cy.findByLabelText("Ask a question").click();
 
+      // When the native query editor is being initialized it acquires focus
       cy.wait(100);
 
       cy.findByPlaceholderText("Ask anything...")

@@ -23,6 +23,7 @@ const propTypes = {
   isRunnable: PropTypes.bool,
   isRunning: PropTypes.bool,
   isPromptInputVisible: PropTypes.bool,
+  canUsePromptInput: PropTypes.bool,
   nativeEditorSelectedText: PropTypes.string,
   runQuery: PropTypes.func,
   snippetCollections: PropTypes.array,
@@ -31,7 +32,7 @@ const propTypes = {
     dataReference: PropTypes.bool,
     variables: PropTypes.bool,
     snippets: PropTypes.bool,
-    promptQueries: PropTypes.bool,
+    promptInput: PropTypes.bool,
   },
   onShowPromptInput: PropTypes.func,
 };
@@ -52,6 +53,7 @@ const NativeQueryEditorSidebar = props => {
     snippets,
     features,
     onShowPromptInput,
+    canUsePromptInput,
   } = props;
 
   // hide the snippet sidebar if there aren't any visible snippets/collections
@@ -76,7 +78,7 @@ const NativeQueryEditorSidebar = props => {
 
   return (
     <Container>
-      {features.promptQueries && !isPromptInputVisible ? (
+      {canUsePromptInput && features.promptInput && !isPromptInputVisible ? (
         <Tooltip tooltip={t`Ask a question`}>
           <SidebarButton
             aria-label={t`Ask a question`}
