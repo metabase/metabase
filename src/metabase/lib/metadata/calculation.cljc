@@ -186,7 +186,9 @@
    (metadata query -1 query))
   ([query x]
    (metadata query -1 x))
-  ([query stage-number x]
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    x]
    (metadata-method query stage-number x)))
 
 (mu/defn describe-query :- ::lib.schema.common/non-blank-string
