@@ -23,7 +23,7 @@
      {:api-key      (metabot-settings/openai-api-key)
       :organization (metabot-settings/openai-organization)})
     (catch Exception e
-      (log/warn "Exception when calling invoke-metabot: %s" (.getMessage e))
+      (log/warnf "Exception when calling invoke-metabot: %s" (.getMessage e))
       (throw
         ;; If we have ex-data, we'll assume were intercepting an openai.api/create-chat-completion response
         (if-some [status (:status (ex-data e))]
