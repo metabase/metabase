@@ -11,7 +11,7 @@
            ffirst
            double))
 
-(deftest test-case-aggregations
+(deftest ^:parallel test-case-aggregations
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 116.0 (test-case [:sum [:case [[[:< [:field (mt/id :venues :price) nil] 2] 2]
                                           [[:< [:field (mt/id :venues :price) nil] 4] 1]]]])))
@@ -30,19 +30,29 @@
                               [:case [[[:and [:< [:field (mt/id :venues :price) nil] 4]
                                         [:or [:starts-with [:field (mt/id :venues :name) nil] "M"]
                                          [:ends-with [:field (mt/id :venues :name) nil] "t"]]]
-                                       [:field (mt/id :venues :price) nil]]]]]))))
+                                       [:field (mt/id :venues :price) nil]]]]]))))))
+
+(deftest segments-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use segments in case"
       (mt/with-temp Segment [{segment-id :id} {:table_id   (mt/id :venues)
                                                :definition {:source-table (mt/id :venues)
                                                             :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
-        (is (=  179.0  (test-case [:sum [:case [[[:segment segment-id] [:field (mt/id :venues :price) nil]]]]])))))
+        (is (= 179.0
+               (test-case [:sum [:case [[[:segment segment-id] [:field (mt/id :venues :price) nil]]]]])))))))
+
+(deftest metrics-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use case in metric"
       (mt/with-temp Metric [{metric-id :id} {:table_id   (mt/id :venues)
                                              :definition {:source-table (mt/id :venues)
                                                           :aggregation  [:sum
                                                                          [:case [[[:< [:field (mt/id :venues :price) nil] 4]
                                                                                   [:field (mt/id :venues :price) nil]]]]]}}]
-        (is (= 179.0 (test-case [:metric metric-id])))))
+        (is (= 179.0 (test-case [:metric metric-id])))))))
+
+(deftest ^:parallel breakout-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use case with breakout"
       (is (= [[2 0.0]
               [3 0.0]
@@ -58,7 +68,7 @@
                   (map (fn [[k v]]
                          [(long k) (double v)]))))))))
 
-(deftest test-case-aggregations+expressions
+(deftest ^:parallel test-case-aggregations+expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
     (testing "Can we use case in metric expressions"
       (is (= 90.5  (test-case [:+ [:/ [:sum [:case [[[:< [:field (mt/id :venues :price) nil] 4] [:field (mt/id :venues :price) nil]]]
@@ -67,12 +77,12 @@
       (is (= 194.5 (test-case [:sum [:case [[[:< [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]
                                             [[:< [:field (mt/id :venues :price) nil] 4] [:+ [:/ [:field (mt/id :venues :price) nil] 2] 1]]]]]))))))
 
-(deftest test-case-normalization
+(deftest ^:parallel test-case-normalization
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 116.0 (test-case ["sum" ["case" [[["<" ["field-id" (mt/id :venues :price)] 2] 2]
                                             [["<" ["field-id" (mt/id :venues :price)] 4] 1]]]])))))
 
-(deftest test-case-expressions
+(deftest ^:parallel test-case-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= [nil -2.0 -1.0]
            (->> {:expressions {"case_test" [:case [[[:< [:field (mt/id :venues :price) nil] 2] -1.0]
@@ -84,7 +94,7 @@
                 distinct
                 sort)))))
 
-(deftest two-case-functions-test
+(deftest ^:parallel two-case-functions-test
   (testing "We should support expressions with two case statements (#15107)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
       (mt/dataset sample-dataset

@@ -3,9 +3,10 @@
    [clojure.test :refer :all]
    [metabase.models.metric :refer [Metric]]
    [metabase.models.segment :refer [Segment]]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 179.0
            (->> {:aggregation [[:sum-where
@@ -14,8 +15,10 @@
                 (mt/run-mbql-query venues)
                 mt/rows
                 ffirst
-                double)))
+                double)))))
 
+(deftest ^:parallel normalize-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Should get normalized correctly and work as expected"
       (is (= 179.0
              (->> {:aggregation [["sum-where"
@@ -26,7 +29,7 @@
                   ffirst
                   double))))))
 
-(deftest compound-condition-test
+(deftest ^:parallel compound-condition-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 34.0
            (->> {:aggregation [[:sum-where
@@ -39,7 +42,7 @@
                 ffirst
                 double)))))
 
-(deftest filter-test
+(deftest ^:parallel filter-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= nil
            (->> {:aggregation [[:sum-where [:field (mt/id :venues :price) nil] [:< [:field (mt/id :venues :price) nil] 4]]]
@@ -48,7 +51,7 @@
                 mt/rows
                 ffirst)))))
 
-(deftest breakout-test
+(deftest ^:parallel breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= [[2 0.0]
             [3 0.0]
@@ -65,7 +68,7 @@
                 (map (fn [[k v]]
                        [(long k) (double v)])))))))
 
-(deftest sum-where-inside-expressions-test
+(deftest ^:parallel sum-where-inside-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
     (is (= 90.5
            (->> {:aggregation [[:+
@@ -82,9 +85,9 @@
 
 (deftest segment-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
-    (mt/with-temp Segment [{segment-id :id} {:table_id   (mt/id :venues)
-                                             :definition {:source-table (mt/id :venues)
-                                                          :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
+    (t2.with-temp/with-temp [Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                       :definition {:source-table (mt/id :venues)
+                                                                    :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
       (is (= 179.0
              (->> {:aggregation [[:sum-where [:field (mt/id :venues :price) nil] [:segment segment-id]]]}
                   (mt/run-mbql-query venues)
@@ -94,11 +97,11 @@
 
 (deftest metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
-    (mt/with-temp Metric [{metric-id :id} {:table_id   (mt/id :venues)
-                                           :definition {:source-table (mt/id :venues)
-                                                        :aggregation  [:sum-where
-                                                                       [:field (mt/id :venues :price) nil]
-                                                                       [:< [:field (mt/id :venues :price) nil] 4]]}}]
+    (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
+                                                     :definition {:source-table (mt/id :venues)
+                                                                  :aggregation  [:sum-where
+                                                                                 [:field (mt/id :venues :price) nil]
+                                                                                 [:< [:field (mt/id :venues :price) nil] 4]]}}]
       (is (= 179.0
              (->> {:aggregation [[:metric metric-id]]}
                   (mt/run-mbql-query venues)
