@@ -2616,6 +2616,8 @@
                       PermissionsGroupMembership [_all-pgm {:user_id (:id all-user) :group_id (:id all-pg)}]
                       User                       [admin-user {:first_name "Admin-User" :email "mr.admin@user.com"}]
                       PermissionsGroupMembership [_admin-pgm {:user_id (:id admin-user) :group_id (:id admin-pg)}]]
+        (is (= (str "set of ids for group " (:id all-pg))
+               (t2/select-fn-set :object :permissions {:where [:= :group_id (:id all-pg)]})))
         (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params for admin-user"
           (testing "without search query"
             (mt/user-http-request admin-user :get 200 (param-values-url field-filter-card (:field-values param-keys))))
