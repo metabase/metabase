@@ -8,8 +8,8 @@
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card]]
-            [metabase.test :as mt]
-            [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest metabot-only-works-on-models-test
   (testing "POST /api/metabot/model/:model-id won't work for a table endpoint"
@@ -152,16 +152,16 @@
                    :type     :query
                    :query    {:source-table (mt/id :orders)}}
                   :dataset true}]
-          (with-redefs [metabot-client/*bot-endpoint*   (fn [_ _]
-                                                          (throw (ex-info
-                                                                  "Too many requests"
-                                                                  {:message "Too many requests"
-                                                                   :status  429})))
-                        metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
-            (let [{:keys [message]} (mt/user-http-request :rasta :post 429
-                                                          (format "/metabot/database/%s" (mt/id))
-                                                          {:question "Doesn't matter"})]
-              (is (true? (str/includes? message "The bot server is under heavy load"))))))))
+         (with-redefs [metabot-client/*bot-endpoint*   (fn [_ _]
+                                                         (throw (ex-info
+                                                                 "Too many requests"
+                                                                 {:message "Too many requests"
+                                                                  :status  429})))
+                       metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
+           (let [{:keys [message]} (mt/user-http-request :rasta :post 429
+                                                         (format "/metabot/database/%s" (mt/id))
+                                                         {:question "Doesn't matter"})]
+             (is (true? (str/includes? message "The bot server is under heavy load"))))))))
     (testing "Not having the right API keys set returns a useful message"
       (mt/dataset sample-dataset
         (t2.with-temp/with-temp
@@ -171,16 +171,16 @@
                    :type     :query
                    :query    {:source-table (mt/id :orders)}}
                   :dataset true}]
-          (with-redefs [metabot-client/*bot-endpoint*   (fn [_ _]
-                                                          (throw (ex-info
-                                                                  "Unauthorized"
-                                                                  {:message "Unauthorized"
-                                                                   :status  401})))
-                        metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
-            (let [{:keys [message]} (mt/user-http-request :rasta :post 400
-                                                          (format "/metabot/database/%s" (mt/id))
-                                                          {:question "Doesn't matter"})]
-              (is (true? (str/includes? message "Bot credentials are incorrect or not set"))))))))
+         (with-redefs [metabot-client/*bot-endpoint*   (fn [_ _]
+                                                         (throw (ex-info
+                                                                 "Unauthorized"
+                                                                 {:message "Unauthorized"
+                                                                  :status  401})))
+                       metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
+           (let [{:keys [message]} (mt/user-http-request :rasta :post 400
+                                                         (format "/metabot/database/%s" (mt/id))
+                                                         {:question "Doesn't matter"})]
+             (is (true? (str/includes? message "Bot credentials are incorrect or not set"))))))))
     (testing "Too many tokens used returns a useful message"
       (mt/dataset sample-dataset
         (mt/with-temp* [Card [_
@@ -190,15 +190,15 @@
                                 :type     :query
                                 :query    {:source-table (mt/id :orders)}}
                                :dataset true}]]
-          (let [error-code "context_length_exceeded"
+          (let [error-code    "context_length_exceeded"
                 error-message "This model's maximum context length is 8192 tokens. However, your messages resulted in 14837 tokens. Please reduce the length of the messages."]
             (with-redefs [metabot-client/*bot-endpoint*   (fn [_ _]
                                                             (throw (ex-info
                                                                     error-message
-                                                                    {:body    (json/generate-string
-                                                                               {:error {:message error-message
-                                                                                        :code    error-code}})
-                                                                     :status  400})))
+                                                                    {:body   (json/generate-string
+                                                                              {:error {:message error-message
+                                                                                       :code    error-code}})
+                                                                     :status 400})))
                           metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
               (let [{:keys [message]} (mt/user-http-request :rasta :post 400
                                                             (format "/metabot/database/%s" (mt/id))

@@ -90,14 +90,14 @@
   [{:keys [database user_prompt prompt_template_versions] :as context}]
   (log/infof "Metabot is inferring sql for database '%s' with prompt '%s'." (:id database) user_prompt)
   (if (metabot-settings/is-metabot-enabled)
-    (let [{:keys [prompt_template version prompt]} (metabot-util/create-prompt context)
+    (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)
           sql (or
-                (metabot-util/find-result
-                  metabot-util/extract-sql
-                  (metabot-client/invoke-metabot prompt))
-                (log/infof "No sql inferred for database '%s' with prompt '%s'." (:id database) user_prompt))]
-      {:sql sql
+               (metabot-util/find-result
+                metabot-util/extract-sql
+                (metabot-client/invoke-metabot prompt))
+               (log/infof "No sql inferred for database '%s' with prompt '%s'." (:id database) user_prompt))]
+      {:sql                      sql
        :prompt_template_versions (conj
-                                   (vec prompt_template_versions)
-                                   (format "%s:%s" prompt_template version))})
+                                  (vec prompt_template_versions)
+                                  (format "%s:%s" prompt_template version))})
     (log/warn "Metabot is not enabled")))

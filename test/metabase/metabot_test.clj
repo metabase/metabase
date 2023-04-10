@@ -22,11 +22,11 @@
                                :messages        [{:role "system", :content "The system prompt"}
                                                  {:role "assistant", :content "%%DATABASE:MODEL_JSON_SUMMARY%%"}
                                                  {:role "user", :content "A '%%USER_PROMPT%%'"}]}}
-   :infer_viz   {:latest {:prompt_template "infer_viz",
-                          :version         "0001",
-                          :messages        [{:role "system", :content "The system prompt"}
-                                            {:role "assistant", :content "The assistant prompt"}
-                                            {:role "user", :content "The user prompt"}]}}
+   :infer_viz        {:latest {:prompt_template "infer_viz",
+                               :version         "0001",
+                               :messages        [{:role "system", :content "The system prompt"}
+                                                 {:role "assistant", :content "The assistant prompt"}
+                                                 {:role "user", :content "The user prompt"}]}}
    :infer_native_sql {:latest {:prompt_template "infer_native_sql",
                                :version         "0001",
                                :messages        [{:role "system", :content "The system prompt"}

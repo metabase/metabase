@@ -76,7 +76,6 @@
                                  (some (fn [{:keys [sql_name] :as rsmd}] (when (= "SOURCE" sql_name) rsmd)))
                                  :possible_values
                                  set))))
-
                      (:result_metadata model)))))
 
 (deftest denormalize-database-test
@@ -100,20 +99,20 @@
   (testing "We can do prompt lookup and interpolation"
     (with-redefs [metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
       (let [prompt (metabot-util/create-prompt
-                     {:model       {:sql_name         "TEST_MODEL"
-                                    :create_table_ddl "CREATE TABLE TEST_MODEL"}
-                      :user_prompt "Find my data"
-                      :prompt_task :infer_sql})]
-        (= {:prompt_template "infer_sql",
-            :version         "0001",
-            :messages        [{:role "system", :content "The system prompt"}
-                              {:role "assistant", :content "%%MODEL:SQL_NAME%%"}
-                              {:role "assistant", :content "%%MODEL:CREATE_TABLE_DDL%%"}
-                              {:role "user", :content "A '%%USER_PROMPT%%'"}],
-            :prompt          [{:role "system", :content "The system prompt"}
-                              {:role "assistant", :content "TEST_MODEL"}
-                              {:role "assistant", :content "CREATE TABLE TEST_MODEL"}
-                              {:role "user", :content "A 'Find my data'"}]}
+                    {:model       {:sql_name         "TEST_MODEL"
+                                   :create_table_ddl "CREATE TABLE TEST_MODEL"}
+                     :user_prompt "Find my data"
+                     :prompt_task :infer_sql})]
+        (= {:prompt_template   "infer_sql",
+            :version           "0001",
+            :messages          [{:role "system", :content "The system prompt"}
+                                {:role "assistant", :content "TEST_MODEL"}
+                                {:role "assistant", :content "CREATE TABLE TEST_MODEL"}
+                                {:role "user", :content "A 'Find my data'"}],
+            :message_templates [{:role "system", :content "The system prompt"}
+                                {:role "assistant", :content "%%MODEL:SQL_NAME%%"}
+                                {:role "assistant", :content "%%MODEL:CREATE_TABLE_DDL%%"}
+                                {:role "user", :content "A '%%USER_PROMPT%%'"}]}
            prompt)))))
 
 (deftest extract-sql-test
@@ -146,22 +145,22 @@
 (deftest ensure-generated-sql-works-test
   (testing "Ensure the generated sql (including creating a CTE and querying from it) is valid (i.e. produces a result)."
     (mt/test-drivers #{:h2 :postgres :redshift}
-                     (mt/dataset sample-dataset
-                       (mt/with-temp* [Card [{model-name :name :as model}
-                                             {:dataset_query
-                                              {:database (mt/id)
-                                               :type     :query
-                                               :query    {:source-table (mt/id :people)}}
-                                              :dataset true}]]
-                                      (let [{:keys [inner_query] :as denormalized-model} (metabot-util/denormalize-model model)
-                                            sql (metabot-util/bot-sql->final-sql
-                                                  denormalized-model
-                                                  (format "SELECT * FROM %s" model-name))
-                                            results (qp/process-query
-                                                      {:database (mt/id)
-                                                       :type     "native"
-                                                       :native   {:query         sql
-                                                                  :template-tags (update-vals
-                                                                                   (lib-native/template-tags inner_query)
-                                                                                   (fn [m] (update m :id str)))}})]
-                                        (is (some? (seq (get-in results [:data :rows]))))))))))
+      (mt/dataset sample-dataset
+        (mt/with-temp* [Card [{model-name :name :as model}
+                              {:dataset_query
+                               {:database (mt/id)
+                                :type     :query
+                                :query    {:source-table (mt/id :people)}}
+                               :dataset true}]]
+          (let [{:keys [inner_query] :as denormalized-model} (metabot-util/denormalize-model model)
+                sql     (metabot-util/bot-sql->final-sql
+                         denormalized-model
+                         (format "SELECT * FROM %s" model-name))
+                results (qp/process-query
+                         {:database (mt/id)
+                          :type     "native"
+                          :native   {:query         sql
+                                     :template-tags (update-vals
+                                                     (lib-native/template-tags inner_query)
+                                                     (fn [m] (update m :id str)))}})]
+            (is (some? (seq (get-in results [:data :rows]))))))))))
