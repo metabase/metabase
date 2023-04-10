@@ -9,7 +9,7 @@
    [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.test :as mt]))
 
-(deftest ^:parallel and-test
+(deftest and-test
   (mt/test-drivers (mt/normal-drivers)
     (testing ":and, :>, :>="
       (is (= [[55 "Dal Rae Restaurant"       67 33.983  -118.096 4]
@@ -20,10 +20,8 @@
              (mt/formatted-rows :venues
                (mt/run-mbql-query venues
                  {:filter   [:and [:> $id 50] [:>= $price 4]]
-                  :order-by [[:asc $id]]})))))))
+                  :order-by [[:asc $id]]})))))
 
-(deftest ^:parallel and-test-2
-  (mt/test-drivers (mt/normal-drivers)
     (testing ":and, :<, :>, :!="
       (is (= [[21 "PizzaHacker"          58 37.7441 -122.421 2]
               [23 "Taqueria Los Coyotes" 50 37.765  -122.42  2]]
@@ -32,7 +30,7 @@
                  {:filter   [:and [:< $id 24] [:> $id 20] [:!= $id 22]]
                   :order-by [[:asc $id]]})))))))
 
-(deftest ^:parallel filter-by-false-test
+(deftest filter-by-false-test
   (mt/test-drivers (mt/normal-drivers)
     (testing (str "Check that we're checking for non-nil values, not just logically true ones. There's only one place "
                   "(out of 3) that I don't like")

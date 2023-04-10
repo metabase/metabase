@@ -13,7 +13,7 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]))
 
-(deftest ^:parallel explict-join-with-default-options-test
+(deftest explict-join-with-default-options-test
   (testing "Can we specify an *explicit* JOIN using the default options?"
     (let [query (mt/mbql-query venues
                   {:joins [{:source-table $$categories
@@ -41,7 +41,7 @@
                    :alias        "f"}]
        :order-by [[:asc $name]]})))
 
-(deftest ^:parallel left-outer-join-test
+(deftest left-outer-join-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we supply a custom alias? Can we do a left outer join ??"
       (is (= [["Big Red"          "Bayview Brood"]
@@ -63,10 +63,10 @@
               ["Peter Pelican"    "SoMa Squadron"]
               ["Russell Crow"     "Mission Street Murder"]]
              (mt/rows
-              (qp/process-query
-               (query-with-strategy :left-join))))))))
+               (qp/process-query
+                (query-with-strategy :left-join))))))))
 
-(deftest ^:parallel right-outer-join-test
+(deftest right-outer-join-test
   (mt/test-drivers (mt/normal-drivers-with-feature :right-join)
     (testing "Can we do a right outer join?"
       ;; the [nil "Fillmore Flock"] row will either come first or last depending on the driver; the rest of the rows will
@@ -88,10 +88,10 @@
                    (conj rows [nil "Fillmore Flock"]))]
         (is (= rows
                (mt/rows
-                (qp/process-query
-                 (query-with-strategy :right-join)))))))))
+                 (qp/process-query
+                  (query-with-strategy :right-join)))))))))
 
-(deftest ^:parallel inner-join-test
+(deftest inner-join-test
   (mt/test-drivers (mt/normal-drivers-with-feature :inner-join)
     (testing "Can we do an inner join?"
       (is (= [["Big Red"        "Bayview Brood"]
@@ -107,10 +107,10 @@
               ["Peter Pelican"  "SoMa Squadron"]
               ["Russell Crow"   "Mission Street Murder"]]
              (mt/rows
-              (qp/process-query
-               (query-with-strategy :inner-join))))))))
+               (qp/process-query
+                (query-with-strategy :inner-join))))))))
 
-(deftest ^:parallel full-join-test
+(deftest full-join-test
   (mt/test-drivers (mt/normal-drivers-with-feature :full-join)
     (testing "Can we do a full join?"
       (let [rows [["Big Red"          "Bayview Brood"]
@@ -136,10 +136,10 @@
                    (conj rows [nil "Fillmore Flock"]))]
         (is (= rows
                (mt/rows
-                (qp/process-query
-                 (query-with-strategy :full-join)))))))))
+                 (qp/process-query
+                  (query-with-strategy :full-join)))))))))
 
-(deftest ^:parallel automatically-include-all-fields-test
+(deftest automatically-include-all-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we automatically include `:all` Fields?"
       (is (= {:columns (mapv mt/format-name ["id" "name" "flock_id" "id_2" "name_2"])
@@ -163,15 +163,15 @@
                         [1  "Russell Crow"     4   4   "Mission Street Murder"]]}
              (mt/format-rows-by [int str #(some-> % int) #(some-> % int) identity]
                (mt/rows+column-names
-                (mt/dataset bird-flocks
-                  (mt/run-mbql-query bird
-                    {:joins    [{:source-table $$flock
-                                 :condition    [:= $flock_id &f.flock.id]
-                                 :alias        "f"
-                                 :fields       :all}]
-                     :order-by [[:asc $name]]})))))))))
+                 (mt/dataset bird-flocks
+                   (mt/run-mbql-query bird
+                     {:joins    [{:source-table $$flock
+                                  :condition    [:= $flock_id &f.flock.id]
+                                  :alias        "f"
+                                  :fields       :all}]
+                      :order-by [[:asc $name]]})))))))))
 
-(deftest ^:parallel include-no-fields-test
+(deftest include-no-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we include no Fields (with `:none`)"
       (is (= {:columns (mapv mt/format-name ["id" "name" "flock_id"])
@@ -195,27 +195,27 @@
                         [1  "Russell Crow"     4]]}
              (mt/format-rows-by [#(some-> % int) str #(some-> % int)]
                (mt/rows+column-names
-                (mt/dataset bird-flocks
-                  (mt/run-mbql-query bird
-                    {:joins    [{:source-table $$flock
-                                 :condition    [:= $flock_id &f.flock.id]
-                                 :alias        "f"
-                                 :fields       :none}]
-                     :order-by [[:asc $name]]})))))))))
+                 (mt/dataset bird-flocks
+                   (mt/run-mbql-query bird
+                     {:joins    [{:source-table $$flock
+                                  :condition    [:= $flock_id &f.flock.id]
+                                  :alias        "f"
+                                  :fields       :none}]
+                      :order-by [[:asc $name]]})))))))))
 
-(deftest ^:parallel specific-fields-test
+(deftest specific-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we include a list of specific Fields?"
       (let [{:keys [columns rows]} (mt/format-rows-by [#(some-> % int) str identity]
                                      (mt/rows+column-names
-                                      (mt/dataset bird-flocks
-                                        (mt/run-mbql-query bird
-                                          {:fields   [$id $name]
-                                           :joins    [{:source-table $$flock
-                                                       :condition    [:= $flock_id &f.flock.id]
-                                                       :alias        "f"
-                                                       :fields       [&f.flock.name]}]
-                                           :order-by [[:asc $name]]}))))]
+                                       (mt/dataset bird-flocks
+                                         (mt/run-mbql-query bird
+                                           {:fields   [$id $name]
+                                            :joins    [{:source-table $$flock
+                                                        :condition    [:= $flock_id &f.flock.id]
+                                                        :alias        "f"
+                                                        :fields       [&f.flock.name]}]
+                                            :order-by [[:asc $name]]}))))]
         (is (= (mapv mt/format-name ["id" "name" "name_2"])
                columns))
         (is (= [[2  "Big Red"         "Bayview Brood"]
@@ -238,20 +238,20 @@
                 [1  "Russell Crow"    "Mission Street Murder"]]
                rows))))))
 
-(deftest ^:parallel all-fields-datetime-field-test
+(deftest all-fields-datetime-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing (str "Do Joins with `:fields``:all` work if the joined table includes Fields that come back wrapped in"
                   " `:datetime-field` forms?")
       (let [{:keys [columns rows]} (mt/format-rows-by [int identity identity int identity int int]
                                      (mt/rows+column-names
-                                      (mt/run-mbql-query users
-                                        {:source-table $$users
-                                         :joins        [{:source-table $$checkins
-                                                         :alias        "c"
-                                                         :fields       "all"
-                                                         :condition    [:= $id &c.checkins.id]}]
-                                         :order-by     [["asc" &c.checkins.id]]
-                                         :limit        3})))]
+                                       (mt/run-mbql-query users
+                                         {:source-table $$users
+                                          :joins        [{:source-table $$checkins
+                                                          :alias        "c"
+                                                          :fields       "all"
+                                                          :condition    [:= $id &c.checkins.id]}]
+                                          :order-by     [["asc" &c.checkins.id]]
+                                          :limit        3})))]
         (is (= (mapv mt/format-name ["id" "name" "last_login" "id_2" "date" "user_id" "venue_id"])
                columns))
         ;; not sure why only Oracle seems to do this
@@ -260,7 +260,7 @@
                 [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00Z" 3 "2014-09-15T00:00:00Z" 8 56]]
                rows))))))
 
-(deftest ^:parallel select-*-source-query-test
+(deftest select-*-source-query-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join)
                          ;; mongodb doesn't support foreign keys required by this test
                          :mongo)
@@ -281,7 +281,7 @@
         (is (= [[1 5] [2 1] [3 8]]
                rows))))))
 
-(deftest ^:parallel join-against-nested-mbql-query-test
+(deftest join-against-nested-mbql-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we join against a source nested MBQL query?"
       (is (= [[29 "20th Century Cafe" 12  37.775 -122.423 2]
@@ -318,33 +318,33 @@
                       :order-by [[:asc $name]]
                       :limit    3})))))))))
 
-(deftest ^:parallel join-on-field-literal-test
+(deftest join-on-field-literal-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we join on a Field literal for a source query?"
       ;; Also: if you join against an *explicit* source query, do all columns for both queries come back? (Only applies
       ;; if you include `:source-metadata`)
-      (is (= {:rows    [[1 3 46 3] [2 9 40 9] [4 7 5 7]]
+      (is (= {:rows [[1 3 46 3] [2 9 40 9] [4 7 5 7]]
               :columns [(mt/format-name "venue_id") "count" (mt/format-name "category_id") "count_2"]}
              (mt/format-rows-by [int int int int]
                (mt/rows+column-names
-                (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                                   (mt/mbql-query venues
-                                                     {:aggregation [[:count]]
-                                                      :breakout    [$category_id]}))]
-                  (mt/run-mbql-query checkins
-                    {:source-query {:source-table $$checkins
-                                    :aggregation  [[:count]]
-                                    :breakout     [$venue_id]}
-                     :joins
-                     [{:fields       :all
-                       :alias        "venues"
-                       :source-table (str "card__" card-id)
-                       :strategy     :inner-join
-                       :condition    [:=
-                                      [:field "count" {:base-type :type/Number}]
-                                      [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
-                     :order-by     [[:asc $venue_id]]
-                     :limit        3})))))))))
+                 (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                                    (mt/mbql-query venues
+                                                      {:aggregation [[:count]]
+                                                       :breakout    [$category_id]}))]
+                   (mt/run-mbql-query checkins
+                     {:source-query {:source-table $$checkins
+                                     :aggregation  [[:count]]
+                                     :breakout     [$venue_id]}
+                      :joins
+                      [{:fields       :all
+                        :alias        "venues"
+                        :source-table (str "card__" card-id)
+                        :strategy         :inner-join
+                        :condition    [:=
+                                       [:field "count" {:base-type :type/Number}]
+                                       [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
+                      :order-by     [[:asc $venue_id]]
+                      :limit        3})))))))))
 
 (deftest aggregate-join-results-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -399,7 +399,7 @@
                       :order-by     [[:asc $venue_id]]
                       :limit        3})))))))))
 
-(deftest ^:parallel joined-field-in-time-interval-test
+(deftest joined-field-in-time-interval-test
   (mt/test-drivers (mt/normal-drivers-with-feature :right-join)
     (testing "Should be able to use a joined field in a `:time-interval` clause"
       (is (= {:rows    []
@@ -414,7 +414,7 @@
                   :order-by [[:asc &c.checkins.id]]
                   :limit    10})))))))
 
-(deftest ^:parallel deduplicate-column-names-test
+(deftest deduplicate-column-names-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing (str "Do we gracefully handle situtations where joins would produce multiple columns with the same name? "
                   "(Multiple columns named `id` in the example below)")
@@ -475,7 +475,7 @@
                     :order-by [[:asc $id]]
                     :limit    2}))))))))
 
-(deftest ^:parallel joined-date-filter-test
+(deftest joined-date-filter-test
   ;; TIMEZONE FIXME — The excluded drivers below don't have TIME types, so the `attempted-murders` dataset doesn't
   ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still load
   ;; the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
@@ -495,7 +495,7 @@
                              :fields       [&attempts_joined.datetime_tz]
                              :source-table $$attempts}]}))))))))
 
-(deftest ^:parallel expressions-referencing-joined-aggregation-expressions-test
+(deftest expressions-referencing-joined-aggregation-expressions-test
   (testing (mt/normal-drivers-with-feature :nested-queries :left-join :expressions)
     (testing "Should be able to use expressions against columns that come from aggregation expressions in joins"
       (is (= [[1 "Red Medicine" 4 10.065 -165.374 3 1.5 4 3 2 1]
@@ -521,7 +521,7 @@
                                  :fields       :all}]
                   :limit       3})))))))
 
-(deftest ^:parallel join-source-queries-with-joins-test
+(deftest join-source-queries-with-joins-test
   (testing "Should be able to join against source queries that themselves contain joins (#12928)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :foreign-keys)
       (mt/dataset sample-dataset
@@ -558,37 +558,62 @@
               (is (= [["Doohickey" "Affiliate" 783 "Doohickey" 3]
                       ["Doohickey" "Facebook" 816 "Doohickey" 3]]
                      (mt/formatted-rows [str str int str int]
+                       (qp/process-query query)))))))
+
+        (testing "and custom expressions (#13649) (#18086)"
+          (let [query (mt/mbql-query orders
+                        {:source-query {:source-table $$orders
+                                        :aggregation  [[:count]]
+                                        :breakout     [$product_id]
+                                        :filter       [:= $product_id 4]}
+                         :joins        [{:fields       :all
+                                         :source-query {:source-table $$orders
+                                                        :aggregation  [[:count]]
+                                                        :breakout     [$product_id]
+                                                        :filter       [:and
+                                                                       [:= $product_id 4]
+                                                                       [:> $quantity 3]]}
+                                         :condition    [:= $product_id &Q2.orders.product_id]
+                                         :alias        "Q2"}]
+                         :expressions {:expr [:/
+                                              [:field "count" {:base-type :type/BigInteger, :join-alias "Q2"}]
+                                              [:field "count" {:base-type :type/BigInteger}]]}
+                         :limit        2})]
+            (mt/with-native-query-testing-context query
+              ;; source.product_id, source.count, source.expr, source.Q2__product_id, source.Q2__count
+              (is (= [[4 89 0.46 4 41]]
+                     (mt/formatted-rows [int int 2.0 int int]
                        (qp/process-query query)))))))))))
 
-(deftest ^:parallel join-source-queries-with-joins-and-custom-expressions-test
-  (testing "Should be able to join against source queries that themselves contain joins and custom expressions (#13649) (#18086)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :foreign-keys)
+(deftest join-against-saved-question-with-sort-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (testing "Should be able to join against a Saved Question that is sorted (#13744)"
       (mt/dataset sample-dataset
-        (let [query (mt/mbql-query orders
-                      {:source-query {:source-table $$orders
-                                      :aggregation  [[:count]]
-                                      :breakout     [$product_id]
-                                      :filter       [:= $product_id 4]}
-                       :joins        [{:fields       :all
-                                       :source-query {:source-table $$orders
-                                                      :aggregation  [[:count]]
-                                                      :breakout     [$product_id]
-                                                      :filter       [:and
-                                                                     [:= $product_id 4]
-                                                                     [:> $quantity 3]]}
-                                       :condition    [:= $product_id &Q2.orders.product_id]
-                                       :alias        "Q2"}]
-                       :expressions {:expr [:/
-                                            [:field "count" {:base-type :type/BigInteger, :join-alias "Q2"}]
-                                            [:field "count" {:base-type :type/BigInteger}]]}
-                       :limit        2})]
+        (let [query (mt/mbql-query products
+                      {:joins    [{:source-query {:source-table $$products
+                                                  :aggregation  [[:count]]
+                                                  :breakout     [$category]
+                                                  :order-by     [[:asc [:aggregation 0]]]}
+                                   :alias        "Q1"
+                                   :condition    [:= $category [:field %category {:join-alias "Q1"}]]
+                                   :fields       :all}]
+                       :order-by [[:asc $id]]
+                       :limit    1})]
           (mt/with-native-query-testing-context query
-            ;; source.product_id, source.count, source.expr, source.Q2__product_id, source.Q2__count
-            (is (= [[4 89 0.46 4 41]]
-                   (mt/formatted-rows [int int 2.0 int int]
+            (is (= [[1
+                     "1018947080336"
+                     "Rustic Paper Wallet"
+                     "Gizmo"
+                     "Swaniawski, Casper and Hilll"
+                     29.46
+                     4.6
+                     "2017-07-19T19:44:56.582Z"
+                     "Gizmo"
+                     51]]
+                   (mt/formatted-rows [int str str str str 2.0 1.0 str str int]
                      (qp/process-query query))))))))))
 
-(deftest ^:parallel join-with-space-in-alias-test
+(deftest join-with-space-in-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Some drivers don't allow Table alises with spaces in them. Make sure joins still work."
       (mt/dataset sample-dataset
@@ -608,7 +633,7 @@
                      (mt/formatted-rows [int int]
                        (qp/process-query query)))))))))))
 
-(deftest ^:parallel joining-nested-queries-with-same-aggregation-test
+(deftest joining-nested-queries-with-same-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing (str "Should be able to join two nested queries with the same aggregation on a Field in their respective "
                   "source queries (#18512)")
@@ -646,7 +671,7 @@
                    (mt/formatted-rows [str int str int]
                      (qp/process-query query))))))))))
 
-(deftest ^:parallel join-against-same-table-as-source-query-source-table-test
+(deftest join-against-same-table-as-source-query-source-table-test
   (testing "Joining against the same table as the source table of the source query should work (#18502)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
       (mt/dataset sample-dataset
@@ -710,7 +735,7 @@
                           ["Widget"    54 "Widget"    3109.31 "Widget"    3.15]]
                          (mt/formatted-rows [str int str 2.0 str 2.0] results))))))))))))
 
-(deftest ^:parallel use-correct-source-alias-for-fields-from-joins-test
+(deftest use-correct-source-alias-for-fields-from-joins-test
   (testing "Make sure we use the correct escaped alias for a Fields coming from joins (#20413)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
       (mt/dataset sample-dataset
@@ -757,7 +782,7 @@
                                          int str str str str 2.0 2.0 str]
                        results))))))))))
 
-(deftest ^:parallel double-quotes-in-join-alias-test
+(deftest double-quotes-in-join-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Make sure our we handle (escape) double quotes in join aliases. Make sure we prevent SQL injection (#20307)"
       (let [expected-rows (mt/rows
@@ -797,7 +822,7 @@
   (str/join (for [i (range length)]
               (nth charset (mod i (count charset))))))
 
-(deftest ^:parallel ^:parallel very-long-join-name-test
+(deftest ^:parallel very-long-join-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Drivers should work correctly even if joins have REALLLLLLY long names (#15978)"
       (doseq [[charset-name charset] charsets
@@ -828,7 +853,7 @@
                      (mt/formatted-rows [int str str str]
                        (qp/process-query query)))))))))))
 
-(deftest ^:parallel join-against-implicit-join-test
+(deftest join-against-implicit-join-test
   (testing "Should be able to explicitly join against an implicit join (#20519)"
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
                            ;; mongodb doesn't support foreign keys required by this test
@@ -853,7 +878,7 @@
                      (mt/formatted-rows [str int int int str]
                        (qp/process-query query)))))))))))
 
-(deftest ^:parallel ^:parallel join-order-test
+(deftest ^:parallel join-order-test
   (testing "Joins should be emitted in the same order as they were specified in MBQL (#15342)"
     (mt/test-drivers (mt/normal-drivers-with-feature :left-join :inner-join)
       ;; For SQL drivers, this is only fixed for drivers using Honey SQL 2. So skip the test for ones still using Honey
@@ -883,7 +908,7 @@
                        (mt/formatted-rows [int int int]
                          (qp/process-query query))))))))))))
 
-(deftest ^:parallel join-with-brakout-and-aggregation-expression
+(deftest join-with-brakout-and-aggregation-expression
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (mt/dataset sample-dataset
       (let [query (mt/mbql-query orders

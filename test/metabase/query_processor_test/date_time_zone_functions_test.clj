@@ -1020,17 +1020,15 @@
       (let [diffs (fn [a-str b-str]
                     (let [units [:second :minute :hour :day :week :month :quarter :year]]
                       (->> (mt/run-mbql-query times
-                             {:filter      [:and [:= a-str $a_dt_tz_text] [:= b-str $b_dt_tz_text]]
+                             {:filter [:and [:= a-str $a_dt_tz_text] [:= b-str $b_dt_tz_text]]
                               :expressions (into {} (for [unit units]
                                                       [(name unit) [:datetime-diff $a_dt_tz $b_dt_tz unit]]))
-                              :fields      (into [] (for [unit units]
-                                                      [:expression (name unit)]))})
+                              :fields (into [] (for [unit units]
+                                                 [:expression (name unit)]))})
                            (mt/formatted-rows (repeat (count units) int))
                            first
                            (zipmap units))))]
-        (run-datetime-diff-time-zone-tests diffs)))))
-
-(deftest datetime-diff-time-zones-athena-test
+        (run-datetime-diff-time-zone-tests diffs))))
   ;; Athena needs special treatment. It supports the `timestamp with time zone` type in query expressions
   ;; but not at rest. Here we create a native query that returns a `timestamp with time zone` type and then
   ;; run another query with `datetime-diff` against it.
