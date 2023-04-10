@@ -163,19 +163,12 @@
           (do-with-pMBQL-query-testing-context
            pMBQL
            (^:once fn* []
-            (try
-              (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database original-query))
-                    mlv2-query        (lib/query metadata-provider pMBQL)
-                    mlv2-metadata     (lib.metadata.calculation/metadata mlv2-query)]
-                (testing (str "Generated column names should match names in QP metadata"
-                              "\n\nActual metadata [:cols]:\n" (u/pprint-to-str (:cols qp-metadata))
-                              "\n\nCalculated metadata:\n" (u/pprint-to-str mlv2-metadata))
-                  ;; Just make sure we can calculate some metadata (any metadata) at this point; making sure it is
-                  ;; CORRECT will be the next step after this.
-                  (is (some? mlv2-metadata))))
-              (catch Throwable e
-                (testing "Failed to calculate metadata for query"
-                  (is (not (Throwable->map e))))))))))))))
+            (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database original-query))
+                  mlv2-query        (lib/query metadata-provider pMBQL)
+                  mlv2-metadata     (lib.metadata.calculation/metadata mlv2-query)]
+              ;; Just make sure we can calculate some metadata (any metadata, even nothing) without throwing an
+              ;; Exception at this point; making sure it is CORRECT will be the next step after this.
+              (is (any? mlv2-metadata)))))))))))
 
 (defn- test-mlv2-conversion [query]
   (when-not (skip-conversion-tests? query)
@@ -209,9 +202,9 @@
     ;; empty, which can be the case if the assertion happens inside of a fixture before a test is ran (e.g. queries ran
     ;; as the result of syncing a database happening inside a test fixture); in this case we still want to run our
     ;; tests, so create some fake test var context so it doesn't fail.
-    (binding [t/*testing-vars* (if (empty? t/*testing-vars*)
-                                 [#'test-mlv2-conversion]
-                                 t/*testing-vars*)
-              *original-query* query]
+    (if (empty? t/*testing-vars*)
+      (binding [t/*testing-vars* [#'test-mlv2-conversion]]
+        (test-mlv2-conversion query))
       (test-mlv2-conversion query))
-    (qp query rff context)))
+    (binding [*original-query* query]
+      (qp query rff context))))

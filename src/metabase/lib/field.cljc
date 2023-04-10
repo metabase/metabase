@@ -66,7 +66,12 @@
   (let [stage         (if-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
                         (lib.util/query-stage query previous-stage-number)
                         (lib.util/query-stage query stage-number))
-        stage-columns (get-in stage [:lib/stage-metadata :columns])]
+        ;; TODO -- it seems a little icky that the existence of `:metabase.lib.stage/cached-metadata` is leaking here,
+        ;; we should look in to fixing this if we can.
+        stage-columns (or (:metabase.lib.stage/cached-metadata stage)
+                          (get-in stage [:lib/stage-metadata :columns])
+                          (throw (ex-info (i18n/tru "Cannot resolve column {0}: stage has no metadata" (pr-str column-name))
+                                          {:query query, :stage-number stage-number, :column-name column-name})))]
     (resolve-column-name-in-metadata column-name stage-columns)))
 
 (mu/defn ^:private resolve-column-name-in-join :- lib.metadata/ColumnMetadata
