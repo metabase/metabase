@@ -7,6 +7,7 @@
    [clojure.walk :as walk]
    [java-time :as t]
    [metabase.config :as config]
+   [metabase.csv :as-alias upload]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -53,6 +54,8 @@
     (if (nil? json-setting)
       true
       json-setting)))
+
+(defmethod driver/database-supports? [:mysql :uploads] [_driver _feat _db] true)
 
 (defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
 
@@ -606,3 +609,12 @@
   (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
           (str (t/zone-id t))))
+
+(defmethod driver/upload-type->database-type :mysql
+  [_driver csv-type]
+  (case csv-type
+    ::upload/varchar_255 "VARCHAR(255)"
+    ::upload/text        "TEXT"
+    ::upload/int         "INTEGER"
+    ::upload/float       "DOUBLE"
+    ::upload/boolean     "BOOLEAN"))
