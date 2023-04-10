@@ -772,12 +772,15 @@
     constraint-param-key->value :- su/Map
     query                       :- (s/maybe su/NonBlankString)]
    (let [dashboard (hydrate dashboard :resolved-params)
-         param     (get (:resolved-params dashboard) param-key)]
-     (when-not param
-       (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
-                       {:resolved-params (keys (:resolved-params dashboard))
-                        :status-code     400})))
-     (custom-values/parameter->values param query (fn [] (chain-filter dashboard param-key constraint-param-key->value query))))))
+         param     (get (:resolved-params dashboard) param-key)
+         _ (when-not param
+             (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
+                             {:resolved-params (keys (:resolved-params dashboard))
+                              :status-code     400})))
+         param-values (custom-values/parameter->values param query )]
+     (if (= param-values ::custom-values/not-found)
+       (chain-filter dashboard param-key constraint-param-key->value query)
+       param-values))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally
