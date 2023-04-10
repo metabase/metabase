@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -6,11 +6,17 @@ import { exportFormats } from "metabase/lib/urls";
 import { canSavePng } from "metabase/visualizations";
 import {
   downloadChartImage,
-  DownloadQueryContext,
   downloadQueryResults,
-} from "metabase/query_builder/actions/downloading";
-import { Dataset } from "metabase-types/api";
+  DownloadQueryResultsOpts,
+} from "metabase/query_builder/actions";
+import {
+  DashboardId,
+  DashCardId,
+  Dataset,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Question from "metabase-lib/Question";
 import {
   DownloadButtonIcon,
   DownloadButtonRoot,
@@ -20,8 +26,14 @@ import {
 } from "./QueryDownloadPopover.styled";
 
 interface OwnProps {
-  context: DownloadQueryContext;
+  question: Question;
   result: Dataset;
+  dashboardId?: DashboardId;
+  dashcardId?: DashCardId;
+  uuid?: string;
+  token?: string;
+  params?: Record<string, unknown>;
+  visualizationSettings?: VisualizationSettings;
 }
 
 interface StateProps {
@@ -31,17 +43,17 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onDownloadQueryResults: (type: string, context: DownloadQueryContext) => void;
-  onDownloadChartImage: (context: DownloadQueryContext) => void;
+  onDownloadQueryResults: (opts: DownloadQueryResultsOpts) => void;
+  onDownloadChartImage: (question: Question) => void;
 }
 
 type QueryDownloadPopoverProps = OwnProps & StateProps & DispatchProps;
 
 const mapStateToProps = (
   state: State,
-  { context, result }: OwnProps,
+  { question, result }: OwnProps,
 ): StateProps => ({
-  canDownloadImage: canSavePng(context.question.display()),
+  canDownloadImage: canSavePng(question.display()),
   hasTruncatedResults:
     result.data != null && result.data.rows_truncated != null,
   limitedDownloadSizeText:
@@ -55,22 +67,37 @@ const mapDispatchToProps: DispatchProps = {
 };
 
 const QueryDownloadPopover = ({
-  context,
+  question,
+  result,
+  dashboardId,
+  dashcardId,
+  uuid,
+  token,
+  params,
+  visualizationSettings,
   canDownloadImage,
   hasTruncatedResults,
   limitedDownloadSizeText,
   onDownloadQueryResults,
   onDownloadChartImage,
 }: QueryDownloadPopoverProps) => {
-  const handleQueryResultsDownload = useCallback(
-    (type: string) => onDownloadQueryResults(type, context),
-    [context, onDownloadQueryResults],
-  );
+  const handleQueryResultsDownload = (type: string) => {
+    onDownloadQueryResults({
+      type,
+      question,
+      result,
+      dashboardId,
+      dashcardId,
+      uuid,
+      token,
+      params,
+      visualizationSettings,
+    });
+  };
 
-  const handleChartImageDownload = useCallback(
-    () => onDownloadChartImage(context),
-    [context, onDownloadChartImage],
-  );
+  const handleChartImageDownload = () => {
+    onDownloadChartImage(question);
+  };
 
   return (
     <DownloadPopoverRoot isExpanded={hasTruncatedResults}>
@@ -87,11 +114,11 @@ const QueryDownloadPopover = ({
         <DownloadButton
           key={type}
           type={type}
-          onDownload={handleQueryResultsDownload}
+          onClick={() => handleQueryResultsDownload(type)}
         />
       ))}
       {canDownloadImage && (
-        <DownloadButton type="png" onDownload={handleChartImageDownload} />
+        <DownloadButton type="png" onClick={handleChartImageDownload} />
       )}
     </DownloadPopoverRoot>
   );
@@ -99,14 +126,12 @@ const QueryDownloadPopover = ({
 
 interface DownloadButtonProps {
   type: string;
-  onDownload: (type: string) => void;
+  onClick?: () => void;
 }
 
-const DownloadButton = ({ type, onDownload }: DownloadButtonProps) => {
-  const handleClick = useCallback(() => onDownload(type), [type, onDownload]);
-
+const DownloadButton = ({ type, onClick }: DownloadButtonProps) => {
   return (
-    <DownloadButtonRoot onClick={handleClick}>
+    <DownloadButtonRoot onClick={onClick}>
       <DownloadButtonIcon name={type} />
       {type}
     </DownloadButtonRoot>

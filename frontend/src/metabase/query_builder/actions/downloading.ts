@@ -11,45 +11,44 @@ import {
 } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 
-export interface DownloadQueryContext {
+export interface DownloadQueryResultsOpts {
+  type: string;
   question: Question;
+  result: Dataset;
   dashboardId?: DashboardId;
   dashcardId?: DashCardId;
   uuid?: string;
   token?: string;
-  result?: Dataset;
   params?: Record<string, unknown>;
   visualizationSettings?: VisualizationSettings;
 }
 
-interface DownloadQueryParams {
+interface DownloadQueryResultsParams {
   method: string;
   url: string;
   params: Record<string, string>;
 }
 
 export const downloadQueryResults =
-  (type: string, context: DownloadQueryContext) => async () => {
-    const params = getDownloadQueryParams(type, context);
+  (opts: DownloadQueryResultsOpts) => async () => {
+    const params = getDownloadQueryParams(opts);
     const response = await getDownloadQueryResponse(params);
-    const fileName = getDownloadFileName(response.headers, type);
+    const fileName = getDownloadFileName(response.headers, opts.type);
     const fileContent = await response.blob();
     openSaveDialog(fileName, fileContent);
   };
 
-const getDownloadQueryParams = (
-  type: string,
-  {
-    question,
-    dashboardId,
-    dashcardId,
-    uuid,
-    token,
-    params = {},
-    result,
-    visualizationSettings,
-  }: DownloadQueryContext,
-): DownloadQueryParams => {
+const getDownloadQueryParams = ({
+  type,
+  question,
+  dashboardId,
+  dashcardId,
+  uuid,
+  token,
+  params = {},
+  result,
+  visualizationSettings,
+}: DownloadQueryResultsOpts): DownloadQueryResultsParams => {
   const cardId = question.id();
   const isSecureDashboardEmbedding = dashcardId != null && token != null;
   if (isSecureDashboardEmbedding) {
@@ -101,7 +100,7 @@ const getDownloadQueryResponse = ({
   url,
   method,
   params,
-}: DownloadQueryParams) => {
+}: DownloadQueryResultsParams) => {
   const body = new URLSearchParams(params);
 
   if (method === "POST") {
@@ -134,13 +133,11 @@ const openSaveDialog = (fileName: string, fileContent: Blob) => {
   link.remove();
 };
 
-export const downloadChartImage =
-  ({ question }: DownloadQueryContext) =>
-  async () => {
-    const fileName = getImageFileName(question);
-    const chartSelector = `[data-card-key='${getCardKey(question.id())}']`;
-    await saveChartImage(chartSelector, fileName);
-  };
+export const downloadChartImage = (question: Question) => async () => {
+  const fileName = getImageFileName(question);
+  const chartSelector = `[data-card-key='${getCardKey(question.id())}']`;
+  await saveChartImage(chartSelector, fileName);
+};
 
 const getImageFileName = (question: Question) => {
   const name = question.displayName() ?? t`New question`;
