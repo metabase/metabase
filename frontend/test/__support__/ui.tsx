@@ -6,7 +6,7 @@ import _ from "underscore";
 import { createMemoryHistory, History } from "history";
 import { Router } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
-import type { Reducer } from "redux";
+import type { Reducer } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
