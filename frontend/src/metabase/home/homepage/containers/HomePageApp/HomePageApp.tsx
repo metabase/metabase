@@ -6,6 +6,7 @@ import { openNavbar } from "metabase/redux/app";
 import { getSetting } from "metabase/selectors/settings";
 import { CollectionItem } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import Database from "metabase-lib/metadata/Database";
 import HomePage from "../../components/HomePage";
 
@@ -23,11 +24,11 @@ const mapStateToProps = (
   { databases, models }: EntityLoaderProps,
 ): StateProps => {
   const hasModels = models.length > 0;
-  const hasNativeWrite = databases.some(database => database.canWrite());
+  const hasSupportedDatabases = databases.some(canUseMetabotOnDatabase);
   const isMetabotEnabled = getSetting(state, "is-metabot-enabled");
 
   return {
-    hasMetabot: hasModels && hasNativeWrite && isMetabotEnabled,
+    hasMetabot: hasModels && hasSupportedDatabases && isMetabotEnabled,
   };
 };
 

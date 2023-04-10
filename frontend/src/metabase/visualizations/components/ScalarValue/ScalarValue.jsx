@@ -3,6 +3,7 @@
  */
 /* eslint-disable react/prop-types */
 import React, { useMemo } from "react";
+import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -53,7 +54,7 @@ const ScalarValue = ({
       fontSize={fontSize}
       data-testid="scalar-value"
     >
-      {value}
+      {value ?? t`null`}
     </ScalarValueWrapper>
   );
 };

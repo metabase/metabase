@@ -14,6 +14,7 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
 import { isNumeric } from "metabase-lib/types/utils/isa";
 import { GaugeArcPath } from "./Gauge.styled";
+import { getValue } from "./utils";
 
 const MAX_WIDTH = 500;
 const PADDING_BOTTOM = 10;
@@ -207,7 +208,7 @@ export default class Gauge extends Component {
       ])
       .clamp(true);
 
-    const value = rows[0][0] || 0;
+    const value = getValue(rows);
     const column = cols[0];
 
     const valuePosition = (value, distance) => {
