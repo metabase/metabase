@@ -55,6 +55,7 @@ describe("search > recently viewed", () => {
   });
 
   it("allows to select an item from keyboard", () => {
+    cy.findByText("Recently viewed");
     cy.get("body").trigger("keydown", { key: "ArrowDown" });
     cy.get("body").trigger("keydown", { key: "ArrowDown" });
     cy.get("body").trigger("keydown", { key: "Enter" });
