@@ -133,7 +133,7 @@
 
 (deftest load-from-csv-table-name-test
   (testing "Upload a CSV file"
-    (mt/test-driver :postgres
+    (mt/test-driver (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (let [file       (csv-file-with ["id" "2" "3"])]
           (testing "Can upload two files with the same name"
