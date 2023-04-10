@@ -761,7 +761,7 @@
     (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
 
 (defmethod driver/upload-type->database-type :postgres
-  [_driver csv-type]
+  [_driver upload-type]
   (case csv-type
     ::upload/varchar_255 "VARCHAR(255)"
     ::upload/text        "TEXT"
