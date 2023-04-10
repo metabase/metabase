@@ -58,7 +58,7 @@
           vec)))
 
 (defn remove-clause
-  "Replace the `target-clause` in `stage` `location`.
+  "Remove the `target-clause` in `stage` `location`.
    If a clause has :lib/uuid equal to the `target-clause` it is removed.
    If `location` contains no clause with `target-clause` no removal happens.
    If the the location is empty, dissoc it from stage."
@@ -66,11 +66,8 @@
   {:pre [(clause? target-clause)]}
   (if-let [target (get stage location)]
     (let [target-uuid (clause-uuid target-clause)
-          result (->> target
-                      (remove (comp #{target-uuid} clause-uuid))
-                      vec
-                      not-empty)]
-      (if result
+          result (into [] (remove (comp #{target-uuid} clause-uuid)) target)]
+      (if (seq result)
         (assoc stage location result)
         (dissoc stage location)))
     stage))

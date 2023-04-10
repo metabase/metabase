@@ -142,6 +142,8 @@
                        (lib/replace-clause (first order-bys) (lib/order-by-clause (lib/field (meta/id :venues :id)))))
           replaced-order-bys (lib/order-bys replaced)]
       (is (not= order-bys replaced-order-bys))
+      (is (=? [:asc {} [:field {} (meta/id :venues :id)]]
+              (first replaced-order-bys)))
       (is (= 2 (count replaced-order-bys)))
       (is (= (second order-bys) (second replaced-order-bys))))))
 
@@ -154,6 +156,8 @@
                      (lib/replace-clause (first breakouts) (lib/field (meta/id :venues :price))))
         replaced-breakouts (lib/current-breakouts replaced)]
     (is (= 2 (count breakouts)))
+    (is (=? [:field {} (meta/id :venues :price)]
+            (first replaced-breakouts)))
     (is (not= breakouts replaced-breakouts))
     (is (= 2 (count replaced-breakouts)))
     (is (= (second breakouts) (second replaced-breakouts)))
