@@ -1,17 +1,23 @@
 (ns metabase.lib.util
   (:refer-clojure :exclude [format])
   (:require
-   #?@(:clj
-       ([potemkin :as p]))
-   #?@(:cljs
-       ([goog.string :as gstring]
-        [goog.string.format :as gstring.format]))
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   #?@(:clj
+       ([potemkin :as p]))
+   #?@(:cljs
+       (["crc-32" :as CRC32]
+        [goog.string :as gstring]
+        [goog.string.format :as gstring.format]))))
+
+#?(:clj
+   (set! *warn-on-reflection* true))
 
 ;; The formatting functionality is only loaded if you depend on goog.string.format.
 #?(:cljs (comment gstring.format/keep-me))
@@ -277,3 +283,87 @@
                      (:joins stage)
                      update-joins)]
          (f query stage-number stage))))))
+
+(mu/defn ^:private string-byte-count :- [:int {:min 0}]
+  "Number of bytes in a string using UTF-8 encoding."
+  [s :- :string]
+  #?(:clj (count (.getBytes (str s) "UTF-8"))
+     :cljs (.. (js/TextEncoder.) (encode s) -length)))
+
+#?(:clj
+   (mu/defn ^:private string-character-at :- [:string {:min 0, :max 1}]
+     [s :- :string
+      i :-[:int {:min 0}]]
+     (str (.charAt ^String s i))))
+
+(mu/defn ^:private truncate-string-to-byte-count :- :string
+  "Truncate string `s` to `max-length-bytes` UTF-8 bytes (as opposed to truncating to some number of
+  *characters*)."
+  [s                :- :string
+   max-length-bytes :- [:int {:min 1}]]
+  #?(:clj
+     (loop [i 0, cumulative-byte-count 0]
+       (cond
+         (= cumulative-byte-count max-length-bytes) (subs s 0 i)
+         (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
+         (>= i (count s))                           s
+         :else                                      (recur (inc i)
+                                                           (+
+                                                            cumulative-byte-count
+                                                            (string-byte-count (string-character-at s i))))))
+
+     :cljs
+     (let [buf (js/Uint8Array. max-length-bytes)
+           result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
+       (subs s 0 (.-read result)))))
+
+(def ^:private truncate-alias-max-length-bytes
+  "Length to truncate column and table identifiers to. See [[metabase.driver.impl/default-alias-max-length-bytes]] for
+  reasoning."
+  60)
+
+(def ^:private truncated-alias-hash-suffix-length
+  "Length of the hash suffixed to truncated strings by [[truncate-alias]]."
+  ;; 8 bytes for the CRC32 plus one for the underscore
+  9)
+
+(mu/defn ^:private crc32-checksum :- [:string {:min 8, :max 8}]
+  "Return a 4-byte CRC-32 checksum of string `s`, encoded as an 8-character hex string."
+  [s :- :string]
+  (let [s #?(:clj (Long/toHexString (.getValue (doto (java.util.zip.CRC32.)
+                                                 (.update (.getBytes ^String s "UTF-8")))))
+             :cljs (-> (CRC32/str s 0)
+                       (unsigned-bit-shift-right 0) ; see https://github.com/SheetJS/js-crc32#signed-integers
+                       (.toString 16)))]
+    ;; pad to 8 characters if needed. Might come out as less than 8 if the first byte is `00` or `0x` or something.
+    (loop [s s]
+      (if (< (count s) 8)
+        (recur (str \0 s))
+        s))))
+
+(mu/defn truncate-alias :- ::lib.schema.common/non-blank-string
+  "Truncate string `s` if it is longer than [[truncate-alias-max-length-bytes]] and append a hex-encoded CRC-32
+  checksum of the original string. Truncated string is truncated to [[truncate-alias-max-length-bytes]]
+  minus [[truncated-alias-hash-suffix-length]] characters so the resulting string is
+  exactly [[truncate-alias-max-length-bytes]]. The goal here is that two really long strings that only differ at the
+  end will still have different resulting values.
+
+    (truncate-alias \"some_really_long_string\" 15) ;   -> \"some_r_8e0f9bc2\"
+    (truncate-alias \"some_really_long_string_2\" 15) ; -> \"some_r_2a3c73eb\""
+  ([s]
+   (truncate-alias s truncate-alias-max-length-bytes))
+
+  ([s         :- ::lib.schema.common/non-blank-string
+    max-bytes :- [:int {:min 0}]]
+   (if (<= (string-byte-count s) max-bytes)
+     s
+     (let [checksum  (crc32-checksum s)
+           truncated (truncate-string-to-byte-count s (- max-bytes truncated-alias-hash-suffix-length))]
+       (str truncated \_ checksum)))))
+
+(mu/defn string-table-id->card-id :- [:maybe ::lib.schema.id/card]
+  "If `table-id` is a `card__<id>`-style string, parse the `<id>` part to an integer Card ID."
+  [table-id]
+  (when (string? table-id)
+    (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
+      (parse-long card-id-str))))
