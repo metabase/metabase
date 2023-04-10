@@ -66,6 +66,7 @@ describe("issue 12720", () => {
             },
             // add filter to existing card
             {
+              id: 1,
               card_id: 1,
               row: 0,
               col: 0,
