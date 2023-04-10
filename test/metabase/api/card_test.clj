@@ -2681,11 +2681,12 @@
             (mt/user-http-request user :get 200 (param-values-url field-filter-card (:field-values param-keys) "bar")))))))
 
   (testing "Old style, inferred parameters from native template-tags when blocked"
-    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card] :as test-value}]
       (mt/with-temp* [User [blocked-user {:first_name "All-User" :email "mr.all@user.com"}]
                       PermissionsGroup [all-pg {:name "Test All Users"}]
-                      Permissions [_ {:group_id (:id all-pg) :object (perms/database-block-perms-path (mt/db))}]
+                      Permissions [_ {:group_id (:id all-pg) :object (perms/database-block-perms-path (mt/id))}]
                       PermissionsGroupMembership [_all-pgm {:group_id (:id all-pg) :user_id (:id blocked-user)}]]
+        (is (= "?" test-value))
         (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user is blocked is unauthorized"
             (testing "without search query"
               (mt/user-http-request blocked-user :get 403 (param-values-url field-filter-card (:field-values param-keys))))
