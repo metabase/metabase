@@ -142,8 +142,6 @@
             (Thread/sleep 1000)
             (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))))))))
 
-(mt/set-test-drivers! #{:postgres})
-
 (deftest load-from-csv-test
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :upload)
