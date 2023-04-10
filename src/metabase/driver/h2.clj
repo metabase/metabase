@@ -519,8 +519,8 @@
     db-details))
 
 (defmethod driver/upload-type->database-type :h2
-  [_driver csv-type]
-  (case csv-type
+  [_driver upload-type]
+  (case upload-type
     ::upload/varchar_255 "VARCHAR"
     ::upload/text        "VARCHAR"
     ::upload/int         "INTEGER"
