@@ -7,6 +7,7 @@ import { DatasetData, Column, Row, Value } from "metabase-types/types/Dataset";
 import { Card } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
 import { ReduxAction } from "metabase-types/types/redux";
+import { ClickActionPopoverProps } from "metabase/modes/types";
 
 // import Question from "metabase-lib/Question";
 type Question = any;
@@ -52,7 +53,7 @@ export type ClickObject = {
 export type ClickAction = {
   title?: any; // React Element
   icon?: string;
-  popover?: (props: ClickActionPopoverProps) => any; // React Element
+  popover?: (props: ClickActionPopoverProps) => JSX.Element;
   question?: () => Question | undefined;
   url?: () => string;
   action?: () => ReduxAction | undefined;
@@ -60,6 +61,8 @@ export type ClickAction = {
   name?: string;
   default?: boolean;
   defaultAlways?: boolean;
+  popoverProps?: Record<string, unknown>;
+  tooltip?: string;
 };
 
 export type ClickActionProps = {
@@ -76,11 +79,6 @@ export type OnChangeCardAndRun = ({
   nextCard: Card;
   previousCard?: Card;
 }) => void;
-
-export type ClickActionPopoverProps = {
-  onChangeCardAndRun: OnChangeCardAndRun;
-  onClose: () => void;
-};
 
 export type SingleSeries = {
   card: Card;

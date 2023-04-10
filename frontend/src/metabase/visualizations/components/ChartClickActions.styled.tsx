@@ -3,10 +3,18 @@ import { css } from "@emotion/react";
 import { alpha, color } from "metabase/lib/colors";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
+export type ClickActionButtonType =
+  | "sort"
+  | "formatting"
+  | "horizontal"
+  | "token"
+  | "token-filter"
+  | "info";
 export interface ClickActionButtonProps {
-  type: "sort" | "formatting" | "horizontal" | "token" | "token-filter";
+  type: ClickActionButtonType;
 }
 
+// TODO: refactor this to be a button
 export const ClickActionButton = styled.div<ClickActionButtonProps>`
   ${({ type }) =>
     type === "sort" &&
