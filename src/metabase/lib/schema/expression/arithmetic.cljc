@@ -100,5 +100,5 @@
   #_exp [:schema [:ref ::expression/number]])
 
 (defmethod expression/type-of* :power
-  [[_tag _opts expr _exponent]]
-  (expression/type-of expr))
+  [[_tag _opts & args]]
+  (type-of-arithmetic-args args))
