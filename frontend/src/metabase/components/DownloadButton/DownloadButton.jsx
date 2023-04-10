@@ -102,7 +102,7 @@ const getFileName = card =>
 
 export const SaveAsPngButton = ({ card, onSave }) => {
   const handleSave = async () => {
-    const cardNodeSelector = `[data-card-key='${getCardKey(card)}']`;
+    const cardNodeSelector = `[data-card-key='${getCardKey(card.id)}']`;
     const name = getFileName(card);
     await saveChartImage(cardNodeSelector, name);
     onSave?.();

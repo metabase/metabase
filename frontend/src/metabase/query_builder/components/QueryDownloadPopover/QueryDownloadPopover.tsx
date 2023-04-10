@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { exportFormats } from "metabase/lib/urls";
 import { canSavePng } from "metabase/visualizations";
+import { downloadImage } from "metabase/query_builder/actions/downloading";
 import { Dataset } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
@@ -26,7 +27,11 @@ interface StateProps {
   limitedDownloadSizeText: string;
 }
 
-type QueryDownloadPopoverProps = StateProps;
+interface DispatchProps {
+  onDownloadImage: (question: Question) => void;
+}
+
+type QueryDownloadPopoverProps = OwnProps & StateProps & DispatchProps;
 
 const mapStateToProps = (
   state: State,
@@ -39,6 +44,10 @@ const mapStateToProps = (
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDownloadWidgetMessageOverride(result) ??
     t`The maximum download size is 1 million rows.`,
 });
+
+const mapDispatchToProps: DispatchProps = {
+  onDownloadImage: downloadImage,
+};
 
 const QueryDownloadPopover = ({
   canDownloadImage,
@@ -78,4 +87,7 @@ const DownloadButton = ({ format, onClick }: DownloadButtonProps) => {
   );
 };
 
-export default connect(mapStateToProps)(QueryDownloadPopover);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(QueryDownloadPopover);
