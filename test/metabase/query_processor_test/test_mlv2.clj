@@ -1,15 +1,10 @@
 (ns metabase.query-processor-test.test-mlv2
   (:require
-   [clojure.string :as str]
-   [clojure.test :refer :all]
+   [clojure.test :as t :refer :all]
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.convert :as lib.convert]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema :as lib.schema]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.util :as u]))
 
@@ -97,59 +92,24 @@
    ;; #29950: string filter clauses with options like `:case-sensitive` option not handled correctly
    (mbql.u/match-one legacy-query
      {:case-sensitive _case-sensitive?}
-     "#29950")))
+     "#29950")
+   ;; #29953: `:aggregation` and `:expression` refs with `nil` options
+   (mbql.u/match-one legacy-query
+     [:aggregation _index nil] "#29953"
+     [:expression _name nil]   "#29953")))
 
-#_(defn- skip-metadata-calculation-tests? [legacy-query]
-  (or
-   ;; #29907: wrong column name for joined columns in `:breakout`
-   (mbql.u/match-one legacy-query
-     {:breakout breakouts}
-     (mbql.u/match-one breakouts
-       [:field _id-or-name {:join-alias _join-alias}]
-       "#29907"))
-   ;; #29910: `:datetime-add` and `:datetime-subtract` broken with strings literals
-   (mbql.u/match-one legacy-query
-     #{:datetime-add :datetime-subtract}
-     (mbql.u/match-one &match
-       [_tag (_literal :guard string?) & _]
-       "#29910"))
-   ;; #29935: metadata for an `:aggregation` with a `:case` expression not working
-   (mbql.u/match-one legacy-query
-     {:aggregation aggregations}
-     (mbql.u/match-one aggregations
-       :case
-       "#29935"))
-   ;; #29936: metadata for an `:aggregation` that is a `:metric`
-   (mbql.u/match-one legacy-query
-     {:aggregation aggregations}
-     (mbql.u/match-one aggregations
-       :metric
-       "#28689"))
-   ;; #29941 : metadata resolution for query with a `card__` source-table does not work correctly for `:field` <name>
-   ;; #clauses
-   (mbql.u/match-one legacy-query
-     {:source-table (_id :guard #(str/starts-with? % "card__"))}
-     (mbql.u/match-one &match
-       [:field (_field-name :guard string?) _opts]
-       "#29941"))
-   ;; #29947: `:ends-with` broken
-   (mbql.u/match-one legacy-query
-     :ends-with
-     "#29947")))
-
-;;; TODO -- I don't think we should need to call `normalize` at all below, since this is done after normalization.
 (defn- test-mlv2-conversion [query]
   (when-not (skip-conversion-tests? query)
     (do-with-legacy-query-testing-context
      query
      (^:once fn* []
-      (let [pMBQL (-> query mbql.normalize/normalize lib.convert/->pMBQL)]
+      (let [pMBQL (-> query lib.convert/->pMBQL)]
         (do-with-pMBQL-query-testing-context
          pMBQL
          (^:once fn* []
           (testing "Legacy MBQL queries should round trip to pMBQL and back"
-            (is (= (mbql.normalize/normalize query)
-                   (-> pMBQL lib.convert/->legacy-MBQL mbql.normalize/normalize))))
+            (is (= query
+                   (-> pMBQL lib.convert/->legacy-MBQL))))
           (testing "converted pMBQL query should validate against the pMBQL schema"
             (is (not (me/humanize (mc/explain ::lib.schema/query pMBQL))))))))))))
 
@@ -157,5 +117,10 @@
   "Tests only: save the original legacy MBQL query immediately after normalization to `::original-query`."
   [qp]
   (fn [query rff context]
-    (test-mlv2-conversion query)
+    ;; don't run these tests inside of fixtures when we're initializing things, we're going to have a bad time because
+    ;; test assertions apparently don't work inside fixtures.
+    ;;
+    ;; we can tell if we're inside of a fixture because [[t/*testing-vars*]] will be empty.
+    (when (seq t/*testing-vars*)
+      (test-mlv2-conversion query))
     (qp query rff context)))
