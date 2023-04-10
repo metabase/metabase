@@ -517,18 +517,25 @@
                                         [:to-create [:sequential [:map [:id neg-int?]]]]
                                         [:to-update [:sequential [:map [:id ms/PositiveInt]]]]
                                         [:to-delete [:sequential [:map [:id ms/PositiveInt]]]]]
+  "Given 2 lists of seq maps changes, where each map an `id` keys,
+  return a map of 3 keys, `:to-create`, `:to-update`, `:to-delete`.
+
+  Where:
+    :to-create is a list of maps that has negative ids in `new-changes`
+    :to-update is a list of maps that has ids in both `current-changes` and `new-changes`
+    :to delete is a list of maps that has ids only in `current-changes`"
   [current-changes :- [:sequential [:map [:id ms/PositiveInt]]]
    new-changes     :- [:sequential [:map [:id int?]]]]
   (let [current-dashcard-ids          (set (map :id current-changes))
         update-or-delete-dashcard-ids (->> new-changes
-                                          (map :id)
-                                          (filter pos?)
-                                          set)
+                                           (map :id)
+                                           (filter pos?)
+                                           set)
         to-update (filter #(and (current-dashcard-ids (:id %))
                                 (update-or-delete-dashcard-ids (:id %)))
                           new-changes)
         to-delete (filter #(not (update-or-delete-dashcard-ids (:id %)))
-                           current-changes)
+                          current-changes)
         to-create (filter #(neg? (:id %)) new-changes)]
     {:to-update to-update
      :to-delete to-delete
@@ -539,12 +546,13 @@
   (for [{:keys [card_id]} cards
         :when  card_id]
     (api/check-not-archived (api/read-check Card card_id)))
-  (check-parameter-mapping-permissions (flatten (for [{:keys [card_id parameter_mappings]} cards]
-                                                  (for [mapping parameter_mappings]
-                                                    (assoc mapping :card-id card_id)))))
+  (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} cards
+                                             mapping parameter_mappings]
+                                        (assoc mapping :card-id card_id)))
   (u/prog1 (api/check-500 (dashboard/add-dashcards! dashboard (map #(assoc % :creator_id @api/*current-user*) cards)))
     (events/publish-event! :dashboard-add-cards {:id (:id dashboard) :actor_id api/*current-user-id* :dashcards <>})
-    (doseq [{:keys [card_id]} cards]
+    (for [{:keys [card_id]} <>
+          :when             (pos-int? card_id)]
       (snowplow/track-event! ::snowplow/question-added-to-dashboard
                              api/*current-user-id*
                              {:dashboard-id (:id dashboard) :question-id card_id}))))
@@ -569,8 +577,8 @@
    [:row                                 ms/IntGreaterThanOrEqualToZero]
    [:col                                 ms/IntGreaterThanOrEqualToZero]
    [:parameter_mappings {:optional true} [:maybe [:sequential [:map
-                                                                [:parameter_id ms/NonBlankString]
-                                                                [:target       :any]]]]]
+                                                               [:parameter_id ms/NonBlankString]
+                                                               [:target       :any]]]]]
    [:series             {:optional true} [:maybe [:sequential map?]]]])
 
 (api/defendpoint PUT "/:id/cards"

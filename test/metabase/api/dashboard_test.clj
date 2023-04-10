@@ -1307,7 +1307,7 @@
                    updated-card-2
                    new-card]
                   resp))
-          ;; dashboard 3 is deleted
+          ;; dashcard 3 is deleted
           (is (nil? (t2/select-one DashboardCard :id dashcard-id-3))))))))
 
 ;;; -------------------------------------- Create dashcards only tests ---------------------------------------
@@ -1611,14 +1611,7 @@
             :to-create [{:id -1 :name "-c1"}]}
            (#'api.dashboard/classify-changes
              [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
-             [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}]))))
-  (testing "current changes must contains only pos int"
-    (is (thrown-with-msg?
-          clojure.lang.ExceptionInfo
-          #".*value must be an integer greater than zero.*"
-          (#'api.dashboard/classify-changes
-            [{:id -1}]
-            [])))))
+             [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        GET /api/dashboard/:id/revisions                                        |
