@@ -1,30 +1,36 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-
 import _ from "underscore";
 import cx from "classnames";
 import { Link } from "react-router";
+import * as tippy from "tippy.js";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-
-import "./ChartClickActions.css";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getEventTarget } from "metabase/lib/dom";
-
 import { performAction } from "metabase/visualizations/lib/action";
+import {
+  ClickAction,
+  ClickObject,
+  OnChangeCardAndRun,
+} from "metabase-types/types/Visualization";
+import { Dispatch } from "metabase-types/store";
+import { Series } from "metabase-types/api";
 
+import "./ChartClickActions.css";
 import {
   ClickActionButton,
+  ClickActionButtonType,
   FlexTippyPopover,
 } from "./ChartClickActions.styled";
 
-// These icons used to be displayed for each row section of actions.
-// We're now just using them as a way to select different sections of actions to style them uniquely.
-// They're not all used, but I've kept them here in case we need these hooks in the future.
-const SECTIONS = {
+type Section = {
+  icon: string;
+  index?: number;
+};
+
+const SECTIONS: Record<string, Section> = {
   records: {
     icon: "table2",
   },
@@ -70,18 +76,37 @@ const SECTIONS = {
     icon: "info",
   },
 };
-// give them indexes so we can sort the sections by the above ordering (JS objects are ordered)
 Object.values(SECTIONS).map((section, index) => {
   section.index = index;
 });
 
-const getGALabelForAction = action =>
+const getGALabelForAction = (action: ClickAction) =>
   action ? `${action.section || ""}:${action.name || ""}` : null;
 
-class ChartClickActions extends Component {
-  state = {
+type ClickActionWithButtonType = ClickAction & {
+  buttonType: ClickActionButtonType;
+};
+
+interface ChartClickActionsProps {
+  clicked: ClickObject;
+  clickActions: ClickAction[];
+  series: Series;
+  dispatch: Dispatch;
+  onChangeCardAndRun: OnChangeCardAndRun;
+  onUpdateVisualizationSettings: () => void;
+  onClose?: () => void;
+}
+
+interface State {
+  popoverAction: ClickAction | null;
+}
+
+class ChartClickActions extends Component<ChartClickActionsProps, State> {
+  state: State = {
     popoverAction: null,
   };
+
+  instance: tippy.Instance | null = null;
 
   close = () => {
     this.setState({ popoverAction: null });
@@ -90,7 +115,7 @@ class ChartClickActions extends Component {
     }
   };
 
-  handleClickAction = action => {
+  handleClickAction = (action: ClickAction) => {
     const { dispatch, onChangeCardAndRun } = this.props;
     if (action.popover) {
       MetabaseAnalytics.trackStructEvent(
@@ -117,7 +142,7 @@ class ChartClickActions extends Component {
     }
   };
 
-  getPopoverReference = clicked => {
+  getPopoverReference = (clicked: ClickObject): HTMLElement | null => {
     if (clicked.element) {
       if (clicked.element.firstChild instanceof HTMLElement) {
         return clicked.element.firstChild;
@@ -127,6 +152,8 @@ class ChartClickActions extends Component {
     } else if (clicked.event) {
       return getEventTarget(clicked.event);
     }
+
+    return null;
   };
 
   render() {
@@ -175,7 +202,8 @@ class ChartClickActions extends Component {
       );
     }
 
-    const groupedClickActions = _.groupBy(clickActions, "section");
+    const groupedClickActions: Record<string, ClickActionWithButtonType[]> =
+      _.groupBy(clickActions as ClickActionWithButtonType[], "section");
 
     if (groupedClickActions?.["sum"]?.length === 1) {
       // if there's only one "sum" click action, merge it into "summarize" and change its button type and icon
@@ -223,7 +251,7 @@ class ChartClickActions extends Component {
         placement="bottom-start"
         offset={[0, 8]}
         popperOptions={{
-          flip: true,
+          // flip: true, // TODO: check if this has an effect
           modifiers: [
             {
               name: "preventOverflow",
@@ -290,14 +318,95 @@ class ChartClickActions extends Component {
                       { "flex-column my1": SECTIONS[key].icon === "summarize" },
                     )}
                   >
-                    {actions.map((action, index) => (
-                      <ChartClickAction
-                        key={index}
-                        action={action}
-                        isLastItem={index === actions.length - 1}
-                        handleClickAction={this.handleClickAction}
-                      />
-                    ))}
+                    {actions.map((action, index) => {
+                      const className = cx("no-decoration", {
+                        "cursor-pointer": action.buttonType !== "info",
+                        sort: action.buttonType === "sort",
+                        "formatting-button": action.buttonType === "formatting",
+                        "horizontal-button": action.buttonType === "horizontal",
+                      });
+                      const isLastItem = index === actions.length - 1;
+
+                      if (action.url) {
+                        return (
+                          <div
+                            className={cx({
+                              full: action.buttonType === "horizontal",
+                            })}
+                          >
+                            <ClickActionButton
+                              as={Link}
+                              className={className}
+                              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                              // @ts-ignore // TODO: remove this after styled component is done
+                              to={action.url()}
+                              type={action.buttonType}
+                              onClick={() =>
+                                MetabaseAnalytics.trackStructEvent(
+                                  "Actions",
+                                  "Executed Click Action",
+                                  getGALabelForAction(action),
+                                )
+                              }
+                            >
+                              {action.title}
+                            </ClickActionButton>
+                          </div>
+                        );
+                      } else if (
+                        action.buttonType === "sort" ||
+                        action.buttonType === "formatting"
+                      ) {
+                        return (
+                          <Tooltip tooltip={action.tooltip}>
+                            <ClickActionButton
+                              className={cx(
+                                className,
+                                "flex flex-row align-center",
+                              )}
+                              type={action.buttonType}
+                              onClick={() => this.handleClickAction(action)}
+                            >
+                              {action.icon && (
+                                <Icon
+                                  className={cx("flex mr1", {
+                                    "text-brand text-white-hover":
+                                      action.buttonType !== "formatting",
+                                  })}
+                                  size={
+                                    action.buttonType === "formatting" ? 16 : 12
+                                  }
+                                  name={action.icon}
+                                />
+                              )}
+                            </ClickActionButton>
+                          </Tooltip>
+                        );
+                      } else {
+                        return (
+                          <ClickActionButton
+                            className={cx(className, {
+                              mb1:
+                                action.buttonType === "horizontal" &&
+                                !isLastItem,
+                            })}
+                            type={action.buttonType}
+                            onClick={() => this.handleClickAction(action)}
+                          >
+                            {action.icon && (
+                              <Icon
+                                className="flex mr1 text-brand text-white-hover"
+                                size={
+                                  action.buttonType === "horizontal" ? 14 : 12
+                                }
+                                name={action.icon}
+                              />
+                            )}
+                            {action.title && action.title}
+                          </ClickActionButton>
+                        );
+                      }
+                    })}
                   </div>
                 </div>
               ))}
@@ -311,83 +420,3 @@ class ChartClickActions extends Component {
 }
 
 export default connect()(ChartClickActions);
-
-export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
-  // This is where all the different action button styles get applied.
-  // Some of them have bespoke classes defined in ChartClickActions.css,
-  // like for cases when we needed to really dial in the spacing.
-  const className = cx("no-decoration", {
-    "cursor-pointer": action.buttonType !== "info",
-    sort: action.buttonType === "sort",
-    "formatting-button": action.buttonType === "formatting",
-    "horizontal-button": action.buttonType === "horizontal",
-  });
-  if (action.url) {
-    return (
-      <div
-        className={cx({
-          full: action.buttonType === "horizontal",
-        })}
-      >
-        <ClickActionButton
-          as={Link}
-          className={className}
-          to={action.url()}
-          type={action.buttonType}
-          onClick={() =>
-            MetabaseAnalytics.trackStructEvent(
-              "Actions",
-              "Executed Click Action",
-              getGALabelForAction(action),
-            )
-          }
-        >
-          {action.title}
-        </ClickActionButton>
-      </div>
-    );
-  } else if (
-    action.buttonType === "sort" ||
-    action.buttonType === "formatting"
-  ) {
-    return (
-      <Tooltip tooltip={action.tooltip}>
-        <ClickActionButton
-          className={cx(className, "flex flex-row align-center")}
-          type={action.buttonType}
-          onClick={() => handleClickAction(action)}
-        >
-          {action.icon && (
-            <Icon
-              className={cx("flex mr1", {
-                "text-brand text-white-hover":
-                  action.buttonType !== "formatting",
-              })}
-              size={action.buttonType === "formatting" ? 16 : 12}
-              name={action.icon}
-            />
-          )}
-        </ClickActionButton>
-      </Tooltip>
-    );
-  } else {
-    return (
-      <ClickActionButton
-        className={cx(className, {
-          mb1: action.buttonType === "horizontal" && !isLastItem,
-        })}
-        type={action.buttonType}
-        onClick={() => handleClickAction(action)}
-      >
-        {action.icon && (
-          <Icon
-            className="flex mr1 text-brand text-white-hover"
-            size={action.buttonType === "horizontal" ? 14 : 12}
-            name={action.icon}
-          />
-        )}
-        {action.title && action.title}
-      </ClickActionButton>
-    );
-  }
-};
