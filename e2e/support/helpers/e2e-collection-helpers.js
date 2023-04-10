@@ -43,3 +43,10 @@ export function visitCollection(id) {
 export function getPersonalCollectionName(user) {
   return `${getFullName(user)}'s Personal Collection`;
 }
+
+export function openCollectionItemMenu(item, index = 0) {
+  cy.findAllByText(item)
+    .eq(index)
+    .closest("tr")
+    .within(() => cy.icon("ellipsis").click());
+}

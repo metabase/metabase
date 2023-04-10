@@ -1,5 +1,6 @@
 (ns metabase.lib.field
   (:require
+   [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
@@ -40,36 +41,52 @@
   "Integer Field ID: get metadata from the metadata provider. This is probably not 100% the correct thing to do if
   this isn't the first stage of the query, but we can fix that behavior in a follow-on"
   [query         :- ::lib.schema/query
-   _stage-number :- :int
    field-id      :- ::lib.schema.id/field]
   (lib.metadata/field query field-id))
 
-(mu/defn ^:private resolve-field-name :- lib.metadata/ColumnMetadata
+(mu/defn ^:private resolve-column-name-in-metadata :- lib.metadata/ColumnMetadata
+  [column-name      :- ::lib.schema.common/non-blank-string
+   column-metadatas :- [:sequential lib.metadata/ColumnMetadata]]
+  (or (m/find-first #(= (:lib/desired-column-alias %) column-name)
+                    column-metadatas)
+      (m/find-first #(= (:name %) column-name)
+                    column-metadatas)
+      (throw (ex-info (i18n/tru "Invalid :field clause: column {0} does not exist. Found: {1}"
+                                (pr-str column-name)
+                                (pr-str (mapv :lib/desired-column-alias column-metadatas)))
+                      {:name    column-name
+                       :columns column-metadatas}))))
+
+(mu/defn ^:private resolve-column-name :- lib.metadata/ColumnMetadata
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
   have a native query or a Saved Question source query or whatever get it from our results metadata."
   [query        :- ::lib.schema/query
    stage-number :- :int
    column-name  :- ::lib.schema.common/non-blank-string]
-  (or (some (fn [column]
-              (when (= (:name column) column-name)
-                column))
-            (let [stage (if-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-                          (lib.util/query-stage query previous-stage-number)
-                          (lib.util/query-stage query stage-number))]
-              (get-in stage [:lib/stage-metadata :columns])))
-      (throw (ex-info (i18n/tru "Invalid :field clause: column {0} does not exist" (pr-str column-name))
-                      {:name         column-name
-                       :query        query
-                       :stage-number stage-number}))))
+  (let [stage         (if-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+                        (lib.util/query-stage query previous-stage-number)
+                        (lib.util/query-stage query stage-number))
+        stage-columns (get-in stage [:lib/stage-metadata :columns])]
+    (resolve-column-name-in-metadata column-name stage-columns)))
 
-(mu/defn resolve-field-metadata :- lib.metadata/ColumnMetadata
-  "Resolve metadata for a `:field` ref."
-  [query                                        :- ::lib.schema/query
-   stage-number                                 :- :int
-   [_field _opts id-or-name, :as _field-clause] :- :mbql.clause/field]
-  (if (integer? id-or-name)
-    (resolve-field-id query stage-number id-or-name)
-    (resolve-field-name query stage-number id-or-name)))
+(mu/defn ^:private resolve-column-name-in-join :- lib.metadata/ColumnMetadata
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column-name  :- ::lib.schema.common/non-blank-string
+   join-alias   :- [:maybe ::lib.schema.common/non-blank-string]]
+  (let [join-metadata (lib.metadata.calculation/metadata query stage-number (lib.join/resolve-join query stage-number join-alias))]
+    (resolve-column-name-in-metadata column-name join-metadata)))
+
+(mu/defn ^:private resolve-field-metadata :- lib.metadata/ColumnMetadata
+  "Resolve metadata for a `:field` ref. This is part of the implementation
+  for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
+  [query                                                                  :- ::lib.schema/query
+   stage-number                                                           :- :int
+   [_field {:keys [join-alias], :as _opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
+  (cond
+    (integer? id-or-name) (resolve-field-id query id-or-name)
+    join-alias            (resolve-column-name-in-join query stage-number id-or-name join-alias)
+    :else                 (resolve-column-name query stage-number id-or-name)))
 
 (mu/defn ^:private add-parent-column-metadata
   "If this is a nested column, add metadata about the parent column."
@@ -81,9 +98,17 @@
     (update metadata :name (fn [field-name]
                              (str parent-name \. field-name)))))
 
-(defmethod lib.metadata.calculation/metadata-method :metadata/field
+(defmethod lib.metadata.calculation/type-of-method :metadata/field
   [_query _stage-number field-metadata]
-  field-metadata)
+  ((some-fn :effective_type :base_type) field-metadata))
+
+(defmethod lib.metadata.calculation/type-of-method :field
+  [query stage-number field-ref]
+  (lib.metadata.calculation/type-of query stage-number (resolve-field-metadata query stage-number field-ref)))
+
+(defmethod lib.metadata.calculation/metadata-method :metadata/field
+  [_query _stage-number {field-name :name, :as field-metadata}]
+  (assoc field-metadata :name field-name))
 
 ;;; TODO -- base type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
@@ -114,12 +139,18 @@
                        field-name         :name
                        temporal-unit      :unit
                        join-alias         :source_alias
+                       fk-field-id        :fk_field_id
+                       table-id           :table_id
                        :as                _field-metadata}]
   (let [field-display-name (or field-display-name
                                (u.humanization/name->human-readable-name :simple field-name))
-        join-display-name  (when join-alias
-                             (let [join (lib.join/resolve-join query stage-number join-alias)]
-                               (lib.metadata.calculation/display-name query stage-number join)))
+        join-display-name  (or
+                            (when fk-field-id
+                              (let [table (lib.metadata/table query table-id)]
+                                (lib.metadata.calculation/display-name query stage-number table)))
+                            (when join-alias
+                              (let [join (lib.join/resolve-join query stage-number join-alias)]
+                                (lib.metadata.calculation/display-name query stage-number join))))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)]
@@ -128,13 +159,25 @@
       display-name)))
 
 (defmethod lib.metadata.calculation/display-name-method :field
-  [query stage-number [_field {:keys [join-alias temporal-unit], :as _opts} _id-or-name, :as field-clause]]
+  [query stage-number [_tag {:keys [join-alias temporal-unit source-field], :as _opts} _id-or-name, :as field-clause]]
   (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
                             join-alias    (assoc :source_alias join-alias)
-                            temporal-unit (assoc :unit temporal-unit))]
+                            temporal-unit (assoc :unit temporal-unit)
+                            source-field  (assoc :fk_field_id source-field))]
     (lib.metadata.calculation/display-name query stage-number field-metadata)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))
+
+(defmethod lib.metadata.calculation/column-name-method :metadata/field
+  [_query _stage-number {field-name :name}]
+  field-name)
+
+(defmethod lib.metadata.calculation/column-name-method :field
+  [query stage-number [_tag _id-or-name, :as field-clause]]
+  (if-let [field-metadata (resolve-field-metadata query stage-number field-clause)]
+    (lib.metadata.calculation/column-name query stage-number field-metadata)
+    ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
+    "unknown_field"))
 
 (defmethod lib.temporal-bucket/current-temporal-bucket-method :field
   [[_tag opts _id-or-name]]
@@ -197,6 +240,31 @@
       [:field options (if always-use-name?
                         (:name metadata)
                         (or (:id metadata) (:name metadata)))])))
+
+(mu/defn ^:private joined-field-desired-alias :- ::lib.schema.common/non-blank-string
+  "Desired alias for a Field that comes from a join, e.g.
+
+    MyJoin__my_field
+
+  You should pass the results thru a unique name function."
+  [join-alias :- ::lib.schema.common/non-blank-string
+   field-name :- ::lib.schema.common/non-blank-string]
+  (lib.util/format "%s__%s" join-alias field-name))
+
+(mu/defn desired-alias :- ::lib.schema.common/non-blank-string
+  "Desired alias for a Field e.g.
+
+    my_field
+
+    OR
+
+    MyJoin__my_field
+
+  You should pass the results thru a unique name function."
+  [field-metadata :- lib.metadata/ColumnMetadata]
+  (if-let [join-alias (lib.join/current-join-alias field-metadata)]
+    (joined-field-desired-alias join-alias (:name field-metadata))
+    (:name field-metadata)))
 
 (defn fields
   "Specify the `:fields` for a query."

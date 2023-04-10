@@ -4,6 +4,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
@@ -14,7 +15,7 @@
    [metabase.util.malli :as mu]))
 
 (mu/defn replace-clause :- :metabase.lib.schema/query
-  "Replaces the `target-clause` with `new-clase` in the `query` stage."
+  "Replaces the `target-clause` with `new-clause` in the `query` stage."
   ([query :- :metabase.lib.schema/query
     target-clause
     new-clause]
@@ -96,7 +97,8 @@
   "Implementation for [[query]]."
   {:arglists '([metadata-provider x])}
   (fn [_metadata-provider x]
-    (lib.dispatch/dispatch-value x)))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod ->query :dispatch-type/map
   [metadata-provider query]
@@ -144,7 +146,7 @@
   "Convenience for creating a query from a Saved Question (i.e., a Card)."
   [metadata-provider :- lib.metadata/MetadataProvider
    {mbql-query :dataset_query, metadata :result_metadata}]
-  (let [mbql-query (cond-> (assoc (lib.util/pipeline mbql-query)
+  (let [mbql-query (cond-> (assoc (lib.convert/->pMBQL mbql-query)
                                   :lib/metadata metadata-provider)
                      metadata
                      (lib.util/update-query-stage -1 assoc :lib/stage-metadata metadata))]

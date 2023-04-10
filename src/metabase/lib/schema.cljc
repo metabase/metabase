@@ -8,7 +8,6 @@
   future we can deprecate that namespace and eventually do away with it entirely."
   (:require
    [metabase.lib.schema.aggregation :as aggregation]
-   [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
    [metabase.lib.schema.expression.conditional]
@@ -20,6 +19,7 @@
    [metabase.lib.schema.literal]
    [metabase.lib.schema.order-by :as order-by]
    [metabase.lib.schema.ref :as ref]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.util.malli.registry :as mr]))
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
@@ -32,7 +32,6 @@
 (mr/def ::stage.native
   [:map
    [:lib/type [:= :mbql.stage/native]]
-   [:lib/options ::common/options]
    [:native any?]
    [:args {:optional true} [:sequential any?]]])
 
@@ -51,7 +50,6 @@
   [:and
    [:map
     [:lib/type     [:= :mbql.stage/mbql]]
-    [:lib/options  ::common/options]
     [:joins        {:optional true} [:ref ::join/joins]]
     [:expressions  {:optional true} [:ref ::expression/expressions]]
     [:breakout     {:optional true} ::breakouts]
@@ -105,8 +103,10 @@
    [:* ::stage.additional]])
 
 (mr/def ::query
-  [:map
-   [:lib/type [:= :mbql/query]]
-   [:database ::id/database]
-   [:type [:= :pipeline]]
-   [:stages ::stages]])
+  [:and
+   [:map
+    [:lib/type [:= :mbql/query]]
+    [:database ::id/database]
+    [:type [:= :pipeline]]
+    [:stages ::stages]]
+   lib.schema.util/UniqueUUIDs])

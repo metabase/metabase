@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
@@ -14,6 +15,7 @@
     :as lib.schema.temporal-bucketing]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.types :as types]
    [metabase.util.malli :as mu]))
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
@@ -31,26 +33,28 @@
    stage-number    :- :int
    expression-name :- ::lib.schema.common/non-blank-string]
   (let [stage (lib.util/query-stage query stage-number)]
-    (or (some-> (get-in stage [:expressions expression-name])
-                lib.common/external-op)
+    (or (get-in stage [:expressions expression-name])
         (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                         {:expression-name expression-name
                          :query           query
                          :stage-number    stage-number})))))
 
-(defmethod lib.schema.expression/type-of* :lib/external-op
-  [{:keys [operator options args] :or {options {}}}]
-  (lib.schema.expression/type-of* (into [(keyword operator) options] args)))
+(defmethod lib.metadata.calculation/type-of-method :expression
+  [query stage-number [_expression _opts expression-name, :as _expression-ref]]
+  (let [expression (resolve-expression query stage-number expression-name)]
+    (lib.metadata.calculation/type-of query stage-number expression)))
 
 (defmethod lib.metadata.calculation/metadata-method :expression
-  [query stage-number [_expression opts expression-name, :as expression-ref]]
-  (let [expression (resolve-expression query stage-number expression-name)]
-    {:lib/type     :metadata/field
-     :lib/source   :source/expressions
-     :name         expression-name
-     :display_name (lib.metadata.calculation/display-name query stage-number expression-ref)
-     :base_type    (or (:base-type opts)
-                       (lib.schema.expression/type-of expression))}))
+  [query stage-number [_expression _opts expression-name, :as expression-ref]]
+  {:lib/type     :metadata/field
+   :name         expression-name
+   :display_name (lib.metadata.calculation/display-name query stage-number expression-ref)
+   :base_type    (lib.metadata.calculation/type-of query stage-number expression-ref)
+   :lib/source   :source/expressions})
+
+(defmethod lib.metadata.calculation/display-name-method :dispatch-type/integer
+  [_query _stage-number n]
+  (str n))
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/number
   [_query _stage-number n]
@@ -87,21 +91,18 @@
                (map (partial lib.metadata.calculation/display-name query stage-number)
                     args)))))
 
-(defmethod lib.metadata.calculation/display-name-method :+
-  [query stage-number [_plus _opts & args]]
-  (infix-display-name query stage-number "+" args))
+(def ^:private infix-operator-display-name
+  {:+ "+"
+   :- "-"
+   :* "×"
+   :/ "÷"})
 
-(defmethod lib.metadata.calculation/display-name-method :-
-  [query stage-number [_minute _opts & args]]
-  (infix-display-name query stage-number "-" args))
+(doseq [tag [:+ :- :/ :*]]
+  (lib.hierarchy/derive tag ::infix-operator))
 
-(defmethod lib.metadata.calculation/display-name-method :/
-  [query stage-number [_divide _opts & args]]
-  (infix-display-name query stage-number "÷" args))
-
-(defmethod lib.metadata.calculation/display-name-method :*
-  [query stage-number [_multiply _opts & args]]
-  (infix-display-name query stage-number "×" args))
+(defmethod lib.metadata.calculation/display-name-method ::infix-operator
+  [query stage-number [tag _opts & args]]
+  (infix-display-name query stage-number (get infix-operator-display-name tag) args))
 
 (defn- infix-column-name
   [query stage-number operator-str args]
@@ -109,47 +110,72 @@
             (map (partial lib.metadata.calculation/column-name query stage-number)
                  args)))
 
-(defmethod lib.metadata.calculation/column-name-method :+
-  [query stage-number [_plus _opts & args]]
-  (infix-column-name query stage-number "plus" args))
+(def ^:private infix-operator-column-name
+  {:+ "plus"
+   :- "minus"
+   :/ "divided_by"
+   :* "times"})
 
-(defmethod lib.metadata.calculation/column-name-method :-
-  [query stage-number [_minute _opts & args]]
-  (infix-column-name query stage-number "minus" args))
+(defmethod lib.metadata.calculation/column-name-method ::infix-operator
+  [query stage-number [tag _opts & args]]
+  (infix-column-name query stage-number (get infix-operator-column-name tag) args))
 
-(defmethod lib.metadata.calculation/column-name-method :/
-  [query stage-number [_divide _opts & args]]
-  (infix-column-name query stage-number "divided_by" args))
+;;; `:+`, `:-`, and `:*` all have the same logic; also used for [[metabase.lib.schema.expression/type-of]].
+;;;
+;;; `:lib.type-of/type-is-type-of-arithmetic-args` is defined in [[metabase.lib.schema.expression.arithmetic]]
+(defmethod lib.metadata.calculation/type-of-method :lib.type-of/type-is-type-of-arithmetic-args
+  [query stage-number [_tag _opts & args]]
+  ;; Okay to use reduce without an init value here since we know we have >= 2 args
+  #_{:clj-kondo/ignore [:reduce-without-init]}
+  (reduce
+   types/most-specific-common-ancestor
+   (for [arg args]
+     (lib.metadata.calculation/type-of query stage-number arg))))
 
-(defmethod lib.metadata.calculation/column-name-method :*
-  [query stage-number [_multiply _opts & args]]
-  (infix-column-name query stage-number "times" args))
+(defn- interval-unit-str [amount unit]
+  (clojure.core/case unit
+    :millisecond (i18n/trun "millisecond" "milliseconds" (clojure.core/abs amount))
+    :second      (i18n/trun "second"      "seconds"      (clojure.core/abs amount))
+    :minute      (i18n/trun "minute"      "minutes"      (clojure.core/abs amount))
+    :hour        (i18n/trun "hour"        "hours"        (clojure.core/abs amount))
+    :day         (i18n/trun "day"         "days"         (clojure.core/abs amount))
+    :week        (i18n/trun "week"        "weeks"        (clojure.core/abs amount))
+    :month       (i18n/trun "month"       "months"       (clojure.core/abs amount))
+    :quarter     (i18n/trun "quarter"     "quarters"     (clojure.core/abs amount))
+    :year        (i18n/trun "year"        "years"        (clojure.core/abs amount))))
 
 (mu/defn ^:private interval-display-name  :- ::lib.schema.common/non-blank-string
   "e.g. something like \"- 2 days\""
   [amount :- :int
    unit   :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
   ;; TODO -- sorta duplicated with [[metabase.shared.parameters.parameters/translated-interval]], but not exactly
-  (let [unit-str (clojure.core/case unit
-                   :millisecond (i18n/trun "millisecond" "milliseconds" (clojure.core/abs amount))
-                   :second      (i18n/trun "second"      "seconds"      (clojure.core/abs amount))
-                   :minute      (i18n/trun "minute"      "minutes"      (clojure.core/abs amount))
-                   :hour        (i18n/trun "hour"        "hours"        (clojure.core/abs amount))
-                   :day         (i18n/trun "day"         "days"         (clojure.core/abs amount))
-                   :week        (i18n/trun "week"        "weeks"        (clojure.core/abs amount))
-                   :month       (i18n/trun "month"       "months"       (clojure.core/abs amount))
-                   :quarter     (i18n/trun "quarter"     "quarters"     (clojure.core/abs amount))
-                   :year        (i18n/trun "year"        "years"        (clojure.core/abs amount)))]
+  (let [unit-str (interval-unit-str amount unit)]
     (wrap-str-in-parens-if-nested
      (if (pos? amount)
-       (lib.util/format "+ %d %s" amount       unit-str)
+       (lib.util/format "+ %d %s" amount                    unit-str)
        (lib.util/format "- %d %s" (clojure.core/abs amount) unit-str)))))
+
+(mu/defn ^:private interval-column-name  :- ::lib.schema.common/non-blank-string
+  "e.g. something like `minus_2_days`"
+  [amount :- :int
+   unit   :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
+  ;; TODO -- sorta duplicated with [[metabase.shared.parameters.parameters/translated-interval]], but not exactly
+  (let [unit-str (interval-unit-str amount unit)]
+    (if (pos? amount)
+      (lib.util/format "plus_%s_%s"  amount                    unit-str)
+      (lib.util/format "minus_%d_%s" (clojure.core/abs amount) unit-str))))
 
 (defmethod lib.metadata.calculation/display-name-method :datetime-add
   [query stage-number [_datetime-add _opts x amount unit]]
   (str (lib.metadata.calculation/display-name query stage-number x)
        \space
        (interval-display-name amount unit)))
+
+(defmethod lib.metadata.calculation/column-name-method :datetime-add
+  [query stage-number [_datetime-add _opts x amount unit]]
+  (str (lib.metadata.calculation/column-name query stage-number x)
+       \_
+       (interval-column-name amount unit)))
 
 ;;; for now we'll just pretend `:coalesce` isn't a present and just use the display name for the expr it wraps.
 (defmethod lib.metadata.calculation/display-name-method :coalesce
