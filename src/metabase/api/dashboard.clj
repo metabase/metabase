@@ -548,14 +548,14 @@
 (mu/defn ^:private update-tabs! :- nil?
   [dashboard new-tabs]
   (let [current-tabs    (:ordered_tabs dashboard)
-        keys-to-update  [:name :position]
+        update-ks       [:name :position]
         id->current-tab (group-by :id current-tabs)
         to-update-tabs  (filter
                           ;; filter out tabs that haven't changed
                           (fn [new-tab]
                             (let [current-tab (get id->current-tab (:id new-tab))]
-                              (not= (select-keys current-tab keys-to-update)
-                                    (select-keys new-tab keys-to-update))))
+                              (not= (select-keys current-tab update-ks)
+                                    (select-keys new-tab update-ks))))
 
                           new-tabs)]
     (doseq [tab to-update-tabs]
