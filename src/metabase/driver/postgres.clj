@@ -57,7 +57,7 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/database-supports? [:postgres :upload]
+(defmethod driver/database-supports? [:postgres :uploads]
   [_driver _feat _db]
   true)
 
