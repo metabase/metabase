@@ -8,7 +8,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
-   [metabase.lib.query :as lib.query]
+   [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -143,7 +143,7 @@
   ([a-query clause]
    (remove-clause a-query -1 clause))
   ([a-query stage-number clause]
-   (lib.query/remove-clause
+   (lib.remove-replace/remove-clause
      a-query stage-number
      (lib.normalize/normalize (js->clj clause :keywordize-keys true)))))
 
@@ -152,7 +152,7 @@
   ([a-query target-clause new-clause]
    (replace-clause a-query -1 target-clause new-clause))
   ([a-query stage-number target-clause new-clause]
-   (lib.query/replace-clause
+   (lib.remove-replace/replace-clause
      a-query stage-number
      (lib.normalize/normalize (js->clj target-clause :keywordize-keys true))
      (lib.normalize/normalize (js->clj new-clause :keywordize-keys true)))))
