@@ -186,15 +186,14 @@
                    :values_source_type   "card"
                    :values_source_config {:card_id     (:id card)
                                           :value_field (mt/$ids $venues.name)}}
-                  nil
-                  (fn [] (throw (ex-info "Shouldn't call this function" {}))))))))))
+                  nil)))))))
 
   ;; bind to an admin to bypass the permissions check
   (mt/with-current-user (mt/user->id :crowberto)
     (testing "call to default-case-fn if "
       (testing "souce card is archived"
         (mt/with-temp Card [card {:archived true}]
-          (is (= :archived
+          (is (= ::custom-values/not-found
                  (custom-values/parameter->values
                    {:name                 "Card as source"
                     :slug                 "card"
@@ -203,12 +202,11 @@
                     :values_source_type   "card"
                     :values_source_config {:card_id     (:id card)
                                            :value_field (mt/$ids $venues.name)}}
-                   nil
-                   (constantly :archived))))))
+                   nil)))))
 
       (testing "value-field not found in card's result_metadata"
         (mt/with-temp Card [card {}]
-          (is (= :field-not-found
+          (is (= ::custom-values/not-found
                  (custom-values/parameter->values
                    {:name                 "Card as source"
                     :slug                 "card"
@@ -217,5 +215,4 @@
                     :values_source_type   "card"
                     :values_source_config {:card_id     (:id card)
                                            :value_field [:field 0 nil]}}
-                   nil
-                   (constantly :field-not-found)))))))))
+                   nil))))))))
