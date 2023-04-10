@@ -987,6 +987,7 @@
                                                                 {:name "MySQL Field 1" :table_id mysql-table-id :database_type "json"    :base_type :type/SerializedJSON}
                                                                 {:name "MySQL Field 2" :table_id mysql-table-id :database_type "varchar" :base_type :type/Text}])
             _ (migrate! :up)
+
             new-base-types (t2/select-pk->fn :base_type Field)]
         (are [field-id expected] (= expected (get new-base-types field-id))
           pg-field-1-id :type/JSON
