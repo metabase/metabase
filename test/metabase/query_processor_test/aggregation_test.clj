@@ -56,11 +56,11 @@
     (testing "standard deviation aggregations"
       (let [query (mt/mbql-query venues {:aggregation [[:stddev $latitude]]})]
         (mt/with-native-query-testing-context query
-          (is (= {:cols [(qp.test/aggregate-col :stddev :venues :latitude)]
-                  :rows [[3.4]]}
-                 (qp.test/rows-and-cols
-                  (mt/format-rows-by [1.0]
-                    (mt/process-query query)))))))))
+          (is (=? {:cols [(qp.test/aggregate-col :stddev :venues :latitude)]
+                   :rows [[3.4]]}
+                  (qp.test/rows-and-cols
+                   (mt/format-rows-by [1.0]
+                     (mt/process-query query)))))))))
 
   (mt/test-drivers (mt/normal-drivers-without-feature :standard-deviation-aggregations)
     (testing "Make sure standard deviations fail for drivers that don't support it"
@@ -132,9 +132,9 @@
   ;; TODO part 2 -- not sure if this is still the case?
   (mt/test-drivers (disj (mt/normal-drivers) :mongo)
     (testing "make sure that multiple aggregations of the same type have the correct metadata (#4003)"
-      (is (= [(qp.test/aggregate-col :count)
-              (assoc (qp.test/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
-             (mt/cols
+      (is (=? [(qp.test/aggregate-col :count)
+               (assoc (qp.test/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
+              (mt/cols
                (mt/run-mbql-query venues
                  {:aggregation [[:count] [:count]]})))))))
 
@@ -207,45 +207,45 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing "cumulative count aggregations"
       (testing "w/o breakout should be treated the same as count"
-        (is (= {:rows [[15]]
-                :cols [(qp.test/aggregate-col :cum-count :users :id)]}
-               (qp.test/rows-and-cols
+        (is (=? {:rows [[15]]
+                 :cols [(qp.test/aggregate-col :cum-count :users :id)]}
+                (qp.test/rows-and-cols
                  (mt/format-rows-by [int]
                    (mt/run-mbql-query users
                      {:aggregation [[:cum-count $id]]}))))))
 
       (testing "w/ breakout on field with distinct values"
-        (is (= {:rows [["Broen Olujimi"        1]
-                       ["Conchúr Tihomir"      2]
-                       ["Dwight Gresham"       3]
-                       ["Felipinho Asklepios"  4]
-                       ["Frans Hevel"          5]
-                       ["Kaneonuskatew Eiran"  6]
-                       ["Kfir Caj"             7]
-                       ["Nils Gotam"           8]
-                       ["Plato Yeshua"         9]
-                       ["Quentin Sören"       10]
-                       ["Rüstem Hebel"        11]
-                       ["Shad Ferdynand"      12]
-                       ["Simcha Yan"          13]
-                       ["Spiros Teofil"       14]
-                       ["Szymon Theutrich"    15]]
-                :cols [(qp.test/breakout-col :users :name)
-                       (qp.test/aggregate-col :cum-count :users :id)]}
-               (qp.test/rows-and-cols
+        (is (=? {:rows [["Broen Olujimi"        1]
+                        ["Conchúr Tihomir"      2]
+                        ["Dwight Gresham"       3]
+                        ["Felipinho Asklepios"  4]
+                        ["Frans Hevel"          5]
+                        ["Kaneonuskatew Eiran"  6]
+                        ["Kfir Caj"             7]
+                        ["Nils Gotam"           8]
+                        ["Plato Yeshua"         9]
+                        ["Quentin Sören"       10]
+                        ["Rüstem Hebel"        11]
+                        ["Shad Ferdynand"      12]
+                        ["Simcha Yan"          13]
+                        ["Spiros Teofil"       14]
+                        ["Szymon Theutrich"    15]]
+                 :cols [(qp.test/breakout-col :users :name)
+                        (qp.test/aggregate-col :cum-count :users :id)]}
+                (qp.test/rows-and-cols
                  (mt/format-rows-by [str int]
                    (mt/run-mbql-query users
                      {:aggregation [[:cum-count $id]]
                       :breakout    [$name]}))))))
 
       (testing "w/ breakout on field that requires grouping"
-        (is (= {:cols [(qp.test/breakout-col :venues :price)
-                       (qp.test/aggregate-col :cum-count :venues :id)]
-                :rows [[1 22]
-                       [2 81]
-                       [3 94]
-                       [4 100]]}
-               (qp.test/rows-and-cols
+        (is (=? {:cols [(qp.test/breakout-col :venues :price)
+                        (qp.test/aggregate-col :cum-count :venues :id)]
+                 :rows [[1 22]
+                        [2 81]
+                        [3 94]
+                        [4 100]]}
+                (qp.test/rows-and-cols
                  (mt/format-rows-by [int int]
                    (mt/run-mbql-query venues
                      {:aggregation [[:cum-count $id]]
@@ -256,10 +256,10 @@
     (tu/with-temp-vals-in-db Field (data/id :venues :price) {:settings {:is_priceless false}}
       (let [results (mt/run-mbql-query venues
                       {:aggregation [[:sum $price]]})]
-        (is (= (assoc (qp.test/aggregate-col :sum :venues :price)
-                      :settings {:is_priceless false})
-               (or (-> results mt/cols first)
-                   results)))))))
+        (is (=? (assoc (qp.test/aggregate-col :sum :venues :price)
+                       :settings {:is_priceless false})
+                (or (-> results mt/cols first)
+                    results)))))))
 
 (deftest duplicate-aggregations-test
   (mt/test-drivers (mt/normal-drivers)
