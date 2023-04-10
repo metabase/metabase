@@ -762,7 +762,7 @@
 
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]
-  (case csv-type
+  (case upload-type
     ::upload/varchar_255 "VARCHAR(255)"
     ::upload/text        "TEXT"
     ::upload/int         "INTEGER"
