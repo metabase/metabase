@@ -2,13 +2,15 @@
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
   (:require
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
    [java-time :as t]
-   [metabase.csv :as csv]
+   [metabase.csv :as upload]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -766,28 +768,58 @@
   (when (re-find #";" s)
     (throw (ex-info (tru "Error uploading CSV: \";\" in {0}" s) {}))))
 
-(defn- load-from-csv-sql [schema-name table-name column-names file-path]
-  (str "COPY " schema-name "." table-name "(" (str/join "," column-names) ") FROM '" file-path
-       "' WITH (FORMAT CSV, HEADER TRUE, ENCODING 'UTF8', QUOTE '\"', ESCAPE '\\')"))
+(defn parse-bool
+  [s]
+  (cond
+    (re-matches #"(?i)true|t|yes|y|1" (str/trim s)) true
+    (re-matches #"(?i)false|f|no|n|0" (str/trim s)) false
+    :else (throw (ex-info (tru "Error uploading CSV: {0} is not a valid boolean" s) {}))))
+
+(defn- load-from-csv-sql
+  [schema-name table-name column-names rows]
+  (sql/format {:insert-into (keyword (str schema-name "." table-name))
+               :columns (map keyword column-names)
+               :values rows}))
 
 (def ^:private csv->database-type
-  {::csv/varchar_255 "VARCHAR(255)"
-   ::csv/text        "TEXT"
-   ::csv/int         "INTEGER"
-   ::csv/float       "FLOAT"
-   ::csv/boolean     "BOOLEAN"})
+  {::upload/varchar_255 "VARCHAR(255)"
+   ::upload/text        "TEXT"
+   ::upload/int         "INTEGER"
+   ::upload/float       "FLOAT"
+   ::upload/boolean     "BOOLEAN"})
+
+(def ^:private csv-type->parser
+  {::upload/varchar_255 identity
+   ::upload/text        identity
+   ::upload/int         #(Integer/parseInt %)
+   ::upload/float       #(Double/parseDouble %)
+   ::upload/boolean     parse-bool})
+
+(defn- parsed-rows
+  "Returns a vector of parsed rows from a `csv-file`.
+   Replaces empty strings with nil."
+  [col->csv-type csv-file]
+  (with-open [reader (io/reader csv-file)]
+    (let [[_header & rows] (csv/read-csv reader)
+          parsers (map csv-type->parser (vals col->csv-type))]
+      (vec (for [row rows]
+             (for [[v f] (map vector row parsers)]
+               (if (str/blank? v)
+                 nil
+                 (f v))))))))
 
 (defmethod driver/load-from-csv :postgres
   [driver db-id schema-name table-name ^File csv-file]
-  (let [col->type    (update-vals (csv/detect-schema csv-file) csv->database-type)
-        column-names (keys col->type)
-        file-path    (.getAbsolutePath csv-file)]
-    (run! check-for-semicolons (concat [schema-name table-name file-path] column-names))
-    (driver/create-table driver db-id schema-name table-name col->type)
-    (let [sql (load-from-csv-sql schema-name table-name column-names file-path)]
-      (try
-        (qp.writeback/execute-write-sql! db-id sql)
-        (catch Throwable e
-          (driver/drop-table driver db-id schema-name table-name)
-          (throw (ex-info (ex-message e) {}))))
-      nil)))
+  (let [col->csv-type      (upload/detect-schema csv-file)
+        col->database-type (update-vals col->csv-type csv->database-type)
+        column-names       (keys col->csv-type)]
+    (run! check-for-semicolons (concat [schema-name table-name] column-names))
+    (driver/create-table driver db-id schema-name table-name col->database-type)
+    (try
+      (let [rows  (parsed-rows col->csv-type csv-file)
+            sql   (load-from-csv-sql schema-name table-name column-names rows)]
+        (qp.writeback/execute-write-sql! db-id sql))
+      (catch Throwable e
+        (driver/drop-table driver db-id schema-name table-name)
+        (throw (ex-info (ex-message e) {}))))
+    nil))
