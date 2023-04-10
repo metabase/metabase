@@ -1,5 +1,11 @@
 import React from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { exportFormats } from "metabase/lib/urls";
+import { canSavePng } from "metabase/visualizations";
+import { Dataset } from "metabase-types/api";
+import { State } from "metabase-types/store";
 import {
   DownloadButtonIcon,
   DownloadButtonRoot,
@@ -8,16 +14,33 @@ import {
   DownloadPopoverRoot,
 } from "./QueryDownloadPopover.styled";
 
+interface OwnProps {
+  display: string;
+  result: Dataset;
+}
+
 interface StateProps {
-  formats: string[];
+  canDownloadImage: boolean;
   hasTruncatedResults: boolean;
   limitedDownloadSizeText: string;
 }
 
 type QueryDownloadPopoverProps = StateProps;
 
+const mapStateToProps = (
+  state: State,
+  { display, result }: OwnProps,
+): StateProps => ({
+  canDownloadImage: canSavePng(display),
+  hasTruncatedResults:
+    result.data != null && result.data.rows_truncated != null,
+  limitedDownloadSizeText:
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDownloadWidgetMessageOverride(result) ??
+    t`The maximum download size is 1 million rows.`,
+});
+
 const QueryDownloadPopover = ({
-  formats,
+  canDownloadImage,
   hasTruncatedResults,
   limitedDownloadSizeText,
 }: QueryDownloadPopoverProps) => {
@@ -32,9 +55,10 @@ const QueryDownloadPopover = ({
           <div>{limitedDownloadSizeText}</div>
         </DownloadPopoverMessage>
       )}
-      {formats.map(format => (
+      {exportFormats.map(format => (
         <DownloadButton key={format} format={format} />
       ))}
+      {canDownloadImage && <DownloadButton format="png" />}
     </DownloadPopoverRoot>
   );
 };
@@ -53,4 +77,4 @@ const DownloadButton = ({ format, onClick }: DownloadButtonProps) => {
   );
 };
 
-export default QueryDownloadPopover;
+export default connect(mapStateToProps)(QueryDownloadPopover);
