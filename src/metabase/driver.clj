@@ -491,7 +491,7 @@
     :actions
 
     ;; Does the driver support uploading files
-    :upload
+    :uploads
 
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]

@@ -144,7 +144,7 @@
 
 (deftest load-from-csv-test
   (testing "Upload a CSV file"
-    (mt/test-drivers (mt/normal-drivers-with-feature :upload)
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (#'csv/load-from-csv*
          driver/*driver*
@@ -181,7 +181,7 @@
 
 (deftest load-from-csv-boolean-test
   (testing "Upload a CSV file"
-    (mt/test-drivers (mt/normal-drivers-with-feature :upload)
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (#'csv/load-from-csv*
          driver/*driver*
@@ -225,7 +225,7 @@
                 (is (= alternating bool-column))))))))))
 
 (deftest load-from-csv-failed-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :upload)
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-empty-db
       (testing "Can't upload a CSV with missing values"
         (is (thrown-with-msg?
