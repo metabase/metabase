@@ -2453,9 +2453,6 @@
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc"))))
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "search-query")))))))))
 
-(defn- kill-block-perms! [group db]
-  (t2/delete! 'Permissions :group_id (:id group) :object (perms/database-block-perms-path db)))
-
 (deftest related-permissions-query-test
   (is (=
        #{(str "/db/" (:id (perms-group/all-users)) "/")}
