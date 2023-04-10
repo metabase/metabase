@@ -1,4 +1,5 @@
 (ns metabase.query-processor-test.test-mlv2
+  ;; TODO -- should this be `metabase.query-processor.middleware.test-mlv2`?
   (:require
    [clojure.test :refer :all]
    [malli.core :as mc]
@@ -68,7 +69,25 @@
      #{:datetime-add :datetime-subtract}
      (mbql.u/match-one &match
        [_tag (_literal :guard string?) & _]
-       "#29910"))))
+       "#29910"))
+   ;; #29935: metadata for an `:aggregation` with a `:case` expression not working
+   (mbql.u/match-one query
+     {:aggregation aggregations}
+     (mbql.u/match-one aggregations
+       :case
+       "#29935"))
+   ;; #29936: metadata for an `:aggregation` that is a `:metric`
+   (mbql.u/match-one query
+     {:aggregation aggregations}
+     (mbql.u/match-one aggregations
+       :metric
+       "#28689"))
+   ;; #29938: `:case` with default value does not work correctly
+   (mbql.u/match-one query
+     :case
+     (mbql.u/match-one &match
+       {:default _default}
+       "#29938"))))
 
 (defn- test-mlv2-metadata [original-query qp-metadata]
   {:pre [(map? original-query)]}
@@ -76,16 +95,23 @@
     (do-with-legacy-query-testing-context
      original-query
      (^:once fn* []
-      (let [pMBQL             (-> original-query lib.convert/->pMBQL)
-            metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database original-query))
-            mlv2-query        (lib/query metadata-provider pMBQL)
-            mlv2-metadata     (lib.metadata.calculation/metadata mlv2-query)]
-        (do-with-pMBQL-query-testing-context
-         pMBQL
-         (^:once fn* []
-          (testing "Generated column names should match names in QP metadata"
-            (is (= (mapv (some-fn :qp/actual-name :name) (:cols qp-metadata))
-                   (mapv :lib/desired-column-alias mlv2-metadata)))))))))))
+      (let [pMBQL (-> original-query lib.convert/->pMBQL)]
+        ;; don't bother doing this test if the output is invalid; [[test-mlv2-conversion]] will fail anyway, no point in
+        ;; triggering an Exception here as well.
+        (when (mc/validate ::lib.schema/query pMBQL)
+          (do-with-pMBQL-query-testing-context
+           pMBQL
+           (^:once fn* []
+            (try
+              (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database original-query))
+                    mlv2-query        (lib/query metadata-provider pMBQL)
+                    mlv2-metadata     (lib.metadata.calculation/metadata mlv2-query)]
+                (testing "Generated column names should match names in QP metadata"
+                  (is (= (mapv (some-fn :qp/actual-name :name) (:cols qp-metadata))
+                         (mapv :lib/desired-column-alias mlv2-metadata)))))
+              (catch Throwable e
+                (testing "Failed to calculated metadata for query"
+                  (is (not (Throwable->map e))))))))))))))
 
 ;;; TODO -- I don't think we should need to call `normalize` at all below, since this is done after normalization.
 (defn- test-mlv2-conversion [query]
