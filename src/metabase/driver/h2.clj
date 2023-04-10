@@ -3,6 +3,7 @@
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [java-time :as t]
+   [metabase.csv :as upload]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
@@ -49,7 +50,8 @@
                               :actions/custom            true
                               :datetime-diff             true
                               :now                       true
-                              :test/jvm-timezone-setting false}]
+                              :test/jvm-timezone-setting false
+                              :uploads                   true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -515,3 +517,12 @@
       (do (log/error (tru "SSH tunnel can only be established for H2 connections using the TCP protocol"))
           db-details))
     db-details))
+
+(defmethod driver/upload-type->database-type :h2
+  [_driver csv-type]
+  (case csv-type
+    ::upload/varchar_255 "VARCHAR"
+    ::upload/text        "VARCHAR"
+    ::upload/int         "INTEGER"
+    ::upload/float       "DOUBLE PRECISION"
+    ::upload/boolean     "BOOLEAN"))
