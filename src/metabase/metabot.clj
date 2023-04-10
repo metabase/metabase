@@ -64,35 +64,19 @@
         (log/infof "No model inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))
 
-(defn infer-sql-query
+(defn infer-native-sql-query
   "Given a database and user prompt, determine a sql query to answer my question."
-  [{:keys [database user_prompt] :as context}]
+  [{:keys [database user_prompt prompt_template_versions] :as context}]
   (log/infof "Metabot is inferring sql for database '%s' with prompt '%s'." (:id database) user_prompt)
   (if (metabot-settings/is-metabot-enabled)
-    (let [x {:prompt_template "infer_sql",
-             :version         "0001",
-             :messages        [{:role    "system",
-                                :content "You are a helpful assistant that writes SQL to query the database '%%DATABASE:SQL_NAME%%' using SELECT statements based on user input."}
-                               {:role    "assistant",
-                                :content "This is the SQL used to create the database '%%DATABASE:SQL_NAME%%'"}
-                               {:role    "assistant",
-                                :content "%%DATABASE:CREATE_DATABASE_DDL%%"}
-                               {:role    "assistant",
-                                :content "All tables in the database '%%DATABASE:SQL_NAME%%' have data in them."}
-                               {:role    "assistant",
-                                :content "Use this information to write a SQL query to answer my question.'"}
-                               {:role    "assistant",
-                                :content "Do not explain the SQL statement, just give me the raw SELECT statement as ANSI SQL."}
-                               {:role "user", :content "%%USER_PROMPT%%"}]}
-          x (assoc x :prompt (#'metabot-util/prompt-template->messages x context))
-          {:keys [prompt_template version prompt]} x
-          ;{:keys [prompt_template version prompt]} (metabot-util/create-prompt context)
-          ;{:keys [database_id inner_query]} model
-          ]
-      (or
-       (metabot-util/find-result
-        metabot-util/extract-sql
-        (metabot-client/invoke-metabot prompt))
-       (log/infof "No sql inferred for database '%s' with prompt '%s'." (:id database) user_prompt)))
+    (let [{:keys [prompt_template version prompt]} (metabot-util/create-prompt context)
+          sql (or
+                (metabot-util/find-result
+                  metabot-util/extract-sql
+                  (metabot-client/invoke-metabot prompt))
+                (log/infof "No sql inferred for database '%s' with prompt '%s'." (:id database) user_prompt))]
+      {:sql sql
+       :prompt_template_versions (conj
+                                   (vec prompt_template_versions)
+                                   (format "%s:%s" prompt_template version))})
     (log/warn "Metabot is not enabled")))
-

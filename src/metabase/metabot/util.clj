@@ -159,15 +159,14 @@
   (when-let [values (and
                      (not= :type/Boolean base_type)
                      (:values (t2/select-one FieldValues :field_id field-id)))]
-    (when
-     (< (count values) 60)
+    (when (< (count values) (metabot-settings/enum-cardinality-threshold))
       (format "create type %s_%s_t as enum %s;"
              table-name
              field-name
              (str/join ", " (map (partial format "'%s'") values))))))
 
 (defn- table->pseudo-ddl
-  "Create a reasonable ddl to represent how this table might be created as SQL."
+  "Create an 'approximate' ddl to represent how this table might be created as SQL."
   [{table-name :name table-id :id :as table}]
   (let [fields       (t2/select [Field
                                  :base_type
@@ -211,15 +210,11 @@
     (str/join "\n\n" (conj enum-strs create-sql))))
 
 (defn- database->pseudo-ddl
-  "Create a reasonable ddl to represent how this database might be created as SQL."
+  "Create an 'approximate' ddl to represent how this database might be created as SQL."
   [{db_id :id :as _database}]
   (->> (t2/select Table :db_id db_id)
        (map table->pseudo-ddl)
        (str/join "\n\n")))
-
-(comment
-  (database->pseudo-ddl {:id 1})
-  )
 
 (defn- add-pseudo-database-ddl [database]
   (assoc database :create_database_ddl (database->pseudo-ddl database)))

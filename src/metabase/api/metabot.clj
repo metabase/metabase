@@ -105,8 +105,8 @@
         _       (check-database-support (:id database))
         context {:database    (metabot-util/denormalize-database database)
                  :user_prompt question
-                 :prompt_task :infer_sql}]
-    (metabot/infer-sql-query context)))
+                 :prompt_task :infer_native_sql}]
+    (metabot/infer-native-sql-query context)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/feedback"
