@@ -188,6 +188,7 @@
 
     (f metadata) -> rf"
   [#'results-metadata/record-and-return-metadata!
+   (resolve 'metabase.query-processor-test.test-mlv2/post-processing-middleware)
    #'limit/limit-result-rows
    (resolve 'ee.perms/limit-download-result-rows)
    #'qp.add-rows-truncated/add-rows-truncated
@@ -199,7 +200,6 @@
    #'large-int-id/convert-id-to-string
    #'viz-settings/update-viz-settings
    #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns
-   (resolve 'metabase.query-processor-test.test-mlv2/post-processing-middleware)
    #'annotate/add-column-info])
 ;; ↑↑↑ POST-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 

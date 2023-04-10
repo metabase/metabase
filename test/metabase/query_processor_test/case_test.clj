@@ -38,7 +38,8 @@
       (mt/with-temp Segment [{segment-id :id} {:table_id   (mt/id :venues)
                                                :definition {:source-table (mt/id :venues)
                                                             :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
-        (is (=  179.0  (test-case [:sum [:case [[[:segment segment-id] [:field (mt/id :venues :price) nil]]]]])))))))
+        (is (= 179.0
+               (test-case [:sum [:case [[[:segment segment-id] [:field (mt/id :venues :price) nil]]]]])))))))
 
 (deftest metrics-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)

@@ -11,7 +11,8 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [clojure.string :as str]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,10 +24,20 @@
   (testing (format "\npMBQL =\n%s\n" (u/pprint-to-str pMBQL))
     (thunk)))
 
-(defn- skip-conversion-tests? [query]
+(defn- skip-conversion-tests?
+  "Whether to skip conversion tests against a `legacy-query`."
+  [legacy-query]
   (or
+   ;; #29745: missing schema for `:var`
+   (mbql.u/match-one legacy-query
+     :var
+     "#29745")
+   ;; #29747: schema for `:relative-datetime` current without a unit is broken
+   (mbql.u/match-one legacy-query
+     [:relative-datetime :current]
+     "#29747")
    ;; #29898: `:joins` with `:fields` other than `:all` or `:none` are not normalized correctly.
-   (mbql.u/match-one query
+   (mbql.u/match-one legacy-query
      {:joins joins}
      (mbql.u/match-one joins
        {:fields fields}
@@ -34,64 +45,87 @@
          :field
          "#29898")))
    ;; #29897: `:datetime-diff` is not handled correctly.
-   (mbql.u/match-one query
+   (mbql.u/match-one legacy-query
      :datetime-diff
      "#29897")
    ;; #29904: `:fields` in `:joins` are supposed to be returned even if `:fields` is specified.
-   (mbql.u/match-one query
+   (mbql.u/match-one legacy-query
      {:fields fields, :joins joins}
      (mbql.u/match-one joins
        {:fields (join-fields :guard (partial not= :none))}
        "#29904"))
    ;; #29895: `:value` is not supported
-   (mbql.u/match-one query
+   (mbql.u/match-one legacy-query
      :value
      "#29895")
+   ;; #29908: native queries do not round trip correctly
+   (when (:native legacy-query)
+     "#29908")
+   ;; #29909: these clauses are not implemented yet.
+   (mbql.u/match-one legacy-query
+     #{:get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second}
+     "#29909")
+   ;; #29770: `:absolute-datetime` does not work correctly
+   (mbql.u/match-one legacy-query
+     :absolute-datetime
+     "#29770")
+   ;; #29938: conversion for `:case` with default value does not work correctly
+   (mbql.u/match-one legacy-query
+     :case
+     (mbql.u/match-one &match
+       {:default _default}
+       "#29938"))
+   ;; #29942: missing schema for `:cum-sum` and `:cum-count` aggregations
+   (mbql.u/match-one legacy-query
+     #{:cum-sum :cum-count}
+     "#29942")
+   ;; #29946: nested arithmetic expressions wrapping a `:field` clause
+   (mbql.u/match-one legacy-query
+     #{:+ :- :*}
+     (mbql.u/match-one &match
+       #{:+ :- :*}
+       (mbql.u/match-one &match
+         :field
+         "#29946")))))
+
+(defn- skip-metadata-calculation-tests? [legacy-query]
+  (or
    ;; #29907: wrong column name for joined columns in `:breakout`
-   (mbql.u/match-one query
+   (mbql.u/match-one legacy-query
      {:breakout breakouts}
      (mbql.u/match-one breakouts
        [:field _id-or-name {:join-alias _join-alias}]
        "#29907"))
-   ;; #29908: native queries do not round trip correctly
-   (when (:native query)
-     "#29908")
-   ;; #29909: these clauses are not implemented yet.
-   (mbql.u/match-one query
-     #{:get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second}
-     "#29909")
-   ;; #29770: `:absolute-datetime` does not work correctly
-   (mbql.u/match-one query
-     :absolute-datetime
-     "#29770")
    ;; #29910: `:datetime-add` and `:datetime-subtract` broken with strings literals
-   (mbql.u/match-one query
+   (mbql.u/match-one legacy-query
      #{:datetime-add :datetime-subtract}
      (mbql.u/match-one &match
        [_tag (_literal :guard string?) & _]
        "#29910"))
    ;; #29935: metadata for an `:aggregation` with a `:case` expression not working
-   (mbql.u/match-one query
+   (mbql.u/match-one legacy-query
      {:aggregation aggregations}
      (mbql.u/match-one aggregations
        :case
        "#29935"))
    ;; #29936: metadata for an `:aggregation` that is a `:metric`
-   (mbql.u/match-one query
+   (mbql.u/match-one legacy-query
      {:aggregation aggregations}
      (mbql.u/match-one aggregations
        :metric
        "#28689"))
-   ;; #29938: `:case` with default value does not work correctly
-   (mbql.u/match-one query
-     :case
+   ;; #29941 : metadata resolution for query with a `card__` source-table does not work correctly for `:field` <name>
+   ;; #clauses
+   (mbql.u/match-one legacy-query
+     {:source-table (_id :guard #(str/starts-with? % "card__"))}
      (mbql.u/match-one &match
-       {:default _default}
-       "#29938"))))
+       [:field (_field-name :guard string?) _opts]
+       "#29941"))))
 
 (defn- test-mlv2-metadata [original-query qp-metadata]
   {:pre [(map? original-query)]}
-  (when-not (skip-conversion-tests? original-query)
+  (when-not (or (skip-conversion-tests? original-query)
+                (skip-metadata-calculation-tests? original-query))
     (do-with-legacy-query-testing-context
      original-query
      (^:once fn* []
@@ -106,8 +140,15 @@
               (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database original-query))
                     mlv2-query        (lib/query metadata-provider pMBQL)
                     mlv2-metadata     (lib.metadata.calculation/metadata mlv2-query)]
-                (testing "Generated column names should match names in QP metadata"
-                  (is (= (mapv (some-fn :qp/actual-name :name) (:cols qp-metadata))
+                (testing (str "Generated column names should match names in QP metadata"
+                              "\n\nActual metadata [:cols]:\n" (u/pprint-to-str (:cols qp-metadata))
+                              "\n\nCalculated metadata:\n" (u/pprint-to-str mlv2-metadata))
+                  (is (= (into []
+                               ;; ignore columns added by Field remapping; I don't think MLv2 is expected to know about
+                               ;; these, or needs to know about them.
+                               (comp (remove :remapped_from)
+                                     (map (some-fn :qp/actual-name :name)))
+                               (:cols qp-metadata))
                          (mapv :lib/desired-column-alias mlv2-metadata)))))
               (catch Throwable e
                 (testing "Failed to calculated metadata for query"
