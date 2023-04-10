@@ -49,7 +49,6 @@
                               :actions/custom            true
                               :datetime-diff             true
                               :now                       true
-                              :csv-uploads               true
                               :test/jvm-timezone-setting false}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]

@@ -490,8 +490,8 @@
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
-    ;; Does the driver support CSV uploads
-    :csv-uploads
+    ;; Does the driver support CSV upload
+    :csv-upload
 
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
@@ -830,8 +830,8 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti load-from-csv
-  "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil."
-  {:added "0.47.0", :arglists '([driver database schema-name table-name file])}
+(defmulti upload-type->database-type
+  "Returns the database type for a given `metabase.csv` type."
+  {:added "0.47.0", :arglists '([driver csv-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
