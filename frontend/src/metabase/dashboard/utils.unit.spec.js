@@ -1,6 +1,6 @@
 import {
   fetchDataOrError,
-  isDatabaseActionsEnabled,
+  isDatabaseActionEnabled,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
 import { createMockDatabase } from "metabase-types/api/mocks";
@@ -15,8 +15,6 @@ describe("Dashboard utils", () => {
       const successfulFetch = Promise.resolve(data);
 
       const result = await fetchDataOrError(successfulFetch);
-
-      console.log(result);
 
       expect(result.error).toBeUndefined();
       expect(result).toEqual(data);
@@ -47,7 +45,7 @@ describe("Dashboard utils", () => {
 
       const databases = dbData.map(createMockDatabase);
 
-      const result = isDatabaseActionsEnabled(databases);
+      const result = databases.some(isDatabaseActionEnabled());
       expect(result).toBe(true);
     });
   });

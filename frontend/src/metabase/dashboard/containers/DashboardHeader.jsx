@@ -30,7 +30,7 @@ import {
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
-import { isDatabaseActionsEnabled } from "metabase/dashboard/utils";
+import { isDatabaseActionEnabled } from "metabase/dashboard/utils";
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
 import {
@@ -216,8 +216,8 @@ class DashboardHeader extends Component {
 
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
-    const hasModelActionsEnabled = isDatabaseActionsEnabled(
-      Object.values(databases),
+    const hasModelActionsEnabled = Object.values(databases).some(
+      isDatabaseActionEnabled,
     );
 
     const buttons = [];
