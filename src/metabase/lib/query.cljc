@@ -31,10 +31,10 @@
         #{}
         [:order-by :aggregation :breakout :filter :expressions :joins :fields]))))
 
-(defn- next-stage-ref
+(defn- target-ref-for-stage
   "Gets the ref for the target-id exposed by the previous stage"
-  [query next-stage-number target-id]
-  (->> (lib.stage/visible-columns query next-stage-number)
+  [query stage-number target-id]
+  (->> (lib.stage/visible-columns query stage-number)
        (some (fn [{:keys [lib/source id] :as column}]
                (when (and (= :source/previous-stage source) (= target-id id))
                  (lib.ref/ref column))))))
@@ -46,9 +46,9 @@
     (loop [stage-number stage-number]
       (when-let [next-stage-number (lib.util/next-stage-number query stage-number)]
         ;; The target could still be exposed (i.e. removing the last breakout could expose itself through default fields)
-        (when-not (next-stage-ref query next-stage-number target-id)
+        (when-not (target-ref-for-stage query next-stage-number target-id)
           ;; Get the ref to look for from the previous-query
-          (let [target-ref (next-stage-ref previous-query next-stage-number target-id)]
+          (let [target-ref (target-ref-for-stage previous-query next-stage-number target-id)]
             (if-let [found (find-clause query next-stage-number target-ref)]
               (throw (ex-info "Clause cannot be removed as it has dependents" {:target-clause target-clause
                                                                                :stage-number next-stage-number
