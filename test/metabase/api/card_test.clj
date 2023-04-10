@@ -2613,8 +2613,6 @@
                       PermissionsGroupMembership [_all-pgm {:user_id (:id all-user) :group_id (:id all-pg)}]
                       User                       [admin-user {:first_name "Admin-User" :email "mr.admin@user.com"}]
                       PermissionsGroupMembership [_admin-pgm {:user_id (:id admin-user) :group_id (:id admin-pg)}]]
-        (is (= (str "set of ids for group " (:id all-pg))
-               (t2/select-fn-set :object :permissions {:where [:= :group_id (:id all-pg)]})))
         (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params for admin-user"
           (testing "without search query"
             (mt/user-http-request admin-user :get 200 (param-values-url field-filter-card (:field-values param-keys))))
@@ -2687,8 +2685,8 @@
       (mt/with-temp* [User [blocked-user {:first_name "All-User" :email "mr.all@user.com"}]
                       PermissionsGroup [all-pg {:name "Test All Users"}]
                       Permissions [_ {:group_id (:id all-pg) :object (perms/database-block-perms-path (mt/db))}]
-                      PermissionsGroupMembership [_all-pgm {:user_id (:id blocked-user) :group_id (:id all-pg)}]]
-          (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user is blocked is unauthorized"
+                      PermissionsGroupMembership [_all-pgm {:group_id (:id all-pg) :user_id (:id blocked-user)}]]
+        (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user is blocked is unauthorized"
             (testing "without search query"
               (mt/user-http-request blocked-user :get 403 (param-values-url field-filter-card (:field-values param-keys))))
             (testing "with search query"
