@@ -777,7 +777,7 @@
              (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                              {:resolved-params (keys (:resolved-params dashboard))
                               :status-code     400})))
-         param-values (custom-values/parameter->values param query )]
+         param-values (custom-values/parameter->values param query)]
      (if (= param-values ::custom-values/not-found)
        (chain-filter dashboard param-key constraint-param-key->value query)
        param-values))))

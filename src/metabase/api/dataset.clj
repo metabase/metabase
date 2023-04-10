@@ -205,9 +205,10 @@
   "Fetch parameter values. Parameter should be a full parameter, field-ids is an optional vector of field ids, only
   consulted if `:values_source_type` is nil. Query is an optional string return matching field values not all."
   [parameter field-ids query]
-  (custom-values/parameter->values
-    parameter query
-    (fn [] (parameter-field-values field-ids query))))
+  (let [param-values (custom-values/parameter->values parameter query)]
+    (if (= param-values ::custom-values/not-found)
+      (parameter-field-values field-ids query)
+      param-values)))
 
 (api/defendpoint POST "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."
