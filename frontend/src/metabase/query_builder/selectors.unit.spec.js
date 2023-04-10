@@ -144,16 +144,15 @@ describe("getIsResultDirty", () => {
 
     it("converts clauses into plain MBQL objects", () => {
       const aggregation = ["count"];
-      const breakout = ["field", ORDERS.CREATED_AT.id, null];
-      const filter = [">=", ["field", ORDERS.TOTAL.id, null], 20];
+      const breakout = ORDERS.CREATED_AT.reference();
+      const filter = [">=", ORDERS.TOTAL.reference(), 20];
       const orderBy = ["asc", ["aggregation", 0]];
       const join = {
         alias: "Products",
         condition: [
           "=",
-          ["field", ORDERS.PRODUCT_ID.id, null][
-            ("field", PRODUCTS.ID.id, null)
-          ],
+          ["field", ORDERS.PRODUCT_ID.id, null],
+          ["field", PRODUCTS.ID.id, null],
         ],
       };
 

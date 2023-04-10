@@ -353,8 +353,8 @@ function isQuestionEditable(question) {
   return !question?.query().readOnly();
 }
 
-function areQueriesEqual(queryA, queryB, tableMetadata) {
-  return ML.areQueriesEqual(
+function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
+  return ML.areLegacyQueriesEqual(
     queryA,
     queryB,
     tableMetadata?.fields.map(({ id }) => id),
@@ -377,12 +377,12 @@ function areModelsEquivalent({
 
   const composedOriginal = originalQuestion.composeDataset();
 
-  const isLastRunComposed = areQueriesEqual(
+  const isLastRunComposed = areLegacyQueriesEqual(
     lastRunQuestion.datasetQuery(),
     composedOriginal.datasetQuery(),
     tableMetadata,
   );
-  const isCurrentComposed = areQueriesEqual(
+  const isCurrentComposed = areLegacyQueriesEqual(
     currentQuestion.datasetQuery(),
     composedOriginal.datasetQuery(),
     tableMetadata,
@@ -390,7 +390,7 @@ function areModelsEquivalent({
 
   const isLastRunEquivalentToCurrent =
     isLastRunComposed &&
-    areQueriesEqual(
+    areLegacyQueriesEqual(
       currentQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableMetadata,
@@ -398,7 +398,7 @@ function areModelsEquivalent({
 
   const isCurrentEquivalentToLastRun =
     isCurrentComposed &&
-    areQueriesEqual(
+    areLegacyQueriesEqual(
       lastRunQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableMetadata,
@@ -414,7 +414,7 @@ function areQueriesEquivalent({
   tableMetadata,
 }) {
   return (
-    areQueriesEqual(
+    areLegacyQueriesEqual(
       lastRunQuestion?.datasetQuery(),
       currentQuestion?.datasetQuery(),
       tableMetadata,
