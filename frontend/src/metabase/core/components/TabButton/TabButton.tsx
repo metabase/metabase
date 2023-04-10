@@ -40,6 +40,7 @@ export interface TabButtonMenuItem {
 export interface TabButtonProps extends HTMLAttributes<HTMLDivElement> {
   label: string;
   value?: TabButtonValue;
+  showMenu?: boolean;
   menuItems?: TabButtonMenuItem[];
   onEdit?: ChangeEventHandler<HTMLInputElement>;
   onFinishEditing?: () => void;
@@ -57,6 +58,7 @@ const TabButton = forwardRef(function TabButton(
     onFinishEditing,
     disabled = false,
     isEditing = false,
+    showMenu: showMenuProp = true,
     ...props
   }: TabButtonProps,
   inputRef: Ref<HTMLInputElement>,
@@ -66,7 +68,8 @@ const TabButton = forwardRef(function TabButton(
 
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const showMenu = menuItems !== undefined && menuItems.length > 0;
+  const showMenu =
+    showMenuProp && menuItems !== undefined && menuItems.length > 0;
 
   const handleButtonClick: MouseEventHandler<HTMLDivElement> = useCallback(
     event => {

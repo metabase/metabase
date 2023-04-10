@@ -15,7 +15,7 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
 
   border: none;
   outline: none;
-  background-color: ${color("bg-light")};
+  background-color: transparent;
 
   color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
   font-weight: bold;

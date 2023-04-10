@@ -55,7 +55,12 @@ const Template: ComponentStory<typeof TabRow> = args => {
           renameMenuIndex={2}
           renameMenuLabel="Edit name"
         />
-        <TabButton label="Tab 4" value={4} />
+        <TabButton
+          label="Tab 4"
+          value={4}
+          menuItems={menuItems}
+          showMenu={false}
+        />
         <TabButton label="Tab 5" value={5} menuItems={menuItems} />
         <TabButton label="Tab 6" value={6} disabled />
         <TabButton label="Tab 7" value={7} menuItems={menuItems} disabled />
