@@ -7,6 +7,8 @@
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (deftest ^:parallel untyped-map-test
   (testing "equal"
     (are [x y] (lib.equality/= x y)

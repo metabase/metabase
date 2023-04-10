@@ -391,7 +391,7 @@
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline"
   [query]
-  (update query :stages conj (lib.options/ensure-uuid {:lib/type :mbql.stage/mbql})))
+  (update query :stages conj {:lib/type :mbql.stage/mbql}))
 
 (mu/defn drop-stage :- ::lib.schema/query
   "Drops the final stage in the pipeline"

@@ -31,3 +31,12 @@
         (is (mc/validate :mbql.clause/* expr))
         (is (not (mc/validate ::expression/integer expr)))
         (is (mc/validate ::expression/number expr))))))
+
+(deftest ^:parallel type-of-power-test
+  (testing "#29944"
+    (is (= :type/Integer
+           (expression/type-of
+            [:power
+             {:lib/uuid "08cecb54-005a-4687-9884-c212b1511287"}
+             [:field {:lib/uuid "d0813609-a69a-440e-8459-3c28b56498ae", :base-type :type/Integer} 133243]
+             2])))))
