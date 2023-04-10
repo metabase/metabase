@@ -24,7 +24,6 @@ import type Question from "metabase-lib/Question";
 import { PluginGroupManagersType } from "./types";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
-const object = () => ({});
 const array = () => [];
 
 // functions called when the application is started
@@ -152,7 +151,8 @@ export const PLUGIN_MODERATION = {
   QuestionModerationButton: PluginPlaceholder,
   ModerationReviewBanner: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
-  getStatusIcon: object,
+  getStatusIcon: (moderated_status?: string): string | IconProps | undefined =>
+    undefined,
   getModerationTimelineEvents: array,
   getMenuItems: (
     question?: Question,
