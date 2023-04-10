@@ -49,6 +49,8 @@
    column-metadatas :- [:sequential lib.metadata/ColumnMetadata]]
   (or (m/find-first #(= (:lib/desired-column-alias %) column-name)
                     column-metadatas)
+      (m/find-first #(= (:name %) column-name)
+                    column-metadatas)
       (throw (ex-info (i18n/tru "Invalid :field clause: column {0} does not exist. Found: {1}"
                                 (pr-str column-name)
                                 (pr-str (mapv :lib/desired-column-alias column-metadatas)))

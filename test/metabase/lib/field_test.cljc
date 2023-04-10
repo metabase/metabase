@@ -255,8 +255,8 @@
                 :lib/source               :source/breakouts
                 :lib/source-column-alias  "LAST_LOGIN"
                 :lib/desired-column-alias "LAST_LOGIN"}
-               {:name                     "avg"
+               {:name                     "avg_count"
                 :lib/source               :source/aggregations
-                :lib/source-column-alias  "avg"
-                :lib/desired-column-alias "avg"}]
+                :lib/source-column-alias  "avg_count"
+                :lib/desired-column-alias "avg_count"}]
               (lib.metadata.calculation/metadata query))))))
