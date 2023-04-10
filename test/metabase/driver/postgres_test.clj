@@ -1168,7 +1168,7 @@
          (mt/id)
          "public"
          "upload_test"
-         (csv-test/csv-file-with ["id,empty,string,bool,float" "2,,string,true,1.1" "3,,string,false,1.1"]))
+         (csv-test/csv-file-with ["id,empty,string,bool,float" "2,,string,true,1.1\t" "3,,string,false,    1.1"]))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :schema "public" :name "upload_test" :db_id (mt/id))]
