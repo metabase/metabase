@@ -23,9 +23,9 @@
    [potemkin :as p]
    [schema.core :as schema]
    [taoensso.nippy :as nippy]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]
+   [toucan2.model :as t2.model]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.util :as t2.u])
@@ -446,7 +446,7 @@
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 
-(methodical/defmethod toucan2.model/resolve-model :around clojure.lang.Symbol
+(methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
   "Handle models deriving from :metabase/models."
   [symb]
   (or
