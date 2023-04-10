@@ -963,6 +963,8 @@
                  ["invalid-path"                                 group-2-id]}
                new-paths-set))))))
 
+(mt/set-test-drivers! [:mysql])
+
 (deftest migrate-field-database-type-test
   (testing "Migration v47.00-001: set base-type to type/JSON for JSON database-types for postgres and mysql"
     (impl/test-migrations ["v47.00-001"] [_]
@@ -995,6 +997,8 @@
           mysql-field-1-id :type/JSON
           mysql-field-2-id :type/Text)
         (testing "Rollback restores the original state"
+          ;; sleep to avoid race condition
+          (Thread/sleep 1000)
           (migrate! :down 46)
           (let [new-base-types (t2/select-pk->fn :base_type Field)]
             (are [field-id expected] (= expected (get new-base-types field-id))
