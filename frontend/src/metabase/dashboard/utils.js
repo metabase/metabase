@@ -103,14 +103,10 @@ export function getAllDashboardCards(dashboard) {
   return results;
 }
 
-// check each dashboard card's source database,
-// and check if the database has actions enabled.
-export function isEditDashboardActionsEnabled(dashboard, databases) {
-  const cards = getAllDashboardCards(dashboard);
-  return cards.some(cardData => {
-    const id = cardData.card.database_id;
-    return databases[id]?.settings?.["database-enable-actions"];
-  });
+export function isDatabaseActionsEnabled(databases) {
+  return databases.some(
+    database => database.settings["database-enable-actions"],
+  );
 }
 
 export function getDashboardType(id) {

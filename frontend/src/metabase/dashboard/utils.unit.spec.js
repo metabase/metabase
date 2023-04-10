@@ -1,9 +1,9 @@
 import {
   fetchDataOrError,
-  isEditDashboardActionsEnabled,
+  isDatabaseActionsEnabled,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
-import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
+import { createMockDatabase } from "metabase-types/api/mocks";
 
 describe("Dashboard utils", () => {
   describe("fetchDataOrError()", () => {
@@ -38,25 +38,16 @@ describe("Dashboard utils", () => {
       expect(result.error).toEqual(error);
     });
 
-    it("should return true if database has actions enabled", () => {
+    it("should return true if any database has actions enabled", () => {
       const dbData = [
         { id: 1, settings: { "database-enable-actions": true } },
         { id: 2, settings: { "database-enable-actions": true } },
         { id: 3, settings: { "database-enable-actions": false } },
       ];
 
-      const dashboard = {
-        ordered_cards: dbData.map(({ id }) => ({
-          card: createMockCard({ database_id: id }),
-        })),
-      };
+      const databases = dbData.map(createMockDatabase);
 
-      const databases = dbData.reduce((acc, cur) => {
-        acc[cur.id] = createMockDatabase(cur);
-        return acc;
-      }, {});
-
-      const result = isEditDashboardActionsEnabled(dashboard, databases);
+      const result = isDatabaseActionsEnabled(databases);
       expect(result).toBe(true);
     });
   });
