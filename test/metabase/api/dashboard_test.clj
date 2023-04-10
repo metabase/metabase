@@ -2347,7 +2347,7 @@
       ;; card with agggregation and binning columns
       [Card [{mbql-card-id :id}
              (merge (mt/card-with-source-metadata-for-query
-                      (mt/mbql-query-no-test venues
+                      (mt/mbql-query venues
                         {:limit 5
                          :aggregation [:count]
                          :breakout [[:field %latitude {:binning {:strategy :num-bins :num-bins 10}}]]}))

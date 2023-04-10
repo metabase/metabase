@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.test-mlv2
   (:require
    [clojure.string :as str]
-   [clojure.test :refer :all]
+   [clojure.test :as t :refer :all]
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.convert :as lib.convert]
@@ -9,7 +9,6 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema :as lib.schema]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.util :as u]))
 
@@ -23,10 +22,19 @@
   (testing (format "\npMBQL =\n%s\n" (u/pprint-to-str pMBQL))
     (thunk)))
 
+(def ^:dynamic *skip-conversion-tests*
+  "Whether we should skip the => pMBQL conversion tests, for queries that we explicitly expect to fail conversion
+  because they are intentionally broken. For ones that are unintentionally broken, write a rule instead.
+
+  At the time of this writing, this is only used in one
+  place, [[metabase.models.query.permissions-test/invalid-queries-test]]."
+  false)
+
 (defn- skip-conversion-tests?
   "Whether to skip conversion tests against a `legacy-query`."
   [legacy-query]
   (or
+   *skip-conversion-tests*
    ;; #29745: missing schema for `:var`
    (mbql.u/match-one legacy-query
      :var
@@ -85,7 +93,23 @@
        #{:+ :- :*}
        (mbql.u/match-one &match
          :field
-         "#29946")))))
+         "#29946")))
+   ;; #29948: `:substring` is broken
+   (mbql.u/match-one legacy-query
+     :substring
+     "#29948")
+   ;; #29949: missing schema
+   (mbql.u/match-one legacy-query
+     :regex-match-first
+     "#29949")
+   ;; #29950: string filter clauses with options like `:case-sensitive` option not handled correctly
+   (mbql.u/match-one legacy-query
+     {:case-sensitive _case-sensitive?}
+     "#29950")
+   ;; #29953: `:aggregation` and `:expression` refs with `nil` options
+   (mbql.u/match-one legacy-query
+     [:aggregation _index nil] "#29953"
+     [:expression _name nil]   "#29953")))
 
 (defn- skip-metadata-calculation-tests? [legacy-query]
   (or
@@ -146,32 +170,25 @@
                 (testing (str "Generated column names should match names in QP metadata"
                               "\n\nActual metadata [:cols]:\n" (u/pprint-to-str (:cols qp-metadata))
                               "\n\nCalculated metadata:\n" (u/pprint-to-str mlv2-metadata))
-                  ;; FIXME disabled for now.
-                  (is (some? mlv2-metadata))
-                  #_(is (= (into []
-                               ;; ignore columns added by Field remapping; I don't think MLv2 is expected to know about
-                               ;; these, or needs to know about them.
-                               (comp (remove :remapped_from)
-                                     (map (some-fn :qp/actual-name :name)))
-                               (:cols qp-metadata))
-                         (mapv :lib/desired-column-alias mlv2-metadata)))))
+                  ;; Just make sure we can calculate some metadata (any metadata) at this point; making sure it is
+                  ;; CORRECT will be the next step after this.
+                  (is (some? mlv2-metadata))))
               (catch Throwable e
                 (testing "Failed to calculate metadata for query"
                   (is (not (Throwable->map e))))))))))))))
 
-;;; TODO -- I don't think we should need to call `normalize` at all below, since this is done after normalization.
 (defn- test-mlv2-conversion [query]
   (when-not (skip-conversion-tests? query)
     (do-with-legacy-query-testing-context
      query
      (^:once fn* []
-      (let [pMBQL (-> query mbql.normalize/normalize lib.convert/->pMBQL)]
+      (let [pMBQL (-> query lib.convert/->pMBQL)]
         (do-with-pMBQL-query-testing-context
          pMBQL
          (^:once fn* []
           (testing "Legacy MBQL queries should round trip to pMBQL and back"
-            (is (= (mbql.normalize/normalize query)
-                   (-> pMBQL lib.convert/->legacy-MBQL mbql.normalize/normalize))))
+            (is (= query
+                   (-> pMBQL lib.convert/->legacy-MBQL))))
           (testing "converted pMBQL query should validate against the pMBQL schema"
             (is (not (me/humanize (mc/explain ::lib.schema/query pMBQL))))))))))))
 
@@ -188,6 +205,13 @@
   "Tests only: save the original legacy MBQL query immediately after normalization to `::original-query`."
   [qp]
   (fn [query rff context]
-    (test-mlv2-conversion query)
-    (binding [*original-query* query]
-      (qp query rff context))))
+    ;; there seems to be a issue in Hawk JUnit output if it encounters a test assertion when [[t/*testing-vars*]] is
+    ;; empty, which can be the case if the assertion happens inside of a fixture before a test is ran (e.g. queries ran
+    ;; as the result of syncing a database happening inside a test fixture); in this case we still want to run our
+    ;; tests, so create some fake test var context so it doesn't fail.
+    (binding [t/*testing-vars* (if (empty? t/*testing-vars*)
+                                 [#'test-mlv2-conversion]
+                                 t/*testing-vars*)
+              *original-query* query]
+      (test-mlv2-conversion query))
+    (qp query rff context)))

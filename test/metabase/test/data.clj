@@ -119,22 +119,6 @@
   ([table-name & body]
    (mbql-query-impl/parse-tokens table-name `(do ~@body))))
 
-(defmacro mbql-query-no-test
-  "Macro for easily building MBQL queries for test purposes.
-
-  See [[mbql-query]] for the interface."
-  {:style/indent 1}
-  ([table-name]
-   `(mbql-query-no-test ~table-name {}))
-
-  ([table-name inner-query]
-   {:pre [(map? inner-query)]}
-   (as-> inner-query <>
-     (mbql-query-impl/parse-tokens table-name <>)
-     (mbql-query-impl/maybe-add-source-table <> table-name)
-     (mbql-query-impl/wrap-inner-query <>)
-     (vary-meta <> assoc :type :mbql))))
-
 (defmacro mbql-query
   "Macro for easily building MBQL queries for test purposes.
 
@@ -158,7 +142,11 @@
 
   ([table-name inner-query]
    {:pre [(map? inner-query)]}
-   `(mbql-query-no-test ~table-name ~inner-query)))
+   (as-> inner-query <>
+     (mbql-query-impl/parse-tokens table-name <>)
+     (mbql-query-impl/maybe-add-source-table <> table-name)
+     (mbql-query-impl/wrap-inner-query <>)
+     (vary-meta <> assoc :type :mbql))))
 
 (defmacro query
   "Like `mbql-query`, but operates on an entire 'outer' query rather than the 'inner' MBQL query. Like `mbql-query`,
@@ -197,7 +185,7 @@
   "Like `mbql-query`, but runs the query as well."
   {:style/indent 1}
   [table-name & [query]]
-  `(run-mbql-query* (mbql-query-no-test ~table-name ~(or query {}))))
+  `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 
 (defn format-name
   "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the current
