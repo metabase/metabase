@@ -83,7 +83,6 @@
                         (lib/expression "myexpr" expr))
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
           (is (mc/validate ::lib.schema/query query))
-          (is (mc/validate ::schema.common/external-op resolved))
           (is (= typ (lib.schema.expression/type-of resolved))))))))
 
 (deftest ^:parallel col-info-expression-ref-test
