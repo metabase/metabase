@@ -611,8 +611,8 @@
           (str (t/zone-id t))))
 
 (defmethod driver/upload-type->database-type :mysql
-  [_driver csv-type]
-  (case csv-type
+  [_driver upload-type]
+  (case upload-type
     ::upload/varchar_255 "VARCHAR(255)"
     ::upload/text        "TEXT"
     ::upload/int         "INTEGER"
