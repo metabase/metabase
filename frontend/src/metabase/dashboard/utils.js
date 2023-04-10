@@ -105,7 +105,7 @@ export function getAllDashboardCards(dashboard) {
 
 export function isDatabaseActionsEnabled(databases) {
   return databases.some(
-    database => database.settings["database-enable-actions"],
+    database => database.settings?.["database-enable-actions"] ?? false,
   );
 }
 
