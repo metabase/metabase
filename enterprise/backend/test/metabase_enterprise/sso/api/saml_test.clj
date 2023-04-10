@@ -7,7 +7,7 @@
    [metabase.test :as mt]))
 
 (defn user-http-request
-  "Same as `client/client-full-response` but doesn't include the `/api` in the URL prefix"
+  "Same as `mt/user-http-request` but doesn't include the `/api` in the URL prefix"
   [& args]
   (binding [client/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port))]
     (apply mt/user-http-request args)))
