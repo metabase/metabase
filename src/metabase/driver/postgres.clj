@@ -2,15 +2,13 @@
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
   (:require
-   [clojure.data.csv :as csv]
-   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
    [java-time :as t]
-   [metabase.csv :as upload]
+   [metabase.csv :as-alias upload]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -30,14 +28,12 @@
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
-   (java.io File)
    (java.sql ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (java.util Date UUID)))
@@ -61,7 +57,7 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/database-supports? [:postgres :csv-uploads]
+(defmethod driver/database-supports? [:postgres :csv-upload]
   [_driver _feat _db]
   true)
 
@@ -764,61 +760,11 @@
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
 
-(defn- check-for-semicolons [s]
-  (when (re-find #";" s)
-    (throw (ex-info (tru "Error uploading CSV: \";\" in {0}" s) {}))))
-
-(defn parse-bool
-  [s]
-  (cond
-    (re-matches #"(?i)true|t|yes|y|1" (str/trim s)) true
-    (re-matches #"(?i)false|f|no|n|0" (str/trim s)) false))
-
-(defn- load-from-csv-sql
-  [schema-name table-name column-names rows]
-  (sql/format {:insert-into (keyword (str schema-name "." table-name))
-               :columns (map keyword column-names)
-               :values rows}))
-
-(def ^:private csv->database-type
-  {::upload/varchar_255 "VARCHAR(255)"
-   ::upload/text        "TEXT"
-   ::upload/int         "INTEGER"
-   ::upload/float       "FLOAT"
-   ::upload/boolean     "BOOLEAN"})
-
-(def ^:private csv-type->parser
-  {::upload/varchar_255 identity
-   ::upload/text        identity
-   ::upload/int         (comp #(Integer/parseInt %) str/trim)
-   ::upload/float       (comp #(Double/parseDouble %) str/trim)
-   ::upload/boolean     parse-bool})
-
-(defn- parsed-rows
-  "Returns a vector of parsed rows from a `csv-file`.
-   Replaces empty strings with nil."
-  [col->csv-type csv-file]
-  (with-open [reader (io/reader csv-file)]
-    (let [[_header & rows] (csv/read-csv reader)
-          parsers (map csv-type->parser (vals col->csv-type))]
-      (vec (for [row rows]
-             (for [[v f] (map vector row parsers)]
-               (if (str/blank? v)
-                 nil
-                 (f v))))))))
-
-(defmethod driver/load-from-csv :postgres
-  [driver db-id schema-name table-name ^File csv-file]
-  (let [col->csv-type      (upload/detect-schema csv-file)
-        col->database-type (update-vals col->csv-type csv->database-type)
-        column-names       (keys col->csv-type)]
-    (run! check-for-semicolons (concat [schema-name table-name] column-names))
-    (driver/create-table driver db-id schema-name table-name col->database-type)
-    (try
-      (let [rows  (parsed-rows col->csv-type csv-file)
-            sql   (load-from-csv-sql schema-name table-name column-names rows)]
-        (qp.writeback/execute-write-sql! db-id sql))
-      (catch Throwable e
-        (driver/drop-table driver db-id schema-name table-name)
-        (throw (ex-info (ex-message e) {}))))
-    nil))
+(defmethod driver/upload-type->database-type :postgres
+  [_driver csv-type]
+  (case csv-type
+    ::upload/varchar_255 "VARCHAR(255)"
+    ::upload/text        "TEXT"
+    ::upload/int         "INTEGER"
+    ::upload/float       "FLOAT"
+    ::upload/boolean     "BOOLEAN"))
