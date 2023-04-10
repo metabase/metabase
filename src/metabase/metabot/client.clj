@@ -9,17 +9,22 @@
 
 (def ^:dynamic *bot-endpoint*
   "The endpoint used to invoke the remote LLM"
-  openai.api/create-chat-completion)
+  (fn [params options]
+    (openai.api/create-chat-completion
+     (select-keys params [:model :n :messages])
+     options)))
 
 (defn invoke-metabot
   "Call the bot and return the response.
   Takes messages to be used as instructions and a function that will find the first valid result from the messages."
-  [messages]
+  [{:keys [messages] :as prompt}]
+  {:pre [messages]}
   (try
     (*bot-endpoint*
-     {:model    (metabot-settings/openai-model)
-      :n        (metabot-settings/num-metabot-choices)
-      :messages messages}
+     (merge
+      {:model (metabot-settings/openai-model)
+       :n     (metabot-settings/num-metabot-choices)}
+      prompt)
      {:api-key      (metabot-settings/openai-api-key)
       :organization (metabot-settings/openai-organization)})
     (catch Exception e

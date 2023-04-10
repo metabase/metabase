@@ -29,6 +29,7 @@ const MetabotVisualization = ({
 }: MetabotVisualizationProps) => {
   return (
     <FullVisualization
+      showTitle
       mode={MetabotMode}
       rawSeries={rawSeries}
       metadata={metadata}
