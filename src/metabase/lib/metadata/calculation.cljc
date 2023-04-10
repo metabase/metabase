@@ -154,11 +154,6 @@
   [query stage-number [_tag _opts expr]]
   (type-of query stage-number expr))
 
-;;; Ugh
-(defmethod type-of-method :lib/external-op
-  [query stage-number {:keys [operator options args]}]
-  (type-of query stage-number (into [(keyword operator) options] args)))
-
 (defmulti metadata-method
   "Impl for [[metadata]]."
   {:arglists '([query stage-number x])}
