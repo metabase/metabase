@@ -175,16 +175,16 @@
                            :stages      [{:lib/type     :mbql.stage/mbql
                                           :source-table "card__1"}]
                            :alias       "checkins_by_user"
-                           :condition   [:=
-                                         {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
-                                         [:field
-                                          {:lib/uuid "a2eb96a0-420b-4465-817d-f3c9f789eff4"}
-                                          (meta/id :users :id)]
-                                         [:field
-                                          {:base-type  :type/Integer
-                                           :join-alias "checkins_by_user"
-                                           :lib/uuid   "b23a769d-774a-4eb5-8fb8-1f6a33c9a8d5"}
-                                          "USER_ID"]]
+                           :conditions  [[:=
+                                          {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
+                                          [:field
+                                           {:lib/uuid "a2eb96a0-420b-4465-817d-f3c9f789eff4"}
+                                           (meta/id :users :id)]
+                                          [:field
+                                           {:base-type  :type/Integer
+                                            :join-alias "checkins_by_user"
+                                            :lib/uuid   "b23a769d-774a-4eb5-8fb8-1f6a33c9a8d5"}
+                                           "USER_ID"]]]
                            :fields      :all}
         query             {:lib/type     :mbql/query
                            :lib/metadata metadata-provider
