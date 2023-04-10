@@ -24,7 +24,7 @@ const DEFAULT_CARD = {
   parameter_mappings: [],
 };
 
-export function addCardToDashboard({ card_id, dashboard_id, card } = {}) {
+export function addCardToDashboard({ card_id, dashboard_id, card }) {
   return cy
     .request("PUT", getDashCardApiUrl(dashboard_id), {
       cards: [
