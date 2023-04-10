@@ -18,10 +18,19 @@
   (testing (format "\npMBQL =\n%s\n" (u/pprint-to-str pMBQL))
     (thunk)))
 
+(def ^:dynamic *skip-conversion-tests*
+  "Whether we should skip the => pMBQL conversion tests, for queries that we explicitly expect to fail conversion
+  because they are intentionally broken. For ones that are unintentionally broken, write a rule instead.
+
+  At the time of this writing, this is only used in one
+  place, [[metabase.models.query.permissions-test/invalid-queries-test]]."
+  false)
+
 (defn- skip-conversion-tests?
   "Whether to skip conversion tests against a `legacy-query`."
   [legacy-query]
   (or
+   *skip-conversion-tests*
    ;; #29745: missing schema for `:var`
    (mbql.u/match-one legacy-query
      :var
