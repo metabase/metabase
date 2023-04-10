@@ -37,6 +37,28 @@ describe("Dashboard utils", () => {
       const result = await fetchDataOrError(failedFetch);
       expect(result.error).toEqual(error);
     });
+
+    it("should return true if database has actions enabled", () => {
+      const dbData = [
+        { id: 1, settings: { "database-enable-actions": true } },
+        { id: 2, settings: { "database-enable-actions": true } },
+        { id: 3, settings: { "database-enable-actions": false } },
+      ];
+
+      const dashboard = {
+        ordered_cards: dbData.map(({ id }) => ({
+          card: createMockCard({ database_id: id }),
+        })),
+      };
+
+      const databases = dbData.reduce((acc, cur) => {
+        acc[cur.id] = createMockDatabase(cur);
+        return acc;
+      }, {});
+
+      const result = isEditDashboardActionsEnabled(dashboard, databases);
+      expect(result).toBe(true);
+    });
   });
 
   describe("syncParametersAndEmbeddingParams", () => {
@@ -83,30 +105,6 @@ describe("Dashboard utils", () => {
 
       const result = syncParametersAndEmbeddingParams(before, after);
       expect(result).toEqual(expectation);
-    });
-
-    it("should return true if database has actions enabled", () => {
-      const dashboard = {
-        ordered_cards: [
-          { card: createMockCard({ database_id: 1 }) },
-          { card: createMockCard({ database_id: 2 }) },
-          { card: createMockCard({ database_id: 3 }) },
-        ],
-      };
-
-      const dbData = [
-        { id: 1, settings: { "database-enable-actions": true } },
-        { id: 2, settings: { "database-enable-actions": true } },
-        { id: 3, settings: { "database-enable-actions": false } },
-      ];
-
-      const databases = dbData.reduce((acc, cur) => {
-        acc[cur.id] = createMockDatabase(cur);
-        return acc;
-      }, {});
-
-      const result = isEditDashboardActionsEnabled(dashboard, databases);
-      expect(result).toBe(true);
     });
   });
 });
