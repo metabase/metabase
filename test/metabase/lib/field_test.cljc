@@ -120,10 +120,10 @@
                                :joins        [{:lib/type    :mbql/join
                                                :lib/options {:lib/uuid "490a5abb-54c2-4e62-9196-7e9e99e8d291"}
                                                :alias       "CATEGORIES__via__CATEGORY_ID"
-                                               :condition   [:=
-                                                             {:lib/uuid "cc5f6c43-1acb-49c2-aeb5-e3ff9c70541f"}
-                                                             (lib.tu/field-clause :venues :category-id)
-                                                             (lib.tu/field-clause :categories :id {:join-alias "CATEGORIES__via__CATEGORY_ID"})]
+                                               :conditions  [[:=
+                                                              {:lib/uuid "cc5f6c43-1acb-49c2-aeb5-e3ff9c70541f"}
+                                                              (lib.tu/field-clause :venues :category-id)
+                                                              (lib.tu/field-clause :categories :id {:join-alias "CATEGORIES__via__CATEGORY_ID"})]]
                                                :strategy    :left-join
                                                :fk-field-id (meta/id :venues :category-id)
                                                :stages      [{:lib/type     :mbql.stage/mbql

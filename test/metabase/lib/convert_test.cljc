@@ -70,14 +70,14 @@
                        :joins       [{:lib/type    :mbql/join
                                       :lib/options {:lib/uuid string?}
                                       :alias       "CATEGORIES__via__CATEGORY_ID"
-                                      :condition   [:=
-                                                    {:lib/uuid string?}
-                                                    [:field
+                                      :conditions  [[:=
                                                      {:lib/uuid string?}
-                                                     (meta/id :venues :category-id)]
-                                                    [:field
-                                                     {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
-                                                     (meta/id :categories :id)]]
+                                                     [:field
+                                                      {:lib/uuid string?}
+                                                      (meta/id :venues :category-id)]
+                                                     [:field
+                                                      {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
+                                                      (meta/id :categories :id)]]]
                                       :strategy    :left-join
                                       :fk-field-id (meta/id :venues :category-id)
                                       :stages      [{:lib/type     :mbql.stage/mbql
@@ -90,7 +90,7 @@
                        :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
                                  :source-table (meta/id :venues)
                                  :condition    [:=
-                                                [:field (meta/id :venues :category-id)]
+                                                [:field (meta/id :venues :category-id) nil]
                                                 [:field (meta/id :categories :id) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                                  :strategy     :left-join
                                  :fk-field-id  (meta/id :venues :category-id)}]}}))))
@@ -113,38 +113,70 @@
 (deftest ^:parallel round-trip-test
   ;; Miscellaneous queries that have caused test failures in the past, captured here for quick feedback.
   (are [query] (= query (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))
-       ;; :aggregation-options on a non-aggregate expression with an inner aggregate.
-       {:database 194
-        :query {:aggregation [[:aggregation-options
-                               [:- [:sum [:field 1677 nil]] 41]
-                               {:name "Sum-41"}]]
-                :breakout [[:field 1677 nil]]
-                :source-table 517}
-        :type :query}
+    ;; :aggregation-options on a non-aggregate expression with an inner aggregate.
+    {:database 194
+     :query {:aggregation [[:aggregation-options
+                            [:- [:sum [:field 1677 nil]] 41]
+                            {:name "Sum-41"}]]
+             :breakout [[:field 1677 nil]]
+             :source-table 517}
+     :type :query}
 
-       ;; :aggregation-options nested, not at the top level under :aggregation
-       {:database 194
-        :query {:aggregation [[:- [:aggregation-options
-                                   [:sum [:field 1677 nil]]
-                                   {:name "Sum-41"}] 41]]
-                :breakout [[:field 1677 nil]]
-                :source-table 517}
-        :type :query}
+    ;; :aggregation-options nested, not at the top level under :aggregation
+    {:database 194
+     :query {:aggregation [[:- [:aggregation-options
+                                [:sum [:field 1677 nil]]
+                                {:name "Sum-41"}] 41]]
+             :breakout [[:field 1677 nil]]
+             :source-table 517}
+     :type :query}
 
-       {:database 67
-        :query {:aggregation [[:aggregation-options
-                               [:avg
-                                [:field
-                                 809
-                                 {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
-                                  :metabase.query-processor.util.add-alias-info/source-table 224}]]
-                               {:name "avg"
-                                :metabase.query-processor.util.add-alias-info/desired-alias "avg"
-                                :metabase.query-processor.util.add-alias-info/position 1
-                                :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
-                :source-table 224}
-        :type :query}
+    {:database 67
+     :query {:aggregation [[:aggregation-options
+                            [:avg
+                             [:field
+                              809
+                              {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
+                               :metabase.query-processor.util.add-alias-info/source-table 224}]]
+                            {:name "avg"
+                             :metabase.query-processor.util.add-alias-info/desired-alias "avg"
+                             :metabase.query-processor.util.add-alias-info/position 1
+                             :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
+             :source-table 224}
+     :type :query}
 
-       [:value nil {:base_type :type/Number}]
+    [:value nil {:base_type :type/Number}]
 
-       [:case [[[:< [:field 1 nil] 10] [:value nil {:base_type :type/Number}]] [[:> [:field 2 nil] 2] 10]]]))
+    [:case [[[:< [:field 1 nil] 10] [:value nil {:base_type :type/Number}]] [[:> [:field 2 nil] 2] 10]]]
+
+    {:database 67
+     :query {:filter [:= [:field
+                          809
+                          {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
+                           :metabase.query-processor.util.add-alias-info/source-table 224}] 1]
+             :source-table 224}
+     :type :query}
+
+    {:database 67
+     :query {:filter [:and
+                      [:= [:field
+                           809
+                           {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
+                            :metabase.query-processor.util.add-alias-info/source-table 224}] 1]
+                      [:= [:field
+                           809
+                           {:metabase.query-processor.util.add-alias-info/source-alias "RATING"
+                            :metabase.query-processor.util.add-alias-info/source-table 224}] 1]]
+             :source-table 224}
+     :type :query}
+
+    {:database 23001
+     :type     :query
+     :query    {:fields [[:field 23101 {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+                :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
+                          :source-table 23040
+                          :condition    [:=
+                                         [:field 23402 nil]
+                                         [:field 23100 {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+                          :strategy     :left-join
+                          :fk-field-id  23402}]}}))
