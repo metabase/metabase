@@ -522,8 +522,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest convert-timezone-test
-  ;; TODO redshift used to work, not sure why it's failing now.
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :convert-timezone) :redshift)
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset times-mixed
       (letfn [(test-convert-tz
                 [field
@@ -595,8 +594,7 @@
                         ffirst)))))))))
 
 (deftest nested-convert-timezone-test
-  ;; TODO redshift used to work, not sure why it's failing now.
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :convert-timezone) :redshift)
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/with-report-timezone-id "UTC"
       (mt/dataset times-mixed
         (testing "convert-timezone nested with datetime extract"
