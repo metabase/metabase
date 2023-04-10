@@ -122,7 +122,7 @@
                    :lib/options {:lib/uuid string?}
                    :filters [original-filter]}]}]
     (testing "no filter"
-      (is (= [] (lib/current-filters q2))))
+      (is (nil? (lib/current-filters q2))))
 
     (testing "setting a simple filter via the helper function"
       (let [result-query
