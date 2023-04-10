@@ -559,7 +559,7 @@
 
                           new-tabs)]
     (doseq [tab to-update-tabs]
-      (t2/update! :m/DashboardTab (:id tab) (select-keys tab keys-to-update)))
+      (t2/update! :m/DashboardTab (:id tab) (select-keys tab update-ks)))
     nil))
 
 (mu/defn ^:private delete-tabs! :- nil?
