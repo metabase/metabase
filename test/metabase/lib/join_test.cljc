@@ -157,3 +157,49 @@
                  {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
                  (meta/id :categories :name)]
                 (lib/ref (first metadata))))))))
+
+(deftest ^:parallel join-against-source-card-metadata-test
+  (let [card-1            {:name          "My Card"
+                           :id            1
+                           :dataset_query {:database (meta/id)
+                                           :type     :query
+                                           :query    {:source-table (meta/id :checkins)
+                                                      :aggregation  [[:count]]
+                                                      :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}
+        metadata-provider (lib.tu/composed-metadata-provider
+                           meta/metadata-provider
+                           (lib.tu/mock-metadata-provider
+                            {:cards [card-1]}))
+        join              {:lib/type    :mbql/join
+                           :lib/options {:lib/uuid "d7ebb6bd-e7ac-411a-9d09-d8b18329ad46"}
+                           :stages      [{:lib/type     :mbql.stage/mbql
+                                          :source-table "card__1"}]
+                           :alias       "checkins_by_user"
+                           :condition   [:=
+                                         {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
+                                         [:field
+                                          {:lib/uuid "a2eb96a0-420b-4465-817d-f3c9f789eff4"}
+                                          (meta/id :users :id)]
+                                         [:field
+                                          {:base-type  :type/Integer
+                                           :join-alias "checkins_by_user"
+                                           :lib/uuid   "b23a769d-774a-4eb5-8fb8-1f6a33c9a8d5"}
+                                          "USER_ID"]]
+                           :fields      :all}
+        query             {:lib/type     :mbql/query
+                           :lib/metadata metadata-provider
+                           :database     (meta/id)
+                           :type         :pipeline
+                           :stages       [{:lib/type     :mbql.stage/mbql
+                                           :source-table (meta/id :checkins)
+                                           :joins        [join]}]}]
+    (is (=? [{:id                       (meta/id :checkins :user-id)
+              :name                     "USER_ID"
+              :lib/source               :source/joins
+              :lib/source-column-alias  "USER_ID"
+              :lib/desired-column-alias "USER_ID"}
+             {:name                     "count"
+              :lib/source               :source/joins
+              :lib/source-column-alias  "count"
+              :lib/desired-column-alias "count"}]
+            (lib.metadata.calculation/metadata query -1 join)))))
