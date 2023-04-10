@@ -216,8 +216,6 @@ class DashboardHeader extends Component {
 
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
-    // check each dashboard card's source database,
-    // and check if the database has actions enabled
     const hasModelActionsEnabled = isEditDashboardActionsEnabled(
       dashboard,
       databases,
