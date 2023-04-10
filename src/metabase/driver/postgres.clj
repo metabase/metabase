@@ -772,8 +772,7 @@
   [s]
   (cond
     (re-matches #"(?i)true|t|yes|y|1" (str/trim s)) true
-    (re-matches #"(?i)false|f|no|n|0" (str/trim s)) false
-    :else (throw (ex-info (tru "Error uploading CSV: {0} is not a valid boolean" s) {}))))
+    (re-matches #"(?i)false|f|no|n|0" (str/trim s)) false))
 
 (defn- load-from-csv-sql
   [schema-name table-name column-names rows]
@@ -791,8 +790,8 @@
 (def ^:private csv-type->parser
   {::upload/varchar_255 identity
    ::upload/text        identity
-   ::upload/int         #(Integer/parseInt %)
-   ::upload/float       #(Double/parseDouble %)
+   ::upload/int         (comp #(Integer/parseInt %) str/trim)
+   ::upload/float       (comp #(Double/parseDouble %) str/trim)
    ::upload/boolean     parse-bool})
 
 (defn- parsed-rows
