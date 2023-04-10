@@ -1,9 +1,13 @@
 (ns metabase.query-processor-test.test-mlv2
   (:require
+   [clojure.string :as str]
    [clojure.test :as t :refer :all]
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema :as lib.schema]
    [metabase.mbql.util :as mbql.u]
    [metabase.util :as u]))
@@ -107,6 +111,72 @@
      [:aggregation _index nil] "#29953"
      [:expression _name nil]   "#29953")))
 
+(defn- skip-metadata-calculation-tests? [legacy-query]
+  (or
+   ;; #29907: wrong column name for joined columns in `:breakout`
+   (mbql.u/match-one legacy-query
+     {:breakout breakouts}
+     (mbql.u/match-one breakouts
+       [:field _id-or-name {:join-alias _join-alias}]
+       "#29907"))
+   ;; #29910: `:datetime-add` and `:datetime-subtract` broken with strings literals
+   (mbql.u/match-one legacy-query
+     #{:datetime-add :datetime-subtract}
+     (mbql.u/match-one &match
+       [_tag (_literal :guard string?) & _]
+       "#29910"))
+   ;; #29935: metadata for an `:aggregation` with a `:case` expression not working
+   (mbql.u/match-one legacy-query
+     {:aggregation aggregations}
+     (mbql.u/match-one aggregations
+       :case
+       "#29935"))
+   ;; #29936: metadata for an `:aggregation` that is a `:metric`
+   (mbql.u/match-one legacy-query
+     {:aggregation aggregations}
+     (mbql.u/match-one aggregations
+       :metric
+       "#28689"))
+   ;; #29941 : metadata resolution for query with a `card__` source-table does not work correctly for `:field` <name>
+   ;; #clauses
+   (mbql.u/match-one legacy-query
+     {:source-table (_id :guard #(str/starts-with? % "card__"))}
+     (mbql.u/match-one &match
+       [:field (_field-name :guard string?) _opts]
+       "#29941"))
+   ;; #29947: `:ends-with` broken
+   (mbql.u/match-one legacy-query
+     :ends-with
+     "#29947")))
+
+(defn- test-mlv2-metadata [original-query qp-metadata]
+  {:pre [(map? original-query)]}
+  (when-not (or (skip-conversion-tests? original-query)
+                (skip-metadata-calculation-tests? original-query))
+    (do-with-legacy-query-testing-context
+     original-query
+     (^:once fn* []
+      (let [pMBQL (-> original-query lib.convert/->pMBQL)]
+        ;; don't bother doing this test if the output is invalid; [[test-mlv2-conversion]] will fail anyway, no point in
+        ;; triggering an Exception here as well.
+        (when (mc/validate ::lib.schema/query pMBQL)
+          (do-with-pMBQL-query-testing-context
+           pMBQL
+           (^:once fn* []
+            (try
+              (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database original-query))
+                    mlv2-query        (lib/query metadata-provider pMBQL)
+                    mlv2-metadata     (lib.metadata.calculation/metadata mlv2-query)]
+                (testing (str "Generated column names should match names in QP metadata"
+                              "\n\nActual metadata [:cols]:\n" (u/pprint-to-str (:cols qp-metadata))
+                              "\n\nCalculated metadata:\n" (u/pprint-to-str mlv2-metadata))
+                  ;; Just make sure we can calculate some metadata (any metadata) at this point; making sure it is
+                  ;; CORRECT will be the next step after this.
+                  (is (some? mlv2-metadata))))
+              (catch Throwable e
+                (testing "Failed to calculate metadata for query"
+                  (is (not (Throwable->map e))))))))))))))
+
 (defn- test-mlv2-conversion [query]
   (when-not (skip-conversion-tests? query)
     (do-with-legacy-query-testing-context
@@ -122,6 +192,15 @@
           (testing "converted pMBQL query should validate against the pMBQL schema"
             (is (not (me/humanize (mc/explain ::lib.schema/query pMBQL))))))))))))
 
+(def ^:private ^:dynamic *original-query* nil)
+
+(defn post-processing-middleware
+  [_preprocessed-query rff]
+  (fn [metadata]
+    {:pre [(map? *original-query*)]}
+    (test-mlv2-metadata *original-query* metadata)
+    (rff metadata)))
+
 (defn around-middleware
   "Tests only: save the original legacy MBQL query immediately after normalization to `::original-query`."
   [qp]
@@ -130,8 +209,9 @@
     ;; empty, which can be the case if the assertion happens inside of a fixture before a test is ran (e.g. queries ran
     ;; as the result of syncing a database happening inside a test fixture); in this case we still want to run our
     ;; tests, so create some fake test var context so it doesn't fail.
-    (if (empty? t/*testing-vars*)
-      (binding [t/*testing-vars* [#'test-mlv2-conversion]]
-        (test-mlv2-conversion query))
+    (binding [t/*testing-vars* (if (empty? t/*testing-vars*)
+                                 [#'test-mlv2-conversion]
+                                 t/*testing-vars*)
+              *original-query* query]
       (test-mlv2-conversion query))
     (qp query rff context)))

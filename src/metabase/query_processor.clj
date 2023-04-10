@@ -188,6 +188,7 @@
 
     (f metadata) -> rf"
   [#'results-metadata/record-and-return-metadata!
+   (resolve 'metabase.query-processor-test.test-mlv2/post-processing-middleware)
    #'limit/limit-result-rows
    (resolve 'ee.perms/limit-download-result-rows)
    #'qp.add-rows-truncated/add-rows-truncated
