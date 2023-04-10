@@ -1157,6 +1157,8 @@
               absolute-path
               (str/ends-with? ".p12"))))))
 
+(mt/set-test-drivers! [:postgres])
+
 (deftest load-from-csv-test
   (testing "Upload a CSV file"
     (mt/test-driver :postgres
@@ -1199,6 +1201,51 @@
                                                   :query {:source-table (:id table)
                                                           :aggregation [[:count]]}})
                                mt/rows))))))))))
+
+(deftest load-from-csv-boolean-test
+  (testing "Upload a CSV file"
+    (mt/test-driver :postgres
+      (mt/with-empty-db
+        (driver/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "public"
+         "upload_test"
+         (csv-test/csv-file-with ["id,bool"
+                                  "1,true"
+                                  "2,false"
+                                  "3,TRUE"
+                                  "4,FALSE"
+                                  "5,t    "
+                                  "6,   f"
+                                  "7,\tT"
+                                  "8,F\t"
+                                  "9,y"
+                                  "10,n"
+                                  "11,Y"
+                                  "12,N"
+                                  "13,yes"
+                                  "14,no"
+                                  "15,YES"
+                                  "16,NO"
+                                  "17,1"
+                                  "18,0"]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :name "upload_test" :db_id (mt/id))]
+            (testing "Check the boolean column has a boolean base_type"
+              (is (=? {:database_type     "bool"
+                       :base_type         :type/Boolean}
+                      (t2/select-one Field :name "bool" :table_id (:id table)))))
+            (is (some? table))
+            (testing "Check the data was uploaded into the table correctly"
+              (let [bool-column (->> (mt/run-mbql-query upload_test
+                                       {:fields [$bool]
+                                        :order-by [[:asc $id]]})
+                                     mt/rows
+                                     (map first))
+                    alternating (map even? (range (count bool-column)))]
+                (is (= alternating bool-column))))))))))
 
 (deftest load-from-csv-sql-injection-test
   (mt/test-driver :postgres
