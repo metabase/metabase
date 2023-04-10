@@ -109,7 +109,11 @@
    ;; #29953: `:aggregation` and `:expression` refs with `nil` options
    (mbql.u/match-one legacy-query
      [:aggregation _index nil] "#29953"
-     [:expression _name nil]   "#29953")))
+     [:expression _name nil]   "#29953")
+   ;; #29958: `:convert-timezone` with 2 args is broken
+   (mbql.u/match-one legacy-query
+     [:convert-timezone _expr _source-timezone]
+     "#29958")))
 
 (defn- skip-metadata-calculation-tests? [legacy-query]
   (or
