@@ -127,7 +127,7 @@
   [col->upload-type csv-file]
   (with-open [reader (io/reader csv-file)]
     (let [[_header & rows] (csv/read-csv reader)
-          parsers (map (partial upload-type->parser) (vals col->upload-type))]
+          parsers (map upload-type->parser (vals col->upload-type))]
       (vec (for [row rows]
              (for [[v f] (map vector row parsers)]
                (if (str/blank? v)
