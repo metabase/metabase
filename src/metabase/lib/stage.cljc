@@ -38,7 +38,7 @@
    stage
    keyword
    {:aggregation (partial mapv lib.normalize/normalize)
-    :filter      lib.normalize/normalize}))
+    :filters     (partial mapv lib.normalize/normalize)}))
 
 (mu/defn ^:private ensure-previous-stages-have-metadata :- ::lib.schema/query
   "Recursively calculate the metadata for the previous stages and add it to them, we'll need it for metadata
@@ -341,7 +341,7 @@
   [:source-table
    :aggregation
    :breakout
-   :filter
+   :filters
    :order-by
    :limit])
 

@@ -27,7 +27,7 @@
   query)
 
 (def ^:private stage-keys
-  [:aggregation :breakout :expressions :fields :filter :order-by :joins])
+  [:aggregation :breakout :expressions :fields :filters :order-by :joins])
 
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
@@ -42,7 +42,7 @@
 (defmethod ->pMBQL :mbql/join
   [join]
   (-> join
-      (update :condition ->pMBQL)
+      (update :conditions ->pMBQL)
       (update :stages ->pMBQL)))
 
 (defmethod ->pMBQL :dispatch-type/sequential
@@ -179,19 +179,30 @@
     [:value value opts]
     [:value value]))
 
+(defn- update-list->legacy-boolean-expression
+  [m pMBQL-key legacy-key]
+  (cond-> m
+    (= (count (get m pMBQL-key)) 1) (m/update-existing pMBQL-key (comp ->legacy-MBQL first))
+    (> (count (get m pMBQL-key)) 1) (m/update-existing pMBQL-key #(into [:and] (map ->legacy-MBQL) %))
+    :always (set/rename-keys {pMBQL-key legacy-key})))
+
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base (disqualify join)]
     (merge (-> base
-               (dissoc :stages)
+               (dissoc :stages :conditions)
                (update-vals ->legacy-MBQL))
+           (-> base
+               (select-keys [:conditions])
+               (update-list->legacy-boolean-expression :conditions :condition))
            (chain-stages base))))
 
 (defmethod ->legacy-MBQL :mbql.stage/mbql [stage]
   (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
           (-> stage
               disqualify
-              (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %)))
-          (remove #{:aggregation} stage-keys)))
+              (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
+              (update-list->legacy-boolean-expression :filters :filter))
+          (remove #{:aggregation :filters} stage-keys)))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
