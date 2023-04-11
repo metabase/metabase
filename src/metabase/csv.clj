@@ -92,32 +92,8 @@
          (ordered-map/ordered-map))))
 
 ;;;; +------------------+
-;;;; | Helper Functions |
+;;;; |  Parsing values  |
 ;;;; +------------------+
-
-(defn unique-table-name [filename]
-  (str (u/slugify filename)
-       (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
-
-;;;; +------------------+
-;;;; | Public Functions |
-;;;; +------------------+
-
-(defn detect-schema
-  "Returns an ordered map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
-  first row. Supported types are:
-
-    - ::int
-    - ::float
-    - ::boolean
-    - ::varchar_255
-    - ::text
-
-  A column that is completely blank is assumed to be of type ::text."
-  [csv-file]
-  (with-open [reader (io/reader csv-file)]
-    (let [[header & rows] (csv/read-csv reader)]
-      (rows->schema header rows))))
 
 (defn- parse-bool
   [s]
@@ -144,6 +120,30 @@
                (if (str/blank? v)
                  nil
                  (f v))))))))
+
+;;;; +------------------+
+;;;; | Public Functions |
+;;;; +------------------+
+
+(defn unique-table-name [filename]
+  (str (u/slugify filename)
+       (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
+
+(defn detect-schema
+  "Returns an ordered map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
+  first row. Supported types are:
+
+    - ::int
+    - ::float
+    - ::boolean
+    - ::varchar_255
+    - ::text
+
+  A column that is completely blank is assumed to be of type ::text."
+  [csv-file]
+  (with-open [reader (io/reader csv-file)]
+    (let [[header & rows] (csv/read-csv reader)]
+      (rows->schema header rows))))
 
 (defn load-from-csv
   "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil."
