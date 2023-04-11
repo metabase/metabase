@@ -7,12 +7,13 @@ export const NativeQueryEditorPromptRoot = styled.div`
   height: 3rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0 1.25rem;
+  padding: 0 1.25rem 0 1.75rem;
 `;
 
 export const PromptInput = styled(Input)`
   flex-grow: 1;
+  margin-right: 0.5rem;
+  padding-left: 0 0.5rem;
 
   ${Input.Field} {
     border: none;

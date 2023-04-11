@@ -2,6 +2,7 @@ import React, {
   ChangeEvent,
   KeyboardEvent,
   useCallback,
+  useRef,
   useState,
 } from "react";
 import { t } from "ttag";
@@ -12,6 +13,8 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { DatabaseId } from "metabase-types/api";
 import { MetabotApi } from "metabase/services";
 import Tooltip from "metabase/core/components/Tooltip";
+import { getResponseErrorMessage } from "metabase/core/utils/errors";
+import { Deferred, defer } from "metabase/lib/promise";
 import {
   ButtonsContainer,
   ErrorRoot,
@@ -31,16 +34,24 @@ const NativeQueryEditorPrompt = ({
   onClose,
 }: NativeQueryEditorPromptProps) => {
   const [prompt, setPrompt] = useState("");
+  const cancelDeferred = useRef<Deferred | null>(null);
   const [{ loading, error }, generateQuery] = useAsyncFn(
     async (reset = false) => {
+      cancelDeferred.current?.resolve();
+
       if (reset) {
         return Promise.resolve(undefined);
       }
 
-      const { sql } = await MetabotApi.databasePromptQuery({
-        databaseId,
-        question: prompt,
-      });
+      cancelDeferred.current = defer();
+
+      const { sql } = await MetabotApi.databasePromptQuery(
+        {
+          databaseId,
+          question: prompt,
+        },
+        { cancelled: cancelDeferred.current.promise },
+      );
 
       onQueryGenerated(sql);
     },
@@ -61,13 +72,23 @@ const NativeQueryEditorPrompt = ({
     [generateQuery],
   );
 
+  const handleCloseClick = () => {
+    if (loading) {
+      generateQuery(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const closeLabel = loading ? t`Cancel` : t`Close`;
+
   return (
     <NativeQueryEditorPromptRoot>
       {loading ? <LoadingSpinner size={20} /> : <Icon name="insight" />}
 
       {error != null ? (
         <ErrorContent
-          error={(error as any)?.data?.message}
+          error={getResponseErrorMessage(error)}
           onRerun={() => generateQuery(false)}
           onRephrase={() => generateQuery(true)}
         />
@@ -83,13 +104,13 @@ const NativeQueryEditorPrompt = ({
             onKeyDown={handleKeyDown}
           />
 
-          <Tooltip tooltip={t`Close`}>
+          <Tooltip tooltip={closeLabel}>
             <Button
-              aria-label={t`Close prompt`}
+              aria-label={closeLabel}
               icon="close"
               onlyIcon
               iconSize={18}
-              onClick={onClose}
+              onClick={handleCloseClick}
             />
           </Tooltip>
         </>

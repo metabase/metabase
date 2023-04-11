@@ -23,14 +23,12 @@ import { connect } from "react-redux";
 import slugg from "slugg";
 
 import { isEventOverElement } from "metabase/lib/dom";
-import {
-  getEngineNativeAceMode,
-  getEngineNativeType,
-} from "metabase/lib/engine";
+import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 import { getSetting } from "metabase/selectors/settings";
+import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
 
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
@@ -534,7 +532,7 @@ class NativeQueryEditor extends Component {
     const { canUsePromptInput } = this.props;
     const database = this.props.query.database();
     const isSupported =
-      database != null && getEngineNativeType(database.engine) === "sql";
+      database != null && canGenerateQueriesForDatabase(database);
 
     return isSupported && canUsePromptInput && this.state.isPromptInputVisible;
   };
