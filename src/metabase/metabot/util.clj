@@ -97,7 +97,6 @@
 (defn- create-enum-ddl
   "Create the postgres enum for any item in result_metadata that has enumerated/low cardinality values."
   [{:keys [result_metadata]}]
-  (tap> result_metadata)
   (into {}
         (for [{:keys [sql_name possible_values]} result_metadata
               :when (and (seq possible_values)
