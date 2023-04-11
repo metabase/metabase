@@ -1,20 +1,10 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { exportFormats } from "metabase/lib/urls";
+import { exportFormats, exportFormatPng } from "metabase/lib/urls";
 import { canSavePng } from "metabase/visualizations";
-import {
-  downloadChartImage,
-  downloadQueryResults,
-  DownloadQueryResultsOpts,
-} from "metabase/query_builder/actions";
-import {
-  DashboardId,
-  DashCardId,
-  Dataset,
-  VisualizationSettings,
-} from "metabase-types/api";
+import { Dataset } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import {
@@ -28,32 +18,22 @@ import {
 interface OwnProps {
   question: Question;
   result: Dataset;
-  dashboardId?: DashboardId;
-  dashcardId?: DashCardId;
-  uuid?: string;
-  token?: string;
-  params?: Record<string, unknown>;
-  visualizationSettings?: VisualizationSettings;
+  onDownload: (format: string) => void;
 }
 
 interface StateProps {
-  canDownloadImage: boolean;
+  canDownloadPng: boolean;
   hasTruncatedResults: boolean;
   limitedDownloadSizeText: string;
 }
 
-interface DispatchProps {
-  onDownloadQueryResults: (opts: DownloadQueryResultsOpts) => void;
-  onDownloadChartImage: (question: Question) => void;
-}
-
-type QueryDownloadPopoverProps = OwnProps & StateProps & DispatchProps;
+type QueryDownloadPopoverProps = OwnProps & StateProps;
 
 const mapStateToProps = (
   state: State,
   { question, result }: OwnProps,
 ): StateProps => ({
-  canDownloadImage: canSavePng(question.display()),
+  canDownloadPng: canSavePng(question.display()),
   hasTruncatedResults:
     result.data != null && result.data.rows_truncated != null,
   limitedDownloadSizeText:
@@ -61,43 +41,15 @@ const mapStateToProps = (
     t`The maximum download size is 1 million rows.`,
 });
 
-const mapDispatchToProps: DispatchProps = {
-  onDownloadQueryResults: downloadQueryResults,
-  onDownloadChartImage: downloadChartImage,
-};
-
 const QueryDownloadPopover = ({
-  question,
-  result,
-  dashboardId,
-  dashcardId,
-  uuid,
-  token,
-  params,
-  visualizationSettings,
-  canDownloadImage,
+  canDownloadPng,
   hasTruncatedResults,
   limitedDownloadSizeText,
-  onDownloadQueryResults,
-  onDownloadChartImage,
+  onDownload,
 }: QueryDownloadPopoverProps) => {
-  const handleQueryResultsDownload = (type: string) => {
-    onDownloadQueryResults({
-      type,
-      question,
-      result,
-      dashboardId,
-      dashcardId,
-      uuid,
-      token,
-      params,
-      visualizationSettings,
-    });
-  };
-
-  const handleChartImageDownload = () => {
-    onDownloadChartImage(question);
-  };
+  const formats = canDownloadPng
+    ? [...exportFormats, exportFormatPng]
+    : exportFormats;
 
   return (
     <DownloadPopoverRoot isExpanded={hasTruncatedResults}>
@@ -110,35 +62,29 @@ const QueryDownloadPopover = ({
           <div>{limitedDownloadSizeText}</div>
         </DownloadPopoverMessage>
       )}
-      {exportFormats.map(type => (
-        <DownloadButton
-          key={type}
-          type={type}
-          onClick={() => handleQueryResultsDownload(type)}
-        />
+      {formats.map(format => (
+        <DownloadButton key={format} format={format} onDownload={onDownload} />
       ))}
-      {canDownloadImage && (
-        <DownloadButton type="png" onClick={handleChartImageDownload} />
-      )}
     </DownloadPopoverRoot>
   );
 };
 
 interface DownloadButtonProps {
-  type: string;
-  onClick?: () => void;
+  format: string;
+  onDownload: (format: string) => void;
 }
 
-const DownloadButton = ({ type, onClick }: DownloadButtonProps) => {
+const DownloadButton = ({ format, onDownload }: DownloadButtonProps) => {
+  const handleClick = useCallback(() => {
+    onDownload(format);
+  }, [format, onDownload]);
+
   return (
-    <DownloadButtonRoot onClick={onClick}>
-      <DownloadButtonIcon name={type} />
-      {type}
+    <DownloadButtonRoot onClick={handleClick}>
+      <DownloadButtonIcon name={format} />
+      {format}
     </DownloadButtonRoot>
   );
 };
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(QueryDownloadPopover);
+export default connect(mapStateToProps)(QueryDownloadPopover);
