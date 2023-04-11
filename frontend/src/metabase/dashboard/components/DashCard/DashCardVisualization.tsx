@@ -10,7 +10,6 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import WithVizSettingsData from "metabase/dashboard/hoc/WithVizSettingsData";
 import { getVisualizationRaw } from "metabase/visualizations";
 
-import QueryDownloadMenu from "metabase/query_builder/components/QueryDownloadMenu";
 import { SAVING_CHART_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
 import {
@@ -39,6 +38,7 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 
 import { CardSlownessStatus, DashCardOnChangeCardAndRunHandler } from "./types";
 import ClickBehaviorSidebarOverlay from "./ClickBehaviorSidebarOverlay";
+import DashCardMenu from "./DashCardMenu";
 import DashCardParameterMapper from "./DashCardParameterMapper";
 import {
   VirtualDashCardOverlayRoot,
@@ -188,14 +188,14 @@ function DashCardVisualization({
       isEmbed ||
       (!isPublic &&
         !isEditing &&
-        QueryDownloadMenu.shouldRender({ question, result: mainSeries }));
+        DashCardMenu.shouldRender({ question, result: mainSeries }));
 
     if (!shouldShowDownloadWidget) {
       return null;
     }
 
     return (
-      <QueryDownloadMenu
+      <DashCardMenu
         className={SAVING_CHART_IMAGE_HIDDEN_CLASS}
         question={question}
         result={mainSeries}

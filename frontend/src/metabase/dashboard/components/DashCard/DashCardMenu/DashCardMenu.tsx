@@ -8,6 +8,7 @@ import {
   downloadQueryResults,
   DownloadQueryResultsOpts,
 } from "metabase/query_builder/actions";
+import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
 import {
   DashboardId,
   DashCardId,
@@ -15,8 +16,7 @@ import {
   VisualizationSettings,
 } from "metabase-types/api";
 import Question from "metabase-lib/Question";
-import QueryDownloadPopover from "../QueryDownloadPopover";
-import { DownloadMenuRoot } from "./QueryDownloadMenu.styled";
+import { CardMenuRoot } from "./DashCardMenu.styled";
 
 interface OwnProps {
   className?: string;
@@ -34,13 +34,13 @@ interface DispatchProps {
   onDownload: (opts: DownloadQueryResultsOpts) => void;
 }
 
-type QueryDownloadMenuProps = OwnProps & DispatchProps;
+type DashCardMenuProps = OwnProps & DispatchProps;
 
 const mapDispatchToProps: DispatchProps = {
   onDownload: downloadQueryResults,
 };
 
-const QueryDownloadMenu = ({
+const DashCardMenu = ({
   className,
   question,
   result,
@@ -50,7 +50,7 @@ const QueryDownloadMenu = ({
   token,
   params,
   onDownload,
-}: QueryDownloadMenuProps) => {
+}: DashCardMenuProps) => {
   const [{ loading }, handleDownload] = useAsyncFn(
     async (type: string) => {
       await onDownload({
@@ -94,7 +94,7 @@ const QueryDownloadMenu = ({
   );
 
   return (
-    <DownloadMenuRoot
+    <CardMenuRoot
       className={className}
       items={menuItems}
       triggerIcon="ellipsis"
@@ -119,11 +119,8 @@ const canDownloadResults = (result?: Dataset) => {
   );
 };
 
-QueryDownloadMenu.shouldRender = ({
-  question,
-  result,
-}: QueryDownloadWidgetOpts) => {
+DashCardMenu.shouldRender = ({ question, result }: QueryDownloadWidgetOpts) => {
   return canEditQuestion(question) || canDownloadResults(result);
 };
 
-export default connect(null, mapDispatchToProps)(QueryDownloadMenu);
+export default connect(null, mapDispatchToProps)(DashCardMenu);
