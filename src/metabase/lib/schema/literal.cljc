@@ -50,37 +50,76 @@
 ;;; TODO -- these temporal literals could be a little stricter, right now they are pretty permissive, you shouldn't be
 ;;; allowed to have month `13` or `02-29` for example
 
-;;; TODO -- these were split out into separate parts originally but apparently string <-> re-pattern conversion
-;;; doesn't work in Cljs the way it works in Clj
+(def ^:private year-part
+  "\\d{4}")
 
-(def ^:private local-date-regex
-  #"^\d{4}-\d{2}-\d{2}$")
+(def ^:private month-part
+  "\\d{2}")
 
-(def ^:private local-time-regex
-  #"^\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?$")
+(def ^:private day-part
+  "\\d{2}")
 
-(def ^:private offset-time-regex
-  #"^\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?(?:Z|\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?)$")
+(def ^:private date-part
+  (str year-part \- month-part \- day-part))
 
-(def ^:private local-datetime-regex
-  #"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?$")
+(def ^:private hour-part
+  "\\d{2}")
 
-(def ^:private offset-datetime-regex
-  #"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?(?:Z|\d{2}:\d{2}(?::\d{2}(?:\.\d{3})?)?)$")
+(def ^:private minutes-part
+  "\\d{2}")
 
+(defn- optional [& parts]
+  (str "(?:" (apply str parts) ")?"))
+
+(def ^:private seconds-milliseconds-part
+  (str ":\\d{2}" (optional "\\.\\d{1,6}")))
+
+(def ^:private time-part
+  (str hour-part \: minutes-part (optional seconds-milliseconds-part)))
+
+(def ^:private date-time-part
+  (str date-part \T time-part))
+
+(def ^:private offset-part
+  (str "(?:Z|(?:" time-part "))"))
+
+(def ^:private ^:const local-date-regex
+  (re-pattern (str \^ date-part \$)))
+
+(def ^:private ^:const local-time-regex
+  (re-pattern (str \^ time-part \$)))
+
+(def ^:private ^:const offset-time-regex
+  (re-pattern (str \^ time-part offset-part \$)))
+
+(def ^:private ^:const local-datetime-regex
+  (re-pattern (str \^ date-time-part \$)))
+
+(def ^:private ^:const offset-datetime-regex
+  (re-pattern (str \^ date-time-part offset-part \$)))
 
 (mr/def ::string.date
-  [:re local-date-regex])
+  [:re
+   {:error/message "date string literal"}
+   local-date-regex])
 
 (mr/def ::string.time
   [:or
-   [:re local-time-regex]
-   [:re offset-time-regex]])
+   [:re
+    {:error/message "local time string literal"}
+    local-time-regex]
+   [:re
+    {:error/message "offset time string literal"}
+    offset-time-regex]])
 
 (mr/def ::string.datetime
   [:or
-   [:re local-datetime-regex]
-   [:re offset-datetime-regex]])
+   [:re
+    {:error/message "local date time string literal"}
+    local-datetime-regex]
+   [:re
+    {:error/message "offset date time string literal"}
+    offset-datetime-regex]])
 
 (defmethod expression/type-of* :dispatch-type/string
   [s]
@@ -116,3 +155,23 @@
    ::date
    ::time
    ::datetime])
+
+;;; these are currently only allowed inside `:absolute-datetime`
+
+(def ^:const year-month-regex
+  "Regex for a year-month literal string."
+  (re-pattern (str \^ year-part \- month-part \$)))
+
+(mr/def ::string.year-month
+  [:re
+   {:error/message "year-month string literal"}
+   year-month-regex])
+
+(def ^:const year-regex
+  "Regex for a year literal string."
+  (re-pattern (str \^ year-part \$)))
+
+(mr/def ::string.year
+  [:re
+   {:error/message "year string literal"}
+   year-regex])

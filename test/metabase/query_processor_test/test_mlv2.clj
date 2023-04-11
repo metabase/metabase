@@ -68,10 +68,6 @@
    (mbql.u/match-one legacy-query
      #{:get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second}
      "#29909")
-   ;; #29770: `:absolute-datetime` does not work correctly
-   (mbql.u/match-one legacy-query
-     :absolute-datetime
-     "#29770")
    ;; #29938: conversion for `:case` with default value does not work correctly
    (mbql.u/match-one legacy-query
      :case
