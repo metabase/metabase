@@ -72,8 +72,7 @@
 (defn- coalesce-types
   [types-so-far new-types]
   (->> (map vector types-so-far new-types)
-       (map (partial apply coalesce))
-       vec))
+       (mapv (partial apply coalesce))))
 
 (defn- pad
   "Lengthen `values` until it is of length `n` by filling it with nils."
