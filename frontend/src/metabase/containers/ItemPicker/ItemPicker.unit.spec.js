@@ -122,6 +122,8 @@ function mockCollectionItemsEndpoint() {
       data,
     };
   });
+
+  fetchMock.get("path:/api/collection/personal/items", []);
 }
 
 async function setup({
