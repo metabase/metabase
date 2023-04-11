@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.filter
-  "Schemas for the various types of filter clauses that you'd pass to `:filter` or use inside something else that takes
+  "Schemas for the various types of filter clauses that you'd pass to `:filters` or use inside something else that takes
   a boolean expression."
   (:require
    [metabase.lib.schema.common :as common]

@@ -10,15 +10,15 @@
                     (lib/join (-> (lib/table (meta/id :categories))
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all))
-                              (lib/= (lib/field (meta/id :venues :category-id))
-                                     (-> (lib/field (meta/id :categories :id))
-                                         (lib/with-join-alias "Cat")))))]
+                              [(lib/= (lib/field (meta/id :venues :category-id))
+                                      (-> (lib/field (meta/id :categories :id))
+                                          (lib/with-join-alias "Cat")))]))]
       (is (=? {:stages [{:joins
-                         [{:stages    [{}]
-                           :alias     "Cat"
-                           :fields    :all
-                           :condition [:=
-                                       {}
-                                       [:field {} (meta/id :venues :category-id)]
-                                       [:field {:join-alias "Cat"} (meta/id :categories :id)]]}]}]}
+                         [{:stages     [{}]
+                           :alias      "Cat"
+                           :fields     :all
+                           :conditions [[:=
+                                         {}
+                                         [:field {} (meta/id :venues :category-id)]
+                                         [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}]}]}
               query)))))
