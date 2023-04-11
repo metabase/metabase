@@ -308,7 +308,7 @@ class DashboardHeader extends Component {
         buttons.push(
           <>
             <DashboardHeaderActionDivider />
-            <Tooltip key="add-action-button" tooltip={t`Add`}>
+            <Tooltip key="add-action-button" tooltip={t`Add action button`}>
               <DashboardHeaderButton
                 onClick={() => this.onAddAction()}
                 aria-label={t`Add action`}
