@@ -81,9 +81,12 @@ describe("CollectionHeader", () => {
 
       render(<CollectionHeader {...props} />);
 
+      const textareaHolder = screen.getByTestId("textarea-with-markdown");
+      userEvent.click(textareaHolder);
+
       const input = screen.getByDisplayValue("Description");
       userEvent.clear(input);
-      userEvent.type(input, "New description");
+      userEvent.paste(input, "New description");
       userEvent.tab();
 
       expect(props.onUpdateCollection).toHaveBeenCalledWith(props.collection, {
@@ -102,7 +105,7 @@ describe("CollectionHeader", () => {
       render(<CollectionHeader {...props} />);
 
       const input = screen.getByPlaceholderText("Add description");
-      userEvent.type(input, "New description");
+      userEvent.paste(input, "New description");
       userEvent.tab();
 
       expect(props.onUpdateCollection).toHaveBeenCalledWith(props.collection, {
@@ -134,8 +137,15 @@ describe("CollectionHeader", () => {
 
       render(<CollectionHeader {...props} />);
 
-      const input = screen.getByDisplayValue("Description");
-      expect(input).toBeInTheDocument();
+      const descriptionHolder = screen.getByText("Description");
+      expect(descriptionHolder).toBeInTheDocument();
+
+      // show textarea
+      userEvent.click(descriptionHolder);
+
+      const input = screen.getByPlaceholderText("Add description");
+
+      expect(input).toHaveTextContent("Description");
       expect(input).toBeDisabled();
     });
   });

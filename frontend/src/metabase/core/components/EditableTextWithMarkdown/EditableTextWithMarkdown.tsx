@@ -50,25 +50,26 @@ const EditableTextWithMarkdown = ({
   };
 
   return (
-    <EditableTextWithMarkdownRoot onClick={handleRootElementClick}>
-      {
-        <EditableText
-          initialValue={inputValue}
-          isMultiline
-          ref={input}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          onChange={handleChange}
-          isEditing={isEditing}
-          // eslint-disable-next-line react/no-children-prop
-          children={
-            isInFocus ? undefined : (
-              <Markdown disallowHeading>{inputValue}</Markdown>
-            )
-          }
-          {...rest}
-        />
-      }
+    <EditableTextWithMarkdownRoot
+      data-testid="textarea-with-markdown"
+      onClick={handleRootElementClick}
+    >
+      <EditableText
+        initialValue={inputValue}
+        isMultiline
+        ref={input}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onChange={handleChange}
+        isEditing={isEditing}
+        // eslint-disable-next-line react/no-children-prop
+        children={
+          isInFocus || !inputValue ? undefined : (
+            <Markdown disallowHeading>{inputValue}</Markdown>
+          )
+        }
+        {...rest}
+      />
     </EditableTextWithMarkdownRoot>
   );
 };
