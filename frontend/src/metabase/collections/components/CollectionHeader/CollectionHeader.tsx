@@ -2,7 +2,7 @@ import React from "react";
 import { withRouter } from "react-router";
 import type { Location } from "history";
 
-import { Collection } from "metabase-types/api";
+import { Collection, CollectionId } from "metabase-types/api";
 
 import CollectionCaption from "./CollectionCaption";
 import CollectionBookmark from "./CollectionBookmark";
@@ -21,6 +21,7 @@ export interface CollectionHeaderProps {
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
   onCreateBookmark: (collection: Collection) => void;
   onDeleteBookmark: (collection: Collection) => void;
+  onUpload: (file: File, collectionId: CollectionId) => void;
 }
 
 const CollectionHeader = ({
@@ -32,6 +33,7 @@ const CollectionHeader = ({
   onUpdateCollection,
   onCreateBookmark,
   onDeleteBookmark,
+  onUpload,
 }: CollectionHeaderProps): JSX.Element => {
   const canUpload = true; // TODO: check settings for upload permissions
 
@@ -49,7 +51,9 @@ const CollectionHeader = ({
           onCreateBookmark={onCreateBookmark}
           onDeleteBookmark={onDeleteBookmark}
         />
-        {canUpload && <CollectionUpload collection={collection} />}
+        {canUpload && (
+          <CollectionUpload collection={collection} onUpload={onUpload} />
+        )}
         <CollectionMenu
           collection={collection}
           isAdmin={isAdmin}
