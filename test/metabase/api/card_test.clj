@@ -2,6 +2,7 @@
   "Tests for /api/card endpoints."
   (:require
    [cheshire.core :as json]
+   [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -14,6 +15,7 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.csv-test :as upload-test]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.http-client :as client]
    [metabase.models
@@ -2614,15 +2616,19 @@
                    #"^Uploads are not supported on Postgres databases\."
                    (upload!))))))
         (testing "Happy path"
+          ;; create schema in the db
+          (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+            (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                           ["CREATE SCHEMA not_public;"]))
           (mt/with-temporary-setting-values [uploads-enabled      true
                                              uploads-database-id  db-id
-                                             uploads-schema-name  "public"
+                                             uploads-schema-name  "not_public"
                                              uploads-table-prefix "uploaded_magic_"]
             (upload!)
             (let [new-table (t2/select-one Table {:where
                                                   [:and [:= :db_id db-id]
-                                                        (when (seq existing-table-ids)
-                                                          [:not-in :id existing-table-ids])]})]
+                                                   (when (seq existing-table-ids)
+                                                     [:not-in :id existing-table-ids])]})]
               (is (str/starts-with? (:name new-table) "uploaded_magic_filename"))
-              (is (= "public" (:schema new-table)))
+              (is (= "not_public" (:schema new-table)))
               (is (= #{"id" "name"} (t2/select-fn-set :name Field :table_id (:id new-table)))))))))))
