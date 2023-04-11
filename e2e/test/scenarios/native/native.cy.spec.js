@@ -313,7 +313,11 @@ describe("scenarios > question > native", () => {
     });
 
     it("shows an error when an sql query cannot be generated", () => {
+      const errorMessage = "Could not generate a query for a given prompt";
       cy.intercept("POST", "/api/metabot/database/**/query", {
+        body: {
+          message: errorMessage,
+        },
         statusCode: 400,
       }).as("databasePrompt");
 
@@ -327,9 +331,9 @@ describe("scenarios > question > native", () => {
         .focus()
         .type(`${PROMPT}{enter}`);
 
-      cy.findByText("Could not generate a query");
+      cy.findByText(errorMessage);
       cy.button("Try again").click();
-      cy.findByText("Could not generate a query");
+      cy.findByText(errorMessage);
       cy.button("Rephrase").click();
 
       cy.intercept(
