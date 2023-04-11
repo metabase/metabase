@@ -62,13 +62,11 @@
       [alias (alias-map id)])))
 
 (defn- fix-model-reference
-  "The formatter may expand the parameterized model (e.g. {{#123}} -> { { # 123 } }).
+  "The formatter may expand parameterized values (e.g. {{#123}} -> { { # 123 } }).
   This function fixes that."
   [sql]
-  (str/replace
-   sql
-   #"\{\s*\{\s*#\s*\d+\s*\}\s*\}"
-   (fn [match] (str/replace match #"\s*" ""))))
+  (let [rgx #"\{\s*\{\s*[^\}]+\s*\}\s*\}"]
+    (str/replace sql rgx (fn [match] (str/replace match #"\s*" "")))))
 
 (defn inner-query
   "Produce a SELECT * over the parameterized model with columns aliased to normalized display names.
@@ -311,12 +309,13 @@
 (defn extract-sql
   "Search a provided string for a SQL block"
   [s]
-  (if (str/starts-with? (u/upper-case-en (str/trim s)) "SELECT")
-    ;; This is just a raw SQL statement
-    (mdb.query/format-sql s)
-    ;; It looks like markdown
-    (let [[_pre sql _post] (str/split s #"```(sql|SQL)?")]
-      (mdb.query/format-sql sql))))
+  (fix-model-reference
+   (if (str/starts-with? (u/upper-case-en (str/trim s)) "SELECT")
+     ;; This is just a raw SQL statement
+     (mdb.query/format-sql s)
+     ;; It looks like markdown
+     (let [[_pre sql _post] (str/split s #"```(sql|SQL)?")]
+       (mdb.query/format-sql sql)))))
 
 (defn bot-sql->final-sql
   "Produce the final query usable by the UI but converting the model to a CTE
