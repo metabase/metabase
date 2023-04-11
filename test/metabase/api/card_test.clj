@@ -2549,72 +2549,87 @@
   ;; Just test with postgres because this should be independent of driver code
   (mt/test-driver :postgres
     (mt/with-empty-db
-      (let [db-id              (u/the-id (mt/db))
-            existing-table-ids (t2/select-pks-vec Table :db_id db-id)
-            file               (upload-test/csv-file-with
-                                ["id, name"
-                                 "1, Luke Skywalker"
-                                 "2, Darth Vader"]
-                                "filename")
-            upload!            (fn []
-                                 (mt/with-current-user (mt/user->id :rasta)
-                                   (api.card/upload-csv! nil "filename.csv" file)))]
-       (testing "Uploads must be enabled"
-          (doseq [uploads-enabled-value [false nil]]
-            (mt/with-temporary-setting-values [uploads-enabled      uploads-enabled-value
-                                               uploads-database-id  db-id
+      (mt/with-actions-enabled
+        (let [db-id              (u/the-id (mt/db))
+              existing-table-ids (t2/select-pks-vec Table :db_id db-id)
+              file               (upload-test/csv-file-with
+                                  ["id, name"
+                                   "1, Luke Skywalker"
+                                   "2, Darth Vader"]
+                                  "filename")
+              upload!            (fn []
+                                   (mt/with-current-user (mt/user->id :rasta)
+                                     (api.card/upload-csv! nil "filename.csv" file)))]
+          (testing "Actions must be enabled"
+            (mt/with-actions-disabled
+              (mt/with-temporary-setting-values [uploads-enabled      true
+                                                 uploads-database-id  db-id
+                                                 uploads-schema-name  "public"
+                                                 uploads-table-prefix "uploaded_magic_"]
+                (is (thrown-with-msg?
+                     java.lang.Exception
+                     #"^The uploads database does not have actions enabled\.$"
+                     (upload!))))))
+          (testing "Uploads must be enabled"
+            (doseq [uploads-enabled-value [false nil]]
+              (mt/with-temporary-setting-values [uploads-enabled      uploads-enabled-value
+                                                 uploads-database-id  db-id
+                                                 uploads-schema-name  "public"
+                                                 uploads-table-prefix "uploaded_magic_"]
+                (is (thrown-with-msg?
+                     java.lang.Exception
+                     #"^Uploads are not enabled\.$"
+                     (upload!))))))
+          (testing "Database ID must be set"
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  nil
                                                uploads-schema-name  "public"
                                                uploads-table-prefix "uploaded_magic_"]
               (is (thrown-with-msg?
                    java.lang.Exception
-                   #"^Uploads are not enabled\.$"
-                   (upload!))))))
-       (testing "Database ID must be set"
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  nil
-                                             uploads-schema-name  "public"
-                                             uploads-table-prefix "uploaded_magic_"]
-            (is (thrown-with-msg?
-                 java.lang.Exception
-                 #"^You must set the `uploads-database-id` before uploading files\.$"
-                 (upload!)))))
-       (testing "Database ID must be valid"
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  -1
-                                             uploads-schema-name  "public"
-                                             uploads-table-prefix "uploaded_magic_"]
-            (is (thrown-with-msg?
-                 java.lang.Exception
-                 #"^The uploads database does not exist\."
-                 (upload!)))))
-       (testing "Schema name must be set"
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  db-id
-                                             uploads-schema-name  nil
-                                             uploads-table-prefix "uploaded_magic_"]
-            (is (thrown-with-msg?
-                 java.lang.Exception
-                 #"^You must set the `uploads-schema-name` before uploading files\.$"
-                 (upload!)))))
-       (testing "Table prefix must be set"
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  db-id
-                                             uploads-schema-name  "public"
-                                             uploads-table-prefix nil]
-            (is (thrown-with-msg?
-                 java.lang.Exception
-                 #"^You must set the `uploads-table-prefix` before uploading files\.$"
-                 (upload!)))))
-       (testing "Uploads must be supported"
-          (with-redefs [driver/database-supports? (constantly false)]
+                   #"^You must set the `uploads-database-id` before uploading files\.$"
+                   (upload!)))))
+          (testing "Database ID must be valid"
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  -1
+                                               uploads-schema-name  "public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (is (thrown-with-msg?
+                   java.lang.Exception
+                   #"^The uploads database does not exist\."
+                   (upload!)))))
+          (testing "Schema name must be set"
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  nil
+                                               uploads-table-prefix "uploaded_magic_"]
+              (is (thrown-with-msg?
+                   java.lang.Exception
+                   #"^You must set the `uploads-schema-name` before uploading files\.$"
+                   (upload!)))))
+          (testing "Table prefix must be set"
             (mt/with-temporary-setting-values [uploads-enabled      true
                                                uploads-database-id  db-id
                                                uploads-schema-name  "public"
-                                               uploads-table-prefix "uploaded_magic_"]
+                                               uploads-table-prefix nil]
               (is (thrown-with-msg?
                    java.lang.Exception
-                   #"^Uploads are not supported on Postgres databases\."
-                   (upload!))))))
+                   #"^You must set the `uploads-table-prefix` before uploading files\.$"
+                   (upload!)))))
+          (testing "Uploads must be supported"
+            (let [database-supports? driver/database-supports?]
+              (with-redefs [driver/database-supports? (fn [driver feat db]
+                                                        (if (= feat :uploads)
+                                                          false
+                                                          (database-supports? driver feat db)))]
+                (mt/with-temporary-setting-values [uploads-enabled      true
+                                                   uploads-database-id  db-id
+                                                   uploads-schema-name  "public"
+                                                   uploads-table-prefix "uploaded_magic_"]
+                  (is (thrown-with-msg?
+                       java.lang.Exception
+                       #"^Uploads are not supported on Postgres databases\."
+                       (upload!)))))))
        (testing "User must have write permissions on the collection"
           (mt/with-non-admin-groups-no-root-collection-perms
             (mt/with-temporary-setting-values [uploads-enabled      true
@@ -2626,20 +2641,20 @@
                      java.lang.Exception
                      #"^You do not have curate permissions for this Collection\.$"
                      (upload!)))))))
-        (testing "Happy path"
-          ;; create schema in the db
-          (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
-            (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                           ["CREATE SCHEMA not_public;"]))
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  db-id
-                                             uploads-schema-name  "not_public"
-                                             uploads-table-prefix "uploaded_magic_"]
-            (upload!)
-            (let [new-table (t2/select-one Table {:where
-                                                  [:and [:= :db_id db-id]
-                                                   (when (seq existing-table-ids)
-                                                     [:not-in :id existing-table-ids])]})]
-              (is (str/starts-with? (:name new-table) "uploaded_magic_filename"))
-              (is (= "not_public" (:schema new-table)))
-              (is (= #{"id" "name"} (t2/select-fn-set :name Field :table_id (:id new-table)))))))))))
+          (testing "Happy path"
+            ;; create schema in the db
+            (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+              (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                             ["CREATE SCHEMA not_public;"]))
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "not_public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (upload!)
+              (let [new-table (t2/select-one Table {:where
+                                                    [:and [:= :db_id db-id]
+                                                     (when (seq existing-table-ids)
+                                                       [:not-in :id existing-table-ids])]})]
+                (is (str/starts-with? (:name new-table) "uploaded_magic_filename"))
+                (is (= "not_public" (:schema new-table)))
+                (is (= #{"id" "name"} (t2/select-fn-set :name Field :table_id (:id new-table))))))))))))

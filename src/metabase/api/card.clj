@@ -8,6 +8,7 @@
    [clojure.walk :as walk]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
+   [metabase.actions :as actions]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
@@ -998,6 +999,9 @@ saved later when it is ready."
   (let [db-id             (get-setting-or-throw! :uploads-database-id)
         database          (or (t2/select-one Database :id db-id)
                               (throw (Exception. (tru "The uploads database does not exist."))))
+        _                 (try (actions/check-actions-enabled-for-database! database)
+                               (catch Exception _
+                                 (throw (Exception. (tru "The uploads database does not have actions enabled.")))))
         schema-name       (get-setting-or-throw! :uploads-schema-name)
         filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                               filename)
