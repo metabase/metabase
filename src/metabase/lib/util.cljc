@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -49,7 +50,7 @@
    If `location` contains no clause with `target-clause` no replacement happens."
   [stage location target-clause new-clause]
   {:pre [(clause? target-clause)]}
-  (update
+  (m/update-existing
     stage
     location
     #(->> (for [clause %]
@@ -59,21 +60,19 @@
           vec)))
 
 (defn remove-clause
-  "Replace the `target-clause` in `stage` `location`.
+  "Remove the `target-clause` in `stage` `location`.
    If a clause has :lib/uuid equal to the `target-clause` it is removed.
    If `location` contains no clause with `target-clause` no removal happens.
    If the the location is empty, dissoc it from stage."
   [stage location target-clause]
   {:pre [(clause? target-clause)]}
-  (let [target-uuid (clause-uuid target-clause)
-        target (get stage location)
-        result (->> target
-                    (remove (comp #{target-uuid} clause-uuid))
-                    vec
-                    not-empty)]
-    (if result
-      (assoc stage location result)
-      (dissoc stage location))))
+  (if-let [target (get stage location)]
+    (let [target-uuid (clause-uuid target-clause)
+          result (into [] (remove (comp #{target-uuid} clause-uuid)) target)]
+      (if (seq result)
+        (assoc stage location result)
+        (dissoc stage location)))
+    stage))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
 ;;; the near future.
@@ -188,6 +187,15 @@
   (let [stage-number (non-negative-stage-index stages stage-number)]
     (when (pos? stage-number)
       (dec stage-number))))
+
+(defn next-stage-number
+  "The index of the next stage, if there is one. `nil` if there is no next stage."
+  [{:keys [stages], :as _query} stage-number]
+  (let [stage-number (if (neg? stage-number)
+                       (+ (count stages) stage-number)
+                       stage-number)]
+    (when (< (inc stage-number) (count stages))
+      (inc stage-number))))
 
 (mu/defn query-stage :- ::lib.schema/stage
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of

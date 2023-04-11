@@ -10,6 +10,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
@@ -130,7 +131,7 @@
    (order-by a-query -1 x direction))
 
   ([a-query stage-number x direction]
-   (lib.order-by/order-by a-query stage-number x (js->clj direction))))
+   (lib.order-by/order-by a-query stage-number x (keyword direction))))
 
 (defn ^:export order-bys
   "Get the order-by clauses (as an array of opaque objects) in `a-query` at a given `stage-number`.
@@ -150,16 +151,16 @@
   ([a-query clause]
    (remove-clause a-query -1 clause))
   ([a-query stage-number clause]
-   (lib.query/remove-clause
-    a-query stage-number
-    (lib.normalize/normalize (js->clj clause :keywordize-keys true)))))
+   (lib.remove-replace/remove-clause
+     a-query stage-number
+     (lib.normalize/normalize (js->clj clause :keywordize-keys true)))))
 
 (defn ^:export replace-clause
   "Replaces the `target-clause` with `new-clause` in the `query` stage."
   ([a-query target-clause new-clause]
    (replace-clause a-query -1 target-clause new-clause))
   ([a-query stage-number target-clause new-clause]
-   (lib.query/replace-clause
+   (lib.remove-replace/replace-clause
      a-query stage-number
      (lib.normalize/normalize (js->clj target-clause :keywordize-keys true))
      (lib.normalize/normalize (js->clj new-clause :keywordize-keys true)))))
