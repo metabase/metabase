@@ -16,12 +16,14 @@
   "Metadata associated with a Saved Question with `card-id`."
   [query   :- ::lib.schema/query
    card-id :- ::lib.schema.id/card]
-  ;; it seems like in some cases the FE is renaming `:result_metadata` to `:fields`, not 100% sure why but
-  ;; handle that case anyway. (#29739)
+  ;; it seems like in some cases (unit tests) the FE is renaming `:result_metadata` to `:fields`, not 100% sure why
+  ;; but handle that case anyway. (#29739)
   (when-let [card (lib.metadata/card query card-id)]
     (when-let [result-metadata (or (:result_metadata card)
                                    (:fields card)
                                    (infer-results-metadata (:lib/metadata query) (:dataset_query card)))]
+      ;; Card `result_metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
+      ;; contains` :columns` as well.
       (when-let [cols (not-empty (cond
                                    (map? result-metadata)        (:columns result-metadata)
                                    (sequential? result-metadata) result-metadata))]
@@ -29,6 +31,7 @@
                 (assoc col
                        :lib/type                :metadata/field
                        :lib/source              :source/card
+                       :lib/card-id             card-id
                        :lib/source-column-alias (:name col)))
               cols)))))
 
