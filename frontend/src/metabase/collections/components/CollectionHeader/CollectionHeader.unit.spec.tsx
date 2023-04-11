@@ -304,6 +304,7 @@ const getProps = (
   isPersonalCollectionChild: false,
   onUpdateCollection: jest.fn(),
   onCreateBookmark: jest.fn(),
+  onUpload: jest.fn(),
   onDeleteBookmark: jest.fn(),
   location: {
     pathname: `/collection/1`,

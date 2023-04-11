@@ -1,36 +1,27 @@
 import React, { useState, useEffect } from "react";
 
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 import { color } from "metabase/lib/colors";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-
-import { uploadCSV } from "metabase/collections/upload";
 
 import { CollectionHeaderButton } from "./CollectionHeader.styled";
-import { UploadInput, LoadingStateContainer } from "./CollectionUpload.styled";
+import { UploadInput } from "./CollectionUpload.styled";
 
 const CLEAR_ERROR_TIMEOUT = 3000;
 
 export default function ColllectionUpload({
   collection,
+  onUpload,
 }: {
   collection: Collection;
+  onUpload: (file: File, collectionId: CollectionId) => void;
 }) {
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    setIsLoading(true);
-
-    await uploadCSV({
-      file: event.target.files?.[0],
-      collectionId: collection.id,
-      onError: setError,
-    });
-
-    setIsLoading(false);
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file !== undefined) {
+      onUpload(file, collection.id);
+    }
   };
 
   useEffect(() => {
@@ -39,14 +30,6 @@ export default function ColllectionUpload({
       return () => clearTimeout(timeout);
     }
   }, [error]);
-
-  if (isLoading) {
-    return (
-      <LoadingStateContainer>
-        <LoadingSpinner size={16} />
-      </LoadingStateContainer>
-    );
-  }
 
   const buttonIcon = error ? "close" : "arrow_up";
   const buttonColor = error ? color("error") : undefined;
