@@ -51,10 +51,6 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/database-supports? [:postgres :uploads]
-  [_driver _feat _db]
-  true)
-
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -81,7 +77,7 @@
   [_driver _feat _db]
   true)
 
-(doseq [feature [:actions :actions/custom]]
+(doseq [feature [:actions :actions/custom :uploads]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
