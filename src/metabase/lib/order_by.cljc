@@ -161,7 +161,6 @@
          columns            (if (or breakouts aggregations)
                               (concat breakouts aggregations)
                               (lib.stage/visible-columns query stage-number))]
-     (into []
-           (comp (filter orderable-column?)
-                 (remove existing-order-by?))
-           columns))))
+     (some->> (not-empty columns)
+              (into [] (comp (filter orderable-column?)
+                             (remove existing-order-by?)))))))

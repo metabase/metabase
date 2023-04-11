@@ -204,16 +204,15 @@
          new-filter (lib.common/->op-arg query stage-number boolean-expression)]
      (lib.util/update-query-stage query stage-number update :filters (fnil conj []) new-filter))))
 
-(mu/defn current-filters :- [:sequential ::schema.common/external-op]
+(mu/defn filters :- [:maybe [:sequential ::schema.common/external-op]]
   "Returns the current filters in stage with `stage-number` of `query`.
   If `stage-number` is omitted, the last stage is used. Logicaly, the
   filter attached to the query is the conjunction of the expressions
   in the returned list. If the returned list is empty, then there is no
   filter attached to the query.
   See also [[metabase.lib.util/query-stage]]."
-  ([query :- :metabase.lib.schema/query] (current-filters query nil))
+  ([query :- :metabase.lib.schema/query] (filters query nil))
   ([query :- :metabase.lib.schema/query
     stage-number :- [:maybe :int]]
-   (if-let [existing-filters (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))]
-     (mapv lib.common/external-op existing-filters)
-     [])))
+   (some->> (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))
+            (mapv lib.common/external-op))))

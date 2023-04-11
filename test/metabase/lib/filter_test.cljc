@@ -122,7 +122,7 @@
                    :lib/options {:lib/uuid string?}
                    :filters [original-filter]}]}]
     (testing "no filter"
-      (is (= [] (lib/current-filters q2))))
+      (is (nil? (lib/filters q2))))
 
     (testing "setting a simple filter via the helper function"
       (let [result-query
@@ -134,7 +134,7 @@
                (dissoc result-query :lib/metadata)))
        (testing "and getting the current filter"
          (is (=? [result-filter]
-                 (lib/current-filters result-query))))))
+                 (lib/filters result-query))))))
 
     (testing "setting a simple filter expression"
       (is (=? simple-filtered-query
@@ -194,12 +194,12 @@
     (testing "adding an initial filter"
       (is (=? filtered-query first-add))
       (is (=? [first-result-filter]
-              (lib/current-filters first-add))))
+              (lib/filters first-add))))
     (testing "conjoining to filter"
       (is (=? and-query second-add))
       (is (=? [first-result-filter second-result-filter]
-              (lib/current-filters second-add))))
+              (lib/filters second-add))))
     (testing "conjoining to conjunction filter"
       (is (=? extended-and-query third-add))
       (is (=? [first-result-filter second-result-filter third-result-filter]
-              (lib/current-filters third-add))))))
+              (lib/filters third-add))))))

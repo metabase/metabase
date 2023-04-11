@@ -215,8 +215,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (when-let [aggregation-exprs (not-empty (:aggregation (lib.util/query-stage query stage-number)))]
-     (map-indexed (fn [i aggregation]
-                    (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)]
-                      (assoc metadata :lib/source :source/aggregations, ::aggregation-index i)))
-                  aggregation-exprs))))
+   (some->> (not-empty (:aggregation (lib.util/query-stage query stage-number)))
+            (into [] (map-indexed (fn [i aggregation]
+                                    (-> (lib.metadata.calculation/metadata query stage-number aggregation)
+                                        (assoc :lib/source :source/aggregations, ::aggregation-index i))))))))
