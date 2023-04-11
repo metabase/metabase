@@ -5,6 +5,16 @@ import {
 } from "metabase/dashboard/utils";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
+const ENABLED_ACTIONS_DATABASE = createMockDatabase({
+  id: 1,
+  settings: { "database-enable-actions": true },
+});
+const DISABLED_ACTIONS_DATABASE = createMockDatabase({
+  id: 2,
+  settings: { "database-enable-actions": false },
+});
+const NO_ACTIONS_DATABASE = createMockDatabase({ id: 3 });
+
 describe("Dashboard utils", () => {
   describe("fetchDataOrError()", () => {
     it("should return data on successful fetch", async () => {
@@ -37,26 +47,19 @@ describe("Dashboard utils", () => {
     });
 
     it("should return true if any database has actions enabled", () => {
-      const dbData = [
-        { id: 1, settings: { "database-enable-actions": true } },
-        { id: 2, settings: { "database-enable-actions": true } },
-        { id: 3, settings: { "database-enable-actions": false } },
-        { id: 4 },
+      const databases = [
+        ENABLED_ACTIONS_DATABASE,
+        DISABLED_ACTIONS_DATABASE,
+        NO_ACTIONS_DATABASE,
       ];
 
-      const databases = dbData.map(createMockDatabase);
       const result = databases.some(hasDatabaseActionsEnabled);
       expect(result).toBe(true);
     });
 
     it("should return false if all databases have actions disabled", () => {
-      const dbData = [
-        { id: 1, settings: { "database-enable-actions": false } },
-        { id: 2 },
-        { id: 3, settings: { "database-enable-actions": false } },
-      ];
+      const databases = [DISABLED_ACTIONS_DATABASE, NO_ACTIONS_DATABASE];
 
-      const databases = dbData.map(createMockDatabase);
       const result = databases.some(hasDatabaseActionsEnabled);
       expect(result).toBe(false);
     });
