@@ -8,7 +8,6 @@ import { getMainElement } from "metabase/lib/dom";
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import withAutoApplyFilters from "metabase/dashboard/hoc/withAutoApplyFilters";
 import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
@@ -58,6 +57,7 @@ class Dashboard extends Component {
     dashboardId: PropTypes.number,
     parameters: PropTypes.array,
     parameterValues: PropTypes.object,
+    draftParameterValues: PropTypes.object,
     editingParameter: PropTypes.object,
     applyFilterButton: PropTypes.element,
 
@@ -223,6 +223,7 @@ class Dashboard extends Component {
       isSharing,
       parameters,
       parameterValues,
+      draftParameterValues,
       isNavbarOpen,
       editingParameter,
       setParameterValue,
@@ -241,7 +242,10 @@ class Dashboard extends Component {
 
     const parametersWidget = (
       <SyncedParametersList
-        parameters={getValuePopulatedParameters(parameters, parameterValues)}
+        parameters={getValuePopulatedParameters(
+          parameters,
+          draftParameterValues ?? parameterValues,
+        )}
         editingParameter={editingParameter}
         dashboard={dashboard}
         isFullscreen={isFullscreen}
@@ -348,4 +352,4 @@ class Dashboard extends Component {
   }
 }
 
-export default _.compose(DashboardControls, withAutoApplyFilters)(Dashboard);
+export default DashboardControls(Dashboard);
