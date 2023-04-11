@@ -2615,6 +2615,17 @@
                    java.lang.Exception
                    #"^Uploads are not supported on Postgres databases\."
                    (upload!))))))
+       (testing "User must have write permissions on the collection"
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (mt/with-current-user (mt/user->id :lucky)
+                (is (thrown-with-msg?
+                     java.lang.Exception
+                     #"^You do not have curate permissions for this Collection\.$"
+                     (upload!)))))))
         (testing "Happy path"
           ;; create schema in the db
           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
