@@ -42,7 +42,7 @@ function addSummarizeCustomExpression(formula, name) {
 
   popover().within(() => {
     cy.get(".ace_text-input").type(formula).blur();
-    cy.findByPlaceholderText("Name (required)").type(name);
+    cy.findByPlaceholderText("Something nice and descriptive").type(name);
     cy.button("Done").click();
   });
 }

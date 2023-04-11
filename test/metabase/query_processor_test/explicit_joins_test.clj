@@ -822,7 +822,7 @@
   (str/join (for [i (range length)]
               (nth charset (mod i (count charset))))))
 
-(deftest very-long-join-name-test
+(deftest ^:parallel very-long-join-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Drivers should work correctly even if joins have REALLLLLLY long names (#15978)"
       (doseq [[charset-name charset] charsets

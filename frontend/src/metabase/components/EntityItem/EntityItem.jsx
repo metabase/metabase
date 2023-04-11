@@ -90,6 +90,7 @@ function EntityItemMenu({
   item,
   isBookmarked,
   isXrayEnabled,
+  canUseMetabot,
   onPin,
   onMove,
   onCopy,
@@ -104,6 +105,7 @@ function EntityItemMenu({
   const isParametrized = isFullyParametrized(item);
   const isModel = isItemModel(item);
   const isXrayShown = isModel && isXrayEnabled;
+  const isMetabotShown = isModel && canUseMetabot;
 
   const actions = useMemo(
     () =>
@@ -113,6 +115,12 @@ function EntityItemMenu({
           icon: "pin",
           action: onPin,
           event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
+        },
+        isMetabotShown && {
+          title: t`Ask Metabot`,
+          link: Urls.modelMetabot(item.id),
+          icon: "insight",
+          event: `${analyticsContext};Entity Item;Ask Metabot;${item.model}`,
         },
         isXrayShown && {
           title: t`X-ray this`,
@@ -162,6 +170,7 @@ function EntityItemMenu({
       item.model,
       isPinned,
       isXrayShown,
+      isMetabotShown,
       isPreviewed,
       isParametrized,
       isBookmarked,

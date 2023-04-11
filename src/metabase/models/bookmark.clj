@@ -121,11 +121,11 @@
                      [:created_at :desc]]})
        (map normalize-bookmark-result)))
 
-(defn save-ordering
+(defn save-ordering!
   "Saves a bookmark ordering of shape `[{:type, :item_id}]`
    Deletes all existing orderings for user so should be given a total ordering."
   [user-id orderings]
   (t2/delete! BookmarkOrdering :user_id user-id)
-  (db/insert-many! BookmarkOrdering (->> orderings
-                                         (map #(select-keys % [:type :item_id]))
-                                         (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
+  (t2/insert! BookmarkOrdering (->> orderings
+                                    (map #(select-keys % [:type :item_id]))
+                                    (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))

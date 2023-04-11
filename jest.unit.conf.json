@@ -11,7 +11,7 @@
     "<rootDir>/node_modules/(?!rehype-external-links/)"
   ],
   "testPathIgnorePatterns": [
-    "<rootDir>/frontend/test/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}"
+    "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}"
   ],
   "testMatch": [
     "<rootDir>/**/*.unit.spec.js",
@@ -53,7 +53,6 @@
     "/frontend/src/metabase/visualizations/lib/errors.js",
     "/frontend/src/cljs/",
     "/frontend/src/cljs_release/",
-    "/frontend/src/metabase/internal/",
     "/frontend/test/"
   ],
   "testEnvironment": "jest-environment-jsdom",
