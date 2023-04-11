@@ -10,6 +10,7 @@ import Question from "metabase-lib/Question";
 import {
   DownloadButtonIcon,
   DownloadButtonRoot,
+  DownloadButtonText,
   DownloadPopoverHeader,
   DownloadPopoverMessage,
   DownloadPopoverRoot,
@@ -81,8 +82,8 @@ const DownloadButton = ({ format, onDownload }: DownloadButtonProps) => {
 
   return (
     <DownloadButtonRoot onClick={handleClick}>
-      <DownloadButtonIcon name={format} />
-      {format}
+      <DownloadButtonIcon name={format} format={format} />
+      <DownloadButtonText>{format}</DownloadButtonText>
     </DownloadButtonRoot>
   );
 };
