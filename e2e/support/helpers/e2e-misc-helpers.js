@@ -286,14 +286,3 @@ export function visitPublicDashboard(id, { params = {} } = {}) {
     },
   );
 }
-
-/**
- * Returns a matcher function to find text content that is broken up by multiple elements
- *
- * @param {string} textToFind
- * @example
- * cy.findByText(getBrokenUpTextMatcher("my text with a styled word"))
- */
-export function getBrokenUpTextMatcher(textToFind) {
-  return (content, element) => element?.textContent === textToFind;
-}
