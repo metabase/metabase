@@ -526,17 +526,13 @@
     :to delete is a list of maps that has ids only in `current-changes`"
   [current-changes :- [:sequential [:map [:id ms/PositiveInt]]]
    new-changes     :- [:sequential [:map [:id int?]]]]
-  (let [current-dashcard-ids          (set (map :id current-changes))
-        update-or-delete-dashcard-ids (->> new-changes
-                                           (map :id)
-                                           (filter pos?)
-                                           set)
-        to-update (filter #(and (current-dashcard-ids (:id %))
-                                (update-or-delete-dashcard-ids (:id %)))
-                          new-changes)
-        to-delete (filter #(not (update-or-delete-dashcard-ids (:id %)))
-                          current-changes)
-        to-create (filter #(neg? (:id %)) new-changes)]
+  (let [current-change-ids (set (map :id current-changes))
+        new-change-ids     (set (map :id new-changes-ids))
+        to-create          (filter #(neg? (:id %)) new-changes)
+        ;; to-update changes are new changes with id in the current changes
+        to-update          (filter #(current-change-ids (:id %)) new-changes)
+        ;; to delete changes in current but not new changes
+        to-delete          (filter #(not (new-change-ids (:id %))) current-changes)]
     {:to-update to-update
      :to-delete to-delete
      :to-create to-create}))
@@ -562,6 +558,7 @@
   ;; transform the card data to the format of the DashboardCard model
   ;; so update-dashcards! can compare them with existing cards
   (dashboard/update-dashcards! dashboard (map dashboard-card/from-parsed-json cards))
+  ;; TODO this is ambiguous, we don't know for sure here that the cards are repositioned
   (events/publish-event! :dashboard-reposition-cards {:id (:id dashboard) :actor_id api/*current-user-id* :dashcards cards}))
 
 (defn- delete-cards! [dashboard dashcard-ids]
