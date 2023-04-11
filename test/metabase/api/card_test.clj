@@ -22,6 +22,7 @@
             Collection
             Dashboard
             Database
+            Field
             ModerationReview
             PersistedInfo
             Pulse
@@ -2542,6 +2543,8 @@
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
 
+(mt/set-test-drivers! [:postgres])
+
 (deftest upload-csv!-test
   (mt/test-driver :postgres
     (mt/with-empty-db
@@ -2555,7 +2558,7 @@
             upload!            (fn []
                                  (mt/with-current-user (mt/user->id :rasta)
                                    (api.card/upload-csv! nil "filename.csv" file)))]
-        (testing "Uploads must be enabled"
+       (testing "Uploads must be enabled"
           (doseq [uploads-enabled-value [false nil]]
             (mt/with-temporary-setting-values [uploads-enabled      uploads-enabled-value
                                                uploads-database-id  db-id
@@ -2565,7 +2568,7 @@
                    java.lang.Exception
                    #"^Uploads are not enabled\.$"
                    (upload!))))))
-        (testing "Database ID must be set"
+       (testing "Database ID must be set"
           (mt/with-temporary-setting-values [uploads-enabled      true
                                              uploads-database-id  nil
                                              uploads-schema-name  "public"
@@ -2574,7 +2577,7 @@
                  java.lang.Exception
                  #"^You must set the `uploads-database-id` before uploading files\.$"
                  (upload!)))))
-        (testing "Database ID must be valid"
+       (testing "Database ID must be valid"
           (mt/with-temporary-setting-values [uploads-enabled      true
                                              uploads-database-id  -1
                                              uploads-schema-name  "public"
@@ -2583,7 +2586,7 @@
                  java.lang.Exception
                  #"^The uploads database does not exist\."
                  (upload!)))))
-        (testing "Schema name must be set"
+       (testing "Schema name must be set"
           (mt/with-temporary-setting-values [uploads-enabled      true
                                              uploads-database-id  db-id
                                              uploads-schema-name  nil
@@ -2592,7 +2595,7 @@
                  java.lang.Exception
                  #"^You must set the `uploads-schema-name` before uploading files\.$"
                  (upload!)))))
-        (testing "Table prefix must be set"
+       (testing "Table prefix must be set"
           (mt/with-temporary-setting-values [uploads-enabled      true
                                              uploads-database-id  db-id
                                              uploads-schema-name  "public"
@@ -2601,7 +2604,7 @@
                  java.lang.Exception
                  #"^You must set the `uploads-table-prefix` before uploading files\.$"
                  (upload!)))))
-        (testing "Uploads must be supported"
+       (testing "Uploads must be supported"
           (with-redefs [driver/database-supports? (constantly false)]
             (mt/with-temporary-setting-values [uploads-enabled      true
                                                uploads-database-id  db-id

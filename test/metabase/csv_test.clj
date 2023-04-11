@@ -138,11 +138,11 @@
                             ;; comma, but blank column
                             "Sebulba, 112,"]))))))
 
-(deftest uniquify-table-name-test
+(deftest unique-table-name-test
   (testing "File name is slugified"
-    (is (=? #"my_file_name_\d+" (#'csv/uniquify-table-name "my file name.csv"))))
+    (is (=? #"my_file_name_\d+" (#'csv/unique-table-name "my file name.csv"))))
   (testing "semicolons are removed"
-    (is (nil? (re-find #";" (#'csv/uniquify-table-name "some text; -- DROP TABLE.csv"))))))
+    (is (nil? (re-find #";" (#'csv/unique-table-name "some text; -- DROP TABLE.csv"))))))
 
 (deftest load-from-csv-table-name-test
   (testing "Upload a CSV file"

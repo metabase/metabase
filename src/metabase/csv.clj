@@ -95,7 +95,7 @@
 ;;;; | Helper Functions |
 ;;;; +------------------+
 
-(defn- uniquify-table-name [filename]
+(defn unique-table-name [filename]
   (str (u/slugify filename)
        (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
 
@@ -145,7 +145,7 @@
                  nil
                  (f v))))))))
 
-(defn- load-from-csv*
+(defn load-from-csv
   "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil."
   [driver db-id table-name csv-file]
   (let [col->upload-type   (detect-schema csv-file)
@@ -159,11 +159,3 @@
         (driver/drop-table driver db-id table-name)
         (throw (ex-info (ex-message e) {}))))
     nil))
-
-(defn load-from-csv
-  "Loads a table from a CSV file. Creates a unique table name. Returns the name of the newly created table.
-   Returns the name of the newly created table."
-  [driver database schema-name file table-name-prefix]
-  (let [table-name (str schema-name "." (uniquify-table-name table-name-prefix))]
-    (load-from-csv* driver database table-name file)
-    table-name))
