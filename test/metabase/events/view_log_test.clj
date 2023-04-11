@@ -90,26 +90,29 @@
                                       :creator_id             (mt/user->id :crowberto)
                                       :display                "table"
                                       :visualization_settings {}}]]
-    (mt/with-test-user :crowberto
-      (testing "User's recent views are updated when card/dashboard/table-read events occur."
-        (mt/with-test-user :crowberto
-          (view-log/user-recent-views! [])
-          (doseq [event [{:topic :card-read :item dataset}
-                         {:topic :card-read :item card1}
-                         {:topic :card-read :item card1}
-                         {:topic :card-read :item card1}
-                         {:topic :card-read :item card1}
-                         {:topic :card-read :item card1}
-                         {:topic :dashboard-read :item dash}
-                         #_{:topic :table-read :item table1}
-                         #_{:topic :card-read :item archived}
-                         #_{:topic :table-read :item hidden-table}]]
-        #_(mt/with-test-user :crowberto)
-        (view-log/handle-view-event! event))
-          (let [recent-views (mt/with-test-user :crowberto (view-log/user-recent-views))]
-            (is (=
-                 [{:model "card" :model_id (u/the-id dataset)}
-                  {:model "card" :model_id (u/the-id card1)}
-                  {:model "dashboard" :model_id (u/the-id dash)}
-                  #_{:model "table" :model_id (u/the-id table1)}]
-                 recent-views))))))))
+    (testing "User's recent views are updated when card/dashboard/table-read events occur."
+      (mt/with-test-user :crowberto
+        (view-log/user-recent-views! []) ;; ensure no views from any other tests/temp items exist
+        (doseq [event [{:topic :card-read :item dataset}
+                       {:topic :card-read :item dataset}
+                       {:topic :card-read :item card1}
+                       {:topic :card-read :item card1}
+                       {:topic :card-read :item card1}
+                       {:topic :dashboard-read :item dash}
+                       {:topic :card-read :item card1}
+                       {:topic :dashboard-read :item dash}
+                       {:topic :table-read :item table1}
+                       {:topic :card-read :item archived}
+                       {:topic :table-read :item hidden-table}]]
+          (view-log/handle-view-event!
+           ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
+           (assoc-in event [:item :actor_id] (mt/user->id :crowberto))))
+        (let [recent-views (mt/with-test-user :crowberto (view-log/user-recent-views))]
+          (is (=
+               [{:model "card" :model_id (u/the-id dataset)}
+                {:model "card" :model_id (u/the-id card1)}
+                {:model "dashboard" :model_id (u/the-id dash)}
+                {:model "table" :model_id (u/the-id table1)}
+                {:model "card" :model_id (u/the-id archived)}
+                {:model "table" :model_id (u/the-id hidden-table)}]
+               recent-views)))))))
