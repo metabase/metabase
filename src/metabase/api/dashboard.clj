@@ -527,7 +527,7 @@
   [current-changes :- [:sequential [:map [:id ms/PositiveInt]]]
    new-changes     :- [:sequential [:map [:id int?]]]]
   (let [current-change-ids (set (map :id current-changes))
-        new-change-ids     (set (map :id new-changes-ids))
+        new-change-ids     (set (map :id new-changes))
         to-create          (filter #(neg? (:id %)) new-changes)
         ;; to-update changes are new changes with id in the current changes
         to-update          (filter #(current-change-ids (:id %)) new-changes)
