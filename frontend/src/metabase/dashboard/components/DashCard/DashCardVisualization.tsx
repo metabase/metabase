@@ -188,7 +188,7 @@ function DashCardVisualization({
       isEmbed ||
       (!isPublic &&
         !isEditing &&
-        QueryDownloadMenu.shouldRender({ result: mainSeries }));
+        QueryDownloadMenu.shouldRender({ question, result: mainSeries }));
 
     if (!shouldShowDownloadWidget) {
       return null;
