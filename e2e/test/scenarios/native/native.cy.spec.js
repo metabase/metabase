@@ -273,6 +273,81 @@ describe("scenarios > question > native", () => {
     runQuery();
     cy.findByText("Showing 1 row").should("be.visible");
   });
+
+  describe("prompts", () => {
+    const PROMPT = "orders count";
+    const PROMPT_RESPONSE = { sql: "select count(*) from orders" };
+
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
+      cy.intercept(
+        "POST",
+        "/api/metabot/database/**/query",
+        PROMPT_RESPONSE,
+      ).as("databasePrompt");
+    });
+
+    it("allows generate sql queries from natural language prompts", () => {
+      cy.intercept(
+        "POST",
+        "/api/metabot/database/**/query",
+        PROMPT_RESPONSE,
+      ).as("databasePrompt");
+
+      openNativeEditor();
+      cy.findByLabelText("Ask a question").click();
+
+      cy.wait(100);
+
+      cy.findByPlaceholderText("Ask anything...")
+        .focus()
+        .type(`${PROMPT}{enter}`);
+
+      runQuery();
+
+      cy.findByText("18,760");
+
+      cy.findByLabelText("Close prompt").click();
+      cy.findByDisplayValue(PROMPT).should("not.exist");
+    });
+
+    it("shows an error when an sql query cannot be generated", () => {
+      const errorMessage = "Could not generate a query for a given prompt";
+      cy.intercept("POST", "/api/metabot/database/**/query", {
+        body: {
+          message: errorMessage,
+        },
+        statusCode: 400,
+      }).as("databasePrompt");
+
+      openNativeEditor();
+      cy.findByLabelText("Ask a question").click();
+
+      // When the native query editor is being initialized it acquires focus
+      cy.wait(100);
+
+      cy.findByPlaceholderText("Ask anything...")
+        .focus()
+        .type(`${PROMPT}{enter}`);
+
+      cy.findByText(errorMessage);
+      cy.button("Try again").click();
+      cy.findByText(errorMessage);
+      cy.button("Rephrase").click();
+
+      cy.intercept(
+        "POST",
+        "/api/metabot/database/**/query",
+        PROMPT_RESPONSE,
+      ).as("databasePrompt");
+
+      cy.findByDisplayValue(PROMPT).type(" fixed{enter}");
+
+      runQuery();
+      cy.findByText("18,760");
+    });
+  });
 });
 
 const runQuery = () => {

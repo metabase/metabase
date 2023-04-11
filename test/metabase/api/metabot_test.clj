@@ -1,12 +1,15 @@
 (ns metabase.api.metabot-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.metabot-test :as metabot-test]
-            [metabase.metabot.client :as metabot-client]
-            [metabase.metabot.util :as metabot-util]
-            [metabase.models :refer [Card]]
-            [metabase.test :as mt]
-            [toucan2.tools.with-temp :as t2.with-temp]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.db.query :as mdb.query]
+   [metabase.metabot-test :as metabot-test]
+   [metabase.metabot.client :as metabot-client]
+   [metabase.metabot.util :as metabot-util]
+   [metabase.models :refer [Card]]
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest metabot-only-works-on-models-test
   (testing "POST /api/metabot/model/:model-id won't work for a table endpoint"
@@ -177,4 +180,49 @@
            (let [{:keys [message]} (mt/user-http-request :rasta :post 400
                                                          (format "/metabot/database/%s" (mt/id))
                                                          {:question "Doesn't matter"})]
-             (is (true? (str/includes? message "Bot credentials are incorrect or not set"))))))))))
+             (is (true? (str/includes? message "Bot credentials are incorrect or not set"))))))))
+    (testing "Too many tokens used returns a useful message"
+      (mt/dataset sample-dataset
+        (mt/with-temp* [Card [_
+                              {:name    "Orders Model"
+                               :dataset_query
+                               {:database (mt/id)
+                                :type     :query
+                                :query    {:source-table (mt/id :orders)}}
+                               :dataset true}]]
+          (let [error-code    "context_length_exceeded"
+                error-message "This model's maximum context length is 8192 tokens. However, your messages resulted in 14837 tokens. Please reduce the length of the messages."]
+            (with-redefs [metabot-client/*bot-endpoint*   (fn [_ _]
+                                                            (throw (ex-info
+                                                                    error-message
+                                                                    {:body   (json/generate-string
+                                                                              {:error {:message error-message
+                                                                                       :code    error-code}})
+                                                                     :status 400})))
+                          metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
+              (let [{:keys [message]} (mt/user-http-request :rasta :post 400
+                                                            (format "/metabot/database/%s" (mt/id))
+                                                            {:question "Doesn't matter"})]
+                (is (= error-message message))))))))))
+
+(deftest metabot-infer-native-sql-test
+  (testing "POST /database/:database-id/query"
+    (mt/with-temporary-setting-values [is-metabot-enabled true]
+      (mt/dataset sample-dataset
+        (mt/with-temp* [Card [_orders-model
+                              {:name    "Orders Model"
+                               :dataset_query
+                               {:database (mt/id)
+                                :type     :query
+                                :query    {:source-table (mt/id :orders)}}
+                               :dataset true}]]
+          (let [bot-message "SELECT COUNT(*) FROM ORDERS;"
+                q           "How many orders do I have?"]
+            (with-redefs [metabot-client/*bot-endpoint*   (metabot-test/test-bot-endpoint-single-message bot-message)
+                          metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
+              (let [response (mt/user-http-request :rasta :post 200
+                                                   (format "/metabot/database/%s/query" (mt/id))
+                                                   {:question q})
+                    {:keys [sql]} response]
+                (is (= (mdb.query/format-sql bot-message)
+                       (mdb.query/format-sql sql)))))))))))
