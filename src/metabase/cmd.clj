@@ -157,18 +157,12 @@
     (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load path opts)))
 
 (defn ^:command import
-<<<<<<< HEAD
-  "Load serialized Metabase instance as created by the [[export]] command from directory `path`."
-  [path]
-  (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path))
-=======
   "This command is in development. For now, use [[load]].
 
    Load serialized Metabase instance as created by the [[export]] command from directory `path`."
   [path & options]
   (let [opts {:abort-on-error (boolean (some #{"--abort-on-error"} options))}]
     (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path opts)))
->>>>>>> a5ad9452f6 (Remove deprecation notice on dump and load commands (#29529))
 
 (defn ^:command dump
   "Serialized metabase instance into directory `path`. `args` options may contain --state option with one of
@@ -188,17 +182,12 @@
 (defn ^:command export
   "This command is in development. For now, use [[dump]].
 
-<<<<<<< HEAD
-  `options` may contain `--state` option with one of `active` (default), `all`. With `active` option, do not dump
-  archived entities."
-=======
    Serialize a Metabase into directory `path`.
 
    Options:
 
     --collections [collection-id-list] - a comma-separated list of IDs of collection to export
     --include-field-values             - flag, default false, controls export of field values"
->>>>>>> a5ad9452f6 (Remove deprecation notice on dump and load commands (#29529))
   [path & options]
   (let [opts (-> options cmd-args->map (update :collections parse-int-list))]
     (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump path opts)))
