@@ -105,7 +105,7 @@
   {::varchar_255 identity
    ::text        identity
    ::int         #(Integer/parseInt (str/trim %))
-   ::float       #(Double/parseDouble (str/trim %))
+   ::float       #(parse-double (str/trim %))
    ::boolean     #(parse-bool (str/trim %))})
 
 (defn- parsed-rows

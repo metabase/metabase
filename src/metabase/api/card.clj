@@ -1003,8 +1003,8 @@ saved later when it is ready."
         table-name        (-> (str (get-setting-or-throw! :uploads-table-prefix) filename-prefix)
                               csv/unique-table-name)
         schema+table-name (if (str/blank? schema-name)
-                            (str schema-name "." table-name)
-                            table-name)
+                            table-name
+                            (str schema-name "." table-name))
         driver            (driver.u/database->driver database)
         _                 (or (driver/database-supports? driver :uploads nil)
                               (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
