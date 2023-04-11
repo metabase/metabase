@@ -68,6 +68,7 @@ export const QuestionInfoSidebar = ({
           }
           isOptional
           isMultiline
+          isMarkdown
           isDisabled={!canWrite}
           onChange={handleSave}
         />
