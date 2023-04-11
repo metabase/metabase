@@ -12,8 +12,8 @@
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
-   [metabase.driver :as driver]
    [metabase.csv-test :as upload-test]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.http-client :as client]
    [metabase.models
@@ -2609,9 +2609,6 @@
                                                   [:and [:= :db_id db-id]
                                                         (when (seq existing-table-ids)
                                                           [:not-in :id existing-table-ids])]})]
-              (is (str/starts-with? (:name new-table) "filename"))
+              (is (str/starts-with? (:name new-table) "uploaded_magic_filename"))
               (is (= "public" (:schema new-table)))
-              (is (= #{"id" "name"} (t2/select-fn-set :name Field :table_id (:id new-table)))))))
-        ;; TODO: check the user has permissions for the collection
-
-        ))))
+              (is (= #{"id" "name"} (t2/select-fn-set :name Field :table_id (:id new-table)))))))))))

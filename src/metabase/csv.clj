@@ -97,8 +97,8 @@
 ;;;; | Helper Functions |
 ;;;; +------------------+
 
-(defn- filename->table-name [filename]
-  (str (u/slugify (second (re-matches #"(.*)\.csv$" filename)))
+(defn- uniquify-table-name [filename]
+  (str (u/slugify filename)
        (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
 
 ;;;; +------------------+
@@ -125,6 +125,6 @@
 (defn load-from-csv
   "Loads a table from a CSV file. Returns the name of the newly created table."
   [driver database schema-name ^File file filename]
-  (let [table-name (filename->table-name filename)]
+  (let [table-name (uniquify-table-name filename)]
     (driver/load-from-csv driver database schema-name table-name file)
     table-name))
