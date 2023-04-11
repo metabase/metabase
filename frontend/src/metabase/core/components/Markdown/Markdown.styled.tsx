@@ -30,6 +30,6 @@ export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
   }
 `;
 
-export function getComponent<P>(component: (props: P) => ReactElement): FC<P> {
+function getComponent<P>(component: (props: P) => ReactElement): FC<P> {
   return component;
 }
