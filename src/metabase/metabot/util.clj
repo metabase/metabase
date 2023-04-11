@@ -199,7 +199,7 @@
                                                                       :id fk-table-id)]]
                        [[:foreign-key field-name]
                         [:references fk-table-name fk-field-name]])
-        enum-strs    (->> (vals enums) (filterv identity))
+        enum-strs    (filterv some? (vals enums))
         create-sql   (->
                       (sql/format
                        {:create-table table-name
