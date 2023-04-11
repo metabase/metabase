@@ -65,7 +65,7 @@
   "The formatter may expand parameterized values (e.g. {{#123}} -> { { # 123 } }).
   This function fixes that."
   [sql]
-  (let [rgx #"\{\s*\{\s*[^\}]+\s*\}\s*\}"]
+  (let [rgx #"\{\s+\{\s+[^\}]+\s+\}\s+\}"]
     (str/replace sql rgx (fn [match] (str/replace match #"\s*" "")))))
 
 (defn inner-query
@@ -309,13 +309,13 @@
 (defn extract-sql
   "Search a provided string for a SQL block"
   [s]
-  (fix-model-reference
-   (if (str/starts-with? (u/upper-case-en (str/trim s)) "SELECT")
-     ;; This is just a raw SQL statement
-     (mdb.query/format-sql s)
-     ;; It looks like markdown
-     (let [[_pre sql _post] (str/split s #"```(sql|SQL)?")]
-       (mdb.query/format-sql sql)))))
+  (let [sql (if (str/starts-with? (u/upper-case-en (str/trim s)) "SELECT")
+              ;; This is just a raw SQL statement
+              s
+              ;; It looks like markdown
+              (let [[_pre sql _post] (str/split s #"```(sql|SQL)?")]
+                sql))]
+    (some-> sql mdb.query/format-sql fix-model-reference)))
 
 (defn bot-sql->final-sql
   "Produce the final query usable by the UI but converting the model to a CTE
