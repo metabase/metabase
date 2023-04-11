@@ -13,6 +13,10 @@
       (some->> (:name table-metadata)
                (u.humanization/name->human-readable-name :simple))))
 
+(defmethod lib.metadata.calculation/metadata-method :metadata/table
+  [_query _stage-number table-metadata]
+  table-metadata)
+
 (defn- describe-source-table [query stage-number source-table-id]
   (when-let [table-metadata (lib.metadata/table query source-table-id)]
     (lib.metadata.calculation/display-name query stage-number table-metadata)))
@@ -22,12 +26,11 @@
   ((some-fn :display_name :name) card-metadata))
 
 (defn- describe-source-query [query stage-number source-table-card-str]
-  (when-let [card-id-str (second (re-find #"^card__(\d+)$" source-table-card-str))]
-    (let [card-id (parse-long card-id-str)]
-      (or (when-let [card-metadata (lib.metadata/card query card-id)]
-            (lib.metadata.calculation/display-name query stage-number card-metadata))
-          ;; If for some reason the metadata is unavailable. This is better than returning nothing I guess
-          (i18n/tru "Saved Question {0}" card-id)))))
+  (when-let [card-id (lib.util/string-table-id->card-id source-table-card-str)]
+    (or (when-let [card-metadata (lib.metadata/card query card-id)]
+          (lib.metadata.calculation/display-name query stage-number card-metadata))
+        ;; If for some reason the metadata is unavailable. This is better than returning nothing I guess
+        (i18n/tru "Saved Question {0}" card-id))))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :source-table
   [query stage-number _k]
@@ -52,13 +55,16 @@
   [table-metadata]
   (::join-alias table-metadata))
 
+(defmethod lib.join/with-join-fields-method :metadata/table
+  [table-metadata fields]
+  (assoc table-metadata ::join-fields fields))
+
 (defmethod lib.join/join-clause-method :metadata/table
-  [query stage-number {::keys [join-alias], :as table-metadata}]
-  (lib.join/join-clause-method query
-                               stage-number
-                               (merge
+  [query stage-number {::keys [join-alias join-fields], :as table-metadata}]
+  (cond-> (lib.join/join-clause query
+                                stage-number
                                 {:lib/type     :mbql.stage/mbql
                                  :lib/options  {:lib/uuid (str (random-uuid))}
-                                 :source-table (:id table-metadata)}
-                                (when join-alias
-                                  {:alias join-alias}))))
+                                 :source-table (:id table-metadata)})
+    join-alias  (lib.join/with-join-alias join-alias)
+    join-fields (lib.join/with-join-fields join-fields)))

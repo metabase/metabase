@@ -1,6 +1,7 @@
 import {
   describeWithSnowplow,
   enableTracking,
+  ensureDcChartVisibility,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
   openCollectionItemMenu,
@@ -14,9 +15,11 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const PROMPT = "What's the most popular product category?";
-const PROMPT_QUERY = "SELECT CATEGORY FROM PRODUCTS LIMIT 1";
-const MANUAL_QUERY = "SELECT CATEGORY FROM PRODUCTS LIMIT 2";
+const PROMPT = "How many products per category we have?";
+const PROMPT_QUERY =
+  "SELECT COUNT(*), CATEGORY FROM PRODUCTS GROUP BY CATEGORY";
+const MANUAL_QUERY =
+  "SELECT COUNT(*), CATEGORY FROM PRODUCTS GROUP BY CATEGORY LIMIT 2";
 
 const MODEL_DETAILS = {
   name: "Products",
@@ -35,8 +38,12 @@ const PROMPT_RESPONSE = {
         query: PROMPT_QUERY,
       },
     },
-    display: "table",
-    visualization_settings: {},
+    display: "bar",
+    visualization_settings: {
+      "graph.dimensions": ["count"],
+      "graph.metrics": ["CATEGORY"],
+      "graph.x_axis.scale": "ordinal",
+    },
   },
   prompt_template_versions: [],
 };
@@ -124,6 +131,10 @@ const enableMetabot = () => {
   cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
 };
 
+const verifyTableVisibility = () => {
+  cy.findByTestId("TableInteractive-root").should("be.visible");
+};
+
 const verifyHomeMetabot = () => {
   cy.visit("/");
   cy.findByPlaceholderText(/Ask something/).type(PROMPT);
@@ -131,27 +142,32 @@ const verifyHomeMetabot = () => {
   cy.wait("@databasePrompt");
   cy.wait("@dataset");
   cy.findByDisplayValue(PROMPT).should("be.visible");
-  cy.findByText("Gizmo").should("be.visible");
-  cy.findByText("Doohickey").should("not.exist");
+  ensureDcChartVisibility();
+  cy.findByText("Gadget").should("be.visible");
+  cy.findByText("Widget").should("be.visible");
+  cy.findByLabelText("table2 icon").click();
+  verifyTableVisibility();
+  cy.findByLabelText("bar icon").click();
+  ensureDcChartVisibility();
 };
 
 const verifyManualQueryEditing = () => {
   cy.findByText("Open Editor").click();
   cy.findByTestId("native-query-editor")
-    .type("{selectall}{backspace}")
+    .type("{selectall}{backspace}", { delay: 50 })
     .type(MANUAL_QUERY);
   cy.findByLabelText("Refresh").click();
   cy.wait("@dataset");
-  cy.findByText("Gizmo").should("be.visible");
-  cy.findByText("Doohickey").should("be.visible");
+  ensureDcChartVisibility();
+  cy.findByText("Gadget").should("be.visible");
+  cy.findByText("Widget").should("not.exist");
 };
 
 const verifyMetabotFeedback = () => {
   cy.findByRole("button", { name: "This isn’t valid SQL." }).click();
   cy.findByRole("button", { name: "Try again" }).click();
   cy.wait("@dataset");
-  cy.findByText("Gizmo").should("be.visible");
-  cy.findByText("Doohickey").should("not.exist");
+  ensureDcChartVisibility();
 };
 
 const verifyCollectionMetabot = () => {
@@ -162,7 +178,7 @@ const verifyCollectionMetabot = () => {
   cy.findByLabelText("Get Answer").click();
   cy.wait("@modelPrompt");
   cy.wait("@dataset");
-  cy.findByText("Gizmo").should("be.visible");
+  ensureDcChartVisibility();
 };
 
 const verifyQueryBuilderMetabot = () => {

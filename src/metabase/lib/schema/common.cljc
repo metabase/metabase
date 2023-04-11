@@ -27,10 +27,27 @@
   [:map
    [:lib/uuid ::uuid]])
 
+(defn- semantic-type? [x]
+  (or (isa? x :Semantic/*)
+      (isa? x :Relation/*)))
+
+(mr/def ::semantic-type
+  [:fn
+   {:error/message "valid semantic type"
+    :error/fn      (fn [{:keys [value]} _]
+                     (str "Not a valid semantic type: " value))}
+   semantic-type?])
+
+(defn- base-type? [x]
+  (and (isa? x :type/*)
+       (not (semantic-type? x))))
+
 (mr/def ::base-type
   [:fn
-   {:error/message "valid base type"}
-   #(isa? % :type/*)])
+   {:error/message "valid base type"
+    :error/fn      (fn [{:keys [value]} _]
+                (str "Not a valid base type: " value))}
+   base-type?])
 
 (mr/def ::external-op
   [:map

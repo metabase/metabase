@@ -33,8 +33,7 @@
    stage-number    :- :int
    expression-name :- ::lib.schema.common/non-blank-string]
   (let [stage (lib.util/query-stage query stage-number)]
-    (or (some-> (get-in stage [:expressions expression-name])
-                lib.common/external-op)
+    (or (get-in stage [:expressions expression-name])
         (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                         {:expression-name expression-name
                          :query           query
@@ -52,6 +51,10 @@
    :display_name (lib.metadata.calculation/display-name query stage-number expression-ref)
    :base_type    (lib.metadata.calculation/type-of query stage-number expression-ref)
    :lib/source   :source/expressions})
+
+(defmethod lib.metadata.calculation/display-name-method :dispatch-type/integer
+  [_query _stage-number n]
+  (str n))
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/number
   [_query _stage-number n]

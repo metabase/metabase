@@ -1,4 +1,4 @@
-(ns metabase.lib.metadata.jvm
+ (ns metabase.lib.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
@@ -59,7 +59,7 @@
   (fields [_this table-id]
     (log/debugf "Fetching all Fields for Table %d" table-id)
     (mapv #(assoc % :lib/type :metadata/field)
-          (t2/select :table_id table-id)))
+          (t2/select :metabase.models.field/Field :table_id table-id)))
 
   lib.metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]

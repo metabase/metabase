@@ -6,7 +6,6 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -83,7 +82,6 @@
                         (lib/expression "myexpr" expr))
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
           (is (mc/validate ::lib.schema/query query))
-          (is (mc/validate ::schema.common/external-op resolved))
           (is (= typ (lib.schema.expression/type-of resolved))))))))
 
 (deftest ^:parallel col-info-expression-ref-test
@@ -119,7 +117,7 @@
                 (lib.tu/field-clause :checkins :date {:base-type :type/Date})
                 -1
                 :day]]
-    (is (= "date_minus_1_day"
+    (is (= "DATE_minus_1_day"
            (lib.metadata.calculation/column-name lib.tu/venues-query -1 clause)))
     (is (= "Date - 1 day"
            (lib.metadata.calculation/display-name lib.tu/venues-query -1 clause)))))
@@ -141,7 +139,7 @@
 
 (deftest ^:parallel coalesce-names-test
   (let [clause [:coalesce {} (lib.tu/field-clause :venues :name) "<Venue>"]]
-    (is (= "name"
+    (is (= "NAME"
            (lib.metadata.calculation/column-name lib.tu/venues-query -1 clause)))
     (is (= "Name"
            (lib.metadata.calculation/display-name lib.tu/venues-query -1 clause)))))

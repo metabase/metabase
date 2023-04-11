@@ -6,6 +6,7 @@
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.dev :as lib.dev]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
@@ -27,6 +28,7 @@
 
 (comment lib.aggregation/keep-me
          lib.breakout/keep-me
+         lib.card/keep-me
          lib.dev/keep-me
          lib.expression/keep-me
          lib.field/keep-me
@@ -115,8 +117,6 @@
    fields]
   [lib.filter
    filter
-   add-filter
-   current-filter
    current-filters
    and
    or
@@ -146,6 +146,7 @@
    describe-query
    describe-top-level-key
    display-name
+   display-info
    suggested-name
    type-of]
   [lib.native

@@ -55,12 +55,15 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    join-alias   :- ::lib.schema.common/non-blank-string]
-  (or (m/find-first #(= (:alias %) join-alias)
-                    (:joins (lib.util/query-stage query stage-number)))
-      (throw (ex-info (i18n/tru "No join named {0}" (pr-str join-alias))
-                      {:join-alias   join-alias
-                       :query        query
-                       :stage-number stage-number}))))
+  (let [{:keys [joins]} (lib.util/query-stage query stage-number)]
+    (or (m/find-first #(= (:alias %) join-alias)
+                      joins)
+        (throw (ex-info (i18n/tru "No join named {0}, found: {1}"
+                                  (pr-str join-alias)
+                                  (pr-str (mapv :alias joins)))
+                        {:join-alias   join-alias
+                         :query        query
+                         :stage-number stage-number})))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/join
   [query _stage-number {[first-stage] :stages, :as _join}]
@@ -68,8 +71,8 @@
     (if (integer? source-table)
       (:display_name (lib.metadata/table query source-table))
       ;; handle card__<id> source tables.
-      (let [[_ card-id-str] (re-matches #"^card__(\d+)$" source-table)]
-        (i18n/tru "Saved Question #{0}" card-id-str)))
+      (let [card-id (lib.util/string-table-id->card-id source-table)]
+        (i18n/tru "Saved Question #{0}" card-id)))
     (i18n/tru "Native Query")))
 
 (mu/defn ^:private column-from-join-fields :- lib.metadata.calculation/ColumnMetadataWithSource
@@ -82,7 +85,7 @@
   (let [column-metadata (assoc column-metadata :source_alias join-alias)
         col             (-> (assoc column-metadata
                                    :display_name (lib.metadata.calculation/display-name query stage-number column-metadata)
-                                   :lib/source :source/fields)
+                                   :lib/source   :source/joins)
                             (with-join-alias join-alias))]
     (assert (= (current-join-alias col) join-alias))
     col))
@@ -162,7 +165,7 @@
 (mu/defn join-condition :- [:or
                             fn?
                             ::lib.schema.expression/boolean]
-  "Create a MBQL condition expression to include as the `:condition` in a join map.
+  "Create a MBQL condition expression to include in the `:conditions` in a join map.
 
   - One arity: return a function that will be resolved later once we have `query` and `stage-number.`
   - Three arity: return the join condition expression immediately."
@@ -179,43 +182,55 @@
    (fn [query stage-number]
      (join-clause query stage-number x)))
 
-  ([x condition]
+  ([x conditions]
    (fn [query stage-number]
-     (join-clause query stage-number x condition)))
+     (join-clause query stage-number x conditions)))
 
   ([query stage-number x]
    (join-clause-method query stage-number x))
 
-  ([query stage-number x condition]
+  ([query stage-number x conditions]
    (cond-> (join-clause query stage-number x)
-     condition (assoc :condition (join-condition query stage-number condition)))))
+     conditions (assoc :conditions (mapv #(join-condition query stage-number %) conditions)))))
 
+(defmulti with-join-fields-method
+  "Impl for [[with-join-fields]]."
+  {:arglists '([x fields])}
+  (fn [x _fields]
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod with-join-fields-method :dispatch-type/fn
+  [f fields]
+  (fn [query stage-number]
+    (with-join-fields-method (f query stage-number) fields)))
+
+(defmethod with-join-fields-method :mbql/join
+  [join fields]
+  (assoc join :fields fields))
 
 (mu/defn with-join-fields
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
   references."
   [x fields :- ::lib.schema.join/fields]
-  (if (fn? x)
-    (fn [query stage-number]
-      (with-join-fields (x query stage-number) fields))
-    (assoc x :fields fields)))
+  (with-join-fields-method x fields))
 
 (mu/defn join :- ::lib.schema/query
   "Create a join map as if by [[join-clause]] and add it to a `query`.
 
-  `condition` is currently required, but in the future I think we should make this smarter and try to infer a sensible
-  default condition for things, e.g. when joining a Table B from Table A, if there is an FK relationship between A and
+  `conditions` is currently required, but in the future I think we should make this smarter and try to infer sensible
+  default conditions for things, e.g. when joining a Table B from Table A, if there is an FK relationship between A and
   B, join via that relationship. Not yet implemented!"
   ([query a-join-clause]
-   (join query -1 a-join-clause (:condition a-join-clause)))
+   (join query -1 a-join-clause (:conditions a-join-clause)))
 
-  ([query x condition]
-   (join query -1 x condition))
+  ([query x conditions]
+   (join query -1 x conditions))
 
-  ([query stage-number x condition]
+  ([query stage-number x conditions]
    (let [stage-number (or stage-number -1)
-         new-join     (if (some? condition) ; I guess technically `false` could be a valid join condition?
-                        (join-clause query stage-number x condition)
+         new-join     (if (seq conditions)
+                        (join-clause query stage-number x conditions)
                         (join-clause query stage-number x))]
      (lib.util/update-query-stage query stage-number update :joins (fn [joins]
                                                                      (conj (vec joins) new-join))))))
@@ -228,3 +243,13 @@
   ([query        :- ::lib.schema/query
     stage-number :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
    (not-empty (get (lib.util/query-stage query stage-number) :joins))))
+
+(mu/defn implicit-join-name :- ::lib.schema.common/non-blank-string
+  "Name for an implicit join against `table-name` via an FK field, e.g.
+
+    CATEGORIES__via__CATEGORY_ID
+
+  You should make sure this gets ran thru a unique-name fn."
+  [table-name           :- ::lib.schema.common/non-blank-string
+   source-field-id-name :- ::lib.schema.common/non-blank-string]
+  (lib.util/format "%s__via__%s" table-name source-field-id-name))

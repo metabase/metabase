@@ -1,6 +1,7 @@
 (ns metabase.lib.js
   "JavaScript-friendly interface to the entire Metabase lib? This stuff will probably change a bit as MLv2 evolves."
   (:require
+   [medley.core :as m]
    [metabase.lib.convert :as convert]
    [metabase.lib.core :as lib.core]
    [metabase.lib.js.metadata :as js.metadata]
@@ -9,6 +10,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -101,13 +103,23 @@
   ([a-query]
    (orderable-columns a-query -1))
   ([a-query stage-number]
-   (-> (lib.order-by/orderable-columns a-query stage-number)
+   (to-array (lib.order-by/orderable-columns a-query stage-number))))
+
+(defn ^:export display-info
+  "Given an opaque Cljs object, return a plain JS object with info you'd need to implement UI for it.
+  See `:metabase.lib.metadata.calculation/display-info` for the keys this might contain."
+  ([a-query x]
+   (display-info a-query -1 x))
+  ([a-query stage-number x]
+   (-> (lib.metadata.calculation/display-info a-query stage-number x)
        (clj->js :keyword-fn u/qualified-name))))
 
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
-  [a-query stage-number x]
-  (lib.order-by/order-by-clause a-query stage-number (lib.normalize/normalize (js->clj x :keywordize-keys true))))
+  ([a-query stage-number x]
+   (order-by-clause a-query stage-number x nil))
+  ([a-query stage-number x direction]
+   (lib.order-by/order-by-clause a-query stage-number (lib.normalize/normalize (js->clj x :keywordize-keys true)) direction)))
 
 (defn ^:export order-by
   "Add an `order-by` clause to `a-query`. Returns updated query."
@@ -118,21 +130,15 @@
    (order-by a-query -1 x direction))
 
   ([a-query stage-number x direction]
-   (lib.order-by/order-by
-    a-query
-    stage-number
-    (lib.normalize/normalize (js->clj x :keywordize-keys true))
-    (js->clj direction))))
+   (lib.order-by/order-by a-query stage-number x (js->clj direction))))
 
 (defn ^:export order-bys
-  "Get the order-by clauses (as an array of opaque objects) in `a-query` at a given `stage-number`. Returns `nil` if
-  there are no order bys in the query."
+  "Get the order-by clauses (as an array of opaque objects) in `a-query` at a given `stage-number`.
+  Returns an empty array if there are no order bys in the query."
   ([a-query]
    (order-bys a-query -1))
   ([a-query stage-number]
-   (some-> (lib.order-by/order-bys a-query stage-number)
-           not-empty
-           to-array)))
+   (to-array (lib.order-by/order-bys a-query stage-number))))
 
 (defn ^:export remove-clause
   "Removes the `target-clause` in the filter of the `query`."
@@ -152,3 +158,32 @@
      a-query stage-number
      (lib.normalize/normalize (js->clj target-clause :keywordize-keys true))
      (lib.normalize/normalize (js->clj new-clause :keywordize-keys true)))))
+
+(defn- prep-query-for-equals [a-query field-ids]
+  (-> a-query
+      mbql.js/normalize-cljs
+      ;; If `:native` exists, but it doesn't have `:template-tags`, add it.
+      (m/update-existing :native #(merge {:template-tags {}} %))
+      (m/update-existing :query (fn [inner-query]
+                                  (let [fields (or (:fields inner-query)
+                                                   (for [id field-ids]
+                                                     [:field id nil]))]
+                                    ;; We ignore the order of the fields in the lists, but need to make sure any dupes
+                                    ;; match up. Therefore de-dupe with `frequencies` rather than simply `set`.
+                                    (assoc inner-query :fields (frequencies fields)))))))
+
+(defn ^:export query=
+  "Returns whether the provided queries should be considered equal.
+
+  If `field-ids` is specified, an input MBQL query without `:fields` set defaults to the `field-ids`.
+
+  Currently this works only for legacy queries in JS form!
+  It duplicates the logic formerly found in `query_builder/selectors.js`.
+
+  TODO: This should evolve into a more robust, pMBQL-based sense of equality over time.
+  For now it pulls logic that touches query internals into `metabase.lib`."
+  ([query1 query2] (query= query1 query2 nil))
+  ([query1 query2 field-ids]
+   (let [n1 (prep-query-for-equals query1 field-ids)
+         n2 (prep-query-for-equals query2 field-ids)]
+     (= n1 n2))))
