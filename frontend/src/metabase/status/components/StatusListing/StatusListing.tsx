@@ -6,7 +6,7 @@ import { StatusListingRoot } from "./StatusListing.styled";
 
 export interface StatusListingProps {
   isAdmin: boolean;
-  database: Database;
+  database?: Database;
 }
 
 const StatusListing = ({

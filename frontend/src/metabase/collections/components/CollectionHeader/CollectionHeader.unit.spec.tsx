@@ -304,8 +304,8 @@ const getProps = (
   isPersonalCollectionChild: false,
   onUpdateCollection: jest.fn(),
   onCreateBookmark: jest.fn(),
+  onUpload: jest.fn(),
   onDeleteBookmark: jest.fn(),
-  onUploadCSV: jest.fn(),
   location: {
     pathname: `/collection/1`,
     search: "",

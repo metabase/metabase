@@ -22,7 +22,6 @@ const SettingSelect = ({
     buttonProps={{
       dataTestId: key,
     }}
-    disabled={disabled}
   >
     {customOptions.map(option => {
       const name = typeof option === "object" ? option.name : option;
