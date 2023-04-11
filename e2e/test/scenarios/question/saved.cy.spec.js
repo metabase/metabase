@@ -55,6 +55,10 @@ describe("scenarios > question > saved", () => {
         "**When there is no question name, it shouldn't be possible to save**",
       );
       cy.findByText("Save as new question").click();
+      cy.findByLabelText("Name")
+        .click()
+        .type("{selectall}{backspace}", { delay: 50 })
+        .blur();
       cy.findByLabelText("Name").should("be.empty");
       cy.findByLabelText("Description").should("be.empty");
       cy.get("@saveButton").should("be.disabled");
