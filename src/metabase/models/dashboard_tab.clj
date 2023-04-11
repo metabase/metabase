@@ -8,7 +8,7 @@
 (methodical/defmethod t2/table-name :model/DashboardTab [_model] :report_dashboardtab)
 
 (doto :model/DashboardTab
-  (derive :metabase/models)
+  (derive :metabase/model)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
