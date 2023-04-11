@@ -490,8 +490,8 @@
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
-    ;; Does the driver support CSV uploads
-    :csv-uploads
+    ;; Does the driver support uploading files
+    :uploads
 
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
@@ -819,19 +819,26 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti create-table
-  "Create a table named `table-name` with a given `schema-name`. If the table already exists it will throw an error."
-  {:added "0.47.0", :arglists '([driver db-id schema-name table-name col->type])}
+  "Create a table named `table-name`. If the table already exists it will throw an error."
+  {:added "0.47.0", :arglists '([driver db-id table-name col->type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmulti drop-table
-  "Drop a table named `table-name` with a given `schema-name`. If the table doesn't exist it will not be dropped."
-  {:added "0.47.0", :arglists '([driver db-id schema-name table-name])}
+  "Drop a table named `table-name`. If the table doesn't exist it will not be dropped."
+  {:added "0.47.0", :arglists '([driver db-id table-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti load-from-csv
-  "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil."
-  {:added "0.47.0", :arglists '([driver database schema-name table-name file])}
+(defmulti insert-into
+  "Insert `values` into a table named `table-name`. `values` is a sequence of rows, where each row's order matches
+   `column-names`."
+  {:added "0.47.0", :arglists '([driver db-id table-name column-names values])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti upload-type->database-type
+  "Returns the database type for a given `metabase.csv` type."
+  {:added "0.47.0", :arglists '([driver upload-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
