@@ -838,7 +838,7 @@
   :hierarchy #'hierarchy)
 
 (defmulti upload-type->database-type
-  "Returns the database type for a given `metabase.csv` type."
+  "Returns the database type for a given `metabase.upload` type."
   {:added "0.47.0", :arglists '([driver upload-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
