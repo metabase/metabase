@@ -1,4 +1,5 @@
 import React from "react";
+import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
@@ -6,24 +7,45 @@ import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { Dataset } from "metabase-types/api";
+import {
+  downloadQueryResults,
+  DownloadQueryResultsOpts,
+} from "metabase/query_builder/actions";
+import { Dataset, VisualizationSettings } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import QueryDownloadPopover from "../QueryDownloadPopover";
 
 interface OwnProps {
   question: Question;
   result: Dataset;
-  onDownload: (format: string) => Promise<void>;
+  uuid?: string;
+  token?: string;
+  visualizationSettings?: VisualizationSettings;
 }
 
-type QueryDownloadWidgetProps = OwnProps;
+interface DispatchProps {
+  onDownload: (opts: DownloadQueryResultsOpts) => void;
+}
+
+type QueryDownloadWidgetProps = OwnProps & DispatchProps;
+
+const mapDispatchToProps: DispatchProps = {
+  onDownload: downloadQueryResults,
+};
 
 const QueryDownloadWidget = ({
   question,
   result,
+  uuid,
+  token,
   onDownload,
 }: QueryDownloadWidgetProps) => {
-  const [{ loading }, handleDownload] = useAsyncFn(onDownload);
+  const [{ loading }, handleDownload] = useAsyncFn(
+    async (type: string) => {
+      await onDownload({ type, question, result, uuid, token });
+    },
+    [question, result, uuid, token],
+  );
 
   return (
     <TippyPopoverWithTrigger
@@ -51,4 +73,4 @@ const QueryDownloadWidget = ({
   );
 };
 
-export default QueryDownloadWidget;
+export default connect(null, mapDispatchToProps)(QueryDownloadWidget);
