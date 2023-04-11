@@ -31,14 +31,28 @@ interface DownloadQueryResultsParams {
 
 export const downloadQueryResults =
   (opts: DownloadQueryResultsOpts) => async () => {
-    const params = getDownloadQueryParams(opts);
-    const response = await getDownloadQueryResponse(params);
-    const fileName = getDownloadFileName(response.headers, opts.type);
-    const fileContent = await response.blob();
-    openSaveDialog(fileName, fileContent);
+    if (opts.type === Urls.exportFormatPng) {
+      await downloadChart(opts);
+    } else {
+      await downloadDataset(opts);
+    }
   };
 
-const getDownloadQueryParams = ({
+const downloadDataset = async (opts: DownloadQueryResultsOpts) => {
+  const params = getDatasetParams(opts);
+  const response = await getDatasetResponse(params);
+  const fileName = getDatasetFileName(response.headers, opts.type);
+  const fileContent = await response.blob();
+  openSaveDialog(fileName, fileContent);
+};
+
+const downloadChart = async ({ question }: DownloadQueryResultsOpts) => {
+  const fileName = getChartFileName(question);
+  const chartSelector = `[data-card-key='${getCardKey(question.id())}']`;
+  await saveChartImage(chartSelector, fileName);
+};
+
+const getDatasetParams = ({
   type,
   question,
   dashboardId,
@@ -96,7 +110,7 @@ const getDownloadQueryParams = ({
   };
 };
 
-const getDownloadQueryResponse = ({
+const getDatasetResponse = ({
   url,
   method,
   params,
@@ -110,7 +124,7 @@ const getDownloadQueryResponse = ({
   }
 };
 
-const getDownloadFileName = (headers: Headers, type: string) => {
+const getDatasetFileName = (headers: Headers, type: string) => {
   const header = headers.get("Content-Disposition") ?? "";
   const headerContent = decodeURIComponent(header);
   const fileNameMatch = headerContent.match(/filename="(?<fileName>.+)"/);
@@ -119,6 +133,12 @@ const getDownloadFileName = (headers: Headers, type: string) => {
     fileNameMatch?.groups?.fileName ||
     `query_result_${new Date().toISOString()}.${type}`
   );
+};
+
+const getChartFileName = (question: Question) => {
+  const name = question.displayName() ?? t`New question`;
+  const date = new Date().toLocaleString();
+  return `${name}-${date}.png`;
 };
 
 const openSaveDialog = (fileName: string, fileContent: Blob) => {
@@ -131,16 +151,4 @@ const openSaveDialog = (fileName: string, fileContent: Blob) => {
 
   URL.revokeObjectURL(url);
   link.remove();
-};
-
-export const downloadChartImage = (question: Question) => async () => {
-  const fileName = getImageFileName(question);
-  const chartSelector = `[data-card-key='${getCardKey(question.id())}']`;
-  await saveChartImage(chartSelector, fileName);
-};
-
-const getImageFileName = (question: Question) => {
-  const name = question.displayName() ?? t`New question`;
-  const date = new Date().toLocaleString();
-  return `${name}-${date}.png`;
 };
