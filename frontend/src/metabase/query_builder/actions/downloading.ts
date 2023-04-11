@@ -115,7 +115,9 @@ const getDatasetResponse = ({
   method,
   params,
 }: DownloadQueryResultsParams) => {
-  const body = new URLSearchParams(params);
+  const body = new URLSearchParams(
+    Object.entries(params).filter(([_, value]) => value != null),
+  );
 
   if (method === "POST") {
     return fetch(url, { method, body });
