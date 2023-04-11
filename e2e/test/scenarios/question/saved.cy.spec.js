@@ -59,7 +59,7 @@ describe("scenarios > question > saved", () => {
         .click()
         .type("{selectall}{backspace}", { delay: 50 })
         .blur();
-      cy.findByLabelText("Name").should("be.empty");
+      cy.findByLabelText("Name: required").should("be.empty");
       cy.findByLabelText("Description").should("be.empty");
       cy.get("@saveButton").should("be.disabled");
 
