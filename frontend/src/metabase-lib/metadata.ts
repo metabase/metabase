@@ -1,5 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
-import * as ML_ColumnGroup from "cljs/metabase.lib.column-group";
+import * as ML_ColumnGroup from "cljs/metabase.lib.column_group";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
 import type { DatabaseId } from "metabase-types/api";
 import type Metadata from "./metadata/Metadata";
