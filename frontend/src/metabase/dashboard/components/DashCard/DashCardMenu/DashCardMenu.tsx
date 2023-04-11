@@ -88,7 +88,7 @@ const DashCardMenu = ({
         link: Urls.question(question.card()),
       },
       canDownloadResults(result) && {
-        title: t`Download results`,
+        title: loading ? t`Downloading results…` : t`Download results`,
         disabled: loading,
         content: handleMenuContent,
       },
