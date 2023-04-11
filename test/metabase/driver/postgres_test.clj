@@ -8,7 +8,6 @@
    [honey.sql :as sql]
    [malli.core :as mc]
    [metabase.config :as config]
-   [metabase.csv-test :as csv-test]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.postgres :as postgres]
@@ -37,8 +36,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.sql DatabaseMetaData)
-   (clojure.lang ExceptionInfo)))
+   (java.sql DatabaseMetaData)))
 
 (set! *warn-on-reflection* true)
 
@@ -1156,76 +1154,3 @@
               :sslkey
               absolute-path
               (str/ends-with? ".p12"))))))
-
-(deftest load-from-csv-test
-  (testing "Upload a CSV file"
-    (mt/test-driver :postgres
-      (mt/with-empty-db
-        (driver/load-from-csv
-         driver/*driver*
-         (mt/id)
-         "public"
-         "upload_test"
-         (csv-test/csv-file-with ["id,empty,string,bool,float" "2,,string,true,1.1" "3,,string,false,1.1"]))
-        (testing "Table and Fields exist after sync"
-          (sync/sync-database! (mt/db))
-          (let [table (t2/select-one Table :schema "public" :name "upload_test" :db_id (mt/id))]
-            (is (some? table))
-            (is (=? {:database_position 0
-                     :database_type     "int4"
-                     :display_name      "ID"
-                     :semantic_type     :type/PK
-                     :base_type         :type/Integer}
-                    (t2/select-one Field :name "id" :table_id (:id table))))
-            (is (=? {:database_position 1
-                     :database_type     "text"
-                     :base_type         :type/Text}
-                    (t2/select-one Field :name "empty" :table_id (:id table))))
-            (is (=? {:database_position 2
-                     :database_type     "varchar"
-                     :base_type         :type/Text}
-                    (t2/select-one Field :name "string" :table_id (:id table))))
-            (is (=? {:database_position 3
-                     :database_type     "bool"
-                     :base_type         :type/Boolean}
-                    (t2/select-one Field :name "bool" :table_id (:id table))))
-            (is (=? {:database_position 4
-                     :database_type     "float8"
-                     :base_type         :type/Float}
-                    (t2/select-one Field :name "float" :table_id (:id table))))
-            (testing "Check the data was uploaded into the table"
-              (is (= [[2]] (-> (mt/process-query {:database (mt/id)
-                                                  :type :query
-                                                  :query {:source-table (:id table)
-                                                          :aggregation [[:count]]}})
-                               mt/rows))))))))))
-
-(deftest load-from-csv-sql-injection-test
-  (mt/test-driver :postgres
-    (mt/with-empty-db
-      (testing "Can't upload a CSV with a semi-colon in the file name"
-        (let [file-name (str (csv-test/csv-file-with ["id" "2"]))]
-          (is (thrown-with-msg?
-               ExceptionInfo #"Error uploading CSV: \";\" in "
-               (driver/load-from-csv
-                driver/*driver*
-                (mt/id)
-                "public"
-                (str "upload_test(id) FROM " file-name "; DROP TABLE users; --")
-                (csv-test/csv-file-with ["id" "2"])))))))))
-
-(deftest load-from-csv-failed-test
-  (mt/test-driver :postgres
-    (mt/with-empty-db
-      (testing "Can't upload a CSV with missing values"
-        (is (thrown-with-msg?
-              ExceptionInfo #"ERROR: missing data for column"
-             (driver/load-from-csv
-              driver/*driver*
-              (mt/id)
-              "public"
-              "upload_test"
-              (csv-test/csv-file-with ["id,column_that_doesnt_have_a_value" "2"])))))
-      (testing "Check that the table isn't created if the upload fails"
-        (sync/sync-database! (mt/db))
-        (is (nil? (t2/select-one Table :db_id (mt/id))))))))

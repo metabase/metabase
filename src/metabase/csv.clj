@@ -8,9 +8,7 @@
    [metabase.driver :as driver]
    [metabase.search.util :as search-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]])
-  (:import
-   (java.io File)))
+   [metabase.util.i18n :refer [trs]]))
 
 (set! *warn-on-reflection* true)
 
@@ -94,16 +92,42 @@
          (ordered-map/ordered-map))))
 
 ;;;; +------------------+
-;;;; | Helper Functions |
+;;;; |  Parsing values  |
 ;;;; +------------------+
 
-(defn- uniquify-table-name [filename]
-  (str (u/slugify filename)
-       (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
+(defn- parse-bool
+  [s]
+  (cond
+    (re-matches #"(?i)true|t|yes|y|1" s) true
+    (re-matches #"(?i)false|f|no|n|0" s) false))
+
+(def ^:private upload-type->parser
+  {::varchar_255 identity
+   ::text        identity
+   ::int         #(Integer/parseInt (str/trim %))
+   ::float       #(parse-double (str/trim %))
+   ::boolean     #(parse-bool (str/trim %))})
+
+(defn- parsed-rows
+  "Returns a vector of parsed rows from a `csv-file`.
+   Replaces empty strings with nil."
+  [col->upload-type csv-file]
+  (with-open [reader (io/reader csv-file)]
+    (let [[_header & rows] (csv/read-csv reader)
+          parsers (map upload-type->parser (vals col->upload-type))]
+      (vec (for [row rows]
+             (for [[v f] (map vector row parsers)]
+               (if (str/blank? v)
+                 nil
+                 (f v))))))))
 
 ;;;; +------------------+
 ;;;; | Public Functions |
 ;;;; +------------------+
+
+(defn unique-table-name [table-name]
+  (str (u/slugify table-name)
+       (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
 
 (defn detect-schema
   "Returns an ordered map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
@@ -121,10 +145,17 @@
     (let [[header & rows] (csv/read-csv reader)]
       (rows->schema header rows))))
 
-;; TODO: assumes DB supports schema
 (defn load-from-csv
-  "Loads a table from a CSV file. Returns the name of the newly created table."
-  [driver database schema-name ^File file filename]
-  (let [table-name (uniquify-table-name filename)]
-    (driver/load-from-csv driver database schema-name table-name file)
-    table-name))
+  "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil."
+  [driver db-id table-name csv-file]
+  (let [col->upload-type   (detect-schema csv-file)
+        col->database-type (update-vals col->upload-type (partial driver/upload-type->database-type driver))
+        column-names       (keys col->upload-type)]
+    (driver/create-table driver db-id table-name col->database-type)
+    (try
+      (let [rows (parsed-rows col->upload-type csv-file)]
+        (driver/insert-into driver db-id table-name column-names rows))
+      (catch Throwable e
+        (driver/drop-table driver db-id table-name)
+        (throw (ex-info (ex-message e) {}))))
+    nil))
