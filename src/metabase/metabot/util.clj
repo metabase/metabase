@@ -97,6 +97,7 @@
 (defn- create-enum-ddl
   "Create the postgres enum for any item in result_metadata that has enumerated/low cardinality values."
   [{:keys [result_metadata]}]
+  (tap> result_metadata)
   (into {}
         (for [{:keys [sql_name possible_values]} result_metadata
               :when (and (seq possible_values)
@@ -154,7 +155,8 @@
   (assoc database :model_json_summary (models->json-summary database)))
 
 (defn- field->pseudo-enums
-  "For a field, determine any potential enumerated values."
+  "For a field, create a potential enumerated type string.
+  Returns nil if there are no field values or the cardinality is too high."
   [{table-name :name} {field-name :name field-id :id :keys [base_type]}]
   (when-let [values (and
                      (not= :type/Boolean base_type)
@@ -177,8 +179,12 @@
                                  :name
                                  :semantic_type]
                                 :table_id table-id)
-        enums        (zipmap (map :name fields)
-                             (map (partial field->pseudo-enums table) fields))
+        enums        (reduce
+                      (fn [acc {field-name :name :as field}]
+                        (if-some [enums (field->pseudo-enums table field)]
+                          (assoc acc field-name enums)
+                          acc))
+                      fields)
         columns      (vec
                       (for [{column-name :name :keys [database_required database_type]} fields]
                         (cond-> [column-name
@@ -199,7 +205,6 @@
                                                                       :id fk-table-id)]]
                        [[:foreign-key field-name]
                         [:references fk-table-name fk-field-name]])
-        enum-strs    (filterv some? (vals enums))
         create-sql   (->
                       (sql/format
                        {:create-table table-name
@@ -207,7 +212,7 @@
                        {:dialect :ansi :pretty true})
                       first
                       mdb.query/format-sql)]
-    (str/join "\n\n" (conj enum-strs create-sql))))
+    (str/join "\n\n" (conj (vec (vals enums)) create-sql))))
 
 (defn- database->pseudo-ddl
   "Create an 'approximate' ddl to represent how this database might be created as SQL."
