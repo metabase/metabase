@@ -2543,9 +2543,8 @@
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
 
-(mt/set-test-drivers! [:postgres])
-
 (deftest upload-csv!-test
+  ;; Just test with postgres because this should be independent of driver code
   (mt/test-driver :postgres
     (mt/with-empty-db
       (let [db-id              (u/the-id (mt/db))
