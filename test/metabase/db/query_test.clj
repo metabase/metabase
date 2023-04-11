@@ -95,7 +95,7 @@
           (is (= (json/parse-string query)
                  (json/parse-string weird-formatted-query))))))))
 
-(deftest format-sql-with-params-test
+(deftest ^:parallel format-sql-with-params-test
   (testing "Ensure that format-sql does not mess up (and fixes messed up) metabase params."
     ;; What we do want
     (is (= "SELECT\n  *\nFROM\n  {{#1234}}"
