@@ -783,8 +783,6 @@
                   (set-json-unfolding-for-field! true)
                   (is (seq (nested-fields))))))))))))
 
-(mt/set-test-drivers! [:postgres])
-
 (deftest json-unfolding-initially-false-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
