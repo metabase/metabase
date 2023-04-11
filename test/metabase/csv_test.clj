@@ -5,7 +5,10 @@
    [clojure.test :refer :all]
    [metabase.csv :as csv]
    [metabase.driver :as driver]
-   [metabase.test :as mt])
+   [metabase.models :refer [Field Table]]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan2.core :as t2])
   (:import
    [java.io File]))
 
@@ -61,11 +64,13 @@
 
 (defn csv-file-with
   "Create a temp csv file with the given content and return the file"
-  [rows]
-  (let [contents (str/join "\n" rows)
-        csv-file (File/createTempFile "pokefans" ".csv")]
-    (spit csv-file contents)
-    csv-file))
+  ([rows]
+   (csv-file-with rows "test"))
+  ([rows filename]
+   (let [contents (str/join "\n" rows)
+         csv-file (File/createTempFile filename ".csv")]
+     (spit csv-file contents)
+     csv-file)))
 
 (deftest detect-schema-test
   (testing "Well-formed CSV file"
@@ -120,11 +125,23 @@
   (testing "Completely empty contents are okay"
       (is (= {}
              (csv/detect-schema
-              (csv-file-with [""]))))))
+              (csv-file-with [""])))))
+  (testing "CSV missing data in the top row"
+    (is (= {"name"       vchar-type
+            "height"     int-type
+            "birth_year" float-type}
+           (csv/detect-schema
+            (csv-file-with ["Name, Height, Birth Year"
+                            ;; missing column
+                            "Watto, 137"
+                            "Luke Skywalker, 172, -19"
+                            "Darth Vader, 202, -41.9"
+                            ;; comma, but blank column
+                            "Sebulba, 112,"]))))))
 
-(deftest file->table-name-test
+(deftest filename->table-name-test
   (testing "File name is slugified"
-    (is (some? (re-find #"my_file_name_\d+" (#'csv/file->table-name (io/file "my file name.csv")))))))
+    (is (some? (re-find #"my_file_name_\d+" (#'csv/uniquify-table-name "my file name.csv"))))))
 
 (deftest load-from-csv-test
   (testing "Upload a CSV file"
