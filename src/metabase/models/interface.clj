@@ -447,12 +447,12 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 
 (methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
-  "Handle models deriving from :metabase/models."
+  "Handle models deriving from :metabase/model."
   [symb]
   (or
     (when (simple-symbol? symb)
       (let [metabase-models-keyword (keyword "m" (name symb))]
-        (when (isa? metabase-models-keyword :metabase/models)
+        (when (isa? metabase-models-keyword :metabase/model)
           metabase-models-keyword)))
     (next-method symb)))
 

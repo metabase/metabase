@@ -34,7 +34,7 @@
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."
   []
   (into {}
-        (for [model (concat (descendants :toucan1/model) (descendants :metabase/models))
+        (for [model (concat (descendants :toucan1/model) (descendants :metabase/model))
               :when (mdb.u/toucan-model? model)
               :let  [table-name (some-> model t2/table-name name)]
               :when table-name
