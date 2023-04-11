@@ -145,10 +145,8 @@
                               e))))]
     (apply f args)))
 
-(defn ^:command ^:deprecated load
-  "Deprecated: prefer [[import]] instead.
-
-  Load serialized metabase instance as created by [[dump]] command from directory `path`.
+(defn ^:command load
+  "Load serialized metabase instance as created by [[dump]] command from directory `path`.
 
   `--mode` can be one of `:update` or `:skip` (default). `--on-error` can be `:abort` or `:continue` (default)."
   [path & options]
@@ -159,14 +157,14 @@
     (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load path opts)))
 
 (defn ^:command import
-  "Load serialized Metabase instance as created by the [[export]] command from directory `path`."
+  "This command is in development. For now, use [[load]].
+
+   Load serialized Metabase instance as created by the [[export]] command from directory `path`."
   [path]
-  (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path))
+    (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path))
 
-(defn ^:command ^:deprecated dump
-  "Deprecated: prefer [[export]] instead.
-
-  Serialized metabase instance into directory `path`. `args` options may contain --state option with one of
+(defn ^:command dump
+  "Serialized metabase instance into directory `path`. `args` options may contain --state option with one of
   `active` (default), `all`. With `active` option, do not dump archived entities."
   [path & options]
   (log/warn (u/colorize :red (trs "''dump'' is deprecated and will be removed in a future release. Please migrate to ''export''.")))
@@ -181,10 +179,14 @@
     (map #(Integer/parseInt %) (str/split s #","))))
 
 (defn ^:command export
-  "Serialize a Metabase into directory `path`. Replaces the [[dump]] command..
+  "This command is in development. For now, use [[dump]].
 
-  `options` may contain `--state` option with one of `active` (default), `all`. With `active` option, do not dump
-  archived entities."
+   Serialize a Metabase into directory `path`.
+
+   Options:
+
+    --collections [collection-id-list] - a comma-separated list of IDs of collection to export
+    --include-field-values             - flag, default false, controls export of field values"
   [path & options]
   (let [opts (-> options cmd-args->map (update :collections parse-int-list))]
     (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump path opts)))
