@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import * as Urls from "metabase/lib/urls";
 import {
   downloadQueryResults,
   DownloadQueryResultsOpts,
@@ -79,13 +80,17 @@ const QueryDownloadMenu = ({
 
   const menuItems = useMemo(
     () => [
-      {
+      canEditQuestion(question) && {
+        title: `Edit question`,
+        link: Urls.question(question.card()),
+      },
+      canDownloadResults(result) && {
         title: t`Download results`,
         disabled: loading,
         content: handleMenuContent,
       },
     ],
-    [loading, handleMenuContent],
+    [question, result, loading, handleMenuContent],
   );
 
   return (
@@ -98,15 +103,27 @@ const QueryDownloadMenu = ({
 };
 
 interface QueryDownloadWidgetOpts {
+  question: Question;
   result?: Dataset;
 }
 
-QueryDownloadMenu.shouldRender = ({ result }: QueryDownloadWidgetOpts) => {
+const canEditQuestion = (question: Question) => {
+  return question.query().isEditable();
+};
+
+const canDownloadResults = (result?: Dataset) => {
   return (
-    result &&
+    result != null &&
     !result.error &&
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canDownloadResults(result)
   );
+};
+
+QueryDownloadMenu.shouldRender = ({
+  question,
+  result,
+}: QueryDownloadWidgetOpts) => {
+  return canEditQuestion(question) || canDownloadResults(result);
 };
 
 export default connect(null, mapDispatchToProps)(QueryDownloadMenu);
