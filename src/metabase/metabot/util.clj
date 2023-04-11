@@ -155,15 +155,15 @@
 
 (defn- field->pseudo-enums
   "For a field, determine any potential enumerated values."
-  [{table-name :name :as _table} {field-name :name field-id :id :keys [base_type]}]
+  [{table-name :name} {field-name :name field-id :id :keys [base_type]}]
   (when-let [values (and
                      (not= :type/Boolean base_type)
                      (:values (t2/select-one FieldValues :field_id field-id)))]
     (when (< (count values) (metabot-settings/enum-cardinality-threshold))
       (format "create type %s_%s_t as enum %s;"
-             table-name
-             field-name
-             (str/join ", " (map (partial format "'%s'") values))))))
+              table-name
+              field-name
+              (str/join ", " (map (partial format "'%s'") values))))))
 
 (defn- table->pseudo-ddl
   "Create an 'approximate' ddl to represent how this table might be created as SQL."
