@@ -81,13 +81,10 @@ export class Api extends EventEmitter {
           }
         }
 
-        const headers = options.json
-          ? { Accept: "application/json", "Content-Type": "application/json" }
-          : {};
-
-        if (options.formData && options.fetch) {
-          delete headers["Content-Type"];
-        }
+        const headers =
+          options.json && !options.formData
+            ? { Accept: "application/json", "Content-Type": "application/json" }
+            : {};
 
         if (isWithinIframe()) {
           headers["X-Metabase-Embedded"] = "true";
@@ -165,7 +162,8 @@ export class Api extends EventEmitter {
     const options = args[5];
     // this is temporary to not deal with failed cypress tests
     // we should switch to using fetch in all cases (metabase#28489)
-    if (isTest || options.fetch) {
+    // except for when we are uploading a file with formData
+    if (isTest || !options.formData) {
       return this._makeRequestWithFetch(...args);
     } else {
       return this._makeRequestWithXhr(...args);
