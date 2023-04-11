@@ -73,7 +73,7 @@ const QueryDownloadWidget = ({
           result={result}
           onDownload={type => {
             closePopover();
-            handleDownload(type);
+            handleDownload(type).catch(console.error);
           }}
         />
       )}
