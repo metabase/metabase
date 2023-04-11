@@ -52,7 +52,8 @@
     target-clause]
    (reduce
      (fn [query location]
-       (let [result (lib.util/update-query-stage query stage-number
+       (let [target-clause (lib.common/->op-arg query stage-number target-clause)
+             result (lib.util/update-query-stage query stage-number
                                                  lib.util/remove-clause location target-clause)]
          (when (not= query result)
            (case location
