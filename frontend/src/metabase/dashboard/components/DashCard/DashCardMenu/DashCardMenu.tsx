@@ -68,11 +68,14 @@ const DashCardMenu = ({
   );
 
   const handleMenuContent = useCallback(
-    () => (
+    (toggleMenu: () => void) => (
       <QueryDownloadPopover
         question={question}
         result={result}
-        onDownload={handleDownload}
+        onDownload={type => {
+          toggleMenu();
+          handleDownload(type);
+        }}
       />
     ),
     [question, result, handleDownload],

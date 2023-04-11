@@ -67,13 +67,16 @@ const QueryDownloadWidget = ({
           </Tooltip>
         )
       }
-      popoverContent={
+      popoverContent={({ closePopover }) => (
         <QueryDownloadPopover
           question={question}
           result={result}
-          onDownload={handleDownload}
+          onDownload={type => {
+            closePopover();
+            handleDownload(type);
+          }}
         />
-      }
+      )}
     />
   );
 };
