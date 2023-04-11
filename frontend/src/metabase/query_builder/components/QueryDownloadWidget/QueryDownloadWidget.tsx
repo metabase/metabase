@@ -2,6 +2,7 @@ import React from "react";
 import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Icon from "metabase/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -70,6 +71,23 @@ const QueryDownloadWidget = ({
         />
       }
     />
+  );
+};
+
+interface QueryDownloadWidgetOpts {
+  result: Dataset;
+  isResultDirty?: boolean;
+}
+
+QueryDownloadWidget.shouldRender = ({
+  result,
+  isResultDirty,
+}: QueryDownloadWidgetOpts) => {
+  return (
+    !isResultDirty &&
+    result &&
+    !result.error &&
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canDownloadResults(result)
   );
 };
 
