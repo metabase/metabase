@@ -82,8 +82,8 @@
                     :field_id [:in param-field-ids]))
 
 (defn- field-ids->param-field-values
-  "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference. This map is
-  returned by various endpoints as `:param_values`."
+  "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference.
+  This map is returned by various endpoints as `:param_values`, if `param-field-ids` is empty, return `nil`"
   [param-field-ids]
   (when (seq param-field-ids)
     ((if *ignore-current-user-perms-and-return-all-field-values*

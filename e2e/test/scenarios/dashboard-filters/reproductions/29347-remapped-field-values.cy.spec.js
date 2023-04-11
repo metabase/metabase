@@ -35,7 +35,7 @@ const dashboardDetails = {
   },
 };
 
-describe.skip("issues 29347, 29346", () => {
+describe("issues 29347, 29346", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

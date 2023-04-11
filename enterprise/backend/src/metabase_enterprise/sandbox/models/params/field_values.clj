@@ -79,7 +79,7 @@
 (defenterprise field-id->field-values-for-current-user
   "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
     {field-id FieldValues-instance}
-  Returns `nil` if `field-ids` is empty of no matching FieldValues exist."
+  Returns `nil` if `field-ids` is empty oo no matching FieldValues exist."
   :feature :sandboxes
   [field-ids]
   (let [fields                   (when (seq field-ids)
@@ -90,7 +90,7 @@
      ;; use the normal OSS batched implementation for any Fields that aren't subject to sandboxing.
      (when (seq unsandboxed-fields)
        (params.field-values/default-field-id->field-values-for-current-user
-        (set (map u/the-id unsandboxed-fields))))
+         (map u/the-id unsandboxed-fields)))
      ;; for sandboxed fields, fetch the sandboxed values individually.
      (into {} (for [{field-id :id, :as field} sandboxed-fields]
                 [field-id (select-keys (params.field-values/get-or-create-advanced-field-values! :sandbox field)
