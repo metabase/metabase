@@ -103,7 +103,7 @@ export function getAllDashboardCards(dashboard) {
   return results;
 }
 
-export function isDatabaseActionEnabled(database) {
+export function hasDatabaseActionsEnabled(database) {
   return database.settings?.["database-enable-actions"] ?? false;
 }
 
