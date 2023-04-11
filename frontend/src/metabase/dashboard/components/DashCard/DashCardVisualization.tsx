@@ -10,8 +10,6 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import WithVizSettingsData from "metabase/dashboard/hoc/WithVizSettingsData";
 import { getVisualizationRaw } from "metabase/visualizations";
 
-import { SAVING_CHART_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
-
 import {
   getVirtualCardType,
   isVirtualDashCard,
@@ -196,7 +194,6 @@ function DashCardVisualization({
 
     return (
       <DashCardMenu
-        className={SAVING_CHART_IMAGE_HIDDEN_CLASS}
         question={question}
         result={mainSeries}
         dashcardId={dashcard.id}

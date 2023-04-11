@@ -9,6 +9,7 @@ import {
   DownloadQueryResultsOpts,
 } from "metabase/query_builder/actions";
 import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
+import { SAVING_CHART_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import {
   DashboardId,
   DashCardId,
@@ -19,7 +20,6 @@ import Question from "metabase-lib/Question";
 import { CardMenuIcon, CardMenuRoot } from "./DashCardMenu.styled";
 
 interface OwnProps {
-  className?: string;
   question: Question;
   result: Dataset;
   dashboardId?: DashboardId;
@@ -41,7 +41,6 @@ const mapDispatchToProps: DispatchProps = {
 };
 
 const DashCardMenu = ({
-  className,
   question,
   result,
   dashboardId,
@@ -98,8 +97,9 @@ const DashCardMenu = ({
 
   return (
     <CardMenuRoot
+      className={SAVING_CHART_IMAGE_HIDDEN_CLASS}
       items={menuItems}
-      triggerProps={{ className }}
+      triggerProps={{ className: "hover-child hover-child--smooth" }}
       trigger={<CardMenuIcon name="ellipsis" size={17} />}
     />
   );
