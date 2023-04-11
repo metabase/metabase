@@ -91,7 +91,6 @@ export const CardApi = {
   create: POST("/api/card"),
   uploadCSV: POST("/api/card/from-csv", {
     formData: true,
-    fetch: true,
   }),
   get: GET("/api/card/:cardId"),
   update: PUT("/api/card/:id"),
