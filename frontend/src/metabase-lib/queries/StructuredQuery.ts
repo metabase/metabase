@@ -1207,7 +1207,7 @@ class StructuredQueryInner extends AtomicQuery {
   // FIELDS
   fields() {
     // FIMXE: implement field functions in query lib
-    return this.query().fields || [];
+    return this.query()?.fields || [];
   }
 
   addField(name, expression) {

@@ -29,7 +29,7 @@ const DEFAULT_NUMERIC_CELL_VALUE = 42;
 
 const AGGREGATED_QUERY = {
   aggregation: [["count"]],
-  breakout: ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "month" }],
+  breakout: [["field", ORDERS.CREATED_AT.id, { "temporal-unit": "month" }]],
   "source-table": ORDERS.id,
 };
 
