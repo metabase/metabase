@@ -20,6 +20,7 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.table :as lib.table]
@@ -64,7 +65,8 @@
    sum
    sum-where]
   [lib.breakout
-   breakout]
+   breakout
+   current-breakouts]
   [lib.dev
    field
    query-for-table-id
@@ -164,11 +166,12 @@
   [lib.query
    native-query
    query
-   remove-clause
-   replace-clause
    saved-question-query]
   [lib.ref
    ref]
+  [lib.remove-replace
+   remove-clause
+   replace-clause]
   [lib.stage
    append-stage
    drop-stage]

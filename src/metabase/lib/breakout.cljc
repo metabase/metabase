@@ -31,6 +31,14 @@
      (lib.util/update-query-stage query stage-number update :breakout (fn [breakouts]
                                                                         (conj (vec breakouts) expr))))))
 
+(mu/defn current-breakouts :- [:maybe [:sequential ::lib.schema.expression/expression]]
+  "Return the current breakouts"
+  ([query]
+   (current-breakouts query -1))
+  ([query :- ::lib.schema/query
+    stage-number :- :int]
+   (not-empty (:breakout (lib.util/query-stage query stage-number)))))
+
 (mu/defn breakouts :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Get metadata about the breakouts in a given stage of a `query`."
   [query        :- ::lib.schema/query
