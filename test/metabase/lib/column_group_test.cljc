@@ -15,29 +15,25 @@
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (not (mc/explain [:sequential @#'lib.column-group/ColumnGroup] groups)))
-    (is (=? [{:lib/source                :source/table-defaults
-              :lib/type                  :metadata/column-group
-              ::lib.column-group/columns [{:name "ID", :display_name "ID"}
-                                          {:name "NAME", :display_name "Name"}
-                                          {:name "CATEGORY_ID", :display_name "Category ID"}
-                                          {:name "LATITUDE", :display_name "Latitude"}
-                                          {:name "LONGITUDE", :display_name "Longitude"}
-                                          {:name "PRICE", :display_name "Price"}]}
-             {:lib/source                :source/implicitly-joinable
-              :lib/type                  :metadata/column-group
-              ::lib.column-group/columns [{:name "ID", :display_name "ID"}
-                                          {:name "NAME", :display_name "Name"}]}]
+    (is (=? [{::lib.column-group/group-type :group-type/main
+              :lib/type                     :metadata/column-group
+              ::lib.column-group/columns    [{:name "ID", :display_name "ID"}
+                                             {:name "NAME", :display_name "Name"}
+                                             {:name "CATEGORY_ID", :display_name "Category ID"}
+                                             {:name "LATITUDE", :display_name "Latitude"}
+                                             {:name "LONGITUDE", :display_name "Longitude"}
+                                             {:name "PRICE", :display_name "Price"}]}
+             {::lib.column-group/group-type :group-type/join.implicit
+              :lib/type                     :metadata/column-group
+              ::lib.column-group/columns    [{:name "ID", :display_name "ID"}
+                                             {:name "NAME", :display_name "Name"}]}]
             groups))
     (testing `lib/display-info
-      (is (=? [{:is_from_previous_stage false
-                :is_from_join           false
-                :is_calculated          false
+      (is (=? [{:is_from_join           false
                 :is_implicitly_joinable false
                 :name                   "VENUES"
                 :display_name           "Venues"}
-               {:is_from_previous_stage false
-                :is_from_join           false
-                :is_calculated          false
+               {:is_from_join           false
                 :is_implicitly_joinable true
                 :name                   "CATEGORIES"
                 :display_name           "Categories"}]
@@ -53,14 +49,12 @@
                     (lib/breakout (lib/field "VENUES" "NAME")))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
-    (is (=? [{:lib/source                :source/fields
-              ::lib.column-group/columns [{:display_name "Name", :lib/source :source/breakouts}
-                                          {:display_name "Sum of ID", :lib/source :source/aggregations}]}]
+    (is (=? [{::lib.column-group/group-type :group-type/main
+              ::lib.column-group/columns    [{:display_name "Name", :lib/source :source/breakouts}
+                                             {:display_name "Sum of ID", :lib/source :source/aggregations}]}]
             groups))
     (testing `lib/display-info
-      (is (=? [{:is_from_previous_stage false
-                :is_from_join           false
-                :is_calculated          false
+      (is (=? [{:is_from_join           false
                 :is_implicitly_joinable false
                 :name                   "VENUES"
                 :display_name           "Venues"}]
@@ -74,27 +68,23 @@
   (let [query   (lib.tu/query-with-card-source-table)
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
-    (is (=? [{:lib/source                :source/card
-              ::lib.column-group/columns [{:display_name "User ID", :lib/source :source/card}
-                                          {:display_name "Count", :lib/source :source/card}]}
-             {:lib/source                :source/implicitly-joinable
-              :table-id                  (meta/id :users)
-              ::lib.column-group/columns [{:display_name "ID", :lib/source :source/implicitly-joinable}
-                                          {:display_name "Name", :lib/source :source/implicitly-joinable}
-                                          {:display_name "Last Login", :lib/source :source/implicitly-joinable}] }]
+    (is (=? [{::lib.column-group/group-type :group-type/main
+              ::lib.column-group/columns    [{:display_name "User ID", :lib/source :source/card}
+                                             {:display_name "Count", :lib/source :source/card}]}
+             {::lib.column-group/group-type :group-type/join.implicit
+              :table-id                     (meta/id :users)
+              ::lib.column-group/columns    [{:display_name "ID", :lib/source :source/implicitly-joinable}
+                                             {:display_name "Name", :lib/source :source/implicitly-joinable}
+                                             {:display_name "Last Login", :lib/source :source/implicitly-joinable}]}]
             groups))
     (testing `lib/display-info
       (is (=? [{:name                   "My Card"
                 :display_name           "My Card"
-                :is_from_previous_stage false
                 :is_from_join           false
-                :is_calculated          false
                 :is_implicitly_joinable false}
                {:name                   "USERS"
                 :display_name           "Users"
-                :is_from_previous_stage false
                 :is_from_join           false
-                :is_calculated          false
                 :is_implicitly_joinable true}]
               (for [group groups]
                 (lib/display-info query group)))))
@@ -106,28 +96,24 @@
   (let [query   (lib.tu/query-with-join)
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
-    (is (=? [{:lib/source                :source/table-defaults
-              ::lib.column-group/columns [{:name "ID", :display_name "ID"}
-                                          {:name "NAME", :display_name "Name"}
-                                          {:name "CATEGORY_ID", :display_name "Category ID"}
-                                          {:name "LATITUDE", :display_name "Latitude"}
-                                          {:name "LONGITUDE", :display_name "Longitude"}
-                                          {:name "PRICE", :display_name "Price"}]}
-             {:lib/source                :source/joins
-              :join-alias                "Cat"
-              ::lib.column-group/columns [{:display_name "Categories → ID", :lib/source :source/joins}
-                                          {:display_name "Categories → Name", :lib/source :source/joins}]}]
+    (is (=? [{::lib.column-group/group-type :group-type/main
+              ::lib.column-group/columns    [{:name "ID", :display_name "ID"}
+                                             {:name "NAME", :display_name "Name"}
+                                             {:name "CATEGORY_ID", :display_name "Category ID"}
+                                             {:name "LATITUDE", :display_name "Latitude"}
+                                             {:name "LONGITUDE", :display_name "Longitude"}
+                                             {:name "PRICE", :display_name "Price"}]}
+             {::lib.column-group/group-type :group-type/join.explicit
+              :join-alias                   "Cat"
+              ::lib.column-group/columns    [{:display_name "Categories → ID", :lib/source :source/joins}
+                                             {:display_name "Categories → Name", :lib/source :source/joins}]}]
             groups))
     (testing `lib/display-info
-      (is (=? [{:is_from_previous_stage false
-                :is_from_join           false
-                :is_calculated          false
+      (is (=? [{:is_from_join           false
                 :is_implicitly_joinable false
                 :name                   "VENUES"
                 :display_name           "Venues"}
-               {:is_from_previous_stage false
-                :is_from_join           true
-                :is_calculated          false
+               {:is_from_join           true
                 :is_implicitly_joinable false
                 :name                   "Cat"
                 :display_name           "Categories"}]
@@ -141,36 +127,25 @@
   (let [query   (lib.tu/query-with-expression)
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
-    (is (=? [{:lib/source                :source/table-defaults
-              ::lib.column-group/columns [{:name "ID", :display_name "ID"}
-                                          {:name "NAME", :display_name "Name"}
-                                          {:name "CATEGORY_ID", :display_name "Category ID"}
-                                          {:name "LATITUDE", :display_name "Latitude"}
-                                          {:name "LONGITUDE", :display_name "Longitude"}
-                                          {:name "PRICE", :display_name "Price"}]}
-             {:lib/source                :source/expressions
-              ::lib.column-group/columns [{:display_name "expr", :lib/source :source/expressions}]}
-             {:lib/source                :source/implicitly-joinable
-              :lib/type                  :metadata/column-group
-              ::lib.column-group/columns [{:name "ID", :display_name "ID"}
-                                          {:name "NAME", :display_name "Name"}]}]
+    (is (=? [{::lib.column-group/group-type :group-type/main
+              ::lib.column-group/columns    [{:name "ID", :display_name "ID"}
+                                             {:name "NAME", :display_name "Name"}
+                                             {:name "CATEGORY_ID", :display_name "Category ID"}
+                                             {:name "LATITUDE", :display_name "Latitude"}
+                                             {:name "LONGITUDE", :display_name "Longitude"}
+                                             {:name "PRICE", :display_name "Price"}
+                                             {:display_name "expr", :lib/source :source/expressions}]}
+             {::lib.column-group/group-type :group-type/join.implicit
+              :lib/type                     :metadata/column-group
+              ::lib.column-group/columns    [{:name "ID", :display_name "ID"}
+                                             {:name "NAME", :display_name "Name"}]}]
             groups))
     (testing `lib/display-info
-      (is (=? [{:is_from_previous_stage false
-                :is_from_join           false
-                :is_calculated          false
+      (is (=? [{:is_from_join           false
                 :is_implicitly_joinable false
                 :name                   "VENUES"
                 :display_name           "Venues"}
-               {:name                   "VENUES"
-                :display_name           "Venues"
-                :is_from_previous_stage false
-                :is_from_join           false
-                :is_calculated          true
-                :is_implicitly_joinable false}
-               {:is_from_previous_stage false
-                :is_from_join           false
-                :is_calculated          false
+               {:is_from_join           false
                 :is_implicitly_joinable true
                 :name                   "CATEGORIES"
                 :display_name           "Categories"}]
@@ -185,27 +160,24 @@
                     (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
-    (is (=? [{:lib/source                :source/card
-              ::lib.column-group/columns [{:display_name "User ID", :lib/source :source/card}
-                                          {:display_name "Count", :lib/source :source/card}]}
-             {:lib/source                :source/implicitly-joinable
-              :table-id                  (meta/id :users)
-              ::lib.column-group/columns [{:display_name "ID", :lib/source :source/implicitly-joinable}
-                                          {:display_name "Name", :lib/source :source/implicitly-joinable}
-                                          {:display_name "Last Login", :lib/source :source/implicitly-joinable}] }]
+    (is (=? [{::lib.column-group/group-type :group-type/main
+              ::lib.column-group/columns    [{:display_name "User ID", :lib/source :source/card}
+                                             {:display_name "Count", :lib/source :source/card}
+                                             {:display_name "expr", :lib/source :source/expressions}]}
+             {::lib.column-group/group-type :group-type/join.implicit
+              :table-id                     (meta/id :users)
+              ::lib.column-group/columns    [{:display_name "ID", :lib/source :source/implicitly-joinable}
+                                             {:display_name "Name", :lib/source :source/implicitly-joinable}
+                                             {:display_name "Last Login", :lib/source :source/implicitly-joinable}] }]
             groups))
     (testing `lib/display-info
       (is (=? [{:name                   "My Card"
                 :display_name           "My Card"
-                :is_from_previous_stage false
                 :is_from_join           false
-                :is_calculated          false
                 :is_implicitly_joinable false}
                {:name                   "USERS"
                 :display_name           "Users"
-                :is_from_previous_stage false
                 :is_from_join           false
-                :is_calculated          false
                 :is_implicitly_joinable true}]
               (for [group groups]
                 (lib/display-info query group)))))

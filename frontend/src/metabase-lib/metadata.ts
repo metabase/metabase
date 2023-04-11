@@ -1,8 +1,15 @@
 import * as ML from "cljs/metabase.lib.js";
+import * as ML_ColumnGroup from "cljs/metabase.lib.column-group";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
 import type { DatabaseId } from "metabase-types/api";
 import type Metadata from "./metadata/Metadata";
-import type { Clause, MetadataProvider, Query, ColumnMetadata } from "./types";
+import type {
+  Clause,
+  MetadataProvider,
+  Query,
+  ColumnMetadata,
+  ColumnGroup,
+} from "./types";
 
 export function metadataProvider(
   databaseId: DatabaseId,
@@ -28,7 +35,15 @@ export type DisplayInfo = {
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
 export function displayInfo(
   query: Query,
-  x: Clause | ColumnMetadata,
+  x: Clause | ColumnMetadata | ColumnGroup,
 ): DisplayInfo {
   return ML.display_info(query, x);
+}
+
+export function groupColumns(columns: ColumnMetadata[]): ColumnGroup {
+  return ML_ColumnGroup.group_columns(columns);
+}
+
+export function getColumnsGroupColumns(group: ColumnGroup): ColumnMetadata[] {
+  return ML_ColumnGroup.columns_group_columns(group);
 }
