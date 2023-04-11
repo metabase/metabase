@@ -46,6 +46,15 @@ describe("Dashboard utils", () => {
       expect(result.error).toEqual(error);
     });
 
+    it("should return true if a database has model actions enabled", () => {
+      expect(hasDatabaseActionsEnabled(ENABLED_ACTIONS_DATABASE)).toBe(true);
+    });
+
+    it("should return false if a database does not have model actions enabled or is undefined", () => {
+      expect(hasDatabaseActionsEnabled(DISABLED_ACTIONS_DATABASE)).toBe(false);
+      expect(hasDatabaseActionsEnabled(NO_ACTIONS_DATABASE)).toBe(false);
+    });
+
     it("should return true if any database has actions enabled", () => {
       const databases = [
         ENABLED_ACTIONS_DATABASE,
