@@ -5,7 +5,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/DashboardTab [_model] :report_dashboardtab)
+(methodical/defmethod t2/table-name :model/DashboardTab [_model] :dashboard_tab)
 
 (doto :model/DashboardTab
   (derive :metabase/model)

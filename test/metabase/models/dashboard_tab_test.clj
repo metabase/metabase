@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.models.dashboard-tab-test
+(ns metabase.models.dashboard-tab-test
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
@@ -21,7 +21,7 @@
       [Card            card     {}
        Dashboard       dash     {:collection_id (:id coll)}
        :model/DashboardTab dashtab  {:dashboard_id (:id dash)}
-       DashboardCard   dashcard {:dashboard_id (:id dash) :card_id (:id card) :dashboardtab_id (:id dashtab)}]
+       DashboardCard   dashcard {:dashboard_id (:id dash) :card_id (:id card) :dashboard_tab_id (:id dashtab)}]
       (f {:owner-id   owner-id
           :collection coll
           :card       card
@@ -84,8 +84,8 @@
        Dashboard       dashboard {}
        :model/DashboardTab dashtab-1 {:dashboard_id (:id dashboard) :position 0}
        :model/DashboardTab dashtab-2 {:dashboard_id (:id dashboard) :position 1}
-       DashboardCard   _         {:dashboard_id (:id dashboard) :card_id (:id card) :dashboardtab_id (:id dashtab-1)}
-       DashboardCard   _         {:dashboard_id (:id dashboard) :card_id (:id card) :dashboardtab_id (:id dashtab-2)}]
+       DashboardCard   _         {:dashboard_id (:id dashboard) :card_id (:id card) :dashboard_tab_id (:id dashtab-1)}
+       DashboardCard   _         {:dashboard_id (:id dashboard) :card_id (:id card) :dashboard_tab_id (:id dashtab-2)}]
       (is (=? {:ordered_tabs [{:id (:id dashtab-1) :position 0 :dashboard_id (:id dashboard)}
                               {:id (:id dashtab-2) :position 1 :dashboard_id (:id dashboard)}]}
               (t2/hydrate dashboard :ordered_tabs))))))
