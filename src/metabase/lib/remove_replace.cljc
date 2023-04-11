@@ -19,7 +19,7 @@
             (conj accum top-level-clause)
             accum))
         #{}
-        [:order-by :aggregation :breakout :filter :expressions :joins :fields]))))
+        [:order-by :aggregation :breakout :filters :expressions :joins :fields]))))
 
 (defn- target-ref-for-stage
   "Gets the ref for the target-id exposed by the previous stage"
