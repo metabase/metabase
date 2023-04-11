@@ -141,7 +141,7 @@
    (to-array (lib.order-by/order-bys a-query stage-number))))
 
 (defn ^:export change-direction
-  "Flip the direction of `current-order-by` in `query`."
+  "Flip the direction of `current-order-by` in `a-query`."
   [a-query current-order-by]
   (lib.order-by/change-direction a-query current-order-by))
 
