@@ -3,7 +3,6 @@ import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import EntityMenu from "metabase/components/EntityMenu";
 import {
   downloadQueryResults,
   DownloadQueryResultsOpts,
@@ -16,6 +15,7 @@ import {
 } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import QueryDownloadPopover from "../QueryDownloadPopover";
+import { DownloadMenuRoot } from "./QueryDownloadMenu.styled";
 
 interface OwnProps {
   className?: string;
@@ -89,7 +89,7 @@ const QueryDownloadMenu = ({
   );
 
   return (
-    <EntityMenu
+    <DownloadMenuRoot
       className={className}
       items={menuItems}
       triggerIcon="ellipsis"

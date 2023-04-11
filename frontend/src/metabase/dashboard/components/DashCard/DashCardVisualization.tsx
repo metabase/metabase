@@ -44,7 +44,6 @@ import {
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,
 } from "./DashCard.styled";
-import { CardDownloadMenu } from "./DashCardVisualization.styled";
 
 interface DashCardVisualizationProps {
   dashboard: Dashboard;
@@ -196,7 +195,7 @@ function DashCardVisualization({
     }
 
     return (
-      <CardDownloadMenu
+      <QueryDownloadMenu
         className={SAVING_CHART_IMAGE_HIDDEN_CLASS}
         question={question}
         result={mainSeries}
