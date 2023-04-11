@@ -1,6 +1,5 @@
 (ns metabase.csv-test
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.csv :as csv]
@@ -64,11 +63,13 @@
 
 (defn csv-file-with
   "Create a temp csv file with the given content and return the file"
-  [rows]
-  (let [contents (str/join "\n" rows)
-        csv-file (File/createTempFile "pokefans" ".csv")]
-    (spit csv-file contents)
-    csv-file))
+  ([rows]
+   (csv-file-with rows "test"))
+  ([rows filename]
+   (let [contents (str/join "\n" rows)
+         csv-file (File/createTempFile filename ".csv")]
+     (spit csv-file contents)
+     csv-file)))
 
 (deftest detect-schema-test
   (testing "Well-formed CSV file"
@@ -123,13 +124,25 @@
   (testing "Completely empty contents are okay"
       (is (= {}
              (csv/detect-schema
-              (csv-file-with [""]))))))
+              (csv-file-with [""])))))
+  (testing "CSV missing data in the top row"
+    (is (= {"name"       vchar-type
+            "height"     int-type
+            "birth_year" float-type}
+           (csv/detect-schema
+            (csv-file-with ["Name, Height, Birth Year"
+                            ;; missing column
+                            "Watto, 137"
+                            "Luke Skywalker, 172, -19"
+                            "Darth Vader, 202, -41.9"
+                            ;; comma, but blank column
+                            "Sebulba, 112,"]))))))
 
-(deftest file->table-name-test
+(deftest unique-table-name-test
   (testing "File name is slugified"
-    (is (=? #"my_file_name_\d+" (#'csv/file->table-name (io/file "my file name.csv")))))
+    (is (=? #"my_file_name_\d+" (#'csv/unique-table-name "my file name.csv"))))
   (testing "semicolons are removed"
-    (is (nil? (re-find #";" (#'csv/file->table-name (io/file "some text; -- DROP TABLE.csv")))))))
+    (is (nil? (re-find #";" (#'csv/unique-table-name "some text; -- DROP TABLE.csv"))))))
 
 (deftest load-from-csv-table-name-test
   (testing "Upload a CSV file"
@@ -146,7 +159,7 @@
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (#'csv/load-from-csv*
+        (csv/load-from-csv
          driver/*driver*
          (mt/id)
          "upload_test"
@@ -182,7 +195,7 @@
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (#'csv/load-from-csv*
+        (csv/load-from-csv
          driver/*driver*
          (mt/id)
          "upload_test"
@@ -228,7 +241,7 @@
       (testing "Can't upload a CSV with missing values"
         (is (thrown-with-msg?
               clojure.lang.ExceptionInfo #"Error executing write query: "
-             (#'csv/load-from-csv*
+             (csv/load-from-csv
               driver/*driver*
               (mt/id)
               "upload_test"

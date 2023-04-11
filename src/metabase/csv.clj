@@ -8,11 +8,13 @@
    [metabase.driver :as driver]
    [metabase.search.util :as search-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]])
-  (:import
-   (java.io File)))
+   [metabase.util.i18n :refer [trs]]))
 
 (set! *warn-on-reflection* true)
+
+;;;; +------------------+
+;;;; | Schema detection |
+;;;; +------------------+
 
 ;;           text
 ;;            |
@@ -89,6 +91,44 @@
          (map vector normalized-header)
          (ordered-map/ordered-map))))
 
+;;;; +------------------+
+;;;; |  Parsing values  |
+;;;; +------------------+
+
+(defn- parse-bool
+  [s]
+  (cond
+    (re-matches #"(?i)true|t|yes|y|1" s) true
+    (re-matches #"(?i)false|f|no|n|0" s) false))
+
+(def ^:private upload-type->parser
+  {::varchar_255 identity
+   ::text        identity
+   ::int         #(Integer/parseInt (str/trim %))
+   ::float       #(parse-double (str/trim %))
+   ::boolean     #(parse-bool (str/trim %))})
+
+(defn- parsed-rows
+  "Returns a vector of parsed rows from a `csv-file`.
+   Replaces empty strings with nil."
+  [col->upload-type csv-file]
+  (with-open [reader (io/reader csv-file)]
+    (let [[_header & rows] (csv/read-csv reader)
+          parsers (map upload-type->parser (vals col->upload-type))]
+      (vec (for [row rows]
+             (for [[v f] (map vector row parsers)]
+               (if (str/blank? v)
+                 nil
+                 (f v))))))))
+
+;;;; +------------------+
+;;;; | Public Functions |
+;;;; +------------------+
+
+(defn unique-table-name [table-name]
+  (str (u/slugify table-name)
+       (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
+
 (defn detect-schema
   "Returns an ordered map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
   first row. Supported types are:
@@ -105,38 +145,9 @@
     (let [[header & rows] (csv/read-csv reader)]
       (rows->schema header rows))))
 
-(defn- file->table-name [^File file]
-  (str (u/slugify (second (re-matches #"(.*)\.csv$" (.getName file)))) (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
-
-(defn- parse-bool
-  [s]
-  (cond
-    (re-matches #"(?i)true|t|yes|y|1" s) true
-    (re-matches #"(?i)false|f|no|n|0" s) false))
-
-(def ^:private upload-type->parser
-  {::varchar_255 identity
-   ::text        identity
-   ::int         #(Integer/parseInt (str/trim %))
-   ::float       #(Double/parseDouble (str/trim %))
-   ::boolean     #(parse-bool (str/trim %))})
-
-(defn- parsed-rows
-  "Returns a vector of parsed rows from a `csv-file`.
-   Replaces empty strings with nil."
-  [col->upload-type csv-file]
-  (with-open [reader (io/reader csv-file)]
-    (let [[_header & rows] (csv/read-csv reader)
-          parsers (map upload-type->parser (vals col->upload-type))]
-      (vec (for [row rows]
-             (for [[v f] (map vector row parsers)]
-               (if (str/blank? v)
-                 nil
-                 (f v))))))))
-
-(defn- load-from-csv*
+(defn load-from-csv
   "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil."
-  [driver db-id table-name ^File csv-file]
+  [driver db-id table-name csv-file]
   (let [col->upload-type   (detect-schema csv-file)
         col->database-type (update-vals col->upload-type (partial driver/upload-type->database-type driver))
         column-names       (keys col->upload-type)]
@@ -148,11 +159,3 @@
         (driver/drop-table driver db-id table-name)
         (throw (ex-info (ex-message e) {}))))
     nil))
-
-(defn load-from-csv
-  "Loads a table from a CSV file. Creates a unique table name based on the name of the file.
-   Returns the name of the newly created table."
-  [driver database schema-name ^File file]
-  (let [table-name (str schema-name "." (file->table-name file))]
-    (load-from-csv* driver database table-name file)
-    table-name))
