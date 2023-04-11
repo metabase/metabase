@@ -81,7 +81,7 @@ const QueryDownloadWidget = ({
 };
 
 interface QueryDownloadWidgetOpts {
-  result: Dataset;
+  result?: Dataset;
   isResultDirty?: boolean;
 }
 
