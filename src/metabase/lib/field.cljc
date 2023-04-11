@@ -198,6 +198,17 @@
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     "unknown_field"))
 
+(defmethod lib.metadata.calculation/display-info-method :metadata/field
+  [query stage-number field-metadata]
+  (merge
+   ((get-method lib.metadata.calculation/display-info-method :default) query stage-number field-metadata)
+   ;; if this column comes from a source Card (Saved Question/Model/etc.) use the name of the Card as the 'table' name
+   ;; rather than the ACTUAL table name.
+   (when (= (:lib/source field-metadata) :source/card)
+     (when-let [card-id (:lib/card-id field-metadata)]
+       (when-let [card (lib.metadata/card query card-id)]
+         {:table {:name (:name card), :display_name (:name card)}})))))
+
 (defmethod lib.temporal-bucket/current-temporal-bucket-method :field
   [[_tag opts _id-or-name]]
   (:temporal-unit opts))

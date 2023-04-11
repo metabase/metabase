@@ -39,5 +39,26 @@
                 :lib/source               :source/card
                 :lib/source-column-alias  "count"
                 :lib/desired-column-alias "count"}]
-              (map #(select-keys % [:id :name :lib/source :lib/source-column-alias :lib/desired-column-alias])
-                   (lib.metadata.calculation/metadata query)))))))
+              (lib.metadata.calculation/metadata query)))
+      (testing `lib/display-info
+        (is (=? [{:name                   "USER_ID"
+                  :display_name           "User ID"
+                  :table                  {:name         "My Card"
+                                           :display_name "My Card"}
+                  :effective_type         :type/Integer
+                  :semantic_type          :type/FK
+                  :is_calculated          false
+                  :is_from_previous_stage false
+                  :is_implicitly_joinable false
+                  :is_from_join           false}
+                 {:name                   "count"
+                  :display_name           "Count"
+                  :table                  {:name         "My Card"
+                                           :display_name "My Card"}
+                  :effective_type         :type/Integer
+                  :is_from_previous_stage false
+                  :is_from_join           false
+                  :is_calculated          false
+                  :is_implicitly_joinable false}]
+                (for [col (lib.metadata.calculation/metadata query)]
+                  (lib/display-info query col))))))))
