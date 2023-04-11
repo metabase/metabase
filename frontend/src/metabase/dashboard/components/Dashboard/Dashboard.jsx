@@ -129,11 +129,6 @@ class Dashboard extends Component {
     main.addEventListener("resize", this.throttleParameterWidgetStickiness, {
       passive: true,
     });
-
-    window.onbeforeunload = function () {
-      console.log("onbeforeunload");
-      return true;
-    };
   }
 
   async componentDidUpdate(prevProps) {
