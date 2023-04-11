@@ -11,15 +11,12 @@
   [query stage-number target-clause]
   (let [stage (lib.util/query-stage query stage-number)
         [target-type _opts target-id] target-clause]
-    (not-empty
-      (reduce
-        (fn [accum top-level-clause]
-          (if (mbql.match/match-one (get stage top-level-clause)
-                [target-type _ target-id] true)
-            (conj accum top-level-clause)
-            accum))
-        #{}
-        [:order-by :aggregation :breakout :filters :expressions :joins :fields]))))
+    (->> [:order-by :aggregation :breakout :filters :expressions :joins :fields]
+         (keep (fn [top-level-clause]
+                 (mbql.match/match-one (get stage top-level-clause)
+                   [target-type _ target-id] top-level-clause)))
+         (set)
+         (not-empty))))
 
 (defn- target-ref-for-stage
   "Gets the ref for the target-id exposed by the previous stage"
