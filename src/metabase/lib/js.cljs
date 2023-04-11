@@ -140,14 +140,19 @@
   ([a-query stage-number]
    (to-array (lib.order-by/order-bys a-query stage-number))))
 
+(defn ^:export change-direction
+  "Flip the direction of `current-order-by` in `query`."
+  [a-query current-order-by]
+  (lib.order-by/change-direction a-query current-order-by))
+
 (defn ^:export remove-clause
   "Removes the `target-clause` in the filter of the `query`."
   ([a-query clause]
    (remove-clause a-query -1 clause))
   ([a-query stage-number clause]
    (lib.query/remove-clause
-     a-query stage-number
-     (lib.normalize/normalize (js->clj clause :keywordize-keys true)))))
+    a-query stage-number
+    (lib.normalize/normalize (js->clj clause :keywordize-keys true)))))
 
 (defn ^:export replace-clause
   "Replaces the `target-clause` with `new-clause` in the `query` stage."

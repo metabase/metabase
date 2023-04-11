@@ -37,7 +37,9 @@
        (map? (second clause))
        (contains? (second clause) :lib/uuid)))
 
-(defn- clause-uuid [clause]
+(defn clause-uuid
+  "Returns the :lib/uuid of `clause`. Returns nil if `clause` is not a clause."
+  [clause]
   (when (clause? clause)
     (get-in clause [1 :lib/uuid])))
 

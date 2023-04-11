@@ -628,3 +628,15 @@
               :direction      :asc}]
             (for [order-by (lib/order-bys query')]
               (lib/display-info query' order-by))))))
+
+(deftest ^:parallel change-direction-test
+  (doseq [[dir opposite] {:asc :desc, :desc :asc}]
+    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/order-by (lib/field "VENUES" "ID") dir))
+          current-order-by (first (lib/order-bys query))
+          new-query (lib/change-direction query current-order-by)
+          new-order-by (first (lib/order-bys new-query))]
+      (is (= dir (first current-order-by)))
+      (is (= opposite (first new-order-by)))
+      (is (= (assoc-in query [:stages 0 :order-by 0 0] opposite)
+             new-query)))))
