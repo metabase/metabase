@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [clojure.core.async :as a]
    [clojure.data :as data]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
@@ -14,18 +15,13 @@
    [metabase.api.timeline :as api.timeline]
    [metabase.csv :as csv]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models
-    :refer [Card
-            CardBookmark
-            Collection
-            Database
-            PersistedInfo
-            Pulse
-            Table
+    :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table
             ViewLog]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
@@ -38,12 +34,14 @@
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision.last-edit :as last-edit]
+   [metabase.models.setting :as setting]
    [metabase.models.timeline :as timeline]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
+   [metabase.sync :as sync]
    [metabase.sync.analyze.query-results :as qr]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.util :as u]
@@ -972,10 +970,53 @@ saved later when it is ready."
    query     ms/NonBlankString}
   (param-values (api/read-check Card card-id) param-key query))
 
+(defn- value-or-throw!
+  [value ^String message]
+  (let [test-fn (if (string? value) str/blank? nil?)]
+    (if (test-fn value)
+      (throw (Exception. message))
+      value)))
+
+(defn- get-setting-or-throw!
+  [setting-name]
+  (value-or-throw! (setting/get setting-name)
+                   (trs "You must set the `{0}` before uploading files." (name setting-name))))
+
+(defn upload-csv!
+  "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
+  syncing and scanning the new data, and creating an appropriate model. May throw validation or DB errors."
+  [collection_id filename csv-file]
+  (when (not (setting/get :uploads-enabled))
+    (throw (Exception. "Uploads are not enabled.")))
+  (let [db-id             (get-setting-or-throw! :uploads-database-id)
+        database          (or (t2/select-one Database :id db-id)
+                              (throw (Exception. (tru "The uploads database does not exist."))))
+        schema-name       (get-setting-or-throw! :uploads-schema-name)
+        filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
+                              filename)
+        table-name-prefix (str (get-setting-or-throw! :uploads-table-prefix) filename-prefix)
+        driver            (driver.u/database->driver database)
+        _                 (or (driver/database-supports? driver :csv-uploads nil)
+                              (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
+        table-name        (csv/load-from-csv driver db-id schema-name csv-file table-name-prefix)
+        _                 (sync/sync-database! database)
+        table-id          (t2/select-one-fn :id Table :name table-name :db_id db-id)]
+    (create-card!
+     {:collection_id          collection_id,
+      :dataset                true
+      :dataset_query          {:database db-id
+                               :query    {:source-table table-id}
+                               :type     :query}
+      :display                :table
+      :name                   filename-prefix
+      :visualization_settings {}})))
+
 (api/defendpoint ^:multipart POST "/from-csv"
   "Create a table and model populated with the values from the attached CSV."
   [:as {raw-params :params}]
-  (let [f (:tempfile (get raw-params "file"))]
-    {:status 200 :body (csv/detect-schema f)}))
+  (upload-csv! (Integer/parseInt (get raw-params "collection_id"))
+         (get-in raw-params ["file" :filename])
+         (get-in raw-params ["file" :tempfile]))
+  {:status 200})
 
 (api/define-routes)

@@ -14,6 +14,10 @@
 
 (set! *warn-on-reflection* true)
 
+;;;; +------------------+
+;;;; | Schema detection |
+;;;; +------------------+
+
 ;;           text
 ;;            |
 ;;            |
@@ -89,6 +93,18 @@
          (map vector normalized-header)
          (ordered-map/ordered-map))))
 
+;;;; +------------------+
+;;;; | Helper Functions |
+;;;; +------------------+
+
+(defn- uniquify-table-name [filename]
+  (str (u/slugify filename)
+       (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
+
+;;;; +------------------+
+;;;; | Public Functions |
+;;;; +------------------+
+
 (defn detect-schema
   "Returns an ordered map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
   first row. Supported types are:
@@ -105,13 +121,10 @@
     (let [[header & rows] (csv/read-csv reader)]
       (rows->schema header rows))))
 
-(defn- file->table-name [^File file]
-  (str (u/slugify (second (re-matches #"(.*)\.csv$" (.getName file)))) (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
-
 ;; TODO: assumes DB supports schema
 (defn load-from-csv
   "Loads a table from a CSV file. Returns the name of the newly created table."
-  [driver database schema-name ^File file]
-  (let [table-name (file->table-name file)]
+  [driver database schema-name ^File file filename]
+  (let [table-name (uniquify-table-name filename)]
     (driver/load-from-csv driver database schema-name table-name file)
     table-name))
