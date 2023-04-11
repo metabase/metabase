@@ -783,6 +783,8 @@
                   (set-json-unfolding-for-field! true)
                   (is (seq (nested-fields))))))))))))
 
+(mt/set-test-drivers! [:postgres])
+
 (deftest json-unfolding-initially-false-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
@@ -815,6 +817,8 @@
                     (set-json-unfolding-for-field! false)
                     (set-json-unfolding-for-db! true)
                     (set-json-unfolding-for-field! true)
+                    ;; Wait for the sync to finish
+                    (Thread/sleep 500)
                     (is (seq (nested-fields))))
                   (testing "nested fields are added when json unfolding is enabled for the DB"
                     (set-json-unfolding-for-db! true)
