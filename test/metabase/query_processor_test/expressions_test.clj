@@ -408,7 +408,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use expression with same column name as table (#14267)"
       (mt/dataset sample-dataset
-        (let [query (mt/mbql-query-no-test products
+        (let [query (mt/mbql-query products
                       {:expressions {:CATEGORY [:concat $category "2"]}
                        :breakout    [:expression :CATEGORY]
                        :aggregation [:count]
