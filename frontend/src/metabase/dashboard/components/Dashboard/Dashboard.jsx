@@ -358,4 +358,4 @@ class Dashboard extends Component {
   }
 }
 
-export default _.compose(DashboardControls)(Dashboard);
+export default DashboardControls(Dashboard);
