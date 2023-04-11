@@ -60,7 +60,7 @@
   :ordered_tabs
   "Return the DashboardCards associated with `dashboard`, in the order they were created."
   [dashboard-or-id]
-  (t2/select :m/DashboardTab :dashboard_id (u/the-id dashboard-or-id) {:order-by [[:position :asc]]}))
+  (t2/select :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id) {:order-by [[:position :asc]]}))
 
 (mi/define-batched-hydration-method collections-authority-level
   :collection_authority_level

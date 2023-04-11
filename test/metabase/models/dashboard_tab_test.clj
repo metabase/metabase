@@ -20,7 +20,7 @@
     (t2.with-temp/with-temp
       [Card            card     {}
        Dashboard       dash     {:collection_id (:id coll)}
-       :m/DashboardTab dashtab  {:dashboard_id (:id dash)}
+       :model/DashboardTab dashtab  {:dashboard_id (:id dash)}
        DashboardCard   dashcard {:dashboard_id (:id dash) :card_id (:id card) :dashboardtab_id (:id dashtab)}]
       (f {:owner-id   owner-id
           :collection coll
@@ -74,7 +74,7 @@
   (testing "Deleting a dashboard will delete all its dashcards"
     (with-dashtab-in-personal-collection {:keys [dashboard dashtab dashcard]}
       (t2/delete! dashboard)
-      (is (= nil (t2/select-one :m/DashboardTab :id (:id dashtab))))
+      (is (= nil (t2/select-one :model/DashboardTab :id (:id dashtab))))
       (is (= nil (t2/select-one DashboardCard :id (:id dashcard)))))))
 
 (deftest hydration-test
@@ -82,8 +82,8 @@
     (t2.with-temp/with-temp
       [Card            card      {}
        Dashboard       dashboard {}
-       :m/DashboardTab dashtab-1 {:dashboard_id (:id dashboard) :position 0}
-       :m/DashboardTab dashtab-2 {:dashboard_id (:id dashboard) :position 1}
+       :model/DashboardTab dashtab-1 {:dashboard_id (:id dashboard) :position 0}
+       :model/DashboardTab dashtab-2 {:dashboard_id (:id dashboard) :position 1}
        DashboardCard   _         {:dashboard_id (:id dashboard) :card_id (:id card) :dashboardtab_id (:id dashtab-1)}
        DashboardCard   _         {:dashboard_id (:id dashboard) :card_id (:id card) :dashboardtab_id (:id dashtab-2)}]
       (is (=? {:ordered_tabs [{:id (:id dashtab-1) :position 0 :dashboard_id (:id dashboard)}
