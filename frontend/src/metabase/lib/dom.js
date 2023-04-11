@@ -498,16 +498,6 @@ export function isSmallScreen() {
   return mediaQuery && mediaQuery.matches;
 }
 
-// add message if user tries to leave page while editing
-export function addUnloadMessage(handler) {
-  console.log("try to add listener");
-  window.onbeforeunload = handler;
-}
-
-export function removeUnloadMessage() {
-  window.onbeforeunload = null;
-}
-
 /**
  * @param {MouseEvent<Element, MouseEvent>} event
  */
