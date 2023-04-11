@@ -13,7 +13,6 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
    [metabase.api.timeline :as api.timeline]
-   [metabase.csv :as csv]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.email.messages :as messages]
@@ -50,6 +49,7 @@
    [metabase.sync :as sync]
    [metabase.sync.analyze.query-results :as qr]
    [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
@@ -1001,14 +1001,14 @@ saved later when it is ready."
         filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                               filename)
         table-name        (-> (str (get-setting-or-throw! :uploads-table-prefix) filename-prefix)
-                              csv/unique-table-name)
+                              upload/unique-table-name)
         schema+table-name (if (str/blank? schema-name)
                             table-name
                             (str schema-name "." table-name))
         driver            (driver.u/database->driver database)
         _                 (or (driver/database-supports? driver :uploads nil)
                               (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
-        _                 (csv/load-from-csv driver db-id schema+table-name csv-file)
+        _                 (upload/load-from-csv driver db-id schema+table-name csv-file)
         _                 (sync/sync-database! database)
         table-id          (t2/select-one-fn :id Table :name table-name :db_id db-id)]
     (create-card!

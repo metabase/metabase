@@ -1,4 +1,4 @@
-(ns metabase.csv
+(ns metabase.upload
   (:require
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
