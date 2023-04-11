@@ -180,7 +180,7 @@ describe("scenarios > collection defaults", () => {
 
   it("should support markdown in collection description", () => {
     cy.request("PUT", "/api/collection/9", {
-      description: "# header",
+      description: "[link](https://metabase.com)",
     });
 
     visitRootCollection();
@@ -194,8 +194,8 @@ describe("scenarios > collection defaults", () => {
     });
 
     popover().within(() => {
-      cy.findByRole("heading").contains("header");
-      cy.findByRole("heading").should("not.include.text", "# header");
+      cy.findByRole("link").should("include.text", "link");
+      cy.findByRole("link").should("not.include.text", "[link]");
     });
   });
 
