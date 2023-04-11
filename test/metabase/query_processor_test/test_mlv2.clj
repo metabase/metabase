@@ -31,10 +31,6 @@
   [legacy-query]
   (or
    *skip-conversion-tests*
-   ;; #29745: missing schema for `:var`
-   (mbql.u/match-one legacy-query
-     :var
-     "#29745")
    ;; #29747: schema for `:relative-datetime` current without a unit is broken
    (mbql.u/match-one legacy-query
      [:relative-datetime :current]
