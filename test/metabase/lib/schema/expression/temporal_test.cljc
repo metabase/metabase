@@ -31,9 +31,10 @@
                         (mc/explain
                          ::expression/datetime
                          [:absolute-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} s unit])))
-      "2023-03-08T19:55:01" :day
-      :current              :hour
-      :current              :default)))
+      "2023-03-08T03:18-07:00" :month
+      "2023-03-08T19:55:01"    :day
+      :current                 :hour
+      :current                 :default)))
 
 (deftest ^:parallel invalid-absolute-datetime-test
   (are [expr] (me/humanize (mc/explain ::expression/date expr))

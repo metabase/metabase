@@ -81,7 +81,7 @@
   (str date-part \T time-part))
 
 (def ^:private offset-part
-  (str "(?:Z|(?:" time-part "))"))
+  (str "(?:Z|(?:[+-]" time-part "))"))
 
 (def ^:private ^:const local-date-regex
   (re-pattern (str \^ date-part \$)))
