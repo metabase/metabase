@@ -5,7 +5,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { HelpText } from "metabase-lib/expressions/types";
 import { getHelpDocsUrl } from "./ExpressionEditorTextfield/helper-text-strings";
 import {
-  ArgumentItem,
+  ArgumentTitle,
   ArgumentsGrid,
   BlockSubtitleText,
   Container,
@@ -70,10 +70,10 @@ const ExpressionEditorHelpText = ({
 
             {args != null && (
               <ArgumentsGrid data-testid="expression-helper-popover-arguments">
-                {args.map(({ name, description }, index) => (
+                {args.map(({ name, description: argDescription }, index) => (
                   <React.Fragment key={name}>
-                    <ArgumentItem>{name}</ArgumentItem>
-                    <div>{description}</div>
+                    <ArgumentTitle>{name}</ArgumentTitle>
+                    <div>{argDescription}</div>
                   </React.Fragment>
                 ))}
               </ArgumentsGrid>

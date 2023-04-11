@@ -8,12 +8,15 @@ export const Container = styled.div`
   padding: 1.25rem 1rem 1.25rem;
 
   font-size: 0.875rem;
-  line-height: 1.25rem;
+  line-height: 1.5rem;
 `;
 
 export const FunctionHelpCode = styled.div`
   color: ${color("text-dark")};
   font-family: ${monospaceFontFamily};
+
+  font-size: 0.8125rem;
+  line-height: 1.065rem;
 `;
 
 export const FunctionHelpCodeArgument = styled.span`
@@ -31,14 +34,16 @@ export const ArgumentsGrid = styled.div`
 
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(2, minmax(2rem, max-content));
+  grid-template-columns: repeat(2, minmax(4rem, max-content));
+
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 `;
 
-export const ArgumentItem = styled.div`
+export const ArgumentTitle = styled.div`
   color: ${color("accent3")};
-
-  font-size: 0.75rem;
-  line-height: 1.25rem;
+  font-family: ${monospaceFontFamily};
+  font-size: 0.8125rem;
   text-align: right;
 `;
 
@@ -54,6 +59,8 @@ export const ExampleCode = styled.div`
   background-color: ${color("bg-light")};
   border-radius: 8px;
 
+  font-size: 0.8125rem;
+  line-height: 1.065rem;
   font-family: ${monospaceFontFamily};
 `;
 
