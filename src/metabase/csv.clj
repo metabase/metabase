@@ -8,11 +8,13 @@
    [metabase.driver :as driver]
    [metabase.search.util :as search-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]])
-  (:import
-   (java.io File)))
+   [metabase.util.i18n :refer [trs]]))
 
 (set! *warn-on-reflection* true)
+
+;;;; +------------------+
+;;;; | Schema detection |
+;;;; +------------------+
 
 ;;           text
 ;;            |
@@ -89,6 +91,18 @@
          (map vector normalized-header)
          (ordered-map/ordered-map))))
 
+;;;; +------------------+
+;;;; | Helper Functions |
+;;;; +------------------+
+
+(defn- uniquify-table-name [filename]
+  (str (u/slugify filename)
+       (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
+
+;;;; +------------------+
+;;;; | Public Functions |
+;;;; +------------------+
+
 (defn detect-schema
   "Returns an ordered map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
   first row. Supported types are:
@@ -104,9 +118,6 @@
   (with-open [reader (io/reader csv-file)]
     (let [[header & rows] (csv/read-csv reader)]
       (rows->schema header rows))))
-
-(defn- file->table-name [^File file]
-  (str (u/slugify (second (re-matches #"(.*)\.csv$" (.getName file)))) (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
 
 (defn- parse-bool
   [s]
@@ -136,7 +147,7 @@
 
 (defn- load-from-csv*
   "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil."
-  [driver db-id table-name ^File csv-file]
+  [driver db-id table-name csv-file]
   (let [col->upload-type   (detect-schema csv-file)
         col->database-type (update-vals col->upload-type (partial driver/upload-type->database-type driver))
         column-names       (keys col->upload-type)]
@@ -150,9 +161,9 @@
     nil))
 
 (defn load-from-csv
-  "Loads a table from a CSV file. Creates a unique table name based on the name of the file.
+  "Loads a table from a CSV file. Creates a unique table name. Returns the name of the newly created table.
    Returns the name of the newly created table."
-  [driver database schema-name ^File file]
-  (let [table-name (str schema-name "." (file->table-name file))]
+  [driver database schema-name file table-name-prefix]
+  (let [table-name (str schema-name "." (uniquify-table-name table-name-prefix))]
     (load-from-csv* driver database table-name file)
     table-name))
