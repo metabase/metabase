@@ -2587,15 +2587,13 @@
                  java.lang.Exception
                  #"^The uploads database does not exist\."
                  (upload!)))))
-       (testing "Schema name must be set"
+       (testing "Schema name does not need to be set"
           (mt/with-temporary-setting-values [uploads-enabled      true
                                              uploads-database-id  db-id
                                              uploads-schema-name  nil
                                              uploads-table-prefix "uploaded_magic_"]
-            (is (thrown-with-msg?
-                 java.lang.Exception
-                 #"^You must set the `uploads-schema-name` before uploading files\.$"
-                 (upload!)))))
+            (let [new-model (upload!)]
+              (is (= "filename" (:name new-model))))))
        (testing "Table prefix must be set"
           (mt/with-temporary-setting-values [uploads-enabled      true
                                              uploads-database-id  db-id
