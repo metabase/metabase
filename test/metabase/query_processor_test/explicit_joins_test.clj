@@ -318,7 +318,7 @@
                       :order-by [[:asc $name]]
                       :limit    3})))))))))
 
-(deftest ^:parallel join-on-field-literal-test
+(deftest join-on-field-literal-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we join on a Field literal for a source query?"
       ;; Also: if you join against an *explicit* source query, do all columns for both queries come back? (Only applies
@@ -797,7 +797,7 @@
   (str/join (for [i (range length)]
               (nth charset (mod i (count charset))))))
 
-(deftest ^:parallel ^:parallel very-long-join-name-test
+(deftest ^:parallel very-long-join-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Drivers should work correctly even if joins have REALLLLLLY long names (#15978)"
       (doseq [[charset-name charset] charsets
@@ -853,7 +853,7 @@
                      (mt/formatted-rows [str int int int str]
                        (qp/process-query query)))))))))))
 
-(deftest ^:parallel ^:parallel join-order-test
+(deftest ^:parallel join-order-test
   (testing "Joins should be emitted in the same order as they were specified in MBQL (#15342)"
     (mt/test-drivers (mt/normal-drivers-with-feature :left-join :inner-join)
       ;; For SQL drivers, this is only fixed for drivers using Honey SQL 2. So skip the test for ones still using Honey
