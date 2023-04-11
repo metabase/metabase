@@ -1,13 +1,12 @@
 (ns metabase.csv-test
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.csv :as csv]
    [metabase.driver :as driver]
    [metabase.models :refer [Field Table]]
+   [metabase.sync :as sync]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    [java.io File]))
@@ -139,13 +138,15 @@
                             ;; comma, but blank column
                             "Sebulba, 112,"]))))))
 
-(deftest filename->table-name-test
+(deftest unique-table-name-test
   (testing "File name is slugified"
-    (is (some? (re-find #"my_file_name_\d+" (#'csv/uniquify-table-name "my file name.csv"))))))
+    (is (=? #"my_file_name_\d+" (#'csv/unique-table-name "my file name.csv"))))
+  (testing "semicolons are removed"
+    (is (nil? (re-find #";" (#'csv/unique-table-name "some text; -- DROP TABLE.csv"))))))
 
-(deftest load-from-csv-test
+(deftest load-from-csv-table-name-test
   (testing "Upload a CSV file"
-    (mt/test-driver :postgres
+    (mt/test-driver (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (let [file       (csv-file-with ["id" "2" "3"])]
           (testing "Can upload two files with the same name"
@@ -153,3 +154,98 @@
             (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))
             (Thread/sleep 1000)
             (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))))))))
+
+(deftest load-from-csv-test
+  (testing "Upload a CSV file"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (csv/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["id,nulls,string,bool,number" "2\t,,string,true,1.1\t,1\t" "   3,,string,false,    1.1"]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :name "upload_test" :db_id (mt/id))]
+            (is (some? table))
+            (is (=? {:name          #"(?i)id"
+                     :semantic_type :type/PK
+                     :base_type     :type/Integer}
+                    (t2/select-one Field :database_position 0 :table_id (:id table))))
+            (is (=? {:name      #"(?i)nulls"
+                     :base_type :type/Text}
+                    (t2/select-one Field :database_position 1 :table_id (:id table))))
+            (is (=? {:name      #"(?i)string"
+                     :base_type :type/Text}
+                    (t2/select-one Field :database_position 2 :table_id (:id table))))
+            (is (=? {:name      #"(?i)bool"
+                     :base_type :type/Boolean}
+                    (t2/select-one Field :database_position 3 :table_id (:id table))))
+            (is (=? {:name      #"(?i)number"
+                     :base_type :type/Float}
+                    (t2/select-one Field :database_position 4 :table_id (:id table))))
+            (testing "Check the data was uploaded into the table"
+              (is (= [[2]] (-> (mt/process-query {:database (mt/id)
+                                                  :type :query
+                                                  :query {:source-table (:id table)
+                                                          :aggregation [[:count]]}})
+                               mt/rows))))))))))
+
+(deftest load-from-csv-boolean-test
+  (testing "Upload a CSV file"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (csv/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["id,bool"
+                         "1,true"
+                         "2,false"
+                         "3,TRUE"
+                         "4,FALSE"
+                         "5,t    "
+                         "6,   f"
+                         "7,\tT"
+                         "8,F\t"
+                         "9,y"
+                         "10,n"
+                         "11,Y"
+                         "12,N"
+                         "13,yes"
+                         "14,no"
+                         "15,YES"
+                         "16,NO"
+                         "17,1"
+                         "18,0"]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :name "upload_test" :db_id (mt/id))]
+            (testing "Check the boolean column has a boolean base_type"
+              (is (=? {:name      #"(?i)bool"
+                       :base_type :type/Boolean}
+                      (t2/select-one Field :database_position 1 :table_id (:id table)))))
+            (is (some? table))
+            (testing "Check the data was uploaded into the table correctly"
+              (let [bool-column (->> (mt/run-mbql-query upload_test
+                                       {:fields [$bool]
+                                        :order-by [[:asc $id]]})
+                                     mt/rows
+                                     (map first))
+                    alternating (map even? (range (count bool-column)))]
+                (is (= alternating bool-column))))))))))
+
+(deftest load-from-csv-failed-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (mt/with-empty-db
+      (testing "Can't upload a CSV with missing values"
+        (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo #"Error executing write query: "
+             (csv/load-from-csv
+              driver/*driver*
+              (mt/id)
+              "upload_test"
+              (csv-file-with ["id,column_that_doesnt_have_a_value" "2"])))))
+      (testing "Check that the table isn't created if the upload fails"
+        (sync/sync-database! (mt/db))
+        (is (nil? (t2/select-one Table :db_id (mt/id))))))))

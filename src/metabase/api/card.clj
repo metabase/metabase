@@ -21,7 +21,13 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models
-    :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table
+    :refer [Card
+            CardBookmark
+            Collection
+            Database
+            PersistedInfo
+            Pulse
+            Table
             ViewLog]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
@@ -994,11 +1000,15 @@ saved later when it is ready."
         schema-name       (get-setting-or-throw! :uploads-schema-name)
         filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                               filename)
-        table-name-prefix (str (get-setting-or-throw! :uploads-table-prefix) filename-prefix)
+        table-name        (-> (str (get-setting-or-throw! :uploads-table-prefix) filename-prefix)
+                              csv/unique-table-name)
+        schema+table-name (if (str/blank? schema-name)
+                            table-name
+                            (str schema-name "." table-name))
         driver            (driver.u/database->driver database)
-        _                 (or (driver/database-supports? driver :csv-uploads nil)
+        _                 (or (driver/database-supports? driver :uploads nil)
                               (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
-        table-name        (csv/load-from-csv driver db-id schema-name csv-file table-name-prefix)
+        _                 (csv/load-from-csv driver db-id schema+table-name csv-file)
         _                 (sync/sync-database! database)
         table-id          (t2/select-one-fn :id Table :name table-name :db_id db-id)]
     (create-card!
