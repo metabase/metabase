@@ -130,16 +130,16 @@
                     (lib/join (-> (lib/join-clause (lib/table (meta/id :categories)))
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all))
-                              (lib/=
-                               (lib/field "VENUES" "CATEGORY_ID")
-                               (-> (lib/field "CATEGORIES" "ID") (lib/with-join-alias "Cat")))))]
-      (is (=? {:stages [{:joins       [{:alias     "Cat"
-                                        :stages    [{:source-table (meta/id :categories)}]
-                                        :condition [:=
-                                                    {}
-                                                    [:field {} (meta/id :venues :category-id)]
-                                                    [:field {:join-alias "Cat"} (meta/id :categories :id)]]
-                                        :fields    :all}]
+                              [(lib/=
+                                 (lib/field "VENUES" "CATEGORY_ID")
+                                 (-> (lib/field "CATEGORIES" "ID") (lib/with-join-alias "Cat")))]))]
+      (is (=? {:stages [{:joins       [{:alias      "Cat"
+                                        :stages     [{:source-table (meta/id :categories)}]
+                                        :conditions [[:=
+                                                      {}
+                                                      [:field {} (meta/id :venues :category-id)]
+                                                      [:field {:join-alias "Cat"} (meta/id :categories :id)]]]
+                                        :fields     :all}]
                          :expressions {"ID + 1" [:+ {} [:field {} (meta/id :venues :id)] 1]
                                        "ID + 2" [:+ {} [:field {} (meta/id :venues :id)] 2]}}]}
               query))
@@ -198,9 +198,9 @@
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/join (-> (lib/join-clause
                                  (meta/table-metadata :categories)
-                                 (lib/=
-                                  (lib/field "VENUES" "CATEGORY_ID")
-                                  (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")))
+                                 [(lib/=
+                                    (lib/field "VENUES" "CATEGORY_ID")
+                                    (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                                 (lib/with-join-alias "Cat")
                                 (lib/with-join-fields :all)))
                   (lib/fields [(lib/field "VENUES" "ID")
