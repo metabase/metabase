@@ -1,5 +1,5 @@
 (ns metabase.lib.aggregation
-  (:refer-clojure :exclude [count distinct max min])
+  (:refer-clojure :exclude [count distinct max min var])
   (:require
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -195,6 +195,7 @@
 (lib.common/defop stddev      [x])
 (lib.common/defop sum         [x])
 (lib.common/defop sum-where   [x y])
+(lib.common/defop var         [x])
 
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."

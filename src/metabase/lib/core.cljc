@@ -2,7 +2,7 @@
   "Currently this is mostly a convenience namespace for REPL and test usage. We'll probably have a slightly different
   version of this for namespace for QB and QP usage in the future -- TBD."
   (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min
-                            + - * / time abs concat replace ref])
+                            + - * / time abs concat replace ref var])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
@@ -62,7 +62,8 @@
    share
    stddev
    sum
-   sum-where]
+   sum-where
+   var]
   [lib.breakout
    breakout]
   [lib.dev
