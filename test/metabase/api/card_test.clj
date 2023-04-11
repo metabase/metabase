@@ -2681,7 +2681,7 @@
 
 (deftest parameters-using-old-style-inferred-parameters-from-native-template-tags-when-blocked
   (when config/ee-available?
-    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card] :as test-value}]
+    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
       (mt/with-temp* [User [blocked-user {:first_name "All-User" :email "mr.all@user.com"}]
                       PermissionsGroup [all-pg {:name "Test All Users"}]
                       Permissions [_ {:group_id (:id all-pg) :object (perms/database-block-perms-path (mt/id))}]
