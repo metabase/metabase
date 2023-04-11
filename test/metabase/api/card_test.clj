@@ -13,7 +13,6 @@
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
-   [metabase.csv-test :as upload-test]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -50,6 +49,7 @@
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -2615,6 +2615,17 @@
                    java.lang.Exception
                    #"^Uploads are not supported on Postgres databases\."
                    (upload!))))))
+       (testing "User must have write permissions on the collection"
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (mt/with-current-user (mt/user->id :lucky)
+                (is (thrown-with-msg?
+                     java.lang.Exception
+                     #"^You do not have curate permissions for this Collection\.$"
+                     (upload!)))))))
         (testing "Happy path"
           ;; create schema in the db
           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
