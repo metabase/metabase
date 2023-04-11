@@ -597,20 +597,27 @@
   (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")]
     (is (=? [{:semantic_type          :type/PK
               :is_calculated          false
-              :table                  {:name "VENUES", :display_name "Venues"}
+              :table                  {:name "VENUES", :display_name "Venues" :is_source_table true}
               :name                   "ID"
               :is_from_previous_stage false
               :is_implicitly_joinable false
               :effective_type         :type/BigInteger
               :is_from_join           false
               :display_name           "ID"}
-             {:display_name "Name"}
-             {:display_name "Category ID"}
-             {:display_name "Latitude"}
-             {:display_name "Longitude"}
-             {:display_name "Price"}
-             {:display_name "ID"}
-             {:display_name "Name"}]
+             {:display_name "Name"
+              :table {:is_source_table true}}
+             {:display_name "Category ID"
+              :table {:is_source_table true}}
+             {:display_name "Latitude"
+              :table {:is_source_table true}}
+             {:display_name "Longitude"
+              :table {:is_source_table true}}
+             {:display_name "Price"
+              :table {:is_source_table true}}
+             {:display_name "ID"
+              :table {:name "CATEGORIES" :display_name "Categories" :is_source_table false}}
+             {:display_name "Name"
+              :table {:name "CATEGORIES" :display_name "Categories" :is_source_table false}}]
             (for [col (lib/orderable-columns query)]
               (lib/display-info query col))))))
 

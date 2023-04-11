@@ -234,7 +234,9 @@
    [:is_calculated {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it an implicitly joinable one? I.e. is it from a different table that we have not
    ;; already joined, but could implicitly join against?
-   [:is_implicitly_joinable {:optional true} [:maybe :boolean]]])
+   [:is_implicitly_joinable {:optional true} [:maybe :boolean]]
+   ;; For the `:table` field of a Column, is this the source table, or a joined table?
+   [:is_source_table {:optional true} [:maybe :boolean]]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
@@ -272,3 +274,8 @@
 (defmethod display-info-method :default
   [query stage-number x]
   (default-display-info query stage-number x))
+
+(defmethod display-info-method :metadata/table
+  [query stage-number table]
+  (merge (default-display-info query stage-number table)
+         {:is_source_table (= (lib.util/source-table query) (:id table))}))
