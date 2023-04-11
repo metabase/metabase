@@ -20,7 +20,7 @@ import Header from "metabase/collections/containers/CollectionHeader";
 import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
-import { uploadCSV } from "metabase/collections/upload";
+import { uploadFile } from "metabase/redux/uploads";
 
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -65,6 +65,7 @@ const mapDispatchToProps = {
   openNavbar,
   createBookmark: (id, type) => Bookmark.actions.create({ id, type }),
   deleteBookmark: (id, type) => Bookmark.actions.delete({ id, type }),
+  uploadFile,
 };
 
 function CollectionContent({
@@ -79,6 +80,7 @@ function CollectionContent({
   metadata,
   isNavbarOpen,
   openNavbar,
+  uploadFile,
 }) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
@@ -117,9 +119,9 @@ function CollectionContent({
 
   const onDrop = useCallback(
     acceptedFiles => {
-      uploadCSV({ file: acceptedFiles[0], collectionId });
+      uploadFile(acceptedFiles[0], collectionId);
     },
-    [collectionId],
+    [collectionId, uploadFile],
   );
 
   const { getRootProps, isDragActive } = useDropzone({
