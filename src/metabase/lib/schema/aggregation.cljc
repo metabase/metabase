@@ -57,7 +57,7 @@
 (lib.hierarchy/derive :sum-where :lib.type-of/type-is-type-of-first-arg)
 
 (mbql-clause/define-tuple-mbql-clause :var :- :type/Float
-  #_expr [:schema [:ref :expression/number]])
+  #_expr [:schema [:ref ::expression/number]])
 
 (mr/def ::aggregation
   ;; placeholder!
