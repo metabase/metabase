@@ -2,9 +2,12 @@ import { assocIn, updateIn } from "icepick";
 import { t } from "ttag";
 
 import { CardApi } from "metabase/services";
-import { Dispatch, GetState, State } from "metabase-types/store";
-import { CollectionId } from "metabase-types/api";
-import { FileUploadState } from "metabase-types/store/upload";
+import Collections from "metabase/entities/collections";
+
+import type { Dispatch, GetState, State } from "metabase-types/store";
+import type { CollectionId } from "metabase-types/api";
+import type { FileUploadState } from "metabase-types/store/upload";
+
 import {
   createAction,
   createThunkAction,
@@ -77,6 +80,8 @@ export const uploadFile = createThunkAction(
           modelId: response.model_id,
         }),
       );
+
+      dispatch(Collections.actions.invalidateLists());
     },
 );
 
