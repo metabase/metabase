@@ -1,6 +1,7 @@
 (ns metabase.lib.js
   "JavaScript-friendly interface to the entire Metabase lib? This stuff will probably change a bit as MLv2 evolves."
   (:require
+   [medley.core :as m]
    [metabase.lib.convert :as convert]
    [metabase.lib.core :as lib.core]
    [metabase.lib.js.metadata :as js.metadata]
@@ -10,6 +11,7 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.remove-replace :as lib.remove-replace]
+   [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -157,3 +159,32 @@
      a-query stage-number
      (lib.normalize/normalize (js->clj target-clause :keywordize-keys true))
      (lib.normalize/normalize (js->clj new-clause :keywordize-keys true)))))
+
+(defn- prep-query-for-equals [a-query field-ids]
+  (-> a-query
+      mbql.js/normalize-cljs
+      ;; If `:native` exists, but it doesn't have `:template-tags`, add it.
+      (m/update-existing :native #(merge {:template-tags {}} %))
+      (m/update-existing :query (fn [inner-query]
+                                  (let [fields (or (:fields inner-query)
+                                                   (for [id field-ids]
+                                                     [:field id nil]))]
+                                    ;; We ignore the order of the fields in the lists, but need to make sure any dupes
+                                    ;; match up. Therefore de-dupe with `frequencies` rather than simply `set`.
+                                    (assoc inner-query :fields (frequencies fields)))))))
+
+(defn ^:export query=
+  "Returns whether the provided queries should be considered equal.
+
+  If `field-ids` is specified, an input MBQL query without `:fields` set defaults to the `field-ids`.
+
+  Currently this works only for legacy queries in JS form!
+  It duplicates the logic formerly found in `query_builder/selectors.js`.
+
+  TODO: This should evolve into a more robust, pMBQL-based sense of equality over time.
+  For now it pulls logic that touches query internals into `metabase.lib`."
+  ([query1 query2] (query= query1 query2 nil))
+  ([query1 query2 field-ids]
+   (let [n1 (prep-query-for-equals query1 field-ids)
+         n2 (prep-query-for-equals query2 field-ids)]
+     (= n1 n2))))
