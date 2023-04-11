@@ -159,7 +159,7 @@
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (#'csv/load-from-csv*
+        (csv/load-from-csv
          driver/*driver*
          (mt/id)
          "upload_test"
@@ -195,7 +195,7 @@
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (#'csv/load-from-csv*
+        (csv/load-from-csv
          driver/*driver*
          (mt/id)
          "upload_test"
@@ -241,7 +241,7 @@
       (testing "Can't upload a CSV with missing values"
         (is (thrown-with-msg?
               clojure.lang.ExceptionInfo #"Error executing write query: "
-             (#'csv/load-from-csv*
+             (csv/load-from-csv
               driver/*driver*
               (mt/id)
               "upload_test"
