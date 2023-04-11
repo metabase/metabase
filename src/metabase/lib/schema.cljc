@@ -109,7 +109,9 @@
   [:and
    [:map
     [:lib/type [:= :mbql/query]]
-    [:database ::id/database]
+    [:database [:or
+                ::id/database
+                ::id/saved-questions-virtual-database]]
     [:type [:= :pipeline]]
     [:stages ::stages]]
    lib.schema.util/UniqueUUIDs])
