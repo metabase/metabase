@@ -135,7 +135,7 @@ class QuestionInner {
     parameterValues?: ParameterValues,
   ) {
     this._card = card;
-    if (this._card.dataset_query) {
+    if (this._card?.dataset_query) {
       this._card = {
         ...this._card,
         dataset_query: normalize(card.dataset_query),

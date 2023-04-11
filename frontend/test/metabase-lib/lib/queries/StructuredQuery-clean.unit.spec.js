@@ -261,12 +261,10 @@ describe("StructuredQuery", () => {
 
   describe("cleanNesting", () => {
     it("should not modify empty queries with no source-query", () => {
-      expect(
-        SAMPLE_DATABASE.question().query().cleanNesting().datasetQuery(),
-      ).toEqual({
+      expect(ORDERS.question().query().cleanNesting().datasetQuery()).toEqual({
         type: "query",
         database: SAMPLE_DATABASE.id,
-        query: { "source-table": null },
+        query: { "source-table": ORDERS.id },
       });
     });
     it("should remove outer empty queries", () => {
