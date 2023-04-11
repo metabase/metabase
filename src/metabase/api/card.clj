@@ -994,6 +994,7 @@ saved later when it is ready."
   [collection_id filename csv-file]
   (when (not (setting/get :uploads-enabled))
     (throw (Exception. "Uploads are not enabled.")))
+  (collection/check-write-perms-for-collection collection_id)
   (let [db-id             (get-setting-or-throw! :uploads-database-id)
         database          (or (t2/select-one Database :id db-id)
                               (throw (Exception. (tru "The uploads database does not exist."))))
