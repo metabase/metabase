@@ -8,6 +8,14 @@
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
+(defn toucan-model?
+  "Check if `model` is a toucan model.
+  In toucan2 any keywords can be a model so it's always true for keyword."
+  [model]
+  (if (keyword? model)
+    true
+    (models/model? model)))
+
 (defn primary-key
   "Replacement of [[mdb.u/primary-key]], this is used to make the transition to toucan 2 easier.
   In toucan2, every keyword can be a model so if `model` is a keyword, returns as is, otherwise calls [[mdb.u/primary-key]]."
