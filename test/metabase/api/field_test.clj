@@ -796,6 +796,9 @@
                 (sync/sync-database! database)
                 (let [get-field (fn [] (t2/select-one Field :id (mt/id :json :json_bit)))
                       get-database (fn [] (t2/select-one Database :id (mt/id)))
+                      set-json-unfolding-for-field! (fn [v]
+                                                      (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
+                                                                            (assoc (get-field) :json_unfolding v)))
                       set-json-unfolding-for-db! (fn [v]
                                                    (let [updated-db (into {} (assoc-in database [:details :json-unfolding] v))]
                                                      (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
@@ -807,6 +810,12 @@
                     (is (empty? (nested-fields))))
                   (testing "yet json_unfolding is enabled by default at the field level"
                     (is (true? (:json_unfolding (get-field)))))
+                  (testing "nested fields are added automatically when json unfolding is enabled for the field,
+                            and json unfolding is alread enabled for the DB"
+                    (set-json-unfolding-for-field! false)
+                    (set-json-unfolding-for-db! true)
+                    (set-json-unfolding-for-field! true)
+                    (is (seq (nested-fields))))
                   (testing "nested fields are added when json unfolding is enabled for the DB"
                     (set-json-unfolding-for-db! true)
                     (is (true? (:json-unfolding (:details (get-database)))))
