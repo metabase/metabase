@@ -998,7 +998,7 @@ saved later when it is ready."
   (let [db-id             (get-setting-or-throw! :uploads-database-id)
         database          (or (t2/select-one Database :id db-id)
                               (throw (Exception. (tru "The uploads database does not exist."))))
-        schema-name       (get-setting-or-throw! :uploads-schema-name)
+        schema-name       (setting/get :uploads-schema-name)
         filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                               filename)
         table-name        (-> (str (get-setting-or-throw! :uploads-table-prefix) filename-prefix)
