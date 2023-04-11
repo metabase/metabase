@@ -3,7 +3,6 @@ import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
@@ -14,7 +13,7 @@ import {
 import { Dataset, VisualizationSettings } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import QueryDownloadPopover from "../QueryDownloadPopover";
-import { DownloadIconButton } from "./QueryDownloadWidget.styled";
+import { DownloadIcon } from "./QueryDownloadWidget.styled";
 
 interface OwnProps {
   className?: string;
@@ -52,20 +51,19 @@ const QueryDownloadWidget = ({
 
   return (
     <TippyPopoverWithTrigger
-      renderTrigger={({ onClick }) =>
+      triggerClasses={className}
+      triggerContent={
         loading ? (
           <Tooltip tooltip={t`Downloading…`}>
             <LoadingSpinner className={className} size={18} />
           </Tooltip>
         ) : (
           <Tooltip tooltip={t`Download full results`}>
-            <DownloadIconButton
-              className={className}
+            <DownloadIcon
+              name="download"
               data-testid="download-button"
-              onClick={onClick}
-            >
-              <Icon name="download" size={20} />
-            </DownloadIconButton>
+              size={20}
+            />
           </Tooltip>
         )
       }

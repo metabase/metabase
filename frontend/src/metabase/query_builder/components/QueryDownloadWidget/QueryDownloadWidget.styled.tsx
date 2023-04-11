@@ -1,8 +1,8 @@
 import styled from "@emotion/styled";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { color } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
 
-export const DownloadIconButton = styled(IconButtonWrapper)`
+export const DownloadIcon = styled(Icon)`
   color: ${color("text-medium")};
 
   &:hover {
