@@ -305,11 +305,11 @@
   {:style/indent 1}
   [dashboard     :- DashboardWithSeriesAndCard
    new-dashcards :- [:sequential ms/Map]]
-  (let [old-dashcards              (:ordered_cards dashboard)
-        id->old-dashcard           (m/index-by :id old-dashcards)
-        old-dashcard-ids           (set (keys id->old-dashcard))
-        new-dashcard-ids           (set (map :id new-dashcards))
-        only-new                   (set/difference new-dashcard-ids old-dashcard-ids)]
+  (let [old-dashcards    (:ordered_cards dashboard)
+        id->old-dashcard (m/index-by :id old-dashcards)
+        old-dashcard-ids (set (keys id->old-dashcard))
+        new-dashcard-ids (set (map :id new-dashcards))
+        only-new         (set/difference new-dashcard-ids old-dashcard-ids)]
     ;; ensure the dashcards we are updating are part of the given dashboard
     (when (seq only-new)
       (throw (ex-info (tru "Dashboard {0} does not have a DashboardCard with ID {1}"
