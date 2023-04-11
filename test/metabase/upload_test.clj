@@ -1,23 +1,23 @@
-(ns metabase.csv-test
+(ns metabase.upload-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.csv :as csv]
    [metabase.driver :as driver]
    [metabase.models :refer [Field Table]]
    [metabase.sync :as sync]
    [metabase.test :as mt]
+   [metabase.upload :as upload]
    [toucan2.core :as t2])
   (:import
    [java.io File]))
 
 (set! *warn-on-reflection* true)
 
-(def bool-type      :metabase.csv/boolean)
-(def int-type       :metabase.csv/int)
-(def float-type     :metabase.csv/float)
-(def vchar-type     :metabase.csv/varchar_255)
-(def text-type      :metabase.csv/text)
+(def bool-type      :metabase.upload/boolean)
+(def int-type       :metabase.upload/int)
+(def float-type     :metabase.upload/float)
+(def vchar-type     :metabase.upload/varchar_255)
+(def text-type      :metabase.upload/text)
 
 (deftest type-detection-test
   (doseq [[value expected] [["0"                          bool-type]
@@ -45,7 +45,7 @@
                             ["86 is my favorite number"   vchar-type]
                             ["My favorite number is 86"   vchar-type]]]
     (testing (format "\"%s\" is a %s" value expected)
-      (is (= expected (csv/value->type value))))))
+      (is (= expected (upload/value->type value))))))
 
 (deftest type-coalescing-test
   (doseq [[type-a type-b expected] [[bool-type  int-type   int-type]
@@ -58,7 +58,7 @@
                                     [float-type vchar-type vchar-type]
                                     [float-type text-type  text-type]
                                     [vchar-type text-type  text-type]]]
-    (is (= expected (csv/coalesce type-a type-b))
+    (is (= expected (upload/coalesce type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
 (defn csv-file-with
@@ -76,7 +76,7 @@
     (is (= {"name"             vchar-type
             "age"              int-type
             "favorite_pokemon" vchar-type}
-           (csv/detect-schema
+           (upload/detect-schema
             (csv-file-with ["Name, Age, Favorite Pokémon"
                             "Tim, 12, Haunter"
                             "Ryan, 97, Paras"])))))
@@ -84,7 +84,7 @@
     (is (= {"name"       vchar-type
             "height"     int-type
             "birth_year" float-type}
-           (csv/detect-schema
+           (upload/detect-schema
             (csv-file-with ["Name, Height, Birth Year"
                             "Luke Skywalker, 172, -19"
                             "Darth Vader, 202, -41.9"
@@ -94,7 +94,7 @@
     (is (= {"name"       vchar-type
             "height"     float-type
             "birth_year" vchar-type}
-           (csv/detect-schema
+           (upload/detect-schema
             (csv-file-with ["Name, Height, Birth Year"
                             "Rey Skywalker, 170, 15"
                             "Darth Vader, 202.0, 41.9BBY"])))))
@@ -103,7 +103,7 @@
             "is_jedi_"      bool-type
             "is_jedi__int_" int-type
             "is_jedi__vc_"  vchar-type}
-           (csv/detect-schema
+           (upload/detect-schema
             (csv-file-with ["Name, Is Jedi?, Is Jedi (int), Is Jedi (VC)"
                             "Rey Skywalker, yes, true, t"
                             "Darth Vader, YES, TRUE, Y"
@@ -113,23 +113,23 @@
     (let [header "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,zz,yy,xx,ww,vv,uu,tt,ss,rr,qq,pp,oo,nn,mm,ll,kk,jj,ii,hh,gg,ff,ee,dd,cc,bb,aa"]
       (is (= (str/split header #",")
              (keys
-              (csv/detect-schema
+              (upload/detect-schema
                (csv-file-with [header
                                "Luke,ah'm,yer,da,,,missing,columns,should,not,matter"])))))))
   (testing "Empty contents (with header) are okay"
       (is (= {"name"     text-type
               "is_jedi_" text-type}
-             (csv/detect-schema
+             (upload/detect-schema
               (csv-file-with ["Name, Is Jedi?"])))))
   (testing "Completely empty contents are okay"
       (is (= {}
-             (csv/detect-schema
+             (upload/detect-schema
               (csv-file-with [""])))))
   (testing "CSV missing data in the top row"
     (is (= {"name"       vchar-type
             "height"     int-type
             "birth_year" float-type}
-           (csv/detect-schema
+           (upload/detect-schema
             (csv-file-with ["Name, Height, Birth Year"
                             ;; missing column
                             "Watto, 137"
@@ -140,9 +140,9 @@
 
 (deftest unique-table-name-test
   (testing "File name is slugified"
-    (is (=? #"my_file_name_\d+" (#'csv/unique-table-name "my file name.csv"))))
+    (is (=? #"my_file_name_\d+" (#'upload/unique-table-name "my file name"))))
   (testing "semicolons are removed"
-    (is (nil? (re-find #";" (#'csv/unique-table-name "some text; -- DROP TABLE.csv"))))))
+    (is (nil? (re-find #";" (#'upload/unique-table-name "some text; -- DROP TABLE.csv"))))))
 
 (deftest load-from-csv-table-name-test
   (testing "Upload a CSV file"
@@ -151,15 +151,15 @@
         (let [file       (csv-file-with ["id" "2" "3"])]
           (testing "Can upload two files with the same name"
             ;; Sleep for a second, because the table name is based on the current second
-            (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))
+            (is (some? (upload/load-from-csv driver/*driver* (mt/id) "public" file)))
             (Thread/sleep 1000)
-            (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))))))))
+            (is (some? (upload/load-from-csv driver/*driver* (mt/id) "public" file)))))))))
 
 (deftest load-from-csv-test
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (csv/load-from-csv
+        (upload/load-from-csv
          driver/*driver*
          (mt/id)
          "upload_test"
@@ -195,7 +195,7 @@
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (csv/load-from-csv
+        (upload/load-from-csv
          driver/*driver*
          (mt/id)
          "upload_test"
@@ -241,7 +241,7 @@
       (testing "Can't upload a CSV with missing values"
         (is (thrown-with-msg?
               clojure.lang.ExceptionInfo #"Error executing write query: "
-             (csv/load-from-csv
+             (upload/load-from-csv
               driver/*driver*
               (mt/id)
               "upload_test"
