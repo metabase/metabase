@@ -33,6 +33,7 @@ import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
 
+import { isNotNull } from "metabase/core/utils/types";
 import * as dashboardActions from "../actions";
 import {
   getIsEditing,
@@ -46,6 +47,7 @@ import {
   getEditingParameter,
   getParameters,
   getParameterValues,
+  getDraftParameterValues,
   getLoadingStartTime,
   getClickBehaviorSidebarDashcard,
   getIsAddParameterPopoverOpen,
@@ -58,6 +60,7 @@ import {
   getIsAdditionalInfoVisible,
 } from "../selectors";
 import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
+import { ApplyButton } from "./DashboardApp.styled";
 
 function getDashboardId({ dashboardId, params }) {
   if (dashboardId) {
@@ -84,6 +87,7 @@ const mapStateToProps = (state, props) => {
     editingParameter: getEditingParameter(state, props),
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
+    draftParameterValues: getDraftParameterValues(state, props),
     metadata: getMetadata(state),
     loadingStartTime: getLoadingStartTime(state),
     clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
@@ -158,11 +162,31 @@ const DashboardApp = props => {
     setIsShowingToaster(false);
   }, []);
 
+  const { parameterValues, draftParameterValues, setParameterValues } = props;
+  const hasUnappliedFilters =
+    isNotNull(draftParameterValues) &&
+    !_.isEqual(parameterValues, draftParameterValues);
+
+  const handleApplyFilters = () => {
+    setParameterValues(draftParameterValues);
+  };
+
+  const applyFilterButton = !dashboard?.auto_apply_filters && (
+    <ApplyButton
+      primary
+      isVisible={hasUnappliedFilters}
+      onClick={handleApplyFilters}
+    >
+      Apply
+    </ApplyButton>
+  );
+
   return (
     <div className="shrink-below-content-size full-height">
       <Dashboard
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
+        applyFilterButton={applyFilterButton}
         {...props}
       />
       {/* For rendering modal urls */}
