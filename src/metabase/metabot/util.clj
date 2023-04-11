@@ -65,7 +65,7 @@
   "The formatter may expand parameterized values (e.g. {{#123}} -> { { # 123 } }).
   This function fixes that."
   [sql]
-  (let [rgx #"\{\s+\{\s+[^\}]+\s+\}\s+\}"]
+  (let [rgx #"\{\s*\{\s*[^\}]+\s*\}\s*\}"]
     (str/replace sql rgx (fn [match] (str/replace match #"\s*" "")))))
 
 (defn inner-query
