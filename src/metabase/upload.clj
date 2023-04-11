@@ -126,6 +126,7 @@
 ;;;; +------------------+
 
 (defn unique-table-name [table-name]
+  "Append the current datetime to the given name to create a unique table name."
   (str (u/slugify table-name)
        (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
 
