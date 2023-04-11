@@ -18,6 +18,7 @@ import { getUser } from "metabase/selectors/user";
 import { revertToRevision } from "metabase/dashboard/actions";
 
 import Toggle from "metabase/core/components/Toggle";
+import FormField from "metabase/core/components/FormField";
 import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
@@ -97,11 +98,17 @@ const DashboardInfoSidebar = ({
       </ContentSection>
 
       <ContentSection>
-        <Toggle
-          label={t`Auto-apply filters`}
-          value={dashboard.auto_apply_filters}
-          onChange={handleToggleAutoApplyFilters}
-        />
+        <FormField
+          title={t`Auto-apply filters`}
+          titleStyle="large"
+          orientation="horizontal"
+          noMargin
+        >
+          <Toggle
+            value={dashboard.auto_apply_filters}
+            onChange={handleToggleAutoApplyFilters}
+          />
+        </FormField>
       </ContentSection>
       {showCaching && (
         <ContentSection>

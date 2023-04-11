@@ -59,13 +59,3 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
 
   ${focusOutlineStyle("brand")};
 `;
-
-export const ToggleWithLabelRoot = styled.label`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-export const ToggleLabel = styled.span`
-  font-weight: 700;
-`;

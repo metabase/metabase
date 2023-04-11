@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import { FieldAlignment, FieldOrientation } from "./types";
@@ -24,6 +25,7 @@ export const FieldCaption = styled.div<FormCaptionProps>`
 
 export interface FieldLabelProps {
   hasError: boolean;
+  titleStyle?: "small" | "large";
 }
 
 export const FieldLabel = styled.label<FieldLabelProps>`
@@ -31,6 +33,14 @@ export const FieldLabel = styled.label<FieldLabelProps>`
   color: ${props => (props.hasError ? color("error") : color("text-medium"))};
   font-size: 0.77rem;
   font-weight: 900;
+
+  ${props =>
+    props.titleStyle === "large" &&
+    css`
+      color: ${props.hasError ? color("error") : color("text-dark")};
+      font-size: 0.875rem;
+      font-weight: 700;
+    `}
 `;
 
 export const OptionalTag = styled.span`
@@ -82,6 +92,7 @@ export const FieldInfoLabel = styled.div`
 export interface FieldRootProps {
   alignment: FieldAlignment;
   orientation: FieldOrientation;
+  noMargin?: boolean;
 }
 
 export const FieldRoot = styled.div<FieldRootProps>`
@@ -90,7 +101,7 @@ export const FieldRoot = styled.div<FieldRootProps>`
     props.alignment === "end" &&
     props.orientation === "horizontal" &&
     "space-between"};
-  margin-bottom: 1.25rem;
+  margin-bottom: ${props => (props.noMargin ? 0 : "1.25rem")};
 
   &:focus-within {
     ${FieldLabel} {
