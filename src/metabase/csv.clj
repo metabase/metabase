@@ -125,8 +125,8 @@
 ;;;; | Public Functions |
 ;;;; +------------------+
 
-(defn unique-table-name [filename]
-  (str (u/slugify filename)
+(defn unique-table-name [table-name]
+  (str (u/slugify table-name)
        (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
 
 (defn detect-schema
