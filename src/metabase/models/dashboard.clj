@@ -55,12 +55,11 @@
                            [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
               :order-by  [[:dashcard.created_at :asc]]}))
 
-
 (mi/define-simple-hydration-method ordered-tabs
   :ordered_tabs
-  "Return the DashboardCards associated with `dashboard`, in the order they were created."
+  "Return the ordered DashboardTabs associated with `dashboard-or-id`, sorted by tab position."
   [dashboard-or-id]
-  (t2/select :m/DashboardTab :dashboard_id (u/the-id dashboard-or-id) {:order-by [[:position :asc]]}))
+  (t2/select :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id) {:order-by [[:position :asc]]}))
 
 (mi/define-batched-hydration-method collections-authority-level
   :collection_authority_level
@@ -306,11 +305,11 @@
   {:style/indent 1}
   [dashboard     :- DashboardWithSeriesAndCard
    new-dashcards :- [:sequential ms/Map]]
-  (let [old-dashcards              (:ordered_cards dashboard)
-        id->old-dashcard           (m/index-by :id old-dashcards)
-        old-dashcard-ids           (set (keys id->old-dashcard))
-        new-dashcard-ids           (set (map :id new-dashcards))
-        only-new                   (set/difference new-dashcard-ids old-dashcard-ids)]
+  (let [old-dashcards    (:ordered_cards dashboard)
+        id->old-dashcard (m/index-by :id old-dashcards)
+        old-dashcard-ids (set (keys id->old-dashcard))
+        new-dashcard-ids (set (map :id new-dashcards))
+        only-new         (set/difference new-dashcard-ids old-dashcard-ids)]
     ;; ensure the dashcards we are updating are part of the given dashboard
     (when (seq only-new)
       (throw (ex-info (tru "Dashboard {0} does not have a DashboardCard with ID {1}"

@@ -136,7 +136,7 @@
    DashboardCardSeries
    (constantly {:position 0})
 
-   :m/DashboardTab
+   :model/DashboardTab
    (fn [_]
      {:name     (tu.random/random-name)
       :position 0})

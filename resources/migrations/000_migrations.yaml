@@ -14381,10 +14381,10 @@ databaseChangeLog:
   - changeSet:
       id: v47.00-006
       author: qnkhuat
-      comment: Added 0.47.0 - Add report_dashboardtab table
+      comment: Added 0.47.0 - Add dashboard_tab table
       changes:
         - createTable:
-            tableName: report_dashboardtab
+            tableName: dashboard_tab
             remarks: "Join table connecting dashboard to dashboardcards"
             columns:
               - column:
@@ -14402,7 +14402,7 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: report_dashboard
                     referencedColumnNames: id
-                    foreignKeyName: fk_dashboardtab_ref_dashboard_id
+                    foreignKeyName: fk_dashboard_tab_ref_dashboard_id
                     deleteCascade: true
               - column:
                   name: name
@@ -14441,13 +14441,13 @@ databaseChangeLog:
   - changeSet:
       id: v47.00-007
       author: qnkhuat
-      comment: Added 0.47.0 -- add report_dashboardcard.dashboardtab_id
+      comment: Added 0.47.0 -- add report_dashboardcard.dashboard_tab_id
       changes:
         - addColumn:
             tableName: report_dashboardcard
             columns:
               - column:
-                  name: dashboardtab_id
+                  name: dashboard_tab_id
                   type: int
                   remarks: The referenced tab id that dashcard is on, it's nullable for dashboard with no tab
                   constraints:
@@ -14456,14 +14456,14 @@ databaseChangeLog:
   - changeSet:
       id: v47.00-008
       author: qnkhuat
-      comment: Added 0.47.0 -- add report_dashboardcard.dashboardtab_id fk constraint
+      comment: Added 0.47.0 -- add report_dashboardcard.dashboard_tab_id fk constraint
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_dashboardcard
-            baseColumnNames: dashboardtab_id
-            referencedTableName: report_dashboardtab
+            baseColumnNames: dashboard_tab_id
+            referencedTableName: dashboard_tab
             referencedColumnNames: id
-            constraintName: fk_report_dashboardcard_ref_dashboardtab_id
+            constraintName: fk_report_dashboardcard_ref_dashboard_tab_id
             deleteCascade: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

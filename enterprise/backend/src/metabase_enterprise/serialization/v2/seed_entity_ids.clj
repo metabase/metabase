@@ -31,18 +31,11 @@
                                                          (:mysql :postgres) "entity_id"))]
         (into #{} (map (comp u/lower-case-en :table_name)) (resultset-seq rset))))))
 
-(def ^:private
-  table-name->toucan-model
-  "A map of table name to toucan2 models.
-  Currently there is no way to get all possibles models defined by toucan2, so we'll manually keep a list of this.
-  If this feature request is addressed, we should be able to avoid doing this: https://github.com/camsaul/toucan2/issues/143"
-  {"report_dashboardtab" :m/DashboardTab})
-
 (defn- make-table-name->model
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."
   []
-  (into table-name->toucan-model
-        (for [model (descendants :toucan1/model)
+  (into {}
+        (for [model (concat (descendants :toucan1/model) (descendants :metabase/model))
               :when (models/model? model)
               :let  [table-name (some-> model t2/table-name name)]
               :when table-name
