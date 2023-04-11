@@ -313,7 +313,7 @@
                                                    :entity_id                  (:entity_id dashcard)
                                                    :parameter_mappings         []
                                                    :visualization_settings     {}
-                                                   :dashboardtab_id            nil
+                                                   :dashboard_tab_id           nil
                                                    :card                       (merge api.card-test/card-defaults-no-hydrate
                                                                                       {:name                   "Dashboard Test Card"
                                                                                        :creator_id             (mt/user->id :rasta)
@@ -403,7 +403,7 @@
                                                                                        :parameter_id "foo"
                                                                                        :target       ["dimension" ["field" field-id nil]]}]
                                                          :visualization_settings     {}
-                                                         :dashboardtab_id            nil
+                                                         :dashboard_tab_id           nil
                                                          :card                       (merge api.card-test/card-defaults-no-hydrate
                                                                                             {:name                   "Dashboard Test Card"
                                                                                              :creator_id             (mt/user->id :rasta)
@@ -1344,7 +1344,7 @@
                   :collection_authority_level nil}
                  (-> resp
                      first
-                     (dissoc :id :dashboard_id :action_id :card_id :entity_id :dashboardtab_id)
+                     (dissoc :id :dashboard_id :action_id :card_id :entity_id :dashboard_tab_id)
                      (update :created_at boolean)
                      (update :updated_at boolean))))
           (is (= [{:size_x                 4
