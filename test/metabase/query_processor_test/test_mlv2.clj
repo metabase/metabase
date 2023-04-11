@@ -151,9 +151,13 @@
    ;; #29947: `:ends-with` broken
    (mbql.u/match-one legacy-query
      :ends-with
-     "#29947")))
+     "#29947")
+   ;; #29964: `:percentile` column name calculation broken
+   (mbql.u/match-one legacy-query
+     :percentile
+     "#29964")))
 
-(defn- test-mlv2-metadata [original-query qp-metadata]
+(defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}
   (when-not (or (skip-conversion-tests? original-query)
                 (skip-metadata-calculation-tests? original-query))
