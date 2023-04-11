@@ -1,7 +1,10 @@
 (ns metabase.lib.schema.expression.temporal-test
   (:require
    [clojure.test :refer [deftest is]]
-   [malli.core :as mc]))
+   [malli.core :as mc]
+   [metabase.lib.schema]))
+
+(comment metabase.lib.schema/keep-me)
 
 (deftest ^:parallel temporal-extract-test
   (is (not (mc/explain
