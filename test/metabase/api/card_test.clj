@@ -12,6 +12,7 @@
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
+   [metabase.config :as config]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.http-client :as client]
    [metabase.models
@@ -2551,136 +2552,135 @@
 
     (is (= nil (mt/user-http-request all-user :get 204 (param-values-url card "_CARD_"))))))
 
-(deftest parameters-using-old-style-field-values
-  (testing "parameters-using-old-style-field-values with no self service perms"
-    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
-      (mt/with-temp* [PermissionsGroup           [admin-pg {:name "Test Administrators"}]
-                      Permissions                [_admin-perms {:group_id (:id admin-pg) :object "/"}]
-                      PermissionsGroup           [all-pg {:name "Test All Users"}]
-                      User                       [all-user {:first_name "All-User" :email "mr.all@user.com"}]
-                      PermissionsGroupMembership [_all-pgm {:user_id (:id all-user) :group_id (:id all-pg)}]
-                      User                       [admin-user {:first_name "Admin-User" :email "mr.admin@user.com"}]
-                      PermissionsGroupMembership [_admin-pgm {:user_id (:id admin-user) :group_id (:id admin-pg)}]]
-        (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
-          ;; Note: this user has an empty perm set:
-          (is (= nil (t2/select-fn-set :object :permissions {:where [:= :group_id (:id all-pg)]})))
-          (testing "without search query"
-            (let [response (mt/user-http-request all-user :get 200 (param-values-url field-filter-card (:field-values param-keys)))]
-              (is (false? (:has_more_values response)))
-              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]} (-> response :values set)))))
-          (testing "with search query"
-            (let [response (mt/user-http-request all-user :get 200
-                                                 (param-values-url field-filter-card
-                                                                   (:field-values param-keys)
-                                                                   "bar"))]
-              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
-                               (-> response :values set)))
-              (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
+(deftest parameters-using-old-style-field-values-with-no-self-service-perms
+  (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+    (mt/with-temp* [PermissionsGroup           [admin-pg {:name "Test Administrators"}]
+                    Permissions                [_admin-perms {:group_id (:id admin-pg) :object "/"}]
+                    PermissionsGroup           [all-pg {:name "Test All Users"}]
+                    User                       [all-user {:first_name "All-User" :email "mr.all@user.com"}]
+                    PermissionsGroupMembership [_all-pgm {:user_id (:id all-user) :group_id (:id all-pg)}]
+                    User                       [admin-user {:first_name "Admin-User" :email "mr.admin@user.com"}]
+                    PermissionsGroupMembership [_admin-pgm {:user_id (:id admin-user) :group_id (:id admin-pg)}]]
+      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
+        ;; Note: this user has an empty perm set:
+        (is (= nil (t2/select-fn-set :object :permissions {:where [:= :group_id (:id all-pg)]})))
+        (testing "without search query"
+          (let [response (mt/user-http-request all-user :get 200 (param-values-url field-filter-card (:field-values param-keys)))]
+            (is (false? (:has_more_values response)))
+            (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]} (-> response :values set)))))
+        (testing "with search query"
+          (let [response (mt/user-http-request all-user :get 200
+                                               (param-values-url field-filter-card
+                                                                 (:field-values param-keys)
+                                                                 "bar"))]
+            (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                             (-> response :values set)))
+            (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
 
-  (testing "parameters-using-old-style-field-values with data and query permissions"
-    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
-      (mt/with-temp* [PermissionsGroup           [admin-pg {:name "Test Administrators"}]
-                      Permissions                [_admin-perms {:group_id (:id admin-pg) :object "/"}]
-                      PermissionsGroup           [all-pg {:name "Test All Users"}]
-                      Permissions                [_ {:group_id (:id all-pg) :object (str "/data/db/" (:id (mt/db)) "/")}]
-                      Permissions                [_ {:group_id (:id all-pg) :object (str "/query/db/" (:id (mt/db)) "/")}]
-                      Permissions                [_ {:group_id (:id all-pg) :object (str "/db/" (:id (mt/db)) "/")}]
-                      User                       [all-user {:first_name "All-User" :email "mr.all@user.com"}]
-                      PermissionsGroupMembership [_all-pgm {:user_id (:id all-user) :group_id (:id all-pg)}]
-                      User                       [admin-user {:first_name "Admin-User" :email "mr.admin@user.com"}]
-                      PermissionsGroupMembership [_admin-pgm {:user_id (:id admin-user) :group_id (:id admin-pg)}]]
-        (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
-          (testing "without search query"
-            (let [response (mt/user-http-request all-user :get 200 (param-values-url field-filter-card (:field-values param-keys)))]
-              (is (false? (:has_more_values response)))
-              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]} (-> response :values set)))))
-          (testing "with search query"
-            (let [response (mt/user-http-request all-user :get 200
-                                                 (param-values-url field-filter-card
-                                                                   (:field-values param-keys)
-                                                                   "bar"))]
-              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
-                               (-> response :values set)))
-              (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
+(deftest parameters-using-old-style-field-values-with-data-and-query-permissions
+  (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+    (mt/with-temp* [PermissionsGroup           [admin-pg {:name "Test Administrators"}]
+                    Permissions                [_admin-perms {:group_id (:id admin-pg) :object "/"}]
+                    PermissionsGroup           [all-pg {:name "Test All Users"}]
+                    Permissions                [_ {:group_id (:id all-pg) :object (str "/data/db/" (:id (mt/db)) "/")}]
+                    Permissions                [_ {:group_id (:id all-pg) :object (str "/query/db/" (:id (mt/db)) "/")}]
+                    Permissions                [_ {:group_id (:id all-pg) :object (str "/db/" (:id (mt/db)) "/")}]
+                    User                       [all-user {:first_name "All-User" :email "mr.all@user.com"}]
+                    PermissionsGroupMembership [_all-pgm {:user_id (:id all-user) :group_id (:id all-pg)}]
+                    User                       [admin-user {:first_name "Admin-User" :email "mr.admin@user.com"}]
+                    PermissionsGroupMembership [_admin-pgm {:user_id (:id admin-user) :group_id (:id admin-pg)}]]
+      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
+        (testing "without search query"
+          (let [response (mt/user-http-request all-user :get 200 (param-values-url field-filter-card (:field-values param-keys)))]
+            (is (false? (:has_more_values response)))
+            (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]} (-> response :values set)))))
+        (testing "with search query"
+          (let [response (mt/user-http-request all-user :get 200
+                                               (param-values-url field-filter-card
+                                                                 (:field-values param-keys)
+                                                                 "bar"))]
+            (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                             (-> response :values set)))
+            (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
 
-  (testing "parameters-using-old-style-field-values with block permissions"
-    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
-      (mt/with-temp* [PermissionsGroup           [admin-pg {:name "Test Administrators"}]
-                      Permissions                [_admin-perms {:group_id (:id admin-pg) :object "/"}]
-                      PermissionsGroup           [all-pg {:name "Test All Users"}]
-                      Permissions                [_ {:group_id (:id all-pg) :object (perms/database-block-perms-path (mt/db))}]
-                      User                       [all-user {:first_name "All-User" :email "mr.all@user.com"}]
-                      PermissionsGroupMembership [_all-pgm {:user_id (:id all-user) :group_id (:id all-pg)}]
-                      User                       [admin-user {:first_name "Admin-User" :email "mr.admin@user.com"}]
-                      PermissionsGroupMembership [_admin-pgm {:user_id (:id admin-user) :group_id (:id admin-pg)}]]
-        (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params for admin-user"
-          (testing "without search query"
-            (mt/user-http-request admin-user :get 200 (param-values-url field-filter-card (:field-values param-keys))))
-          (testing "with search query"
-            (mt/user-http-request admin-user :get 200 (param-values-url field-filter-card (:field-values param-keys) "bar"))))
-        (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params for all-users"
-          (testing "without search query"
-            (mt/user-http-request all-user :get 403 (param-values-url field-filter-card (:field-values param-keys))))
-          (testing "with search query"
-            (mt/user-http-request all-user :get 403 (param-values-url field-filter-card (:field-values param-keys) "bar")))))))
+(deftest parameters-using-old-style-field-values-with-block-permissions
+  (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+    (mt/with-temp* [PermissionsGroup           [admin-pg {:name "Test Administrators"}]
+                    Permissions                [_admin-perms {:group_id (:id admin-pg) :object "/"}]
+                    PermissionsGroup           [all-pg {:name "Test All Users"}]
+                    Permissions                [_ {:group_id (:id all-pg) :object (perms/database-block-perms-path (mt/db))}]
+                    User                       [all-user {:first_name "All-User" :email "mr.all@user.com"}]
+                    PermissionsGroupMembership [_all-pgm {:user_id (:id all-user) :group_id (:id all-pg)}]
+                    User                       [admin-user {:first_name "Admin-User" :email "mr.admin@user.com"}]
+                    PermissionsGroupMembership [_admin-pgm {:user_id (:id admin-user) :group_id (:id admin-pg)}]]
+      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params for admin-user"
+        (testing "without search query"
+          (mt/user-http-request admin-user :get 200 (param-values-url field-filter-card (:field-values param-keys))))
+        (testing "with search query"
+          (mt/user-http-request admin-user :get 200 (param-values-url field-filter-card (:field-values param-keys) "bar"))))
+      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params for all-users"
+        (testing "without search query"
+          (mt/user-http-request all-user :get 403 (param-values-url field-filter-card (:field-values param-keys))))
+        (testing "with search query"
+          (mt/user-http-request all-user :get 403 (param-values-url field-filter-card (:field-values param-keys) "bar")))))))
 
-  (testing "Old style, inferred parameters from native template-tags"
-    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
-      (mt/with-temp* [PermissionsGroup           [admin-pg {:name "Test Administrators"}]
-                      Permissions                [_admin-perms {:group_id (:id admin-pg) :object "/"}]
-                      PermissionsGroup           [all-pg {:name "Test All Users"}]
-                      Permissions                [_ {:group_id (:id all-pg) :object (str "/data/db/" (:id (mt/db)) "/")}]
-                      Permissions                [_ {:group_id (:id all-pg) :object (str "/query/db/" (:id (mt/db)) "/")}]
-                      Permissions                [_ {:group_id (:id all-pg) :object (str "/db/" (:id (mt/db)) "/")}]
-                      User                       [all-user {:first_name "All-User" :email "mr.all@user.com"}]
-                      PermissionsGroupMembership [_all-pgm {:user_id (:id all-user) :group_id (:id all-pg)}]
-                      User                       [admin-user {:first_name "Admin-User" :email "mr.admin@user.com"}]
-                      PermissionsGroupMembership [_admin-pgm {:user_id (:id admin-user) :group_id (:id admin-pg)}]]
+(deftest parameters-using-old-style-inferred-parameters-from-native-template-tags
+  (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+    (mt/with-temp* [PermissionsGroup           [admin-pg {:name "Test Administrators"}]
+                    Permissions                [_admin-perms {:group_id (:id admin-pg) :object "/"}]
+                    PermissionsGroup           [all-pg {:name "Test All Users"}]
+                    Permissions                [_ {:group_id (:id all-pg) :object (str "/data/db/" (:id (mt/db)) "/")}]
+                    Permissions                [_ {:group_id (:id all-pg) :object (str "/query/db/" (:id (mt/db)) "/")}]
+                    Permissions                [_ {:group_id (:id all-pg) :object (str "/db/" (:id (mt/db)) "/")}]
+                    User                       [all-user {:first_name "All-User" :email "mr.all@user.com"}]
+                    PermissionsGroupMembership [_all-pgm {:user_id (:id all-user) :group_id (:id all-pg)}]
+                    User                       [admin-user {:first_name "Admin-User" :email "mr.admin@user.com"}]
+                    PermissionsGroupMembership [_admin-pgm {:user_id (:id admin-user) :group_id (:id admin-pg)}]]
+      ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
+      ;; so delete them here:
+      (t2/update! Card (:id field-filter-card) {:parameters []})
+      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params for admins"
+        (testing "without search query"
+          (let [response (mt/user-http-request admin-user :get 200 (param-values-url field-filter-card (:field-values param-keys)))]
+            (is (false? (:has_more_values response)))
+            (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                             (-> response :values set)))))
+        (testing "with search query"
+          (let [response (mt/user-http-request admin-user :get 200
+                                               (param-values-url field-filter-card
+                                                                 (:field-values param-keys)
+                                                                 "bar"))]
+            (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                             (-> response :values set)))
+            (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil"))))))
+      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params for all-users"
+        (testing "without search query"
+          (let [response (mt/user-http-request all-user :get 200 (param-values-url field-filter-card (:field-values param-keys)))]
+            (is (false? (:has_more_values response)))
+            (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                             (-> response :values set)))))
+        (testing "with search query"
+          (let [response (mt/user-http-request all-user :get 200
+                                               (param-values-url field-filter-card
+                                                                 (:field-values param-keys)
+                                                                 "bar"))]
+            (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                             (-> response :values set)))
+            (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
 
-        ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
-        ;; so delete them here:
-        (t2/update! Card (:id field-filter-card) {:parameters []})
-        (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params for admins"
-          (testing "without search query"
-            (let [response (mt/user-http-request admin-user :get 200 (param-values-url field-filter-card (:field-values param-keys)))]
-              (is (false? (:has_more_values response)))
-              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
-                               (-> response :values set)))))
-          (testing "with search query"
-            (let [response (mt/user-http-request admin-user :get 200
-                                                 (param-values-url field-filter-card
-                                                                   (:field-values param-keys)
-                                                                   "bar"))]
-              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
-                               (-> response :values set)))
-              (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil"))))))
-        (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params for all-users"
-          (testing "without search query"
-            (let [response (mt/user-http-request all-user :get 200 (param-values-url field-filter-card (:field-values param-keys)))]
-              (is (false? (:has_more_values response)))
-              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
-                               (-> response :values set)))))
-          (testing "with search query"
-            (let [response (mt/user-http-request all-user :get 200
-                                                 (param-values-url field-filter-card
-                                                                   (:field-values param-keys)
-                                                                   "bar"))]
-              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
-                               (-> response :values set)))
-              (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
+(deftest parameters-using-old-style-inferred-parameters-from-native-template-tags-with-no-self-service
+  (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+    (mt/with-temp* [User                       [user {:first_name "All-User" :email "mr.all@user.com"}]
+                    PermissionsGroup           [pg {:name "Test All Users"}]
+                    PermissionsGroupMembership [_ {:user_id (:id user) :group_id (:id pg)}]]
+      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user has no-self-service"
+        (testing "without search query"
+          (mt/user-http-request user :get 200 (param-values-url field-filter-card (:field-values param-keys))))
+        (testing "with search query"
+          (mt/user-http-request user :get 200 (param-values-url field-filter-card (:field-values param-keys) "bar")))))))
 
-  (testing "Old style, inferred parameters from native template-tags with no-self-service"
-    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
-      (mt/with-temp* [User                       [user {:first_name "All-User" :email "mr.all@user.com"}]
-                      PermissionsGroup           [pg {:name "Test All Users"}]
-                      PermissionsGroupMembership [_ {:user_id (:id user) :group_id (:id pg)}]]
-        (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user has no-self-service"
-          (testing "without search query"
-            (mt/user-http-request user :get 200 (param-values-url field-filter-card (:field-values param-keys))))
-          (testing "with search query"
-            (mt/user-http-request user :get 200 (param-values-url field-filter-card (:field-values param-keys) "bar")))))))
-
-  (testing "Old style, inferred parameters from native template-tags when blocked"
+(deftest parameters-using-old-style-inferred-parameters-from-native-template-tags-when-blocked
+  (when config/ee-available?
     (with-card-param-values-fixtures [{:keys [param-keys field-filter-card] :as test-value}]
       (mt/with-temp* [User [blocked-user {:first_name "All-User" :email "mr.all@user.com"}]
                       PermissionsGroup [all-pg {:name "Test All Users"}]
@@ -2688,10 +2688,10 @@
                       PermissionsGroupMembership [_all-pgm {:group_id (:id all-pg) :user_id (:id blocked-user)}]]
         (is (= "?" test-value))
         (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user is blocked is unauthorized"
-            (testing "without search query"
-              (mt/user-http-request blocked-user :get 403 (param-values-url field-filter-card (:field-values param-keys))))
-            (testing "with search query"
-              (mt/user-http-request blocked-user :get 403 (param-values-url field-filter-card (:field-values param-keys) "bar"))))))))
+          (testing "without search query"
+            (mt/user-http-request blocked-user :get 403 (param-values-url field-filter-card (:field-values param-keys))))
+          (testing "with search query"
+            (mt/user-http-request blocked-user :get 403 (param-values-url field-filter-card (:field-values param-keys) "bar"))))))))
 
 (deftest parameters-with-source-is-static-list-test
   (with-card-param-values-fixtures [{:keys [card param-keys]}]
