@@ -123,9 +123,9 @@
      (mbql.u/match-one breakouts
        [:field _id-or-name {:join-alias _join-alias}]
        "#29907"))
-   ;; #29910: `:datetime-add` and `:datetime-subtract` broken with strings literals
+   ;; #29910: `:datetime-add`, `:datetime-subtract`, and `:convert-timezone` broken with string literals
    (mbql.u/match-one legacy-query
-     #{:datetime-add :datetime-subtract}
+     #{:datetime-add :datetime-subtract :convert-timezone}
      (mbql.u/match-one &match
        [_tag (_literal :guard string?) & _]
        "#29910"))
