@@ -174,7 +174,7 @@
   "Flip the direction of `current-order-by` in `query`."
   ([query :- ::lib.schema/query
     current-order-by :- ::lib.schema.order-by/order-by]
-   (let [uuid (lib.util/clause-uuid current-order-by)]
+   (let [lib-uuid (lib.util/clause-uuid current-order-by)]
      (mbql.u.match/replace query
-       [direction (_ :guard #(= (:lib/uuid %) uuid)) _]
+       [direction (_ :guard #(= (:lib/uuid %) lib-uuid)) _]
        (assoc &match 0 (opposite-direction direction))))))
