@@ -41,6 +41,9 @@
 (mr/def ::fields
   [:sequential {:min 1} [:ref ::ref/ref]])
 
+(mr/def ::filters
+  [:sequential {:min 1} [:ref ::expression/boolean]])
+
 (mr/def ::source-table
   [:or
    [:ref ::id/table]
@@ -55,7 +58,7 @@
     [:breakout     {:optional true} ::breakouts]
     [:aggregation  {:optional true} [:ref ::aggregation/aggregations]]
     [:fields       {:optional true} ::fields]
-    [:filter       {:optional true} [:ref ::expression/boolean]]
+    [:filters      {:optional true} ::filters]
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
     [:source-table {:optional true} [:ref ::source-table]]]
    ;; `:source-query` is not allowed in `:pipeline` (pMBQL) queries!

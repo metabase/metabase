@@ -89,11 +89,22 @@
 
 (declare inner-query->stages)
 
+(defn- update-legacy-boolean-expression->list
+  "Updates m with a legacy boolean expression at `legacy-key` into a list with an implied and for pMBQL at `pMBQL-key`"
+  [m legacy-key pMBQL-key]
+  (cond-> m
+    (contains? m legacy-key) (update legacy-key #(if (and (vector? %)
+                                                       (= (first %) :and))
+                                                   (vec (drop 1 %))
+                                                   [%]))
+    (contains? m legacy-key) (set/rename-keys {legacy-key pMBQL-key})))
+
 (defn- join->pipeline [join]
   (let [source (select-keys join [:source-table :source-query])
         stages (inner-query->stages source)]
     (-> join
         (dissoc :source-table :source-query)
+        (update-legacy-boolean-expression->list :condition :conditions)
         (assoc :lib/type :mbql/join
                :stages stages)
         lib.options/ensure-uuid)))
@@ -124,7 +135,8 @@
                                 {:lib/type stage-type})
                                (dissoc inner-query :source-query :source-metadata))
         this-stage      (cond-> this-stage
-                          (seq (:joins this-stage)) (update :joins joins->pipeline))]
+                          (seq (:joins this-stage)) (update :joins joins->pipeline)
+                          :always (update-legacy-boolean-expression->list :filter :filters))]
     (conj previous-stages this-stage)))
 
 (defn- mbql-query->pipeline
