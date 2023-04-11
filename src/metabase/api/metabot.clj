@@ -96,11 +96,12 @@
           {:status-code 400
            :message     message}))))))
 
-(api/defendpoint POST "/database/:database-id/query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/database/:database-id/query"
   "Ask Metabot to generate a SQL query given a prompt about a given database."
   [database-id :as {{:keys [question]} :body}]
-  {database-id mu/PositiveInt
-   question      mu/NonBlankString}
+  {database-id su/IntGreaterThanZero
+   question    su/NonBlankString}
   (log/infof
    "Metabot '/api/metabot/database/%s/query' being called with prompt: '%s'"
    database-id
