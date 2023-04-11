@@ -16,7 +16,7 @@ import {
   VisualizationSettings,
 } from "metabase-types/api";
 import Question from "metabase-lib/Question";
-import { CardMenuRoot } from "./DashCardMenu.styled";
+import { CardMenuIcon, CardMenuRoot } from "./DashCardMenu.styled";
 
 interface OwnProps {
   className?: string;
@@ -98,9 +98,9 @@ const DashCardMenu = ({
 
   return (
     <CardMenuRoot
-      className={className}
       items={menuItems}
-      triggerIcon="ellipsis"
+      triggerProps={{ className }}
+      trigger={<CardMenuIcon name="ellipsis" size={17} />}
     />
   );
 };
