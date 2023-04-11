@@ -5,16 +5,10 @@
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [java-time :as t]
-   [metabase.api.card :as api.card]
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Database Table]]
-   [metabase.models.setting :as setting]
    [metabase.search.util :as search-util]
-   [metabase.sync :as sync]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
-   [toucan2.core :as t2])
+   [metabase.util.i18n :refer [trs]])
   (:import
    (java.io File)))
 
@@ -107,18 +101,6 @@
   (str (u/slugify (second (re-matches #"(.*)\.csv$" filename)))
        (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
 
-(defn- value-or-throw!
-  [value ^String message]
-  (let [test-fn (if (string? value) str/blank? nil?)]
-    (if (test-fn value)
-      (throw (Exception. message))
-      value)))
-
-(defn- get-setting-or-throw!
-  [setting-name]
-  (value-or-throw! (setting/get setting-name)
-                   (trs "You must set the `{0}` before uploading files." (name setting-name))))
-
 ;;;; +------------------+
 ;;;; | Public Functions |
 ;;;; +------------------+
@@ -146,30 +128,3 @@
   (let [table-name (filename->table-name filename)]
     (driver/load-from-csv driver database schema-name table-name file)
     table-name))
-
-(defn load!
-  "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
-  syncing and scanning the new data, and creating an appropriate model. May throw validation or DB errors."
-  [collection_id filename ^File csv-file]
-  (when (not (setting/get :uploads-enabled))
-    (throw (Exception. "Uploads are not enabled.")))
-  (let [db-id         (get-setting-or-throw! :uploads-database-id)
-        database      (or (t2/select-one Database :id db-id)
-                          (throw (Exception. (trs "The uploads database does not exist."))))
-        schema-name   (get-setting-or-throw! :uploads-schema-name)
-        _table-prefix (get-setting-or-throw! :uploads-table-prefix)
-        driver        (driver.u/database->driver database)
-        _             (or (driver/database-supports? driver :csv-uploads nil)
-                          (throw (Exception. (trs "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
-        table-name    (load-from-csv driver db-id schema-name csv-file filename)
-        _             (sync/sync-database! database)
-        table-id      (t2/select-one-fn :id Table :name table-name :db_id db-id)]
-    (api.card/create-card!
-     {:collection_id          collection_id,
-      :dataset                true
-      :dataset_query          {:database db-id
-                               :query    {:source-table table-id}
-                               :type     :query}
-      :display                :table
-      :name                   (second (re-matches #"(.*)\.csv$" filename))
-      :visualization_settings {}})))

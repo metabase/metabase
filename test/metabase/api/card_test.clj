@@ -12,24 +12,14 @@
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
+   [metabase.driver :as driver]
+   [metabase.csv-test :as upload-test]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card
-            CardBookmark
-            Collection
-            Dashboard
-            Database
-            ModerationReview
-            PersistedInfo
-            Pulse
-            PulseCard
-            PulseChannel
-            PulseChannelRecipient
-            Table
-            Timeline
-            TimelineEvent
-            ViewLog]]
+    :refer [Card CardBookmark Collection Dashboard Database Field ModerationReview
+            PersistedInfo Pulse PulseCard PulseChannel PulseChannelRecipient
+            Table Timeline TimelineEvent ViewLog]]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -2539,3 +2529,89 @@
                  :values_source_type    "static-list"
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
+
+(deftest upload-csv!-test
+  (mt/test-driver :postgres
+    (mt/with-empty-db
+      (let [db-id              (u/the-id (mt/db))
+            existing-table-ids (t2/select-pks-vec Table :db_id db-id)
+            file               (upload-test/csv-file-with
+                                ["id, name"
+                                 "1, Luke Skywalker"
+                                 "2, Darth Vader"]
+                                "filename")
+            upload!            (fn []
+                                 (mt/with-current-user (mt/user->id :rasta)
+                                   (api.card/upload-csv! nil "filename.csv" file)))]
+        (testing "Uploads must be enabled"
+          (doseq [uploads-enabled-value [false nil]]
+            (mt/with-temporary-setting-values [uploads-enabled      uploads-enabled-value
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (is (thrown-with-msg?
+                   java.lang.Exception
+                   #"^Uploads are not enabled\.$"
+                   (upload!))))))
+        (testing "Database ID must be set"
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  nil
+                                             uploads-schema-name  "public"
+                                             uploads-table-prefix "uploaded_magic_"]
+            (is (thrown-with-msg?
+                 java.lang.Exception
+                 #"^You must set the `uploads-database-id` before uploading files\.$"
+                 (upload!)))))
+        (testing "Database ID must be valid"
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  -1
+                                             uploads-schema-name  "public"
+                                             uploads-table-prefix "uploaded_magic_"]
+            (is (thrown-with-msg?
+                 java.lang.Exception
+                 #"^The uploads database does not exist\."
+                 (upload!)))))
+        (testing "Schema name must be set"
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  db-id
+                                             uploads-schema-name  nil
+                                             uploads-table-prefix "uploaded_magic_"]
+            (is (thrown-with-msg?
+                 java.lang.Exception
+                 #"^You must set the `uploads-schema-name` before uploading files\.$"
+                 (upload!)))))
+        (testing "Table prefix must be set"
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  db-id
+                                             uploads-schema-name  "public"
+                                             uploads-table-prefix nil]
+            (is (thrown-with-msg?
+                 java.lang.Exception
+                 #"^You must set the `uploads-table-prefix` before uploading files\.$"
+                 (upload!)))))
+        (testing "Uploads must be supported"
+          (with-redefs [driver/database-supports? (constantly false)]
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (is (thrown-with-msg?
+                   java.lang.Exception
+                   #"^Uploads are not supported on Postgres databases\."
+                   (upload!))))))
+        (testing "Happy path"
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  db-id
+                                             uploads-schema-name  "public"
+                                             uploads-table-prefix "uploaded_magic_"]
+            (upload!)
+            (let [new-table (t2/select-one Table {:where
+                                                  [:and [:= :db_id db-id]
+                                                        (when (seq existing-table-ids)
+                                                          [:not-in :id existing-table-ids])]})]
+              (is (str/starts-with? (:name new-table) "filename"))
+              (is (= "public" (:schema new-table)))
+              (is (= #{"id" "name"} (t2/select-fn-set :name Field :table_id (:id new-table)))))))
+        ;; TODO: check the user has permissions for the collection
+
+        ))))

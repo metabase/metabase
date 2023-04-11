@@ -64,11 +64,13 @@
 
 (defn csv-file-with
   "Create a temp csv file with the given content and return the file"
-  [rows]
-  (let [contents (str/join "\n" rows)
-        csv-file (File/createTempFile "pokefans" ".csv")]
-    (spit csv-file contents)
-    csv-file))
+  ([rows]
+   (csv-file-with rows "test"))
+  ([rows filename]
+   (let [contents (str/join "\n" rows)
+         csv-file (File/createTempFile filename ".csv")]
+     (spit csv-file contents)
+     csv-file)))
 
 (deftest detect-schema-test
   (testing "Well-formed CSV file"
@@ -137,9 +139,9 @@
                             ;; comma, but blank column
                             "Sebulba, 112,"]))))))
 
-(deftest file->table-name-test
+(deftest filename->table-name-test
   (testing "File name is slugified"
-    (is (some? (re-find #"my_file_name_\d+" (#'csv/file->table-name (io/file "my file name.csv")))))))
+    (is (some? (re-find #"my_file_name_\d+" (#'csv/filename->table-name "my file name.csv"))))))
 
 (deftest load-from-csv-test
   (testing "Upload a CSV file"
@@ -151,81 +153,3 @@
             (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))
             (Thread/sleep 1000)
             (is (some? (csv/load-from-csv driver/*driver* (mt/id) "public" file)))))))))
-
-(deftest load!-test
-  (mt/test-driver :postgres
-    (mt/with-empty-db
-      (let [db-id              (u/the-id (mt/db))
-            file               (csv-file-with ["id, name"
-                                               "1, Luke Skywalker"
-                                               "2, Darth Vader"])
-            existing-table-ids (t2/select-pks-vec Table :db_id db-id)]
-        (testing "Uploads must be enabled"
-          (doseq [uploads-enabled-value [false nil]]
-            (mt/with-temporary-setting-values [uploads-enabled      uploads-enabled-value
-                                               uploads-database-id  db-id
-                                               uploads-schema-name  "public"
-                                               uploads-table-prefix "uploaded_magic_"]
-              (is (thrown-with-msg?
-                   java.lang.Exception
-                   #"^Uploads are not enabled\.$"
-                   (csv/load! file))))))
-        (testing "Database ID must be set"
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  nil
-                                             uploads-schema-name  "public"
-                                             uploads-table-prefix "uploaded_magic_"]
-            (is (thrown-with-msg?
-                 java.lang.Exception
-                 #"^You must set the `uploads-database-id` before uploading files\.$"
-                 (csv/load! file)))))
-        (testing "Database ID must be valid"
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  -1
-                                             uploads-schema-name  "public"
-                                             uploads-table-prefix "uploaded_magic_"]
-            (is (thrown-with-msg?
-                 java.lang.Exception
-                 #"^The uploads database does not exist\."
-                 (csv/load! file)))))
-        (testing "Schema name must be set"
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  db-id
-                                             uploads-schema-name  nil
-                                             uploads-table-prefix "uploaded_magic_"]
-            (is (thrown-with-msg?
-                 java.lang.Exception
-                 #"^You must set the `uploads-schema-name` before uploading files\.$"
-                 (csv/load! file)))))
-        (testing "Table prefix must be set"
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  db-id
-                                             uploads-schema-name  "public"
-                                             uploads-table-prefix nil]
-            (is (thrown-with-msg?
-                 java.lang.Exception
-                 #"^You must set the `uploads-table-prefix` before uploading files\.$"
-                 (csv/load! file)))))
-        (testing "Uploads must be supported"
-          (with-redefs [driver/database-supports? (constantly false)]
-            (mt/with-temporary-setting-values [uploads-enabled      true
-                                               uploads-database-id  db-id
-                                               uploads-schema-name  "public"
-                                               uploads-table-prefix "uploaded_magic_"]
-              (is (thrown-with-msg?
-                   java.lang.Exception
-                   #"^Uploads are not supported on Postgres databases\."
-                   (csv/load! file))))))
-        (testing "Happy path"
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  db-id
-                                             uploads-schema-name  "public"
-                                             uploads-table-prefix "uploaded_magic_"]
-            (csv/load! file)
-            (let [new-table (t2/select-one Table {:where
-                                                  [:and [:= :db_id db-id]
-                                                        (when (seq existing-table-ids)
-                                                          [:not-in :id existing-table-ids])]})]
-              (is (str/starts-with? (:name new-table) "pokefans"))
-              (is (= "public" (:schema new-table)))
-              (is (= #{"id" "name"} (t2/select-fn-set :name Field :table_id (:id new-table)))))))))))
