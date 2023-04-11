@@ -2686,7 +2686,6 @@
                       PermissionsGroup [all-pg {:name "Test All Users"}]
                       Permissions [_ {:group_id (:id all-pg) :object (perms/database-block-perms-path (mt/id))}]
                       PermissionsGroupMembership [_all-pgm {:group_id (:id all-pg) :user_id (:id blocked-user)}]]
-        (is (= "?" test-value))
         (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user is blocked is unauthorized"
           (testing "without search query"
             (mt/user-http-request blocked-user :get 403 (param-values-url field-filter-card (:field-values param-keys))))
