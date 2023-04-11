@@ -8,11 +8,16 @@ import React, {
   useEffect,
   useState,
   useRef,
+  MouseEvent,
 } from "react";
 
 import { usePrevious } from "react-use";
 
-import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
+import {
+  EditableTextArea,
+  EditableTextRoot,
+  Markdown,
+} from "./EditableText.styled";
 
 export type EditableTextAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -26,6 +31,7 @@ export interface EditableTextProps extends EditableTextAttributes {
   isOptional?: boolean;
   isMultiline?: boolean;
   isDisabled?: boolean;
+  isMarkdown?: boolean;
   onChange?: (value: string) => void;
   onFocus?: () => void;
   onBlur?: () => void;
@@ -40,6 +46,7 @@ const EditableText = forwardRef(function EditableText(
     isOptional = false,
     isMultiline = false,
     isDisabled = false,
+    isMarkdown = false,
     onChange,
     onFocus,
     onBlur,
@@ -50,8 +57,10 @@ const EditableText = forwardRef(function EditableText(
 ) {
   const [inputValue, setInputValue] = useState(initialValue ?? "");
   const [submitValue, setSubmitValue] = useState(initialValue ?? "");
+  const [isInFocus, setIsInFocus] = useState(isEditing);
   const displayValue = inputValue ? inputValue : placeholder;
   const submitOnBlur = useRef(true);
+  const input = useRef<HTMLTextAreaElement>(null);
   const previousInitialValue = usePrevious(initialValue);
 
   useEffect(() => {
@@ -60,17 +69,36 @@ const EditableText = forwardRef(function EditableText(
     }
   }, [initialValue, previousInitialValue]);
 
+  useEffect(() => {
+    if (isMarkdown && isInFocus) {
+      input.current?.focus();
+    }
+  }, [isInFocus, isMarkdown]);
+
   const handleBlur = useCallback(
     e => {
+      if (isMarkdown) {
+        setIsInFocus(false);
+      }
+
       if (!isOptional && !inputValue) {
         setInputValue(submitValue);
       } else if (inputValue !== submitValue && submitOnBlur.current) {
         setSubmitValue(inputValue);
         onChange?.(inputValue);
       }
+
       onBlur?.();
     },
-    [inputValue, submitValue, isOptional, onChange, onBlur],
+    [
+      inputValue,
+      submitValue,
+      isOptional,
+      isMarkdown,
+      onChange,
+      onBlur,
+      setIsInFocus,
+    ],
   );
 
   const handleChange = useCallback(
@@ -96,24 +124,36 @@ const EditableText = forwardRef(function EditableText(
     [submitValue, isMultiline],
   );
 
+  const handleRootElementClick = (event: MouseEvent) => {
+    if ((event.target as HTMLElement).tagName.toLowerCase() !== "a") {
+      setIsInFocus(true);
+    }
+  };
+
   return (
     <EditableTextRoot
+      onClick={isMarkdown ? handleRootElementClick : undefined}
       {...props}
       ref={ref}
       isEditing={isEditing}
       isDisabled={isDisabled}
       data-value={`${displayValue}\u00A0`}
     >
-      <EditableTextArea
-        value={inputValue}
-        placeholder={placeholder}
-        disabled={isDisabled}
-        data-testid={dataTestId}
-        onFocus={onFocus}
-        onBlur={handleBlur}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-      />
+      {isMarkdown && !isInFocus && <Markdown>{inputValue}</Markdown>}
+
+      {((isMarkdown && isInFocus) || !isMarkdown) && (
+        <EditableTextArea
+          ref={input}
+          value={inputValue}
+          placeholder={placeholder}
+          disabled={isDisabled}
+          data-testid={dataTestId}
+          onFocus={onFocus}
+          onBlur={handleBlur}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+        />
+      )}
     </EditableTextRoot>
   );
 });
