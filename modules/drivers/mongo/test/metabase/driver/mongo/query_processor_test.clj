@@ -288,7 +288,7 @@
                ["bob" "cobb"]
                (qp/compile
                  (mt/mbql-query venues
-                                {:filters     [[:expression "bob"] [:expression "cobb"]]
+                                {:fields      [[:expression "bob"] [:expression "cobb"]]
                                  :expressions {:bob   [:abs $latitude]
                                                :cobb [:upper $name]}
                                  :limit       5}))))))
@@ -298,7 +298,7 @@
                ["bob"]
                (qp/compile
                  (mt/mbql-query venues
-                                {:filters     [[:expression "bob"]]
+                                {:fields      [[:expression "bob"]]
                                  :expressions {:bob   [:+ $price 300]}
                                  :limit       5}))))))
     (testing "Should be able to deal with a little indirection"
@@ -307,7 +307,7 @@
                ["bob"]
                (qp/compile
                  (mt/mbql-query venues
-                                {:filters     [[:expression "bob"]]
+                                {:fields      [[:expression "bob"]]
                                  :expressions {:bob   [:abs [:- $price 300]]}
                                  :limit       5}))))))
     (testing "Should be able to deal with a little indirection, with an expression in"
@@ -317,7 +317,7 @@
                ["bob" "cobb"]
                (qp/compile
                  (mt/mbql-query venues
-                                {:filters     [[:expression "bob"] [:expression "cobb"]]
+                                {:fields      [[:expression "bob"] [:expression "cobb"]]
                                  :expressions {:bob  [:abs $latitude]
                                                :cobb [:ceil [:expression "bob"]]}
                                  :limit       5}))))))

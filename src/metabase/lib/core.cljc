@@ -117,8 +117,6 @@
    fields]
   [lib.filter
    filter
-   add-filter
-   current-filter
    current-filters
    and
    or
