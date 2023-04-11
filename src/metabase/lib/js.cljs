@@ -131,7 +131,7 @@
    (order-by a-query -1 x direction))
 
   ([a-query stage-number x direction]
-   (lib.order-by/order-by a-query stage-number x (js->clj direction))))
+   (lib.order-by/order-by a-query stage-number x (keyword direction))))
 
 (defn ^:export order-bys
   "Get the order-by clauses (as an array of opaque objects) in `a-query` at a given `stage-number`.
