@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.api.activity :as api.activity]
+   [metabase.events.view-log :as view-log]
    [metabase.models.activity :refer [Activity]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -133,22 +134,31 @@
                                       :creator_id             (mt/user->id :crowberto)
                                       :display                "table"
                                       :visualization_settings {}}]]
-    (mt/with-model-cleanup [ViewLog QueryExecution]
-      (create-views! [[(mt/user->id :crowberto) "card"      (:id dataset)]
-                      [(mt/user->id :crowberto) "card"      (:id card1)]
-                      [(mt/user->id :crowberto) "card"      36478]
-                      [(mt/user->id :crowberto) "dashboard" (:id dash)]
-                      [(mt/user->id :crowberto) "table"     (:id table1)]
-                      ;; most recent for crowberto are archived card and hidden table
-                      [(mt/user->id :crowberto) "card"      (:id archived)]
-                      [(mt/user->id :crowberto) "table"     (:id hidden-table)]
-                      [(mt/user->id :rasta)     "card"      (:id card1)]])
-      (let [recent-views (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
-        (is (partial= [{:model "table"     :model_id (:id table1)}
-                       {:model "dashboard" :model_id (:id dash)}
-                       {:model "card"      :model_id (:id card1)}
-                       {:model "dataset"   :model_id (:id dataset)}]
-                      recent-views))))))
+    (testing "recent_views endpoint shows the current user's recently viewed items. No duplicates or archived items count."
+      (mt/with-model-cleanup [ViewLog]
+        (mt/with-test-user :crowberto
+          (view-log/user-recent-views! []) ;; ensure no views from any other tests/temp items exist
+          (doseq [event [{:topic :card-read :item dataset}
+                         {:topic :card-read :item dataset}
+                         {:topic :card-read :item card1}
+                         {:topic :card-read :item card1}
+                         {:topic :card-read :item card1}
+                         {:topic :dashboard-read :item dash}
+                         {:topic :card-read :item card1}
+                         {:topic :dashboard-read :item dash}
+                         {:topic :table-read :item table1}
+                         {:topic :card-read :item archived}
+                         {:topic :table-read :item hidden-table}]]
+            (view-log/handle-view-event!
+             ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
+             (assoc-in event [:item :actor_id] (mt/user->id :crowberto))))
+          (let [recent-views (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
+            (is (partial=
+                 [{:model "dataset" :model_id (u/the-id dataset)}
+                  {:model "card" :model_id (u/the-id card1)}
+                  {:model "dashboard" :model_id (u/the-id dash)}
+                  {:model "table" :model_id (u/the-id table1)}]
+                 (reverse recent-views)))))))))
 
 (deftest popular-items-test
   (mt/with-temp* [Card      [card1 {:name                   "rand-name"

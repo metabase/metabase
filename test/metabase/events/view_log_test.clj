@@ -1,11 +1,8 @@
 (ns metabase.events.view-log-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
-   [metabase.api.common :as api]
    [metabase.events.view-log :as view-log]
    [metabase.models :refer [Card Dashboard Table User ViewLog]]
-   [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
