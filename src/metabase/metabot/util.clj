@@ -188,9 +188,9 @@
                           database_required
                           (conj [:not nil]))))
         primary-keys [[(into [:primary-key]
-                             (->> fields
-                                  (filter (comp #{:type/PK} :semantic_type))
-                                  (map :name)))]]
+                             (comp (filter (comp #{:type/PK} :semantic_type))
+                                   (map :name))
+                             fields)]]
         foreign-keys (for [{field-name :name :keys [semantic_type fk_target_field_id]} fields
                            :when (= :type/FK semantic_type)
                            :let [{fk-field-name :name fk-table-id :table_id} (t2/select-one [Field :name :table_id]
