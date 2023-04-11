@@ -74,7 +74,7 @@ const DashCardMenu = ({
         result={result}
         onDownload={type => {
           toggleMenu();
-          handleDownload(type).catch(console.error);
+          handleDownload(type);
         }}
       />
     ),
