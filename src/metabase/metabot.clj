@@ -91,11 +91,11 @@
   (log/infof "Metabot is inferring sql for database '%s' with prompt '%s'." (:id database) user_prompt)
   (if (metabot-settings/is-metabot-enabled)
     (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)
-          sql (or
-               (metabot-util/find-result
+          sql (metabot-util/find-result
                 metabot-util/extract-sql
-                (metabot-client/invoke-metabot prompt))
-               (log/infof "No sql inferred for database '%s' with prompt '%s'." (:id database) user_prompt))]
+                (metabot-client/invoke-metabot prompt))]
+      (when-not sql
+        (log/infof "No sql inferred for database '%s' with prompt '%s'." (:id database) user_prompt))
       {:sql                      sql
        :prompt_template_versions (conj
                                   (vec prompt_template_versions)
