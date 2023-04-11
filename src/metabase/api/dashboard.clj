@@ -542,9 +542,9 @@
   "Create the new tabs and returned a mapping from temporary tab ID to the new tab ID."
   [dashboard :- map?
    new-tabs  :- [:sequential [:map [:id neg-int?]]]]
-  (let [new-tab-ids (t2/insert-returning-pks! :m/DashboardTab (->> new-tabs
-                                                                   (map #(dissoc % :id))
-                                                                   (map #(assoc % :dashboard_id (:id dashboard)))))]
+  (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab (->> new-tabs
+                                                                       (map #(dissoc % :id))
+                                                                       (map #(assoc % :dashboard_id (:id dashboard)))))]
 
     (zipmap (map :id new-tabs) new-tab-ids)))
 
@@ -562,7 +562,7 @@
 
                           new-tabs)]
     (doseq [tab to-update-tabs]
-      (t2/update! :m/DashboardTab (:id tab) (select-keys tab update-ks)))
+      (t2/update! :model/DashboardTab (:id tab) (select-keys tab update-ks)))
     nil))
 
 (mu/defn ^:private delete-tabs! :- nil?
@@ -570,7 +570,7 @@
   ;; TODO: Malli has repeat pattern `:+` that'll automatically do empty check, but `mu/defn` currently
   ;; has bug with it https://github.com/metabase/metabase/issues/29921
   (when (seq tab-ids)
-    (t2/delete! :m/DashboardTab :id [:in tab-ids]))
+    (t2/delete! :model/DashboardTab :id [:in tab-ids]))
   nil)
 
 (mu/defn ^:private update-dashtabs!
