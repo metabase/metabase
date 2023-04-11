@@ -96,10 +96,7 @@
                  (json/parse-string weird-formatted-query))))))))
 
 (deftest format-sql-with-params-test
-  (testing "Ensure that format-sql does not mess up metabase params."
-    ;; Baseline demonstrating what we don't want.
-    (is (= "SELECT\n  *\nFROM\n  { { # 1234 } }"
-           (#'mdb.query/format-sql* "SELECT * FROM {{#1234}}")))
+  (testing "Ensure that format-sql does not mess up (and fixes messed up) metabase params."
     ;; What we do want
     (is (= "SELECT\n  *\nFROM\n  {{#1234}}"
            (mdb.query/format-sql "SELECT * FROM {{#1234}}")))
