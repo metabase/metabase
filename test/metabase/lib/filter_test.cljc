@@ -120,9 +120,8 @@
          :stages [{:lib/type :mbql.stage/mbql
                    :source-table (meta/id :categories)
                    :lib/options {:lib/uuid string?}
-                   :filter original-filter}]}]
+                   :filters [original-filter]}]}]
     (testing "no filter"
-      (is (nil? (lib/current-filter q1)))
       (is (= [] (lib/current-filters q2))))
 
     (testing "setting a simple filter via the helper function"
@@ -134,8 +133,6 @@
        (is (=? simple-filtered-query
                (dissoc result-query :lib/metadata)))
        (testing "and getting the current filter"
-         (is (=? result-filter
-                 (lib/current-filter result-query)))
          (is (=? [result-filter]
                  (lib/current-filters result-query))))))
 
@@ -149,65 +146,51 @@
 (deftest ^:parallel add-filter-test
   (let [simple-query         (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
         venues-name-metadata (lib.metadata/field simple-query nil "VENUES" "NAME")
-        first-filter
-        [:between
-         {:lib/uuid string?}
-         [:field
-          {:base-type :type/Integer, :lib/uuid string?}
-          (meta/id :venues :category-id)]
-         42
-         100]
-        first-result-filter
-        {:operator (-> first-filter first name)
-         :options (second first-filter)
-         :args (subvec first-filter 2)}
-        second-filter
-        [:starts-with
-         {:lib/uuid string?}
-         [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
-         "prefix"]
-        second-result-filter
-        {:operator (-> second-filter first name)
-         :options (second second-filter)
-         :args (subvec second-filter 2)}
-        third-filter
-        [:contains
-         {:lib/uuid string?}
-         [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
-         "part"]
-        third-result-filter
-        {:operator (-> third-filter first name)
-         :options (second third-filter)
-         :args (subvec third-filter 2)}
-        first-add
-        (lib/add-filter simple-query
-                        (lib/between
-                         (lib/field "VENUES" "CATEGORY_ID")
-                         42
-                         100))
-        filtered-query
-        (assoc-in simple-query [:stages 0 :filter] first-filter)
-        second-add
-        (lib/add-filter first-add {:operator "starts-with"
-                                   :args [(lib/ref venues-name-metadata) "prefix"]})
-        and-query
-        (assoc-in filtered-query
-                  [:stages 0 :filter]
-                  [:and {:lib/uuid string?} first-filter second-filter])
-        third-add
-        (lib/add-filter second-add {:operator :contains
-                                    :args [(lib/ref venues-name-metadata) "part"]})
-        extended-and-query
-        (assoc-in filtered-query
-                  [:stages 0 :filter]
-                  [:and
-                   {:lib/uuid string?}
-                   first-filter
-                   second-filter
-                   [:contains
-                    {:lib/uuid string?}
-                    [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
-                    "part"]])]
+        first-filter         [:between
+                              {:lib/uuid string?}
+                              [:field
+                               {:base-type :type/Integer, :lib/uuid string?}
+                               (meta/id :venues :category-id)]
+                              42
+                              100]
+        first-result-filter  {:operator (-> first-filter first name)
+                              :options (second first-filter)
+                              :args (subvec first-filter 2)}
+        second-filter        [:starts-with
+                              {:lib/uuid string?}
+                              [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+                              "prefix"]
+        second-result-filter {:operator (-> second-filter first name)
+                              :options (second second-filter)
+                              :args (subvec second-filter 2)}
+        third-filter         [:contains
+                              {:lib/uuid string?}
+                              [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+                              "part"]
+        third-result-filter  {:operator (-> third-filter first name)
+                              :options (second third-filter)
+                              :args (subvec third-filter 2)}
+        first-add            (lib/filter simple-query
+                                         (lib/between
+                                           (lib/field "VENUES" "CATEGORY_ID")
+                                           42
+                                           100))
+        filtered-query       (assoc-in simple-query [:stages 0 :filters] [first-filter])
+        second-add           (lib/filter first-add {:operator "starts-with"
+                                                    :args [(lib/ref venues-name-metadata) "prefix"]})
+        and-query            (assoc-in filtered-query
+                                       [:stages 0 :filters]
+                                       [first-filter second-filter])
+        third-add            (lib/filter second-add {:operator :contains
+                                                     :args [(lib/ref venues-name-metadata) "part"]})
+        extended-and-query   (assoc-in filtered-query
+                                       [:stages 0 :filters]
+                                       [first-filter
+                                        second-filter
+                                        [:contains
+                                         {:lib/uuid string?}
+                                         [:field {:base-type :type/Text, :lib/uuid string?} (meta/id :venues :name)]
+                                         "part"]])]
     (testing "adding an initial filter"
       (is (=? filtered-query first-add))
       (is (=? [first-result-filter]

@@ -131,8 +131,8 @@
    (lib.order-by/order-by a-query stage-number x (js->clj direction))))
 
 (defn ^:export order-bys
-  "Get the order-by clauses (as an array of opaque objects) in `a-query` at a given `stage-number`. Returns `nil` if
-  there are no order bys in the query."
+  "Get the order-by clauses (as an array of opaque objects) in `a-query` at a given `stage-number`.
+  Returns an empty array if there are no order bys in the query."
   ([a-query]
    (order-bys a-query -1))
   ([a-query stage-number]
