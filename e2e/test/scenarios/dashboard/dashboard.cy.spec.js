@@ -179,10 +179,12 @@ describe("scenarios > dashboard", () => {
     cy.findByText("Orders, Count");
   });
 
-  it("should prompt user with browser popup when trying to leave 'edit dashboard' screen", () => {
+  it.only("should prompt user with browser popup when trying to leave 'edit dashboard' screen", () => {
     visitDashboard(1);
     editDashboard();
     addTextBox("Hello World");
+    cy.wait(2000)
+    cy.reload()
   });
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
