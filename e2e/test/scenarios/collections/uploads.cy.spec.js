@@ -42,7 +42,7 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
           );
 
           cy.fixture(`${FIXTURE_PATH}/${testFile.fileName}`).then(file => {
-            cy.get("#upload-csv", { force: true }).selectFile(
+            cy.get("#upload-csv").selectFile(
               {
                 contents: Cypress.Buffer.from(file),
                 fileName: testFile.fileName,
@@ -61,11 +61,7 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
             });
           });
 
-          // TODO: we need to load in the new model + table without a page reload
-          // but this accurately tests the current behavior
-          cy.reload();
-
-          cy.findByText("Uploads Collection");
+          cy.get("main").within(() => cy.findByText("Uploads Collection"));
 
           cy.findByTestId("collection-table").within(() => {
             cy.findByText(testFile.tableName); // TODO: we should humanize model names
