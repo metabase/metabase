@@ -203,3 +203,76 @@
               :lib/source-column-alias  "count"
               :lib/desired-column-alias "count"}]
             (lib.metadata.calculation/metadata query -1 join)))))
+
+(deftest ^:parallel joins-source-and-desired-aliases-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/join (-> (lib/join-clause
+                                 (meta/table-metadata :categories)
+                                 [(lib/=
+                                    (lib/field "VENUES" "CATEGORY_ID")
+                                    (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                                (lib/with-join-alias "Cat")
+                                (lib/with-join-fields :all)))
+                  (lib/fields [(lib/field "VENUES" "ID")
+                               (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")]))]
+    (is (=? [{:name                     "ID"
+              :lib/source-column-alias  "ID"
+              :lib/desired-column-alias "ID"
+              :lib/source               :source/fields}
+             {:name                          "ID"
+              :lib/source-column-alias       "ID"
+              :lib/desired-column-alias      "Cat__ID"
+              :metabase.lib.field/join-alias "Cat"
+              :lib/source                    :source/fields}]
+            (lib.metadata.calculation/metadata query)))
+    (testing "Introduce a new stage"
+      (let [query' (lib/append-stage query)]
+        (is (=? [{:name                     "ID"
+                  :lib/source-column-alias  "ID"
+                  :lib/desired-column-alias "ID"
+                  :lib/source               :source/previous-stage}
+                 {:name                          "ID"
+                  :lib/source-column-alias       "Cat__ID"
+                  :lib/desired-column-alias      "Cat__ID"
+                  :lib/source                    :source/previous-stage}]
+                (lib.metadata.calculation/metadata query')))))))
+
+(deftest ^:parallel default-columns-added-by-joins-deduplicate-names-test
+  (let [join-alias "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        query      {:lib/type     :mbql/query
+                    :lib/metadata meta/metadata-provider
+                    :type         :pipeline
+                    :database     (meta/id)
+                    :stages       [{:lib/type     :mbql.stage/mbql
+                                    :source-table (meta/id :categories)
+                                    :joins        [{:lib/type    :mbql/join
+                                                    :lib/options {:lib/uuid "10ee93eb-6749-41ed-a48b-93c66427eb49"}
+                                                    :alias       join-alias
+                                                    :fields      [[:field
+                                                                   {:join-alias join-alias
+                                                                    :lib/uuid   "87ad4bf3-a00b-462a-b9cc-3dde44945d66"}
+                                                                   (meta/id :categories :id)]]
+                                                    :conditions  [[:=
+                                                                   {:lib/uuid "dc8e675c-dc5f-43a1-a0c9-ff7f0a222fdc"}
+                                                                   [:field
+                                                                    {:lib/uuid "a2220121-04e0-4df0-8c67-7d17530e90e9"}
+                                                                    (meta/id :categories :id)]
+                                                                   [:field
+                                                                    {:lib/uuid "c5203ef8-d56d-474c-b176-2853a3f017b0"}
+                                                                    (meta/id :categories :id)]]]
+                                                    :stages      [{:lib/type     :mbql.stage/mbql
+                                                                   :lib/options  {:lib/uuid "e8888108-22a7-4f97-8315-ff63503634d7"}
+                                                                   :source-table (meta/id :categories)}]}]}]}]
+    (is (=? [{:name                     "ID"
+              :display_name             "ID"
+              :lib/source-column-alias  "ID"
+              :lib/desired-column-alias "ID"}
+             {:name                     "NAME"
+              :display_name             "Name"
+              :lib/source-column-alias  "NAME"
+              :lib/desired-column-alias "NAME"}
+             {:name                     "ID"
+              :display_name             "Categories → Categories → ID"
+              :lib/source-column-alias  "ID"
+              :lib/desired-column-alias "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_bfaf4e7b"}]
+            (lib.metadata.calculation/metadata query)))))

@@ -96,7 +96,10 @@
      [:min {} (lib.tu/field-clause :venues :id)]
      [:* {} 2 [:avg {} (lib.tu/field-clause :venues :price)]]]
     {:column-name  "min_ID_plus_2_times_avg_PRICE"
-     :display-name "User-specified Name"}))
+     :display-name "User-specified Name"}
+
+    [:percentile {} (lib.tu/field-clause :venues :id) 0.95]
+    {:column-name "p95_ID", :display-name "0.95th percentile of ID"}))
 
 ;;; the following tests use raw legacy MBQL because they're direct ports of JavaScript tests from MLv1 and I wanted to
 ;;; make sure that given an existing query, the expected description was generated correctly.

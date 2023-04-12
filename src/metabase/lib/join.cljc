@@ -95,6 +95,15 @@
     (assert (= (current-join-alias col) join-alias))
     col))
 
+(mu/defn ^:private default-join-alias :- ::lib.schema.common/non-blank-string
+  "Generate an alias for a join that doesn't already have one."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   join         :- ::lib.schema.join/join]
+  ;; TODO -- this logic is a little goofy, we should update it to match what MLv1 does. See
+  ;; https://github.com/metabase/metabase/issues/30048
+  (lib.metadata.calculation/display-name query stage-number join))
+
 (defmethod lib.metadata.calculation/metadata-method :mbql/join
   [query stage-number {:keys [fields stages], join-alias :alias, :or {fields :none}, :as _join}]
   (when-not (= fields :none)
@@ -106,6 +115,56 @@
       (mapv (fn [field-metadata]
               (column-from-join-fields query stage-number field-metadata join-alias))
             field-metadatas))))
+
+(mu/defn joined-field-desired-alias :- ::lib.schema.common/non-blank-string
+  "Desired alias for a Field that comes from a join, e.g.
+
+    MyJoin__my_field
+
+  You should pass the results thru a unique name function."
+  [join-alias :- ::lib.schema.common/non-blank-string
+   field-name :- ::lib.schema.common/non-blank-string]
+  (lib.util/format "%s__%s" join-alias field-name))
+
+(defmethod lib.metadata.calculation/default-columns-method :mbql/join
+  [query stage-number join unique-name-fn]
+  ;; should be dev-facing-only so don't need to i18n
+  (assert (:alias join) "Join must have an alias to determine column aliases!")
+  (mapv (fn [col]
+          (assoc col
+                 :lib/source-column-alias  (:name col)
+                 :lib/desired-column-alias (unique-name-fn (joined-field-desired-alias (:alias join) (:name col)))))
+        (lib.metadata.calculation/metadata query stage-number join)))
+
+(def ^:private JoinsWithAliases
+  "Schema for a sequence of joins that all have aliases."
+  [:and
+   ::lib.schema.join/joins
+   [:sequential
+    [:map
+     [:alias ::lib.schema.common/non-blank-string]]]])
+
+(mu/defn ^:private  ensure-all-joins-have-aliases :- JoinsWithAliases
+  "Make sure all the joins in a query have an `:alias` if they don't already have one."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   joins        :- ::lib.schema.join/joins]
+  (let [unique-name-fn (lib.util/unique-name-generator)]
+    (mapv (fn [join]
+            (cond-> join
+              (not (:alias join)) (assoc :alias (unique-name-fn (default-join-alias query stage-number join)))))
+          joins)))
+
+(mu/defn all-joins-default-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
+  "Convenience for calling [[lib.metadata.calculation/default-columns]] on all of the joins in a query stage."
+  [query          :- ::lib.schema/query
+   stage-number   :- :int
+   unique-name-fn :- fn?]
+  (into []
+        (mapcat (fn [join]
+                  (lib.metadata.calculation/default-columns query stage-number join unique-name-fn)))
+        (when-let [joins (:joins (lib.util/query-stage query stage-number))]
+          (ensure-all-joins-have-aliases query stage-number joins))))
 
 (defmulti join-clause-method
   "Convert something to a join clause."

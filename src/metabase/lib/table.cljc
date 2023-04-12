@@ -5,6 +5,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/table
@@ -46,6 +47,34 @@
         :else
         (throw (ex-info (i18n/tru "Unexpected source table ID {0}" (pr-str source-table-id))
                         {:query query, :source-table-id source-table-id}))))))
+
+(defn- remove-hidden-default-fields
+  "Remove Fields that shouldn't be visible from the default Fields for a source Table.
+  See [[metabase.query-processor.middleware.add-implicit-clauses/table->sorted-fields*]]."
+  [field-metadatas]
+  (remove (fn [{visibility-type :visibility_type, active? :active, :as _field-metadata}]
+            (or (false? active?)
+                (#{:sensitive :retired} (some-> visibility-type keyword))))
+          field-metadatas))
+
+(defn- sort-default-fields
+  "Sort default Fields for a source Table. See [[metabase.models.table/field-order-rule]]."
+  [field-metadatas]
+  (sort-by (fn [{field-name :name, :keys [position], :as _field-metadata}]
+             [(or position 0) (u/lower-case-en (or field-name ""))])
+           field-metadatas))
+
+(defmethod lib.metadata.calculation/default-columns-method :metadata/table
+  [query _stage-number table-metadata unique-name-fn]
+  (when-let [field-metadatas (lib.metadata/fields query (:id table-metadata))]
+    (->> field-metadatas
+         remove-hidden-default-fields
+         sort-default-fields
+         (map (fn [col]
+                (assoc col
+                       :lib/source               :source/table-defaults
+                       :lib/source-column-alias  (:name col)
+                       :lib/desired-column-alias (unique-name-fn (:name col))))))))
 
 (defmethod lib.join/with-join-alias-method :metadata/table
   [table-metadata join-alias]

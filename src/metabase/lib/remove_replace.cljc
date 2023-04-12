@@ -1,8 +1,8 @@
 (ns metabase.lib.remove-replace
   (:require
    [metabase.lib.common :as lib.common]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
-   [metabase.lib.stage :as lib.stage]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.util.malli :as mu]))
@@ -21,7 +21,8 @@
 (defn- target-ref-for-stage
   "Gets the ref for the target-id exposed by the previous stage"
   [query stage-number target-id]
-  (->> (lib.stage/visible-columns query stage-number)
+  (->> (let [stage (lib.util/query-stage query stage-number)]
+         (lib.metadata.calculation/visible-columns query stage-number stage))
        (some (fn [{:keys [lib/source id] :as column}]
                (when (and (= :source/previous-stage source) (= target-id id))
                  (lib.ref/ref column))))))

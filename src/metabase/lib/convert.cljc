@@ -41,9 +41,14 @@
 
 (defmethod ->pMBQL :mbql/join
   [join]
-  (-> join
-      (update :conditions ->pMBQL)
-      (update :stages ->pMBQL)))
+  (let [join (-> join
+                 (update :conditions ->pMBQL)
+                 (update :stages ->pMBQL))]
+    (cond-> join
+      (:fields join) (update :fields (fn [fields]
+                                       (if (seqable? fields)
+                                         (mapv ->pMBQL fields)
+                                         (keyword fields)))))))
 
 (defmethod ->pMBQL :dispatch-type/sequential
   [xs]

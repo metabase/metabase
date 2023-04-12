@@ -5,6 +5,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (comment lib/keep-me)
@@ -46,3 +47,25 @@
                   :is_implicitly_joinable false}]
                 (for [col (lib.metadata.calculation/metadata query)]
                   (lib/display-info query col))))))))
+
+(deftest ^:parallel card-source-query-metadata-test
+  (doseq [metadata [{:id              1
+                     :name            "My Card"
+                     :result_metadata meta/results-metadata}
+                    ;; in some cases the FE is transforming the metadata like this, not sure why but handle it anyway
+                    ;; (#29739)
+                    {:id     1
+                     :name   "My Card"
+                     :fields (:columns meta/results-metadata)}]]
+    (testing (str "metadata = \n" (u/pprint-to-str metadata))
+      (let [query {:lib/type     :mbql/query
+                   :lib/metadata (lib.tu/mock-metadata-provider
+                                  {:cards [metadata]})
+                   :type         :pipeline
+                   :database     (meta/id)
+                   :stages       [{:lib/type     :mbql.stage/mbql
+                                   :lib/options  {:lib/uuid (str (random-uuid))}
+                                   :source-table "card__1"}]}]
+        (is (=? (for [col (:columns meta/results-metadata)]
+                  (assoc col :lib/source :source/card))
+                (lib.metadata.calculation/metadata query -1 query)))))))
