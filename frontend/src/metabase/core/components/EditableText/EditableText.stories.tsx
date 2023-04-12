@@ -39,4 +39,6 @@ WithMarkdown.args = {
 
   and [link](https://metabase.com)`,
   placeholder: "Enter description",
+  isMultiline: true,
+  isMarkdown: true,
 };
