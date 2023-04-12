@@ -105,6 +105,7 @@ const DashboardInfoSidebar = ({
           noMargin
         >
           <Toggle
+            aria-label={t`Auto-apply filters`}
             value={dashboard.auto_apply_filters}
             onChange={handleToggleAutoApplyFilters}
           />

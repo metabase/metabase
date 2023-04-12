@@ -95,11 +95,7 @@ const FormField = forwardRef(function FormField(
           {description && <FieldDescription>{description}</FieldDescription>}
         </FieldCaption>
       )}
-      {alignment === "end" &&
-      children &&
-      React.isValidElement<HTMLAttributes<HTMLElement>>(children)
-        ? React.cloneElement(children, { "aria-label": title })
-        : children}
+      {alignment === "end" && children}
     </FieldRoot>
   );
 });
