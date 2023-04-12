@@ -347,9 +347,13 @@
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/mbql
   [query stage-number _stage]
-  (let [descriptions (for [k display-name-parts]
-                       (lib.metadata.calculation/describe-top-level-key query stage-number k))]
-    (str/join ", " (remove str/blank? descriptions))))
+  (or
+   (not-empty
+    (let [descriptions (for [k display-name-parts]
+                         (lib.metadata.calculation/describe-top-level-key query stage-number k))]
+      (str/join ", " (remove str/blank? descriptions))))
+   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+     (lib.metadata.calculation/display-name query previous-stage-number (lib.util/query-stage query previous-stage-number)))))
 
 (defn- implicitly-joinable-columns
   "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to

@@ -75,6 +75,11 @@
         (i18n/tru "Saved Question #{0}" card-id)))
     (i18n/tru "Native Query")))
 
+(defmethod lib.metadata.calculation/display-info-method :mbql/join
+  [query stage-number join]
+  (let [display-name (lib.metadata.calculation/display-name query stage-number join)]
+    {:name (or (:alias join) display-name), :display_name display-name}))
+
 (mu/defn ^:private column-from-join-fields :- lib.metadata.calculation/ColumnMetadataWithSource
   "For a column that comes from a join `:fields` list, add or update metadata as needed, e.g. include join name in the
   display name."

@@ -13,23 +13,7 @@
 
 (deftest ^:parallel source-card-infer-metadata-test
   (testing "We should be able to calculate metadata for a Saved Question missing results_metadata"
-    (let [card-1            {:name          "My Card"
-                             :id            1
-                             :dataset_query {:database (meta/id)
-                                             :type     :query
-                                             :query    {:source-table (meta/id :checkins)
-                                                        :aggregation  [[:count]]
-                                                        :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}
-          metadata-provider (lib.tu/composed-metadata-provider
-                             meta/metadata-provider
-                             (lib.tu/mock-metadata-provider
-                              {:cards [card-1]}))
-          query             {:lib/type     :mbql/query
-                             :lib/metadata metadata-provider
-                             :database     (meta/id)
-                             :type         :pipeline
-                             :stages       [{:lib/type     :mbql.stage/mbql
-                                             :source-table "card__1"}]}]
+    (let [query (lib.tu/query-with-card-source-table)]
       (is (=? [{:id                       (meta/id :checkins :user-id)
                 :name                     "USER_ID"
                 :lib/source               :source/card
