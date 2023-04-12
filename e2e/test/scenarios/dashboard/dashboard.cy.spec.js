@@ -224,6 +224,7 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should prompt user with browser popup when trying to leave 'edit dashboard' screen", () => {
+    // intercept browser popup event after reload and check if it contains the expected text
     cy.on("window:before:unload", event => {
       expect(event.returnValue).to.equal(BEFORE_LOAD_RETURN_VALUE);
     });
