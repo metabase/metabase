@@ -52,7 +52,8 @@
     target-clause]
    (reduce
      (fn [query location]
-       (let [result (lib.util/update-query-stage query stage-number
+       (let [target-clause (lib.common/->op-arg query stage-number target-clause)
+             result (lib.util/update-query-stage query stage-number
                                                  lib.util/remove-clause location target-clause)]
          (when (not= query result)
            (case location
@@ -62,7 +63,7 @@
          result))
      query
      ;; TODO only these top level clauses are supported at this moment
-     [:order-by :breakout])))
+     [:order-by :breakout :filters])))
 
 (mu/defn replace-clause :- :metabase.lib.schema/query
   "Replaces the `target-clause` with `new-clause` in the `query` stage."
@@ -74,7 +75,8 @@
     stage-number :- :int
     target-clause
     new-clause]
-   (let [replacement (lib.common/->op-arg query stage-number new-clause)]
+   (let [target-clause (lib.common/->op-arg query stage-number target-clause)
+         replacement (lib.common/->op-arg query stage-number new-clause)]
      (reduce
        (fn [query location]
          (let [result (lib.util/update-query-stage query stage-number
@@ -87,4 +89,4 @@
            result))
        query
        ;; TODO only these top level clauses are supported at this moment
-       [:order-by :breakout]))))
+       [:order-by :breakout :filters]))))
