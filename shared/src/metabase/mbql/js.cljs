@@ -32,3 +32,14 @@
   Returns the JS form of the normalized query. Use [[normalize-cljs]] for the CLJS form."
   [query]
   (-> query normalize-cljs (clj->js :keyword-fn u/qualified-name)))
+
+
+(comment
+  (let [original #js {"type" "query"
+                      "query" #js {"breakout" #js [#js ["expression" "UserLAT" #js {"strategy"  "bin-width"
+                                                                                    "bin-width" 10}]]}}]
+    (-> original
+        js->clj
+        unwrap
+        mbql.normalize/normalize)
+    ))

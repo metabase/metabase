@@ -126,7 +126,7 @@ class StructuredQueryInner extends AtomicQuery {
     datasetQuery: DatasetQuery = STRUCTURED_QUERY_TEMPLATE,
   ) {
     super(question, datasetQuery);
-    this._structuredDatasetQuery = datasetQuery as StructuredDatasetQuery;
+    this._structuredDatasetQuery = this._datasetQuery as StructuredDatasetQuery;
   }
 
   private getMLv2Query(): Query {

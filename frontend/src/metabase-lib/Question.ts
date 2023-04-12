@@ -140,6 +140,7 @@ class QuestionInner {
         ...this._card,
         dataset_query: normalize(card.dataset_query),
       };
+      console.log(this._card.dataset_query);
     }
     this._metadata =
       metadata ||
@@ -171,9 +172,7 @@ class QuestionInner {
   }
 
   setCard(card: CardObject): Question {
-    const q = this.clone();
-    q._card = card;
-    return q;
+    return new Question(card, this._metadata, this._parameterValues);
   }
 
   withoutNameAndId() {

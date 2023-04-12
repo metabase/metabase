@@ -2,6 +2,7 @@
 // @ts-nocheck
 import { DatasetQuery } from "metabase-types/types/Card";
 import { DependentMetadataItem } from "metabase-types/types/Query";
+import { normalize } from "cljs/metabase.mbql.normalize";
 import Metadata from "metabase-lib/metadata/Metadata";
 import Question from "metabase-lib/Question";
 import Dimension from "metabase-lib/Dimension";
@@ -24,7 +25,7 @@ class QueryInner {
 
   constructor(question: Question, datasetQuery: DatasetQuery) {
     this._metadata = question._metadata;
-    this._datasetQuery = datasetQuery;
+    this._datasetQuery = normalize(datasetQuery);
     this._originalQuestion = question;
   }
 

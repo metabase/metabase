@@ -81,10 +81,11 @@
 
 (defmethod normalize-mbql-clause-tokens :expression
   ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.
-  [[_ expression-name]]
-  [:expression (if (keyword? expression-name)
-                 (mbql.u/qualified-name expression-name)
-                 expression-name)])
+  [[_ expression-name & extras]]
+  (into [:expression (if (keyword? expression-name)
+                       (mbql.u/qualified-name expression-name)
+                       expression-name)]
+        extras))
 
 (defmethod normalize-mbql-clause-tokens :binning-strategy
   ;; For `:binning-strategy` clauses (which wrap other Field clauses) normalize the strategy-name and recursively
