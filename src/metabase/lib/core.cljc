@@ -158,6 +158,7 @@
    recognize-template-tags
    template-tags]
   [lib.order-by
+   change-direction
    order-by
    order-by-clause
    order-bys

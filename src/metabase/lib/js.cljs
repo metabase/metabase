@@ -141,6 +141,11 @@
   ([a-query stage-number]
    (to-array (lib.order-by/order-bys a-query stage-number))))
 
+(defn ^:export change-direction
+  "Flip the direction of `current-order-by` in `a-query`."
+  [a-query current-order-by]
+  (lib.order-by/change-direction a-query current-order-by))
+
 (defn ^:export remove-clause
   "Removes the `target-clause` in the filter of the `query`."
   ([a-query clause]
