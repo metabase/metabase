@@ -38,7 +38,9 @@
        (map? (second clause))
        (contains? (second clause) :lib/uuid)))
 
-(defn- clause-uuid [clause]
+(defn clause-uuid
+  "Returns the :lib/uuid of `clause`. Returns nil if `clause` is not a clause."
+  [clause]
   (when (clause? clause)
     (get-in clause [1 :lib/uuid])))
 
@@ -376,7 +378,7 @@
     (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
       (parse-long card-id-str))))
 
-(mu/defn source-table :- [:maybe ::lib.schema.id/table]
+(mu/defn source-table :- [:maybe [:or ::lib.schema.id/table [:re #"^card__\d+$"]]]
   "If this query has a `:source-table`, return it."
   [query]
   (-> query :stages first :source-table))
