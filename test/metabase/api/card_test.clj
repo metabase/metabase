@@ -2577,9 +2577,11 @@
                        :creator_id       (mt/user->id :rasta)
                        :name             "example"
                        :collection_id    nil} new-model))
-              (is (str/starts-with? (:name new-table) "example"))
-              (is (= "not_public" (:schema new-table)))
-              (is (= #{"id" "name"} (t2/select-fn-set :name Field :table_id (:id new-table)))))))))))
+              (is (=? {:name #"(?i)example(.*)"
+                       :schema #"(?i)not_public"}
+                      new-table))
+              (is (= #{"id" "name"}
+                     (t2/select-fn-set (comp str/lower-case :name) Field :table_id (:id new-table)))))))))))
 
 (deftest upload-csv!-table-prefix-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -2593,10 +2595,11 @@
             (let [new-model (upload-example-csv! nil)
                   new-table (t2/select-one Table :db_id db-id)]
               (is (= "example" (:name new-model)))
-              (is (str/starts-with? (:name new-table) "uploaded_magic_example"))
+              (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
+                      new-table))
               (if (= driver/*driver* :mysql)
                 (is (nil? (:schema new-table)))
-                (is (= "public" (:schema new-table)))))))))))
+                (is (=? {:schema #"(?i)public"} new-table))))))))))
 
 (deftest upload-csv!-failure-test
   ;; Just test with postgres because failure should be independent of the driver
