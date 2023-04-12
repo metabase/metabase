@@ -42,24 +42,29 @@
           (str/replace #" " "_")))
 
 (defn- aliases
-  "Create a seq of aliases to be used to make model columns more human friendly"
+  "Create a seq of aliases to be used to make model columns more human friendly.
+  If this is a native query or for any other reason we don't get aliases we just fall back to '*'"
   [{:keys [dataset_query result_metadata]}]
-  (let [alias-map (update-vals
-                   (into {} (map (juxt :id :display_name) result_metadata))
-                   (fn [v] (cond-> v
-                             (str/includes? v " ")
-                             normalize-name)))
-        {:keys [query]} (let [qp (qp.reducible/combine-middleware
-                                  (vec qp/around-middleware)
-                                  (fn [query _rff _context]
-                                    (add/add-alias-info
-                                     (#'qp/preprocess* query))))]
-                          (qp dataset_query nil nil))
-        {:keys [fields]} query]
-    (for [field fields
-          :let [[_ id m] field
-                alias (::add/desired-alias m)]]
-      [alias (alias-map id)])))
+  (if dataset_query
+    (let [alias-map (update-vals
+                     (into {} (map (juxt :id :display_name) result_metadata))
+                     (fn [v] (cond-> v
+                               (str/includes? v " ")
+                               normalize-name)))
+          {:keys [query]} (let [qp (qp.reducible/combine-middleware
+                                    (vec qp/around-middleware)
+                                    (fn [query _rff _context]
+                                      (add/add-alias-info
+                                       (#'qp/preprocess* query))))]
+                            (qp dataset_query nil nil))
+          {:keys [fields]} query]
+      (if-some [alias-strs (seq (for [field fields
+                                      :let [[_ id m] field
+                                            alias (::add/desired-alias m)]]
+                                  (format "\"%s\" AS %s" alias (alias-map id))))]
+        (str/join "," alias-strs)
+        "*"))
+    "*"))
 
 (defn- fix-model-reference
   "The formatter may expand parameterized values (e.g. {{#123}} -> { { # 123 } }).
@@ -72,9 +77,7 @@
   "Produce a SELECT * over the parameterized model with columns aliased to normalized display names.
   This can be used in a CTE such that an outer query can be called on this query."
   [{:keys [id] :as model}]
-  (let [column-aliases (->> (aliases model)
-                            (map (partial apply format "\"%s\" AS %s"))
-                            (str/join ","))]
+  (let [column-aliases (aliases model)]
     (->> (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column-aliases id)
          mdb.query/format-sql
          fix-model-reference)))

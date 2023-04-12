@@ -11,7 +11,8 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest normalize-name-test
   (testing "Testing basic examples of how normalize-name should work"
@@ -39,31 +40,31 @@
   (testing "Testing the test-create-table-ddl function"
     (let [model {:sql_name        "TABLE"
                  :result_metadata (mapv
-                                    (fn [{:keys [display_name] :as m}]
-                                      (assoc m
-                                        :sql_name
-                                        (metabot-util/normalize-name display_name)))
-                                    [{:display_name "Name"
-                                      :base_type    :type/Text}
-                                     {:display_name "Frooby"
-                                      :base_type    :type/Boolean}
-                                     {:display_name "Age"
-                                      :base_type    :type/Integer}
-                                     ;; Low cardinality items should show as enumerated
-                                     {:display_name    "Sizes"
-                                      :base_type       :type/Integer
-                                      :possible_values [1 2 3]}
-                                     ;; Despite being enumerated, when the cardinality is too high,
-                                     ;; we will skip the enumeration here to prevent using too many tokens.
-                                     {:display_name    "BigCardinality"
-                                      :base_type       :type/Integer
-                                      :possible_values (range (inc (metabot-settings/enum-cardinality-threshold)))}])}]
+                                   (fn [{:keys [display_name] :as m}]
+                                     (assoc m
+                                       :sql_name
+                                       (metabot-util/normalize-name display_name)))
+                                   [{:display_name "Name"
+                                     :base_type    :type/Text}
+                                    {:display_name "Frooby"
+                                     :base_type    :type/Boolean}
+                                    {:display_name "Age"
+                                     :base_type    :type/Integer}
+                                    ;; Low cardinality items should show as enumerated
+                                    {:display_name    "Sizes"
+                                     :base_type       :type/Integer
+                                     :possible_values [1 2 3]}
+                                    ;; Despite being enumerated, when the cardinality is too high,
+                                    ;; we will skip the enumeration here to prevent using too many tokens.
+                                    {:display_name    "BigCardinality"
+                                     :base_type       :type/Integer
+                                     :possible_values (range (inc (metabot-settings/enum-cardinality-threshold)))}])}]
       (is (= (mdb.query/format-sql
-               (str
-                 "create type SIZES_t as enum '1', '2', '3';"
-                 "CREATE TABLE \"TABLE\" ('NAME' TEXT,'FROOBY' BOOLEAN, 'AGE' INTEGER, 'SIZES' 'SIZES_t','BIGCARDINALITY' INTEGER)"))
+              (str
+               "create type SIZES_t as enum '1', '2', '3';"
+               "CREATE TABLE \"TABLE\" ('NAME' TEXT,'FROOBY' BOOLEAN, 'AGE' INTEGER, 'SIZES' 'SIZES_t','BIGCARDINALITY' INTEGER)"))
              (mdb.query/format-sql
-               (#'metabot-util/create-table-ddl model)))))))
+              (#'metabot-util/create-table-ddl model)))))))
 
 (deftest denormalize-model-test
   (testing "Basic denormalized model test"
@@ -74,21 +75,21 @@
                               :type     :query
                               :query    {:source-table (mt/id :people)}}
                              :dataset true}]]
-                     (let [{:keys [create_table_ddl inner_query sql_name result_metadata]} (metabot-util/denormalize-model model)]
-                       (is (string? create_table_ddl))
-                       (is (string? sql_name))
-                       (is (string? inner_query))
-                       (is
-                         (= #{"Affiliate"
-                              "Facebook"
-                              "Google"
-                              "Organic"
-                              "Twitter"}
-                            (->> result_metadata
-                                 (some (fn [{:keys [sql_name] :as rsmd}] (when (= "SOURCE" sql_name) rsmd)))
-                                 :possible_values
-                                 set))))
-                     (:result_metadata model)))))
+        (let [{:keys [create_table_ddl inner_query sql_name result_metadata]} (metabot-util/denormalize-model model)]
+          (is (string? create_table_ddl))
+          (is (string? sql_name))
+          (is (string? inner_query))
+          (is
+           (= #{"Affiliate"
+                "Facebook"
+                "Google"
+                "Organic"
+                "Twitter"}
+              (->> result_metadata
+                   (some (fn [{:keys [sql_name] :as rsmd}] (when (= "SOURCE" sql_name) rsmd)))
+                   :possible_values
+                   set))))
+        (:result_metadata model)))))
 
 (deftest denormalize-database-test
   (testing "Basic denormalized database test"
@@ -99,13 +100,13 @@
                               :type     :query
                               :query    {:source-table (mt/id :orders)}}
                              :dataset true}]]
-                     (let [database (t2/select-one Database :id (mt/id))
-                           {:keys [models model_json_summary sql_name]} (metabot-util/denormalize-database database)]
-                       (is (=
-                             (count (t2/select Card :database_id (mt/id) :dataset true))
-                             (count models)))
-                       (is (string? model_json_summary))
-                       (is (string? sql_name)))))))
+        (let [database (t2/select-one Database :id (mt/id))
+              {:keys [models model_json_summary sql_name]} (metabot-util/denormalize-database database)]
+          (is (=
+               (count (t2/select Card :database_id (mt/id) :dataset true))
+               (count models)))
+          (is (string? model_json_summary))
+          (is (string? sql_name)))))))
 
 (deftest create-prompt-test
   (testing "We can do prompt lookup and interpolation"
@@ -136,12 +137,12 @@
       (is (= (mdb.query/format-sql sql)
              (metabot-util/extract-sql sql)))))
   (testing "Test that we detect SQL embedded in markdown"
-    (let [sql "SELECT * FROM SOMETHING"
+    (let [sql     "SELECT * FROM SOMETHING"
           bot-str (format "kmfeasf fasel;f fasefes; fasef;o ```%s```feafs feass" sql)]
       (is (= (mdb.query/format-sql sql)
              (metabot-util/extract-sql bot-str)))))
   (testing "Test that we detect SQL embedded in markdown with language hint"
-    (let [sql "SELECT * FROM SOMETHING"
+    (let [sql     "SELECT * FROM SOMETHING"
           bot-str (format "kmfeasf fasel;f fasefes; fasef;o ```sql%s```feafs feass" sql)]
       (is (= (mdb.query/format-sql sql)
              (metabot-util/extract-sql bot-str))))))
@@ -150,9 +151,9 @@
   (testing "A simple test of interpolation of denormalized data with bot sql"
     (is (= "WITH MY_MODEL AS (SELECT * FROM {{#123}} AS INNER_QUERY) SELECT * FROM MY_MODEL"
            (metabot-util/bot-sql->final-sql
-             {:inner_query "SELECT * FROM {{#123}} AS INNER_QUERY"
-              :sql_name    "MY_MODEL"}
-             "SELECT * FROM MY_MODEL")))))
+            {:inner_query "SELECT * FROM {{#123}} AS INNER_QUERY"
+             :sql_name    "MY_MODEL"}
+            "SELECT * FROM MY_MODEL")))))
 
 (deftest ensure-generated-sql-works-test
   (testing "Ensure the generated sql (including creating a CTE and querying from it) is valid (i.e. produces a result)."
@@ -189,3 +190,28 @@
         (is (str/includes? create_database_ddl "CREATE TABLE \"ORDERS\" ("))
         (is (str/includes? create_database_ddl "CREATE TABLE \"PEOPLE\" ("))
         (is (str/includes? create_database_ddl "CREATE TABLE \"REVIEWS\" ("))))))
+
+(deftest inner-query-test
+  (testing "Ensure that a dataset-based query contains AS aliases"
+    (mt/dataset sample-dataset
+      (t2.with-temp/with-temp
+       [Card orders-model {:name    "Orders Model"
+                           :dataset_query
+                           {:database (mt/id)
+                            :type     :query
+                            :query    {:source-table (mt/id :orders)}}
+                           :dataset true}]
+       (let [q (metabot-util/inner-query orders-model)
+             [_ aliases] (re-matches #"(?ism)SELECT(.+)FROM(:?.*)" q)]
+         (is (true? (str/includes? aliases " AS ")))))))
+  (testing "Ensure that a native dataset query contains a SELECT *"
+    (mt/dataset sample-dataset
+      (t2.with-temp/with-temp
+       [Card orders-model {:name    "Orders Model"
+                           :dataset_query {:database (mt/id)
+                                           :type     :native
+                                           :native   {:query "SELECT COUNT(*) FROM ORDERS;"}}
+                           :dataset true}]
+       (let [q (metabot-util/inner-query orders-model)
+             [_ aliases] (re-matches #"(?ism)SELECT(.+)FROM(:?.*)" q)]
+         (is (= "*" (str/trim aliases))))))))
