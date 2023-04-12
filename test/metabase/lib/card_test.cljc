@@ -61,7 +61,6 @@
       (let [query {:lib/type     :mbql/query
                    :lib/metadata (lib.tu/mock-metadata-provider
                                   {:cards [metadata]})
-                   :type         :pipeline
                    :database     (meta/id)
                    :stages       [{:lib/type     :mbql.stage/mbql
                                    :lib/options  {:lib/uuid (str (random-uuid))}

@@ -1,5 +1,5 @@
 (ns metabase.lib.schema
-  "Malli schema for the `:pipeline` MBQL query type, the version of MBQL produced and manipulated by the new Cljc
+  "Malli schema for the pMBQL query type, the version of MBQL produced and manipulated by the new Cljc
   Metabase lib. Currently this is a little different from the version of MBQL consumed by the QP, specified
   in [[metabase.mbql.schema]]. Hopefully these versions will converge in the future.
 
@@ -112,6 +112,5 @@
     [:database [:or
                 ::id/database
                 ::id/saved-questions-virtual-database]]
-    [:type [:= :pipeline]]
     [:stages ::stages]]
    lib.schema.util/UniqueUUIDs])

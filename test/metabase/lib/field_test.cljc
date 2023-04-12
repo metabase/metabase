@@ -61,7 +61,6 @@
             (lib.metadata.calculation/metadata
              {:lib/type     :mbql/query
               :lib/metadata grandparent-parent-child-metadata-provider
-              :type         :pipeline
               :database     (meta/id)
               :stages       [{:lib/type     :mbql.stage/mbql
                               :lib/options  {:lib/uuid (str (random-uuid))}
@@ -96,7 +95,6 @@
 
 (deftest ^:parallel joined-field-display-name-test
   (let [query {:lib/type     :mbql/query
-               :type         :pipeline
                :stages       [{:lib/type     :mbql.stage/mbql
                                :lib/options  {:lib/uuid "fdcfaa06-8e65-471d-be5a-f1e821022482"}
                                :source-table (meta/id :venues)
@@ -208,7 +206,6 @@
           query             {:lib/type     :mbql/query
                              :lib/metadata metadata-provider
                              :database     (meta/id)
-                             :type         :pipeline
                              :stages       [{:lib/type     :mbql.stage/mbql
                                              :source-table (meta/id :checkins)
                                              :joins        [{:lib/type    :mbql/join

@@ -231,7 +231,7 @@
   like
 
     {:database 1
-     :type     :pipeline
+     :lib/type :mbql/query
      :stages   [{:lib/type :mbql.stage/mbql
                  :native   \"SELECT id, name FROM VENUES;\"}]}
 

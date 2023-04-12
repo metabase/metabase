@@ -38,7 +38,6 @@
    {:lib/type     :mbql/query
     :lib/metadata metadata-provider
     :database     database-id
-    :type         :pipeline
     :stages       (mapv lib.options/ensure-uuid stages)}))
 
 (defn query-with-stage
@@ -88,7 +87,7 @@
 (mu/defn native-query :- ::lib.schema/query
   "Create a new native query.
 
-  Native in this sense means a pMBQL `:pipeline` query with a first stage that is a native query."
+  Native in this sense means a pMBQL query with a first stage that is a native query."
   ([metadata-provider :- lib.metadata/MetadataProvider
     inner-query]
    (native-query metadata-provider nil inner-query))
