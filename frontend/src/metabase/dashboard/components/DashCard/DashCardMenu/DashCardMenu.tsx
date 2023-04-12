@@ -84,7 +84,7 @@ const DashCardMenu = ({
     () => [
       canEditQuestion(question) && {
         title: `Edit question`,
-        link: Urls.question(question.card()),
+        link: Urls.question(question.card(), { mode: "notebook" }),
       },
       canDownloadResults(result) && {
         title: loading ? t`Downloading results…` : t`Download results`,
