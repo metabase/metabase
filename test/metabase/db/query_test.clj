@@ -96,9 +96,12 @@
                  (json/parse-string weird-formatted-query))))))))
 
 (deftest ^:parallel format-sql-with-params-test
-  (testing "Ensure that format-sql does not mess up (and fixes messed up) metabase params."
-    ;; What we do want
+  (testing "Ensure that format-sql does not mess up metabase params."
+    (is (= "SELECT\n  *\nFROM\n  {{ #1234 }}"
+           (mdb.query/format-sql "SELECT * FROM {{ #1234 }}")))
     (is (= "SELECT\n  *\nFROM\n  {{#1234}}"
            (mdb.query/format-sql "SELECT * FROM {{#1234}}")))
-    (is (= "SELECT\n  A\nFROM\n  {{#1234}}\nWHERE\n  {{STATE}}"
-           (mdb.query/format-sql "SELECT A FROM { { #1234 } } WHERE { {STATE}  }")))))
+    (is (= "SELECT\n  *\nFROM\n  {{FOO_BAR}}"
+           (mdb.query/format-sql "SELECT * FROM {{FOO_BAR}}")))
+    (is (= "SELECT\n  *\nFROM\n  {{ FOO_BAR }}"
+           (mdb.query/format-sql "SELECT * FROM {{ FOO_BAR }}")))))

@@ -41,9 +41,7 @@
   (reify UnaryOperator
     (apply [_this cfg]
       (-> ^DialectConfig cfg
-          (.plusOpenParens ^"[Ljava.lang.String;" (into-array String ["{"]))
-          (.plusCloseParens ^"[Ljava.lang.String;" (into-array String ["}"]))
-          (.plusSpecialWordChars ^"[Ljava.lang.String;" (into-array String ["#"]))))))
+          (.plusSpecialWordChars ^"[Ljava.lang.String;" (into-array String ["{{" "#" "}}"]))))))
 
 (defn format-sql
   "Return a nicely-formatted version of a `sql` string."
@@ -53,7 +51,7 @@
   (^String [^String sql db-type]
    (when sql
      (if (isa? driver.impl/hierarchy db-type :sql)
-       (-> (SqlFormatter/of (case db-type
+       (-> (SqlFormatter/of Dialect/MariaDb #_(case db-type
                               :mysql Dialect/MySql
                               :postgres Dialect/PostgreSql
                               :redshift Dialect/Redshift
