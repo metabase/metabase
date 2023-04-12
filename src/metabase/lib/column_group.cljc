@@ -41,33 +41,37 @@
 
 (defmethod lib.metadata.calculation/display-info-method :metadata/column-group
   [query stage-number column-group]
-  (merge
-   {:name "group", :display_name "<Group>"}
-   (case (::group-type column-group)
-     :group-type/main
-     (merge
-      (let [stage (lib.util/query-stage query stage-number)]
+  (case (::group-type column-group)
+    :group-type/main
+    (merge
+     (let [stage (lib.util/query-stage query stage-number)]
+       (or
         (when-let [table-id (:source-table stage)]
+          ;; if table-id is of `card__<id>` format this will return CardMetadata, so we don't need to special case
+          ;; that here.
           (when-let [table (lib.metadata/table query table-id)]
-            (lib.metadata.calculation/display-info query stage-number table))))
-      {:is_from_join           false
-       :is_implicitly_joinable false})
+            (lib.metadata.calculation/display-info query stage-number table)))
+        ;; if this is a native query or something else that doesn't have a source Table or source Card then use the
+        ;; stage display name.
+        {:display_name (lib.metadata.calculation/display-name query stage-number stage)}))
+     {:is_from_join           false
+      :is_implicitly_joinable false})
 
-     :group-type/join.explicit
-     (merge
-      (let [join-alias (:join-alias column-group)]
-        (when-let [join (lib.join/resolve-join query stage-number join-alias)]
-          (lib.metadata.calculation/display-info query stage-number join)))
-      {:is_from_join           true
-       :is_implicitly_joinable false})
+    :group-type/join.explicit
+    (merge
+     (let [join-alias (:join-alias column-group)]
+       (when-let [join (lib.join/resolve-join query stage-number join-alias)]
+         (lib.metadata.calculation/display-info query stage-number join)))
+     {:is_from_join           true
+      :is_implicitly_joinable false})
 
-     :group-type/join.implicit
-     (merge
-      (let [table-id (:table-id column-group)]
-        (when-let [table (lib.metadata/table query table-id)]
-          (lib.metadata.calculation/display-info query stage-number table)))
-      {:is_from_join           false
-       :is_implicitly_joinable true}))))
+    :group-type/join.implicit
+    (merge
+     (let [table-id (:table-id column-group)]
+       (when-let [table (lib.metadata/table query table-id)]
+         (lib.metadata.calculation/display-info query stage-number table)))
+     {:is_from_join           false
+      :is_implicitly_joinable true})))
 
 (mu/defn ^:private column-group-info :- [:map [::group-type GroupType]]
   "The value we should use to `group-by` inside [[group-columns]]."

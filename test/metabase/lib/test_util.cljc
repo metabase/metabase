@@ -15,7 +15,6 @@
    :type         :pipeline
    :database     (meta/id)
    :stages       [{:lib/type     :mbql.stage/mbql
-                   :lib/options  {:lib/uuid (str (random-uuid))}
                    :source-table (meta/id :venues)}]})
 
 (defn venues-query-with-last-stage [m]
@@ -120,3 +119,24 @@
   []
   (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
       (lib/expression "expr" (lib/absolute-datetime "2020" :month))))
+
+(defn native-query
+  "A sample native query."
+  []
+  {:lib/type     :mbql/query
+   :lib/metadata meta/metadata-provider
+   :type         :pipeline
+   :database     (meta/id)
+   :stages       [{:lib/type           :mbql.stage/native
+                   :lib/stage-metadata {:lib/type :metadata/results
+                                        :columns  [{:lib/type      :metadata/field
+                                                    :name          "abc"
+                                                    :display_name  "another Field"
+                                                    :base_type     :type/Integer
+                                                    :semantic_type :type/FK}
+                                                   {:lib/type      :metadata/field
+                                                    :name          "sum"
+                                                    :display_name  "sum of User ID"
+                                                    :base_type     :type/Integer
+                                                    :semantic_type :type/FK}]}
+                   :native             "SELECT whatever"}]})

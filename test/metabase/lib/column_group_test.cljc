@@ -184,3 +184,32 @@
     (testing `lib/columns-group-columns
       (is (= columns
              (mapcat lib/columns-group-columns groups))))))
+
+(deftest ^:parallel native-query-test
+  (let [query  (lib.tu/native-query)
+        groups (lib/group-columns (lib/orderable-columns query))]
+    (is (=? [{::lib.column-group/group-type :group-type/main
+              ::lib.column-group/columns    [{:display_name "another Field", :lib/source :source/native}
+                                             {:display_name "sum of User ID", :lib/source :source/native}]}]
+            groups))
+    (testing `lib/display-info
+      (is (=? [{:display_name           "Native query"
+                :is_from_join           false
+                :is_implicitly_joinable false}]
+              (for [group groups]
+                (lib/display-info query group)))))))
+
+(deftest ^:parallel native-source-query-test
+  (let [query  (-> (lib.tu/native-query)
+                   lib/append-stage)
+        groups (lib/group-columns (lib/orderable-columns query))]
+    (is (=? [{::lib.column-group/group-type :group-type/main
+              ::lib.column-group/columns    [{:display_name "another Field", :lib/source :source/previous-stage}
+                                             {:display_name "sum of User ID", :lib/source :source/previous-stage}]}]
+            groups))
+    (testing `lib/display-info
+      (is (=? [{:display_name           "Native query"
+                :is_from_join           false
+                :is_implicitly_joinable false}]
+              (for [group groups]
+                (lib/display-info query group)))))))
