@@ -97,9 +97,7 @@ const getDatasetParams = ({
 
   const isEmbeddedQuestion = token != null;
   if (isEmbeddedQuestion) {
-    // Parse the query string part of the URL (e.g. the `?key=value` part) into an object. We need to pass them this
-    // way to the `DownloadButton` because it's a form which means we need to insert a hidden `<input>` for each param
-    // we want to pass along. For whatever wacky reason the /api/embed endpoint expect params like ?key=value instead
+    // For whatever wacky reason the /api/embed endpoint expect params like ?key=value instead
     // of like ?params=<json-encoded-params-array> like the other endpoints do.
     return {
       method: "GET",
