@@ -85,9 +85,9 @@
         field-id->fvs     (t2/select-fn->fn :field_id identity (cons FieldValues fv-return-keys)
                                             :type :full
                                             :field_id [:in param-field-ids])
-        found-field-ids   (keys param-field-ids)
-        missing-field-ids (set/difference (set param-field-ids) (set found-field-ids))
-        missing-fields    (t2/select Field :id [:in missing-field-ids])]
+        missing-field-ids (set/difference (set param-field-ids) (set (keys field-id->fvs)))
+        missing-fields    (when (seq missing-field-ids)
+                            (t2/select Field :id [:in missing-field-ids]))]
     (into field-id->fvs
           (for [field missing-fields
                 :let [field-values (field-values/get-or-create-full-field-values! field)]]
