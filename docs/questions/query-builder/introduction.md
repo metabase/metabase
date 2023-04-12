@@ -49,7 +49,7 @@ To the right of completed step is a **Preview** button (looks like a Play button
 
 ## Picking data
 
-The data section is where you select the data you want to work with. Here you'll pick a [model][model], a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results.
+The data section is where you select the data you want to work with. Here you'll pick a [model](../../data-modeling/models.md), a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results.
 
 ## Joining data
 
@@ -217,7 +217,7 @@ Each time you start modifying a saved question, Metabase will create a new quest
 
 Feel free to play around with any saved question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from.
 
-If you find yourself using the same saved question as a starting point for multiple questions, you may want to turn it into a [Model][model] to let others know it's a good starting place.
+If you find yourself using the same saved question as a starting point for multiple questions, you may want to turn it into a [model](../../data-modeling/models.md) to let others know it's a good starting place.
 
 ## Question version history
 
