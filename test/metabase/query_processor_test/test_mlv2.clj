@@ -35,14 +35,6 @@
   [legacy-query]
   (or
    *skip-conversion-tests*
-   ;; #29898: `:joins` with `:fields` other than `:all` or `:none` are not normalized correctly.
-   (mbql.u/match-one legacy-query
-     {:joins joins}
-     (mbql.u/match-one joins
-       {:fields fields}
-       (mbql.u/match-one fields
-         :field
-         "#29898")))
    ;; #29897: `:datetime-diff` is not handled correctly.
    (mbql.u/match-one legacy-query
      :datetime-diff

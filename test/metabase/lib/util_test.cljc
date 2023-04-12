@@ -306,3 +306,18 @@
       (testing (pr-str (list `lib.util/truncate-alias s max-bytes))
         (is (= expected
                (truncate-alias s max-bytes)))))))
+
+(deftest ^:parallel unique-name-generator-test
+  (let [unique-name-fn (lib.util/unique-name-generator)]
+    (is (= "wow"
+           (unique-name-fn "wow")))
+    (is (= "wow_2"
+           (unique-name-fn "wow")))
+    (testing "should be case-insensitive distinct"
+      (is (= "WOW_3"
+             (unique-name-fn "WOW"))))
+    (testing "should truncate long names"
+      (is (= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_2dc86ef1"
+             (unique-name-fn "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))
+      (is (= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_1380b38f"
+             (unique-name-fn "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))))))
