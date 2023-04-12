@@ -259,7 +259,7 @@
 (api/defendpoint GET "/recent_views"
   "Get a list of 5 things the current user has been viewing most recently."
   []
-  (let [views            (reverse (view-log/user-recent-views))
+  (let [views            (view-log/user-recent-views)
         views            (if (seq views)
                            views
                            (let [views (recent-views-for-user api/*current-user-id*)]

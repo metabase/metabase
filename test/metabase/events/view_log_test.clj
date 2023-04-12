@@ -90,7 +90,7 @@
     (testing "User's recent views are updated when card/dashboard/table-read events occur."
       (mt/with-test-user :crowberto
         (view-log/user-recent-views! []) ;; ensure no views from any other tests/temp items exist
-        (doseq [event [{:topic :card-read :item dataset}
+        (doseq [event [{:topic :card-read :item dataset} ;; oldest view
                        {:topic :card-read :item dataset}
                        {:topic :card-read :item card1}
                        {:topic :card-read :item card1}
@@ -106,10 +106,10 @@
            (assoc-in event [:item :actor_id] (mt/user->id :crowberto))))
         (let [recent-views (mt/with-test-user :crowberto (view-log/user-recent-views))]
           (is (=
-               [{:model "card" :model_id (u/the-id dataset)}
-                {:model "card" :model_id (u/the-id card1)}
-                {:model "dashboard" :model_id (u/the-id dash)}
-                {:model "table" :model_id (u/the-id table1)}
+               [{:model "table" :model_id (u/the-id hidden-table)}
                 {:model "card" :model_id (u/the-id archived)}
-                {:model "table" :model_id (u/the-id hidden-table)}]
+                {:model "table" :model_id (u/the-id table1)}
+                {:model "dashboard" :model_id (u/the-id dash)}
+                {:model "card" :model_id (u/the-id card1)}
+                {:model "card" :model_id (u/the-id dataset)}]
                recent-views)))))))

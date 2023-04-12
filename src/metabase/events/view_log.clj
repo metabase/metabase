@@ -45,11 +45,9 @@
   (mw.session/with-current-user user-id
     (let [view        {:model    (name model)
                        :model_id model-id}
-          prior-views (user-recent-views)]
+          prior-views (remove #{view} (user-recent-views))]
       (when-not ((set prior-views) view)
-        (let [new-views (if (< (count prior-views) 10)
-                          (conj (vec prior-views) view)
-                          (conj (vec (rest prior-views)) view))]
+        (let [new-views (vec (take 10 (conj prior-views view)))]
           (user-recent-views! new-views))))))
 
 (defn handle-view-event!
