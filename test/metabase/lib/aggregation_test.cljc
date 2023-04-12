@@ -33,7 +33,8 @@
                         [lib/median :median]
                         [lib/sum :sum]
                         [lib/stddev :stddev]
-                        [lib/distinct :distinct]]]
+                        [lib/distinct :distinct]
+                        [lib/var :var]]]
         (is-fn? op tag [venues-category-id-metadata] [venue-field-check])))))
 
 (defn- aggregation-display-name [aggregation-clause]
@@ -252,3 +253,11 @@
                :display_name "Sum of Price"
                :lib/source   :source/aggregations}
               (lib.metadata.calculation/metadata query (first (lib/aggregations query -1))))))))
+
+(deftest ^:parallel var-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/aggregate (lib/var (lib/field (meta/id :venues :price)))))]
+    (is (=? {:stages [{:aggregation [[:var {} [:field {} (meta/id :venues :price)]]]}]}
+            query))
+    (is (= "Venues, Variance of Price"
+           (lib.metadata.calculation/describe-query query)))))

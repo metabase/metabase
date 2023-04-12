@@ -56,6 +56,9 @@
 
 (lib.hierarchy/derive :sum-where :lib.type-of/type-is-type-of-first-arg)
 
+(mbql-clause/define-tuple-mbql-clause :var :- :type/Float
+  #_expr [:schema [:ref ::expression/number]])
+
 (mr/def ::aggregation
   ;; placeholder!
   [:or
@@ -71,6 +74,7 @@
    :mbql.clause/stddev
    :mbql.clause/sum
    :mbql.clause/sum-where
+   :mbql.clause/var
    any?])
 
 (mr/def ::aggregations

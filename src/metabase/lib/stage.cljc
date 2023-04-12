@@ -12,7 +12,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -85,8 +84,13 @@
             (let [source-type (case stage-type
                                 :mbql.stage/native :source/native
                                 :mbql.stage/mbql   :source/card)]
-              (for [col (:columns metadata)]
-                (assoc col :lib/source source-type))))))))
+              (not-empty
+               (for [col (:columns metadata)]
+                 (merge
+                  {:lib/source-column-alias  (:name col)
+                   :lib/desired-column-alias (:name col)}
+                  col
+                  {:lib/source source-type})))))))))
 
 (mu/defn ^:private breakouts-columns :- [:maybe StageMetadataColumns]
   [query          :- ::lib.schema/query
@@ -147,13 +151,14 @@
    stage-number   :- :int
    unique-name-fn :- fn?]
   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-    (for [col  (stage-metadata query previous-stage-number)
-          :let [source-alias (or ((some-fn :lib/desired-column-alias :lib/source-column-alias) col)
-                                 (lib.metadata.calculation/column-name query stage-number col))]]
-      (assoc col
-             :lib/source               :source/previous-stage
-             :lib/source-column-alias  source-alias
-             :lib/desired-column-alias (unique-name-fn source-alias)))))
+    (not-empty
+     (for [col  (stage-metadata query previous-stage-number)
+           :let [source-alias (or ((some-fn :lib/desired-column-alias :lib/source-column-alias) col)
+                                  (lib.metadata.calculation/column-name query stage-number col))]]
+       (assoc col
+              :lib/source               :source/previous-stage
+              :lib/source-column-alias  source-alias
+              :lib/desired-column-alias (unique-name-fn source-alias))))))
 
 (defn- remove-hidden-default-fields
   "Remove Fields that shouldn't be visible from the default Fields for a source Table.
@@ -257,7 +262,7 @@
             :lib/source-column-alias  (:name expression)
             :lib/desired-column-alias (unique-name-fn (:name expression))))))
 
-(mu/defn ^:private default-columns :- StageMetadataColumns
+(mu/defn ^:private default-columns :- [:maybe StageMetadataColumns]
   "Calculate the columns to return if `:aggregations`/`:breakout`/`:fields` are unspecified.
 
   Formula for the so-called 'default' columns is
@@ -280,11 +285,12 @@
   [query          :- ::lib.schema/query
    stage-number   :- :int
    unique-name-fn :- fn?]
-  (concat
-   ;; 1: columns from the previous stage, source table or query
-   (or
+  (not-empty
+   (concat
+    ;; 1: columns from the previous stage, source table or query
+    (or
      ;; 1a. columns returned by previous stage
-    (previous-stage-metadata query stage-number unique-name-fn)
+     (previous-stage-metadata query stage-number unique-name-fn)
      ;; 1b or 1c
      (let [{:keys [source-table], :as this-stage} (lib.util/query-stage query stage-number)]
        (or
@@ -292,16 +298,22 @@
         (when (integer? source-table)
           (source-table-default-fields query source-table unique-name-fn))
         ;; 1c. Metadata associated with a saved Question
-        (saved-question-metadata query source-table unique-name-fn)
+        (when (string? source-table)
+          (saved-question-metadata query source-table unique-name-fn))
         ;; 1d: `:lib/stage-metadata` for the (presumably native) query
         (for [col (:columns (:lib/stage-metadata this-stage))]
-          (assoc col :lib/source :source/native)))))
-   ;; 2: expressions (aka calculated columns) added in this stage
-   (expressions-metadata query stage-number unique-name-fn)
-   ;; 3: columns added by joins at this stage
-   (default-columns-added-by-joins query stage-number unique-name-fn)))
+          (assoc col
+                 :lib/source :source/native
+                 :lib/source-column-alias  (:name col)
+                 ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
+                 ;; that gets added later gets deduplicated from these.
+                 :lib/desired-column-alias (unique-name-fn (:name col)))))))
+    ;; 2: expressions (aka calculated columns) added in this stage
+    (expressions-metadata query stage-number unique-name-fn)
+    ;; 3: columns added by joins at this stage
+    (default-columns-added-by-joins query stage-number unique-name-fn))))
 
-(mu/defn ^:private stage-metadata :- StageMetadataColumns
+(mu/defn ^:private stage-metadata :- [:maybe StageMetadataColumns]
   "Return results metadata about the expected columns in an MBQL query stage. If the query has
   aggregations/breakouts/fields, then return THOSE. Otherwise return the defaults based on the source Table or
   previous stage + joins."
@@ -391,7 +403,7 @@
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline"
   [query]
-  (update query :stages conj (lib.options/ensure-uuid {:lib/type :mbql.stage/mbql})))
+  (update query :stages conj {:lib/type :mbql.stage/mbql}))
 
 (mu/defn drop-stage :- ::lib.schema/query
   "Drops the final stage in the pipeline"

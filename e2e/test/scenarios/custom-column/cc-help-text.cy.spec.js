@@ -2,7 +2,6 @@ import {
   enterCustomColumnDetails,
   restore,
   openProductsTable,
-  getBrokenUpTextMatcher,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > custom column > help text", () => {
@@ -16,12 +15,12 @@ describe("scenarios > question > custom column > help text", () => {
 
   it("should appear while inside a function", () => {
     enterCustomColumnDetails({ formula: "Lower(" });
-    cy.findByText(getBrokenUpTextMatcher("lower(text)"));
+    cy.contains("lower(text)");
   });
 
   it("should appear after a field reference", () => {
     enterCustomColumnDetails({ formula: "Lower([Category]" });
-    cy.findByText(getBrokenUpTextMatcher("lower(text)"));
+    cy.contains("lower(text)");
   });
 
   it("should not appear while outside a function", () => {
