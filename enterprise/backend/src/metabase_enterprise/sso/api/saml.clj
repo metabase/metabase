@@ -9,7 +9,6 @@
 
 (set! *warn-on-reflection* true)
 
-#dbg
 (api/defendpoint PUT "/settings"
   "Update SAML related settings. You must be a superuser to do this."
   [:as {settings :body}]
