@@ -117,7 +117,11 @@
 
 (defmethod driver/insert-into :sql-jdbc
   [_driver db-id table-name column-names values]
-  (let [sql (sql/format {:insert-into (keyword table-name)
-                         :columns (map keyword column-names)
-                         :values values})]
-    (qp.writeback/execute-write-sql! db-id sql)))
+  (let [table-name (keyword table-name)
+        columns    (map keyword column-names)
+        sqls       (map #(sql/format {:insert-into table-name
+                                      :columns     columns
+                                      :values      %})
+                        (partition-all 25 values))]
+    (doseq [sql sqls]
+      (qp.writeback/execute-write-sql! db-id sql))))
