@@ -4,6 +4,7 @@ import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
+import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 import {
   downloadQueryResults,
   DownloadQueryResultsOpts,
@@ -28,6 +29,11 @@ interface OwnProps {
   token?: string;
   params?: Record<string, unknown>;
   visualizationSettings?: VisualizationSettings;
+}
+
+interface TriggerProps {
+  open: boolean;
+  onClick: () => void;
 }
 
 interface DispatchProps {
@@ -101,8 +107,15 @@ const DashCardMenu = ({
     <CardMenuRoot
       className={SAVING_CHART_IMAGE_HIDDEN_CLASS}
       items={menuItems}
-      triggerProps={{ className: "hover-child hover-child--smooth" }}
-      triggerIcon="ellipsis"
+      renderTrigger={({ open, onClick }: TriggerProps) => (
+        <EntityMenuTrigger
+          triggerProps={{
+            className: !open ? "hover-child hover-child--smooth" : undefined,
+          }}
+          icon="ellipsis"
+          onClick={onClick}
+        />
+      )}
     />
   );
 };

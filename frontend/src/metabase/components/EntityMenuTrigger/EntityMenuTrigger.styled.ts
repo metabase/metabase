@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 import Button from "metabase/core/components/Button";
 
 export interface EntityMenuIconButtonProps {
+  className?: string;
   color?: string;
   hover?: {
     color: string;
