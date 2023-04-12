@@ -41,8 +41,8 @@
 (mu/defn ^:private resolve-field-id :- lib.metadata/ColumnMetadata
   "Integer Field ID: get metadata from the metadata provider. This is probably not 100% the correct thing to do if
   this isn't the first stage of the query, but we can fix that behavior in a follow-on"
-  [query         :- ::lib.schema/query
-   field-id      :- ::lib.schema.id/field]
+  [query     :- ::lib.schema/query
+   field-id  :- ::lib.schema.id/field]
   (lib.metadata/field query field-id))
 
 (mu/defn ^:private resolve-column-name-in-metadata :- [:maybe lib.metadata/ColumnMetadata]
