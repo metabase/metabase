@@ -321,7 +321,7 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "uploads-database-id",
         getHidden: settings => !settings["uploads-enabled"],
         display_name: t`Database`,
-        description: t`Identify a database where upload tables will be created. Only actions-enabled databases can be used for data uploads.`,
+        description: t`Identify a database where upload tables will be created.`,
         placeholder: t`Select a database`,
         widget: UploadDbWidget,
       },
@@ -330,7 +330,7 @@ const SECTIONS = updateSectionsWithPlugins({
         getHidden: settings =>
           !settings["uploads-enabled"] || !settings["uploads-database-id"],
         display_name: t`Schema name`,
-        description: t`Identify a database schema where data upload tables will be created. If this schema does not exist, it will be created.`,
+        description: t`Identify a database schema where data upload tables will be created.`,
         type: "string",
         placeholder: "uploads",
       },
