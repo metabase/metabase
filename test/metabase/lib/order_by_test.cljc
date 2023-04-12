@@ -311,19 +311,28 @@
   (testing "orderable-columns should use metadata for source query."
     (let [query (lib.tu/query-with-card-source-table)]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:name "ID"
+        (is (=? [{:name      "ID"
                   :base_type :type/BigInteger}
-                 {:name "NAME"
+                 {:name      "NAME"
                   :base_type :type/Text}
-                 {:name "CATEGORY_ID"
+                 {:name      "CATEGORY_ID"
                   :base_type :type/Integer}
-                 {:name "LATITUDE"
+                 {:name      "LATITUDE"
                   :base_type :type/Float}
-                 {:name "LONGITUDE"
+                 {:name      "LONGITUDE"
                   :base_type :type/Float}
-                 {:name "PRICE"
+                 {:name      "PRICE"
                   :base_type :type/Integer}]
-                (lib/orderable-columns query)))))))
+                (lib/orderable-columns query)))
+        (testing `lib/display-info
+          (is (=? [{:name "ID",          :table {:name "My Card", :display_name "My Card"}}
+                   {:name "NAME",        :table {:name "My Card", :display_name "My Card"}}
+                   {:name "CATEGORY_ID", :table {:name "My Card", :display_name "My Card"}}
+                   {:name "LATITUDE",    :table {:name "My Card", :display_name "My Card"}}
+                   {:name "LONGITUDE",   :table {:name "My Card", :display_name "My Card"}}
+                   {:name "PRICE",       :table {:name "My Card", :display_name "My Card"}}]
+                  (for [col (lib/orderable-columns query)]
+                    (lib/display-info query col)))))))))
 
 (deftest ^:parallel orderable-columns-e2e-test
   (testing "Use the metadata returned by `orderable-columns` to add a new order-by to a query."
@@ -351,6 +360,28 @@
                     {:lib/uuid string?}
                     [:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]]
                   (lib/order-bys query'))))))))
+
+(deftest ^:parallel orderable-columns-with-source-card-e2e-test
+  (testing "Make sure you can order by a column that comes from a source Card (Saved Question/Model/etc)"
+    (let [query (lib.tu/query-with-card-source-table)]
+      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
+        (let [name-col (m/find-first #(= (:name %) "NAME")
+                                     (lib/orderable-columns query))]
+          (is (=? {:name      "NAME"
+                   :base_type :type/Text}
+                  name-col))
+          (let [query' (lib/order-by query name-col)]
+            (is (=? {:stages
+                     [{:source-table "card__1"
+                       :order-by [[:asc
+                                   {}
+                                   [:field {:base-type :type/Text} "NAME"]]]}]}
+                    query'))
+            (is (= "My Card, Sorted by Name ascending"
+                   (lib/describe-query query')))
+            (is (= ["Name ascending"]
+                   (for [order-by (lib/order-bys query')]
+                     (lib/display-name query' order-by))))))))))
 
 (deftest ^:parallel orderable-columns-with-join-test
   (is (=? [{:name                     "ID"
@@ -597,20 +628,27 @@
   (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")]
     (is (=? [{:semantic_type          :type/PK
               :is_calculated          false
-              :table                  {:name "VENUES", :display_name "Venues"}
+              :table                  {:name "VENUES", :display_name "Venues" :is_source_table true}
               :name                   "ID"
               :is_from_previous_stage false
               :is_implicitly_joinable false
               :effective_type         :type/BigInteger
               :is_from_join           false
               :display_name           "ID"}
-             {:display_name "Name"}
-             {:display_name "Category ID"}
-             {:display_name "Latitude"}
-             {:display_name "Longitude"}
-             {:display_name "Price"}
-             {:display_name "ID"}
-             {:display_name "Name"}]
+             {:display_name "Name"
+              :table {:is_source_table true}}
+             {:display_name "Category ID"
+              :table {:is_source_table true}}
+             {:display_name "Latitude"
+              :table {:is_source_table true}}
+             {:display_name "Longitude"
+              :table {:is_source_table true}}
+             {:display_name "Price"
+              :table {:is_source_table true}}
+             {:display_name "ID"
+              :table {:name "CATEGORIES" :display_name "Categories" :is_source_table false}}
+             {:display_name "Name"
+              :table {:name "CATEGORIES" :display_name "Categories" :is_source_table false}}]
             (for [col (lib/orderable-columns query)]
               (lib/display-info query col))))))
 

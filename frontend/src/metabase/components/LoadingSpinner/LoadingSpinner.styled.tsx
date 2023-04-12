@@ -11,6 +11,8 @@ const spinnerAnimation = keyframes`
 `;
 
 export const SpinnerRoot = styled.div`
+  display: flex;
+  align-items: center;
   font-size: 0;
 `;
 

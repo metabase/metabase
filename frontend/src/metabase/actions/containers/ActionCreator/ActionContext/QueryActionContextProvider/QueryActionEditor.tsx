@@ -15,20 +15,18 @@ function QueryActionEditor({
   onChangeQuestionQuery: (query: NativeQuery) => void;
 }) {
   return (
-    <>
-      <NativeQueryEditor
-        query={query}
-        viewHeight="full"
-        setDatasetQuery={onChangeQuestionQuery}
-        enableRun={false}
-        hasEditingSidebar={false}
-        isNativeEditorOpen
-        hasParametersList={false}
-        resizable={false}
-        readOnly={!isEditable}
-        editorContext="action"
-      />
-    </>
+    <NativeQueryEditor
+      query={query}
+      viewHeight="full"
+      setDatasetQuery={onChangeQuestionQuery}
+      enableRun={true}
+      hasEditingSidebar={false}
+      isNativeEditorOpen
+      hasParametersList={false}
+      resizable={false}
+      readOnly={!isEditable}
+      editorContext="action"
+    />
   );
 }
 

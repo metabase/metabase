@@ -179,4 +179,8 @@
                                          [:field 23402 nil]
                                          [:field 23100 {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                           :strategy     :left-join
-                          :fk-field-id  23402}]}}))
+                          :fk-field-id  23402}]}}
+
+    {:database 1
+     :type     :query
+     :query    {:order-by [[:asc [:field 1 nil]]]}}))
