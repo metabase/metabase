@@ -181,6 +181,7 @@
                         (if-some [enums (field->pseudo-enums table field)]
                           (assoc acc field-name enums)
                           acc))
+                      {}
                       fields)
         columns      (vec
                       (for [{column-name :name :keys [database_required database_type]} fields]

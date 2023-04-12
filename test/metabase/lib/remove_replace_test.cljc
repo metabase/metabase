@@ -21,6 +21,22 @@
                  (lib/order-bys)
                  count)))))
 
+(deftest ^:parallel remove-clause-filters-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/filter (lib/= (lib/field "VENUES" "PRICE") 4))
+                  (lib/filter (lib/= (lib/field "VENUES" "NAME") "x")))
+        filters (lib/filters query)]
+    (is (= 2 (count filters)))
+    (is (= 1 (-> query
+                 (lib/remove-clause (first filters))
+                 (lib/filters)
+                 count)))
+    (is (= 0 (-> query
+                 (lib/remove-clause (first filters))
+                 (lib/remove-clause (second filters))
+                 (lib/filters)
+                 count)))))
+
 (deftest ^:parallel remove-clause-breakout-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/breakout (lib/field "VENUES" "ID"))
@@ -79,6 +95,21 @@
               (first replaced-order-bys)))
       (is (= 2 (count replaced-order-bys)))
       (is (= (second order-bys) (second replaced-order-bys))))))
+
+(deftest ^:parallel replace-clause-filters-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/filter (lib/= (lib/field (meta/id :venues :name)) "myvenue"))
+                  (lib/filter (lib/= (lib/field (meta/id :venues :price)) 2)))
+        filters (lib/filters query)]
+    (is (= 2 (count filters)))
+    (let [replaced (-> query
+                       (lib/replace-clause (first filters) (lib/= (lib/field (meta/id :venues :id)) 1)))
+          replaced-filters (lib/filters replaced)]
+      (is (not= filters replaced-filters))
+      (is (=? {:operator "=" :args [[:field {} (meta/id :venues :id)] 1]}
+              (first replaced-filters)))
+      (is (= 2 (count replaced-filters)))
+      (is (= (second filters) (second replaced-filters))))))
 
 (deftest ^:parallel replace-clause-breakout-by-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")

@@ -2,6 +2,7 @@
   (:require
    [hawk.assert-exprs]
    [metabase.bootstrap]
+   metabase.query-processor-test.test-mlv2
    [metabase.test-runner.assert-exprs]))
 
 (comment metabase.bootstrap/keep-me
