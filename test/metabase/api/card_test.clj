@@ -2581,7 +2581,9 @@
                        :schema #"(?i)not_public"}
                       new-table))
               (is (= #{"id" "name"}
-                     (t2/select-fn-set (comp str/lower-case :name) Field :table_id (:id new-table)))))))))))
+                     (->> (t2/select Field :table_id (:id new-table))
+                          (map (comp #_{:clj-kondo/ignore [:discouraged-var]} str/lower-case :name))
+                          set))))))))))
 
 (deftest upload-csv!-table-prefix-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
