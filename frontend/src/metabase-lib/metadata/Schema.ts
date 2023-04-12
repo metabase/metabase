@@ -10,12 +10,12 @@ import type Table from "./Table";
 
 export default class Schema extends Base {
   id?: string;
-  name: string;
+  name: string | null;
   database: Database;
   tables: Table[];
 
   displayName() {
-    return titleize(humanize(this.name));
+    return this.name ? titleize(humanize(this.name)) : null;
   }
 
   getTables() {
