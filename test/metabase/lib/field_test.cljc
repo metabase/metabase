@@ -1,6 +1,6 @@
 (ns metabase.lib.field-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -122,9 +122,11 @@
                {:join-alias "CATEGORIES__via__CATEGORY_ID"
                 :lib/uuid   "8704e09b-496e-4045-8148-1eef28e96b51"}
                (meta/id :categories :name)]]
-    (is (= "Categories → Name"
-           (lib.metadata.calculation/display-name query -1 field)))
-    (is (=? {:display_name "Categories → Name"}
+    (are [style expected] (= expected
+                             (lib/display-name query -1 field style))
+      :default "Name"
+      :long    "Categories → Name")
+    (is (=? {:display_name "Name"}
             (lib.metadata.calculation/metadata query -1 field)))))
 
 (deftest ^:parallel field-with-temporal-unit-test
@@ -175,8 +177,10 @@
     (let [query           (lib/query-for-table-name meta/metadata-provider "VENUES")
           categories-name (m/find-first #(= (:id %) (meta/id :categories :name))
                                         (lib/orderable-columns query))]
-      (is (= "Categories → Name"
-             (lib/display-name query categories-name)))
+      (are [style expected] (= expected
+                               (lib/display-name query -1 categories-name style))
+        :default "Name"
+        :long    "Categories → Name")
       (let [query' (lib/order-by query categories-name)]
         (is (= "Venues, Sorted by Categories → Name ascending"
                (lib/describe-query query')))))))

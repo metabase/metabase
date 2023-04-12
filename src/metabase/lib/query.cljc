@@ -26,8 +26,8 @@
   (lib.metadata.calculation/metadata query stage-number (lib.util/query-stage x stage-number)))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/query
-  [query stage-number x]
-  (lib.metadata.calculation/display-name query stage-number (lib.util/query-stage x stage-number)))
+  [query stage-number x style]
+  (lib.metadata.calculation/display-name query stage-number (lib.util/query-stage x stage-number) style))
 
 (defn query-with-stages
   "Create a query from a sequence of stages."

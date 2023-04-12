@@ -66,7 +66,7 @@
                          :stage-number stage-number})))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/join
-  [query _stage-number {[first-stage] :stages, :as _join}]
+  [query _stage-number {[first-stage] :stages, :as _join} _style]
   (if-let [source-table (:source-table first-stage)]
     (if (integer? source-table)
       (:display_name (lib.metadata/table query source-table))

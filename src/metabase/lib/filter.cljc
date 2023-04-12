@@ -1,19 +1,32 @@
 (ns metabase.lib.filter
-  (:refer-clojure :exclude [filter and or not = < <= > ->> >= not-empty case])
+  (:refer-clojure
+   :exclude
+   [filter and or not = < <= > ->> >= not-empty case])
   (:require
    [metabase.lib.common :as lib.common]
-   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema]
    [metabase.lib.schema.common :as schema.common]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu])
-  #?(:cljs (:require-macros [metabase.lib.filter])))
+   [metabase.util.malli :as mu]
+   #?(:cljs (:require-macros [metabase.lib.filter]))))
 
 (comment metabase.lib.schema/keep-me)
+
+(doseq [tag [:and :or]]
+  (lib.hierarchy/derive tag ::compound))
+
+(doseq [tag [:= :!=]]
+  (lib.hierarchy/derive tag ::varargs))
+
+(doseq [tag [:< :<= :> :>= :starts-with :ends-with :contains :does-not-contain]]
+  (lib.hierarchy/derive tag ::binary))
+
+(doseq [tag [:is-null :not-null :is-empty :not-empty :not]]
+  (lib.hierarchy/derive tag ::unary))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :filters
   [query stage-number _key]
@@ -22,151 +35,86 @@
               (lib.util/join-strings-with-conjunction
                 (i18n/tru "and")
                 (for [filter filters]
-                  (lib.metadata.calculation/display-name query stage-number filter))))))
+                  (lib.metadata.calculation/display-name query stage-number filter :long))))))
 
 ;;; Display names for filter clauses are only really used in generating descriptions for `:case` aggregations or for
 ;;; generating the suggested name for a query.
 
-(defmethod lib.metadata.calculation/display-name-method :segment
-  [query _stage-number [_tag _opts segment-id]]
-  (let [segment-metadata (lib.metadata/segment query segment-id)]
-    (clojure.core/or
-     (:display_name segment-metadata)
-     (some->> (:name segment-metadata) (u.humanization/name->human-readable-name :simple))
-     (i18n/tru "[Unknown Segment]"))))
-
-(defmethod lib.metadata.calculation/display-name-method :and
-  [query stage-number [_tag _opts & subclauses]]
+(defmethod lib.metadata.calculation/display-name-method ::compound
+  [query stage-number [tag _opts & subclauses] style]
   (lib.util/join-strings-with-conjunction
-   (i18n/tru "and")
+   (clojure.core/case tag
+     :and (i18n/tru "and")
+     :or  (i18n/tru "or"))
    (for [clause subclauses]
-     (lib.metadata.calculation/display-name query stage-number clause))))
+     (lib.metadata.calculation/display-name query stage-number clause style))))
 
-(defmethod lib.metadata.calculation/display-name-method :or
-  [query stage-number [_tag _opts & subclauses]]
-  (lib.util/join-strings-with-conjunction
-   (i18n/tru "or")
-   (for [clause subclauses]
-     (lib.metadata.calculation/display-name query stage-number clause))))
-
-;;; the rest of the filter clauses should just use the display name for their first argument I guess. At least this is
-;;; what MLv1 did. Don't want to think about this too much, we can change it later.
-
-(defmethod lib.metadata.calculation/display-name-method :not
-  [query stage-number [_tag _opts expr]]
-  ;; TODO -- This description is sorta wack, we should use [[metabase.mbql.util/negate-filter-clause]] to negate
-  ;; `expr` and then generate a description. That would require porting that stuff to pMBQL tho.
-  (i18n/tru "not {0}" (lib.metadata.calculation/display-name query stage-number expr)))
-
-;;; with > 2 args, `:=` works like SQL `IN`.
-(defmethod lib.metadata.calculation/display-name-method :=
-  [query stage-number [_tag _opts & exprs]]
-  (let [display-names (map (partial lib.metadata.calculation/display-name query stage-number)
+(defmethod lib.metadata.calculation/display-name-method ::varargs
+  [query stage-number [tag _opts & exprs] style]
+  (let [display-names (map #(lib.metadata.calculation/display-name query stage-number % style)
                            exprs)]
     (if (clojure.core/= (count exprs) 2)
-      (i18n/tru "{0} equals {1}" (first display-names) (second display-names))
-      (i18n/tru "{0} equals any of {1}"
-                (first display-names)
-                (lib.util/join-strings-with-conjunction
-                 (i18n/tru "or")
-                 (rest display-names))))))
+      (let [[x y] display-names]
+        (clojure.core/case tag
+          :=  (i18n/tru "{0} equals {1}"         x y)
+          :!= (i18n/tru "{0} does not equal {1}" x y)))
+      ;; with > 2 args, `:=` works like SQL `IN`.
+      ;;
+      ;; with > 2 args, `:!=` works like SQL `NOT IN`.
+      (let [expr   (first display-names)
+            values (lib.util/join-strings-with-conjunction
+                    (i18n/tru "or")
+                    (rest display-names))]
+        (clojure.core/case tag
+          :=  (i18n/tru "{0} equals any of {1}"         expr values)
+          :!= (i18n/tru "{0} does not equal any of {1}" expr values))))))
 
-;;; with > 2 args, `:!=` works like SQL `NOT IN`.
-(defmethod lib.metadata.calculation/display-name-method :!=
-  [query stage-number [_tag _opts & exprs]]
-  (let [display-names (map (partial lib.metadata.calculation/display-name query stage-number)
-                           exprs)]
-    (if (clojure.core/= (count exprs) 2)
-      (i18n/tru "{0} does not equal {1}" (first display-names) (second display-names))
-      (i18n/tru "{0} does not equal any of {1}"
-                (first display-names)
-                (lib.util/join-strings-with-conjunction
-                 (i18n/tru "or")
-                 (rest display-names))))))
-
-(defmethod lib.metadata.calculation/display-name-method :<
-  [query stage-number [_tag _opts x y]]
-  (i18n/tru "{0} is less than {1}"
-            (lib.metadata.calculation/display-name query stage-number x)
-            (lib.metadata.calculation/display-name query stage-number y)))
-
-(defmethod lib.metadata.calculation/display-name-method :<=
-  [query stage-number [_tag _opts x y]]
-  (i18n/tru "{0} is less than or equal to {1}"
-            (lib.metadata.calculation/display-name query stage-number x)
-            (lib.metadata.calculation/display-name query stage-number y)))
-
-(defmethod lib.metadata.calculation/display-name-method :>
-  [query stage-number [_tag _opts x y]]
-  (i18n/tru "{0} is greater than {1}"
-            (lib.metadata.calculation/display-name query stage-number x)
-            (lib.metadata.calculation/display-name query stage-number y)))
-
-(defmethod lib.metadata.calculation/display-name-method :>=
-  [query stage-number [_tag _opts x y]]
-  (i18n/tru "{0} is greater than or equal to {1}"
-            (lib.metadata.calculation/display-name query stage-number x)
-            (lib.metadata.calculation/display-name query stage-number y)))
+(defmethod lib.metadata.calculation/display-name-method ::binary
+  [query stage-number [tag _opts x y] style]
+  (let [x (lib.metadata.calculation/display-name query stage-number x style)
+        y (lib.metadata.calculation/display-name query stage-number y style)]
+    (clojure.core/case tag
+      :<                (i18n/tru "{0} is less than {1}"                x y)
+      :<=               (i18n/tru "{0} is less than or equal to {1}"    x y)
+      :>                (i18n/tru "{0} is greater than {1}"             x y)
+      :>=               (i18n/tru "{0} is greater than or equal to {1}" x y)
+      :starts-with      (i18n/tru "{0} starts with {1}"                 x y)
+      :ends-with        (i18n/tru "{0} ends with {1}"                   x y)
+      :contains         (i18n/tru "{0} contains {1}"                    x y)
+      :does-not-contain (i18n/tru "{0} does not contain {1}"            x y))))
 
 (defmethod lib.metadata.calculation/display-name-method :between
-  [query stage-number [_tag _opts expr x y]]
+  [query stage-number [_tag _opts expr x y] style]
   (i18n/tru "{0} is between {1} and {2}"
-            (lib.metadata.calculation/display-name query stage-number expr)
-            (lib.metadata.calculation/display-name query stage-number x)
-            (lib.metadata.calculation/display-name query stage-number y)))
+            (lib.metadata.calculation/display-name query stage-number expr style)
+            (lib.metadata.calculation/display-name query stage-number x    style)
+            (lib.metadata.calculation/display-name query stage-number y    style)))
 
 (defmethod lib.metadata.calculation/display-name-method :inside
-  [query stage-number [_tag opts lat-expr lon-expr lat-max lon-min lat-min lon-max]]
+  [query stage-number [_tag opts lat-expr lon-expr lat-max lon-min lat-min lon-max] style]
   (lib.metadata.calculation/display-name query stage-number
                                          [:and opts
                                           [:between opts lat-expr lat-min lat-max]
-                                          [:between opts lon-expr lon-min lon-max]]))
+                                          [:between opts lon-expr lon-min lon-max]]
+                                         style))
 
-;;; for whatever reason the descriptions of for `:is-null` and `:not-null` is "is empty" and "is not empty".
-(defmethod lib.metadata.calculation/display-name-method :is-null
-  [query stage-number [_tag _opts expr]]
-  (i18n/tru "{0} is empty" (lib.metadata.calculation/display-name query stage-number expr)))
-
-(defmethod lib.metadata.calculation/display-name-method :not-null
-  [query stage-number [_tag _opts expr]]
-  (i18n/tru "{0} is not empty" (lib.metadata.calculation/display-name query stage-number expr)))
-
-(defmethod lib.metadata.calculation/display-name-method :is-empty
-  [query stage-number [_tag _opts expr]]
-  (i18n/tru "{0} is empty" (lib.metadata.calculation/display-name query stage-number expr)))
-
-(defmethod lib.metadata.calculation/display-name-method :not-empty
-  [query stage-number [_tag _opts expr]]
-  (i18n/tru "{0} is not empty" (lib.metadata.calculation/display-name query stage-number expr)))
-
-(defmethod lib.metadata.calculation/display-name-method :starts-with
-  [query stage-number [_tag _opts whole part]]
-  (i18n/tru "{0} starts with {1}"
-            (lib.metadata.calculation/display-name query stage-number whole)
-            (lib.metadata.calculation/display-name query stage-number part)))
-
-(defmethod lib.metadata.calculation/display-name-method :ends-with
-  [[query stage-number [_tag _opts whole part]]]
-  (i18n/tru "{0} ends with {1}"
-            (lib.metadata.calculation/display-name query stage-number whole)
-            (lib.metadata.calculation/display-name query stage-number part)))
-
-(defmethod lib.metadata.calculation/display-name-method :contains
-  [query stage-number [_tag _opts whole part]]
-  (i18n/tru "{0} contains {1}"
-            (lib.metadata.calculation/display-name query stage-number whole)
-            (lib.metadata.calculation/display-name query stage-number part)))
-
-(defmethod lib.metadata.calculation/display-name-method :does-not-contain
-  [query stage-number [_tag _opts whole part]]
-  (i18n/tru "{0} does not contain {1}"
-            (lib.metadata.calculation/display-name query stage-number whole)
-            (lib.metadata.calculation/display-name query stage-number part)))
+(defmethod lib.metadata.calculation/display-name-method ::unary
+  [query stage-number [tag _opts expr] style]
+  (let [expr (lib.metadata.calculation/display-name query stage-number expr style)]
+    ;; for whatever reason the descriptions of for `:is-null` and `:not-null` is "is empty" and "is not empty".
+    (clojure.core/case tag
+      :is-null   (i18n/tru "{0} is empty"     expr)
+      :not-null  (i18n/tru "{0} is not empty" expr)
+      :is-empty  (i18n/tru "{0} is empty"     expr)
+      :not-empty (i18n/tru "{0} is not empty" expr)
+      ;; TODO -- This description is sorta wack, we should use [[metabase.mbql.util/negate-filter-clause]] to negate
+      ;; `expr` and then generate a description. That would require porting that stuff to pMBQL tho.
+      :not       (i18n/tru "not {0}" expr))))
 
 (defmethod lib.metadata.calculation/display-name-method :time-interval
-  [query stage-number [_tag _opts expr n unit]]
+  [query stage-number [_tag _opts expr n unit] style]
   (i18n/tru "{0} is within {1}"
-            (lib.metadata.calculation/display-name query stage-number expr)
+            (lib.metadata.calculation/display-name query stage-number expr style)
             (lib.temporal-bucket/interval->i18n n unit)))
 
 (lib.common/defop and [x y & more])

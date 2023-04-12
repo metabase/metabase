@@ -15,10 +15,20 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
+(def DisplayNameStyle
+  "Schema for valid values of `display-name-style` as passed to [[display-name-method]].
+
+  * `:default`: normal style used for 99% of FE stuff. For example a column that comes from a joined table might return
+    \"Price\".
+
+  * `:long`: Slightly longer style that includes a little bit of extra context, used for stuff like query suggested
+    name generation. For a joined column, this might look like \"Venues → Price\"."
+  [:enum :default :long])
+
 (defmulti display-name-method
   "Calculate a nice human-friendly display name for something."
-  {:arglists '([query stage-number x])}
-  (fn [_query _stage-number x]
+  {:arglists '([query stage-number x display-name-style])}
+  (fn [_query _stage-number x _display-name-style]
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
@@ -30,20 +40,23 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (mu/defn ^:export display-name :- ::lib.schema.common/non-blank-string
-  "Calculate a nice human-friendly display name for something."
+  "Calculate a nice human-friendly display name for something. See [[DisplayNameStyle]] for a the difference between
+  different `style`s."
   ([query x]
    (display-name query -1 x))
 
+  ([query stage-number x]
+   (display-name query stage-number x :default))
+
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    x]
+    x
+    style        :- DisplayNameStyle]
    (or
     ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
     (:display-name (lib.options/options x))
     (try
-      (display-name-method query stage-number x)
-      ;; if this errors, just catch the error and return something like `Unknown :field`. We shouldn't blow up the
-      ;; whole Query Builder if there's a bug
+      (display-name-method query stage-number x style)
       (catch #?(:clj Throwable :cljs js/Error) e
         (throw (ex-info (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e))
                         {:query query, :x x}
@@ -70,7 +83,7 @@
                         e)))))))
 
 (defmethod display-name-method :default
-  [_query _stage-number x]
+  [_query _stage-number x _stage]
   ;; hopefully this is dev-facing only, so not i18n'ed.
   (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
              (pr-str x)
@@ -101,7 +114,9 @@
 
 (defmulti describe-top-level-key-method
   "Implementation for [[describe-top-level-key]]. Describe part of a stage of a query, e.g. the `:filters` part or the
-  `:aggregation` part. Return `nil` if there is nothing to describe."
+  `:aggregation` part. Return `nil` if there is nothing to describe.
+
+  Implementations that call [[display-name]] should specify the `:long` display name style."
   {:arglists '([query stage-number top-level-key])}
   (fn [_query _stage-number top-level-key]
     top-level-key)
@@ -155,7 +170,7 @@
   (type-of query stage-number expr))
 
 (defmulti metadata-method
-  "Impl for [[metadata]]."
+  "Impl for [[metadata]]. Implementations that call [[display-name]] should use the `:default` display name style."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x))
@@ -213,7 +228,8 @@
         nil))))
 
 (defmulti display-info-method
-  "Implementation for [[display-info]]."
+  "Implementation for [[display-info]]. Implementations that call [[display-name]] should use the `:default` display
+  name style."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x))
