@@ -41,9 +41,9 @@
   (reify UnaryOperator
     (apply [_this cfg]
       (-> ^DialectConfig cfg
-          (.plusOpenParens ["{"])
-          (.plusCloseParens ["}"])
-          (.plusSpecialWordChars ["#"])))))
+          (.plusOpenParens ^"[Ljava.lang.String;" (into-array String ["{"]))
+          (.plusCloseParens ^"[Ljava.lang.String;" (into-array String ["}"]))
+          (.plusSpecialWordChars ^"[Ljava.lang.String;" (into-array String ["#"]))))))
 
 (defn format-sql
   "Return a nicely-formatted version of a `sql` string."
