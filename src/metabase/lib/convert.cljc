@@ -39,11 +39,19 @@
    stage
    stage-keys))
 
+(defn- join-fields->pMBQL [fields]
+  (if ((some-fn string? keyword?) fields)
+    (keyword fields)
+    (for [field fields]
+      (->pMBQL field))))
+
 (defmethod ->pMBQL :mbql/join
   [join]
-  (-> join
-      (update :conditions ->pMBQL)
-      (update :stages ->pMBQL)))
+  (let [join (-> join
+                 (update :conditions ->pMBQL)
+                 (update :stages ->pMBQL))]
+    (cond-> join
+      (:fields join) (update :fields join-fields->pMBQL))))
 
 (defmethod ->pMBQL :dispatch-type/sequential
   [xs]
