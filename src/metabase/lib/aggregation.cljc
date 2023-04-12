@@ -136,7 +136,7 @@
 
 (defmethod lib.metadata.calculation/column-name-method :percentile
   [query stage-number [_percentile _opts x p]]
-  (lib.util/format "p%d_%s" p (lib.metadata.calculation/column-name query stage-number x)))
+  (lib.util/format "p%s_%s" p (lib.metadata.calculation/column-name query stage-number x)))
 
 (lib.hierarchy/derive :percentile ::aggregation)
 

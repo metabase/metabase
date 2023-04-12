@@ -33,9 +33,17 @@
 
 (lib.hierarchy/derive :min :lib.type-of/type-is-type-of-first-arg)
 
+(mr/def ::percentile.percentile
+  [:and
+   {:error/message "valid percentile"}
+   [:ref ::expression/non-integer-real]
+   [:fn
+    {:error/message "percentile must be between zero and one"}
+    #(<= 0 % 1)]])
+
 (mbql-clause/define-tuple-mbql-clause :percentile
-  #_expr [:schema [:ref ::expression/number]]
-  #_percentile [:schema [:ref ::expression/non-integer-real]])
+  #_expr       [:ref ::expression/number]
+  #_percentile [:ref ::percentile.percentile])
 
 (lib.hierarchy/derive :percentile :lib.type-of/type-is-type-of-first-arg)
 
