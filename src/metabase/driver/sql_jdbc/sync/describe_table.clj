@@ -13,6 +13,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.mbql.schema :as mbql.s]
+   [metabase.models :refer [Field]]
    [metabase.models.table :as table]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
@@ -403,14 +404,10 @@
           json-fields           (filter #(isa? (:base-type %) :type/JSON) table-fields)]
       (if (nil? (seq json-fields))
         #{}
-        (let [existing-fields-by-name (m/index-by :name (t2/select 'Field :table_id (u/the-id table)))
-              unfold-json-fields      (filter (fn [field]
-                                                ;; unfold json if the field has json_unfolding = true
-                                                ;; don't unfold json if the field has json_unfolding = false
-                                                ;; otherwise if the field doesn't exist, unfold json by default
-                                                (let [existing-field (existing-fields-by-name (:name field))]
-                                                  (or (:json_unfolding existing-field)
-                                                      (nil? existing-field))))
+        (let [existing-fields-by-name (m/index-by :name (t2/select Field :table_id (u/the-id table)))
+              unfold-json-fields      (remove (fn [field]
+                                                (when-let [existing-field (existing-fields-by-name (:name field))]
+                                                  (false? (:json_unfolding existing-field))))
                                               json-fields)]
           (if (empty? unfold-json-fields)
             #{}

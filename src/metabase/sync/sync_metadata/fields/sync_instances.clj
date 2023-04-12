@@ -42,7 +42,8 @@
   (when (seq new-field-metadatas)
     (t2/insert-returning-pks! Field
       (for [{:keys [database-type database-is-auto-increment database-required base-type effective-type coercion-strategy
-                    field-comment database-position nfc-path visibility-type json-unfolding], field-name :name :as field} new-field-metadatas]
+                    field-comment database-position nfc-path visibility-type json-unfolding]
+             field-name :name :as field} new-field-metadatas]
         (do
           (when (and effective-type
                      base-type
