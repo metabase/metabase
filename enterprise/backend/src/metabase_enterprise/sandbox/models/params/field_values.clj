@@ -79,7 +79,7 @@
 (defenterprise field-id->field-values-for-current-user
   "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
     {field-id FieldValues-instance}
-  Returns `nil` if `field-ids` is empty oo no matching FieldValues exist."
+  Returns `nil` if `field-ids` is empty or no matching FieldValues exist."
   :feature :sandboxes
   [field-ids]
   (let [fields                   (when (seq field-ids)

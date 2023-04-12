@@ -17,6 +17,8 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.interface :as mi]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.util :as u]
@@ -76,10 +78,20 @@
   false)
 
 (defn- field-ids->param-field-values-ignoring-current-user
+  "Given a list of field ids, return a map of field ids to all possible values for that field.
+  If a FieldValues for a field is not found, attempt to create it and return the created result."
   [param-field-ids]
-  (t2/select-fn->fn :field_id identity ['FieldValues :values :human_readable_values :field_id]
-                    :type :full
-                    :field_id [:in param-field-ids]))
+  (let [fv-return-keys    [:values :human_readable_values :field_id]
+        field-id->fvs     (t2/select-fn->fn :field_id identity (cons FieldValues fv-return-keys)
+                                            :type :full
+                                            :field_id [:in param-field-ids])
+        found-field-ids   (keys param-field-ids)
+        missing-field-ids (set/difference (set param-field-ids) (set found-field-ids))
+        missing-fields    (t2/select Field :id [:in missing-field-ids])]
+    (into field-id->fvs
+          (for [field missing-fields
+                :let [field-values (field-values/get-or-create-full-field-values! field)]]
+            [(:id field) (select-keys field-values fv-return-keys)]))))
 
 (defn- field-ids->param-field-values
   "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference.
