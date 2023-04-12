@@ -109,16 +109,18 @@ describe("scenarios > question > download", () => {
       });
 
       cy.findByText("Q1").realHover();
-      cy.findAllByTestId("download-button").eq(0).should("be.visible").click();
+      cy.findAllByTestId("dashcard-menu").eq(0).should("be.visible").click();
 
       popover().within(() => {
+        cy.findByText("Download results").click();
         cy.findByText(".png").click();
       });
 
       cy.findByText("Q2").realHover();
-      cy.findAllByTestId("download-button").eq(1).should("be.visible").click();
+      cy.findAllByTestId("dashcard-menu").eq(1).should("be.visible").click();
 
       popover().within(() => {
+        cy.findByText("Download results").click();
         cy.findByText(".png").should("not.exist");
       });
 

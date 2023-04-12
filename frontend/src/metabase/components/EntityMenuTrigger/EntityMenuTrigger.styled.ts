@@ -10,6 +10,7 @@ export interface EntityMenuIconButtonProps {
     color: string;
     backgroundColor: string;
   };
+  "data-testid"?: string;
 }
 
 export const EntityMenuIconButton = styled(Button)<EntityMenuIconButtonProps>`

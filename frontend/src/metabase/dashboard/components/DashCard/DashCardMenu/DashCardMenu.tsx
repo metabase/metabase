@@ -109,10 +109,11 @@ const DashCardMenu = ({
       items={menuItems}
       renderTrigger={({ open, onClick }: TriggerProps) => (
         <EntityMenuTrigger
+          icon="ellipsis"
           triggerProps={{
             className: !open ? "hover-child hover-child--smooth" : undefined,
+            "data-testid": "dashcard-menu",
           }}
-          icon="ellipsis"
           onClick={onClick}
         />
       )}

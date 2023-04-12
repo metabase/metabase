@@ -83,7 +83,7 @@ const DownloadButton = ({ format, onDownload }: DownloadButtonProps) => {
   return (
     <DownloadButtonRoot onClick={handleClick}>
       <DownloadButtonIcon name={format} format={format} />
-      <DownloadButtonText>{format}</DownloadButtonText>
+      <DownloadButtonText>.{format}</DownloadButtonText>
     </DownloadButtonRoot>
   );
 };
