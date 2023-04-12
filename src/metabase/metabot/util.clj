@@ -47,8 +47,8 @@
   (let [alias-map (update-vals
                    (into {} (map (juxt :id :display_name) result_metadata))
                    (fn [v] (cond-> v
-                                   (str/includes? v " ")
-                                   normalize-name)))
+                             (str/includes? v " ")
+                             normalize-name)))
         {:keys [query]} (let [qp (qp.reducible/combine-middleware
                                   (vec qp/around-middleware)
                                   (fn [query _rff _context]
@@ -87,8 +87,8 @@
   (let [field-vals (when (not= :type/Boolean base_type)
                      (t2/select-one-fn :values FieldValues :field_id id))]
     (-> (cond-> field
-                (seq field-vals)
-                (assoc :possible_values (vec field-vals)))
+          (seq field-vals)
+          (assoc :possible_values (vec field-vals)))
         (assoc :sql_name (normalize-name display_name))
         (dissoc :field_ref :id))))
 
@@ -213,8 +213,8 @@
                                  (if (enums column-name)
                                    (format "%s_%s_t" table-name column-name)
                                    database_type)]
-                                database_required
-                                (conj [:not nil]))))
+                          database_required
+                          (conj [:not nil]))))
         primary-keys [[(into [:primary-key]
                              (comp (filter (comp #{:type/PK} :semantic_type))
                                    (map :name))
