@@ -55,3 +55,12 @@
              {:lib/uuid "202ec127-f7b9-49ce-b785-cd7b96996660"}
              [:field {:temporal-unit :default, :lib/uuid "cde9c9d4-c399-4808-8476-24b65842ba82"} 1]
              :year-of-era]))))
+
+(deftest ^:parallel relative-datetime-test
+  (are [clause] (not (mc/explain :mbql.clause/relative-datetime clause))
+    [:relative-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} -1 :day]
+    [:relative-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} -1 :minute]
+    [:relative-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} 0 :day]
+    [:relative-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} :current :day]
+    [:relative-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} :current :minute]
+    [:relative-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} :current]))
