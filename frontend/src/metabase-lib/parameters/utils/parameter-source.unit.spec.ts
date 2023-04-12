@@ -50,15 +50,15 @@ describe("canListParameterValues", () => {
     expect(canListParameterValues(parameter)).toBeTruthy();
   });
 
-  it("should not list when there are no fields", () => {
+  it("should list even when there are no fields", () => {
     const parameter = createMockUiParameter({
       fields: [],
     });
 
-    expect(canListParameterValues(parameter)).toBeFalsy();
+    expect(canListParameterValues(parameter)).toBeTruthy();
   });
 
-  it("should not list when some fields don't have field values", () => {
+  it("should list when some fields don't have field values", () => {
     const parameter = createMockUiParameter({
       fields: [
         new Field(
@@ -76,7 +76,7 @@ describe("canListParameterValues", () => {
       ],
     });
 
-    expect(canListParameterValues(parameter)).toBeFalsy();
+    expect(canListParameterValues(parameter)).toBeTruthy();
   });
 
   it("should list when all fields have field values but the parameter is configured for search", () => {
