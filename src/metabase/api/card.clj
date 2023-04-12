@@ -32,6 +32,7 @@
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.params :as params]
    [metabase.models.params.custom-values :as custom-values]
+   [metabase.models.permissions :as perms]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
@@ -961,12 +962,11 @@ saved later when it is ready."
   [card-id param-key]
   {card-id   ms/PositiveInt
    param-key ms/NonBlankString}
-  (let [db-id (t2/select-one-fn :database_id Card :id card-id)
-        block-check (try (check-block-permissions {:database db-id})
-                         nil
-                         (catch clojure.lang.ExceptionInfo e {:status 403 :body (ex-message e)}))]
-    (or block-check
-        (param-values (api/read-check Card card-id) param-key nil true))))
+  (let [db-id (t2/select-one-fn :database_id Card :id card-id)]
+    (param-values (api/read-check Card card-id) param-key nil true)
+    (if (contains? @api/*current-user-permissions-set* (perms/database-block-perms-path db-id))
+      (throw (ex-info "You don't have permission to do that." {:status-code 403}))
+      (param-values (api/read-check Card card-id) param-key nil true))))
 
 (api/defendpoint GET "/:card-id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
@@ -979,11 +979,9 @@ saved later when it is ready."
   {card-id   ms/PositiveInt
    param-key ms/NonBlankString
    query     ms/NonBlankString}
-  (let [db-id (t2/select-one-fn :database_id Card :id card-id)
-        block-check (try (check-block-permissions {:database db-id})
-                         nil
-                         (catch clojure.lang.ExceptionInfo e {:status 403 :body (ex-message e)}))]
-    (or block-check
-        (param-values (api/read-check Card card-id) param-key query true))))
+  (let [db-id (t2/select-one-fn :database_id Card :id card-id)]
+    (if (contains? @api/*current-user-permissions-set* (perms/database-block-perms-path db-id))
+      (throw (ex-info "You don't have permission to do that." {:status-code 403}))
+      (param-values (api/read-check Card card-id) param-key query true))))
 
 (api/define-routes)

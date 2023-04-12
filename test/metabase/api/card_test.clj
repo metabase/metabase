@@ -12,7 +12,6 @@
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
-   [metabase.config :as config]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.http-client :as client]
    [metabase.models
@@ -26,6 +25,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision :refer [Revision]]
    [metabase.models.user :refer [User]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
@@ -2680,17 +2680,16 @@
           (mt/user-http-request user :get 200 (param-values-url field-filter-card (:field-values param-keys) "bar")))))))
 
 (deftest parameters-using-old-style-inferred-parameters-from-native-template-tags-when-blocked
-  (when config/ee-available?
-    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
-      (mt/with-temp* [User [blocked-user {:first_name "All-User" :email "mr.all@user.com"}]
-                      PermissionsGroup [all-pg {:name "Test All Users"}]
-                      Permissions [_ {:group_id (:id all-pg) :object (perms/database-block-perms-path (mt/id))}]
-                      PermissionsGroupMembership [_all-pgm {:group_id (:id all-pg) :user_id (:id blocked-user)}]]
-        (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user is blocked is unauthorized"
-          (testing "without search query"
-            (mt/user-http-request blocked-user :get 403 (param-values-url field-filter-card (:field-values param-keys))))
-          (testing "with search query"
-            (mt/user-http-request blocked-user :get 403 (param-values-url field-filter-card (:field-values param-keys) "bar"))))))))
+  (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+    (mt/with-temp* [User [blocked-user {:first_name "All-User" :email "mr.all@user.com"}]
+                    PermissionsGroup [all-pg {:name "Test All Users"}]
+                    Permissions [_ {:group_id (:id all-pg) :object (perms/database-block-perms-path (mt/id))}]
+                    PermissionsGroupMembership [_all-pgm {:group_id (:id all-pg) :user_id (:id blocked-user)}]]
+      (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params when user is blocked is unauthorized"
+        (testing "without search query"
+          (mt/user-http-request blocked-user :get 403 (param-values-url field-filter-card (:field-values param-keys))))
+        (testing "with search query"
+          (mt/user-http-request blocked-user :get 403 (param-values-url field-filter-card (:field-values param-keys) "bar")))))))
 
 (deftest parameters-with-source-is-static-list-test
   (with-card-param-values-fixtures [{:keys [card param-keys]}]
