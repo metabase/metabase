@@ -308,7 +308,7 @@ describe("scenarios > question > native", () => {
 
       cy.findByText("18,760");
 
-      cy.findByLabelText("Close prompt").click();
+      cy.findByLabelText("Close").click();
       cy.findByDisplayValue(PROMPT).should("not.exist");
     });
 
