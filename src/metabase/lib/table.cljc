@@ -5,8 +5,8 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.humanization :as u.humanization]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.humanization :as u.humanization]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/table
   [_query _stage-number table-metadata]
