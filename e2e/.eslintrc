@@ -1,5 +1,6 @@
 {
   "rules": {
+    "no-top-level-find-by-text": 1,
     "import/no-commonjs": 0,
     "no-color-literals": 0
   },
