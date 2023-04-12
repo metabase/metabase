@@ -17,7 +17,7 @@ import {
   VisualizationSettings,
 } from "metabase-types/api";
 import Question from "metabase-lib/Question";
-import { CardMenuIcon, CardMenuRoot } from "./DashCardMenu.styled";
+import { CardMenuRoot } from "./DashCardMenu.styled";
 
 interface OwnProps {
   question: Question;
@@ -84,6 +84,7 @@ const DashCardMenu = ({
     () => [
       canEditQuestion(question) && {
         title: `Edit question`,
+        icon: "pencil",
         link: Urls.question(question.card(), { mode: "notebook" }),
       },
       canDownloadResults(result) && {
@@ -100,7 +101,7 @@ const DashCardMenu = ({
       className={SAVING_CHART_IMAGE_HIDDEN_CLASS}
       items={menuItems}
       triggerProps={{ className: "hover-child hover-child--smooth" }}
-      trigger={<CardMenuIcon name="ellipsis" size={17} />}
+      triggerIcon="ellipsis"
     />
   );
 };
