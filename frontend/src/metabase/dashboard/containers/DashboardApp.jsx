@@ -132,11 +132,7 @@ const DashboardApp = props => {
 
   useUnmount(props.reset);
 
-  const isDirtyDashboard = useCallback(() => {
-    return isEditing && isDirty;
-  }, [isEditing, isDirty]);
-
-  useBeforeUnload(isDirtyDashboard, "You have unsaved changes.");
+  useBeforeUnload(isEditing && isDirty, "You have unsaved changes.");
 
   useEffect(() => {
     if (isLoadingComplete) {
