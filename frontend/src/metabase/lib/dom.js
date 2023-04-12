@@ -513,9 +513,3 @@ export const getEventTarget = event => {
 
   return target;
 };
-export const handleConditionalBrowserNavigationEvent = (e, conditionFn) => {
-  if (conditionFn()) {
-    e.preventDefault();
-    e.returnValue = true;
-  }
-};

@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
-import { useUnmount } from "react-use";
+import { useUnmount, useBeforeUnload } from "react-use";
 
 import { t } from "ttag";
 
@@ -109,7 +109,7 @@ const mapDispatchToProps = {
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
-  const { isRunning, isLoadingComplete, dashboard } = props;
+  const { isRunning, isLoadingComplete, dashboard, isEditing, isDirty } = props;
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
@@ -131,6 +131,12 @@ const DashboardApp = props => {
   const [requestPermission, showNotification] = useWebNotification();
 
   useUnmount(props.reset);
+
+  const isDirtyDashboard = useCallback(() => {
+    return isEditing && isDirty;
+  }, [isEditing, isDirty]);
+
+  useBeforeUnload(isDirtyDashboard, "You have unsaved changes.");
 
   useEffect(() => {
     if (isLoadingComplete) {

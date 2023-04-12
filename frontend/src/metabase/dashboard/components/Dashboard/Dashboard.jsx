@@ -3,10 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
-import {
-  getMainElement,
-  handleConditionalBrowserNavigationEvent,
-} from "metabase/lib/dom";
+import { getMainElement } from "metabase/lib/dom";
 
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
@@ -122,13 +119,6 @@ class Dashboard extends Component {
     SCROLL_THROTTLE_INTERVAL,
   );
 
-  handleOnUnload = e => {
-    handleConditionalBrowserNavigationEvent(
-      e,
-      () => this.props.isEditing && this.props.isDirty,
-    );
-  };
-
   // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
   async componentDidMount() {
     await this.loadDashboard(this.props.dashboardId);
@@ -140,8 +130,6 @@ class Dashboard extends Component {
     main.addEventListener("resize", this.throttleParameterWidgetStickiness, {
       passive: true,
     });
-
-    window.addEventListener("beforeunload", this.handleOnUnload);
   }
 
   async componentDidUpdate(prevProps) {
@@ -161,7 +149,6 @@ class Dashboard extends Component {
     const main = getMainElement();
     main.removeEventListener("scroll", this.throttleParameterWidgetStickiness);
     main.removeEventListener("resize", this.throttleParameterWidgetStickiness);
-    window.removeEventListener("beforeunload", this.handleOnUnload);
   }
 
   async loadDashboard(dashboardId) {
