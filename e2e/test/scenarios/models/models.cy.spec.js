@@ -384,7 +384,6 @@ describe("scenarios > models", () => {
 
       questionInfoButton().click();
 
-      cy.findByTestId("editable-text").click();
       cy.findByPlaceholderText("Add description").type("foo").blur();
       cy.wait("@updateCard");
 
