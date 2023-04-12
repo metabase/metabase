@@ -67,7 +67,8 @@
    (csv-file-with rows "test"))
   ([rows filename]
    (let [contents (str/join "\n" rows)
-         csv-file (File/createTempFile filename ".csv")]
+         csv-file (doto (File/createTempFile filename ".csv")
+                    (.deleteOnExit))]
      (spit csv-file contents)
      csv-file)))
 
