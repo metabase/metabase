@@ -8,7 +8,9 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    #?@(:clj
        ([potemkin :as p]))
@@ -351,7 +353,7 @@
         (recur (str \0 s))
         s))))
 
-(mu/defn truncate-alias :- ::lib.schema.common/non-blank-string
+(mu/defn truncate-alias :- [:string {:min 1, :max 60}]
   "Truncate string `s` if it is longer than [[truncate-alias-max-length-bytes]] and append a hex-encoded CRC-32
   checksum of the original string. Truncated string is truncated to [[truncate-alias-max-length-bytes]]
   minus [[truncated-alias-hash-suffix-length]] characters so the resulting string is
@@ -382,3 +384,19 @@
   "If this query has a `:source-table`, return it."
   [query]
   (-> query :stages first :source-table))
+
+(defn unique-name-generator
+  "Create a new function with the signature
+
+    (f str) => str
+
+  That takes any sort of string identifier (e.g. a column alias or table/join alias) and returns a guaranteed-unique
+  name truncated to 60 characters (actually 51 characters plus a hash)."
+  []
+  (comp truncate-alias
+        (mbql.u/unique-name-generator
+         ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
+         :name-key-fn     u/lower-case-en
+         ;; truncate alias to 60 characters (actually 51 characters plus a hash).
+         :unique-alias-fn (fn [original suffix]
+                            (truncate-alias (str original \_ suffix))))))

@@ -271,16 +271,6 @@
                         (:name metadata)
                         (or (:id metadata) (:name metadata)))])))
 
-(mu/defn ^:private joined-field-desired-alias :- ::lib.schema.common/non-blank-string
-  "Desired alias for a Field that comes from a join, e.g.
-
-    MyJoin__my_field
-
-  You should pass the results thru a unique name function."
-  [join-alias :- ::lib.schema.common/non-blank-string
-   field-name :- ::lib.schema.common/non-blank-string]
-  (lib.util/format "%s__%s" join-alias field-name))
-
 (mu/defn desired-alias :- ::lib.schema.common/non-blank-string
   "Desired alias for a Field e.g.
 
@@ -293,7 +283,7 @@
   You should pass the results thru a unique name function."
   [field-metadata :- lib.metadata/ColumnMetadata]
   (if-let [join-alias (lib.join/current-join-alias field-metadata)]
-    (joined-field-desired-alias join-alias (:name field-metadata))
+    (lib.join/joined-field-desired-alias join-alias (:name field-metadata))
     (:name field-metadata)))
 
 (defn fields
