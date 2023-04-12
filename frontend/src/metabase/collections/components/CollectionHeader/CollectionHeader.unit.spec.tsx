@@ -81,6 +81,10 @@ describe("CollectionHeader", () => {
 
       render(<CollectionHeader {...props} />);
 
+      // show input
+      const editableText = screen.getByText("Description");
+      userEvent.click(editableText);
+
       const input = screen.getByDisplayValue("Description");
       userEvent.clear(input);
       userEvent.type(input, "New description");
