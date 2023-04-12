@@ -61,8 +61,8 @@ const QueryDownloadWidget = ({
           <Tooltip tooltip={t`Download full results`}>
             <DownloadIcon
               name="download"
-              data-testid="download-button"
               size={20}
+              data-testid="download-button"
             />
           </Tooltip>
         )
