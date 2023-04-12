@@ -40,13 +40,21 @@ const QueryDownloadWidget = ({
   result,
   uuid,
   token,
+  visualizationSettings,
   onDownload,
 }: QueryDownloadWidgetProps) => {
   const [{ loading }, handleDownload] = useAsyncFn(
     async (type: string) => {
-      await onDownload({ type, question, result, uuid, token });
+      await onDownload({
+        type,
+        question,
+        result,
+        uuid,
+        token,
+        visualizationSettings,
+      });
     },
-    [question, result, uuid, token],
+    [question, result, uuid, token, visualizationSettings],
   );
 
   return (
