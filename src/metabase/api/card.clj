@@ -41,7 +41,6 @@
    [metabase.models.timeline :as timeline]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
-   [metabase.query-processor.middleware.permissions :refer [check-block-permissions]]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
