@@ -130,6 +130,9 @@ const EditableText = forwardRef(function EditableText(
     }
   };
 
+  const shouldShowMarkdown = isMarkdown && !isInFocus && inputValue;
+  const shouldShowInput = !shouldShowMarkdown;
+
   return (
     <EditableTextRoot
       onClick={isMarkdown ? handleRootElementClick : undefined}
@@ -139,9 +142,8 @@ const EditableText = forwardRef(function EditableText(
       isDisabled={isDisabled}
       data-value={`${displayValue}\u00A0`}
     >
-      {isMarkdown && !isInFocus && <Markdown>{inputValue}</Markdown>}
-
-      {((isMarkdown && isInFocus) || !isMarkdown) && (
+      {shouldShowMarkdown && <Markdown>{inputValue}</Markdown>}
+      {shouldShowInput && (
         <EditableTextArea
           ref={input}
           value={inputValue}
