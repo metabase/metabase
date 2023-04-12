@@ -132,6 +132,8 @@ const DashboardApp = props => {
 
   useUnmount(props.reset);
 
+  // most browsers don't use a custom message anymore, just putting here to retain compatibility
+  // https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event#compatibility_notes
   useBeforeUnload(isEditing && isDirty, "You have unsaved changes.");
 
   useEffect(() => {
