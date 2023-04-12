@@ -1,7 +1,7 @@
 (ns metabase-enterprise.sso.api.saml
   "`/api/saml` endpoints"
   (:require
-   [clojure.string :as s]
+   [clojure.string :as str]
    [compojure.core :refer [PUT]]
    [metabase.api.common :as api]
    [metabase.models.setting :as setting]
@@ -17,7 +17,7 @@
   (let [filename (:saml-keystore-path settings)
         password (:saml-keystore-password settings)
         alias (:saml-keystore-alias settings)]
-    (if (or (every? s/blank? [filename password alias])
+    (if (or (every? str/blank? [filename password alias])
             (saml/has-private-key? {:filename filename
                                     :password password
                                     :alias    alias}))
