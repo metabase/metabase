@@ -1,5 +1,5 @@
 (ns metabase.lib.aggregation
-  (:refer-clojure :exclude [count distinct max min])
+  (:refer-clojure :exclude [count distinct max min var])
   (:require
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -195,6 +195,7 @@
 (lib.common/defop stddev      [x])
 (lib.common/defop sum         [x])
 (lib.common/defop sum-where   [x y])
+(lib.common/defop var         [x])
 
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."
@@ -215,8 +216,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (when-let [aggregation-exprs (not-empty (:aggregation (lib.util/query-stage query stage-number)))]
-     (map-indexed (fn [i aggregation]
-                    (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)]
-                      (assoc metadata :lib/source :source/aggregations, ::aggregation-index i)))
-                  aggregation-exprs))))
+   (some->> (not-empty (:aggregation (lib.util/query-stage query stage-number)))
+            (into [] (map-indexed (fn [i aggregation]
+                                    (-> (lib.metadata.calculation/metadata query stage-number aggregation)
+                                        (assoc :lib/source :source/aggregations, ::aggregation-index i))))))))

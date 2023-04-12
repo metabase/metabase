@@ -2,7 +2,7 @@
   "Currently this is mostly a convenience namespace for REPL and test usage. We'll probably have a slightly different
   version of this for namespace for QB and QP usage in the future -- TBD."
   (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min
-                            + - * / time abs concat replace ref])
+                            + - * / time abs concat replace ref var])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
@@ -20,6 +20,7 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.table :as lib.table]
@@ -62,9 +63,11 @@
    share
    stddev
    sum
-   sum-where]
+   sum-where
+   var]
   [lib.breakout
-   breakout]
+   breakout
+   current-breakouts]
   [lib.dev
    field
    query-for-table-id
@@ -117,9 +120,7 @@
    fields]
   [lib.filter
    filter
-   add-filter
-   current-filter
-   current-filters
+   filters
    and
    or
    not
@@ -157,6 +158,7 @@
    recognize-template-tags
    template-tags]
   [lib.order-by
+   change-direction
    order-by
    order-by-clause
    order-bys
@@ -166,11 +168,12 @@
   [lib.query
    native-query
    query
-   remove-clause
-   replace-clause
    saved-question-query]
   [lib.ref
    ref]
+  [lib.remove-replace
+   remove-clause
+   replace-clause]
   [lib.stage
    append-stage
    drop-stage]

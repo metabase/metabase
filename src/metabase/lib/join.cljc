@@ -165,7 +165,7 @@
 (mu/defn join-condition :- [:or
                             fn?
                             ::lib.schema.expression/boolean]
-  "Create a MBQL condition expression to include as the `:condition` in a join map.
+  "Create a MBQL condition expression to include in the `:conditions` in a join map.
 
   - One arity: return a function that will be resolved later once we have `query` and `stage-number.`
   - Three arity: return the join condition expression immediately."
@@ -182,16 +182,16 @@
    (fn [query stage-number]
      (join-clause query stage-number x)))
 
-  ([x condition]
+  ([x conditions]
    (fn [query stage-number]
-     (join-clause query stage-number x condition)))
+     (join-clause query stage-number x conditions)))
 
   ([query stage-number x]
    (join-clause-method query stage-number x))
 
-  ([query stage-number x condition]
+  ([query stage-number x conditions]
    (cond-> (join-clause query stage-number x)
-     condition (assoc :condition (join-condition query stage-number condition)))))
+     conditions (assoc :conditions (mapv #(join-condition query stage-number %) conditions)))))
 
 (defmulti with-join-fields-method
   "Impl for [[with-join-fields]]."
@@ -218,19 +218,19 @@
 (mu/defn join :- ::lib.schema/query
   "Create a join map as if by [[join-clause]] and add it to a `query`.
 
-  `condition` is currently required, but in the future I think we should make this smarter and try to infer a sensible
-  default condition for things, e.g. when joining a Table B from Table A, if there is an FK relationship between A and
+  `conditions` is currently required, but in the future I think we should make this smarter and try to infer sensible
+  default conditions for things, e.g. when joining a Table B from Table A, if there is an FK relationship between A and
   B, join via that relationship. Not yet implemented!"
   ([query a-join-clause]
-   (join query -1 a-join-clause (:condition a-join-clause)))
+   (join query -1 a-join-clause (:conditions a-join-clause)))
 
-  ([query x condition]
-   (join query -1 x condition))
+  ([query x conditions]
+   (join query -1 x conditions))
 
-  ([query stage-number x condition]
+  ([query stage-number x conditions]
    (let [stage-number (or stage-number -1)
-         new-join     (if (some? condition) ; I guess technically `false` could be a valid join condition?
-                        (join-clause query stage-number x condition)
+         new-join     (if (seq conditions)
+                        (join-clause query stage-number x conditions)
                         (join-clause query stage-number x))]
      (lib.util/update-query-stage query stage-number update :joins (fn [joins]
                                                                      (conj (vec joins) new-join))))))

@@ -5,7 +5,7 @@ import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const Container = styled.div`
-  width: 445px;
+  width: 472px;
 `;
 
 export const FieldWrapper = styled.div`

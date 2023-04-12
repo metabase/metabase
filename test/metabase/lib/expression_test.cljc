@@ -6,7 +6,6 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -82,9 +81,9 @@
         (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                         (lib/expression "myexpr" expr))
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
-          (is (mc/validate ::lib.schema/query query))
-          (is (mc/validate ::schema.common/external-op resolved))
-          (is (= typ (lib.schema.expression/type-of resolved))))))))
+          (testing (pr-str resolved)
+            (is (mc/validate ::lib.schema/query query))
+            (is (= typ (lib.schema.expression/type-of resolved)))))))))
 
 (deftest ^:parallel col-info-expression-ref-test
   (is (=? {:base_type    :type/Integer

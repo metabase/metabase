@@ -34,7 +34,6 @@ describe("issue 18512", () => {
     cy.icon("join_left_outer").click();
 
     popover().within(() => {
-      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Saved Questions").click();
       cy.findByText("18512#2").click();
       cy.wait("@cardQueryMetadata");
