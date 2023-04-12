@@ -175,9 +175,9 @@ export const setParameterFilteringParameters = createThunkAction(
 export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
-  (parameterId, value) => (dispatch, getState) => {
-    const isSettingDraftParameterValues = !getDashboard(getState())
-      .auto_apply_filters;
+  (parameterId, value) => (_dispatch, getState) => {
+    const isSettingDraftParameterValues =
+      getDashboard(getState()).auto_apply_filters === false;
     return { id: parameterId, value, isDraft: isSettingDraftParameterValues };
   },
 );
