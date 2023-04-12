@@ -25,7 +25,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision :refer [Revision]]
    [metabase.models.user :refer [User]]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
