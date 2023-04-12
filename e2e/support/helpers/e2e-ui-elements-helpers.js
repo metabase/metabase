@@ -31,7 +31,7 @@ export function navigationSidebar() {
 }
 
 export function appBar() {
-  return cy.get("#root header").first();
+  return cy.findByTestId("app-bar");
 }
 
 export function openNavigationSidebar() {
