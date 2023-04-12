@@ -35,10 +35,6 @@
   [legacy-query]
   (or
    *skip-conversion-tests*
-   ;; #29747: schema for `:relative-datetime` current without a unit is broken
-   (mbql.u/match-one legacy-query
-     [:relative-datetime :current]
-     "#29747")
    ;; #29897: `:datetime-diff` is not handled correctly.
    (mbql.u/match-one legacy-query
      :datetime-diff

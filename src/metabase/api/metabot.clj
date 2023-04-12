@@ -67,7 +67,7 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/database/:database-id"
-  "Ask Metabot to generate a SQL query given a prompt about a given database."
+  "Ask Metabot to generate a native question given a prompt about a given database."
   [database-id :as {{:keys [question]} :body}]
   {database-id su/IntGreaterThanZero
    question    su/NonBlankString}
@@ -95,6 +95,23 @@
           message
           {:status-code 400
            :message     message}))))))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/database/:database-id/query"
+  "Ask Metabot to generate a SQL query given a prompt about a given database."
+  [database-id :as {{:keys [question]} :body}]
+  {database-id su/IntGreaterThanZero
+   question    su/NonBlankString}
+  (log/infof
+   "Metabot '/api/metabot/database/%s/query' being called with prompt: '%s'"
+   database-id
+   question)
+  (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
+        _       (check-database-support (:id database))
+        context {:database    (metabot-util/denormalize-database database)
+                 :user_prompt question
+                 :prompt_task :infer_native_sql}]
+    (metabot/infer-native-sql-query context)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/feedback"
