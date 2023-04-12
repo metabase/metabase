@@ -58,7 +58,12 @@ export function downloadAndAssert(
 
   cy.log(`Downloading ${fileType} file`);
 
-  cy.findByTestId("download-button").click();
+  if (dashcardId != null && dashboardId != null) {
+    cy.findByTestId("dashcard-menu").click();
+    cy.findByText("Download results").click();
+  } else {
+    cy.findByTestId("download-button").click();
+  }
   // Initiate the file download
   cy.get(downloadClassName).click();
 
