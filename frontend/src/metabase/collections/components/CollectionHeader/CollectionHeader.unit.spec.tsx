@@ -138,6 +138,10 @@ describe("CollectionHeader", () => {
 
       render(<CollectionHeader {...props} />);
 
+      // show input
+      const editableText = screen.getByText("Description");
+      userEvent.click(editableText);
+
       const input = screen.getByDisplayValue("Description");
       expect(input).toBeInTheDocument();
       expect(input).toBeDisabled();

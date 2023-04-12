@@ -141,6 +141,7 @@ const EditableText = forwardRef(function EditableText(
       isEditing={isEditing}
       isDisabled={isDisabled}
       data-value={`${displayValue}\u00A0`}
+      data-testid="editable-text"
     >
       {shouldShowMarkdown && <Markdown>{inputValue}</Markdown>}
       {shouldShowInput && (
