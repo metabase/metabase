@@ -100,7 +100,7 @@
   (slugify (display-name query stage-number x)))
 
 (defmulti describe-top-level-key-method
-  "Implementation for [[describe-top-level-key]]. Describe part of a stage of a query, e.g. the `:filter` part or the
+  "Implementation for [[describe-top-level-key]]. Describe part of a stage of a query, e.g. the `:filters` part or the
   `:aggregation` part. Return `nil` if there is nothing to describe."
   {:arglists '([query stage-number top-level-key])}
   (fn [_query _stage-number top-level-key]
@@ -109,7 +109,7 @@
 
 (def ^:private TopLevelKey
   "In the interest of making this easy to use in JS-land we'll accept either strings or keywords."
-  [:enum :aggregation :breakout :filter :limit :order-by :source-table])
+  [:enum :aggregation :breakout :filters :limit :order-by :source-table])
 
 (mu/defn describe-top-level-key :- [:maybe ::lib.schema.common/non-blank-string]
   "'top-level' here means the top level of an individual stage. Generate a human-friendly string describing a specific
@@ -154,11 +154,6 @@
   [query stage-number [_tag _opts expr]]
   (type-of query stage-number expr))
 
-;;; Ugh
-(defmethod type-of-method :lib/external-op
-  [query stage-number {:keys [operator options args]}]
-  (type-of query stage-number (into [(keyword operator) options] args)))
-
 (defmulti metadata-method
   "Impl for [[metadata]]."
   {:arglists '([query stage-number x])}
@@ -191,7 +186,9 @@
    (metadata query -1 query))
   ([query x]
    (metadata query -1 x))
-  ([query stage-number x]
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    x]
    (metadata-method query stage-number x)))
 
 (mu/defn describe-query :- ::lib.schema.common/non-blank-string
@@ -237,7 +234,9 @@
    [:is_calculated {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it an implicitly joinable one? I.e. is it from a different table that we have not
    ;; already joined, but could implicitly join against?
-   [:is_implicitly_joinable {:optional true} [:maybe :boolean]]])
+   [:is_implicitly_joinable {:optional true} [:maybe :boolean]]
+   ;; For the `:table` field of a Column, is this the source table, or a joined table?
+   [:is_source_table {:optional true} [:maybe :boolean]]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
@@ -275,3 +274,8 @@
 (defmethod display-info-method :default
   [query stage-number x]
   (default-display-info query stage-number x))
+
+(defmethod display-info-method :metadata/table
+  [query stage-number table]
+  (merge (default-display-info query stage-number table)
+         {:is_source_table (= (lib.util/source-table query) (:id table))}))
