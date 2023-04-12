@@ -14,7 +14,10 @@ import {
   addTextBox,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  BEFORE_LOAD_RETURN_VALUE,
+  SAMPLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -23,6 +26,47 @@ function saveDashboard() {
   cy.findByText("Save").click();
   cy.findByText("You're editing this dashboard.").should("not.exist");
 }
+
+// beforeEach(() => {
+//   // before we are inside a hook executing as part of the test
+//   // we can use cy.on methods and create stubs, something
+//   // we could not do from Cypress.on callbacks
+//   const returnValueStub = cy.stub().as('returnValue')
+//
+//   cy.on('window:before:load', (win) => {
+//     let userCallback, ourCallback
+//
+//     console.log("%cwindow:before:load", "color: red; font-size: 20px;");
+//
+//     Object.defineProperty(win, 'onbeforeunload', {
+//       get() {
+//         return ourCallback
+//       },
+//       set(cb) {
+//         userCallback = cb
+//         console.log('user callback', cb)
+//
+//         ourCallback = (e) => {
+//           console.log('proxy beforeunload event', e)
+//
+//           // prevent the application code from assigning value
+//           Object.defineProperty(e, 'returnValue', {
+//             get() {
+//               return BEFORE_LOAD_RETURN_VALUE
+//             },
+//             set: returnValueStub,
+//           })
+//
+//           const result = userCallback(e)
+//           return result
+//         }
+//
+//         // https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event
+//         win.addEventListener('beforeunload', ourCallback)
+//       },
+//     })
+//   })
+// })
 
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
@@ -179,12 +223,15 @@ describe("scenarios > dashboard", () => {
     cy.findByText("Orders, Count");
   });
 
-  it.only("should prompt user with browser popup when trying to leave 'edit dashboard' screen", () => {
+  it("should prompt user with browser popup when trying to leave 'edit dashboard' screen", () => {
+    cy.on("window:before:unload", event => {
+      expect(event.returnValue).to.equal(BEFORE_LOAD_RETURN_VALUE);
+    });
+
     visitDashboard(1);
     editDashboard();
     addTextBox("Hello World");
-    cy.wait(2000)
-    cy.reload()
+    cy.reload();
   });
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {

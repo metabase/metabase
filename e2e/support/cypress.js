@@ -10,6 +10,7 @@ import "cypress-real-events/support";
 import "@cypress/skip-test/support";
 import "@percy/cypress";
 import "./commands";
+import { BEFORE_LOAD_RETURN_VALUE } from "e2e/support/cypress_data";
 
 require("cy-verify-downloads").addCustomCommand();
 
@@ -38,4 +39,8 @@ Cypress.on("test:after:run", (test, runnable) => {
       { title: "Video", value: `../../videos/${Cypress.spec.name}.mp4` },
     );
   }
+});
+
+Cypress.on("window:before:unload", evt => {
+  evt.returnValue = BEFORE_LOAD_RETURN_VALUE;
 });
