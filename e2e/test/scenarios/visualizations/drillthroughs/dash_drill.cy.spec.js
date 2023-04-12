@@ -1,6 +1,6 @@
 // Imported from drillthroughs.e2e.spec.js
 import {
-  addCardToDashboard,
+  addOrUpdateDashboardCard,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -153,7 +153,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
           },
         }).then(({ body: { dashboard_id, card_id } }) => {
           // Adding filter parameter mapping to dashcard
-          addCardToDashboard({
+          addOrUpdateDashboardCard({
             card_id,
             dashboard_id,
             card: {
@@ -193,7 +193,7 @@ function clickScalarCardTitle(card_name) {
 function addCardToNewDashboard(dashboard_name, card_id) {
   cy.createDashboard({ name: dashboard_name }).then(
     ({ body: { id: dashboard_id } }) => {
-      addCardToDashboard({ card_id, dashboard_id });
+      addOrUpdateDashboardCard({ card_id, dashboard_id });
       visitDashboard(dashboard_id);
     },
   );

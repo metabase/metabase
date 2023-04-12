@@ -24,7 +24,7 @@ const DEFAULT_CARD = {
   parameter_mappings: [],
 };
 
-export function addCardToDashboard({ card_id, dashboard_id, card }) {
+export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
   return cy
     .request("PUT", getDashCardApiUrl(dashboard_id), {
       cards: [
@@ -40,8 +40,11 @@ export function addCardToDashboard({ card_id, dashboard_id, card }) {
       body: response.body[0],
     }));
 }
-
-export function addCardsToDashboard({ dashboard_id, cards }) {
+/**
+ * Replaces all the cards on a dashboard with the array given in the `cards` parameter.
+ * Can be used to remove cards (exclude from array), or add/update them.
+ */
+export function updateDashboardCards({ dashboard_id, cards }) {
   return cy.request("PUT", getDashCardApiUrl(dashboard_id), {
     cards: cards.map(card => ({ ...DEFAULT_CARD, ...card })),
   });

@@ -3,7 +3,7 @@ import {
   popover,
   visitDashboard,
   visitIframe,
-  addCardsToDashboard,
+  updateDashboardCards,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -81,7 +81,7 @@ describe.skip("issue 15860", () => {
         name: "Q2",
         query: { "source-table": PRODUCTS_ID },
       }).then(({ body: { id: q2 } }) => {
-        addCardsToDashboard({
+        updateDashboardCards({
           dashboard_id,
           cards: [
             // Add card for second question with parameter mappings

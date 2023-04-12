@@ -11,7 +11,7 @@ import {
   visitDashboard,
   appbar,
   rightSidebar,
-  addCardToDashboard,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -266,7 +266,7 @@ describe("scenarios > dashboard", () => {
           ],
         });
 
-        addCardToDashboard({
+        addOrUpdateDashboardCard({
           card_id: questionId,
           dashboard_id: dashboardId,
           card: {

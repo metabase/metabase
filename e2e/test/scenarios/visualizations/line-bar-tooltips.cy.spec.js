@@ -3,7 +3,7 @@ import {
   popover,
   visitDashboard,
   saveDashboard,
-  addCardToDashboard,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -424,7 +424,7 @@ function setup({ question, addedSeriesQuestion }) {
 
 function setupDashboard(cardId, addedSeriesCardId) {
   return cy.createDashboard().then(({ body: { id: dashboardId } }) => {
-    return addCardToDashboard({
+    return addOrUpdateDashboardCard({
       dashboard_id: dashboardId,
       card_id: cardId,
       card: {

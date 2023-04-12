@@ -1,7 +1,7 @@
 import _ from "underscore";
 import { assoc } from "icepick";
 import {
-  addCardsToDashboard,
+  updateDashboardCards,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -69,7 +69,7 @@ describe("scenarios > dashboard > permissions", () => {
     cy.createDashboard().then(({ body: { id: dashId } }) => {
       dashboardId = dashId;
 
-      addCardsToDashboard({
+      updateDashboardCards({
         dashboard_id: dashId,
         cards: [
           { card_id: firstQuestionId, row: 0, col: 0, size_x: 6, size_y: 6 },

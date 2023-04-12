@@ -5,7 +5,7 @@ import {
   filterWidget,
   showDashboardCardActions,
   visitDashboard,
-  addCardToDashboard,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -524,7 +524,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         });
 
         cy.log("Add question to the dashboard");
-        addCardToDashboard({
+        addOrUpdateDashboardCard({
           card_id: QUESTION_ID,
           dashboard_id: DASHBOARD_ID,
           card: {
@@ -624,7 +624,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         // Add previously added question to the dashboard
-        addCardToDashboard({
+        addOrUpdateDashboardCard({
           card_id: QUESTION_ID,
           dashboard_id: DASHBOARD_ID,
           card: {
@@ -696,7 +696,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           ],
         });
         // Add question to the dashboard
-        addCardToDashboard({
+        addOrUpdateDashboardCard({
           card_id: QUESTION_ID,
           dashboard_id: DASHBOARD_ID,
           card: {
@@ -759,7 +759,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       }).then(({ body: { id: QUESTION2_ID } }) => {
         cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
           // Add the first question to the dashboard
-          addCardToDashboard({
+          addOrUpdateDashboardCard({
             card_id: QUESTION1_ID,
             dashboard_id: DASHBOARD_ID,
             card: {
@@ -945,7 +945,7 @@ function createDashboard(
         ],
       });
 
-      addCardToDashboard({
+      addOrUpdateDashboardCard({
         card_id: questionId,
         dashboard_id: dashboardId,
         card: {

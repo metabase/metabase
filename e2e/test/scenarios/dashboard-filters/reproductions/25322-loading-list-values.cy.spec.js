@@ -1,5 +1,5 @@
 import {
-  addCardToDashboard,
+  addOrUpdateDashboardCard,
   popover,
   restore,
   visitDashboard,
@@ -49,7 +49,7 @@ const createDashboard = () => {
     .then(({ body: { id: card_id } }) => {
       cy.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboard_id } }) => {
-          addCardToDashboard({
+          addOrUpdateDashboardCard({
             dashboard_id,
             card_id,
             card: {

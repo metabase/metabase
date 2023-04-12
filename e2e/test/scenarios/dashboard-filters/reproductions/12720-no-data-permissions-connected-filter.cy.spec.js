@@ -2,7 +2,7 @@ import {
   restore,
   visitDashboard,
   filterWidget,
-  addCardsToDashboard,
+  updateDashboardCards,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -47,7 +47,7 @@ describe("issue 12720", () => {
 
     cy.createNativeQuestion(questionDetails).then(
       ({ body: { id: SQL_ID } }) => {
-        addCardsToDashboard({
+        updateDashboardCards({
           dashboard_id: 1,
           cards: [
             {

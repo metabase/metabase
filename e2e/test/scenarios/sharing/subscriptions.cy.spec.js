@@ -8,7 +8,7 @@ import {
   isOSS,
   visitDashboard,
   sendEmailAndAssert,
-  addCardToDashboard,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
@@ -193,7 +193,7 @@ describe("scenarios > dashboard > subscriptions", () => {
             });
 
             // Add question to the dashboard
-            addCardToDashboard({
+            addOrUpdateDashboardCard({
               dashboard_id: DASHBOARD_ID,
               card_id: QUESTION_ID,
               card: {

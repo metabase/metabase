@@ -8,7 +8,7 @@ import {
   getDashboardCard,
   selectDashboardFilter,
   saveDashboard,
-  addCardsToDashboard,
+  updateDashboardCards,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -26,7 +26,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
       // add the same question twice
-      addCardsToDashboard({
+      updateDashboardCards({
         dashboard_id: id,
         cards: [
           {

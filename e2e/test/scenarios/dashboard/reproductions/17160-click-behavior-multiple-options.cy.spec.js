@@ -1,5 +1,5 @@
 import {
-  addCardToDashboard,
+  addOrUpdateDashboardCard,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -120,7 +120,7 @@ function setup() {
         cy.wrap(dashboardId).as("sourceDashboardId");
 
         // Add the question to the dashboard
-        addCardToDashboard({
+        addOrUpdateDashboardCard({
           dashboard_id: dashboardId,
           card_id: questionId,
         }).then(({ body: { id: dashCardId } }) => {

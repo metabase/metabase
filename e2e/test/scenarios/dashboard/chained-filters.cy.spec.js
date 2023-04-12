@@ -3,7 +3,7 @@ import {
   popover,
   showDashboardCardActions,
   visitDashboard,
-  addCardToDashboard,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -158,7 +158,7 @@ describe("scenarios > dashboard > chained filter", () => {
         });
 
         // Add previously created question to the dashboard
-        addCardToDashboard({
+        addOrUpdateDashboardCard({
           card_id: QUESTION_ID,
           dashboard_id: DASHBOARD_ID,
         }).then(({ body: { id: DASH_CARD_ID } }) => {

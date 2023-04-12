@@ -1,4 +1,8 @@
-import { restore, filterWidget, addCardToDashboard } from "e2e/support/helpers";
+import {
+  restore,
+  filterWidget,
+  addOrUpdateDashboardCard,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -41,7 +45,7 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
         ],
       },
     }).then(({ body: { card_id, dashboard_id } }) => {
-      addCardToDashboard({
+      addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
         card: {

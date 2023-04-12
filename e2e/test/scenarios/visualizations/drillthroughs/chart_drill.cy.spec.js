@@ -10,7 +10,7 @@ import {
   visitQuestion,
   visitDashboard,
   startNewQuestion,
-  addCardToDashboard,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
 import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -134,7 +134,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add the first question to the dashboard");
 
-            addCardToDashboard({
+            addOrUpdateDashboardCard({
               card_id: Q1_ID,
               dashboard_id: DASHBOARD_ID,
               card: {
@@ -203,7 +203,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add the first question to the dashboard");
 
-            addCardToDashboard({
+            addOrUpdateDashboardCard({
               card_id: Q1_ID,
               dashboard_id: DASHBOARD_ID,
               card: {
@@ -532,7 +532,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       display: "pie",
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-        addCardToDashboard({
+        addOrUpdateDashboardCard({
           card_id: QUESTION_ID,
           dashboard_id: DASHBOARD_ID,
           card: {

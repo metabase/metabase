@@ -5,8 +5,8 @@ import {
   summarize,
   visitDashboard,
   rightSidebar,
-  addCardsToDashboard,
-  addCardToDashboard,
+  updateDashboardCards,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -85,7 +85,7 @@ describe("scenarios > question > null", () => {
         size_y: 6,
       },
     }).then(({ body: { card_id, dashboard_id } }) => {
-      addCardToDashboard({
+      addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
         card: {
@@ -130,7 +130,7 @@ describe("scenarios > question > null", () => {
         cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
           cy.log("Add both previously created questions to the dashboard");
 
-          addCardsToDashboard({
+          updateDashboardCards({
             dashboard_id: DASHBOARD_ID,
             cards: [
               { card_id: Q1_ID, row: 0, col: 0, size_x: 6, size_y: 4 },

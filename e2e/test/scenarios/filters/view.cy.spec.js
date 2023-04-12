@@ -3,7 +3,7 @@ import {
   popover,
   visitQuestion,
   visitDashboard,
-  addCardToDashboard,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -52,7 +52,7 @@ describe("scenarios > question > view", () => {
         },
       });
 
-      addCardToDashboard({ dashboard_id: 2, card_id: 4 });
+      addOrUpdateDashboardCard({ dashboard_id: 2, card_id: 4 });
     });
 
     it("should show filters by search for Vendor", () => {

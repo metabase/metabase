@@ -4,7 +4,7 @@ import {
   editDashboard,
   saveDashboard,
   visitDashboard,
-  addCardsToDashboard,
+  updateDashboardCards,
 } from "e2e/support/helpers";
 
 const filter1 = {
@@ -29,7 +29,7 @@ describe("issue 19494", () => {
     cy.signInAsAdmin();
 
     // Add two "Orders" questions to the existing "Orders in a dashboard" dashboard
-    addCardsToDashboard({
+    updateDashboardCards({
       dashboard_id: 1,
       cards: [
         {

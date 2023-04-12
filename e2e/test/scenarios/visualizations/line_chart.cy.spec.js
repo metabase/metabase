@@ -5,7 +5,7 @@ import {
   visitDashboard,
   openSeriesSettings,
   queryBuilderMain,
-  addCardToDashboard,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -417,7 +417,7 @@ describe("scenarios > visualizations > line chart", () => {
       secondCardId,
     } = {}) {
       // Add the first question to the dashboard
-      addCardToDashboard({
+      addOrUpdateDashboardCard({
         dashboard_id: dashboardId,
         card_id: firstCardId,
         card: {

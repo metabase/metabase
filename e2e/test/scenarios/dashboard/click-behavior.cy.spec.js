@@ -1,5 +1,5 @@
 import {
-  addCardToDashboard,
+  addOrUpdateDashboardCard,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -26,7 +26,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         ({ body: { id: nativeId } }) => {
           cy.createDashboard().then(({ body: { id: dashboardId } }) => {
             // Add native question to the dashboard
-            addCardToDashboard({
+            addOrUpdateDashboardCard({
               dashboard_id: dashboardId,
               card_id: nativeId,
               card: {

@@ -1,4 +1,4 @@
-import { restore, popover, addCardsToDashboard } from "e2e/support/helpers";
+import { restore, popover, updateDashboardCards } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -74,7 +74,7 @@ const createQuestionsAndDashboard = () => {
 };
 
 const setFilterMapping = ({ dashboard_id, card1_id, card2_id }) => {
-  return addCardsToDashboard({
+  return updateDashboardCards({
     dashboard_id,
     cards: [
       {

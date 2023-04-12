@@ -1,5 +1,5 @@
 import {
-  addCardToDashboard,
+  addOrUpdateDashboardCard,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -78,7 +78,7 @@ function bookmarkDashboard(dashboardId) {
 }
 
 function createTextDashcard(id) {
-  addCardToDashboard({
+  addOrUpdateDashboardCard({
     dashboard_id: id,
     card_id: null,
     card: {

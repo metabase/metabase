@@ -4,7 +4,7 @@ import {
   visitQuestionAdhoc,
   popover,
   visitDashboard,
-  addCardToDashboard,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -75,7 +75,7 @@ function saveQuestion(name) {
 function addQuestionToDashboardAndVisit() {
   cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
     cy.get("@questionId").then(card_id => {
-      addCardToDashboard({
+      addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
         card: { size_x: 16, size_y: 10 },
