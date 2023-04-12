@@ -991,14 +991,14 @@ saved later when it is ready."
 (defn upload-csv!
   "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
   syncing and scanning the new data, and creating an appropriate model. May throw validation or DB errors."
-  [collection_id filename csv-file]
+  [collection-id filename csv-file]
   (when (not (setting/get :uploads-enabled))
     (throw (Exception. "Uploads are not enabled.")))
-  (collection/check-write-perms-for-collection collection_id)
+  (collection/check-write-perms-for-collection collection-id)
   (let [db-id             (get-setting-or-throw! :uploads-database-id)
         database          (or (t2/select-one Database :id db-id)
                               (throw (Exception. (tru "The uploads database does not exist."))))
-        schema-name       (get-setting-or-throw! :uploads-schema-name)
+        schema-name       (setting/get :uploads-schema-name)
         filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                               filename)
         table-name        (-> (str (get-setting-or-throw! :uploads-table-prefix) filename-prefix)
@@ -1013,7 +1013,7 @@ saved later when it is ready."
         _                 (sync/sync-database! database)
         table-id          (t2/select-one-fn :id Table :name table-name :db_id db-id)]
     (create-card!
-     {:collection_id          collection_id,
+     {:collection_id          collection-id,
       :dataset                true
       :dataset_query          {:database db-id
                                :query    {:source-table table-id}
@@ -1025,9 +1025,10 @@ saved later when it is ready."
 (api/defendpoint ^:multipart POST "/from-csv"
   "Create a table and model populated with the values from the attached CSV."
   [:as {raw-params :params}]
-  (upload-csv! (Integer/parseInt (get raw-params "collection_id"))
-         (get-in raw-params ["file" :filename])
-         (get-in raw-params ["file" :tempfile]))
+  ;; parse-long returns nil with "root", which is what we want anyway
+  (upload-csv! (parse-long (get raw-params "collection_id"))
+               (get-in raw-params ["file" :filename])
+               (get-in raw-params ["file" :tempfile]))
   {:status 200})
 
 (api/define-routes)
