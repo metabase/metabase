@@ -276,7 +276,14 @@
 
 (deftest ^:parallel orderable-explicit-joins-test
   (testing "orderable-columns should include columns from explicit joins"
-    (let [query (lib.tu/query-with-join)]
+    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/join (-> (lib/join-clause
+                                   (meta/table-metadata :categories)
+                                   [(lib/=
+                                      (lib/field "VENUES" "CATEGORY_ID")
+                                      (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                                  (lib/with-join-alias "Cat")
+                                  (lib/with-join-fields :all))))]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
         (is (=? [{:id (meta/id :venues :id) :name "ID"}
                  {:id (meta/id :venues :name) :name "NAME"}
@@ -304,26 +311,58 @@
   (testing "orderable-columns should use metadata for source query."
     (let [query (lib.tu/query-with-card-source-table)]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:name      "ID"
-                  :base_type :type/BigInteger}
-                 {:name      "NAME"
-                  :base_type :type/Text}
-                 {:name      "CATEGORY_ID"
-                  :base_type :type/Integer}
-                 {:name      "LATITUDE"
-                  :base_type :type/Float}
-                 {:name      "LONGITUDE"
-                  :base_type :type/Float}
-                 {:name      "PRICE"
-                  :base_type :type/Integer}]
+        (is (=? [{:name                     "USER_ID"
+                  :display_name             "User ID"
+                  :base_type                :type/Integer
+                  :lib/source               :source/card
+                  :lib/desired-column-alias "USER_ID"}
+                 {:name                     "count"
+                  :display_name             "Count"
+                  :base_type                :type/Integer
+                  :lib/source               :source/card
+                  :lib/desired-column-alias "count"}
+                 {:name                     "ID"
+                  :display_name             "ID"
+                  :base_type                :type/BigInteger
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__ID"}
+                 {:name                     "NAME"
+                  :display_name             "Name"
+                  :base_type                :type/Text
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__NAME"}
+                 {:name                     "LAST_LOGIN"
+                  :display_name             "Last Login"
+                  :base_type                :type/DateTime
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"}]
                 (lib/orderable-columns query)))
         (testing `lib/display-info
-          (is (=? [{:name "ID",          :table {:name "My Card", :display_name "My Card"}}
-                   {:name "NAME",        :table {:name "My Card", :display_name "My Card"}}
-                   {:name "CATEGORY_ID", :table {:name "My Card", :display_name "My Card"}}
-                   {:name "LATITUDE",    :table {:name "My Card", :display_name "My Card"}}
-                   {:name "LONGITUDE",   :table {:name "My Card", :display_name "My Card"}}
-                   {:name "PRICE",       :table {:name "My Card", :display_name "My Card"}}]
+          (is (=? [{:name                   "USER_ID"
+                    :display_name           "User ID"
+                    :table                  {:name "My Card", :display_name "My Card"}
+                    :is_from_previous_stage false
+                    :is_implicitly_joinable false}
+                   {:name                   "count"
+                    :display_name           "Count"
+                    :table                  {:name "My Card", :display_name "My Card"}
+                    :is_from_previous_stage false
+                    :is_implicitly_joinable false}
+                   {:name                   "ID"
+                    :display_name           "ID"
+                    :table                  {:name "USERS", :display_name "Users"}
+                    :is_from_previous_stage false
+                    :is_implicitly_joinable true}
+                   {:name                   "NAME"
+                    :display_name           "Name"
+                    :table                  {:name "USERS", :display_name "Users"}
+                    :is_from_previous_stage false
+                    :is_implicitly_joinable true}
+                   {:name                   "LAST_LOGIN"
+                    :display_name           "Last Login"
+                    :table                  {:name "USERS", :display_name "Users"}
+                    :is_from_previous_stage false
+                    :is_implicitly_joinable true}]
                   (for [col (lib/orderable-columns query)]
                     (lib/display-info query col)))))))))
 
@@ -358,21 +397,21 @@
   (testing "Make sure you can order by a column that comes from a source Card (Saved Question/Model/etc)"
     (let [query (lib.tu/query-with-card-source-table)]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (let [name-col (m/find-first #(= (:name %) "NAME")
+        (let [name-col (m/find-first #(= (:name %) "USER_ID")
                                      (lib/orderable-columns query))]
-          (is (=? {:name      "NAME"
-                   :base_type :type/Text}
+          (is (=? {:name      "USER_ID"
+                   :base_type :type/Integer}
                   name-col))
           (let [query' (lib/order-by query name-col)]
             (is (=? {:stages
                      [{:source-table "card__1"
                        :order-by [[:asc
                                    {}
-                                   [:field {:base-type :type/Text} "NAME"]]]}]}
+                                   [:field {:base-type :type/Integer} "USER_ID"]]]}]}
                     query'))
-            (is (= "My Card, Sorted by Name ascending"
+            (is (= "My Card, Sorted by User ID ascending"
                    (lib/describe-query query')))
-            (is (= ["Name ascending"]
+            (is (= ["User ID ascending"]
                    (for [order-by (lib/order-bys query')]
                      (lib/display-name query' order-by))))))))))
 

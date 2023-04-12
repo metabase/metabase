@@ -93,7 +93,8 @@
                                          :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}]})))
 
 (defn query-with-card-source-table
-  "A query with a `card__<id>` source Table, and a metadata provider that has that Card. Card's name is `My Card`."
+  "A query with a `card__<id>` source Table, and a metadata provider that has that Card. Card's name is `My Card`. Card
+  'exports' two columns, `USER_ID` and `count`."
   []
   {:lib/type     :mbql/query
    :lib/metadata metadata-provider-with-card
