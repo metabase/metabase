@@ -1,18 +1,18 @@
 (ns metabase.metabot.metabot-util-test
   (:require
-    [clojure.string :as str]
-    [clojure.test :refer :all]
-    [metabase.db.query :as mdb.query]
-    [metabase.lib.native :as lib-native]
-    [metabase.metabot-test :as metabot-test]
-    [metabase.metabot.settings :as metabot-settings]
-    [metabase.metabot.util :as metabot-util]
-    [metabase.models :refer [Card Database]]
-    [metabase.query-processor :as qp]
-    [metabase.test :as mt]
-    [metabase.util :as u]
-    [toucan2.core :as t2]
-    [toucan2.tools.with-temp :as t2.with-temp]))
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.db.query :as mdb.query]
+   [metabase.lib.native :as lib-native]
+   [metabase.metabot-test :as metabot-test]
+   [metabase.metabot.settings :as metabot-settings]
+   [metabase.metabot.util :as metabot-util]
+   [metabase.models :refer [Card Database]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest normalize-name-test
   (testing "Testing basic examples of how normalize-name should work"
