@@ -1,18 +1,19 @@
 (ns metabase.metabot.metabot-util-test
   (:require
-   [clojure.string :as str]
-   [clojure.test :refer :all]
-   [metabase.db.query :as mdb.query]
-   [metabase.lib.native :as lib-native]
-   [metabase.metabot-test :as metabot-test]
-   [metabase.metabot.settings :as metabot-settings]
-   [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [Card Database]]
-   [metabase.query-processor :as qp]
-   [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+    [clojure.string :as str]
+    [clojure.test :refer :all]
+    [metabase.db.query :as mdb.query]
+    [metabase.lib.native :as lib-native]
+    [metabase.metabot-test :as metabot-test]
+    [metabase.metabot.settings :as metabot-settings]
+    [metabase.metabot.util :as metabot-util]
+    [metabase.models :refer [Card Database]]
+    [metabase.query-processor :as qp]
+    [metabase.test :as mt]
+    [metabase.test.util :as tu]
+    [metabase.util :as u]
+    [toucan2.core :as t2]
+    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest normalize-name-test
   (testing "Testing basic examples of how normalize-name should work"
@@ -181,15 +182,16 @@
 (deftest create-database-ddl-test
   (testing "Ensure the generated pseudo-ddl contains the expected tables and enums."
     (mt/dataset sample-dataset
-      (let [{:keys [create_database_ddl]} (metabot-util/denormalize-database {:id (mt/id)})]
-        (is (str/includes? create_database_ddl "create type PRODUCTS_CATEGORY_t as enum 'Doohickey', 'Gadget', 'Gizmo', 'Widget';"))
-        (is (str/includes? create_database_ddl "create type PEOPLE_STATE_t as enum 'AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT',"))
-        (is (str/includes? create_database_ddl "create type PEOPLE_SOURCE_t as enum 'Affiliate', 'Facebook', 'Google', 'Organic', 'Twitter';"))
-        (is (str/includes? create_database_ddl "create type REVIEWS_RATING_t as enum '1', '2', '3', '4', '5';"))
-        (is (str/includes? create_database_ddl "CREATE TABLE \"PRODUCTS\" ("))
-        (is (str/includes? create_database_ddl "CREATE TABLE \"ORDERS\" ("))
-        (is (str/includes? create_database_ddl "CREATE TABLE \"PEOPLE\" ("))
-        (is (str/includes? create_database_ddl "CREATE TABLE \"REVIEWS\" ("))))))
+      (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 50]
+        (let [{:keys [create_database_ddl]} (metabot-util/denormalize-database {:id (mt/id)})]
+          (is (str/includes? create_database_ddl "create type PRODUCTS_CATEGORY_t as enum 'Doohickey', 'Gadget', 'Gizmo', 'Widget';"))
+          (is (str/includes? create_database_ddl "create type PEOPLE_STATE_t as enum 'AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT',"))
+          (is (str/includes? create_database_ddl "create type PEOPLE_SOURCE_t as enum 'Affiliate', 'Facebook', 'Google', 'Organic', 'Twitter';"))
+          (is (str/includes? create_database_ddl "create type REVIEWS_RATING_t as enum '1', '2', '3', '4', '5';"))
+          (is (str/includes? create_database_ddl "CREATE TABLE \"PRODUCTS\" ("))
+          (is (str/includes? create_database_ddl "CREATE TABLE \"ORDERS\" ("))
+          (is (str/includes? create_database_ddl "CREATE TABLE \"PEOPLE\" ("))
+          (is (str/includes? create_database_ddl "CREATE TABLE \"REVIEWS\" (")))))))
 
 (deftest inner-query-test
   (testing "Ensure that a dataset-based query contains AS aliases"
