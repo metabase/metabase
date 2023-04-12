@@ -17,7 +17,7 @@
     (compojure/routes
      (compojure/context "/sso" [] sso/routes)))
   (compojure/context
-    "/auth"
+    "/api"
     []
     (compojure/routes
      (compojure/context "/saml" [] saml/routes))))

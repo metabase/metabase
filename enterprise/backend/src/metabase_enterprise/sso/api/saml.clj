@@ -1,15 +1,15 @@
 (ns metabase-enterprise.sso.api.saml
-  "`/auth/saml` endpoints"
+  "`/api/saml` endpoints"
   (:require
+   [clojure.string :as s]
    [compojure.core :refer [PUT]]
    [metabase.api.common :as api]
    [metabase.models.setting :as setting]
-   [metabase.util.schema :as su]
-   [saml20-clj.core :as saml]
-   [toucan2.core :as t2]))
+   [saml20-clj.core :as saml]))
 
 (set! *warn-on-reflection* true)
 
+#dbg
 (api/defendpoint PUT "/settings"
   "Update SAML related settings. You must be a superuser to do this."
   [:as {settings :body}]
@@ -18,7 +18,7 @@
   (let [filename (:saml-keystore-path settings)
         password (:saml-keystore-password settings)
         alias (:saml-keystore-alias settings)]
-    (if (or (every? clojure.string/blank? [filename password alias])
+    (if (or (every? s/blank? [filename password alias])
             (saml/has-private-key? {:filename filename
                                     :password password
                                     :alias    alias}))
