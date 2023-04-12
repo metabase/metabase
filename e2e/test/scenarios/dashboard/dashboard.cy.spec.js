@@ -11,6 +11,7 @@ import {
   visitDashboard,
   appbar,
   rightSidebar,
+  addTextBox,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -176,6 +177,12 @@ describe("scenarios > dashboard", () => {
     saveDashboard();
 
     cy.findByText("Orders, Count");
+  });
+
+  it("should prompt user with browser popup when trying to leave 'edit dashboard' screen", () => {
+    visitDashboard(1);
+    editDashboard();
+    addTextBox("Hello World");
   });
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
