@@ -12,7 +12,6 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
   flex-shrink: 0;
 
   &:hover {
-    /* XXX: standardize button transition, it wouldn't make much sense to only extend this in a single place, since transition should be a part of the design system. */
     transition-property: color, border-color, background-color, opacity,
       visibility;
   }

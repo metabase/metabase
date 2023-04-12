@@ -22,7 +22,6 @@
   border-color: color-mod(var(--color-border) blackness(12%));
   background: var(--color-bg-light);
   transition: all 200ms linear;
-  /* XXX: revert global CSS and implement in styled components instead. */
   transition-property: color, border-color, background-color;
 }
 
