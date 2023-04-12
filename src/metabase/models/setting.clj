@@ -149,8 +149,7 @@
   [:key])
 
 (def ^:private exported-settings
-  '#{admin-email
-     application-colors
+  '#{application-colors
      application-favicon-url
      application-font
      application-font-files
@@ -173,7 +172,6 @@
      humanization-strategy
      landing-page
      loading-message
-     map-tile-server-url
      max-results-bare-rows
      native-query-autocomplete-match-style
      persisted-models-enabled
