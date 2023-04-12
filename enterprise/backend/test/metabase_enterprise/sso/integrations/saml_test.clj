@@ -133,7 +133,10 @@
 (defn call-with-default-saml-config [f]
   (mt/with-temporary-setting-values [saml-enabled                       true
                                      saml-identity-provider-uri         default-idp-uri
-                                     saml-identity-provider-certificate default-idp-cert]
+                                     saml-identity-provider-certificate default-idp-cert
+                                     saml-keystore-path                 nil
+                                     saml-keystore-password             nil
+                                     saml-keystore-alias                nil]
     (f)))
 
 (defn call-with-login-attributes-cleared!
