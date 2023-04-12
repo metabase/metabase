@@ -492,11 +492,10 @@
         (mt/with-temp* [Database [database {:engine :postgres, :details details}]]
           (mt/with-db database
             (is (= [:type/JSON :type/SerializedJSON]
-                   (->> (sql-jdbc.sync/describe-table :postgres database {:name "describe_json_table"})
-                        (:fields)
-                        (:take 1)
-                        (first)
-                        ((juxt :base-type :semantic-type)))))
+                   (-> (sql-jdbc.sync/describe-table :postgres database {:name "describe_json_table"})
+                       :fields
+                       first
+                       ((juxt :base-type :semantic-type)))))
             (sync-tables/sync-tables-and-database! database)
             (is (= '#{{:name              "incoherent_json_val → b",
                        :database-type     "text",
