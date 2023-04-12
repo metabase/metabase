@@ -26,7 +26,7 @@ export interface DownloadQueryResultsOpts {
 interface DownloadQueryResultsParams {
   method: string;
   url: string;
-  params: Record<string, string>;
+  params: URLSearchParams;
 }
 
 export const downloadQueryResults =
@@ -69,7 +69,7 @@ const getDatasetParams = ({
     return {
       method: "GET",
       url: `api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
-      params: Object.fromEntries(Urls.extractQueryParams(params)),
+      params: new URLSearchParams(Urls.extractQueryParams(params)),
     };
   }
 
@@ -78,7 +78,9 @@ const getDatasetParams = ({
     return {
       method: "POST",
       url: `api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query/${type}`,
-      params: { parameters: JSON.stringify(result?.json_query?.parameters) },
+      params: new URLSearchParams({
+        parameters: JSON.stringify(result?.json_query?.parameters ?? []),
+      }),
     };
   }
 
@@ -87,7 +89,22 @@ const getDatasetParams = ({
     return {
       method: "GET",
       url: Urls.publicQuestion(uuid, type),
-      params: { parameters: JSON.stringify(result?.json_query?.parameters) },
+      params: new URLSearchParams({
+        parameters: JSON.stringify(result?.json_query?.parameters ?? []),
+      }),
+    };
+  }
+
+  const isEmbeddedQuestion = token != null;
+  if (isEmbeddedQuestion) {
+    // Parse the query string part of the URL (e.g. the `?key=value` part) into an object. We need to pass them this
+    // way to the `DownloadButton` because it's a form which means we need to insert a hidden `<input>` for each param
+    // we want to pass along. For whatever wacky reason the /api/embed endpoint expect params like ?key=value instead
+    // of like ?params=<json-encoded-params-array> like the other endpoints do.
+    return {
+      method: "GET",
+      url: Urls.embedCard(token, type),
+      params: new URLSearchParams(window.location.search),
     };
   }
 
@@ -96,17 +113,19 @@ const getDatasetParams = ({
     return {
       method: "POST",
       url: `api/card/${cardId}/query/${type}`,
-      params: { parameters: JSON.stringify(result?.json_query?.parameters) },
+      params: new URLSearchParams({
+        parameters: JSON.stringify(result?.json_query?.parameters ?? []),
+      }),
     };
   }
 
   return {
     url: `api/dataset/${type}`,
     method: "POST",
-    params: {
-      query: JSON.stringify(_.omit(result?.json_query, "constraints")),
-      visualization_settings: JSON.stringify(visualizationSettings),
-    },
+    params: new URLSearchParams({
+      query: JSON.stringify(_.omit(result?.json_query ?? {}, "constraints")),
+      visualization_settings: JSON.stringify(visualizationSettings ?? {}),
+    }),
   };
 };
 
@@ -115,14 +134,10 @@ const getDatasetResponse = ({
   method,
   params,
 }: DownloadQueryResultsParams) => {
-  const body = new URLSearchParams(
-    Object.entries(params).filter(([_, value]) => value != null),
-  );
-
   if (method === "POST") {
-    return fetch(url, { method, body });
+    return fetch(url, { method, body: params });
   } else {
-    return fetch(`${url}?${body}`);
+    return fetch(`${url}?${params}`);
   }
 };
 
