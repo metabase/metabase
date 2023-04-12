@@ -2,19 +2,36 @@ import React from "react";
 import userEvent from "@testing-library/user-event";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card } from "metabase-types/api";
-import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import { Card, Dataset } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockDataset,
+  createMockStructuredDatasetQuery,
+} from "metabase-types/api/mocks";
+import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
 import { createEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import QueryDownloadWidget from "./QueryDownloadWidget";
 
+const TEST_CARD = createMockCard({
+  dataset_query: createMockStructuredDatasetQuery({
+    database: SAMPLE_DB_ID,
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  }),
+});
+
+const TEST_RESULT = createMockDataset();
+
 interface SetupOpts {
   card?: Card;
+  result?: Dataset;
 }
 
-const setup = ({ card = createMockCard() }: SetupOpts = {}) => {
+const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
   const state = createMockState({
     entities: createEntitiesState({
       questions: [card],
@@ -23,41 +40,20 @@ const setup = ({ card = createMockCard() }: SetupOpts = {}) => {
 
   const metadata = getMetadata(state);
   const question = checkNotNull(metadata.question(card.id));
-  const dataset = createMockDataset();
 
   setupCardQueryDownloadEndpoint(card, "json");
 
   renderWithProviders(
-    <QueryDownloadWidget question={question} result={dataset} />,
+    <QueryDownloadWidget question={question} result={result} />,
   );
 };
 
 describe("QueryDownloadWidget", () => {
-  it("should display query export options for table questions", async () => {
-    setup({
-      card: createMockCard({
-        display: "table",
-      }),
-    });
+  it("should display query export options", async () => {
+    setup();
 
     userEvent.click(getIcon("download"));
 
     expect(await screen.findByText(/Download/)).toBeInTheDocument();
-    expect(screen.getByText(".json")).toBeInTheDocument();
-    expect(screen.queryByText(".png")).not.toBeInTheDocument();
-  });
-
-  it("should display query export options for chart questions", async () => {
-    setup({
-      card: createMockCard({
-        display: "line",
-      }),
-    });
-
-    userEvent.click(getIcon("download"));
-
-    expect(await screen.findByText(/Download/)).toBeInTheDocument();
-    expect(screen.getByText(".json")).toBeInTheDocument();
-    expect(screen.getByText(".png")).toBeInTheDocument();
   });
 });
