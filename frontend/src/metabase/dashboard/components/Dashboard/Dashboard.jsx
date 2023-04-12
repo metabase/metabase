@@ -17,9 +17,9 @@ import { SIDEBAR_NAME } from "../../constants";
 
 import {
   CardsContainer,
-  DashboardBody,
-  DashboardLoadingAndErrorWrapper,
   DashboardStyled,
+  DashboardLoadingAndErrorWrapper,
+  DashboardBody,
   HeaderContainer,
   ParametersAndCardsContainer,
   ParametersWidgetContainer,
@@ -48,7 +48,6 @@ class Dashboard extends Component {
     isEditable: PropTypes.bool,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
-    isDirty: PropTypes.bool,
     isEditingParameter: PropTypes.bool.isRequired,
     isNavbarOpen: PropTypes.bool.isRequired,
     isHeaderVisible: PropTypes.bool,
