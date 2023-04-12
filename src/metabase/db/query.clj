@@ -30,38 +30,41 @@
    [toucan2.jdbc :as t2.jdbc])
   (:import
    (com.github.vertical_blank.sqlformatter SqlFormatter)
-   (com.github.vertical_blank.sqlformatter.core DialectConfig)
-   (com.github.vertical_blank.sqlformatter.languages Dialect)
-   (java.util.function UnaryOperator)))
+   (com.github.vertical_blank.sqlformatter.languages Dialect)))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private metabase-params-format-config
-  "Add in rules for processing metabase params so that they don't get falsely expanded."
-  (reify UnaryOperator
-    (apply [_this cfg]
-      (-> ^DialectConfig cfg
-          (.plusSpecialWordChars ^"[Ljava.lang.String;" (into-array String ["{{" "#" "}}"]))))))
-
-(defn format-sql
-  "Return a nicely-formatted version of a `sql` string."
+(defn- format-sql*
+  "Return a nicely-formatted version of a generic `sql` string.
+  Note that it will not play well with Metabase parameters."
   (^String [sql]
-   (format-sql sql (mdb.connection/db-type)))
+   (format-sql* sql (mdb.connection/db-type)))
 
   (^String [^String sql db-type]
    (when sql
      (if (isa? driver.impl/hierarchy db-type :sql)
-       (-> (SqlFormatter/of Dialect/MariaDb #_(case db-type
-                              :mysql Dialect/MySql
-                              :postgres Dialect/PostgreSql
-                              :redshift Dialect/Redshift
-                              :sparksql Dialect/SparkSql
-                              :sqlserver Dialect/TSql
-                              :oracle Dialect/PlSql
-                              Dialect/StandardSql))
-           (.extend metabase-params-format-config)
-           (.format sql))
+       (let [formatter (SqlFormatter/of (case db-type
+                                          :mysql Dialect/MySql
+                                          :postgres Dialect/PostgreSql
+                                          :redshift Dialect/Redshift
+                                          :sparksql Dialect/SparkSql
+                                          :sqlserver Dialect/TSql
+                                          :oracle Dialect/PlSql
+                                          Dialect/StandardSql))]
+         (.format formatter sql))
        sql))))
+
+(defn- fix-sql-params
+  "format-sql* will expand parameterized values (e.g. {{#123}} -> { { # 123 } }).
+  This function fixes that by removing whitespace from matching double-curly brace substrings."
+  [sql]
+  (when sql
+    (let [rgx #"\{\s*\{\s*[^\}]+\s*\}\s*\}"]
+      (str/replace sql rgx (fn [match] (str/replace match #"\s*" ""))))))
+
+(def format-sql
+  "Return a nicely-formatted version of a `sql` string."
+  (comp fix-sql-params format-sql*))
 
 (defmulti compile
   "Compile a `query` (e.g. a Honey SQL map) to `[sql & args]`."
