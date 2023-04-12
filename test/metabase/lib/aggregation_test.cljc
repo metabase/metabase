@@ -98,9 +98,8 @@
     {:column-name  "min_ID_plus_2_times_avg_PRICE"
      :display-name "User-specified Name"}
 
-    ;; TODO -- not sure about these column names!
     [:percentile {} (lib.tu/field-clause :venues :id) 0.95]
-    {:column-name "p0.95_ID", :display-name "0.95th percentile of ID"}))
+    {:column-name "p95_ID", :display-name "0.95th percentile of ID"}))
 
 ;;; the following tests use raw legacy MBQL because they're direct ports of JavaScript tests from MLv1 and I wanted to
 ;;; make sure that given an existing query, the expected description was generated correctly.

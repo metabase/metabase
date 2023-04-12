@@ -36,7 +36,7 @@
 (mr/def ::percentile.percentile
   [:and
    {:error/message "valid percentile"}
-   [:ref ::expression/non-integer-real]
+   [:ref ::expression/number]
    [:fn
     {:error/message "percentile must be between zero and one"}
     #(<= 0 % 1)]])

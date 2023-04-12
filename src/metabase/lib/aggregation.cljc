@@ -1,6 +1,7 @@
 (ns metabase.lib.aggregation
   (:refer-clojure :exclude [count distinct max min var])
   (:require
+   [clojure.math :as math]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
@@ -136,7 +137,11 @@
 
 (defmethod lib.metadata.calculation/column-name-method :percentile
   [query stage-number [_percentile _opts x p]]
-  (lib.util/format "p%s_%s" p (lib.metadata.calculation/column-name query stage-number x)))
+  ;; if `p` is between `0` and `1` then just use the first two digits for the name, e.g. `p95_whatever`
+  (let [p (if (< 0 p 1)
+            (int (math/round (* p 100.0)))
+            p)]
+    (lib.util/format "p%s_%s" p (lib.metadata.calculation/column-name query stage-number x))))
 
 (lib.hierarchy/derive :percentile ::aggregation)
 
