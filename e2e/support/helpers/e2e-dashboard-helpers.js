@@ -10,6 +10,10 @@ export function getDashboardCard(index = 0) {
   return cy.get(".DashCard").eq(index);
 }
 
+export function getDashboardCardMenu(index = 0) {
+  return getDashboardCard(index).findByTestId("dashcard-menu");
+}
+
 export function showDashboardCardActions(index = 0) {
   getDashboardCard(index).realHover();
 }

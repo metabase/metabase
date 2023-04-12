@@ -1,3 +1,5 @@
+import { getDashboardCardMenu } from "./e2e-dashboard-helpers";
+
 const xlsx = require("xlsx");
 
 /**
@@ -59,7 +61,7 @@ export function downloadAndAssert(
   cy.log(`Downloading ${fileType} file`);
 
   if (dashcardId != null && dashboardId != null) {
-    cy.findByTestId("dashcard-menu").click();
+    getDashboardCardMenu().click();
     cy.findByText("Download results").click();
   } else {
     cy.findByTestId("download-button").click();

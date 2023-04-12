@@ -8,6 +8,7 @@ import {
   assertSheetRowsCount,
   filterWidget,
   saveDashboard,
+  getDashboardCardMenu,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -109,7 +110,7 @@ describe("scenarios > question > download", () => {
       });
 
       cy.findByText("Q1").realHover();
-      cy.findAllByTestId("dashcard-menu").eq(0).should("be.visible").click();
+      getDashboardCardMenu(0).click();
 
       popover().within(() => {
         cy.findByText("Download results").click();
@@ -117,7 +118,7 @@ describe("scenarios > question > download", () => {
       });
 
       cy.findByText("Q2").realHover();
-      cy.findAllByTestId("dashcard-menu").eq(1).should("be.visible").click();
+      getDashboardCardMenu(1).click();
 
       popover().within(() => {
         cy.findByText("Download results").click();
