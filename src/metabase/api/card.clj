@@ -1001,7 +1001,7 @@ saved later when it is ready."
         schema-name       (setting/get :uploads-schema-name)
         filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                               filename)
-        table-name        (-> (str (get-setting-or-throw! :uploads-table-prefix) filename-prefix)
+        table-name        (-> (str (setting/get :uploads-table-prefix) filename-prefix)
                               upload/unique-table-name)
         schema+table-name (if (str/blank? schema-name)
                             table-name
