@@ -127,9 +127,9 @@
    [:= :current]
    :int])
 
-(mbql-clause/define-tuple-mbql-clause :relative-datetime :- :type/DateTime
-  #_n    [:ref ::relative-datetime.amount]
-  #_unit [:ref ::temporal-bucketing/unit.date-time.interval])
+(mbql-clause/define-catn-mbql-clause :relative-datetime :- :type/DateTime
+  [:n    [:schema [:ref ::relative-datetime.amount]]]
+  [:unit [:? [:schema [:ref ::temporal-bucketing/unit.date-time.interval]]]])
 
 (mbql-clause/define-tuple-mbql-clause :time :- :type/Time
   #_:timestr [:schema [:ref ::expression/string]]
