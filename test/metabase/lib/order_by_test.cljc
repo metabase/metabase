@@ -311,26 +311,58 @@
   (testing "orderable-columns should use metadata for source query."
     (let [query (lib.tu/query-with-card-source-table)]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:name      "ID"
-                  :base_type :type/BigInteger}
-                 {:name      "NAME"
-                  :base_type :type/Text}
-                 {:name      "CATEGORY_ID"
-                  :base_type :type/Integer}
-                 {:name      "LATITUDE"
-                  :base_type :type/Float}
-                 {:name      "LONGITUDE"
-                  :base_type :type/Float}
-                 {:name      "PRICE"
-                  :base_type :type/Integer}]
+        (is (=? [{:name                     "USER_ID"
+                  :display_name             "User ID"
+                  :base_type                :type/Integer
+                  :lib/source               :source/card
+                  :lib/desired-column-alias "USER_ID"}
+                 {:name                     "count"
+                  :display_name             "Count"
+                  :base_type                :type/Integer
+                  :lib/source               :source/card
+                  :lib/desired-column-alias "count"}
+                 {:name                     "ID"
+                  :display_name             "ID"
+                  :base_type                :type/BigInteger
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__ID"}
+                 {:name                     "NAME"
+                  :display_name             "Name"
+                  :base_type                :type/Text
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__NAME"}
+                 {:name                     "LAST_LOGIN"
+                  :display_name             "Last Login"
+                  :base_type                :type/DateTime
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"}]
                 (lib/orderable-columns query)))
         (testing `lib/display-info
-          (is (=? [{:name "ID",          :table {:name "My Card", :display_name "My Card"}}
-                   {:name "NAME",        :table {:name "My Card", :display_name "My Card"}}
-                   {:name "CATEGORY_ID", :table {:name "My Card", :display_name "My Card"}}
-                   {:name "LATITUDE",    :table {:name "My Card", :display_name "My Card"}}
-                   {:name "LONGITUDE",   :table {:name "My Card", :display_name "My Card"}}
-                   {:name "PRICE",       :table {:name "My Card", :display_name "My Card"}}]
+          (is (=? [{:name                   "USER_ID"
+                    :display_name           "User ID"
+                    :table                  {:name "My Card", :display_name "My Card"}
+                    :is_from_previous_stage false
+                    :is_implicitly_joinable false}
+                   {:name                   "count"
+                    :display_name           "Count"
+                    :table                  {:name "My Card", :display_name "My Card"}
+                    :is_from_previous_stage false
+                    :is_implicitly_joinable false}
+                   {:name                   "ID"
+                    :display_name           "ID"
+                    :table                  {:name "USERS", :display_name "Users"}
+                    :is_from_previous_stage false
+                    :is_implicitly_joinable true}
+                   {:name                   "NAME"
+                    :display_name           "Name"
+                    :table                  {:name "USERS", :display_name "Users"}
+                    :is_from_previous_stage false
+                    :is_implicitly_joinable true}
+                   {:name                   "LAST_LOGIN"
+                    :display_name           "Last Login"
+                    :table                  {:name "USERS", :display_name "Users"}
+                    :is_from_previous_stage false
+                    :is_implicitly_joinable true}]
                   (for [col (lib/orderable-columns query)]
                     (lib/display-info query col)))))))))
 
@@ -365,21 +397,21 @@
   (testing "Make sure you can order by a column that comes from a source Card (Saved Question/Model/etc)"
     (let [query (lib.tu/query-with-card-source-table)]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (let [name-col (m/find-first #(= (:name %) "NAME")
+        (let [name-col (m/find-first #(= (:name %) "USER_ID")
                                      (lib/orderable-columns query))]
-          (is (=? {:name      "NAME"
-                   :base_type :type/Text}
+          (is (=? {:name      "USER_ID"
+                   :base_type :type/Integer}
                   name-col))
           (let [query' (lib/order-by query name-col)]
             (is (=? {:stages
                      [{:source-table "card__1"
                        :order-by [[:asc
                                    {}
-                                   [:field {:base-type :type/Text} "NAME"]]]}]}
+                                   [:field {:base-type :type/Integer} "USER_ID"]]]}]}
                     query'))
-            (is (= "My Card, Sorted by Name ascending"
+            (is (= "My Card, Sorted by User ID ascending"
                    (lib/describe-query query')))
-            (is (= ["Name ascending"]
+            (is (= ["User ID ascending"]
                    (for [order-by (lib/order-bys query')]
                      (lib/display-name query' order-by))))))))))
 
@@ -628,20 +660,27 @@
   (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")]
     (is (=? [{:semantic_type          :type/PK
               :is_calculated          false
-              :table                  {:name "VENUES", :display_name "Venues"}
+              :table                  {:name "VENUES", :display_name "Venues" :is_source_table true}
               :name                   "ID"
               :is_from_previous_stage false
               :is_implicitly_joinable false
               :effective_type         :type/BigInteger
               :is_from_join           false
               :display_name           "ID"}
-             {:display_name "Name"}
-             {:display_name "Category ID"}
-             {:display_name "Latitude"}
-             {:display_name "Longitude"}
-             {:display_name "Price"}
-             {:display_name "ID"}
-             {:display_name "Name"}]
+             {:display_name "Name"
+              :table {:is_source_table true}}
+             {:display_name "Category ID"
+              :table {:is_source_table true}}
+             {:display_name "Latitude"
+              :table {:is_source_table true}}
+             {:display_name "Longitude"
+              :table {:is_source_table true}}
+             {:display_name "Price"
+              :table {:is_source_table true}}
+             {:display_name "ID"
+              :table {:name "CATEGORIES" :display_name "Categories" :is_source_table false}}
+             {:display_name "Name"
+              :table {:name "CATEGORIES" :display_name "Categories" :is_source_table false}}]
             (for [col (lib/orderable-columns query)]
               (lib/display-info query col))))))
 
@@ -659,3 +698,15 @@
               :direction      :asc}]
             (for [order-by (lib/order-bys query')]
               (lib/display-info query' order-by))))))
+
+(deftest ^:parallel change-direction-test
+  (doseq [[dir opposite] {:asc :desc, :desc :asc}]
+    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/order-by (lib/field "VENUES" "ID") dir))
+          current-order-by (first (lib/order-bys query))
+          new-query (lib/change-direction query current-order-by)
+          new-order-by (first (lib/order-bys new-query))]
+      (is (= dir (first current-order-by)))
+      (is (= opposite (first new-order-by)))
+      (is (= (assoc-in query [:stages 0 :order-by 0 0] opposite)
+             new-query)))))

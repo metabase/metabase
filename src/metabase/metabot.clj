@@ -84,3 +84,19 @@
                   (format "%s:%s" prompt_template version)))
         (log/infof "No model inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))
+
+(defn infer-native-sql-query
+  "Given a database and user prompt, determine a sql query to answer my question."
+  [{:keys [database user_prompt prompt_template_versions] :as context}]
+  (log/infof "Metabot is inferring sql for database '%s' with prompt '%s'." (:id database) user_prompt)
+  (if (metabot-settings/is-metabot-enabled)
+    (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)]
+      (if-some [sql (metabot-util/find-result
+                     metabot-util/extract-sql
+                     (metabot-client/invoke-metabot prompt))]
+        {:sql                      sql
+         :prompt_template_versions (conj
+                                    (vec prompt_template_versions)
+                                    (format "%s:%s" prompt_template version))}
+        (log/infof "No sql inferred for database '%s' with prompt '%s'." (:id database) user_prompt)))
+    (log/warn "Metabot is not enabled")))

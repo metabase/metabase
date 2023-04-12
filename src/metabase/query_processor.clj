@@ -108,9 +108,6 @@
                          [column-level-perms-check :as ee.sandbox.columns]
                          [row-level-restrictions :as ee.sandbox.rows]]))
 
-(when-not config/is-prod?
-  (classloader/require 'metabase.query-processor-test.test-mlv2))
-
 (def ^:private pre-processing-middleware
   "Pre-processing middleware. Has the form
 

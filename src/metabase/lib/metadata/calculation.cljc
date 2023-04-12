@@ -163,11 +163,16 @@
 
 (defmethod metadata-method :default
   [query stage-number x]
-  {:lib/type     :metadata/field
-   ;; TODO -- effective-type
-   :base_type    (type-of query stage-number x)
-   :name         (column-name query stage-number x)
-   :display_name (display-name query stage-number x)})
+  (try
+    {:lib/type     :metadata/field
+     ;; TODO -- effective-type
+     :base_type    (type-of query stage-number x)
+     :name         (column-name query stage-number x)
+     :display_name (display-name query stage-number x)}
+    (catch #?(:clj Throwable :cljs js/Error) e
+      (throw (ex-info (i18n/tru "Error calculating metadata {0}" (ex-message e))
+                      {:query query, :stage-number stage-number, :x x}
+                      e)))))
 
 (def ColumnMetadataWithSource
   "Schema for the column metadata that should be returned by [[metadata]]."
@@ -234,7 +239,9 @@
    [:is_calculated {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it an implicitly joinable one? I.e. is it from a different table that we have not
    ;; already joined, but could implicitly join against?
-   [:is_implicitly_joinable {:optional true} [:maybe :boolean]]])
+   [:is_implicitly_joinable {:optional true} [:maybe :boolean]]
+   ;; For the `:table` field of a Column, is this the source table, or a joined table?
+   [:is_source_table {:optional true} [:maybe :boolean]]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
@@ -252,23 +259,33 @@
   "Default implementation of [[display-info-method]], available in case you want to use this in a different
   implementation and add additional information to it."
   [query stage-number x]
-  (let [x-metadata (metadata query stage-number x)]
-    (merge
-     ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display_name`
-     ;; everywhere? Determine whether or not this is the case.
-     (select-keys x-metadata [:name :display_name :semantic_type])
-     ;; don't return `:base_type`, FE should just use `:effective_type` everywhere and not even need to know
-     ;; `:base_type` exists.
-     (when-let [effective-type ((some-fn :effective_type :base_type) x-metadata)]
-       {:effective_type effective-type})
-     (when-let [table-id (:table_id x-metadata)]
-       {:table (display-info query stage-number (lib.metadata/table query table-id))})
-     (when-let [source (:lib/source x-metadata)]
-       {:is_from_previous_stage (= source :source/previous-stage)
-        :is_from_join           (= source :source/joins)
-        :is_calculated          (= source :source/expressions)
-        :is_implicitly_joinable (= source :source/implicitly-joinable)}))))
+  (try
+    (let [x-metadata (metadata query stage-number x)]
+      (merge
+       ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display_name`
+       ;; everywhere? Determine whether or not this is the case.
+       (select-keys x-metadata [:name :display_name :semantic_type])
+       ;; don't return `:base_type`, FE should just use `:effective_type` everywhere and not even need to know
+       ;; `:base_type` exists.
+       (when-let [effective-type ((some-fn :effective_type :base_type) x-metadata)]
+         {:effective_type effective-type})
+       (when-let [table-id (:table_id x-metadata)]
+         {:table (display-info query stage-number (lib.metadata/table query table-id))})
+       (when-let [source (:lib/source x-metadata)]
+         {:is_from_previous_stage (= source :source/previous-stage)
+          :is_from_join           (= source :source/joins)
+          :is_calculated          (= source :source/expressions)
+          :is_implicitly_joinable (= source :source/implicitly-joinable)})))
+    (catch #?(:clj Throwable :cljs js/Error) e
+      (throw (ex-info (i18n/tru "Error calculating display info: {0}" (ex-message e))
+                      {:query query, :stage-number stage-number, :x x}
+                      e)))))
 
 (defmethod display-info-method :default
   [query stage-number x]
   (default-display-info query stage-number x))
+
+(defmethod display-info-method :metadata/table
+  [query stage-number table]
+  (merge (default-display-info query stage-number table)
+         {:is_source_table (= (lib.util/source-table query) (:id table))}))
