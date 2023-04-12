@@ -11,8 +11,8 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   #?(:cljs (:require-macros [metabase.lib.filter]))))
+   [metabase.util.malli :as mu])
+  #?(:cljs (:require-macros [metabase.lib.filter])))
 
 (comment metabase.lib.schema/keep-me)
 

@@ -10,7 +10,7 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(deftest ^:parallel test
+(deftest ^:parallel basic-test
   (let [query   (lib/query-for-table-name meta/metadata-provider "VENUES")
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
