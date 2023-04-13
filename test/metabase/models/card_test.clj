@@ -96,13 +96,13 @@
 
 (deftest database-id-test
   (tt/with-temp :model/Card [{:keys [id]} {:name          "some name"
-                                       :dataset_query (dummy-dataset-query (mt/id))
-                                       :database_id   (mt/id)}]
+                                           :dataset_query (dummy-dataset-query (mt/id))
+                                           :database_id   (mt/id)}]
     (testing "before update"
       (is (= {:name "some name", :database_id (mt/id)}
              (into {} (t2/select-one [:model/Card :name :database_id] :id id)))))
     (t2/update! :model/Card id {:name          "another name"
-                            :dataset_query (dummy-dataset-query (mt/id))})
+                                :dataset_query (dummy-dataset-query (mt/id))})
     (testing "after update"
       (is (= {:name "another name" :database_id (mt/id)}
              (into {} (t2/select-one [:model/Card :name :database_id] :id id)))))))
@@ -141,7 +141,7 @@
     (testing "unhappy paths\n"
       (testing "should not attempt to delete if it's not a model"
         (t2.with-temp/with-temp [:model/Card {id :id} {:dataset       false
-                                                   :dataset_query (mt/mbql-query users)}]
+                                                       :dataset_query (mt/mbql-query users)}]
           (with-redefs [card/disable-implicit-action-for-model! (fn [& _args]
                                                                   (throw (ex-info "Should not be called" {})))]
             (is (= 1 (t2/update! 'Card :id id {:dataset_query (mt/mbql-query users {:limit 1})}))))))
@@ -233,7 +233,7 @@
   (testing "Should normalize result metadata keys when fetching a Card from the DB"
     (let [metadata (qp/query->expected-cols (mt/mbql-query venues))]
       (mt/with-temp :model/Card [{card-id :id} {:dataset_query   (mt/mbql-query venues)
-                                            :result_metadata metadata}]
+                                                :result_metadata metadata}]
         (is (= (mt/derecordize metadata)
                (mt/derecordize (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))
 
@@ -244,7 +244,7 @@
                           (f (t2/select-one-fn :result_metadata :model/Card :id card-id))))
            "updating" (fn [changes f]
                         (mt/with-temp :model/Card [{card-id :id} {:dataset_query   (mt/mbql-query checkins)
-                                                              :result_metadata (qp/query->expected-cols (mt/mbql-query checkins))}]
+                                                                  :result_metadata (qp/query->expected-cols (mt/mbql-query checkins))}]
                           (t2/update! :model/Card card-id changes)
                           (f (t2/select-one-fn :result_metadata :model/Card :id card-id))))}]
 
@@ -367,7 +367,7 @@
            (mt/with-temp :model/Card [_ {:parameters {:a :b}}])))
 
      (mt/with-temp :model/Card [card {:parameters [{:id   "valid-id"
-                                                :type "id"}]}]
+                                                    :type "id"}]}]
        (is (some? card))))
 
     (testing "updating"
@@ -377,7 +377,7 @@
              #":parameters must be a sequence of maps with :id and :type keys"
              (t2/update! :model/Card id {:parameters [{:id 100}]})))
         (is (pos? (t2/update! :model/Card id {:parameters [{:id   "new-valid-id"
-                                                        :type "id"}]})))))))
+                                                            :type "id"}]})))))))
 
 (deftest normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
@@ -385,7 +385,7 @@
                                [:field-id 1000]              [:field 1000 nil]}]
       (testing (format "target = %s" (pr-str target))
         (mt/with-temp :model/Card [{card-id :id} {:parameter_mappings [{:parameter_id     "_CATEGORY_NAME_"
-                                                                    :target target}]}]
+                                                                        :target target}]}]
 
           (is (= [{:parameter_id     "_CATEGORY_NAME_"
                    :target expected}]
@@ -400,7 +400,7 @@
            (mt/with-temp :model/Card [_ {:parameter_mappings {:a :b}}])))
 
      (mt/with-temp :model/Card [card {:parameter_mappings [{:parameter_id "valid-id"
-                                                        :target       [:field 1000 nil]}]}]
+                                                            :target       [:field 1000 nil]}]}]
        (is (some? card))))
 
     (testing "updating"
@@ -411,13 +411,13 @@
              (t2/update! :model/Card id {:parameter_mappings [{:parameter_id 100}]})))
 
         (is (pos? (t2/update! :model/Card id {:parameter_mappings [{:parameter_id "new-valid-id"
-                                                                :target       [:field 1000 nil]}]})))))))
+                                                                    :target       [:field 1000 nil]}]})))))))
 
 (deftest normalize-parameter-mappings-test
   (testing ":parameter_mappings should get normalized when coming out of the DB"
     (mt/with-temp :model/Card [{card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
-                                                                :card_id      1
-                                                                :target       [:dimension [:field-id 1]]}]}]
+                                                                    :card_id      1
+                                                                    :target       [:dimension [:field-id 1]]}]}]
       (is (= [{:parameter_id "22486e00",
                :card_id      1,
                :target       [:dimension [:field 1 nil]]}]
@@ -441,9 +441,9 @@
       (tt/with-temp* [:model/Card  [{source-card-id-1 :id}]
                       :model/Card  [{source-card-id-2 :id}]
                       :model/Card  [{card-id :id}
-                                {:parameters [(merge default-params
-                                                     {:values_source_type    "card"
-                                                      :values_source_config {:card_id source-card-id-1}})]}]]
+                                    {:parameters [(merge default-params
+                                                         {:values_source_type    "card"
+                                                          :values_source_config {:card_id source-card-id-1}})]}]]
         (is (=? [{:card_id                   source-card-id-1
                   :parameterized_object_type :card
                   :parameterized_object_id   card-id
@@ -452,8 +452,8 @@
 
         (testing "update values_source_config.card_id will update ParameterCard"
           (t2/update! :model/Card card-id {:parameters [(merge default-params
-                                                        {:values_source_type    "card"
-                                                         :values_source_config {:card_id source-card-id-2}})]})
+                                                         {:values_source_type    "card"
+                                                          :values_source_config {:card_id source-card-id-2}})]})
           (is (=? [{:card_id                   source-card-id-2
                     :parameterized_object_type :card
                     :parameterized_object_id   card-id
@@ -468,13 +468,13 @@
     (testing "Delete a card will delete any ParameterCard that linked to it"
       (tt/with-temp* [:model/Card  [{source-card-id :id}]
                       :model/Card  [{card-id-1 :id}
-                                {:parameters [(merge default-params
-                                                     {:values_source_type    "card"
-                                                      :values_source_config {:card_id source-card-id}})]}]
+                                    {:parameters [(merge default-params
+                                                         {:values_source_type    "card"
+                                                          :values_source_config {:card_id source-card-id}})]}]
                       :model/Card  [{card-id-2 :id}
-                                {:parameters [(merge default-params
-                                                     {:values_source_type    "card"
-                                                      :values_source_config {:card_id source-card-id}})]}]]
+                                    {:parameters [(merge default-params
+                                                         {:values_source_type    "card"
+                                                          :values_source_config {:card_id source-card-id}})]}]]
         ;; makes sure we have ParameterCard to start with
         (is (=? [{:card_id                   source-card-id
                   :parameterized_object_type :card
@@ -493,17 +493,17 @@
   (mt/dataset sample-dataset
     (mt/with-temp*
       [:model/Card      [{source-card-id :id} (merge (mt/card-with-source-metadata-for-query
-                                                  (mt/mbql-query products {:fields [(mt/$ids $products.title)
-                                                                                    (mt/$ids $products.category)]
-                                                                           :limit 5}))
-                                              {:database_id (mt/id)
-                                               :table_id    (mt/id :products)})]
+                                                      (mt/mbql-query products {:fields [(mt/$ids $products.title)
+                                                                                        (mt/$ids $products.category)]
+                                                                               :limit 5}))
+                                               {:database_id (mt/id)
+                                                :table_id    (mt/id :products)})]
        :model/Card      [card                 {:parameters [{:name                  "Param 1"
-                                                         :id                    "param_1"
-                                                         :type                  "category"
-                                                         :values_source_type    "card"
-                                                         :values_source_config {:card_id source-card-id
-                                                                                :value_field (mt/$ids $products.title)}}]}]
+                                                             :id                    "param_1"
+                                                             :type                  "category"
+                                                             :values_source_type    "card"
+                                                             :values_source_config {:card_id source-card-id
+                                                                                    :value_field (mt/$ids $products.title)}}]}]
        Dashboard [dashboard            {:parameters [{:name       "Param 2"
                                                       :id         "param_2"
                                                       :type       "category"
@@ -569,7 +569,7 @@
   (testing "cards which have another card as the source depend on that card"
     (mt/with-temp* [:model/Card [card1 {:name "base card"}]
                     :model/Card [card2 {:name "derived card"
-                                    :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]]
+                                        :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]]
       (is (empty? (serdes/descendants "Card" (:id card1))))
       (is (= #{["Card" (:id card1)]}
              (serdes/descendants "Card" (:id card2))))))
@@ -577,22 +577,22 @@
   (testing "cards that has a native template tag"
     (mt/with-temp* [NativeQuerySnippet [snippet {:name "category" :content "category = 'Gizmo'"}]
                     :model/Card               [card {:name          "Business Card"
-                                                 :dataset_query {:native
-                                                                 {:template-tags {:snippet {:name         "snippet"
-                                                                                            :type         :snippet
-                                                                                            :snippet-name "snippet"
-                                                                                            :snippet-id   (:id snippet)}}
-                                                                  :query "select * from products where {{snippet}}"}}}]]
+                                                     :dataset_query {:native
+                                                                     {:template-tags {:snippet {:name         "snippet"
+                                                                                                :type         :snippet
+                                                                                                :snippet-name "snippet"
+                                                                                                :snippet-id   (:id snippet)}}
+                                                                      :query "select * from products where {{snippet}}"}}}]]
       (is (= #{["NativeQuerySnippet" (:id snippet)]}
              (serdes/descendants "Card" (:id card))))))
 
   (testing "cards which have parameter's source is another card"
     (mt/with-temp* [:model/Card [card1 {:name "base card"}]
                     :model/Card [card2 {:name       "derived card"
-                                    :parameters [{:id                   "valid-id"
-                                                  :type                 "id"
-                                                  :values_source_type   "card"
-                                                  :values_source_config {:card_id (:id card1)}}]}]]
+                                        :parameters [{:id                   "valid-id"
+                                                      :type                 "id"
+                                                      :values_source_type   "card"
+                                                      :values_source_config {:card_id (:id card1)}}]}]]
       (is (= #{["Card" (:id card1)]}
              (serdes/descendants "Card" (:id card2)))))))
 
