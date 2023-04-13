@@ -12,6 +12,7 @@ import Search from "metabase/entities/search";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsBookmarked } from "metabase/collections/selectors";
+import { getSetting } from "metabase/selectors/settings";
 import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 
 import BulkActions from "metabase/collections/components/BulkActions";
@@ -58,6 +59,10 @@ function mapStateToProps(state, props) {
     isBookmarked: getIsBookmarked(state, props),
     metadata: getMetadata(state),
     isNavbarOpen: getIsNavbarOpen(state),
+    uploadsEnabled: !!(
+      getSetting(state, "uploads-enabled") &&
+      !!getSetting(state, "uploads-database-id")
+    ),
   };
 }
 
@@ -81,6 +86,7 @@ function CollectionContent({
   isNavbarOpen,
   openNavbar,
   uploadFile,
+  uploadsEnabled,
 }) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
@@ -190,7 +196,8 @@ function CollectionContent({
     deleteBookmark(collectionId, "collection");
   };
 
-  const canUpload = true; // TODO: check permissions
+  const canUpload = uploadsEnabled && collection.can_write;
+
   const rootProps = canUpload ? getRootProps() : {};
 
   const unpinnedQuery = {
@@ -221,7 +228,7 @@ function CollectionContent({
 
         return (
           <CollectionRoot {...rootProps}>
-            <UploadOverlay isDragActive={isDragActive} />
+            {canUpload && <UploadOverlay isDragActive={isDragActive} />}
             <CollectionMain>
               <Header
                 collection={collection}
@@ -233,6 +240,7 @@ function CollectionContent({
                 )}
                 onCreateBookmark={handleCreateBookmark}
                 onDeleteBookmark={handleDeleteBookmark}
+                canUpload={canUpload}
               />
               <PinnedItemOverview
                 databases={databases}
