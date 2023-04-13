@@ -325,7 +325,7 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s: %s" model-name (pr-str ingested))
-  (first (t2/insert-returning-instances! (symbol model-name) ingested)))
+  (first (t2/insert-returning-instances! (mdb.u/resolve-model (symbol model-name)) ingested)))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.

@@ -6,14 +6,24 @@
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.models :as models]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model]))
+
+(defn toucan-model?
+  "Check if `model` is a toucan model.
+  In toucan2 any keywords can be a model so it's always true for keyword."
+  [model]
+  (if (keyword? model)
+    true
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (models/model? model)))
 
 (defn primary-key
   "Replacement of [[mdb.u/primary-key]], this is used to make the transition to toucan 2 easier.
   In toucan2, every keyword can be a model so if `model` is a keyword, returns as is, otherwise calls [[mdb.u/primary-key]]."
   [model]
   (if (keyword? model)
-   (first (t2/primary-keys :m/card))
+   (first (t2/primary-keys model))
    #_{:clj-kondo/ignore [:discouraged-var]}
    (models/primary-key model)))
 
@@ -24,7 +34,7 @@
   (if (keyword? model)
     model
     #_{:clj-kondo/ignore [:discouraged-var]}
-    (db/resolve-model model)))
+    (t2.model/resolve-model model)))
 
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.
