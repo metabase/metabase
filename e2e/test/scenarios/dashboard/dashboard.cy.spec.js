@@ -9,7 +9,7 @@ import {
   modal,
   openNewCollectionItemFlowFor,
   visitDashboard,
-  appbar,
+  appBar,
   rightSidebar,
 } from "e2e/support/helpers";
 
@@ -553,7 +553,7 @@ describe("scenarios > dashboard", () => {
 
   it("should show collection breadcrumbs for a dashboard", () => {
     visitDashboard(1);
-    appbar().within(() => cy.findByText("Our analytics").click());
+    appBar().within(() => cy.findByText("Our analytics").click());
 
     cy.findByText("Orders").should("be.visible");
   });
