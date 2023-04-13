@@ -309,7 +309,7 @@ function DatasetEditor(props) {
     } else if (canBeDataset) {
       await onSave(dataset, { rerunQuery: false });
       await setQueryBuilderMode("view");
-      await runQuestionQuery();
+      runQuestionQuery();
     } else {
       onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);
       throw new Error(t`Variables in models aren't supported yet`);
