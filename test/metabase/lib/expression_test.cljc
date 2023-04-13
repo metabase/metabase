@@ -81,8 +81,9 @@
         (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                         (lib/expression "myexpr" expr))
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
-          (is (mc/validate ::lib.schema/query query))
-          (is (= typ (lib.schema.expression/type-of resolved))))))))
+          (testing (pr-str resolved)
+            (is (mc/validate ::lib.schema/query query))
+            (is (= typ (lib.schema.expression/type-of resolved)))))))))
 
 (deftest ^:parallel col-info-expression-ref-test
   (is (=? {:base_type    :type/Integer

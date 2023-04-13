@@ -6,7 +6,7 @@ redirect_from:
 
 # Managing people and groups
 
-To start managing people, click on the **gear** icon > **Admin settings** > **People**. You'll see a list f all the people in your organization.
+To start managing people, click on the **gear** icon > **Admin settings** > **People**. You'll see a list of all the people in your organization.
 
 ![Admin menu](images/AdminBar.png)
 

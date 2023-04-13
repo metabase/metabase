@@ -61,7 +61,7 @@
         (let [definition (merge {:source-table table-id}
                                 definition)
               query      (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
-          (lib/describe-top-level-key query :filter))
+          (lib/describe-top-level-key query :filters))
         (catch Throwable e
           (log/error e (tru "Error calculating Segment description: {0}" (ex-message e)))
           nil)))))

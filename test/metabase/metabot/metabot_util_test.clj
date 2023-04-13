@@ -1,9 +1,11 @@
 (ns metabase.metabot.metabot-util-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.query :as mdb.query]
    [metabase.lib.native :as lib-native]
    [metabase.metabot-test :as metabot-test]
+   [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card Database]]
    [metabase.query-processor :as qp]
@@ -22,29 +24,46 @@
     (is (= "PEOPLE_USER_ID"
            (metabot-util/normalize-name "People - User → ID")))))
 
-(deftest test-create-table-ddl-test
+(deftest fix-model-reference-test
+  (testing "Testing basic examples of how fix-model-reference should work"
+    (is (= "SQL SQL SQL {{#1234}} MORE SQL"
+           (#'metabot-util/fix-model-reference "SQL SQL SQL {   { # 1234  }   } MORE SQL")))
+    (is (= "SQL SQL SQL {{FROOBY_VAR}} MORE SQL"
+           (#'metabot-util/fix-model-reference "SQL SQL SQL {   { FROOBY_VAR  }   } MORE SQL")))
+    (is (= "SQL SQL SQL {{FROOBY_VAR}} MORE {{#1234}} SQL"
+           (#'metabot-util/fix-model-reference "SQL SQL SQL {   { FROOBY_VAR  }   } MORE { { # 1234 }} SQL")))
+    (is (= "SELECT {{FROOBY_VAR}}{{#1234}} SQL"
+           (#'metabot-util/fix-model-reference "SELECT { {  FROOBY_VAR } }{ {#1234  }} SQL")))))
+
+(deftest create-table-ddl-test
   (testing "Testing the test-create-table-ddl function"
     (let [model {:sql_name        "TABLE"
                  :result_metadata (mapv
-                                   (fn [{:keys [display_name] :as m}]
-                                     (assoc m
-                                       :sql_name
-                                       (metabot-util/normalize-name display_name)))
-                                   [{:display_name "Name"
-                                     :base_type    :type/Text}
-                                    {:display_name "Frooby"
-                                     :base_type    :type/Boolean}
-                                    {:display_name "Age"
-                                     :base_type    :type/Integer}
-                                    {:display_name    "Sizes"
-                                     :base_type       :type/Integer
-                                     :possible_values [1 2 3]}])}]
+                                    (fn [{:keys [display_name] :as m}]
+                                      (assoc m
+                                        :sql_name
+                                        (metabot-util/normalize-name display_name)))
+                                    [{:display_name "Name"
+                                      :base_type    :type/Text}
+                                     {:display_name "Frooby"
+                                      :base_type    :type/Boolean}
+                                     {:display_name "Age"
+                                      :base_type    :type/Integer}
+                                     ;; Low cardinality items should show as enumerated
+                                     {:display_name    "Sizes"
+                                      :base_type       :type/Integer
+                                      :possible_values [1 2 3]}
+                                     ;; Despite being enumerated, when the cardinality is too high,
+                                     ;; we will skip the enumeration here to prevent using too many tokens.
+                                     {:display_name    "BigCardinality"
+                                      :base_type       :type/Integer
+                                      :possible_values (range (inc (metabot-settings/enum-cardinality-threshold)))}])}]
       (is (= (mdb.query/format-sql
-              (str
-               "create type SIZES_t as enum '1', '2', '3';"
-               "CREATE TABLE \"TABLE\" ('NAME' TEXT,'FROOBY' BOOLEAN, 'AGE' INTEGER, 'SIZES' 'SIZES_t')"))
+               (str
+                 "create type SIZES_t as enum '1', '2', '3';"
+                 "CREATE TABLE \"TABLE\" ('NAME' TEXT,'FROOBY' BOOLEAN, 'AGE' INTEGER, 'SIZES' 'SIZES_t','BIGCARDINALITY' INTEGER)"))
              (mdb.query/format-sql
-              (#'metabot-util/create-table-ddl model)))))))
+               (#'metabot-util/create-table-ddl model)))))))
 
 (deftest denormalize-model-test
   (testing "Basic denormalized model test"
@@ -55,22 +74,21 @@
                               :type     :query
                               :query    {:source-table (mt/id :people)}}
                              :dataset true}]]
-        (let [{:keys [create_table_ddl inner_query sql_name result_metadata]} (metabot-util/denormalize-model model)]
-          (is (string? create_table_ddl))
-          (is (string? sql_name))
-          (is (string? inner_query))
-          (is
-           (= #{"Affiliate"
-                "Facebook"
-                "Google"
-                "Organic"
-                "Twitter"}
-              (->> result_metadata
-                   (some (fn [{:keys [sql_name] :as rsmd}] (when (= "SOURCE" sql_name) rsmd)))
-                   :possible_values
-                   set))))
-
-        (:result_metadata model)))))
+                     (let [{:keys [create_table_ddl inner_query sql_name result_metadata]} (metabot-util/denormalize-model model)]
+                       (is (string? create_table_ddl))
+                       (is (string? sql_name))
+                       (is (string? inner_query))
+                       (is
+                         (= #{"Affiliate"
+                              "Facebook"
+                              "Google"
+                              "Organic"
+                              "Twitter"}
+                            (->> result_metadata
+                                 (some (fn [{:keys [sql_name] :as rsmd}] (when (= "SOURCE" sql_name) rsmd)))
+                                 :possible_values
+                                 set))))
+                     (:result_metadata model)))))
 
 (deftest denormalize-database-test
   (testing "Basic denormalized database test"
@@ -81,13 +99,13 @@
                               :type     :query
                               :query    {:source-table (mt/id :orders)}}
                              :dataset true}]]
-        (let [database (t2/select-one Database :id (mt/id))
-              {:keys [models model_json_summary sql_name]} (metabot-util/denormalize-database database)]
-          (is (=
-               (count (t2/select Card :database_id (mt/id) :dataset true))
-               (count models)))
-          (is (string? model_json_summary))
-          (is (string? sql_name)))))))
+                     (let [database (t2/select-one Database :id (mt/id))
+                           {:keys [models model_json_summary sql_name]} (metabot-util/denormalize-database database)]
+                       (is (=
+                             (count (t2/select Card :database_id (mt/id) :dataset true))
+                             (count models)))
+                       (is (string? model_json_summary))
+                       (is (string? sql_name)))))))
 
 (deftest create-prompt-test
   (testing "We can do prompt lookup and interpolation"
@@ -97,16 +115,16 @@
                                    :create_table_ddl "CREATE TABLE TEST_MODEL"}
                      :user_prompt "Find my data"
                      :prompt_task :infer_sql})]
-        (= {:prompt_template "infer_sql",
-            :version         "0001",
-            :messages        [{:role "system", :content "The system prompt"}
-                              {:role "assistant", :content "%%MODEL:SQL_NAME%%"}
-                              {:role "assistant", :content "%%MODEL:CREATE_TABLE_DDL%%"}
-                              {:role "user", :content "A '%%USER_PROMPT%%'"}],
-            :prompt          [{:role "system", :content "The system prompt"}
-                              {:role "assistant", :content "TEST_MODEL"}
-                              {:role "assistant", :content "CREATE TABLE TEST_MODEL"}
-                              {:role "user", :content "A 'Find my data'"}]}
+        (= {:prompt_template   "infer_sql",
+            :version           "0001",
+            :messages          [{:role "system", :content "The system prompt"}
+                                {:role "assistant", :content "TEST_MODEL"}
+                                {:role "assistant", :content "CREATE TABLE TEST_MODEL"}
+                                {:role "user", :content "A 'Find my data'"}],
+            :message_templates [{:role "system", :content "The system prompt"}
+                                {:role "assistant", :content "%%MODEL:SQL_NAME%%"}
+                                {:role "assistant", :content "%%MODEL:CREATE_TABLE_DDL%%"}
+                                {:role "user", :content "A '%%USER_PROMPT%%'"}]}
            prompt)))))
 
 (deftest extract-sql-test
@@ -118,12 +136,12 @@
       (is (= (mdb.query/format-sql sql)
              (metabot-util/extract-sql sql)))))
   (testing "Test that we detect SQL embedded in markdown"
-    (let [sql     "SELECT * FROM SOMETHING"
+    (let [sql "SELECT * FROM SOMETHING"
           bot-str (format "kmfeasf fasel;f fasefes; fasef;o ```%s```feafs feass" sql)]
       (is (= (mdb.query/format-sql sql)
              (metabot-util/extract-sql bot-str)))))
   (testing "Test that we detect SQL embedded in markdown with language hint"
-    (let [sql     "SELECT * FROM SOMETHING"
+    (let [sql "SELECT * FROM SOMETHING"
           bot-str (format "kmfeasf fasel;f fasefes; fasef;o ```sql%s```feafs feass" sql)]
       (is (= (mdb.query/format-sql sql)
              (metabot-util/extract-sql bot-str))))))
@@ -132,9 +150,9 @@
   (testing "A simple test of interpolation of denormalized data with bot sql"
     (is (= "WITH MY_MODEL AS (SELECT * FROM {{#123}} AS INNER_QUERY) SELECT * FROM MY_MODEL"
            (metabot-util/bot-sql->final-sql
-            {:inner_query "SELECT * FROM {{#123}} AS INNER_QUERY"
-             :sql_name    "MY_MODEL"}
-            "SELECT * FROM MY_MODEL")))))
+             {:inner_query "SELECT * FROM {{#123}} AS INNER_QUERY"
+              :sql_name    "MY_MODEL"}
+             "SELECT * FROM MY_MODEL")))))
 
 (deftest ensure-generated-sql-works-test
   (testing "Ensure the generated sql (including creating a CTE and querying from it) is valid (i.e. produces a result)."
@@ -158,3 +176,16 @@
                                                      (lib-native/template-tags inner_query)
                                                      (fn [m] (update m :id str)))}})]
             (is (some? (seq (get-in results [:data :rows]))))))))))
+
+(deftest create-database-ddl-test
+  (testing "Ensure the generated pseudo-ddl contains the expected tables and enums."
+    (mt/dataset sample-dataset
+      (let [{:keys [create_database_ddl]} (metabot-util/denormalize-database {:id (mt/id)})]
+        (is (str/includes? create_database_ddl "create type PRODUCTS_CATEGORY_t as enum 'Doohickey', 'Gadget', 'Gizmo', 'Widget';"))
+        (is (str/includes? create_database_ddl "create type PEOPLE_STATE_t as enum 'AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT',"))
+        (is (str/includes? create_database_ddl "create type PEOPLE_SOURCE_t as enum 'Affiliate', 'Facebook', 'Google', 'Organic', 'Twitter';"))
+        (is (str/includes? create_database_ddl "create type REVIEWS_RATING_t as enum '1', '2', '3', '4', '5';"))
+        (is (str/includes? create_database_ddl "CREATE TABLE \"PRODUCTS\" ("))
+        (is (str/includes? create_database_ddl "CREATE TABLE \"ORDERS\" ("))
+        (is (str/includes? create_database_ddl "CREATE TABLE \"PEOPLE\" ("))
+        (is (str/includes? create_database_ddl "CREATE TABLE \"REVIEWS\" ("))))))

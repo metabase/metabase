@@ -222,15 +222,23 @@
   [_object-type]
   (fn [k v]
     (case k
-      :result_metadata (cond-> v
-                         (:columns v) (update :columns parse-fields))
+      :result_metadata (if ((some-fn sequential? array?) v)
+                         (parse-fields v)
+                         (js->clj v :keywordize-keys true))
       :fields          (parse-fields v)
       :visibility_type (keyword v)
       v)))
 
+(defn- unwrap-card
+  "Sometimes a card is stored in the metadata as some sort of weird object where the thing we actually want is under the
+  key `_card` (not sure why), but if it is just unwrap it and then parse it normally."
+  [obj]
+  (or (object-get obj "_card")
+      obj))
+
 (defmethod parse-objects :card
   [object-type metadata]
-  (let [parse-card (parse-object-fn object-type)]
+  (let [parse-card (comp (parse-object-fn object-type) unwrap-card)]
     (merge
      (obj->clj (comp (filter (fn [[k _v]]
                                (str/starts-with? k "card__")))

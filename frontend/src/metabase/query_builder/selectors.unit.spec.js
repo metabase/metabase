@@ -6,8 +6,17 @@ import {
   getNativeEditorSelectedText,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
-import { state as sampleState } from "__support__/sample_database_fixture";
+import {
+  ORDERS,
+  PRODUCTS,
+  state as sampleState,
+} from "__support__/sample_database_fixture";
 import Question from "metabase-lib/Question";
+import Aggregation from "metabase-lib/queries/structured/Aggregation";
+import Breakout from "metabase-lib/queries/structured/Breakout";
+import Filter from "metabase-lib/queries/structured/Filter";
+import Join from "metabase-lib/queries/structured/Join";
+import OrderBy from "metabase-lib/queries/structured/OrderBy";
 
 function getBaseState({ uiControls = {}, ...state } = {}) {
   return {
@@ -131,6 +140,40 @@ describe("getIsResultDirty", () => {
         { "source-table": 1, fields: [["field", 2, null]] },
       );
       expect(getIsResultDirty(state)).toBe(true);
+    });
+
+    it("converts clauses into plain MBQL objects", () => {
+      const aggregation = ["count"];
+      const breakout = ORDERS.CREATED_AT.reference();
+      const filter = [">=", ORDERS.TOTAL.reference(), 20];
+      const orderBy = ["asc", ["aggregation", 0]];
+      const join = {
+        alias: "Products",
+        condition: [
+          "=",
+          ["field", ORDERS.PRODUCT_ID.id, null],
+          ["field", PRODUCTS.ID.id, null],
+        ],
+      };
+
+      const state = getState(
+        {
+          aggregation: [new Aggregation(aggregation)],
+          breakout: [new Breakout(breakout)],
+          filter: [new Filter(filter)],
+          joins: [new Join(join)],
+          "order-by": [new OrderBy(orderBy)],
+        },
+        {
+          aggregation: [aggregation],
+          breakout: [breakout],
+          filter: [filter],
+          joins: [join],
+          "order-by": [orderBy],
+        },
+      );
+
+      expect(getIsResultDirty(state)).toBe(false);
     });
 
     it("should not be dirty if the fields were reordered", () => {
