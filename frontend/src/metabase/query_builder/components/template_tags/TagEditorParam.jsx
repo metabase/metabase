@@ -131,7 +131,7 @@ export class TagEditorParam extends Component {
     }
   }
 
-  getFilterWidgetTypeValue = (tag, widgetOptions) => {
+  getFilterWidgetTypeValue = tag => {
     // avoid `undefined` value because it makes the component "uncontrollable"
     // (see Uncontrollable.jsx, metabase#13825)
     const widgetType = tag["widget-type"] || "none";
@@ -267,7 +267,7 @@ export class TagEditorParam extends Component {
 
         {(hasWidgetOptions || !isDimension) && (
           <InputContainer>
-            <ContainerLabel htmlFor="tag-editor-display-name">
+            <ContainerLabel>
               {t`Filter widget label`}
               {hasNoWidgetLabel && <ErrorSpan>{t`(required)`}</ErrorSpan>}
             </ContainerLabel>
@@ -294,7 +294,7 @@ export class TagEditorParam extends Component {
         )}
 
         <InputContainer lessBottomPadding>
-          <ContainerLabel htmlFor="tag-editor-required">{t`Required?`}</ContainerLabel>
+          <ContainerLabel>{t`Required?`}</ContainerLabel>
           <Toggle
             id="tag-editor-required"
             value={tag.required}

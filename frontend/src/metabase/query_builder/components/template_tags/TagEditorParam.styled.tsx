@@ -15,9 +15,10 @@ export const TagName = styled.h3`
 `;
 
 interface ContainerLabelProps {
-  paddingTop: boolean;
+  paddingTop?: boolean;
 }
-export const ContainerLabel = styled.label<ContainerLabelProps>`
+
+export const ContainerLabel = styled.div<ContainerLabelProps>`
   display: block;
   font-weight: 700;
   padding-bottom: 0.5rem;
@@ -31,9 +32,10 @@ export const ErrorSpan = styled.span`
 `;
 
 interface InputContainerProps {
-  lessBottomPadding: boolean;
+  lessBottomPadding?: boolean;
 }
-export const InputContainer = styled.div<InputContainerProps>`
+export const InputContainer = styled.label<InputContainerProps>`
+  display: block;
   padding-bottom: ${props => (props.lessBottomPadding ? "1.5rem" : "2rem")};
 `;
 
