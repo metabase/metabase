@@ -17,7 +17,6 @@
     :refer [Action
             Card
             Collection
-            DashboardCard
             DashboardCardSeries
             Field
             FieldValues
@@ -267,30 +266,30 @@
                                                                       :widget-type  :id
                                                                       :default      nil}}}
                                                :database (mt/id)}}
-           DashboardCard _ {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}
-                                                 {:parameter_id "b", :card_id card-id, :target [:dimension [:template-tag "name"]]}
-                                                 {:parameter_id "c", :card_id card-id, :target [:dimension [:template-tag "source"]]}
-                                                 {:parameter_id "d", :card_id card-id, :target [:dimension [:template-tag "user_id"]]}]
-                            :card_id            card-id
-                            :dashboard_id       dashboard-id}]
+           :model/DashboardCard _ {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}
+                                                        {:parameter_id "b", :card_id card-id, :target [:dimension [:template-tag "name"]]}
+                                                        {:parameter_id "c", :card_id card-id, :target [:dimension [:template-tag "source"]]}
+                                                        {:parameter_id "d", :card_id card-id, :target [:dimension [:template-tag "user_id"]]}]
+                                   :card_id            card-id
+                                   :dashboard_id       dashboard-id}]
           (is (#'api.dashboard/get-dashboard dashboard-id)))))))
 
 (deftest fetch-dashboard-test
   (testing "GET /api/dashboard/:id"
     (testing "fetch a dashboard WITH a dashboard card on it"
-      (mt/with-temp* [:model/Dashboard [{dashboard-id :id
-                                         :as          dashboard}    {:name "Test Dashboard"}]
-                      Card             [{card-id :id
-                                         :as     card}         {:name "Dashboard Test Card"}]
-                      DashboardCard    [dashcard           {:dashboard_id dashboard-id, :card_id card-id}]
-                      User             [{user-id :id}      {:first_name "Test" :last_name "User"
-                                                            :email      "test@example.com"}]
-                      Revision         [_                  {:user_id  user-id
-                                                            :model    "Dashboard"
-                                                            :model_id dashboard-id
-                                                            :object   (revision/serialize-instance dashboard
-                                                                                                   dashboard-id
-                                                                                                   dashboard)}]]
+      (mt/with-temp* [:model/Dashboard     [{dashboard-id :id
+                                             :as          dashboard}    {:name "Test Dashboard"}]
+                      Card                 [{card-id :id
+                                             :as     card}         {:name "Dashboard Test Card"}]
+                      :model/DashboardCard [dashcard           {:dashboard_id dashboard-id, :card_id card-id}]
+                      User                 [{user-id :id}      {:first_name "Test" :last_name "User"
+                                                                :email      "test@example.com"}]
+                      Revision             [_                  {:user_id  user-id
+                                                                :model    "Dashboard"
+                                                                :model_id dashboard-id
+                                                                :object   (revision/serialize-instance dashboard
+                                                                                                       dashboard-id
+                                                                                                       dashboard)}]]
         (with-dashboards-in-readable-collection [dashboard-id]
           (api.card-test/with-cards-in-readable-collection [card-id]
             (is (= (merge
@@ -362,17 +361,17 @@
                            (mt/user-http-request :lucky :get 200 (format "dashboard/%d" (:id dashboard))))))))))))
 
     (testing "fetch a dashboard with a param in it"
-      (mt/with-temp* [Table            [{table-id :id} {}]
-                      Field            [{field-id :id display-name :display_name} {:table_id table-id}]
+      (mt/with-temp* [Table                [{table-id :id} {}]
+                      Field                [{field-id :id display-name :display_name} {:table_id table-id}]
 
-                      :model/Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
-                      Card             [{card-id :id
-                                         :as     card}     {:name "Dashboard Test Card"}]
-                      DashboardCard    [dashcard           {:dashboard_id       dashboard-id
-                                                            :card_id            card-id
-                                                            :parameter_mappings [{:card_id      1
-                                                                                  :parameter_id "foo"
-                                                                                  :target       [:dimension [:field field-id nil]]}]}]]
+                      :model/Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
+                      Card                 [{card-id :id
+                                             :as     card}     {:name "Dashboard Test Card"}]
+                      :model/DashboardCard [dashcard           {:dashboard_id       dashboard-id
+                                                                :card_id            card-id
+                                                                :parameter_mappings [{:card_id      1
+                                                                                      :parameter_id "foo"
+                                                                                      :target       [:dimension [:field field-id nil]]}]}]]
         (with-dashboards-in-readable-collection [dashboard-id]
           (api.card-test/with-cards-in-readable-collection [card-id]
             (is (= (merge dashboard-defaults
@@ -413,9 +412,9 @@
                                                          :series                     []}]})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
     (testing "fetch a dashboard from an official collection includes the collection type"
-      (mt/with-temp* [:model/Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
-                      Card             [{card-id :id}      {:name "Dashboard Test Card"}]
-                      DashboardCard    [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
+      (mt/with-temp* [:model/Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
+                      Card                 [{card-id :id}      {:name "Dashboard Test Card"}]
+                      :model/DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
         (with-dashboards-in-readable-collection [dashboard-id]
           (api.card-test/with-cards-in-readable-collection [card-id]
             (is (nil?
@@ -431,16 +430,16 @@
   (testing "GET /api/dashboard/:id"
     (testing "Fetch Dashboard with a series, should fail if the User doesn't have access to the Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp* [Collection          [{coll-id :id}      {:name "Collection 1"}]
-                        :model/Dashboard    [{dashboard-id :id} {:name       "Test Dashboard"
-                                                                 :creator_id (mt/user->id :crowberto)}]
-                        Card                [{card-id :id}      {:name          "Dashboard Test Card"
-                                                                 :collection_id coll-id}]
-                        Card                [{card-id2 :id}     {:name          "Dashboard Test Card 2"
-                                                                 :collection_id coll-id}]
-                        DashboardCard       [{dbc_id :id}       {:dashboard_id dashboard-id, :card_id card-id}]
-                        DashboardCardSeries [_                  {:dashboardcard_id dbc_id, :card_id card-id2
-                                                                 :position         0}]]
+        (mt/with-temp* [Collection           [{coll-id :id}      {:name "Collection 1"}]
+                        :model/Dashboard     [{dashboard-id :id} {:name       "Test Dashboard"
+                                                                  :creator_id (mt/user->id :crowberto)}]
+                        Card                 [{card-id :id}      {:name          "Dashboard Test Card"
+                                                                  :collection_id coll-id}]
+                        Card                 [{card-id2 :id}     {:name          "Dashboard Test Card 2"
+                                                                  :collection_id coll-id}]
+                        :model/DashboardCard [{dbc_id :id}       {:dashboard_id dashboard-id, :card_id card-id}]
+                        DashboardCardSeries  [_                  {:dashboardcard_id dbc_id, :card_id card-id2
+                                                                  :position         0}]]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
 
@@ -483,8 +482,8 @@
                  (dashboard-response (t2/select-one :model/Dashboard :id dashboard-id)))))
 
         (testing "No-op PUT: Do not return 500"
-          (t2.with-temp/with-temp [Card          {card-id :id} {}
-                                   DashboardCard dashcard      {:card_id card-id, :dashboard_id dashboard-id}]
+          (t2.with-temp/with-temp [Card                {card-id :id} {}
+                                   :model/DashboardCard dashcard      {:card_id card-id, :dashboard_id dashboard-id}]
             ;; so, you can't actually set `:cards` with THIS endpoint (you have to use PUT /api/dashboard/:id/cards)
             ;; but the e2e tests are trying to do it. With Toucan 1, it would silently do nothing and return truthy for
             ;; whatever reason (I'm guessing it was a bug?) if you did something like (update! Dashboard 1 {}). Toucan 2
@@ -842,21 +841,21 @@
                                               :type :query
                                               :query {:source-table $$orders
                                                       :limit 4}})}]
-                      DashboardCard [dashcard {:dashboard_id (u/the-id dashboard)
-                                               :card_id    (u/the-id total-card)
-                                               :size_x 6, :size_y 6}]
-                      DashboardCard [_textcard {:dashboard_id (u/the-id dashboard)
-                                                :visualization_settings
-                                                {:virtual_card
-                                                 {:display :text}
-                                                 :text "here is some text"}}]
-                      DashboardCard [_        {:dashboard_id (u/the-id dashboard)
-                                               :card_id    (u/the-id model)
-                                               :size_x 6, :size_y 6}]
+                      :model/DashboardCard [dashcard {:dashboard_id (u/the-id dashboard)
+                                                      :card_id    (u/the-id total-card)
+                                                      :size_x 6, :size_y 6}]
+                      :model/DashboardCard [_textcard {:dashboard_id (u/the-id dashboard)
+                                                       :visualization_settings
+                                                       {:virtual_card
+                                                        {:display :text}
+                                                        :text "here is some text"}}]
+                      :model/DashboardCard [_        {:dashboard_id (u/the-id dashboard)
+                                                      :card_id    (u/the-id model)
+                                                      :size_x 6, :size_y 6}]
                       DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
                                               :card_id (u/the-id avg-card)
                                               :position 0}]]
-        (mt/with-model-cleanup [Card :model/Dashboard DashboardCard DashboardCardSeries]
+        (mt/with-model-cleanup [Card :model/Dashboard :model/DashboardCard DashboardCardSeries]
           (let [resp (mt/user-http-request :crowberto :post 200
                                            (format "dashboard/%d/copy" (:id dashboard))
                                            {:name        "New dashboard"
@@ -925,16 +924,16 @@
                                                :type :query
                                                :query {:source-table $$orders
                                                        :limit 4}})}]
-                        DashboardCard [dashcard {:dashboard_id (u/the-id dashboard)
-                                                 :card_id    (u/the-id total-card)
-                                                 :size_x 6, :size_y 6}]
-                        DashboardCard [_        {:dashboard_id (u/the-id dashboard)
-                                                 :card_id    (u/the-id card)
-                                                 :size_x 6, :size_y 6}]
+                        :model/DashboardCard [dashcard {:dashboard_id (u/the-id dashboard)
+                                                        :card_id    (u/the-id total-card)
+                                                        :size_x 6, :size_y 6}]
+                        :model/DashboardCard [_        {:dashboard_id (u/the-id dashboard)
+                                                        :card_id    (u/the-id card)
+                                                        :size_x 6, :size_y 6}]
                         DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
                                                 :card_id (u/the-id avg-card)
                                                 :position 0}]]
-          (mt/with-model-cleanup [Card :model/Dashboard DashboardCard DashboardCardSeries]
+          (mt/with-model-cleanup [Card :model/Dashboard :model/DashboardCard DashboardCardSeries]
             (perms/revoke-collection-permissions! (perms-group/all-users) no-read-coll)
             (let [resp (mt/user-http-request :rasta :post 200
                                              (format "dashboard/%d/copy" (:id dashboard))
@@ -1001,16 +1000,16 @@
                                                :type :query
                                                :query {:source-table $$orders
                                                        :limit 4}})}]
-                        DashboardCard [dashcard {:dashboard_id (u/the-id dashboard)
-                                                 :card_id    (u/the-id total-card)
-                                                 :size_x 6, :size_y 6}]
-                        DashboardCard [_        {:dashboard_id (u/the-id dashboard)
-                                                 :card_id    (u/the-id card)
-                                                 :size_x 6, :size_y 6}]
-                        DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
-                                                :card_id (u/the-id avg-card)
-                                                :position 0}]]
-          (mt/with-model-cleanup [Card :model/Dashboard DashboardCard DashboardCardSeries]
+                        :model/DashboardCard [dashcard {:dashboard_id (u/the-id dashboard)
+                                                        :card_id    (u/the-id total-card)
+                                                        :size_x 6, :size_y 6}]
+                        :model/DashboardCard [_        {:dashboard_id (u/the-id dashboard)
+                                                        :card_id    (u/the-id card)
+                                                        :size_x 6, :size_y 6}]
+                        DashboardCardSeries  [_ {:dashboardcard_id (u/the-id dashcard)
+                                                 :card_id (u/the-id avg-card)
+                                                 :position 0}]]
+          (mt/with-model-cleanup [Card :model/Dashboard :model/DashboardCard DashboardCardSeries]
             (let [_resp (mt/user-http-request :rasta :post 200
                                               (format "dashboard/%d/copy" (:id dashboard))
                                               {:name        "New dashboard"
@@ -1134,29 +1133,29 @@
 (deftest copy-dashboard-cards-test
   (testing "POST /api/dashboard/:id/copy"
     (testing "Ensure dashboard cards and parameters are copied (#23685)"
-      (mt/with-temp* [:model/Dashboard [{dashboard-id :id}  {:name       "Test Dashboard"
-                                                             :parameters [{:name "Category ID"
-                                                                           :slug "category_id"
-                                                                           :id   "_CATEGORY_ID_"
-                                                                           :type :category}]}]
-                      Card             [{card-id :id}]
-                      Card             [{card-id2 :id}]
-                      DashboardCard    [{dashcard-id :id} {:dashboard_id       dashboard-id
-                                                           :card_id            card-id
-                                                           :parameter_mappings [{:parameter_id "random-id"
-                                                                                 :card_id      card-id
-                                                                                 :target       [:dimension [:field (mt/id :venues :name) nil]]}]}]
-                      DashboardCard [_ {:dashboard_id dashboard-id, :card_id card-id2}]]
+      (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}  {:name       "Test Dashboard"
+                                                                 :parameters [{:name "Category ID"
+                                                                               :slug "category_id"
+                                                                               :id   "_CATEGORY_ID_"
+                                                                               :type :category}]}]
+                      Card                 [{card-id :id}]
+                      Card                 [{card-id2 :id}]
+                      :model/DashboardCard [{dashcard-id :id} {:dashboard_id       dashboard-id
+                                                               :card_id            card-id
+                                                               :parameter_mappings [{:parameter_id "random-id"
+                                                                                     :card_id      card-id
+                                                                                     :target       [:dimension [:field (mt/id :venues :name) nil]]}]}]
+                      :model/DashboardCard [_ {:dashboard_id dashboard-id, :card_id card-id2}]]
         (let [copy-id (u/the-id (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" dashboard-id)))]
           (try
             (is (= 2
-                   (count (t2/select-pks-set DashboardCard, :dashboard_id copy-id))))
+                   (count (t2/select-pks-set :model/DashboardCard, :dashboard_id copy-id))))
             (is (=? [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category}]
                    (t2/select-one-fn :parameters :model/Dashboard :id copy-id)))
             (is (=? [{:parameter_id "random-id"
                       :card_id      card-id
                       :target       [:dimension [:field (mt/id :venues :name) nil]]}]
-                   (t2/select-one-fn :parameter_mappings DashboardCard :id dashcard-id)))
+                   (t2/select-one-fn :parameter_mappings :model/DashboardCard :id dashcard-id)))
            (finally
              (t2/delete! :model/Dashboard :id copy-id))))))))
 
@@ -1217,7 +1216,7 @@
                  :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
                  :visualization_settings {}}]
                (map (partial into {})
-                    (t2/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
+                    (t2/select [:model/DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
                       :dashboard_id dashboard-id))))))))
 
 (deftest new-dashboard-card-with-additional-series-test
@@ -1252,7 +1251,7 @@
                    :col    4
                    :row    4}]
                  (map (partial into {})
-                      (t2/select [DashboardCard :size_x :size_y :col :row], :dashboard_id dashboard-id))))
+                      (t2/select [:model/DashboardCard :size_x :size_y :col :row], :dashboard_id dashboard-id))))
           (is (= #{0}
                  (t2/select-fn-set :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
 
@@ -1281,7 +1280,7 @@
                                                    :size_x             4
                                                    :size_y             4
                                                    :parameter_mappings mappings}))
-            :dashcards    (fn [] (t2/select DashboardCard :dashboard_id dashboard-id))})))))
+            :dashcards    (fn [] (t2/select :model/DashboardCard :dashboard_id dashboard-id))})))))
 
 (deftest add-card-parameter-mapping-permissions-test
   (testing "POST /api/dashboard/:id/cards"
@@ -1319,9 +1318,9 @@
 (defn do-with-update-cards-parameter-mapping-permissions-fixtures [f]
   (do-with-add-card-parameter-mapping-permissions-fixtures
    (fn [{:keys [dashboard-id card-id mappings]}]
-     (mt/with-temp DashboardCard [dashboard-card {:dashboard_id       dashboard-id
-                                                  :card_id            card-id
-                                                  :parameter_mappings mappings}]
+     (mt/with-temp :model/DashboardCard [dashboard-card {:dashboard_id       dashboard-id
+                                                         :card_id            card-id
+                                                         :parameter_mappings mappings}]
        (let [dashcard-info     (select-keys dashboard-card [:id :size_x :size_y :row :col :parameter_mappings])
              new-mappings      [{:parameter_id "_CATEGORY_ID_"
                                  :target       [:dimension [:field (mt/id :venues :price) nil]]}]
@@ -1351,18 +1350,18 @@
                          s/Keyword s/Any}
                         (update-mappings! 403)))
            (is (= original-mappings
-                  (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
+                  (t2/select-one-fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
          (testing "Changing another column should be ok even without data permissions."
            (is (= {:status "ok"}
                   (update-size!)))
            (is (= (:size_x new-dashcard-info)
-                  (t2/select-one-fn :size_x DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
+                  (t2/select-one-fn :size_x :model/DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
          (testing "Should be able to update `:parameter_mappings` *with* proper data permissions."
            (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :venues)))
            (is (= {:status "ok"}
                   (update-mappings! 200)))
            (is (= new-mappings
-                  (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
+                  (t2/select-one-fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1372,21 +1371,21 @@
 (deftest delete-cards-test
   (testing "DELETE /api/dashboard/id/:cards"
     ;; fetch a dashboard WITH a dashboard card on it
-    (mt/with-temp* [:model/Dashboard    [{dashboard-id :id}]
-                    Card                [{card-id :id}]
-                    Card                [{series-id-1 :id}]
-                    Card                [{series-id-2 :id}]
-                    DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
-                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
+    (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
+                    Card                 [{card-id :id}]
+                    Card                 [{series-id-1 :id}]
+                    Card                 [{series-id-2 :id}]
+                    :model/DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                    DashboardCardSeries  [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
+                    DashboardCardSeries  [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
       (with-dashboards-in-writeable-collection [dashboard-id]
         (is (= 1
-               (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
+               (count (t2/select-pks-set :model/DashboardCard, :dashboard_id dashboard-id))))
         (is (= nil
                (mt/user-http-request :rasta :delete 204
                                      (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)))
         (is (= 0
-               (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))))))
+               (count (t2/select-pks-set :model/DashboardCard, :dashboard_id dashboard-id))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1396,11 +1395,11 @@
 (deftest update-cards-test
   (testing "PUT /api/dashboard/:id/cards"
     ;; fetch a dashboard WITH a dashboard card on it
-    (mt/with-temp* [:model/Dashboard [{dashboard-id :id}]
-                    Card             [{card-id :id}]
-                    DashboardCard    [{dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                    DashboardCard    [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                    Card             [{series-id-1 :id}   {:name "Series Card"}]]
+    (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
+                    Card                 [{card-id :id}]
+                    :model/DashboardCard [{dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                    :model/DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                    Card                 [{series-id-1 :id}   {:name "Series Card"}]]
       (with-dashboards-in-writeable-collection [dashboard-id]
         (is (= {:size_x                 4
                 :size_y                 4
@@ -1464,14 +1463,14 @@
   (mt/with-actions-enabled
     (testing "PUT /api/dashboard/:id/cards"
       ;; fetch a dashboard WITH a dashboard card on it
-      (mt/with-temp* [:model/Dashboard [{dashboard-id :id}]
-                      Card             [{model-id :id} {:dataset true}]
-                      Card             [{model-id-2 :id} {:dataset true}]
-                      Action           [{action-id :id} {:model_id model-id :type :implicit :name "action"}]
-                      DashboardCard    [action-card {:dashboard_id dashboard-id
-                                                     :action_id action-id
-                                                     :card_id model-id}]
-                      DashboardCard [question-card {:dashboard_id dashboard-id, :card_id model-id}]]
+      (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
+                      Card                 [{model-id :id} {:dataset true}]
+                      Card                 [{model-id-2 :id} {:dataset true}]
+                      Action               [{action-id :id} {:model_id model-id :type :implicit :name "action"}]
+                      :model/DashboardCard [action-card {:dashboard_id dashboard-id
+                                                         :action_id action-id
+                                                         :card_id model-id}]
+                      :model/DashboardCard [question-card {:dashboard_id dashboard-id, :card_id model-id}]]
         (with-dashboards-in-writeable-collection [dashboard-id]
           (is (= {:status "ok"}
                  (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
@@ -1480,7 +1479,7 @@
           ;; Only action card should change
           (is (partial= [{:card_id model-id-2}
                          {:card_id model-id}]
-                        (t2/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]}))))))))
+                        (t2/select :model/DashboardCard :dashboard_id dashboard-id {:order-by [:id]}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        GET /api/dashboard/:id/revisions                                        |
@@ -1853,29 +1852,29 @@
                    Card          [card {:database_id   (mt/id)
                                         :table_id      (mt/id :venues)
                                         :dataset_query (mt/mbql-query venues)}]
-                   DashboardCard [dashcard {:card_id            (:id card)
-                                            :dashboard_id       (:id dashboard)
-                                            :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                                                  :card_id      (:id card)
-                                                                  :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
-                                                                 {:parameter_id "_CATEGORY_ID_"
-                                                                  :card_id      (:id card)
-                                                                  :target       [:dimension (mt/$ids venues $category_id)]}
-                                                                 {:parameter_id "_PRICE_"
-                                                                  :card_id      (:id card)
-                                                                  :target       [:dimension (mt/$ids venues $price)]}
-                                                                 {:parameter_id "_ID_"
-                                                                  :card_id      (:id card)
-                                                                  :target       [:dimension (mt/$ids venues $id)]}
-                                                                 {:parameter_id "_ID_"
-                                                                  :card_id      (:id card)
-                                                                  :target       [:dimension (mt/$ids venues $id)]}
-                                                                 {:parameter_id "_STATIC_CATEGORY_"
-                                                                  :card_id      (:id card)
-                                                                  :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
-                                                                 {:parameter_id "_STATIC_CATEGORY_LABEL_"
-                                                                  :card_id      (:id card)
-                                                                  :target       [:dimension (mt/$ids venues $category_id->categories.name)]}]}]]
+                   :model/DashboardCard [dashcard {:card_id            (:id card)
+                                                   :dashboard_id       (:id dashboard)
+                                                   :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                                         :card_id      (:id card)
+                                                                         :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
+                                                                        {:parameter_id "_CATEGORY_ID_"
+                                                                         :card_id      (:id card)
+                                                                         :target       [:dimension (mt/$ids venues $category_id)]}
+                                                                        {:parameter_id "_PRICE_"
+                                                                         :card_id      (:id card)
+                                                                         :target       [:dimension (mt/$ids venues $price)]}
+                                                                        {:parameter_id "_ID_"
+                                                                         :card_id      (:id card)
+                                                                         :target       [:dimension (mt/$ids venues $id)]}
+                                                                        {:parameter_id "_ID_"
+                                                                         :card_id      (:id card)
+                                                                         :target       [:dimension (mt/$ids venues $id)]}
+                                                                        {:parameter_id "_STATIC_CATEGORY_"
+                                                                         :card_id      (:id card)
+                                                                         :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
+                                                                        {:parameter_id "_STATIC_CATEGORY_LABEL_"
+                                                                         :card_id      (:id card)
+                                                                         :target       [:dimension (mt/$ids venues $category_id->categories.name)]}]}]]
      (f {:dashboard  dashboard
          :card       card
          :dashcard   dashcard
@@ -1969,10 +1968,10 @@
 
     (testing "Should work if Dashboard has multiple mappings for a single param"
       (with-chain-filter-fixtures [{:keys [dashboard card dashcard param-keys]}]
-        (mt/with-temp* [Card          [card-2 (dissoc card :id :entity_id)]
-                        DashboardCard [_dashcard-2 (-> dashcard
-                                                       (dissoc :id :card_id :entity_id)
-                                                       (assoc  :card_id (:id card-2)))]]
+        (mt/with-temp* [Card                 [card-2 (dissoc card :id :entity_id)]
+                        :model/DashboardCard [_dashcard-2 (-> dashcard
+                                                           (dissoc :id :card_id :entity_id)
+                                                           (assoc  :card_id (:id card-2)))]]
           (is (= {:values          ["African" "American" "Artisan"]
                   :has_more_values false}
                  (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
@@ -2102,13 +2101,13 @@
                                                                    :id        "_NATIVE_CATEGORY_NAME_"
                                                                    :type      :string/=
                                                                    :sectionId "string"}]}]
-                        DashboardCard [_dashcard {:parameter_mappings
-                                                  [{:parameter_id "_NATIVE_CATEGORY_NAME_"
-                                                    :card_id      question-id
-                                                    :target       [:dimension
-                                                                   [:field "CATEGORY" {:base-type :type/Text}]]}]
-                                                  :card_id      question-id
-                                                  :dashboard_id (:id dashboard)}]]
+                        :model/DashboardCard [_dashcard {:parameter_mappings
+                                                         [{:parameter_id "_NATIVE_CATEGORY_NAME_"
+                                                           :card_id      question-id
+                                                           :target       [:dimension
+                                                                          [:field "CATEGORY" {:base-type :type/Text}]]}]
+                                                         :card_id      question-id
+                                                         :dashboard_id (:id dashboard)}]]
           (let [url (format "dashboard/%d/params/%s/values" (u/the-id dashboard) "_NATIVE_CATEGORY_NAME_")]
             (is (=? {:values          ["Doohickey"
                                        "Gadget"
@@ -2163,7 +2162,7 @@
   (testing "GET /api/dashboard/:id/params/:param-key/values"
     (testing "If some Dashboard parameters do not have valid Field IDs, we should ignore them"
       (with-chain-filter-fixtures [{:keys [dashcard card dashboard]}]
-        (t2/update! DashboardCard (:id dashcard)
+        (t2/update! :model/DashboardCard (:id dashcard)
                     {:parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
                                            :card_id      (:id card)
                                            :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
@@ -2508,7 +2507,7 @@
                            (mt/user-http-request :rasta :post 202 url
                                                  {:parameters [{:id    "_PRICE_"
                                                                 :value 4}]}))))
-            (mt/with-temp-vals-in-db DashboardCard dashcard-id {:parameter_mappings []}
+            (mt/with-temp-vals-in-db :model/DashboardCard dashcard-id {:parameter_mappings []}
               (is (schema= (dashboard-card-query-expected-results-schema :row-count 100)
                            (mt/user-http-request :rasta :post 202 url
                                                  {:parameters [{:id    "_PRICE_"
@@ -2549,9 +2548,9 @@
   (testing "POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
     (mt/test-drivers (api.pivots/applicable-drivers)
       (mt/dataset sample-dataset
-        (mt/with-temp* [:model/Dashboard [{dashboard-id :id}]
-                        Card             [{card-id :id} (api.pivots/pivot-card)]
-                        DashboardCard    [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
+        (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
+                        Card                 [{card-id :id} (api.pivots/pivot-card)]
+                        :model/DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
           (let [result (mt/user-http-request :rasta :post 202 (dashcard-pivot-query-endpoint dashboard-id card-id dashcard-id))
                 rows   (mt/rows result)]
             (is (= 1144 (:row_count result)))
@@ -2595,10 +2594,10 @@
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-actions [{:keys [action-id model-id]} {}]
         (testing "Executing dashcard with action"
-          (mt/with-temp* [:model/Dashboard [{dashboard-id :id}]
-                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :action_id action-id
-                                                            :card_id model-id}]]
+          (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
+                          :model/DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                                   :action_id action-id
+                                                                   :card_id model-id}]]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
                                        dashboard-id
                                        dashcard-id)]
@@ -2650,10 +2649,10 @@
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-actions [{:keys [action-id model-id]} {:type :http}]
         (testing "Executing dashcard with action"
-          (mt/with-temp* [:model/Dashboard [{dashboard-id :id}]
-                          DashboardCard    [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                               :action_id action-id
-                                                               :card_id model-id}]]
+          (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
+                          :model/DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                                   :action_id action-id
+                                                                   :card_id model-id}]]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
                                        dashboard-id
                                        dashcard-id)]
@@ -2683,10 +2682,10 @@
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard insert"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/create"}]
-          (mt/with-temp* [:model/Dashboard [{dashboard-id :id}]
-                          DashboardCard    [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                               :card_id model-id
-                                                               :action_id action-id}]]
+          (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
+                          :model/DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                                   :card_id model-id
+                                                                   :action_id action-id}]]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)
                   new-row (-> (mt/user-http-request :crowberto :post 200 execute-path
                                                     {:parameters {"name" "Birds"}})
@@ -2706,10 +2705,10 @@
                                                     {:parameters {}}))))))))
       (testing "Executing dashcard update"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/update"}]
-          (mt/with-temp* [:model/Dashboard [{dashboard-id :id}]
-                          DashboardCard    [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                               :card_id model-id
-                                                               :action_id action-id}]]
+          (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
+                          :model/DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                                   :card_id model-id
+                                                                   :action_id action-id}]]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Should be able to update"
                 (is (= {:rows-updated [1]}
@@ -2729,10 +2728,10 @@
                                                     {:parameters {"id" 1}}))))))))
       (testing "Executing dashcard delete"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/delete"}]
-          (mt/with-temp* [:model/Dashboard [{dashboard-id :id}]
-                          DashboardCard    [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                               :card_id model-id
-                                                               :action_id action-id}]]
+          (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
+                          :model/DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                                   :card_id model-id
+                                                                   :action_id action-id}]]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Should be able to delete"
                 (is (= {:rows-deleted [1]}
@@ -2778,10 +2777,10 @@
         (mt/with-actions-enabled
           (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
                             {:keys [action-id]} {:type :implicit :kind "row/create"}]
-            (mt/with-temp* [:model/Dashboard [{dashboard-id :id}]
-                            DashboardCard    [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                                 :action_id action-id
-                                                                 :card_id card-id}]]
+            (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
+                            :model/DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                                     :action_id action-id
+                                                                     :card_id card-id}]]
               (testing "Good data"
                 (doseq [{:keys [field-name] value ::good} (filter ::good types)]
                   (testing (str "Attempting to implicitly insert " field-name)
@@ -2795,9 +2794,9 @@
                                             (last rows))))))
                   (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
                                     {:keys [action-id]} (custom-action-for-field field-name)]
-                    (mt/with-temp DashboardCard [{custom-dashcard-id :id} {:dashboard_id dashboard-id
-                                                                           :action_id action-id
-                                                                           :card_id card-id}]
+                    (mt/with-temp :model/DashboardCard [{custom-dashcard-id :id} {:dashboard_id dashboard-id
+                                                                                  :action_id action-id
+                                                                                  :card_id card-id}]
                       (testing (str "Attempting to custom insert " field-name)
                         (mt/user-http-request :crowberto :post 200
                                               (format "dashboard/%s/dashcard/%s/execute" dashboard-id custom-dashcard-id)
@@ -2817,9 +2816,9 @@
                                                {:parameters {field-name value}}))))
                   (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
                                     {action-id :action-id} (custom-action-for-field field-name)]
-                    (mt/with-temp DashboardCard [{custom-dashcard-id :id} {:dashboard_id dashboard-id
-                                                                           :action_id action-id
-                                                                           :card_id card-id}]
+                    (mt/with-temp :model/DashboardCard [{custom-dashcard-id :id} {:dashboard_id dashboard-id
+                                                                                  :action_id action-id
+                                                                                  :card_id card-id}]
                       (testing (str "Attempting to custom insert bad " field-name)
                         (is (has-valid-action-execution-error-message?
                              (mt/user-http-request :crowberto :post 500
@@ -2832,9 +2831,9 @@
       (testing "Executing dashcard with action"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/create"}]
           (mt/with-temp* [:model/Dashboard [{dashboard-id :id}]
-                          DashboardCard    [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                               :action_id action-id
-                                                               :card_id model-id}]]
+                          :model/DashboardCard    [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                                      :action_id action-id
+                                                                      :card_id model-id}]]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
                                        dashboard-id
                                        dashcard-id)]
@@ -2871,10 +2870,10 @@
     (mt/with-actions-test-data
       (mt/with-actions [{:keys [action-id model-id]} {}]
         (testing "Executing dashcard with action"
-          (mt/with-temp* [:model/Dashboard [{dashboard-id :id}]
-                          DashboardCard    [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                               :action_id action-id
-                                                               :card_id model-id}]]
+          (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
+                          :model/DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                                   :action_id action-id
+                                                                   :card_id model-id}]]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
                                        dashboard-id
                                        dashcard-id)]
@@ -2907,10 +2906,10 @@
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Prefetching dashcard update"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
-          (mt/with-temp* [:model/Dashboard [{dashboard-id :id}]
-                          DashboardCard    [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                               :card_id model-id
-                                                               :action_id action-id}]]
+          (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
+                          :model/DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                                   :card_id model-id
+                                                                   :action_id action-id}]]
             (let [path #(format "dashboard/%s/dashcard/%s/execute?parameters=%s" dashboard-id dashcard-id (codec/url-encode (json/encode %)))]
               (testing "It succeeds with appropriate parameters"
                 (is (partial= {:id 1 :name "African"}
@@ -2928,10 +2927,10 @@
       (mt/with-actions-test-data-and-actions-enabled
         (mt/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query venues {:fields [$id $name]})}
                           {:keys [action-id]} {:type :implicit :kind "row/update"}]
-          (mt/with-temp* [:model/Dashboard [{dashboard-id :id}]
-                          DashboardCard    [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                               :action_id action-id
-                                                               :card_id card-id}]]
+          (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
+                          :model/DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                                   :action_id action-id
+                                                                   :card_id card-id}]]
             (testing "Dashcard should only have id and name params"
               (is (partial= {:ordered_cards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))
@@ -2956,11 +2955,11 @@
       (mt/with-actions-test-data-and-actions-enabled
         (mt/with-actions [{:keys [action-id model-id]} {}]
           (testing "Executing dashcard with action"
-            (mt/with-temp* [:model/Dashboard [{dashboard-id :id}]
-                            DashboardCard    [{dashcard-id :id}
-                                              {:dashboard_id dashboard-id
-                                               :action_id action-id
-                                               :card_id model-id}]]
+            (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
+                            :model/DashboardCard [{dashcard-id :id}
+                                                  {:dashboard_id dashboard-id
+                                                   :action_id action-id
+                                                   :card_id model-id}]]
               (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
                                          dashboard-id
                                          dashcard-id)]
