@@ -12,7 +12,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model]))
 
 (defn backfill-ids-for
   "Updates all rows of a particular model to have `:entity_id` set, based on the [[serdes/identity-hash]]."
@@ -41,6 +42,6 @@
   row."
   []
   (doseq [model-name (concat serdes.models/exported-models serdes.models/inlined-models)
-          :let [model (mdb.u/resolve-model (symbol model-name))]
+          :let [model (t2.model/resolve-model (symbol model-name))]
           :when (has-entity-id? model)]
     (backfill-ids-for model)))
