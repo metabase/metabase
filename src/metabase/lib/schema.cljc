@@ -7,6 +7,7 @@
   copied from [[metabase.mbql.schema]] so this can exist completely independently; hopefully at some point in the
   future we can deprecate that namespace and eventually do away with it entirely."
   (:require
+   [clojure.set :as set]
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
@@ -50,35 +51,30 @@
    [:ref ::id/table]
    [:ref ::id/table-card-id-string]])
 
-(defn- join-ref-error [stage]
-  (let [join-aliases (into #{} (keep :alias) (:joins stage))]
-    (mbql.u/match-one stage
-      [:field ({:join-alias (join-alias :guard (complement join-aliases))} :guard :join-alias) _id-or-name]
-      (str "Invalid :field reference: no join named " (pr-str join-alias)))))
-
-(defn- expression-ref-error [stage]
+(defn- expression-ref-error-for-stage [stage]
   (let [expression-names (set (keys (:expressions stage)))]
     (mbql.u/match-one stage
       [:expression _opts (expression-name :guard (complement expression-names))]
       (str "Invalid :expression reference: no expression named " (pr-str expression-name)))))
 
-(defn- aggregation-ref-error [stage]
+(defn- aggregation-ref-error-for-stage [stage]
   (let [num-aggregations (count (:aggregation stage))]
     (mbql.u/match-one stage
       [:aggregation _opts (index :guard #(>= % num-aggregations))]
       (str "Invalid :aggregation reference: no aggregation at index " index))))
 
-(def ^:private ^{:arglists '([stage])} ref-error
-  (some-fn join-ref-error
-           expression-ref-error
-           aggregation-ref-error))
+(def ^:private ^{:arglists '([stage])} ref-error-for-stage
+  "Validate references in the context of a single `stage`, independent of any previous stages. If there is an error with
+  a reference, return a string describing the error."
+  (some-fn expression-ref-error-for-stage
+           aggregation-ref-error-for-stage))
 
-(mr/def ::valid-refs
+(mr/def ::stage.valid-refs
   [:fn
-   {:error/message "Valid references for query stage"
+   {:error/message "Valid references for a single query stage"
     :error/fn      (fn [{:keys [value]} _]
-                     (ref-error value))}
-   (complement ref-error)])
+                     (ref-error-for-stage value))}
+   (complement ref-error-for-stage)])
 
 (mr/def ::stage.mbql
   [:and
@@ -95,7 +91,7 @@
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
-   [:ref ::valid-refs]])
+   [:ref ::stage.valid-refs]])
 
 ;;; Schema for an MBQL stage that includes either `:source-table` or `:source-query`.
 (mr/def ::stage.mbql.with-source
@@ -135,10 +131,54 @@
 (mr/def ::stage.additional
   ::stage.mbql.without-source)
 
+(defn- visible-join-aliases
+  "Apparently you're allowed to use a join alias for a join that appeared in any previous stage or the current stage, or
+  *inside* any join in any previous stage or the current stage. Why? Who knows, but this is a real thing.
+  See [[metabase.driver.sql.query-processor-test/join-source-queries-with-joins-test]] for example.
+
+  This doesn't really make sense IMO (you should use string field refs to refer to things from a previous
+  stage...right?) but for now we'll have to allow it until we can figure out how to go fix all of the old broken queries.
+
+  Anyways, this function finds all of the join aliases that should be 'visible' in a given stage of a query."
+  [stage]
+  (letfn [(join-aliases-in-join [join]
+            (cons
+             (:alias join)
+             (mapcat join-aliases-in-stage (:stages join))))
+          (join-aliases-in-stage [stage]
+            (mapcat join-aliases-in-join (:joins stage)))]
+    (set (join-aliases-in-stage stage))))
+
+(defn- join-ref-error-for-stages [stages]
+  (loop [join-aliases #{}, i 0, [stage & more] stages]
+    (let [join-aliases (set/union join-aliases (visible-join-aliases stage))]
+      (or
+       (mbql.u/match-one stage
+         [:field ({:join-alias (join-alias :guard (complement join-aliases))} :guard :join-alias) _id-or-name]
+         (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias)))
+       (when (seq more)
+         (recur join-aliases (inc i) more))))))
+
+(def ^:private ^{:arglists '([stages])} ref-error-for-stages
+  "Like [[ref-error-for-stage]], but validate references in the context of a sequence of several stages; for validations
+  that can't be done on the basis of just a single stage. For example join alias validation needs to take into account
+  previous stages."
+  ;; this is redundant now but I'm leaving it open so we can add more stuff in the future as we validate more things.
+  (some-fn join-ref-error-for-stages))
+
+(mr/def ::stages.valid-refs
+  [:fn
+   {:error/message "Valid references for all query stages"
+    :error/fn      (fn [{:keys [value]} _]
+                     (ref-error-for-stages value))}
+   (complement ref-error-for-stages)])
+
 (mr/def ::stages
-  [:cat
-   [:schema [:ref ::stage.initial]]
-   [:* [:schema [:ref ::stage.additional]]]])
+  [:and
+   [:cat
+    [:schema [:ref ::stage.initial]]
+    [:* [:schema [:ref ::stage.additional]]]]
+   [:ref ::stages.valid-refs]])
 
 (mr/def ::query
   [:and
