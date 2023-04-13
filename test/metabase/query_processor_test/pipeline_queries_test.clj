@@ -27,7 +27,7 @@
   ((lib/field (mt/id :venues :price)) query stage-number))
 
 (deftest ^:parallel pipeline-queries-test
-  (testing "Ensure that the QP can handle pMBQL `:pipeline` queries"
+  (testing "Ensure that the QP can handle pMBQL queries"
     (is (= [6]
            (mt/first-row
             (run-pmbql-query :venues
@@ -35,7 +35,7 @@
               (lib/filter (lib/= $price 4))))))))
 
 (deftest ^:parallel denormalized-pipeline-queries-test
-  (testing "Ensure that the QP can handle pMBQL `:pipeline` queries as they'd come in from the REST API or application database"
+  (testing "Ensure that the QP can handle pMBQL queries as they'd come in from the REST API or application database"
     (let [query (-> (pmbql-query :venues
                       (lib/aggregate (lib/count))
                       (lib/filter (lib/= $price 4)))

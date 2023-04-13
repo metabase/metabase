@@ -17,7 +17,6 @@
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are coming back the way we'd expect for :field clauses"
     (let [query {:lib/type     :mbql/query
-                 :type         :pipeline
                  :stages       [{:lib/type     :mbql.stage/mbql
                                  :lib/options  {:lib/uuid "0311c049-4973-4c2a-8153-1e2c887767f9"}
                                  :source-table (meta/id :venues)
@@ -58,7 +57,6 @@
                :lib/metadata (lib.tu/mock-metadata-provider
                               {:cards [{:id   1
                                         :name "My Card"}]})
-               :type         :pipeline
                :database     (meta/id)
                :stages       [{:lib/type     :mbql.stage/mbql
                                :lib/options  {:lib/uuid (str (random-uuid))}

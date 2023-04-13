@@ -116,7 +116,6 @@
         simple-filtered-query
         {:lib/type :mbql/query
          :database (meta/id)
-         :type :pipeline
          :stages [{:lib/type :mbql.stage/mbql
                    :source-table (meta/id :categories)
                    :lib/options {:lib/uuid string?}

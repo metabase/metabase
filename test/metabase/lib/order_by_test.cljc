@@ -17,7 +17,6 @@
 
 (deftest ^:parallel order-by-test
   (is (=? {:database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table (meta/id :venues)
                        :order-by     [[:asc
@@ -28,7 +27,6 @@
 
 (deftest ^:parallel threading-test
   (is (=? {:database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table (meta/id :venues)
                        :order-by     [[:asc
@@ -40,7 +38,6 @@
 
 (deftest ^:parallel threading-with-direction-test
   (is (=? {:database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table (meta/id :venues)
                        :order-by     [[:desc
@@ -53,7 +50,6 @@
 (deftest ^:parallel specific-stage-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :lib/options  {:lib/uuid string?}
                        :source-table (meta/id :venues)}
