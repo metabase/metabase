@@ -38,10 +38,9 @@
    [colorize.core :as colorize]
    [hawk.init]
    [metabase.db :as mdb]
-   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
+   [metabase.db.schema-migrations-test.impl
+    :as schema-migrations-test.impl]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.lib.convert :as lib.convert]
-   [metabase.mbql.normalize :refer [normalize]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test.data.impl :as data.impl]
@@ -120,22 +119,6 @@
   ([table-name & body]
    (mbql-query-impl/parse-tokens table-name `(do ~@body))))
 
-(defmacro mbql-query-no-test
-  "Macro for easily building MBQL queries for test purposes.
-
-  See [[mbql-query]] for the interface."
-  {:style/indent 1}
-  ([table-name]
-   `(mbql-query-no-test ~table-name {}))
-
-  ([table-name inner-query]
-   {:pre [(map? inner-query)]}
-   (as-> inner-query <>
-     (mbql-query-impl/parse-tokens table-name <>)
-     (mbql-query-impl/maybe-add-source-table <> table-name)
-     (mbql-query-impl/wrap-inner-query <>)
-     (vary-meta <> assoc :type :mbql))))
-
 (defmacro mbql-query
   "Macro for easily building MBQL queries for test purposes.
 
@@ -159,10 +142,11 @@
 
   ([table-name inner-query]
    {:pre [(map? inner-query)]}
-   `(let [query# (mbql-query-no-test ~table-name ~inner-query)]
-      (t/is (= (normalize query#) (-> query# normalize lib.convert/->pMBQL lib.convert/->legacy-MBQL normalize))
-            "Legacy MBQL queries should round trip to pMBQL and back")
-      query#)))
+   (as-> inner-query <>
+     (mbql-query-impl/parse-tokens table-name <>)
+     (mbql-query-impl/maybe-add-source-table <> table-name)
+     (mbql-query-impl/wrap-inner-query <>)
+     (vary-meta <> assoc :type :mbql))))
 
 (defmacro query
   "Like `mbql-query`, but operates on an entire 'outer' query rather than the 'inner' MBQL query. Like `mbql-query`,
@@ -201,7 +185,7 @@
   "Like `mbql-query`, but runs the query as well."
   {:style/indent 1}
   [table-name & [query]]
-  `(run-mbql-query* (mbql-query-no-test ~table-name ~(or query {}))))
+  `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 
 (defn format-name
   "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the current

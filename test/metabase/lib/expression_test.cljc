@@ -50,7 +50,7 @@
                           (lib/ceil float-field) :type/Integer
                           (lib/floor float-field) :type/Integer
                           (lib/round float-field) :type/Integer
-                          (lib/power int-field float-field) :type/Number
+                          (lib/power int-field float-field) :type/Float
                           (lib/interval 1 :month) :type/Integer ;; Need an interval type
                           #_#_(lib/relative-datetime "2020-01-01" :default) :type/DateTime
                           (lib/time "08:00:00" :hour) :type/Time
@@ -81,8 +81,9 @@
         (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                         (lib/expression "myexpr" expr))
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
-          (is (mc/validate ::lib.schema/query query))
-          (is (= typ (lib.schema.expression/type-of resolved))))))))
+          (testing (pr-str resolved)
+            (is (mc/validate ::lib.schema/query query))
+            (is (= typ (lib.schema.expression/type-of resolved)))))))))
 
 (deftest ^:parallel col-info-expression-ref-test
   (is (=? {:base_type    :type/Integer

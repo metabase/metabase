@@ -8,7 +8,7 @@
    [honey.sql :as sql]
    [metabase.db.query :as mdb.query]
    [metabase.metabot.settings :as metabot-settings]
-   [metabase.models :refer [Card FieldValues]]
+   [metabase.models :refer [Card Field FieldValues Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -61,15 +61,6 @@
                 alias (::add/desired-alias m)]]
       [alias (alias-map id)])))
 
-(defn- fix-model-reference
-  "The formatter may expand the parameterized model (e.g. {{#123}} -> { { # 123 } }).
-  This function fixes that."
-  [sql]
-  (str/replace
-   sql
-   #"\{\s*\{\s*#\s*\d+\s*\}\s*\}"
-   (fn [match] (str/replace match #"\s*" ""))))
-
 (defn inner-query
   "Produce a SELECT * over the parameterized model with columns aliased to normalized display names.
   This can be used in a CTE such that an outer query can be called on this query."
@@ -77,9 +68,8 @@
   (let [column-aliases (->> (aliases model)
                             (map (partial apply format "\"%s\" AS %s"))
                             (str/join ","))]
-    (->> (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column-aliases id)
-         mdb.query/format-sql
-         fix-model-reference)))
+    (mdb.query/format-sql
+     (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column-aliases id))))
 
 (defn denormalize-field
   "Create a 'denormalized' version of the field which is optimized for querying
@@ -98,17 +88,26 @@
   "Create the postgres enum for any item in result_metadata that has enumerated/low cardinality values."
   [{:keys [result_metadata]}]
   (into {}
-        (for [{:keys [sql_name possible_values]} result_metadata
-              :when (seq possible_values)]
-          [sql_name
-           (format "create type %s_t as enum %s;"
-                   sql_name
-                   (str/join ", " (map (partial format "'%s'") possible_values)))])))
+        (for [{:keys [display_name sql_name possible_values]} result_metadata
+              :when (and (seq possible_values)
+                         (<= (count possible_values)
+                             (metabot-settings/enum-cardinality-threshold)))
+              :let [ddl-str (format "create type %s_t as enum %s;"
+                                    sql_name
+                                    (str/join ", " (map (partial format "'%s'") possible_values)))
+                    nchars  (count ddl-str)]]
+          (do
+            (log/debugf "Pseudo-ddl for field %s enumerates %s possible values contains %s chars (~%s tokens)."
+                        display_name
+                        (count possible_values)
+                        nchars
+                        (quot nchars 4))
+            [sql_name ddl-str]))))
 
 (defn- create-table-ddl
   "Create an equivalent DDL for this model"
-  [{:keys [sql_name result_metadata] :as model}]
-  (let [enums (create-enum-ddl model)
+  [{model-name :name :keys [sql_name result_metadata] :as model}]
+  (let [enums   (create-enum-ddl model)
         [ddl] (sql/format
                {:create-table sql_name
                 :with-columns (for [{:keys [sql_name base_type]} result_metadata
@@ -116,9 +115,15 @@
                                 [k (if (enums k)
                                      (format "%s_t" k)
                                      base_type)])}
-               {:dialect :ansi})]
-    (str/join "\n\n"
-              (conj (vec (vals enums)) (mdb.query/format-sql ddl)))))
+               {:dialect :ansi})
+        ddl-str (str/join "\n\n" (conj (vec (vals enums)) (mdb.query/format-sql ddl)))
+        nchars  (count ddl-str)]
+    (log/debugf "Pseudo-ddl for model %s describes %s enum fields and contains %s chars (~%s tokens)."
+                model-name
+                (count enums)
+                nchars
+                (quot nchars 4))
+    ddl-str))
 
 (defn- add-create-table-ddl [model]
   (assoc model :create_table_ddl (create-table-ddl model)))
@@ -140,16 +145,115 @@
   "Convert a map of {:models ...} to a json string summary of these models.
   This is used as a summary of the database in prompt engineering."
   [{:keys [models]}]
-  (json/generate-string
-   {:tables
-    (for [{model-name :name model-id :id :keys [result_metadata] :as _model} models]
-      {:table-id     model-id
-       :table-name   model-name
-       :column-names (mapv :display_name result_metadata)})}
-   {:pretty true}))
+  (let [json-str (json/generate-string
+                  {:tables
+                   (for [{model-name :name model-id :id :keys [result_metadata] :as _model} models]
+                     {:table-id     model-id
+                      :table-name   model-name
+                      :column-names (mapv :display_name result_metadata)})}
+                  {:pretty true})
+        nchars   (count json-str)]
+    (log/debugf "Database json string descriptor contains %s chars (~%s tokens)."
+                nchars
+                (quot nchars 4))
+    json-str))
 
 (defn- add-model-json-summary [database]
   (assoc database :model_json_summary (models->json-summary database)))
+
+(defn- field->pseudo-enums
+  "For a field, create a potential enumerated type string.
+  Returns nil if there are no field values or the cardinality is too high."
+  [{table-name :name} {field-name :name field-id :id :keys [base_type]}]
+  (when-let [values (and
+                     (not= :type/Boolean base_type)
+                     (:values (t2/select-one FieldValues :field_id field-id)))]
+    (when (< (count values) (metabot-settings/enum-cardinality-threshold))
+      (let [ddl-str (format "create type %s_%s_t as enum %s;"
+                            table-name
+                            field-name
+                            (str/join ", " (map (partial format "'%s'") values)))
+            nchars  (count ddl-str)]
+        (log/debugf "Pseudo-ddl for field enum %s describes %s values and contains %s chars (~%s tokens)."
+                    field-name
+                    (count values)
+                    nchars
+                    (quot nchars 4))
+        ddl-str))))
+
+(defn- table->pseudo-ddl
+  "Create an 'approximate' ddl to represent how this table might be created as SQL."
+  [{table-name :name table-id :id :as table}]
+  (let [fields       (t2/select [Field
+                                 :base_type
+                                 :database_required
+                                 :database_type
+                                 :fk_target_field_id
+                                 :id
+                                 :name
+                                 :semantic_type]
+                                :table_id table-id)
+        enums        (reduce
+                      (fn [acc {field-name :name :as field}]
+                        (if-some [enums (field->pseudo-enums table field)]
+                          (assoc acc field-name enums)
+                          acc))
+                      {}
+                      fields)
+        columns      (vec
+                      (for [{column-name :name :keys [database_required database_type]} fields]
+                        (cond-> [column-name
+                                 (if (enums column-name)
+                                   (format "%s_%s_t" table-name column-name)
+                                   database_type)]
+                          database_required
+                          (conj [:not nil]))))
+        primary-keys [[(into [:primary-key]
+                             (comp (filter (comp #{:type/PK} :semantic_type))
+                                   (map :name))
+                             fields)]]
+        foreign-keys (for [{field-name :name :keys [semantic_type fk_target_field_id]} fields
+                           :when (= :type/FK semantic_type)
+                           :let [{fk-field-name :name fk-table-id :table_id} (t2/select-one [Field :name :table_id]
+                                                                                            :id fk_target_field_id)
+                                 {fk-table-name :name} (t2/select-one [Table :name]
+                                                                      :id fk-table-id)]]
+                       [[:foreign-key field-name]
+                        [:references fk-table-name fk-field-name]])
+        create-sql   (->
+                      (sql/format
+                       {:create-table table-name
+                        :with-columns (reduce into columns [primary-keys foreign-keys])}
+                       {:dialect :ansi :pretty true})
+                      first
+                      mdb.query/format-sql)
+        ddl-str      (str/join "\n\n" (conj (vec (vals enums)) create-sql))
+        nchars       (count ddl-str)]
+    (log/debugf "Pseudo-ddl for table %s describes %s fields, %s enums, and contains %s chars (~%s tokens)."
+                table-name
+                (count fields)
+                (count enums)
+                nchars
+                (quot nchars 4))
+    ddl-str))
+
+(defn- database->pseudo-ddl
+  "Create an 'approximate' ddl to represent how this database might be created as SQL."
+  [{db-name :name db_id :id :as _database}]
+  (let [tables  (t2/select Table :db_id db_id)
+        ddl-str (->> tables
+                     (map table->pseudo-ddl)
+                     (str/join "\n\n"))
+        nchars  (count ddl-str)]
+    (log/debugf "Pseudo-ddl for db %s describes %s tables and contains %s chars (~%s tokens)."
+                db-name
+                (count tables)
+                nchars
+                (quot nchars 4))
+    ddl-str))
+
+(defn- add-pseudo-database-ddl [database]
+  (assoc database :create_database_ddl (database->pseudo-ddl database)))
 
 (defn denormalize-database
   "Create a 'denormalized' version of the database which is optimized for querying.
@@ -160,7 +264,8 @@
     (-> database
         (assoc :sql_name (normalize-name database-name))
         (assoc :models (mapv denormalize-model models))
-        add-model-json-summary)))
+        add-model-json-summary
+        add-pseudo-database-ddl)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Prompt Input ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -206,9 +311,12 @@
    value is the template object with the prompt contained in the ':prompt' key."
   [{:keys [prompt_task] :as context}]
   (if-some [{:keys [messages] :as template} (get-in (*prompt-templates*) [prompt_task :latest])]
-    (assoc template
-      :message_templates messages
-      :messages (prompt-template->messages template context))
+    (let [prompt (assoc template
+                   :message_templates messages
+                   :messages (prompt-template->messages template context))]
+      (let [nchars (count (mapcat :content messages))]
+        (log/debugf "Prompt running with %s chars (~%s tokens)." nchars (quot nchars 4)))
+      prompt)
     (throw
      (ex-info
       (format "No prompt inference template found for prompt type: %s" prompt_task)
@@ -238,19 +346,19 @@
 (defn extract-sql
   "Search a provided string for a SQL block"
   [s]
-  (if (str/starts-with? (u/upper-case-en (str/trim s)) "SELECT")
-    ;; This is just a raw SQL statement
-    (mdb.query/format-sql s)
-    ;; It looks like markdown
-    (let [[_pre sql _post] (str/split s #"```(sql|SQL)?")]
-      (mdb.query/format-sql sql))))
+  (let [sql (if (str/starts-with? (u/upper-case-en (str/trim s)) "SELECT")
+              ;; This is just a raw SQL statement
+              s
+              ;; It looks like markdown
+              (let [[_pre sql _post] (str/split s #"```(sql|SQL)?")]
+                sql))]
+    (mdb.query/format-sql sql)))
 
 (defn bot-sql->final-sql
   "Produce the final query usable by the UI but converting the model to a CTE
   and calling the bot sql on top of it."
   [{:keys [inner_query sql_name] :as _denormalized-model} outer-query]
-  (let [model-with-cte (format "WITH %s AS (%s) %s" sql_name inner_query outer-query)]
-    (fix-model-reference model-with-cte)))
+  (format "WITH %s AS (%s) %s" sql_name inner_query outer-query))
 
 (defn response->viz
   "Given a response from the LLM, map this to visualization settings. Default to a table."
@@ -263,9 +371,9 @@
                                      :visualization_settings {:graph.dimensions [x-axis]
                                                               :graph.metrics    y-axis}}
       :scalar {:display                display
-                 :name                   description
-                 :visualization_settings {:graph.metrics    y-axis
-                                          :graph.dimensions []}}
+               :name                   description
+               :visualization_settings {:graph.metrics    y-axis
+                                        :graph.dimensions []}}
       {:display                :table
        :name                   description
        :visualization_settings {:title description}})))

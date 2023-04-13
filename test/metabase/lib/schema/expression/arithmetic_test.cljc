@@ -2,11 +2,11 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
+   [metabase.lib.schema]
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.schema.expression.arithmetic]
    [metabase.lib.test-metadata :as meta]))
 
-(comment metabase.lib.schema.expression.arithmetic/keep-me)
+(comment metabase.lib.schema/keep-me)
 
 (deftest ^:parallel times-test
   (let [venues-price [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} (meta/id :venues :price)]]
@@ -31,3 +31,35 @@
         (is (mc/validate :mbql.clause/* expr))
         (is (not (mc/validate ::expression/integer expr)))
         (is (mc/validate ::expression/number expr))))))
+
+(deftest ^:parallel power-type-of-test
+  (testing "Make sure we can calculate type of a `:power` clause (#29944)"
+    (testing ":field has type info"
+      (testing ":type/Integer if both expr and exponent are integers"
+        (is (= :type/Integer
+               (expression/type-of
+                [:power
+                 {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Integer} 1]
+                 2]))))
+      (testing ":type/Float if expr is non-integer"
+        (is (= :type/Float
+               (expression/type-of
+                [:power
+                 {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float} 1]
+                 2]))))
+      (testing ":type/Float if exponent is non-integer"
+        (is (= :type/Float
+               (expression/type-of
+                [:power
+                 {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Integer} 1]
+                 2.1])))))
+    (testing ":field missing type info"
+      (is (= :type/Float
+             (expression/type-of
+              [:power
+               {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
+               2]))))))

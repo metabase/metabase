@@ -782,7 +782,7 @@
                                          int str str str str 2.0 2.0 str]
                        results))))))))))
 
-(deftest double-quotes-in-join-alias-test
+(deftest ^:parallel double-quotes-in-join-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Make sure our we handle (escape) double quotes in join aliases. Make sure we prevent SQL injection (#20307)"
       (let [expected-rows (mt/rows
