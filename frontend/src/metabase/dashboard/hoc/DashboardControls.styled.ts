@@ -6,4 +6,9 @@ export const ApplyButton = styled(Button)<{ isVisible: boolean }>`
 
   opacity: ${({ isVisible }) => (isVisible ? 1 : 0)};
   visibility: ${({ isVisible }) => (isVisible ? "visible" : "hidden")};
+
+  &,
+  &:hover {
+    transition-property: opacity, visibility;
+  }
 `;
