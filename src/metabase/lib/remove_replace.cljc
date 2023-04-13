@@ -1,8 +1,8 @@
 (ns metabase.lib.remove-replace
   (:require
    [metabase.lib.common :as lib.common]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
-   [metabase.lib.stage :as lib.stage]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.util.malli :as mu]))
@@ -21,7 +21,8 @@
 (defn- target-ref-for-stage
   "Gets the ref for the target-id exposed by the previous stage"
   [query stage-number target-id]
-  (->> (lib.stage/visible-columns query stage-number)
+  (->> (let [stage (lib.util/query-stage query stage-number)]
+         (lib.metadata.calculation/visible-columns query stage-number stage))
        (some (fn [{:keys [lib/source id] :as column}]
                (when (and (= :source/previous-stage source) (= target-id id))
                  (lib.ref/ref column))))))
@@ -52,7 +53,8 @@
     target-clause]
    (reduce
      (fn [query location]
-       (let [result (lib.util/update-query-stage query stage-number
+       (let [target-clause (lib.common/->op-arg query stage-number target-clause)
+             result (lib.util/update-query-stage query stage-number
                                                  lib.util/remove-clause location target-clause)]
          (when (not= query result)
            (case location
@@ -62,7 +64,7 @@
          result))
      query
      ;; TODO only these top level clauses are supported at this moment
-     [:order-by :breakout])))
+     [:order-by :breakout :filters])))
 
 (mu/defn replace-clause :- :metabase.lib.schema/query
   "Replaces the `target-clause` with `new-clause` in the `query` stage."
@@ -74,7 +76,8 @@
     stage-number :- :int
     target-clause
     new-clause]
-   (let [replacement (lib.common/->op-arg query stage-number new-clause)]
+   (let [target-clause (lib.common/->op-arg query stage-number target-clause)
+         replacement (lib.common/->op-arg query stage-number new-clause)]
      (reduce
        (fn [query location]
          (let [result (lib.util/update-query-stage query stage-number
@@ -87,4 +90,4 @@
            result))
        query
        ;; TODO only these top level clauses are supported at this moment
-       [:order-by :breakout]))))
+       [:order-by :breakout :filters]))))
