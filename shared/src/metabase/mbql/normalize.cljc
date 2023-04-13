@@ -257,21 +257,12 @@
 (defn- normalize-template-tag-definition
   "For a template tag definition, normalize all the keys appropriately."
   [tag-definition]
-  (let [tag-def (into
-                 {}
-                 (map (fn [[k v]]
-                        (let [k            (maybe-normalize-token k)
-                              transform-fn (template-tag-definition-key->transform-fn k)]
-                          [k (transform-fn v)])))
-                 tag-definition)]
-    ;; `:widget-type` is a required key for Field Filter (dimension) template tags -- see
-    ;; [[metabase.mbql.schema/TemplateTag:FieldFilter]] -- but prior to v42 it wasn't usually included by the
-    ;; frontend. See #20643. If it's not present, just add in `:category` which will make things work they way they
-    ;; did in the past.
-    (cond-> tag-def
-      (and (= (:type tag-def) :dimension)
-           (not (:widget-type tag-def)))
-      (assoc :widget-type :category))))
+  (into {}
+        (map (fn [[k v]]
+               (let [k            (maybe-normalize-token k)
+                     transform-fn (template-tag-definition-key->transform-fn k)]
+                 [k (transform-fn v)])))
+        tag-definition))
 
 (defn- normalize-template-tags
   "Normalize native-query template tags. Like `expressions` we want to preserve the original name rather than normalize

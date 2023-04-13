@@ -60,9 +60,10 @@ export function getStoredSettingsForSeries(series) {
     (series && series[0] && series[0].card.visualization_settings) || {};
   if (storedSettings.column_settings) {
     // normalize any settings stored under old style keys: [ref, [fk->, 1, 2]]
-    storedSettings.column_settings = normalizeColumnSettings(
-      storedSettings.column_settings,
-    );
+    return {
+      ...storedSettings,
+      column_settings: normalizeColumnSettings(storedSettings.column_settings),
+    };
   }
   return storedSettings;
 }
