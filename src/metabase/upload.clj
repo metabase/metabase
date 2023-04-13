@@ -24,10 +24,10 @@
 ;;              / \
 ;;             /   \
 ;;            /     \
-;;         float   date
+;;         float   datetime
 ;;           |       |
 ;;           |       |
-;;          int   datetime
+;;          int    date
 ;;           |
 ;;           |
 ;;        boolean
@@ -38,8 +38,8 @@
    ::float       ::varchar_255
    ::int         ::float
    ::boolean     ::int
-   ::date        ::varchar_255
-   ::datetime    ::date})
+   ::datetime    ::varchar_255
+   ::date        ::datetime})
 
 (def ^:private types
   (set/union (set (keys type->parent))
@@ -145,7 +145,9 @@
 
 (defn- parse-datetime
   [s]
-  (t/local-date-time s))
+  (cond
+    (date-string? s) (t/local-date-time (t/local-date s) (t/local-time "00:00:00"))
+    (datetime-string? s) (t/local-date-time s)))
 
 (def ^:private upload-type->parser
   {::varchar_255 identity
