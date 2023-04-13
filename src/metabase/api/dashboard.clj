@@ -514,7 +514,7 @@
     (check-parameter-mapping-permissions new-mappings)))
 
 (mu/defn ^:private classify-changes :- [:map
-                                        [:to-create [:sequential [:map [:id neg-int?]]]]
+                                        [:to-create [:sequential [:map [:id ms/NegativeInt]]]]
                                         [:to-update [:sequential [:map [:id ms/PositiveInt]]]]
                                         [:to-delete [:sequential [:map [:id ms/PositiveInt]]]]]
   "Given 2 lists of seq maps changes, where each map an `id` keys,
@@ -532,7 +532,7 @@
         ;; to-update changes are new changes with id in the current changes
         to-update          (filter #(current-change-ids (:id %)) new-changes)
         ;; to delete changes in current but not new changes
-        to-delete          (filter #(not (new-change-ids (:id %))) current-changes)]
+        to-delete          (remove (comp new-change-ids :id) current-changes)]
     {:to-update to-update
      :to-delete to-delete
      :to-create to-create}))
@@ -558,7 +558,7 @@
   ;; transform the card data to the format of the DashboardCard model
   ;; so update-dashcards! can compare them with existing cards
   (dashboard/update-dashcards! dashboard (map dashboard-card/from-parsed-json cards))
-  ;; TODO this is ambiguous, we don't know for sure here that the cards are repositioned
+  ;; TODO this is potentially misleading, we don't know for sure here that the cards are repositioned
   (events/publish-event! :dashboard-reposition-cards {:id (:id dashboard) :actor_id api/*current-user-id* :dashcards cards}))
 
 (defn- delete-cards! [dashboard dashcard-ids]
