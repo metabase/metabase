@@ -4,6 +4,7 @@
    [clojure.test :refer [is]]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]))
@@ -14,7 +15,6 @@
    :type         :pipeline
    :database     (meta/id)
    :stages       [{:lib/type     :mbql.stage/mbql
-                   :lib/options  {:lib/uuid (str (random-uuid))}
                    :source-table (meta/id :venues)}]})
 
 (defn venues-query-with-last-stage [m]
@@ -84,17 +84,60 @@
   (composed-metadata-provider
    meta/metadata-provider
    (mock-metadata-provider
-    {:cards [(assoc meta/saved-question
-                    :name "My Card"
-                    :id 1)]})))
+    {:cards [{:name          "My Card"
+              :id            1
+              :dataset_query {:database (meta/id)
+                              :type     :query
+                              :query    {:source-table (meta/id :checkins)
+                                         :aggregation  [[:count]]
+                                         :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}]})))
 
 (defn query-with-card-source-table
-  "A query with a `card__<id>` source Table, and a metadata provider that has that Card."
+  "A query with a `card__<id>` source Table, and a metadata provider that has that Card. Card's name is `My Card`. Card
+  'exports' two columns, `USER_ID` and `count`."
   []
   {:lib/type     :mbql/query
    :lib/metadata metadata-provider-with-card
    :type         :pipeline
    :database     (meta/id)
    :stages       [{:lib/type     :mbql.stage/mbql
-                   :lib/options  {:lib/uuid (str (random-uuid))}
                    :source-table "card__1"}]})
+
+(defn query-with-join
+  "A query against `VENUES` with an explicit join against `CATEGORIES`."
+  []
+  (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+      (lib/join (-> (lib/join-clause
+                     (meta/table-metadata :categories)
+                     [(lib/=
+                       (lib/field "VENUES" "CATEGORY_ID")
+                       (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                    (lib/with-join-alias "Cat")
+                    (lib/with-join-fields :all)))))
+
+(defn query-with-expression
+  "A query with an expression."
+  []
+  (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+      (lib/expression "expr" (lib/absolute-datetime "2020" :month))))
+
+(defn native-query
+  "A sample native query."
+  []
+  {:lib/type     :mbql/query
+   :lib/metadata meta/metadata-provider
+   :type         :pipeline
+   :database     (meta/id)
+   :stages       [{:lib/type           :mbql.stage/native
+                   :lib/stage-metadata {:lib/type :metadata/results
+                                        :columns  [{:lib/type      :metadata/field
+                                                    :name          "abc"
+                                                    :display_name  "another Field"
+                                                    :base_type     :type/Integer
+                                                    :semantic_type :type/FK}
+                                                   {:lib/type      :metadata/field
+                                                    :name          "sum"
+                                                    :display_name  "sum of User ID"
+                                                    :base_type     :type/Integer
+                                                    :semantic_type :type/FK}]}
+                   :native             "SELECT whatever"}]})

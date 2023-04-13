@@ -35,18 +35,6 @@
   [legacy-query]
   (or
    *skip-conversion-tests*
-   ;; #29747: schema for `:relative-datetime` current without a unit is broken
-   (mbql.u/match-one legacy-query
-     [:relative-datetime :current]
-     "#29747")
-   ;; #29898: `:joins` with `:fields` other than `:all` or `:none` are not normalized correctly.
-   (mbql.u/match-one legacy-query
-     {:joins joins}
-     (mbql.u/match-one joins
-       {:fields fields}
-       (mbql.u/match-one fields
-         :field
-         "#29898")))
    ;; #29897: `:datetime-diff` is not handled correctly.
    (mbql.u/match-one legacy-query
      :datetime-diff
@@ -143,11 +131,7 @@
    ;; #29947: `:ends-with` broken
    (mbql.u/match-one legacy-query
      :ends-with
-     "#29947")
-   ;; #29964: `:percentile` column name calculation broken
-   (mbql.u/match-one legacy-query
-     :percentile
-     "#29964")))
+     "#29947")))
 
 (defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}

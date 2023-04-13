@@ -90,20 +90,7 @@
              :base_type     :type/Integer
              :semantic_type :type/FK}
             (lib.metadata.calculation/metadata
-             (lib.tu/venues-query-with-last-stage
-              {:lib/type           :mbql.stage/native
-               :lib/stage-metadata {:lib/type :metadata/results
-                                    :columns  [{:lib/type      :metadata/field
-                                                :name          "abc"
-                                                :display_name  "another Field"
-                                                :base_type     :type/Integer
-                                                :semantic_type :type/FK}
-                                               {:lib/type      :metadata/field
-                                                :name          "sum"
-                                                :display_name  "sum of User ID"
-                                                :base_type     :type/Integer
-                                                :semantic_type :type/FK}]}
-               :native             "SELECT whatever"})
+             (lib.tu/native-query)
              -1
              [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "sum"])))))
 
