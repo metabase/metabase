@@ -20,6 +20,7 @@
    [metabase.lib.schema.order-by :as order-by]
    [metabase.lib.schema.ref :as ref]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.mbql.util :as mbql.u]
    [metabase.util.malli.registry :as mr]))
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
@@ -47,7 +48,37 @@
 (mr/def ::source-table
   [:or
    [:ref ::id/table]
-   #"^card__\d+$"])
+   [:ref ::id/table-card-id-string]])
+
+(defn- join-ref-error [stage]
+  (let [join-aliases (into #{} (keep :alias) (:joins stage))]
+    (mbql.u/match-one stage
+      [:field ({:join-alias (join-alias :guard (complement join-aliases))} :guard :join-alias) _id-or-name]
+      (str "Invalid :field reference: no join named " (pr-str join-alias)))))
+
+(defn- expression-ref-error [stage]
+  (let [expression-names (set (keys (:expressions stage)))]
+    (mbql.u/match-one stage
+      [:expression _opts (expression-name :guard (complement expression-names))]
+      (str "Invalid :expression reference: no expression named " (pr-str expression-name)))))
+
+(defn- aggregation-ref-error [stage]
+  (let [num-aggregations (count (:aggregation stage))]
+    (mbql.u/match-one stage
+      [:aggregation _opts (index :guard #(>= % num-aggregations))]
+      (str "Invalid :aggregation reference: no aggregation at index " index))))
+
+(def ^:private ^{:arglists '([stage])} ref-error
+  (some-fn join-ref-error
+           expression-ref-error
+           aggregation-ref-error))
+
+(mr/def ::valid-refs
+  [:fn
+   {:error/message "Valid references for query stage"
+    :error/fn      (fn [{:keys [value]} _]
+                     (ref-error value))}
+   (complement ref-error)])
 
 (mr/def ::stage.mbql
   [:and
@@ -61,21 +92,25 @@
     [:filters      {:optional true} ::filters]
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
     [:source-table {:optional true} [:ref ::source-table]]]
-   ;; `:source-query` is not allowed in `:pipeline` (pMBQL) queries!
-   [:fn #(not (contains? % :source-query))]])
+   [:fn
+    {:error/message ":source-query is not allowed in pMBQL queries."}
+    #(not (contains? % :source-query))]
+   [:ref ::valid-refs]])
 
 ;;; Schema for an MBQL stage that includes either `:source-table` or `:source-query`.
 (mr/def ::stage.mbql.with-source
   [:and
-   ::stage.mbql
+   [:ref ::stage.mbql]
    [:map
     [:source-table [:ref ::source-table]]]])
 
 ;;; Schema for an MBQL stage that DOES NOT include `:source-table` -- an MBQL stage that is not the initial stage.
 (mr/def ::stage.mbql.without-source
   [:and
-   ::stage.mbql
-   [:fn #(not (contains? % :source-table))]])
+   [:ref ::stage.mbql]
+   [:fn
+    {:error/message "Only the initial stage of a query can have a :source-table."}
+    #(not (contains? % :source-table))]])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type
@@ -86,24 +121,24 @@
    [:map
     [:lib/type ::stage.type]]
    [:multi {:dispatch :lib/type}
-    [:mbql.stage/native ::stage.native]
-    [:mbql.stage/mbql ::stage.mbql]]])
+    [:mbql.stage/native [:ref ::stage.native]]
+    [:mbql.stage/mbql   [:ref ::stage.mbql]]]])
 
 (mr/def ::stage.initial
   [:and
    [:map
     [:lib/type ::stage.type]]
    [:multi {:dispatch :lib/type}
-    [:mbql.stage/native ::stage.native]
-    [:mbql.stage/mbql ::stage.mbql.with-source]]])
+    [:mbql.stage/native [:ref ::stage.native]]
+    [:mbql.stage/mbql   [:ref ::stage.mbql.with-source]]]])
 
 (mr/def ::stage.additional
   ::stage.mbql.without-source)
 
 (mr/def ::stages
   [:cat
-   ::stage.initial
-   [:* ::stage.additional]])
+   [:schema [:ref ::stage.initial]]
+   [:* [:schema [:ref ::stage.additional]]]])
 
 (mr/def ::query
   [:and
@@ -112,5 +147,5 @@
     [:database [:or
                 ::id/database
                 ::id/saved-questions-virtual-database]]
-    [:stages ::stages]]
+    [:stages   [:ref ::stages]]]
    lib.schema.util/UniqueUUIDs])
