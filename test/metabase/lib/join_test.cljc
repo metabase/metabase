@@ -213,8 +213,8 @@
                                     (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                                 (lib/with-join-alias "Cat")
                                 (lib/with-join-fields :all)))
-                  (lib/fields [(lib/field "VENUES" "ID")
-                               (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")]))]
+                  (lib/with-fields [(lib/field "VENUES" "ID")
+                                    (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")]))]
     (is (=? [{:name                     "ID"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "ID"
