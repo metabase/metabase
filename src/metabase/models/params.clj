@@ -205,7 +205,7 @@
           id))
    (cards->card-param-field-ids (map :card dashcards))))
 
-(defmethod param-fields :metabase.models.dashboard/Dashboard [dashboard]
+(defmethod param-fields :model/Dashboard [dashboard]
   (-> (hydrate dashboard [:ordered_cards :card])
       :ordered_cards
       dashcards->param-field-ids
