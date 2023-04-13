@@ -100,7 +100,7 @@ If you want to embed Metabase in another domain (say, if Metabase is hosted at `
 
 If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request. For more information, see MDN's documentation on [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite). 
 
-Note that the `SameSite = None` modifier is incompatible with most Safari and iOS browsers (including any browser that runs on iOS, such as Chrome on iOS).
+Note that `SameSite=None` is incompatible with most Safari and iOS browser versions (including any browser that runs on iOS, such as Chrome on iOS).
 
 ## Securing full-app embeds
 
