@@ -17,7 +17,6 @@
     :refer [Action
             Card
             Collection
-            DashboardCardSeries
             Field
             FieldValues
             PermissionsGroup
@@ -430,16 +429,16 @@
   (testing "GET /api/dashboard/:id"
     (testing "Fetch Dashboard with a series, should fail if the User doesn't have access to the Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp* [Collection           [{coll-id :id}      {:name "Collection 1"}]
-                        :model/Dashboard     [{dashboard-id :id} {:name       "Test Dashboard"
-                                                                  :creator_id (mt/user->id :crowberto)}]
-                        Card                 [{card-id :id}      {:name          "Dashboard Test Card"
-                                                                  :collection_id coll-id}]
-                        Card                 [{card-id2 :id}     {:name          "Dashboard Test Card 2"
-                                                                  :collection_id coll-id}]
-                        :model/DashboardCard [{dbc_id :id}       {:dashboard_id dashboard-id, :card_id card-id}]
-                        DashboardCardSeries  [_                  {:dashboardcard_id dbc_id, :card_id card-id2
-                                                                  :position         0}]]
+        (mt/with-temp* [Collection                 [{coll-id :id}      {:name "Collection 1"}]
+                        :model/Dashboard           [{dashboard-id :id} {:name       "Test Dashboard"
+                                                                        :creator_id (mt/user->id :crowberto)}]
+                        Card                       [{card-id :id}      {:name          "Dashboard Test Card"
+                                                                        :collection_id coll-id}]
+                        Card                       [{card-id2 :id}     {:name          "Dashboard Test Card 2"
+                                                                        :collection_id coll-id}]
+                        :model/DashboardCard       [{dbc_id :id}       {:dashboard_id dashboard-id, :card_id card-id}]
+                        :model/DashboardCardSeries [_                  {:dashboardcard_id dbc_id, :card_id card-id2
+                                                                        :position         0}]]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
 
@@ -852,10 +851,10 @@
                       :model/DashboardCard [_        {:dashboard_id (u/the-id dashboard)
                                                       :card_id    (u/the-id model)
                                                       :size_x 6, :size_y 6}]
-                      DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
-                                              :card_id (u/the-id avg-card)
-                                              :position 0}]]
-        (mt/with-model-cleanup [Card :model/Dashboard :model/DashboardCard DashboardCardSeries]
+                      :model/DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
+                                                     :card_id (u/the-id avg-card)
+                                                     :position 0}]]
+        (mt/with-model-cleanup [Card :model/Dashboard :model/DashboardCard :model/DashboardCardSeries]
           (let [resp (mt/user-http-request :crowberto :post 200
                                            (format "dashboard/%d/copy" (:id dashboard))
                                            {:name        "New dashboard"
@@ -930,10 +929,10 @@
                         :model/DashboardCard [_        {:dashboard_id (u/the-id dashboard)
                                                         :card_id    (u/the-id card)
                                                         :size_x 6, :size_y 6}]
-                        DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
-                                                :card_id (u/the-id avg-card)
-                                                :position 0}]]
-          (mt/with-model-cleanup [Card :model/Dashboard :model/DashboardCard DashboardCardSeries]
+                        :model/DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
+                                                       :card_id (u/the-id avg-card)
+                                                       :position 0}]]
+          (mt/with-model-cleanup [Card :model/Dashboard :model/DashboardCard :model/DashboardCardSeries]
             (perms/revoke-collection-permissions! (perms-group/all-users) no-read-coll)
             (let [resp (mt/user-http-request :rasta :post 200
                                              (format "dashboard/%d/copy" (:id dashboard))
@@ -954,7 +953,7 @@
                          (into #{} (map :name) copied-cards))
                       "Should preserve the titles of the original cards"))
                 (testing "Should not create dashboardcardseries because the base card lacks permissions"
-                  (is (empty? (t2/select DashboardCardSeries :card_id [:in (map :id copied-cards)]))))
+                  (is (empty? (t2/select :model/DashboardCardSeries :card_id [:in (map :id copied-cards)]))))
                 (testing "Response includes uncopied cards"
                   ;; cards might be full cards or just a map {:id 1} due to permissions Any card with lack of
                   ;; permissions is just {:id 1}. Cards in a series which you have permissions for, but the base card
@@ -1006,10 +1005,10 @@
                         :model/DashboardCard [_        {:dashboard_id (u/the-id dashboard)
                                                         :card_id    (u/the-id card)
                                                         :size_x 6, :size_y 6}]
-                        DashboardCardSeries  [_ {:dashboardcard_id (u/the-id dashcard)
-                                                 :card_id (u/the-id avg-card)
-                                                 :position 0}]]
-          (mt/with-model-cleanup [Card :model/Dashboard :model/DashboardCard DashboardCardSeries]
+                        :model/DashboardCardSeries  [_ {:dashboardcard_id (u/the-id dashcard)
+                                                        :card_id (u/the-id avg-card)
+                                                        :position 0}]]
+          (mt/with-model-cleanup [Card :model/Dashboard :model/DashboardCard :model/DashboardCardSeries]
             (let [_resp (mt/user-http-request :rasta :post 200
                                               (format "dashboard/%d/copy" (:id dashboard))
                                               {:name        "New dashboard"
@@ -1253,7 +1252,7 @@
                  (map (partial into {})
                       (t2/select [:model/DashboardCard :size_x :size_y :col :row], :dashboard_id dashboard-id))))
           (is (= #{0}
-                 (t2/select-fn-set :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
+                 (t2/select-fn-set :position :model/DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
 
 (defn do-with-add-card-parameter-mapping-permissions-fixtures [f]
   (mt/with-temp-copy-of-db
@@ -1371,13 +1370,13 @@
 (deftest delete-cards-test
   (testing "DELETE /api/dashboard/id/:cards"
     ;; fetch a dashboard WITH a dashboard card on it
-    (mt/with-temp* [:model/Dashboard     [{dashboard-id :id}]
-                    Card                 [{card-id :id}]
-                    Card                 [{series-id-1 :id}]
-                    Card                 [{series-id-2 :id}]
-                    :model/DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                    DashboardCardSeries  [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
-                    DashboardCardSeries  [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
+    (mt/with-temp* [:model/Dashboard            [{dashboard-id :id}]
+                    Card                        [{card-id :id}]
+                    Card                        [{series-id-1 :id}]
+                    Card                        [{series-id-2 :id}]
+                    :model/DashboardCard        [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                    :model/DashboardCardSeries  [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
+                    :model/DashboardCardSeries  [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
       (with-dashboards-in-writeable-collection [dashboard-id]
         (is (= 1
                (count (t2/select-pks-set :model/DashboardCard, :dashboard_id dashboard-id))))
