@@ -14,3 +14,9 @@ declare const OrderByClause: unique symbol;
 export type OrderByClause = unknown & { _opaque: typeof OrderByClause };
 
 export type Clause = OrderByClause;
+
+declare const ColumnMetadata: unique symbol;
+export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
+
+declare const ColumnGroup: unique symbol;
+export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };

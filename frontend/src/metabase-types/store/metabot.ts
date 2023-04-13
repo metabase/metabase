@@ -5,7 +5,12 @@ import {
   Dataset,
   MetabotFeedbackType,
 } from "metabase-types/api";
-import { Deferred } from "metabase/lib/promise";
+
+interface Deferred<T = unknown> {
+  promise: Promise<T>;
+  resolve(value?: T | PromiseLike<T>): void;
+  reject(reason?: any): void;
+}
 
 export type MetabotEntityId = CardId | DatabaseId;
 export type MetabotEntityType = "database" | "model";
@@ -22,4 +27,9 @@ export interface MetabotState {
   queryError: unknown;
   feedbackType: MetabotFeedbackType | null;
   cancelQueryDeferred: Deferred | null;
+  uiControls: MetabotUiControls;
+}
+
+export interface MetabotUiControls {
+  isShowingRawTable: boolean;
 }

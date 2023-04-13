@@ -1,7 +1,6 @@
 (ns metabase.lib.query
   (:refer-clojure :exclude [remove])
   (:require
-   [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -13,45 +12,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
-
-(mu/defn replace-clause :- :metabase.lib.schema/query
-  "Replaces the `target-clause` with `new-clause` in the `query` stage."
-  ([query :- :metabase.lib.schema/query
-    target-clause
-    new-clause]
-   (replace-clause query -1 target-clause new-clause))
-  ([query :- :metabase.lib.schema/query
-    stage-number :- :int
-    target-clause
-    new-clause]
-   (let [replacement (lib.common/->op-arg query stage-number new-clause)]
-     ;; Right now, this works for clauses that cannot have dependents.
-     ;; This will change and have different logic depending on `location`
-     ;; `location` should probably be "found" first before iterating.
-     (reduce
-       (fn [query location]
-         (lib.util/update-query-stage query stage-number
-                                      lib.util/replace-clause location target-clause replacement))
-       query
-       [:order-by]))))
-
-(mu/defn remove-clause :- :metabase.lib.schema/query
-  "Removes the `target-clause` in the filter of the `query`."
-  ([query :- :metabase.lib.schema/query
-    target-clause]
-   (remove-clause query -1 target-clause))
-  ([query :- :metabase.lib.schema/query
-    stage-number :- :int
-    target-clause]
-   ;; Right now, this works for clauses that cannot have dependents.
-   ;; This will change and have different logic depending on `location`
-   ;; `location` should probably be "found" first before iterating.
-   (reduce
-     (fn [query location]
-       (lib.util/update-query-stage query stage-number
-                                    lib.util/remove-clause location target-clause))
-     query
-     [:order-by])))
 
 (defmethod lib.normalize/normalize :mbql/query
   [query]
@@ -146,7 +106,7 @@
   "Convenience for creating a query from a Saved Question (i.e., a Card)."
   [metadata-provider :- lib.metadata/MetadataProvider
    {mbql-query :dataset_query, metadata :result_metadata}]
-  (let [mbql-query (cond-> (assoc (lib.util/pipeline mbql-query)
+  (let [mbql-query (cond-> (assoc (lib.convert/->pMBQL mbql-query)
                                   :lib/metadata metadata-provider)
                      metadata
                      (lib.util/update-query-stage -1 assoc :lib/stage-metadata metadata))]

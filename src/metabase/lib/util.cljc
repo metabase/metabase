@@ -1,17 +1,26 @@
 (ns metabase.lib.util
   (:refer-clojure :exclude [format])
   (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]
    #?@(:clj
        ([potemkin :as p]))
    #?@(:cljs
-       ([goog.string :as gstring]
-        [goog.string.format :as gstring.format]))
-   [clojure.set :as set]
-   [clojure.string :as str]
-   [metabase.lib.options :as lib.options]
-   [metabase.lib.schema :as lib.schema]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+       (["crc-32" :as CRC32]
+        [goog.string :as gstring]
+        [goog.string.format :as gstring.format]))))
+
+#?(:clj
+   (set! *warn-on-reflection* true))
 
 ;; The formatting functionality is only loaded if you depend on goog.string.format.
 #?(:cljs (comment gstring.format/keep-me))
@@ -31,7 +40,9 @@
        (map? (second clause))
        (contains? (second clause) :lib/uuid)))
 
-(defn- clause-uuid [clause]
+(defn clause-uuid
+  "Returns the :lib/uuid of `clause`. Returns nil if `clause` is not a clause."
+  [clause]
   (when (clause? clause)
     (get-in clause [1 :lib/uuid])))
 
@@ -41,7 +52,7 @@
    If `location` contains no clause with `target-clause` no replacement happens."
   [stage location target-clause new-clause]
   {:pre [(clause? target-clause)]}
-  (update
+  (m/update-existing
     stage
     location
     #(->> (for [clause %]
@@ -51,21 +62,19 @@
           vec)))
 
 (defn remove-clause
-  "Replace the `target-clause` in `stage` `location`.
+  "Remove the `target-clause` in `stage` `location`.
    If a clause has :lib/uuid equal to the `target-clause` it is removed.
    If `location` contains no clause with `target-clause` no removal happens.
    If the the location is empty, dissoc it from stage."
   [stage location target-clause]
   {:pre [(clause? target-clause)]}
-  (let [target-uuid (clause-uuid target-clause)
-        target (get stage location)
-        result (->> target
-                    (remove (comp #{target-uuid} clause-uuid))
-                    vec
-                    not-empty)]
-    (if result
-      (assoc stage location result)
-      (dissoc stage location))))
+  (if-let [target (get stage location)]
+    (let [target-uuid (clause-uuid target-clause)
+          result (into [] (remove (comp #{target-uuid} clause-uuid)) target)]
+      (if (seq result)
+        (assoc stage location result)
+        (dissoc stage location)))
+    stage))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
 ;;; the near future.
@@ -84,11 +93,22 @@
 
 (declare inner-query->stages)
 
+(defn- update-legacy-boolean-expression->list
+  "Updates m with a legacy boolean expression at `legacy-key` into a list with an implied and for pMBQL at `pMBQL-key`"
+  [m legacy-key pMBQL-key]
+  (cond-> m
+    (contains? m legacy-key) (update legacy-key #(if (and (vector? %)
+                                                       (= (first %) :and))
+                                                   (vec (drop 1 %))
+                                                   [%]))
+    (contains? m legacy-key) (set/rename-keys {legacy-key pMBQL-key})))
+
 (defn- join->pipeline [join]
   (let [source (select-keys join [:source-table :source-query])
         stages (inner-query->stages source)]
     (-> join
         (dissoc :source-table :source-query)
+        (update-legacy-boolean-expression->list :condition :conditions)
         (assoc :lib/type :mbql/join
                :stages stages)
         lib.options/ensure-uuid)))
@@ -119,7 +139,8 @@
                                 {:lib/type stage-type})
                                (dissoc inner-query :source-query :source-metadata))
         this-stage      (cond-> this-stage
-                          (seq (:joins this-stage)) (update :joins joins->pipeline))]
+                          (seq (:joins this-stage)) (update :joins joins->pipeline)
+                          :always (update-legacy-boolean-expression->list :filter :filters))]
     (conj previous-stages this-stage)))
 
 (defn- mbql-query->pipeline
@@ -168,6 +189,15 @@
   (let [stage-number (non-negative-stage-index stages stage-number)]
     (when (pos? stage-number)
       (dec stage-number))))
+
+(defn next-stage-number
+  "The index of the next stage, if there is one. `nil` if there is no next stage."
+  [{:keys [stages], :as _query} stage-number]
+  (let [stage-number (if (neg? stage-number)
+                       (+ (count stages) stage-number)
+                       stage-number)]
+    (when (< (inc stage-number) (count stages))
+      (inc stage-number))))
 
 (mu/defn query-stage :- ::lib.schema/stage
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
@@ -265,3 +295,108 @@
                      (:joins stage)
                      update-joins)]
          (f query stage-number stage))))))
+
+(mu/defn ^:private string-byte-count :- [:int {:min 0}]
+  "Number of bytes in a string using UTF-8 encoding."
+  [s :- :string]
+  #?(:clj (count (.getBytes (str s) "UTF-8"))
+     :cljs (.. (js/TextEncoder.) (encode s) -length)))
+
+#?(:clj
+   (mu/defn ^:private string-character-at :- [:string {:min 0, :max 1}]
+     [s :- :string
+      i :-[:int {:min 0}]]
+     (str (.charAt ^String s i))))
+
+(mu/defn ^:private truncate-string-to-byte-count :- :string
+  "Truncate string `s` to `max-length-bytes` UTF-8 bytes (as opposed to truncating to some number of
+  *characters*)."
+  [s                :- :string
+   max-length-bytes :- [:int {:min 1}]]
+  #?(:clj
+     (loop [i 0, cumulative-byte-count 0]
+       (cond
+         (= cumulative-byte-count max-length-bytes) (subs s 0 i)
+         (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
+         (>= i (count s))                           s
+         :else                                      (recur (inc i)
+                                                           (+
+                                                            cumulative-byte-count
+                                                            (string-byte-count (string-character-at s i))))))
+
+     :cljs
+     (let [buf (js/Uint8Array. max-length-bytes)
+           result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
+       (subs s 0 (.-read result)))))
+
+(def ^:private truncate-alias-max-length-bytes
+  "Length to truncate column and table identifiers to. See [[metabase.driver.impl/default-alias-max-length-bytes]] for
+  reasoning."
+  60)
+
+(def ^:private truncated-alias-hash-suffix-length
+  "Length of the hash suffixed to truncated strings by [[truncate-alias]]."
+  ;; 8 bytes for the CRC32 plus one for the underscore
+  9)
+
+(mu/defn ^:private crc32-checksum :- [:string {:min 8, :max 8}]
+  "Return a 4-byte CRC-32 checksum of string `s`, encoded as an 8-character hex string."
+  [s :- :string]
+  (let [s #?(:clj (Long/toHexString (.getValue (doto (java.util.zip.CRC32.)
+                                                 (.update (.getBytes ^String s "UTF-8")))))
+             :cljs (-> (CRC32/str s 0)
+                       (unsigned-bit-shift-right 0) ; see https://github.com/SheetJS/js-crc32#signed-integers
+                       (.toString 16)))]
+    ;; pad to 8 characters if needed. Might come out as less than 8 if the first byte is `00` or `0x` or something.
+    (loop [s s]
+      (if (< (count s) 8)
+        (recur (str \0 s))
+        s))))
+
+(mu/defn truncate-alias :- [:string {:min 1, :max 60}]
+  "Truncate string `s` if it is longer than [[truncate-alias-max-length-bytes]] and append a hex-encoded CRC-32
+  checksum of the original string. Truncated string is truncated to [[truncate-alias-max-length-bytes]]
+  minus [[truncated-alias-hash-suffix-length]] characters so the resulting string is
+  exactly [[truncate-alias-max-length-bytes]]. The goal here is that two really long strings that only differ at the
+  end will still have different resulting values.
+
+    (truncate-alias \"some_really_long_string\" 15) ;   -> \"some_r_8e0f9bc2\"
+    (truncate-alias \"some_really_long_string_2\" 15) ; -> \"some_r_2a3c73eb\""
+  ([s]
+   (truncate-alias s truncate-alias-max-length-bytes))
+
+  ([s         :- ::lib.schema.common/non-blank-string
+    max-bytes :- [:int {:min 0}]]
+   (if (<= (string-byte-count s) max-bytes)
+     s
+     (let [checksum  (crc32-checksum s)
+           truncated (truncate-string-to-byte-count s (- max-bytes truncated-alias-hash-suffix-length))]
+       (str truncated \_ checksum)))))
+
+(mu/defn string-table-id->card-id :- [:maybe ::lib.schema.id/card]
+  "If `table-id` is a `card__<id>`-style string, parse the `<id>` part to an integer Card ID."
+  [table-id]
+  (when (string? table-id)
+    (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
+      (parse-long card-id-str))))
+
+(mu/defn source-table :- [:maybe [:or ::lib.schema.id/table ::lib.schema.id/table-card-id-string]]
+  "If this query has a `:source-table`, return it."
+  [query]
+  (-> query :stages first :source-table))
+
+(defn unique-name-generator
+  "Create a new function with the signature
+
+    (f str) => str
+
+  That takes any sort of string identifier (e.g. a column alias or table/join alias) and returns a guaranteed-unique
+  name truncated to 60 characters (actually 51 characters plus a hash)."
+  []
+  (comp truncate-alias
+        (mbql.u/unique-name-generator
+         ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
+         :name-key-fn     u/lower-case-en
+         ;; truncate alias to 60 characters (actually 51 characters plus a hash).
+         :unique-alias-fn (fn [original suffix]
+                            (truncate-alias (str original \_ suffix))))))

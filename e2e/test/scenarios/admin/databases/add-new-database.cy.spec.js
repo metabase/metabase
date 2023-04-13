@@ -29,7 +29,7 @@ describe("admin > database > add", () => {
       if (isEE) {
         // EE should ship with Oracle and Vertica as options
         cy.findByText("Oracle");
-        // cy.findByText("Vertica");
+        cy.findByText("Vertica");
       }
       cy.findByText("H2").click();
     });

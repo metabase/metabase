@@ -153,7 +153,3 @@
    {:min 1, :error/message ":expressions definition map of expression name -> expression"}
    ::common/non-blank-string
    ::expression])
-
-(defmethod type-of* :lib/external-op
-  [{:keys [operator options args] :or {options {}}}]
-  (type-of (into [(keyword operator) options] args)))

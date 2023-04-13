@@ -33,8 +33,7 @@
    stage-number    :- :int
    expression-name :- ::lib.schema.common/non-blank-string]
   (let [stage (lib.util/query-stage query stage-number)]
-    (or (some-> (get-in stage [:expressions expression-name])
-                lib.common/external-op)
+    (or (get-in stage [:expressions expression-name])
         (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                         {:expression-name expression-name
                          :query           query
@@ -52,6 +51,10 @@
    :display_name (lib.metadata.calculation/display-name query stage-number expression-ref)
    :base_type    (lib.metadata.calculation/type-of query stage-number expression-ref)
    :lib/source   :source/expressions})
+
+(defmethod lib.metadata.calculation/display-name-method :dispatch-type/integer
+  [_query _stage-number n]
+  (str n))
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/number
   [_query _stage-number n]
@@ -237,17 +240,16 @@
 (lib.common/defop upper [s])
 (lib.common/defop lower [s])
 
-(mu/defn expressions :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn expressions :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Get metadata about the expressions in a given stage of a `query`."
   ([query]
    (expressions query -1))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (for [[expression-name expression-definition] (:expressions (lib.util/query-stage query stage-number))]
-     (let [metadata (lib.metadata.calculation/metadata query stage-number expression-definition)]
-       (merge
-        metadata
-        {:lib/source   :source/expressions
-         :name         expression-name
-         :display_name expression-name})))))
+   (some->> (not-empty (:expressions (lib.util/query-stage query stage-number)))
+            (mapv (fn [[expression-name expression-definition]]
+                    (-> (lib.metadata.calculation/metadata query stage-number expression-definition)
+                        (assoc :lib/source   :source/expressions
+                               :name         expression-name
+                               :display_name expression-name)))))))

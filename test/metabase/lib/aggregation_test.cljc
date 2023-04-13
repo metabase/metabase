@@ -33,7 +33,8 @@
                         [lib/median :median]
                         [lib/sum :sum]
                         [lib/stddev :stddev]
-                        [lib/distinct :distinct]]]
+                        [lib/distinct :distinct]
+                        [lib/var :var]]]
         (is-fn? op tag [venues-category-id-metadata] [venue-field-check])))))
 
 (defn- aggregation-display-name [aggregation-clause]
@@ -50,10 +51,10 @@
     {:column-name "count", :display-name "Count"}
 
     [:distinct {} (lib.tu/field-clause :venues :id)]
-    {:column-name "distinct_id", :display-name "Distinct values of ID"}
+    {:column-name "distinct_ID", :display-name "Distinct values of ID"}
 
     [:sum {} (lib.tu/field-clause :venues :id)]
-    {:column-name "sum_id", :display-name "Sum of ID"}
+    {:column-name "sum_ID", :display-name "Sum of ID"}
 
     [:+ {} [:count {}] 1]
     {:column-name "count_plus_1", :display-name "Count + 1"}
@@ -62,7 +63,7 @@
      {}
      [:min {} (lib.tu/field-clause :venues :id)]
      [:* {} 2 [:avg {} (lib.tu/field-clause :venues :price)]]]
-    {:column-name  "min_id_plus_2_times_avg_price"
+    {:column-name  "min_ID_plus_2_times_avg_PRICE"
      :display-name "Min of ID + (2 × Average of Price)"}
 
     [:+
@@ -74,7 +75,7 @@
       [:avg {} (lib.tu/field-clause :venues :price)]
       3
       [:- {} [:max {} (lib.tu/field-clause :venues :category-id)] 4]]]
-    {:column-name  "min_id_plus_2_times_avg_price_times_3_times_max_category_id_minus_4"
+    {:column-name  "min_ID_plus_2_times_avg_PRICE_times_3_times_max_CATEGORY_ID_minus_4"
      :display-name "Min of ID + (2 × Average of Price × 3 × (Max of Category ID - 4))"}
 
     ;; user-specified names
@@ -94,8 +95,11 @@
      {:display-name "User-specified Name"}
      [:min {} (lib.tu/field-clause :venues :id)]
      [:* {} 2 [:avg {} (lib.tu/field-clause :venues :price)]]]
-    {:column-name  "min_id_plus_2_times_avg_price"
-     :display-name "User-specified Name"}))
+    {:column-name  "min_ID_plus_2_times_avg_PRICE"
+     :display-name "User-specified Name"}
+
+    [:percentile {} (lib.tu/field-clause :venues :id) 0.95]
+    {:column-name "p95_ID", :display-name "0.95th percentile of ID"}))
 
 ;;; the following tests use raw legacy MBQL because they're direct ports of JavaScript tests from MLv1 and I wanted to
 ;;; make sure that given an existing query, the expected description was generated correctly.
@@ -144,16 +148,16 @@
     ;; :sum
     [:sum {} [:+ {} (lib.tu/field-clause :venues :price) 1]]
     {:base_type    :type/Integer
-     :name         "sum_price_plus_1"
+     :name         "sum_PRICE_plus_1"
      :display_name "Sum of Price + 1"}
 
     ;; options map
     [:sum
      {:name "sum_2", :display-name "My custom name", :base-type :type/BigInteger}
      (lib.tu/field-clause :venues :price)]
-    {:base_type     :type/BigInteger
-     :name          "sum_2"
-     :display_name  "My custom name"}))
+    {:base_type    :type/BigInteger
+     :name         "sum_2"
+     :display_name "My custom name"}))
 
 (deftest ^:parallel col-info-named-aggregation-test
   (testing "col info for an `expression` aggregation w/ a named expression should work as expected"
@@ -173,12 +177,12 @@
 (deftest ^:parallel aggregate-test
   (let [q (lib/query-for-table-name meta/metadata-provider "VENUES")
         result-query
-        {:lib/type :mbql/query,
-         :database (meta/id) ,
-         :type :pipeline,
-         :stages [{:lib/type :mbql.stage/mbql,
-                   :source-table (meta/id :venues) ,
-                   :lib/options {:lib/uuid string?},
+        {:lib/type :mbql/query
+         :database (meta/id)
+         :type :pipeline
+         :stages [{:lib/type :mbql.stage/mbql
+                   :source-table (meta/id :venues)
+                   :lib/options {:lib/uuid string?}
                    :aggregation [[:sum {:lib/uuid string?}
                                   [:field
                                    {:base-type :type/Integer, :lib/uuid string?}
@@ -248,7 +252,15 @@
       (is (=? {:settings     {:is_priceless true}
                :lib/type     :metadata/field
                :base_type    :type/Integer
-               :name         "sum_price"
+               :name         "sum_PRICE"
                :display_name "Sum of Price"
                :lib/source   :source/aggregations}
               (lib.metadata.calculation/metadata query (first (lib/aggregations query -1))))))))
+
+(deftest ^:parallel var-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/aggregate (lib/var (lib/field (meta/id :venues :price)))))]
+    (is (=? {:stages [{:aggregation [[:var {} [:field {} (meta/id :venues :price)]]]}]}
+            query))
+    (is (= "Venues, Variance of Price"
+           (lib.metadata.calculation/describe-query query)))))

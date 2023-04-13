@@ -2,10 +2,12 @@
   "Currently this is mostly a convenience namespace for REPL and test usage. We'll probably have a slightly different
   version of this for namespace for QB and QP usage in the future -- TBD."
   (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min
-                            + - * / time abs concat replace ref])
+                            + - * / time abs concat replace ref var])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.card :as lib.card]
+   [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.dev :as lib.dev]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
@@ -19,6 +21,7 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.table :as lib.table]
@@ -27,6 +30,8 @@
 
 (comment lib.aggregation/keep-me
          lib.breakout/keep-me
+         lib.card/keep-me
+         lib.column-group/keep-me
          lib.dev/keep-me
          lib.expression/keep-me
          lib.field/keep-me
@@ -60,9 +65,14 @@
    share
    stddev
    sum
-   sum-where]
+   sum-where
+   var]
   [lib.breakout
-   breakout]
+   breakout
+   current-breakouts]
+  [lib.column-group
+   columns-group-columns
+   group-columns]
   [lib.dev
    field
    query-for-table-id
@@ -115,9 +125,7 @@
    fields]
   [lib.filter
    filter
-   add-filter
-   current-filter
-   current-filters
+   filters
    and
    or
    not
@@ -146,6 +154,7 @@
    describe-query
    describe-top-level-key
    display-name
+   display-info
    suggested-name
    type-of]
   [lib.native
@@ -154,6 +163,7 @@
    recognize-template-tags
    template-tags]
   [lib.order-by
+   change-direction
    order-by
    order-by-clause
    order-bys
@@ -163,11 +173,12 @@
   [lib.query
    native-query
    query
-   remove-clause
-   replace-clause
    saved-question-query]
   [lib.ref
    ref]
+  [lib.remove-replace
+   remove-clause
+   replace-clause]
   [lib.stage
    append-stage
    drop-stage]

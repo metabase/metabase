@@ -35,18 +35,22 @@
       (let [query (lib.tu/venues-query-with-last-stage
                    {:aggregation [[:*
                                    {}
-                                   0.9
+                                   0.8
                                    [:avg {} (lib.tu/field-clause :venues :price)]]
                                   [:*
                                    {}
                                    0.8
                                    [:avg {} (lib.tu/field-clause :venues :price)]]]})]
-        (is (=? [{:base_type    :type/Float
-                  :name         "0_9_times_avg_price"
-                  :display_name "0.9 × Average of Price"}
-                 {:base_type    :type/Float
-                  :name         "0_8_times_avg_price"
-                  :display_name "0.8 × Average of Price"}]
+        (is (=? [{:base_type                :type/Float
+                  :name                     "0_8_times_avg_PRICE"
+                  :display_name             "0.8 × Average of Price"
+                  :lib/source-column-alias  "0_8_times_avg_PRICE"
+                  :lib/desired-column-alias "0_8_times_avg_PRICE"}
+                 {:base_type                :type/Float
+                  :name                     "0_8_times_avg_PRICE"
+                  :display_name             "0.8 × Average of Price"
+                  :lib/source-column-alias  "0_8_times_avg_PRICE"
+                  :lib/desired-column-alias "0_8_times_avg_PRICE_2"}]
                 (lib.metadata.calculation/metadata query -1 query)))))))
 
 (deftest ^:parallel stage-display-name-card-source-query
@@ -103,16 +107,16 @@
                     (lib/join (-> (lib/join-clause (lib/table (meta/id :categories)))
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all))
-                              (lib/=
-                               (lib/field "VENUES" "CATEGORY_ID")
-                               (-> (lib/field "CATEGORIES" "ID") (lib/with-join-alias "Cat")))))]
-      (is (=? {:stages [{:joins       [{:alias     "Cat"
-                                        :stages    [{:source-table (meta/id :categories)}]
-                                        :condition [:=
-                                                    {}
-                                                    [:field {} (meta/id :venues :category-id)]
-                                                    [:field {:join-alias "Cat"} (meta/id :categories :id)]]
-                                        :fields    :all}]
+                              [(lib/=
+                                 (lib/field "VENUES" "CATEGORY_ID")
+                                 (-> (lib/field "CATEGORIES" "ID") (lib/with-join-alias "Cat")))]))]
+      (is (=? {:stages [{:joins       [{:alias      "Cat"
+                                        :stages     [{:source-table (meta/id :categories)}]
+                                        :conditions [[:=
+                                                      {}
+                                                      [:field {} (meta/id :venues :category-id)]
+                                                      [:field {:join-alias "Cat"} (meta/id :categories :id)]]]
+                                        :fields     :all}]
                          :expressions {"ID + 1" [:+ {} [:field {} (meta/id :venues :id)] 1]
                                        "ID + 2" [:+ {} [:field {} (meta/id :venues :id)] 2]}}]}
               query))
@@ -124,16 +128,20 @@
                {:id (meta/id :venues :price),       :name "PRICE",       :lib/source :source/table-defaults}
                {:name "ID + 1", :lib/source :source/expressions}
                {:name "ID + 2", :lib/source :source/expressions}
-               {:id           (meta/id :categories :id)
-                :name         "ID_2"
-                :lib/source   :source/joins
-                :source_alias "Cat"
-                :display_name "Categories → ID"}
-               {:id           (meta/id :categories :name)
-                :name         "NAME_2"
-                :lib/source   :source/joins
-                :source_alias "Cat"
-                :display_name "Categories → Name"}]
+               {:id                       (meta/id :categories :id)
+                :name                     "ID"
+                :lib/source               :source/joins
+                :source_alias             "Cat"
+                :display_name             "Categories → ID"
+                :lib/source-column-alias  "ID"
+                :lib/desired-column-alias "Cat__ID"}
+               {:id                       (meta/id :categories :name)
+                :name                     "NAME"
+                :lib/source               :source/joins
+                :source_alias             "Cat"
+                :display_name             "Categories → Name"
+                :lib/source-column-alias  "NAME"
+                :lib/desired-column-alias "Cat__NAME"}]
               (lib.metadata.calculation/metadata query))))))
 
 (deftest ^:parallel metadata-with-fields-only-include-expressions-in-fields-test
