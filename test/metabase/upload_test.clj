@@ -70,6 +70,7 @@
                                     [float-type    text-type     text-type]
                                     [float-type    date-type     vchar-type]
                                     [float-type    datetime-type vchar-type]
+                                    [date-type     datetime-type datetime-type]
                                     [date-type     vchar-type    vchar-type]
                                     [date-type     text-type     text-type]
                                     [datetime-type vchar-type    vchar-type]
@@ -228,6 +229,26 @@
                                                   :query {:source-table (:id table)
                                                           :aggregation [[:count]]}})
                                mt/rows))))))))))
+
+(deftest load-from-csv-date-test
+  (testing "Upload a CSV file with a datetime column"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["datetime"
+                         "2022-01-01"
+                         "2022-01-01T00:00:00"]))
+        (testing "Fields exists after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :name "upload_test" :db_id (mt/id))]
+            (testing "Check the datetime column the correct base_type"
+              (is (=? {:name      #"(?i)datetime"
+                       :base_type :type/DateTime}
+                      (t2/select-one Field :database_position 0 :table_id (:id table)))))
+            (is (some? table))))))))
 
 (deftest load-from-csv-boolean-test
   (testing "Upload a CSV file"
