@@ -63,6 +63,7 @@
    [toucan.models :as models]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
+   [toucan2.model :as t2.model]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io File FileInputStream)
@@ -474,7 +475,7 @@
   (hawk.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
-  (let [model                    (mdb.u/resolve-model model)
+  (let [model                    (t2.model/resolve-model model)
         [original-column->value] (mdb.query/query {:select (keys column->temp-value)
                                                    :from   [(t2/table-name model)]
                                                    :where  [:= :id (u/the-id object-or-id)]})]

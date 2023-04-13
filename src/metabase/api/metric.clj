@@ -4,7 +4,6 @@
    [clojure.data :as data]
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
-   [metabase.api.query-description :as api.qd]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models :refer [Metric  MetricImportantField Table]]
@@ -14,9 +13,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -44,20 +43,11 @@
   (-> (api/read-check (t2/select-one Metric :id id))
       (hydrate :creator)))
 
-(defn- add-query-descriptions
-  [metrics] {:pre [(coll? metrics)]}
-  (when (some? metrics)
-    (for [metric metrics]
-      (let [table (t2/select-one Table :id (:table_id metric))]
-        (assoc metric
-               :query_description
-               (api.qd/generate-query-description table (:definition metric)))))))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch `Metric` with ID."
   [id]
-  (first (add-query-descriptions [(hydrated-metric id)])))
+  {id ms/PositiveInt}
+  (hydrated-metric id))
 
 (defn- add-db-ids
   "Add `:database_id` fields to `metrics` by looking them up from their `:table_id`."
@@ -67,15 +57,14 @@
       (for [metric metrics]
         (assoc metric :database_id (table-id->db-id (:table_id metric)))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Fetch *all* `Metrics`."
   []
   (as-> (t2/select Metric, :archived false, {:order-by [:%lower.name]}) metrics
-    (hydrate metrics :creator)
+    (hydrate metrics :creator :definition_description)
     (add-db-ids metrics)
     (filter mi/can-read? metrics)
-    (add-query-descriptions metrics)))
+    metrics))
 
 (defn- write-check-and-update-metric!
   "Check whether current user has write permissions, then update Metric with values in `body`. Publishes appropriate
@@ -132,8 +121,8 @@
     (when (seq fields-to-remove)
       (t2/delete! (t2/table-name MetricImportantField) {:metric_id id, :field_id [:in fields-to-remove]}))
     ;; add new fields as needed
-    (db/insert-many! 'MetricImportantField (for [field-id fields-to-add]
-                                             {:metric_id id, :field_id field-id}))
+    (t2/insert! 'MetricImportantField (for [field-id fields-to-add]
+                                        {:metric_id id, :field_id field-id}))
     {:success true}))
 
 

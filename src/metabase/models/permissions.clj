@@ -194,7 +194,6 @@
    [metabase.util.regex :as u.regex]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -1024,8 +1023,8 @@
   (delete-related-permissions! group-or-id (apply (partial feature-perms-path :download :limited) path-components)))
 
 (defn grant-permissions!
-  "Grant permissions for `group-or-id`. Two-arity grants any arbitrary Permissions `path`. With > 2 args, grants the
-  data permissions from calling [[data-perms-path]]."
+  "Grant permissions for `group-or-id` and return the inserted permissions. Two-arity grants any arbitrary Permissions `path`.
+  With > 2 args, grants the data permissions from calling [[data-perms-path]]."
   ([group-or-id db-id schema & more]
    (grant-permissions! group-or-id (apply data-perms-path db-id schema more)))
 
@@ -1037,10 +1036,10 @@
    (t2/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/query/%"])
    (t2/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/data/%"])
    (try
-     (db/insert-many! Permissions
-       (map (fn [path-object]
-              {:group_id (u/the-id group-or-id) :object path-object})
-            (distinct (conj (->v2-path path) path))))
+     (t2/insert-returning-instances! Permissions
+                                     (map (fn [path-object]
+                                            {:group_id (u/the-id group-or-id) :object path-object})
+                                          (distinct (conj (->v2-path path) path))))
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
        (log/error e (u/format-color 'red (tru "Failed to grant permissions")))

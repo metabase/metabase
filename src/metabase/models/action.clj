@@ -46,6 +46,12 @@
                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
              mi/json-out-with-keywordization))
 
+(mi/define-simple-hydration-method model
+  :model
+  "Return the Card this action uses as a model."
+  [{:keys [model_id]}]
+  (t2/select-one Card :id model_id))
+
 (defn- check-model-is-not-a-saved-question
   [model-id]
   (when-not (t2/select-one-fn :dataset Card :id model-id)
@@ -293,20 +299,20 @@
 
 (defmethod serdes/extract-one "Action" [_model-name _opts action]
   (-> (serdes/extract-one-basics "Action" action)
-      (update :creator_id serdes/export-user)
-      (update :model_id serdes/export-fk 'Card)
+      (update :creator_id serdes/*export-user*)
+      (update :model_id serdes/*export-fk* 'Card)
       (update :type name)
       (cond-> (= (:type action) :query)
-        (update :database_id serdes/export-fk-keyed 'Database :name))))
+        (update :database_id serdes/*export-fk-keyed* 'Database :name))))
 
 (defmethod serdes/load-xform "Action" [action]
   (-> action
       serdes/load-xform-basics
-      (update :creator_id serdes/import-user)
-      (update :model_id serdes/import-fk 'Card)
+      (update :creator_id serdes/*import-user*)
+      (update :model_id serdes/*import-fk* 'Card)
       (update :type keyword)
       (cond-> (= (:type action) "query")
-        (update :database_id serdes/import-fk-keyed 'Database :name))))
+        (update :database_id serdes/*import-fk-keyed* 'Database :name))))
 
 (defmethod serdes/load-update! "Action" [_model-name ingested local]
   (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))

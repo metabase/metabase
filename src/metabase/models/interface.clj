@@ -26,6 +26,7 @@
    [taoensso.nippy :as nippy]
    [toucan.models :as models]
    [toucan2.core :as t2]
+   [toucan2.model :as t2.model]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.util :as t2.u])
@@ -446,6 +447,16 @@
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 
+(methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
+  "Handle models deriving from :metabase/model."
+  [symb]
+  (or
+    (when (simple-symbol? symb)
+      (let [metabase-models-keyword (keyword "model" (name symb))]
+        (when (isa? metabase-models-keyword :metabase/model)
+          metabase-models-keyword)))
+    (next-method symb)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -662,6 +673,6 @@
 (reset! t2.hydrate/global-error-on-unknown-key true)
 
 (methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration :default
-  "In Metabase the FK key used for automagic hydration should use underscores (work around unstream Toucan 2 issue)."
+  "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
   [(csk/->snake_case (keyword (str (name dest-key) "_id")))])

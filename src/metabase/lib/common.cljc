@@ -1,13 +1,15 @@
 (ns metabase.lib.common
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.field :as lib.field]
-   #_{:clj-kondo/ignore [:unused-namespace]}
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema.common :as schema.common]
-   #_{:clj-kondo/ignore [:unused-namespace]}
    [metabase.util.malli :as mu])
   #?(:cljs (:require-macros [metabase.lib.common])))
+
+(comment lib.options/keep-me
+         mu/keep-me)
 
 (mu/defn external-op :- [:maybe ::schema.common/external-op]
   "Convert the internal operator `clause` to the external format."
@@ -22,15 +24,16 @@
   "Ensures that clause arguments are properly unwrapped"
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x)))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod ->op-arg :default
   [_query _stage-number x]
   x)
 
 (defmethod ->op-arg :metadata/field
-  [query stage-number field-metadata]
-  (lib.field/field query stage-number field-metadata))
+  [_query _stage-number field-metadata]
+  (lib.ref/ref field-metadata))
 
 (defmethod ->op-arg :lib/external-op
   [query stage-number {:keys [operator options args] :or {options {}}}]

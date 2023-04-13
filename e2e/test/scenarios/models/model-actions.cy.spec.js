@@ -14,7 +14,11 @@ import {
   queryWritableDB,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID, USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
@@ -109,9 +113,9 @@ describe(
 
       cy.findByRole("button", { name: /Create basic actions/i }).click();
       cy.findByLabelText("Action list").within(() => {
-        cy.findByText("Create").should("be.visible");
-        cy.findByText("Update").should("be.visible");
-        cy.findByText("Delete").should("be.visible");
+        cy.get("li").eq(0).findByText("Create").should("be.visible");
+        cy.get("li").eq(1).findByText("Update").should("be.visible");
+        cy.get("li").eq(2).findByText("Delete").should("be.visible");
       });
 
       cy.findByRole("link", { name: "New action" }).click();
@@ -290,14 +294,13 @@ describe(
       fillActionQuery("{{id}}");
       cy.findByLabelText("#1-orders-model").should("not.exist");
       cy.findByLabelText("101").should("not.exist");
-      cy.findByLabelText("Id").should("be.visible");
+      cy.findByLabelText("ID").should("be.visible");
     });
   },
 );
 
-['postgres', 'mysql'].forEach((dialect) => {
+["postgres", "mysql"].forEach(dialect => {
   describe(`Write actions on model detail page (${dialect})`, () => {
-
     beforeEach(() => {
       cy.intercept("GET", "/api/card/*").as("getModel");
 
@@ -306,7 +309,10 @@ describe(
       cy.signInAsAdmin();
       resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: WRITABLE_TEST_TABLE });
 
-      createModelFromTableName({ tableName: WRITABLE_TEST_TABLE, idAlias: "writableModelId" });
+      createModelFromTableName({
+        tableName: WRITABLE_TEST_TABLE,
+        idAlias: "writableModelId",
+      });
     });
 
     it("should allow action execution from the model detail page", () => {
@@ -379,9 +385,9 @@ describe(
         cy.visit(url);
         cy.findByLabelText(TEST_PARAMETER.name).type("1");
         cy.button(SAMPLE_QUERY_ACTION.name).click();
-        cy.findByText(`${SAMPLE_WRITABLE_QUERY_ACTION.name} ran successfully`).should(
-          "be.visible",
-        );
+        cy.findByText(
+          `${SAMPLE_WRITABLE_QUERY_ACTION.name} ran successfully`,
+        ).should("be.visible");
         cy.findByRole("form").should("not.exist");
         cy.button(SAMPLE_QUERY_ACTION.name).should("not.exist");
 
@@ -403,7 +409,6 @@ describe(
         cy.findByLabelText(/score/i).type("16");
         cy.findByLabelText(/team name/i).type("Bouncy Bears");
 
-
         cy.button(IMPLICIT_ACTION_NAME).click();
         cy.findByText(`${IMPLICIT_ACTION_NAME} ran successfully`).should(
           "be.visible",
@@ -420,7 +425,7 @@ describe(
           expect(row.score).to.equal(16);
           expect(row.team_name).to.equal("Bouncy Bears");
           // should not mutate form fields that we don't touch
-          expect(row.status).to.not.be.a('null');
+          expect(row.status).to.not.be.a("null");
         });
       });
 

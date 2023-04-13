@@ -27,6 +27,8 @@ import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
+import { getSetting } from "metabase/selectors/settings";
+import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
 
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
@@ -49,6 +51,7 @@ import {
   getEditorLineHeight,
   getMaxAutoSizeLines,
 } from "./NativeQueryEditor/utils";
+import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
 
 import "./NativeQueryEditor.css";
 import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
@@ -67,6 +70,7 @@ class NativeQueryEditor extends Component {
       initialHeight: calcInitialEditorHeight({ query, viewHeight }),
       isSelectedTextPopoverOpen: false,
       mobileShowParameterList: false,
+      isPromptInputVisible: false,
     };
 
     // Ace sometimes fires multiple "change" events in rapid succession
@@ -81,15 +85,25 @@ class NativeQueryEditor extends Component {
     isOpen: false,
     enableRun: true,
     cancelQueryOnLeave: true,
+    canChangeDatabase: true,
     resizable: true,
+    sidebarFeatures: {
+      dataReference: true,
+      variables: true,
+      snippets: true,
+      promptInput: true,
+    },
   };
 
   UNSAFE_componentWillMount() {
     const { question, setIsNativeEditorOpen, isInitiallyOpen } = this.props;
 
-    setIsNativeEditorOpen?.(
-      !question || !question.isSaved() || isInitiallyOpen,
-    );
+    if (typeof isInitiallyOpen !== "undefined") {
+      setIsNativeEditorOpen?.(isInitiallyOpen);
+      return;
+    }
+
+    setIsNativeEditorOpen?.(!question || !question.isSaved());
   }
 
   componentDidMount() {
@@ -135,8 +149,7 @@ class NativeQueryEditor extends Component {
       // will trigger the editor 'change' event, update the query, and cause another rendering loop which we don't want, so
       // we need a way to update the editor without causing the onChange event to go through as well
       this._localUpdate = true;
-      this._editor.setValue(query.queryText());
-      this._editor.clearSelection();
+      this.handleQueryUpdate(query.queryText());
       this._localUpdate = false;
     }
 
@@ -266,12 +279,8 @@ class NativeQueryEditor extends Component {
     };
 
     // initialize the content
-    this._editor.setValue(query?.queryText() ?? "");
-
+    this.handleQueryUpdate(query?.queryText() ?? "");
     this._editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN);
-
-    // clear the editor selection, otherwise we start with the whole editor selected
-    this._editor.clearSelection();
 
     // hmmm, this could be dangerous
     if (!this.props.readOnly) {
@@ -503,6 +512,36 @@ class NativeQueryEditor extends Component {
     });
   };
 
+  togglePromptVisibility = () => {
+    this.setState(prev => ({
+      isPromptInputVisible: !prev.isPromptInputVisible,
+    }));
+  };
+
+  handleQueryUpdate = queryText => {
+    this._editor.setValue(queryText);
+    this._editor.clearSelection();
+  };
+
+  handleQueryGenerated = queryText => {
+    this.handleQueryUpdate(queryText);
+    this._editor.focus();
+  };
+
+  isPromptInputVisible = () => {
+    const { canUsePromptInput, isNativeEditorOpen } = this.props;
+    const database = this.props.query.database();
+    const isSupported =
+      database != null && canGenerateQueriesForDatabase(database);
+
+    return (
+      isNativeEditorOpen &&
+      isSupported &&
+      canUsePromptInput &&
+      this.state.isPromptInputVisible
+    );
+  };
+
   render() {
     const {
       question,
@@ -519,7 +558,11 @@ class NativeQueryEditor extends Component {
       resizable,
       editorContext = "question",
       setDatasetQuery,
+      sidebarFeatures,
+      canChangeDatabase,
     } = this.props;
+
+    const isPromptInputVisible = this.isPromptInputVisible();
 
     const parameters = query.question().parameters();
 
@@ -537,16 +580,18 @@ class NativeQueryEditor extends Component {
       <NativeQueryEditorRoot className="NativeQueryEditor bg-light full">
         {hasTopBar && (
           <div className="flex align-center" data-testid="native-query-top-bar">
-            <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
-              <DataSourceSelectors
-                isNativeEditorOpen={isNativeEditorOpen}
-                query={query}
-                readOnly={readOnly}
-                setDatabaseId={this.setDatabaseId}
-                setTableId={this.setTableId}
-                editorContext={editorContext}
-              />
-            </div>
+            {canChangeDatabase && (
+              <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
+                <DataSourceSelectors
+                  isNativeEditorOpen={isNativeEditorOpen}
+                  query={query}
+                  readOnly={readOnly}
+                  setDatabaseId={this.setDatabaseId}
+                  setTableId={this.setTableId}
+                  editorContext={editorContext}
+                />
+              </div>
+            )}
             {hasParametersList && (
               <ResponsiveParametersList
                 question={question}
@@ -564,6 +609,13 @@ class NativeQueryEditor extends Component {
               />
             )}
           </div>
+        )}
+        {isPromptInputVisible && (
+          <NativeQueryEditorPrompt
+            databaseId={query.databaseId()}
+            onQueryGenerated={this.handleQueryGenerated}
+            onClose={this.togglePromptVisibility}
+          />
         )}
         <ResizableBox
           ref={this.resizeBox}
@@ -615,6 +667,9 @@ class NativeQueryEditor extends Component {
           {hasEditingSidebar && !readOnly && (
             <NativeQueryEditorSidebar
               runQuery={this.runQuery}
+              features={sidebarFeatures}
+              onShowPromptInput={this.togglePromptVisibility}
+              isPromptInputVisible={isPromptInputVisible}
               {...this.props}
             />
           )}
@@ -623,6 +678,10 @@ class NativeQueryEditor extends Component {
     );
   }
 }
+
+const mapStateToProps = state => ({
+  canUsePromptInput: getSetting(state, "is-metabot-enabled"),
+});
 
 const mapDispatchToProps = dispatch => ({
   fetchQuestion: async id => {
@@ -641,5 +700,5 @@ export default _.compose(
   Databases.loadList({ loadingAndErrorWrapper: false }),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
-  connect(null, mapDispatchToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(NativeQueryEditor);
