@@ -2,6 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [java-time :as t]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
@@ -103,9 +104,7 @@
    :lacking-created-at should never happen, but if they lack an entry for `created-at`
    :unknown-error      if an error was thrown while classifying the schema}"
   [^java.sql.Connection conn schemas]
-  (let [threshold (.minus (java.time.Instant/now)
-                          HOURS-BEFORE-EXPIRED-THRESHOLD
-                          java.time.temporal.ChronoUnit/HOURS)]
+  (let [threshold (t/minus (t/instant) (t/hours HOURS-BEFORE-EXPIRED-THRESHOLD))]
     (with-open [stmt (.createStatement conn)]
       (let [classify! (fn [schema-name]
                         (try (let [sql (format "select value from %s.cache_info where key = 'created-at'"
@@ -114,7 +113,7 @@
                                (if (.next rset)
                                  (let [date-string (.getString rset "value")
                                        created-at  (java.time.Instant/parse date-string)]
-                                   (if (.isBefore created-at threshold)
+                                   (if (t/before? created-at threshold)
                                      :expired
                                      :recent))
                                  :lacking-created-at))
@@ -129,7 +128,11 @@
 
         (group-by classify! schemas)))))
 
-(defn- delete-old-schemas! [^java.sql.Connection conn]
+(defn- delete-old-schemas!
+  "Remove unneeded schemas from redshift. Local databases are thrown away after a test run. Shared cloud instances do
+  not have this luxury. Test runs can create schemas where models are persisted and nothing cleans these up, leading
+  to redshift clusters hitting the max number of tables allowed."
+  [^java.sql.Connection conn]
   (let [{old-convention   :old
          caches-with-info :cache}    (reduce (fn [acc s]
                                                (cond (sql.tu.unique-prefix/old-dataset-name? s)
@@ -149,10 +152,10 @@
       (doseq [[collection fmt-str] [[old-convention "Dropping old data schema: %s"]
                                     [expired "Dropping expired cache schema: %s"]
                                     [lacking-created-at "Dropping cache without created-at info: %s"]
-                                    [old-style-cache "Dropping old cache schema without `cache_info` table: %s"]]]
-        (doseq [schema collection]
-          (log/infof fmt-str schema)
-          (.execute stmt (drop-sql schema)))))))
+                                    [old-style-cache "Dropping old cache schema without `cache_info` table: %s"]]
+              schema               collection]
+        (log/infof fmt-str schema)
+        (.execute stmt (drop-sql schema))))))
 
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]
