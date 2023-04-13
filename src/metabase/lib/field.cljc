@@ -286,14 +286,14 @@
     (lib.join/joined-field-desired-alias join-alias (:name field-metadata))
     (:name field-metadata)))
 
-(defn fields
+(defn with-fields
   "Specify the `:fields` for a query."
   ([xs]
    (fn [query stage-number]
-     (fields query stage-number xs)))
+     (with-fields query stage-number xs)))
 
   ([query xs]
-   (fields query -1 xs))
+   (with-fields query -1 xs))
 
   ([query stage-number xs]
    (let [xs (mapv (fn [x]
@@ -302,3 +302,9 @@
                                    x)))
                   xs)]
      (lib.util/update-query-stage query stage-number assoc :fields xs))))
+
+(defn fields
+  ([query]
+   (fields query -1))
+  ([query stage-number]
+   (:fields (lib.util/query-stage query stage-number))))

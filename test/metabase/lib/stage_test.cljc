@@ -155,7 +155,7 @@
                :lib/source   :source/expressions}
               id-plus-1))
       (let [query' (-> query
-                       (lib/fields [id-plus-1]))]
+                       (lib/with-fields [id-plus-1]))]
         (is (=? {:stages [{:expressions {"ID + 1" [:+ {} [:field {} (meta/id :venues :id)] 1]
                                          "ID + 2" [:+ {} [:field {} (meta/id :venues :id)] 2]}
                            :fields      [[:expression {} "ID + 1"]]}]}
