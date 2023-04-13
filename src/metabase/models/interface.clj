@@ -380,7 +380,7 @@
   [symb]
   (or
     (when (simple-symbol? symb)
-      (let [metabase-models-keyword (keyword "m" (name symb))]
+      (let [metabase-models-keyword (keyword "model" (name symb))]
         (when (isa? metabase-models-keyword :metabase/model)
           metabase-models-keyword)))
     (next-method symb)))
