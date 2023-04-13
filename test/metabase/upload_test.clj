@@ -152,9 +152,9 @@
         (let [file       (csv-file-with ["id" "2" "3"])]
           (testing "Can upload two files with the same name"
             ;; Sleep for a second, because the table name is based on the current second
-            (is (some? (upload/load-from-csv driver/*driver* (mt/id) "public" file)))
+            (is (some? (upload/load-from-csv driver/*driver* (mt/id) "table_name" file)))
             (Thread/sleep 1000)
-            (is (some? (upload/load-from-csv driver/*driver* (mt/id) "public" file)))))))))
+            (is (some? (upload/load-from-csv driver/*driver* (mt/id) "table_name" file)))))))))
 
 (deftest load-from-csv-test
   (testing "Upload a CSV file"
@@ -164,11 +164,15 @@
          driver/*driver*
          (mt/id)
          "upload_test"
-         (csv-file-with ["id,nulls,string,bool,number" "2\t,,string,true,1.1\t,1\t" "   3,,string,false,    1.1"]))
+         (csv-file-with ["id,nulls,string,bool,number"
+                         "2\t,,string,true,1.1\t,1\t"
+                         "   3,,string,false,    1.1"]))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
-          (let [table (t2/select-one Table :name "upload_test" :db_id (mt/id))]
-            (is (some? table))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name         #"(?i)upload_test"
+                     :display_name "Upload Test"}
+                    table))
             (is (=? {:name          #"(?i)id"
                      :semantic_type :type/PK
                      :base_type     :type/Integer}
@@ -221,12 +225,12 @@
                          "18,0"]))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
-          (let [table (t2/select-one Table :name "upload_test" :db_id (mt/id))]
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
             (testing "Check the boolean column has a boolean base_type"
               (is (=? {:name      #"(?i)bool"
                        :base_type :type/Boolean}
                       (t2/select-one Field :database_position 1 :table_id (:id table)))))
-            (is (some? table))
             (testing "Check the data was uploaded into the table correctly"
               (let [bool-column (->> (mt/run-mbql-query upload_test
                                        {:fields [$bool]
