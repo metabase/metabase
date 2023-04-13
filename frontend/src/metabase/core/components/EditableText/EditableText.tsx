@@ -60,7 +60,7 @@ const EditableText = forwardRef(function EditableText(
   const [isInFocus, setIsInFocus] = useState(isEditing);
   const displayValue = inputValue ? inputValue : placeholder;
   const submitOnBlur = useRef(true);
-  const input = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const previousInitialValue = usePrevious(initialValue);
 
   useEffect(() => {
@@ -70,16 +70,18 @@ const EditableText = forwardRef(function EditableText(
   }, [initialValue, previousInitialValue]);
 
   useEffect(() => {
-    if (isMarkdown && isInFocus) {
-      input.current?.focus();
+    if (!isMarkdown) {
+      return;
+    }
+
+    if (isInFocus) {
+      inputRef.current?.focus();
     }
   }, [isInFocus, isMarkdown]);
 
   const handleBlur = useCallback(
     e => {
-      if (isMarkdown) {
-        setIsInFocus(false);
-      }
+      setIsInFocus(false);
 
       if (!isOptional && !inputValue) {
         setInputValue(submitValue);
@@ -90,15 +92,7 @@ const EditableText = forwardRef(function EditableText(
 
       onBlur?.();
     },
-    [
-      inputValue,
-      submitValue,
-      isOptional,
-      isMarkdown,
-      onChange,
-      onBlur,
-      setIsInFocus,
-    ],
+    [inputValue, submitValue, isOptional, onChange, onBlur, setIsInFocus],
   );
 
   const handleChange = useCallback(
@@ -125,13 +119,12 @@ const EditableText = forwardRef(function EditableText(
   );
 
   const handleRootElementClick = (event: MouseEvent) => {
-    if ((event.target as HTMLElement).tagName.toLowerCase() !== "a") {
+    if (!(event.target instanceof HTMLAnchorElement)) {
       setIsInFocus(true);
     }
   };
 
   const shouldShowMarkdown = isMarkdown && !isInFocus && inputValue;
-  const shouldShowInput = !shouldShowMarkdown;
 
   return (
     <EditableTextRoot
@@ -143,10 +136,11 @@ const EditableText = forwardRef(function EditableText(
       data-value={`${displayValue}\u00A0`}
       data-testid="editable-text"
     >
-      {shouldShowMarkdown && <Markdown>{inputValue}</Markdown>}
-      {shouldShowInput && (
+      {shouldShowMarkdown ? (
+        <Markdown>{inputValue}</Markdown>
+      ) : (
         <EditableTextArea
-          ref={input}
+          ref={inputRef}
           value={inputValue}
           placeholder={placeholder}
           disabled={isDisabled}
