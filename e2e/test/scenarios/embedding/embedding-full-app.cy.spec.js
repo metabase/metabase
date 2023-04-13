@@ -57,9 +57,9 @@ describe("scenarios > embedding > full app", () => {
 
     it("should show the top nav by a param", () => {
       visitUrl({ url: "/" });
-      appBar().should("be.visible").as("app-bar");
+      appBar().should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
-      cy.get("@app-bar").within(() => {
+      appBar().within(() => {
         cy.button(/New/).should("not.exist");
         cy.findByPlaceholderText("Search").should("not.exist");
       });
