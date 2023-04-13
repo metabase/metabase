@@ -35,7 +35,6 @@
   []
   (into {}
         (for [model (concat (descendants :toucan1/model) (descendants :metabase/model))
-              :when (mdb.u/toucan-model? model)
               :let  [table-name (some-> model t2/table-name name)]
               :when table-name
               ;; ignore any models defined in test namespaces.

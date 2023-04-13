@@ -1357,7 +1357,6 @@
                       (t2/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
                                  :dashboard_id dashboard-id)))))))))
 
-
 (deftest new-dashboard-card-with-additional-series-test
   (mt/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]
