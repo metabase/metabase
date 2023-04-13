@@ -16,9 +16,11 @@ import {
 
 export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
   title?: string;
+  titleStyle?: "small" | "large";
   description?: ReactNode;
   alignment?: FieldAlignment;
   orientation?: FieldOrientation;
+  noMargin?: boolean;
   optional?: boolean;
   error?: string;
   htmlFor?: string;
@@ -29,15 +31,17 @@ export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
 const FormField = forwardRef(function FormField(
   {
     title,
+    titleStyle = "small",
     description,
     alignment = "end",
     orientation = "vertical",
+    noMargin,
+    optional,
     error,
     htmlFor,
     infoLabel,
     infoTooltip,
     children,
-    optional,
     ...props
   }: FormFieldProps,
   ref: Ref<HTMLDivElement>,
@@ -52,6 +56,7 @@ const FormField = forwardRef(function FormField(
       ref={ref}
       alignment={alignment}
       orientation={orientation}
+      noMargin={noMargin}
     >
       {alignment === "start" && children}
       {(hasTitle || hasDescription) && (
@@ -65,7 +70,11 @@ const FormField = forwardRef(function FormField(
             hasDescription={hasDescription}
           >
             {hasTitle && (
-              <FieldLabel hasError={hasError} htmlFor={htmlFor}>
+              <FieldLabel
+                hasError={hasError}
+                htmlFor={htmlFor}
+                titleStyle={titleStyle}
+              >
                 {title}
                 {hasError && <FieldLabelError>: {error}</FieldLabelError>}
               </FieldLabel>

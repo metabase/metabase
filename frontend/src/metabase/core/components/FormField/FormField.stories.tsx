@@ -56,3 +56,12 @@ ToggleWithInlineTitle.args = {
   orientation: "horizontal",
   infoTooltip: "Info tooltip",
 };
+
+export const ToggleWithLargeInlineTitle = Template.bind({});
+ToggleWithLargeInlineTitle.args = {
+  children: <Toggle />,
+  title: "Toggle this value?",
+  titleStyle: "large",
+  orientation: "horizontal",
+  infoTooltip: "Info tooltip",
+};

@@ -98,7 +98,12 @@ const DashboardInfoSidebar = ({
       </ContentSection>
 
       <ContentSection>
-        <FormField title={t`Auto-apply filters`} orientation="horizontal">
+        <FormField
+          title={t`Auto-apply filters`}
+          titleStyle="large"
+          orientation="horizontal"
+          noMargin
+        >
           <Toggle
             aria-label={t`Auto-apply filters`}
             value={dashboard.auto_apply_filters}
