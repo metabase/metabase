@@ -17,4 +17,4 @@
     (testing "Invalid SAML settings returns 400"
       (mt/user-http-request :crowberto :put 400 "saml/settings" {:saml-keystore-path "/path/to/keystore"
                                                                  :saml-keystore-password "password"
-                                                                 :saml-keystore-alias "alias"})))
+                                                                 :saml-keystore-alias "alias"}))))
