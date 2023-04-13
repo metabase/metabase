@@ -86,6 +86,11 @@ const footerVariantStyles = {
   `,
 };
 
+export const ParametersWidgetContainer = styled.div`
+  display: flex;
+  align-items: baseline;
+`;
+
 export const Footer = styled.footer<{ variant: FooterVariant }>`
   display: flex;
   flex-shrink: 0;

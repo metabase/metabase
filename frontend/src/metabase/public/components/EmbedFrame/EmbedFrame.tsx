@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import type { ReactNode } from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -28,10 +29,13 @@ import {
   ContentContainer,
   Header,
   Body,
+  ParametersWidgetContainer,
   Footer,
   ActionButtonsContainer,
 } from "./EmbedFrame.styled";
 import "./EmbedFrame.css";
+
+type ParameterValues = Record<ParameterId, ParameterValueOrArray>;
 
 interface OwnProps {
   className?: string;
@@ -42,7 +46,9 @@ interface OwnProps {
   actionButtons?: JSX.Element[];
   footerVariant?: FooterVariant;
   parameters?: Parameter[];
-  parameterValues?: Record<ParameterId, ParameterValueOrArray>;
+  parameterValues?: ParameterValues;
+  draftParameterValues?: ParameterValues;
+  applyFilterButton: ReactNode | null;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
   children: React.ReactNode;
 }
@@ -83,6 +89,8 @@ function EmbedFrame({
   hasEmbedBranding,
   parameters,
   parameterValues,
+  draftParameterValues,
+  applyFilterButton,
   setParameterValue,
 }: Props) {
   const [hasInnerScroll, setInnerScroll] = useState(true);
@@ -128,19 +136,20 @@ function EmbedFrame({
               />
             )}
             {hasParameters && (
-              <div className="flex">
+              <ParametersWidgetContainer>
                 <SyncedParametersList
                   className="mt1"
                   question={question}
                   dashboard={dashboard}
                   parameters={getValuePopulatedParameters(
                     parameters,
-                    parameterValues,
+                    draftParameterValues ?? parameterValues,
                   )}
                   setParameterValue={setParameterValue}
                   hideParameters={hide_parameters}
                 />
-              </div>
+                {applyFilterButton}
+              </ParametersWidgetContainer>
             )}
           </Header>
         )}
