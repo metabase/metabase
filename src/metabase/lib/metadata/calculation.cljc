@@ -289,3 +289,86 @@
   [query stage-number table]
   (merge (default-display-info query stage-number table)
          {:is_source_table (= (lib.util/source-table query) (:id table))}))
+
+(defmulti default-columns-method
+  "Impl for [[default-columns]]. This should mostly be similar to the implementation for [[metadata-method]], but needs
+  to include `:lib/source-column-alias` and `:lib/desired-column-alias`. `:lib/source-column-alias` should probably be
+  the same as `:name`; use the supplied `unique-name-fn` with the signature `(f str) => str` to ensure
+  `:lib/desired-column-alias` is unique."
+  {:arglists '([query stage-number x unique-name-fn])}
+  (fn [_query _stage-number x _unique-name-fn]
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
+
+#_(defmethod default-columns-method :default
+  [query stage-number x unique-name-fn]
+  (mapv (fn [col]
+          (assoc col
+                 :lib/source-column-alias  (:name col)
+                 :lib/desired-column-alias (unique-name-fn (:name col))))
+        (metadata query stage-number x)))
+
+(def ColumnsWithUniqueAliases
+  "Schema for column metadata that should be returned by [[default-columns]]. This is mostly used
+  to power metadata calculation for stages (see [[metabase.lib.stage]]."
+  [:and
+   [:sequential
+    [:merge
+     ColumnMetadataWithSource
+     [:map
+      [:lib/source-column-alias  ::lib.schema.common/non-blank-string]
+      [:lib/desired-column-alias [:string {:min 1, :max 60}]]]]]
+   [:fn
+    ;; should be dev-facing only, so don't need to i18n
+    {:error/message "Column :lib/desired-column-alias values must be distinct, regardless of case, for each stage!"
+     :error/fn      (fn [{:keys [value]} _]
+                      (str "Column :lib/desired-column-alias values must be distinct, got: "
+                           (pr-str (mapv :lib/desired-column-alias value))))}
+    (fn [columns]
+      (or
+       (empty? columns)
+       (apply distinct? (map (comp u/lower-case-en :lib/desired-column-alias) columns))))]])
+
+(mu/defn default-columns :- ColumnsWithUniqueAliases
+  "Return a sequence of column metadatas for columns that are returned 'by default' for a table/join/query stage.
+
+  These columns will include `:lib/source-column-alias` and `:lib/desired-column-alias`. `:lib/desired-column-alias`
+  is guaranteed to be unique; `unique-name-fn` is a function with the signature
+
+    (f column-alias-string) => unique-alias-string
+
+  Used to generate unique names."
+  ([query stage-number x]
+   (default-columns query stage-number x (lib.util/unique-name-generator)))
+
+  ([query          :- ::lib.schema/query
+    stage-number   :- :int
+    x
+    unique-name-fn :- fn?]
+   (default-columns-method query stage-number x unique-name-fn)))
+
+(defmulti visible-columns-method
+  "Impl for [[visible-columns]]."
+  {:arglists '([query stage-number x unique-name-fn])}
+  (fn [_query _stage-number x _unique-name-fn]
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod visible-columns-method :default
+  [query stage-number x unique-name-fn]
+  (default-columns query stage-number x unique-name-fn))
+
+(mu/defn visible-columns :- ColumnsWithUniqueAliases
+  "Return a sequence of columns that should be *visible* for something, e.g. a query stage or a join. Visible means
+  both columns that are 'returned' by the query *AND* ones that are implicitly joinable.
+
+  Default implementation is just [[default-columns]]; currently only stages have a specific implementation
+  for [[visible-columns-method]], but this might change in the future."
+  ([query stage-number x]
+   (visible-columns query stage-number x (lib.util/unique-name-generator)))
+
+  ([query          :- ::lib.schema/query
+    stage-number   :- :int
+    x
+    unique-name-fn :- fn?]
+   (visible-columns-method query stage-number x unique-name-fn)))
