@@ -67,4 +67,18 @@
                                    :source-table "card__1"}]}]
         (is (=? (for [col (:columns meta/results-metadata)]
                   (assoc col :lib/source :source/card))
-                (lib.metadata.calculation/metadata query -1 query)))))))
+                (lib.metadata.calculation/metadata query)))))))
+
+(deftest ^:parallel card-results-metadata-merge-metadata-provider-metadata-test
+  (testing "Merge metadata from the metadata provider into result_metadata (#30046)"
+    (let [query (lib.tu/query-with-card-source-table-with-result-metadata)]
+      (is (=? [{:lib/type                 :metadata/field
+                :id                       (meta/id :checkins :user-id)
+                :table_id                 (meta/id :checkins)
+                :semantic_type            :type/FK
+                ;; this comes from the metadata provider, it's not present in `result_metadata`
+                :fk_target_field_id       (meta/id :users :id)
+                :lib/desired-column-alias "USER_ID"}
+               {:lib/type :metadata/field
+                :name     "count"}]
+              (lib.metadata.calculation/metadata query))))))

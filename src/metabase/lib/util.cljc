@@ -86,7 +86,7 @@
   (merge {:lib/type :mbql/query
           ;; we're using `merge` here instead of threading stuff so the `:lib/` keys are the first part of the map for
           ;; readability in the REPL.
-          :stages   [(merge (lib.options/ensure-uuid {:lib/type :mbql.stage/native})
+          :stages   [(merge {:lib/type :mbql.stage/native}
                             (set/rename-keys (:native query) {:query :native}))]}
          (dissoc query :type :native)))
 
@@ -134,8 +134,7 @@
                           :mbql.stage/mbql)
         ;; we're using `merge` here instead of threading stuff so the `:lib/` keys are the first part of the map for
         ;; readability in the REPL.
-        this-stage      (merge (lib.options/ensure-uuid
-                                {:lib/type stage-type})
+        this-stage      (merge {:lib/type stage-type}
                                (dissoc inner-query :source-query :source-metadata))
         this-stage      (cond-> this-stage
                           (seq (:joins this-stage)) (update :joins joins->pipeline)
@@ -241,7 +240,7 @@
   (let [query (pipeline query)]
     (cond-> query
       (= (:lib/type (query-stage query -1)) :mbql.stage/native)
-      (update :stages conj (lib.options/ensure-uuid {:lib/type :mbql.stage/mbql})))))
+      (update :stages conj {:lib/type :mbql.stage/mbql}))))
 
 (defn join-strings-with-conjunction
   "This is basically [[clojure.string/join]] but uses commas to join everything but the last two args, which are joined

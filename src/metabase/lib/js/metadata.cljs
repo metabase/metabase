@@ -227,6 +227,8 @@
                          (js->clj v :keywordize-keys true))
       :fields          (parse-fields v)
       :visibility_type (keyword v)
+      :dataset_query   (js->clj v :keywordize-keys true)
+      ;; this is not complete, add more stuff as needed.
       v)))
 
 (defn- unwrap-card
