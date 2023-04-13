@@ -71,9 +71,8 @@
   This can be used in a CTE such that an outer query can be called on this query."
   [{:keys [id] :as model}]
   (let [column-aliases (aliases model)]
-    (->> (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column-aliases id)
-         mdb.query/format-sql
-         fix-model-reference)))
+    (mdb.query/format-sql
+      (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column-aliases id))))
 
 (defn denormalize-field
   "Create a 'denormalized' version of the field which is optimized for querying
