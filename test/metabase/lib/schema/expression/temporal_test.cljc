@@ -3,7 +3,10 @@
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.lib.schema]
    [metabase.lib.schema.expression :as expression]))
+
+(comment metabase.lib.schema/keep-me)
 
 (deftest ^:parallel absolute-datetime-type-of-test
   (are [literal expected] (= expected

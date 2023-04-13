@@ -43,6 +43,23 @@
                                                                                :found found}))
               (recur next-stage-number))))))))
 
+(defn- remove-replace* [query stage-number target-clause remove-replace-fn]
+  (reduce
+     (fn [query location]
+       (let [target-clause (lib.common/->op-arg query stage-number target-clause)
+             result (lib.util/update-query-stage query stage-number
+                                                 remove-replace-fn location target-clause)]
+         (when (not= query result)
+           (case location
+             :breakout (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
+             :fields (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
+             nil)
+           (reduced result))
+         result))
+     query
+     ;; TODO only these top level clauses are supported at this moment
+     [:order-by :breakout :filters :fields]))
+
 (mu/defn remove-clause :- :metabase.lib.schema/query
   "Removes the `target-clause` in the filter of the `query`."
   ([query :- :metabase.lib.schema/query
@@ -51,20 +68,7 @@
   ([query :- :metabase.lib.schema/query
     stage-number :- :int
     target-clause]
-   (reduce
-     (fn [query location]
-       (let [target-clause (lib.common/->op-arg query stage-number target-clause)
-             result (lib.util/update-query-stage query stage-number
-                                                 lib.util/remove-clause location target-clause)]
-         (when (not= query result)
-           (case location
-             :breakout (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
-             nil)
-           (reduced result))
-         result))
-     query
-     ;; TODO only these top level clauses are supported at this moment
-     [:order-by :breakout :filters])))
+   (remove-replace* query stage-number target-clause lib.util/remove-clause)))
 
 (mu/defn replace-clause :- :metabase.lib.schema/query
   "Replaces the `target-clause` with `new-clause` in the `query` stage."
@@ -76,18 +80,5 @@
     stage-number :- :int
     target-clause
     new-clause]
-   (let [target-clause (lib.common/->op-arg query stage-number target-clause)
-         replacement (lib.common/->op-arg query stage-number new-clause)]
-     (reduce
-       (fn [query location]
-         (let [result (lib.util/update-query-stage query stage-number
-                                                   lib.util/replace-clause location target-clause replacement)]
-           (when (not= query result)
-             (case location
-               :breakout (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
-               nil)
-             (reduced result))
-           result))
-       query
-       ;; TODO only these top level clauses are supported at this moment
-       [:order-by :breakout :filters]))))
+   (let [replacement (lib.common/->op-arg query stage-number new-clause)]
+     (remove-replace* query stage-number target-clause #(lib.util/replace-clause %1 %2 %3  replacement)))))

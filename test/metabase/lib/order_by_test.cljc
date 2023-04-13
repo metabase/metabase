@@ -456,8 +456,8 @@
                                 (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                             (lib/with-join-alias "Cat")
                             (lib/with-join-fields :all)))
-              (lib/fields [(lib/field "VENUES" "ID")
-                           (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")])
+              (lib/with-fields [(lib/field "VENUES" "ID")
+                                (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")])
               (lib/orderable-columns)))))
 
 (deftest ^:parallel order-bys-with-duplicate-column-names-test
@@ -490,8 +490,8 @@
                                    (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                               (lib/with-join-alias "Cat")
                               (lib/with-join-fields :all)))
-                (lib/fields [(lib/field "VENUES" "ID")
-                             (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")])
+                (lib/with-fields [(lib/field "VENUES" "ID")
+                                  (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")])
                 (lib/append-stage)
                 (lib/orderable-columns))))))
 
@@ -633,7 +633,7 @@
 (deftest ^:parallel order-by-expression-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
-                  (lib/fields [(lib/field "VENUES" "ID")]))]
+                  (lib/with-fields [(lib/field "VENUES" "ID")]))]
     (is (=? [{:id (meta/id :venues :id),          :name "ID",          :display_name "ID",          :lib/source :source/table-defaults}
              {:id (meta/id :venues :name),        :name "NAME",        :display_name "Name",        :lib/source :source/table-defaults}
              {:id (meta/id :venues :category-id), :name "CATEGORY_ID", :display_name "Category ID", :lib/source :source/table-defaults}
