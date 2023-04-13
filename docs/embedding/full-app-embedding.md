@@ -86,7 +86,9 @@ https://metabase.example.com/auth/sso?jwt=<token>&redirect=%2Fdashboard%2F1%3Ffi
 
 ## Cross-browser compatibility
 
-To make sure that your embedded Metabase works in all browsers (including iOS and Safari), put Metabase and the embedding app in the same top-level domain (TLD).
+To make sure that your embedded Metabase works in all browsers, put Metabase and the embedding app in the same top-level domain (TLD). The TLD is indicated by the last part of a web address, like `.com` or `.org`.
+
+Note that your full-app embed must be compatible with Safari to run on _any_ browser in iOS (such as Chrome on iOS).
 
 ## Embedding Metabase in a different domain
 
@@ -96,7 +98,9 @@ If you want to embed Metabase in another domain (say, if Metabase is hosted at `
 
 `MB_SESSION_COOKIE_SAMESITE=None`
 
-If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request. For more information, see MDN's documentation on [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
+If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request. For more information, see MDN's documentation on [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite). 
+
+Note that the `SameSite = None` modifier is incompatible with most Safari and iOS browsers (including any browser that runs on iOS, such as Chrome on iOS).
 
 ## Securing full-app embeds
 
