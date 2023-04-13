@@ -22,9 +22,14 @@ Fetch a list of all Collections that the current user has read permissions for (
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`.
 
+  By default, admin users will see all collections. To hide other user's collections pass in
+  `?exclude-other-user-collections=true`.
+
 ### PARAMS:
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+
+*  **`exclude-other-user-collections`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 *  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -156,6 +161,8 @@ Similar to `GET /`, but returns Collections in a tree structure, e.g.
 ### PARAMS:
 
 *  **`exclude-archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+
+*  **`exclude-other-user-collections`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 *  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
 

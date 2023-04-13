@@ -227,7 +227,7 @@
   (stage-metadata query stage-number))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/native
-  [_query _stage-number _stage]
+  [_query _stage-number _stage _style]
   (i18n/tru "Native query"))
 
 (def ^:private display-name-parts
@@ -239,14 +239,17 @@
    :limit])
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/mbql
-  [query stage-number _stage]
+  [query stage-number _stage style]
   (or
    (not-empty
     (let [descriptions (for [k display-name-parts]
                          (lib.metadata.calculation/describe-top-level-key query stage-number k))]
       (str/join ", " (remove str/blank? descriptions))))
    (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-     (lib.metadata.calculation/display-name query previous-stage-number (lib.util/query-stage query previous-stage-number)))))
+     (lib.metadata.calculation/display-name query
+                                            previous-stage-number
+                                            (lib.util/query-stage query previous-stage-number)
+                                            style))))
 
 (defn- implicitly-joinable-columns
   "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to
