@@ -32,7 +32,7 @@
 ;;           |
 ;;        boolean
 
-(def type->parent
+(def ^:private type->parent
   ;; listed in depth-first order
   {::varchar_255 ::text
    ::float       ::varchar_255
@@ -45,7 +45,7 @@
   (set/union (set (keys type->parent))
              (set (vals type->parent))))
 
-(def type->ancestors
+(def ^:private type->ancestors
   (into {} (for [type types]
              [type (loop [ret (ordered-set/ordered-set)
                           type type]
@@ -98,7 +98,7 @@
     (contains? ys (first xs)) (first xs)
     :else (lowest-common-member (rest xs) ys)))
 
-(defn lowest-common-ancestor [type-a type-b]
+(defn- lowest-common-ancestor [type-a type-b]
   (cond
     (nil? type-a) type-b
     (nil? type-b) type-a

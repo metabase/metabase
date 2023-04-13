@@ -525,4 +525,6 @@
     ::upload/text        "VARCHAR"
     ::upload/int         "INTEGER"
     ::upload/float       "DOUBLE PRECISION"
-    ::upload/boolean     "BOOLEAN"))
+    ::upload/boolean     "BOOLEAN"
+    ::upload/date        "DATE"
+    ::upload/datetime    "TIMESTAMP"))
