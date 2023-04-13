@@ -12,15 +12,24 @@ To change how the answer to your question is displayed, click on the **Visualiza
 
 ![Visualization options](../images/VisualizeChoices.png)
 
-If a particular visualization doesn’t really make sense for your answer, that option will appear grayed out in the sidebar. You can still select a grayed-out option, though you might need to open the chart options to make your selection work with your data.
-
-Once a question returns results, you can save the question, download the results, or add the question to a [dashboard](../../dashboards/start.md).
-
-## Visualization types and options
-
-Each visualization type has its own advanced options. Click the **Settings** button next to the Visualization button to see your options. The options panel also automatically opens up whenever you pick a new visualization type.
+If a particular visualization doesn’t really make sense for your answer, that option will appear in the "Other charts" section. You can still select one of these other charts, though you might need to fiddle with the chart options to make the chart work with your data.
 
 Not sure which visualization type to use? Check out [Which chart should you use?](https://www.metabase.com/learn/visualization/chart-guide)
+
+## Visualization options
+
+![Options for a chart](../images/viz-options.png)
+
+Each visualization type has its own advanced options.
+
+To change the settings for a specific chart, for example a row chart, you could either:
+
+- Click on the gear icon in the bottom left of the chart (next to the **Visualization** button, or
+- Click on **Visualization** in the bottom left of the chart, then hover over the currently selected chart and click on the **gear** icon that pops up.
+
+## Visualization types
+
+We
 
 ## Numbers
 
@@ -43,7 +52,7 @@ By default, Trends will display increases as green (i.e. "good") and decreases a
 ## Detail
 
 The **Detail** visualization shows a single result record (row) in an easy-to-read, two-column display. You can click on the arrows in the bottom right to step through the records in the results.
- 
+
 ![Detail of a record in the account table](../images/detail.png)
 
 ## Progress bars
@@ -195,7 +204,7 @@ Area charts are useful when comparing the proportions of two metrics over time. 
 
 ![Stacked area chart](../images/area.png)
 
-## Combo charts 
+## Combo charts
 
 Combo charts let you combine bars and lines (or areas) on the same chart.
 
@@ -317,7 +326,7 @@ When you select the **Map** visualization setting, Metabase will automatically t
 
 When you open up the Map options, you can manually switch between a region map (e.g., United States) and a pin map. If you're using a region map, you can also choose which field to use as the measurement, and which field to use as the region (e.g., State or Country).
 
-Metabase also allows admins to add [custom region maps](../../configuring-metabase/custom-maps.md). 
+Metabase also allows admins to add [custom region maps](../../configuring-metabase/custom-maps.md).
 
 Learn more about [visualizing data with maps](https://www.metabase.com/learn/basics/visualizing-data/maps.html).
 
