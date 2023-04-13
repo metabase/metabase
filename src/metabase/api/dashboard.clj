@@ -525,8 +525,8 @@
     :to-create is a list of maps that has negative ids in `new-changes`
     :to-update is a list of maps that has ids in both `current-changes` and `new-changes`
     :to delete is a list of maps that has ids only in `current-changes`"
-  [current-changes :- [:sequential [:map [:id ms/PositiveInt]]]
-   new-changes     :- [:sequential [:map [:id int?]]]]
+  [current-changes :- [:maybe [:sequential [:map [:id ms/PositiveInt]]]]
+   new-changes     :- [:maybe [:sequential [:map [:id int?]]]]]
   (let [current-change-ids (set (map :id current-changes))
         new-change-ids     (set (map :id new-changes))
         to-create          (filter #(neg? (:id %)) new-changes)
@@ -645,37 +645,36 @@
   [:map
    ;; id can be negative, it indicates a new card and BE should create them
    [:id           int?]
-   [:name         ms/NonBlankString]
-   [:position     ms/IntGreaterThanOrEqualToZero]])
+   [:name         ms/NonBlankString]])
 
 (api/defendpoint PUT "/:id/cards"
   "Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
 
-    {:cards [{:id                 ... ; DashboardCard ID
-              :size_x             ...
-              :size_y             ...
-              :row                ...
-              :col                ...
-              :parameter_mappings ...
-              :series             [{:id 123
-                                    ...}]}
-              ...]
-              :tabs   [{:id       ... ; DashboardTab ID
-                        :name     ...
-                        :position ...}]}"
-  [id :as {{:keys [cards tabs]} :body}]
+    {:cards        [{:id                 ... ; DashboardCard ID
+                     :size_x             ...
+                     :size_y             ...
+                     :row                ...
+                     :col                ...
+                     :parameter_mappings ...
+                     :series             [{:id 123
+                                           ...}]}
+                     ...]
+     :ordered_tabs [{:id       ... ; DashboardTab ID
+                     :name     ...}]}"
+  [id :as {{:keys [cards ordered_tabs]} :body}]
   {id    ms/PositiveInt
    cards [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]
-   tabs  [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
+   ordered_tabs  [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
   (let [dashboard     (-> (api/write-check Dashboard id)
                           api/check-not-archived
                           (t2/hydrate [:ordered_cards :series :card] :ordered_tabs))
-        current-tabs  (:ordered_tabs dashboard)
-        current-cards (:ordered_cards dashboard)]
+        current-cards (:ordered_cards dashboard)
+        ordered-tabs  (when-not (nil? ordered_tabs)
+                        (map-indexed (fn [idx tab] (assoc tab :position idx)) ordered_tabs))]
     (api/check-500
       (t2/with-transaction [_conn]
-        (if-not (nil? tabs)
-          (let [{:keys [temp->real-tab-ids deleted-tab-ids]} (update-dashtabs! dashboard current-tabs tabs)
+        (if-not (nil? ordered-tabs)
+          (let [{:keys [temp->real-tab-ids deleted-tab-ids]} (update-dashtabs! dashboard (:ordered_tabs dashboard) ordered-tabs)
                 new-cards     (cond->> cards
                                 (seq temp->real-tab-ids)
                                 (map (fn [card]
@@ -696,8 +695,8 @@
           ;; dashboard with no tabs cases
           (update-dashcards! dashboard current-cards cards))
         true))
-    {:cards (t2/hydrate (dashboard/ordered-cards id) :series)
-     :tabs  (dashboard/ordered-tabs id)}))
+    {:cards        (t2/hydrate (dashboard/ordered-cards id) :series)
+     :ordered_tabs (dashboard/ordered-tabs id)}))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/revisions"
