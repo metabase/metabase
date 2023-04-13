@@ -29,7 +29,6 @@
 (deftest ^:parallel join-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :lib/options  {:lib/uuid string?}
                        :source-table (meta/id :venues)
@@ -53,7 +52,6 @@
 (deftest ^:parallel join-saved-question-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :lib/options  {:lib/uuid string?}
                        :source-table (meta/id :categories)
@@ -121,7 +119,6 @@
 (deftest ^:parallel col-info-explicit-join-test
   (testing "Display name for a joined field should include a nice name for the join; include other info like :source_alias"
     (let [query {:lib/type     :mbql/query
-                 :type         :pipeline
                  :stages       [{:lib/type     :mbql.stage/mbql
                                  :lib/options  {:lib/uuid "fdcfaa06-8e65-471d-be5a-f1e821022482"}
                                  :source-table (meta/id :venues)
@@ -145,7 +142,7 @@
                  :lib/metadata meta/metadata-provider}]
       (let [metadata (lib.metadata.calculation/metadata query)]
         (is (=? [(merge (meta/field-metadata :categories :name)
-                        {:display_name                  "Categories → Name"
+                        {:display_name                  "Name"
                          :lib/source                    :source/fields
                          :metabase.lib.field/join-alias "CATEGORIES__via__CATEGORY_ID"})]
                 metadata))
@@ -187,7 +184,6 @@
         query             {:lib/type     :mbql/query
                            :lib/metadata metadata-provider
                            :database     (meta/id)
-                           :type         :pipeline
                            :stages       [{:lib/type     :mbql.stage/mbql
                                            :source-table (meta/id :checkins)
                                            :joins        [join]}]}]
@@ -211,8 +207,8 @@
                                     (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                                 (lib/with-join-alias "Cat")
                                 (lib/with-join-fields :all)))
-                  (lib/fields [(lib/field "VENUES" "ID")
-                               (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")]))]
+                  (lib/with-fields [(lib/field "VENUES" "ID")
+                                    (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")]))]
     (is (=? [{:name                     "ID"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "ID"
@@ -239,7 +235,6 @@
   (let [join-alias "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
         query      {:lib/type     :mbql/query
                     :lib/metadata meta/metadata-provider
-                    :type         :pipeline
                     :database     (meta/id)
                     :stages       [{:lib/type     :mbql.stage/mbql
                                     :source-table (meta/id :categories)
@@ -270,7 +265,7 @@
               :lib/source-column-alias  "NAME"
               :lib/desired-column-alias "NAME"}
              {:name                     "ID"
-              :display_name             "Categories → Categories → ID"
+              :display_name             "ID"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_bfaf4e7b"}]
             (lib.metadata.calculation/metadata query)))))

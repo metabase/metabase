@@ -17,7 +17,6 @@
 
 (deftest ^:parallel order-by-test
   (is (=? {:database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table (meta/id :venues)
                        :order-by     [[:asc
@@ -28,7 +27,6 @@
 
 (deftest ^:parallel threading-test
   (is (=? {:database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table (meta/id :venues)
                        :order-by     [[:asc
@@ -40,7 +38,6 @@
 
 (deftest ^:parallel threading-with-direction-test
   (is (=? {:database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table (meta/id :venues)
                        :order-by     [[:desc
@@ -53,7 +50,6 @@
 (deftest ^:parallel specific-stage-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :lib/options  {:lib/uuid string?}
                        :source-table (meta/id :venues)}
@@ -293,14 +289,14 @@
                  {:id (meta/id :venues :price) :name "PRICE"}
                  {:lib/type     :metadata/field
                   :name         "ID"
-                  :display_name "Categories → ID" ; should we be using the explicit alias we gave this join?
+                  :display_name "ID"
                   :source_alias "Cat"
                   :id           (meta/id :categories :id)
                   :table_id     (meta/id :categories)
                   :base_type    :type/BigInteger}
                  {:lib/type     :metadata/field
                   :name         "NAME"
-                  :display_name "Categories → Name"
+                  :display_name "Name"
                   :source_alias "Cat"
                   :id           (meta/id :categories :name)
                   :table_id     (meta/id :categories)
@@ -457,8 +453,8 @@
                                 (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                             (lib/with-join-alias "Cat")
                             (lib/with-join-fields :all)))
-              (lib/fields [(lib/field "VENUES" "ID")
-                           (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")])
+              (lib/with-fields [(lib/field "VENUES" "ID")
+                                (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")])
               (lib/orderable-columns)))))
 
 (deftest ^:parallel order-bys-with-duplicate-column-names-test
@@ -479,7 +475,7 @@
               :lib/type                 :metadata/field
               :base_type                :type/BigInteger
               :effective_type           :type/BigInteger
-              :display_name             "Categories → ID"
+              :display_name             "ID"
               :table_id                 (meta/id :categories)
               :lib/source-column-alias  "Cat__ID"
               :lib/desired-column-alias "Cat__ID"}]
@@ -491,8 +487,8 @@
                                    (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                               (lib/with-join-alias "Cat")
                               (lib/with-join-fields :all)))
-                (lib/fields [(lib/field "VENUES" "ID")
-                             (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")])
+                (lib/with-fields [(lib/field "VENUES" "ID")
+                                  (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat")])
                 (lib/append-stage)
                 (lib/orderable-columns))))))
 
@@ -563,25 +559,26 @@
                                          [:field {} (meta/id :venues :category-id)]
                                          [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}]}]}
               query))
-      (is (=? [{:display_name "ID",                :lib/source :source/table-defaults}
-               {:display_name "Name",              :lib/source :source/table-defaults}
-               {:display_name "Category ID",       :lib/source :source/table-defaults}
-               {:display_name "Latitude",          :lib/source :source/table-defaults}
-               {:display_name "Longitude",         :lib/source :source/table-defaults}
-               {:display_name "Price",             :lib/source :source/table-defaults}
+      (is (=? [{:display_name "ID",          :lib/source :source/table-defaults}
+               {:display_name "Name",        :lib/source :source/table-defaults}
+               {:display_name "Category ID", :lib/source :source/table-defaults}
+               {:display_name "Latitude",    :lib/source :source/table-defaults}
+               {:display_name "Longitude",   :lib/source :source/table-defaults}
+               {:display_name "Price",       :lib/source :source/table-defaults}
                ;; implicitly joinable versions shouldn't be returned either, since we have an explicit join.
-               {:display_name "Categories → ID",   :lib/source :source/joins}
-               {:display_name "Categories → Name", :lib/source :source/joins}]
+               {:display_name "ID",   :lib/source :source/joins}
+               {:display_name "Name", :lib/source :source/joins}]
               (lib/orderable-columns query)))
-      (let [query' (lib/order-by query (m/find-first #(= (:display_name %) "Categories → Name")
+      (let [query' (lib/order-by query (m/find-first #(and (= (:source_alias %) "Cat")
+                                                           (= (:display_name %) "Name"))
                                                      (lib/orderable-columns query)))]
-        (is (=? [{:display_name "ID",                :lib/source :source/table-defaults}
-                 {:display_name "Name",              :lib/source :source/table-defaults}
-                 {:display_name "Category ID",       :lib/source :source/table-defaults}
-                 {:display_name "Latitude",          :lib/source :source/table-defaults}
-                 {:display_name "Longitude",         :lib/source :source/table-defaults}
-                 {:display_name "Price",             :lib/source :source/table-defaults}
-                 {:display_name "Categories → ID",   :lib/source :source/joins}]
+        (is (=? [{:display_name "ID",          :lib/source :source/table-defaults}
+                 {:display_name "Name",        :lib/source :source/table-defaults}
+                 {:display_name "Category ID", :lib/source :source/table-defaults}
+                 {:display_name "Latitude",    :lib/source :source/table-defaults}
+                 {:display_name "Longitude",   :lib/source :source/table-defaults}
+                 {:display_name "Price",       :lib/source :source/table-defaults}
+                 {:display_name "ID",          :lib/source :source/joins}]
                 (lib/orderable-columns query')))))))
 
 (deftest ^:parallel orderable-columns-exclude-already-sorted-implicitly-joinable-columns-test
@@ -634,7 +631,7 @@
 (deftest ^:parallel order-by-expression-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
-                  (lib/fields [(lib/field "VENUES" "ID")]))]
+                  (lib/with-fields [(lib/field "VENUES" "ID")]))]
     (is (=? [{:id (meta/id :venues :id),          :name "ID",          :display_name "ID",          :lib/source :source/table-defaults}
              {:id (meta/id :venues :name),        :name "NAME",        :display_name "Name",        :lib/source :source/table-defaults}
              {:id (meta/id :venues :category-id), :name "CATEGORY_ID", :display_name "Category ID", :lib/source :source/table-defaults}

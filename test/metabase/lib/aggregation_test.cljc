@@ -179,7 +179,6 @@
         result-query
         {:lib/type :mbql/query
          :database (meta/id)
-         :type :pipeline
          :stages [{:lib/type :mbql.stage/mbql
                    :source-table (meta/id :venues)
                    :lib/options {:lib/uuid string?}

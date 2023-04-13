@@ -9,7 +9,6 @@
 
 (deftest ^:parallel ->pMBQL-test
   (is (=? {:lib/type :mbql/query
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table 1}
                       {:lib/type    :mbql.stage/mbql
@@ -32,7 +31,6 @@
 
 (deftest ^:parallel ->pMBQL-idempotency-test
   (is (=? {:lib/type :mbql/query
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table 1}
                       {:lib/type    :mbql.stage/mbql
@@ -57,7 +55,6 @@
 (deftest ^:parallel ->pMBQL-joins-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type    :mbql.stage/mbql
                        :fields      [[:field
                                       {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
@@ -92,7 +89,6 @@
 (deftest ^:parallel ->pMBQL-join-fields-test
   (testing "#29898"
     (is (=? {:lib/type :mbql/query
-             :type     :pipeline
              :stages   [{:lib/type     :mbql.stage/mbql
                          :joins        [{:alias       "Cat"
                                          :fields      [[:field {:lib/uuid string?, :join-alias "Cat"} 1]]
@@ -119,7 +115,6 @@
 
 (deftest ^:parallel aggregation-options-test
   (is (=? {:lib/type :mbql/query
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table 1
                        :aggregation  [[:sum

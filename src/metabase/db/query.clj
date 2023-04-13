@@ -34,10 +34,11 @@
 
 (set! *warn-on-reflection* true)
 
-(defn format-sql
-  "Return a nicely-formatted version of a `sql` string."
+(defn- format-sql*
+  "Return a nicely-formatted version of a generic `sql` string.
+  Note that it will not play well with Metabase parameters."
   (^String [sql]
-   (format-sql sql (mdb.connection/db-type)))
+   (format-sql* sql (mdb.connection/db-type)))
 
   (^String [^String sql db-type]
    (when sql
@@ -52,6 +53,18 @@
                                           Dialect/StandardSql))]
          (.format formatter sql))
        sql))))
+
+(defn- fix-sql-params
+  "format-sql* will expand parameterized values (e.g. {{#123}} -> { { # 123 } }).
+  This function fixes that by removing whitespace from matching double-curly brace substrings."
+  [sql]
+  (when sql
+    (let [rgx #"\{\s*\{\s*[^\}]+\s*\}\s*\}"]
+      (str/replace sql rgx (fn [match] (str/replace match #"\s*" ""))))))
+
+(def format-sql
+  "Return a nicely-formatted version of a `sql` string."
+  (comp fix-sql-params format-sql*))
 
 (defmulti compile
   "Compile a `query` (e.g. a Honey SQL map) to `[sql & args]`."

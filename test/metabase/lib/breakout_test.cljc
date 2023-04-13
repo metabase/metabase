@@ -13,7 +13,6 @@
                   (lib/breakout (lib/temporal-bucket (lib/field (meta/id :checkins :date)) :year)))]
     (is (=? {:lib/type :mbql/query
              :database (meta/id)
-             :type     :pipeline
              :stages   [{:lib/type     :mbql.stage/mbql
                          :source-table (meta/id :checkins)
                          :aggregation  [[:count {}]]

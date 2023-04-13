@@ -122,7 +122,8 @@
    upper
    lower]
   [lib.field
-   fields]
+   fields
+   with-fields]
   [lib.filter
    filter
    filters

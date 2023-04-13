@@ -14,7 +14,6 @@
 (def venues-query
   {:lib/type     :mbql/query
    :lib/metadata meta/metadata-provider
-   :type         :pipeline
    :database     (meta/id)
    :stages       [{:lib/type     :mbql.stage/mbql
                    :source-table (meta/id :venues)}]})
@@ -109,7 +108,6 @@
   []
   {:lib/type     :mbql/query
    :lib/metadata metadata-provider-with-card
-   :type         :pipeline
    :database     (meta/id)
    :stages       [{:lib/type     :mbql.stage/mbql
                    :source-table "card__1"}]})
@@ -184,7 +182,6 @@
   []
   {:lib/type     :mbql/query
    :lib/metadata meta/metadata-provider
-   :type         :pipeline
    :database     (meta/id)
    :stages       [{:lib/type           :mbql.stage/native
                    :lib/stage-metadata {:lib/type :metadata/results
