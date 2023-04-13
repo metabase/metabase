@@ -84,9 +84,15 @@ You must URL encode (or double encode, depending on your web setup) all of the p
 https://metabase.example.com/auth/sso?jwt=<token>&redirect=%2Fdashboard%2F1%3Ffilter1%3Dvalue%26filter2%3Dvalue
 ```
 
+## Cross-browser compatability
+
+To make sure that your embedded Metabase works in all browsers (including iOS and Safari), we recommend moving Metabase and the embedding app to the same top-level domain (TLD).
+
 ## Embedding Metabase in a different domain
 
-If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), set the following [environment variable](../configuring-metabase/environment-variables.md):
+> You can skip the `SameSite = None modifier` if your Metabase and embedding app are already in the same top-level domain (TLD).
+
+If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can set the following [environment variable](../configuring-metabase/environment-variables.md):
 
 `MB_SESSION_COOKIE_SAMESITE=None`
 
@@ -94,7 +100,7 @@ If you set this environment variable to "None", you must use HTTPS in Metabase t
 
 ## Securing full-app embeds
 
-Metabase uses HTTP cookies to authenticate people and keep them signed into your embedded Metabase, even when someone closes their browser session.
+Metabase uses HTTP cookies to authenticate people and keep them signed into your embedded Metabase, even when someone closes their browser session. If you enjoy diagrammed auth flows, check out [Full-app embedding with SSO](https://www.metabase.com/learn/customer-facing-analytics/securing-embeds#full-app-embedding-with-sso).
 
 To limit the amount of time that a person stays logged in, set [`MAX_SESSION_AGE`](../configuring-metabase/environment-variables.md#max_session_age) to a number in minutes. The default value is 20,160 (two weeks).
 
