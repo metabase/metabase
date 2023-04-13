@@ -30,11 +30,16 @@
                                                          (:mysql :postgres) "entity_id"))]
         (into #{} (map (comp u/lower-case-en :table_name)) (resultset-seq rset))))))
 
+(defn toucan-models
+  "Return a list of all toucan models."
+  []
+  (concat (descendants :toucan1/model) (descendants :metabase/model)))
+
 (defn- make-table-name->model
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."
   []
   (into {}
-        (for [model (concat (descendants :toucan1/model) (descendants :metabase/model))
+        (for [model (toucan-models)
               :when (mdb.u/toucan-model? model)
               :let  [table-name (some-> model t2/table-name name)]
               :when table-name
