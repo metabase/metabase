@@ -18,6 +18,8 @@
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :plugins))
 
 ;; Helper Fns
