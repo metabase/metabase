@@ -25,19 +25,21 @@
 ;;             /   \
 ;;            /     \
 ;;         float   date
-;;           |
-;;           |
-;;          int
+;;           |       |
+;;           |       |
+;;          int   datetime
 ;;           |
 ;;           |
 ;;        boolean
 
 (def type->parent
-  {::boolean     ::int
-   ::int         ::float
+  ;; listed in depth-first order
+  {::varchar_255 ::text
    ::float       ::varchar_255
+   ::int         ::float
+   ::boolean     ::int
    ::date        ::varchar_255
-   ::varchar_255 ::text})
+   ::datetime    ::date})
 
 (def ^:private types
   (set/union (set (keys type->parent))
@@ -53,6 +55,12 @@
 
 (defn- date-string? [s]
   (try (t/local-date s)
+       true
+       (catch Exception _
+         false)))
+
+(defn- datetime-string? [s]
+  (try (t/local-date-time s)
        true
        (catch Exception _
          false)))
@@ -75,6 +83,7 @@
     (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" value) ::boolean
     (re-matches #"-?[\d,]+"                          value) ::int
     (re-matches #"-?[\d,]*\.\d+"                     value) ::float
+    (datetime-string?                                value) ::datetime
     (date-string?                                    value) ::date
     (re-matches #".{1,255}"                          value) ::varchar_255
     :else                                                   ::text))
@@ -134,13 +143,18 @@
   [s]
   (t/local-date s))
 
+(defn- parse-datetime
+  [s]
+  (t/local-date-time s))
+
 (def ^:private upload-type->parser
   {::varchar_255 identity
    ::text        identity
    ::int         #(Integer/parseInt (str/trim %))
    ::float       #(parse-double (str/trim %))
    ::boolean     #(parse-bool (str/trim %))
-   ::date        #(parse-date (str/trim %))})
+   ::date        #(parse-date (str/trim %))
+   ::datetime    #(parse-datetime (str/trim %))})
 
 (defn- parsed-rows
   "Returns a vector of parsed rows from a `csv-file`.
@@ -175,6 +189,7 @@
     - ::varchar_255
     - ::text
     - ::date
+    - ::datetime
 
   A column that is completely blank is assumed to be of type ::text."
   [csv-file]
