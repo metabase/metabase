@@ -15,7 +15,7 @@ import Form, {
 import MetabaseSettings from "metabase/lib/settings";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 
-import { updateSettings } from "metabase/admin/settings/settings";
+import { updateSamlSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
 import {
   SAMLFormCaption,
@@ -211,7 +211,7 @@ const getDocsUrl = () => {
 SettingsSAMLForm.propTypes = propTypes;
 
 const mapDispatchToProps = {
-  onSubmit: updateSettings,
+  onSubmit: updateSamlSettings,
 };
 
 export default connect(null, mapDispatchToProps)(SettingsSAMLForm);
