@@ -75,7 +75,7 @@ Most IdPs already include these assertions by default, but some (such as [Okta](
 
 Generally you'll need to paste these user attributes (first name, last name, and email) into fields labelled "Name", "Attributes" or "Parameters".
 
-**End-users should not be able to edit the email address attribute**. Your IdP will pass the email address attribute to Metabase in order to log people into their Metabase accounts (or to create an account on the first login). If a person can change the email address attribute, they'll potentially be able to access Metabase accounts other than their own.
+> If you allow people to edit their email addresses: make sure to update the corresponding account emails in Metabase. Keeping email addresses in sync will protect people from losing access to their accounts.
 
 ### Settings for signing SSO requests (optional)
 
@@ -150,6 +150,14 @@ To start, make sure the toggle to synchronize group memberships is set to "Enabl
 After that, type in the name of the user attribute you added in your SAML provider. In this case, we told Okta that the `metabaseGroups` attribute should be named `MetabaseGroupName`, so that's what we'll enter in the Group Attribute Name field in Metabase.
 
 ![Group schema](images/saml-group-schema.png)
+
+## Creating Metabase accounts with SSO
+
+> Paid plans [charge for each additional account](https://www.metabase.com/docs/latest/cloud/how-billing-works#what-counts-as-a-user-account).
+
+A new SSO login will automatically create a new Metabase account.
+
+Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase.
 
 ## Disabling password logins
 
