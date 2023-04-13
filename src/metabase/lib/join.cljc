@@ -10,6 +10,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.ref :as ref]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -207,24 +208,37 @@
 ;; TODO this is basically the same as lib.common/->op-args,
 ;; but requiring lib.common leads to crircular dependencies:
 ;; join -> common -> field -> join.
-(defmulti ^:private ->join-condition
+(defmulti ^:private ->arg
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod ->join-condition :default
+(defmethod ->arg :default
   [_query _stage-number x]
   x)
 
-(defmethod ->join-condition :lib/external-op
+(defmethod ->arg :lib/external-op
   [query stage-number {:keys [operator options args] :or {options {}}}]
-  (->join-condition query stage-number
-                    (lib.options/ensure-uuid (into [operator options] args))))
+  (->arg query stage-number
+         (lib.options/ensure-uuid (into [operator options] args))))
 
-(defmethod ->join-condition :dispatch-type/fn
+(defmethod ->arg :dispatch-type/fn
   [query stage-number f]
-  (->join-condition query stage-number (f query stage-number)))
+  (->arg query stage-number (f query stage-number)))
+
+(mu/defn join-field :- [:or
+                        fn?
+                        [:ref ::ref/ref]]
+  "Create a MBQL field expression to include in the `:fields` in a join map.
+
+  - One arity: return a function that will be resolved later once we have `query` and `stage-number.`
+  - Three arity: return the join field expression immediately."
+  ([x]
+   (fn [query stage-number]
+     (join-condition query stage-number x)))
+  ([query stage-number x]
+   (->arg query stage-number x)))
 
 (mu/defn join-condition :- [:or
                             fn?
@@ -237,7 +251,7 @@
    (fn [query stage-number]
      (join-condition query stage-number x)))
   ([query stage-number x]
-   (->join-condition query stage-number x)))
+   (->arg query stage-number x)))
 
 (defn join-clause
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
@@ -267,7 +281,7 @@
 (defmethod with-join-fields-method :dispatch-type/fn
   [f fields]
   (fn [query stage-number]
-    (with-join-fields-method (f query stage-number) fields)))
+    (with-join-fields-method (f query stage-number) (mapv #(join-field query stage-number %) fields))))
 
 (defmethod with-join-fields-method :mbql/join
   [join fields]
@@ -276,7 +290,7 @@
 (mu/defn with-join-fields
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
   references."
-  [x fields :- ::lib.schema.join/fields]
+  [x fields]
   (with-join-fields-method x fields))
 
 (mu/defn join :- ::lib.schema/query
@@ -299,13 +313,13 @@
      (lib.util/update-query-stage query stage-number update :joins (fn [joins]
                                                                      (conj (vec joins) new-join))))))
 
-(mu/defn joins :- ::lib.schema.join/joins
+(mu/defn joins :- [:maybe ::lib.schema.join/joins]
   "Get all joins in a specific `stage` of a `query`. If `stage` is unspecified, returns joins in the final stage of the
   query."
   ([query]
    (joins query -1))
   ([query        :- ::lib.schema/query
-    stage-number :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
+    stage-number :- :int]
    (not-empty (get (lib.util/query-stage query stage-number) :joins))))
 
 (mu/defn implicit-join-name :- ::lib.schema.common/non-blank-string
@@ -317,3 +331,13 @@
   [table-name           :- ::lib.schema.common/non-blank-string
    source-field-id-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__via__%s" table-name source-field-id-name))
+
+(mu/defn join-conditions :- ::lib.schema.join/conditions
+  "Get all join conditions for the given join"
+  [join :- ::lib.schema.join/join]
+  (:conditions join))
+
+(mu/defn join-conditions :- ::lib.schema.join/conditions
+  "Get all join conditions for the given join"
+  [join :- ::lib.schema.join/join]
+  (:conditions join))

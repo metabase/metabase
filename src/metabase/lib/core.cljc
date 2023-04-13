@@ -144,6 +144,7 @@
   [lib.join
    join
    join-clause
+   join-conditions
    joins
    with-join-alias
    with-join-fields]

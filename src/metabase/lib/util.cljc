@@ -52,7 +52,7 @@
    If `location` contains no clause with `target-clause` no replacement happens."
   [stage location target-clause new-clause]
   {:pre [(clause? target-clause)]}
-  (m/update-existing
+  (m/update-existing-in
     stage
     location
     #(->> (for [clause %]
@@ -68,13 +68,18 @@
    If the the location is empty, dissoc it from stage."
   [stage location target-clause]
   {:pre [(clause? target-clause)]}
-  (if-let [target (get stage location)]
+  (if-let [target (get-in stage location)]
     (let [target-uuid (clause-uuid target-clause)
           result (into [] (remove (comp #{target-uuid} clause-uuid)) target)]
       (if (seq result)
-        (assoc stage location result)
-        (dissoc stage location)))
-    stage))
+        (assoc-in stage location result)
+        (if (= 1 (count location))
+          (dissoc stage (first location))
+          (case [(first location) (last location)]
+            [:joins :conditions] (throw (ex-info (i18n/tru "Cannot remove the final join condition")
+                                                 {:conditions (get-in stage location)}))
+            [:joins :fields] (update-in stage (butlast location) dissoc (last location))))))
+            stage))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
 ;;; the near future.

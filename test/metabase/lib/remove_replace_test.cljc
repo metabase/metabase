@@ -37,6 +37,30 @@
                  (lib/filters)
                  count)))))
 
+(deftest ^:parallel remove-clause-join-conditions-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/join (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+                            [(lib/= (lib/field "VENUES" "PRICE") 4)
+                             (lib/= (lib/field "VENUES" "NAME") "x")]))
+        conditions (lib/join-conditions (first (lib/joins query)))]
+    (is (= 2 (count conditions)))
+    (is (= 1 (-> query
+                 (lib/remove-clause (first conditions))
+                 lib/joins
+                 first
+                 lib/join-conditions
+                 count)))
+    (is (thrown-with-msg?
+          #?(:clj Exception :cljs js/Error)
+          #"Cannot remove the final join condition"
+          (-> query
+                (lib/remove-clause (first conditions))
+                (lib/remove-clause (second conditions))
+                lib/joins
+                first
+                lib/join-conditions
+                count)))))
+
 (deftest ^:parallel remove-clause-breakout-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/breakout (lib/field "VENUES" "ID"))
@@ -152,6 +176,40 @@
               (first replaced-filters)))
       (is (= 2 (count replaced-filters)))
       (is (= (second filters) (second replaced-filters))))))
+
+(deftest ^:parallel replace-clause-join-conditions-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/join (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+                            [(lib/= (lib/field "VENUES" "PRICE") 4)]))
+        conditions (lib/join-conditions (first (lib/joins query)))]
+    (is (= 1 (count conditions)))
+    (let [replaced (-> query
+                       (lib/replace-clause (first conditions) (lib/= (lib/field (meta/id :venues :id)) 1)))
+          replaced-conditions (lib/join-conditions (first (lib/joins replaced)))]
+      (is (not= conditions replaced-conditions))
+      (is (=? [:= {} [:field {} (meta/id :venues :id)] 1]
+              (first replaced-conditions)))
+      (is (= 1 (count replaced-conditions)))
+      (is (= (second conditions) (second replaced-conditions))))))
+
+(deftest ^:parallel replace-clause-join-fields-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/join
+                    (-> (lib/join-clause (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+                                         [(lib/= (lib/field "VENUES" "PRICE") 4)])
+                        (lib/with-join-fields
+                          [(lib/field "CATEGORIES" "ID")
+                           (lib/field "CATEGORIES" "NAME")]))))
+        conditions (lib/join-conditions (first (lib/joins query)))]
+    (is (= 1 (count conditions)))
+    (let [replaced (-> query
+                       (lib/replace-clause (first conditions) (lib/= (lib/field (meta/id :venues :id)) 1)))
+          replaced-conditions (lib/join-conditions (first (lib/joins replaced)))]
+      (is (not= conditions replaced-conditions))
+      (is (=? [:= {} [:field {} (meta/id :venues :id)] 1]
+              (first replaced-conditions)))
+      (is (= 1 (count replaced-conditions)))
+      (is (= (second conditions) (second replaced-conditions))))))
 
 (deftest ^:parallel replace-clause-breakout-by-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
