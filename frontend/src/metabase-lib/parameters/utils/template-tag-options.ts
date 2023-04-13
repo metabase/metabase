@@ -35,11 +35,12 @@ export function getParameterOptionsForField(field: Field) {
 
 export function getDefaultParameterWidgetType(tag: TemplateTag, field: Field) {
   const options = getParameterOptionsForField(field);
-  const widgetType = tag["widget-type"];
-
   if (options.length === 0) {
     return undefined;
-  } else if (
+  }
+
+  const widgetType = tag["widget-type"];
+  if (
     widgetType != null &&
     options.some(option => option.type === widgetType)
   ) {
