@@ -44,21 +44,26 @@
        (lib.metadata.calculation/display-name query stage-number aggregation)))))
 
 (defmethod lib.metadata.calculation/metadata-method :aggregation
-  [query stage-number [_ag opts index, :as _aggregation-ref]]
+  [query stage-number [_ag {:keys [base-type effective-type], :as _opts} index, :as _aggregation-ref]]
   (let [aggregation (resolve-aggregation query stage-number index)]
     (merge
      (lib.metadata.calculation/metadata query stage-number aggregation)
-     {:lib/source :source/aggregations}
-     (when (:base-type opts)
-       {:base_type (:base-type opts)})
-     (when (:effective-type opts)
-       {:effective_type opts}))))
+     {:lib/source         :source/aggregations
+      ::aggregation-index index}
+     (when base-type
+       {:base_type base-type})
+     (when effective-type
+       {:effective_type effective-type}))))
 
 ;;; TODO -- merge this stuff into `defop` somehow.
 
 (defmethod lib.metadata.calculation/display-name-method :aggregation
   [query stage-number [_tag _opts index]]
   (lib.metadata.calculation/display-name query stage-number (resolve-aggregation query stage-number index)))
+
+#_(defmethod lib.metadata.calculation/display-info-method :aggregation
+  [query stage-number [_tag _opts index]]
+  (lib.metadata.calculation/display-info query stage-number (resolve-aggregation query stage-number index)))
 
 (defmethod lib.metadata.calculation/display-name-method :count
   [query stage-number [_count _opts x]]

@@ -630,6 +630,42 @@
                  {:display_name "Name",          :lib/source :source/implicitly-joinable}]
                 (lib/orderable-columns query')))))))
 
+(deftest ^:parallel order-by-aggregation-test
+  (testing "Should be able to order by an aggregation (#30089)"
+    (let [query             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                                (lib/aggregate (lib/avg (lib/+ (lib/field "VENUES" "PRICE") 1))))
+          orderable-columns (lib/orderable-columns query)]
+      (is (=? [{:lib/type                                   :metadata/field
+                :base_type                                  :type/Float
+                :display_name                               "Average of Price + 1"
+                :lib/source                                 :source/aggregations
+                :metabase.lib.aggregation/aggregation-index 0}]
+              orderable-columns))
+      (let [ag-ref (first orderable-columns)
+            query' (lib/order-by query ag-ref)]
+        (is (=? {:stages
+                 [{:aggregation [[:avg {} [:+ {} [:field {} (meta/id :venues :price)] 1]]]
+                   :order-by    [[:asc {} [:aggregation {:effective-type :type/Float} 0]]]}]}
+                query'))
+        (is (=? [[:asc {} [:aggregation {:effective-type :type/Float} 0]]]
+               (lib/order-bys query')))
+        (is (=? [{:display_name "Average of Price + 1"
+                  :direction    :asc}]
+                (map (partial lib/display-info query') (lib/order-bys query'))))
+        (is (= "Venues, Average of Price + 1, Sorted by Average of Price + 1 ascending"
+               (lib/describe-query query')))
+        (testing "With another stage added"
+          (let [query'' (lib/append-stage query')]
+            (is (=? {:stages
+                     [{:aggregation [[:avg {} [:+ {} [:field {} (meta/id :venues :price)] 1]]]
+                       :order-by    [[:asc {} [:aggregation {} 0]]]}
+                      {}]}
+                    query''))
+            (is (=? []
+                    (map (partial lib/display-info query'') (lib/order-bys query''))))
+            (is (= "Venues, Average of Price + 1, Sorted by Average of Price + 1 ascending"
+                   (lib/describe-query query'')))))))))
+
 (deftest ^:parallel order-by-expression-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
