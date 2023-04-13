@@ -9,6 +9,10 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]))
 
+(defmethod lib.metadata.calculation/display-name-method :metadata/card
+  [_query _stage-number card-metadata _style]
+  ((some-fn :display_name :name) card-metadata))
+
 (defmethod lib.metadata.calculation/metadata-method :metadata/card
   [_query _stage-number {card-name :name, display-name :display_name, :as card-metadata}]
   (cond-> card-metadata

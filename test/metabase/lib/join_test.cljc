@@ -144,7 +144,7 @@
                  :lib/metadata meta/metadata-provider}]
       (let [metadata (lib.metadata.calculation/metadata query)]
         (is (=? [(merge (meta/field-metadata :categories :name)
-                        {:display_name                  "Categories → Name"
+                        {:display_name                  "Name"
                          :lib/source                    :source/fields
                          :metabase.lib.field/join-alias "CATEGORIES__via__CATEGORY_ID"})]
                 metadata))
@@ -267,7 +267,7 @@
               :lib/source-column-alias  "NAME"
               :lib/desired-column-alias "NAME"}
              {:name                     "ID"
-              :display_name             "Categories → Categories → ID"
+              :display_name             "ID"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_bfaf4e7b"}]
             (lib.metadata.calculation/metadata query)))))

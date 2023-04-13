@@ -127,11 +127,7 @@
      {:source-table (_id :guard #(str/starts-with? % "card__"))}
      (mbql.u/match-one &match
        [:field (_field-name :guard string?) _opts]
-       "#29941"))
-   ;; #29947: `:ends-with` broken
-   (mbql.u/match-one legacy-query
-     :ends-with
-     "#29947")))
+       "#29941"))))
 
 (defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}

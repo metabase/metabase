@@ -4,6 +4,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (defn- test-clause [result-filter f & args]
@@ -202,3 +203,13 @@
       (is (=? extended-and-query third-add))
       (is (=? [first-result-filter second-result-filter third-result-filter]
               (lib/filters third-add))))))
+
+(deftest ^:parallel ends-with-display-name-test
+  (testing "#29947"
+    (is (= "Name ends with \"t\""
+           (lib/display-name
+            lib.tu/venues-query
+            [:ends-with
+             {:lib/uuid "953597df-a96d-4453-a57b-665e845abc69"}
+             [:field {:lib/uuid "be28f393-538a-406b-90da-bac5f8ef565e"} (meta/id :venues :name)]
+             "t"]))) ))

@@ -118,29 +118,42 @@
                          :expressions {"ID + 1" [:+ {} [:field {} (meta/id :venues :id)] 1]
                                        "ID + 2" [:+ {} [:field {} (meta/id :venues :id)] 2]}}]}
               query))
-      (is (=? [{:id (meta/id :venues :id),          :name "ID",          :lib/source :source/table-defaults}
-               {:id (meta/id :venues :name),        :name "NAME",        :lib/source :source/table-defaults}
-               {:id (meta/id :venues :category-id), :name "CATEGORY_ID", :lib/source :source/table-defaults}
-               {:id (meta/id :venues :latitude),    :name "LATITUDE",    :lib/source :source/table-defaults}
-               {:id (meta/id :venues :longitude),   :name "LONGITUDE",   :lib/source :source/table-defaults}
-               {:id (meta/id :venues :price),       :name "PRICE",       :lib/source :source/table-defaults}
-               {:name "ID + 1", :lib/source :source/expressions}
-               {:name "ID + 2", :lib/source :source/expressions}
-               {:id                       (meta/id :categories :id)
-                :name                     "ID"
-                :lib/source               :source/joins
-                :source_alias             "Cat"
-                :display_name             "Categories → ID"
-                :lib/source-column-alias  "ID"
-                :lib/desired-column-alias "Cat__ID"}
-               {:id                       (meta/id :categories :name)
-                :name                     "NAME"
-                :lib/source               :source/joins
-                :source_alias             "Cat"
-                :display_name             "Categories → Name"
-                :lib/source-column-alias  "NAME"
-                :lib/desired-column-alias "Cat__NAME"}]
-              (lib.metadata.calculation/metadata query))))))
+      (let [metadata (lib.metadata.calculation/metadata query)]
+        (is (=? [{:id (meta/id :venues :id), :name "ID", :lib/source :source/table-defaults}
+                 {:id (meta/id :venues :name), :name "NAME", :lib/source :source/table-defaults}
+                 {:id (meta/id :venues :category-id), :name "CATEGORY_ID", :lib/source :source/table-defaults}
+                 {:id (meta/id :venues :latitude), :name "LATITUDE", :lib/source :source/table-defaults}
+                 {:id (meta/id :venues :longitude), :name "LONGITUDE", :lib/source :source/table-defaults}
+                 {:id (meta/id :venues :price), :name "PRICE", :lib/source :source/table-defaults}
+                 {:name "ID + 1", :lib/source :source/expressions}
+                 {:name "ID + 2", :lib/source :source/expressions}
+                 {:id                       (meta/id :categories :id)
+                  :name                     "ID"
+                  :lib/source               :source/joins
+                  :source_alias             "Cat"
+                  :display_name             "ID"
+                  :lib/source-column-alias  "ID"
+                  :lib/desired-column-alias "Cat__ID"}
+                 {:id                       (meta/id :categories :name)
+                  :name                     "NAME"
+                  :lib/source               :source/joins
+                  :source_alias             "Cat"
+                  :display_name             "Name"
+                  :lib/source-column-alias  "NAME"
+                  :lib/desired-column-alias "Cat__NAME"}]
+                metadata))
+        (testing ":long display names"
+          (is (= ["ID"
+                  "Name"
+                  "Category ID"
+                  "Latitude"
+                  "Longitude"
+                  "Price"
+                  "ID + 1"
+                  "ID + 2"
+                  "Categories → ID"
+                  "Categories → Name"]
+                 (mapv #(lib.metadata.calculation/display-name query -1 % :long) metadata))))))))
 
 (deftest ^:parallel metadata-with-fields-only-include-expressions-in-fields-test
   (testing "If query includes :fields, only return expressions that are in :fields"
