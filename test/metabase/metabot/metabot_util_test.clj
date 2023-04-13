@@ -26,17 +26,6 @@
     (is (= "PEOPLE_USER_ID"
            (metabot-util/normalize-name "People - User → ID")))))
 
-(deftest fix-model-reference-test
-  (testing "Testing basic examples of how fix-model-reference should work"
-    (is (= "SQL SQL SQL {{#1234}} MORE SQL"
-           (#'metabot-util/fix-model-reference "SQL SQL SQL {   { # 1234  }   } MORE SQL")))
-    (is (= "SQL SQL SQL {{FROOBY_VAR}} MORE SQL"
-           (#'metabot-util/fix-model-reference "SQL SQL SQL {   { FROOBY_VAR  }   } MORE SQL")))
-    (is (= "SQL SQL SQL {{FROOBY_VAR}} MORE {{#1234}} SQL"
-           (#'metabot-util/fix-model-reference "SQL SQL SQL {   { FROOBY_VAR  }   } MORE { { # 1234 }} SQL")))
-    (is (= "SELECT {{FROOBY_VAR}}{{#1234}} SQL"
-           (#'metabot-util/fix-model-reference "SELECT { {  FROOBY_VAR } }{ {#1234  }} SQL")))))
-
 (deftest create-table-ddl-test
   (testing "Testing the test-create-table-ddl function"
     (let [model {:sql_name        "TABLE"
