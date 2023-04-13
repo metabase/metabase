@@ -281,7 +281,7 @@ function CollectionContent({
                   }
 
                   return (
-                    <CollectionTable>
+                    <CollectionTable data-testid="collection-table">
                       <ItemsTable
                         databases={databases}
                         bookmarks={bookmarks}
