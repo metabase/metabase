@@ -229,7 +229,7 @@
                 :limit        1
                 :source-table 4}}))
 
-(deftest clean-test
+(deftest ^:parallel clean-test
   (testing "hopeless queries"
     (are [query] (thrown-with-msg?
                    #?(:clj Exception :cljs js/Error)
