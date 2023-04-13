@@ -33,15 +33,15 @@
 (def Card
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
   We'll keep this till we replace all the Card symbol in our codebase."
-  :m/Card)
+  :model/Card)
 
-(methodical/defmethod t2/table-name :m/Card [_model] :report_card)
+(methodical/defmethod t2/table-name :model/Card [_model] :report_card)
 
 (methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
   [_original-model _k]
-  :m/Card)
+  :model/Card)
 
-(t2/deftransforms :m/Card
+(t2/deftransforms :model/Card
   {:dataset_query          mi/tf-metabase-query
    :display                mi/tf-keyword
    :embedding_params       mi/tf-json
@@ -52,7 +52,7 @@
    :parameter_mappings     mi/tf-parameters-list})
 
 ;;; You can read/write a Card if you can read/write its parent Collection
-(doto :m/Card
+(doto :model/Card
   (derive ::perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
@@ -103,7 +103,7 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defmethod revision/serialize-instance :m/Card
+(defmethod revision/serialize-instance :model/Card
   ([instance]
    (revision/serialize-instance Card nil instance))
   ([_model _id instance]
@@ -366,7 +366,7 @@
           old-card-info (when (or (contains? changes :dataset)
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
-                          (t2/select-one [:m/Card :dataset_query :dataset] :id id))]
+                          (t2/select-one [:model/Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
       (when archived?
         (t2/delete! 'DashboardCard :card_id id))
@@ -408,11 +408,11 @@
       (@pre-update-check-sandbox-constraints changes)
       (assert-valid-model (merge old-card-info changes)))))
 
-(t2/define-after-select :m/Card
+(t2/define-after-select :model/Card
   [card]
   (public-settings/remove-public-uuid-if-public-sharing-is-disabled card))
 
-(t2/define-before-insert :m/Card
+(t2/define-before-insert :model/Card
   [card]
   (-> card
       maybe-normalize-query
@@ -420,7 +420,7 @@
       pre-insert
       populate-query-fields))
 
-(t2/define-after-insert :m/Card
+(t2/define-after-insert :model/Card
   [card]
   (u/prog1 card
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
@@ -428,9 +428,9 @@
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
-(t2/define-before-update :m/Card
+(t2/define-before-update :model/Card
   [card]
-  (-> (merge (t2/instance :m/Card {:id (:id card)})
+  (-> (merge (t2/instance :model/Card {:id (:id card)})
              (t2/changes card))
       maybe-normalize-query
       populate-result-metadata
@@ -438,7 +438,7 @@
       populate-query-fields))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
-(t2/define-before-delete :m/Card
+(t2/define-before-delete :model/Card
   [{:keys [id] :as _card}]
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
@@ -447,7 +447,7 @@
   (t2/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
   (t2/delete! 'Revision :model "Card", :model_id id))
 
-(defmethod serdes/hash-fields :m/Card
+(defmethod serdes/hash-fields :model/Card
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
 

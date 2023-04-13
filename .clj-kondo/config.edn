@@ -159,9 +159,7 @@
    toucan.db/reducible-query     {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}
    toucan.db/resolve-model       {:message "Use metabase.db.util/resolve-model instead of toucan.db/resolve-model"}
    toucan.models/primary-key     {:message "Use metabase.db.util/primary-key instead of toucan.models/primary-key"}
-   toucan.models/model?          {:message "Use mdb.u/toucan-model? instead of toucan.models/model?"}
-   #_metabase.models/Card          #_{:message "Use :m/card instead of models/Card"}
-   #_metabase.models.card/Card     #_{:message "Use :m/card instead of card/Card"}}
+   toucan.models/model?          {:message "Use mdb.u/toucan-model? instead of toucan.models/model?"}}
 
   :discouraged-namespace
   {clojure.tools.logging {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
