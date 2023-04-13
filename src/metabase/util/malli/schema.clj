@@ -50,7 +50,7 @@
     (deferred-tru "value must be an integer greater than zero.")))
 
 (def NegativeInt
-  "Schema representing an integer than must also be greater than zero."
+  "Schema representing an integer than must be less than zero."
   (mu/with-api-error-message
     neg?
     (deferred-tru "value must be a negative integer")))
