@@ -114,9 +114,7 @@ describe("scenarios > question > custom column", () => {
       name: "UserLAT",
     }).click();
 
-    cy.pause();
     popover().last().findByText("Bin every 10 degrees").click();
-    cy.pause();
 
     cy.findByText("UserLAT: 10°").should("be.visible");
   });
