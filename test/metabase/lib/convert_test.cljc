@@ -11,10 +11,8 @@
   (is (=? {:lib/type :mbql/query
            :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
-                       :lib/options  {:lib/uuid string?}
                        :source-table 1}
                       {:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}
                        :fields      [[:field {:lib/uuid string?} 2]
                                      [:field {:lib/uuid string?, :temporal-unit :month} 3]]
                        :aggregation [[:count {:lib/uuid string?}]]}]
@@ -36,10 +34,8 @@
   (is (=? {:lib/type :mbql/query
            :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
-                       :lib/options  {:lib/uuid string?}
                        :source-table 1}
                       {:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}
                        :fields      [[:field {:lib/uuid string?} 2]
                                      [:field {:lib/uuid string?, :temporal-unit :month} 3]]
                        :aggregation [[:count {:lib/uuid string?}]]}]
@@ -63,7 +59,6 @@
            :database (meta/id)
            :type     :pipeline
            :stages   [{:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}
                        :fields      [[:field
                                       {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
                                       (meta/id :categories :name)]]
@@ -81,7 +76,6 @@
                                       :strategy    :left-join
                                       :fk-field-id (meta/id :venues :category-id)
                                       :stages      [{:lib/type     :mbql.stage/mbql
-                                                     :lib/options  {:lib/uuid string?}
                                                      :source-table (meta/id :venues)}]}]}]}
           (lib.convert/->pMBQL
            {:database (meta/id)
@@ -100,7 +94,6 @@
     (is (=? {:lib/type :mbql/query
              :type     :pipeline
              :stages   [{:lib/type     :mbql.stage/mbql
-                         :lib/options  {:lib/uuid string?}
                          :joins        [{:alias       "Cat"
                                          :fields      [[:field {:lib/uuid string?, :join-alias "Cat"} 1]]
                                          :conditions  [[:=
@@ -109,7 +102,6 @@
                                                         [:field {:lib/uuid string?} 2]]]
                                          :lib/type    :mbql/join
                                          :stages      [{:lib/type     :mbql.stage/mbql
-                                                        :lib/options  {:lib/uuid string?}
                                                         :source-table 3}]
                                          :lib/options {:lib/uuid string?}}]
                          :limit        1
@@ -129,7 +121,6 @@
   (is (=? {:lib/type :mbql/query
            :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
-                       :lib/options  {:lib/uuid string?}
                        :source-table 1
                        :aggregation  [[:sum
                                        {:lib/uuid string?, :display-name "Revenue"}

@@ -28,11 +28,14 @@
                                  (map? result-metadata)        (:columns result-metadata)
                                  (sequential? result-metadata) result-metadata))]
       (mapv (fn [col]
-              (assoc col
-                     :lib/type                :metadata/field
-                     :lib/source              :source/card
-                     :lib/card-id             (:id card)
-                     :lib/source-column-alias (:name col)))
+              (merge
+               (when-let [field-id (:id col)]
+                 (lib.metadata/field query field-id))
+               col
+               {:lib/type                :metadata/field
+                :lib/source              :source/card
+                :lib/card-id             (:id card)
+                :lib/source-column-alias (:name col)}))
             cols))))
 
 (mu/defn saved-question-metadata :- [:maybe [:sequential {:min 1} lib.metadata.calculation/ColumnMetadataWithSource]]

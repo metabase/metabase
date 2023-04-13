@@ -60,7 +60,6 @@
                        :joins        [{:lib/type    :mbql/join
                                        :lib/options {:lib/uuid string?}
                                        :stages      [{:lib/type     :mbql.stage/mbql
-                                                      :lib/options  {:lib/uuid string?}
                                                       :source-table (meta/id :venues)}]
                                        :conditions  [[:=
                                                       {:lib/uuid string?}
@@ -84,7 +83,6 @@
           (is (=? {:lib/type    :mbql/join
                    :lib/options {:lib/uuid string?}
                    :stages      [{:lib/type     :mbql.stage/mbql
-                                  :lib/options  {:lib/uuid string?}
                                   :source-table (meta/id :venues)}]
                    :conditions  [[:=
                                   {:lib/uuid string?}

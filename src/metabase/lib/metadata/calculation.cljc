@@ -338,6 +338,12 @@
     (f column-alias-string) => unique-alias-string
 
   Used to generate unique names."
+  ([query]
+   (default-columns query (lib.util/query-stage query -1)))
+
+  ([query x]
+   (default-columns query -1 x))
+
   ([query stage-number x]
    (default-columns query stage-number x (lib.util/unique-name-generator)))
 
@@ -364,6 +370,12 @@
 
   Default implementation is just [[default-columns]]; currently only stages have a specific implementation
   for [[visible-columns-method]], but this might change in the future."
+  ([query]
+   (visible-columns query (lib.util/query-stage query -1)))
+
+  ([query x]
+   (visible-columns query -1 x))
+
   ([query stage-number x]
    (visible-columns query stage-number x (lib.util/unique-name-generator)))
 

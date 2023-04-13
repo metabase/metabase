@@ -49,7 +49,6 @@
            :database (meta/id)
            :type     :pipeline
            :stages   [{:lib/type    :mbql.stage/native
-                       :lib/options {:lib/uuid string?}
                        :native      "SELECT * FROM VENUES;"}]}
           (lib/saved-question-query meta/metadata-provider
                                     {:dataset_query   {:database (meta/id)

@@ -54,15 +54,7 @@
                 (lib.metadata.calculation/metadata query -1 query)))))))
 
 (deftest ^:parallel stage-display-name-card-source-query
-  (let [query {:lib/type     :mbql/query
-               :lib/metadata (lib.tu/mock-metadata-provider
-                              {:cards [{:id   1
-                                        :name "My Card"}]})
-               :type         :pipeline
-               :database     (meta/id)
-               :stages       [{:lib/type     :mbql.stage/mbql
-                               :lib/options  {:lib/uuid (str (random-uuid))}
-                               :source-table "card__1"}]}]
+  (let [query (lib.tu/query-with-card-source-table)]
     (is (= "My Card"
            (lib.metadata.calculation/display-name query -1 query)))))
 
@@ -170,3 +162,36 @@
             (let [[id-plus-1] (lib.metadata.calculation/metadata query')]
               (is (=? [:expression {:base-type :type/Integer, :effective-type :type/Integer} "ID + 1"]
                       (lib/ref id-plus-1))))))))))
+
+(deftest ^:parallel query-with-source-card-include-implicit-columns-test
+  (testing "visible-columns should include implicitly joinable columns when the query has a source Card (#30046)"
+    (doseq [varr [#'lib.tu/query-with-card-source-table
+                  #'lib.tu/query-with-card-source-table-with-result-metadata]
+            :let [query (varr)]]
+      (testing (pr-str varr)
+        (is (=? [{:name                     "USER_ID"
+                  :display_name             "User ID"
+                  :base_type                :type/Integer
+                  :lib/source               :source/card
+                  :lib/desired-column-alias "USER_ID"}
+                 {:name                     "count"
+                  :display_name             "Count"
+                  :base_type                :type/Integer
+                  :lib/source               :source/card
+                  :lib/desired-column-alias "count"}
+                 {:name                     "ID"
+                  :display_name             "ID"
+                  :base_type                :type/BigInteger
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__ID"}
+                 {:name                     "NAME"
+                  :display_name             "Name"
+                  :base_type                :type/Text
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__NAME"}
+                 {:name                     "LAST_LOGIN"
+                  :display_name             "Last Login"
+                  :base_type                :type/DateTime
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"}]
+                (lib.metadata.calculation/visible-columns query)))))))
