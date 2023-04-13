@@ -602,21 +602,21 @@
 
 (defsetting uploads-enabled
   (deferred-tru "Whether or not uploads are enabled")
-  :visibility :admin
+  :visibility :authenticated
   :type       :boolean
   :default    false)
 
 (defsetting uploads-database-id
   (deferred-tru "Database ID for uploads")
-  :visibility :admin
+  :visibility :authenticated
   :type       :integer)
 
 (defsetting uploads-schema-name
   (deferred-tru "Schema name for uploads")
-  :visibility   :admin
+  :visibility   :authenticated
   :type         :string)
 
 (defsetting uploads-table-prefix
   (deferred-tru "Prefix for upload table names")
-  :visibility   :admin
+  :visibility   :authenticated
   :type         :string)
