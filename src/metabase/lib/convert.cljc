@@ -1,10 +1,47 @@
 (ns metabase.lib.convert
   (:require
    [clojure.set :as set]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.util :as lib.util]))
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.util :as lib.util]
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]))
+
+(defn- clean-location [almost-query error-type error-location]
+  (let [location (if (= :malli.core/missing-key error-type)
+                   (drop-last 2 error-location)
+                   (drop-last 1 error-location))
+        [location-key] (if (= :malli.core/missing-key error-type)
+                         (take-last 2 error-location)
+                         (take-last 1 error-location))]
+    (update-in almost-query
+               location
+               (fn [error-loc]
+                 (let [result (assoc error-loc location-key nil)]
+                   (cond
+                     (vector? error-loc) (into [] (remove nil?) result)
+                     (map? error-loc) (u/remove-nils result)
+                     :else result))))))
+
+(defn- clean [almost-query]
+  (loop [almost-query almost-query
+         removals []]
+    (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/query almost-query)
+                                              :errors
+                                              (map (juxt :type :in))
+                                              first)]
+      (let [next-query (clean-location almost-query error-type error-location)]
+        (if (= next-query almost-query)
+          (throw (ex-info (i18n/tru "Cannot clean query")
+                          {:removals removals
+                           :error-type error-type
+                           :error-location error-location
+                           :query almost-query}))
+          (recur next-query (conj removals [error-type error-location]))))
+      almost-query)))
 
 (defmulti ->pMBQL
   "Coerce something to pMBQL (the version of MBQL manipulated by Metabase Lib v2) if it's not already pMBQL."
@@ -59,7 +96,8 @@
   (if (:type m)
     (-> (lib.util/pipeline m)
         (update :stages (fn [stages]
-                          (mapv ->pMBQL stages))))
+                          (mapv ->pMBQL stages)))
+        clean)
     (update-vals m ->pMBQL)))
 
 (defmethod ->pMBQL :field
