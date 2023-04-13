@@ -153,7 +153,6 @@ function ActionFn(props: ActionProps) {
         <FullContainer>
           <ActionButtonView
             disabled
-            icon="bolt"
             tooltip={tooltip}
             settings={props.settings}
             focus={props.isEditingDashcard}
