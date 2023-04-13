@@ -2,19 +2,19 @@
   "Functions for denormalizing input, prompt input generation, and sql handing.
   If this grows much, we might want to split these out into separate nses."
   (:require
-    [cheshire.core :as json]
-    [clojure.core.memoize :as memoize]
-    [clojure.string :as str]
-    [honey.sql :as sql]
-    [metabase.db.query :as mdb.query]
-    [metabase.metabot.settings :as metabot-settings]
-    [metabase.models :refer [Card Field FieldValues Table]]
-    [metabase.query-processor :as qp]
-    [metabase.query-processor.reducible :as qp.reducible]
-    [metabase.query-processor.util.add-alias-info :as add]
-    [metabase.util :as u]
-    [metabase.util.log :as log]
-    [toucan2.core :as t2]))
+   [cheshire.core :as json]
+   [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
+   [honey.sql :as sql]
+   [metabase.db.query :as mdb.query]
+   [metabase.metabot.settings :as metabot-settings]
+   [metabase.models :refer [Card Field FieldValues Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (defn supported?
   "Is metabot supported for the given database."
