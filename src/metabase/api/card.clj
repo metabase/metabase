@@ -1011,10 +1011,11 @@ saved later when it is ready."
                               (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
         _                 (upload/load-from-csv driver db-id schema+table-name csv-file)
         _                 (sync/sync-database! database)
-        table-id          (t2/select-one-fn :id Table :name table-name :db_id db-id)]
+        table-id          (t2/select-one-fn :id Table :db_id db-id :%lower.name table-name)]
     (create-card!
      {:collection_id          collection-id,
       :dataset                true
+      :database_id            db-id
       :dataset_query          {:database db-id
                                :query    {:source-table table-id}
                                :type     :query}
