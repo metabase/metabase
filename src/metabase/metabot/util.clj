@@ -22,9 +22,9 @@
   (let [q "SELECT 1 FROM (SELECT 1 AS ONE) AS TEST"]
     (try
       (some?
-        (qp/process-query {:database db-id
-                           :type     "native"
-                           :native   {:query q}}))
+       (qp/process-query {:database db-id
+                          :type     "native"
+                          :native   {:query q}}))
       (catch Exception _ false))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Input Denormalization ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -134,13 +134,13 @@
   [{model-name :name :keys [sql_name result_metadata] :as model}]
   (let [enums   (create-enum-ddl model)
         [ddl] (sql/format
-                {:create-table sql_name
-                 :with-columns (for [{:keys [sql_name base_type]} result_metadata
-                                     :let [k sql_name]]
-                                 [k (if (enums k)
-                                      (format "%s_t" k)
-                                      base_type)])}
-                {:dialect :ansi})
+               {:create-table sql_name
+                :with-columns (for [{:keys [sql_name base_type]} result_metadata
+                                    :let [k sql_name]]
+                                [k (if (enums k)
+                                     (format "%s_t" k)
+                                     base_type)])}
+               {:dialect :ansi})
         ddl-str (str/join "\n\n" (conj (vec (vals enums)) (mdb.query/format-sql ddl)))
         nchars  (count ddl-str)]
     (log/debugf "Pseudo-ddl for model %s describes %s enum fields and contains %s chars (~%s tokens)."
@@ -206,12 +206,12 @@
   This is used as a summary of the database in prompt engineering."
   [{:keys [models]}]
   (let [json-str (json/generate-string
-                   {:tables
-                    (for [{model-name :name model-id :id :keys [result_metadata] :as _model} models]
-                      {:table-id     model-id
-                       :table-name   model-name
-                       :column-names (mapv :display_name result_metadata)})}
-                   {:pretty true})
+                  {:tables
+                   (for [{model-name :name model-id :id :keys [result_metadata] :as _model} models]
+                     {:table-id     model-id
+                      :table-name   model-name
+                      :column-names (mapv :display_name result_metadata)})}
+                  {:pretty true})
         nchars   (count json-str)]
     (log/debugf "Database json string descriptor contains %s chars (~%s tokens)."
                 nchars
@@ -226,8 +226,8 @@
   Returns nil if there are no field values or the cardinality is too high."
   [{table-name :name} {field-name :name field-id :id :keys [base_type]}]
   (when-let [values (and
-                      (not= :type/Boolean base_type)
-                      (:values (t2/select-one FieldValues :field_id field-id)))]
+                     (not= :type/Boolean base_type)
+                     (:values (t2/select-one FieldValues :field_id field-id)))]
     (when (< (count values) (metabot-settings/enum-cardinality-threshold))
       (let [ddl-str (format "create type %s_%s_t as enum %s;"
                             table-name
@@ -254,20 +254,20 @@
                                  :semantic_type]
                                 :table_id table-id)
         enums        (reduce
-                       (fn [acc {field-name :name :as field}]
-                         (if-some [enums (field->pseudo-enums table field)]
-                           (assoc acc field-name enums)
-                           acc))
-                       {}
-                       fields)
+                      (fn [acc {field-name :name :as field}]
+                        (if-some [enums (field->pseudo-enums table field)]
+                          (assoc acc field-name enums)
+                          acc))
+                      {}
+                      fields)
         columns      (vec
-                       (for [{column-name :name :keys [database_required database_type]} fields]
-                         (cond-> [column-name
-                                  (if (enums column-name)
-                                    (format "%s_%s_t" table-name column-name)
-                                    database_type)]
-                           database_required
-                           (conj [:not nil]))))
+                      (for [{column-name :name :keys [database_required database_type]} fields]
+                        (cond-> [column-name
+                                 (if (enums column-name)
+                                   (format "%s_%s_t" table-name column-name)
+                                   database_type)]
+                          database_required
+                          (conj [:not nil]))))
         primary-keys [[(into [:primary-key]
                              (comp (filter (comp #{:type/PK} :semantic_type))
                                    (map :name))
@@ -281,12 +281,12 @@
                        [[:foreign-key field-name]
                         [:references fk-table-name fk-field-name]])
         create-sql   (->
-                       (sql/format
-                         {:create-table table-name
-                          :with-columns (reduce into columns [primary-keys foreign-keys])}
-                         {:dialect :ansi :pretty true})
-                       first
-                       mdb.query/format-sql)
+                      (sql/format
+                       {:create-table table-name
+                        :with-columns (reduce into columns [primary-keys foreign-keys])}
+                       {:dialect :ansi :pretty true})
+                      first
+                      mdb.query/format-sql)
         ddl-str      (str/join "\n\n" (conj (vec (vals enums)) create-sql))
         nchars       (count ddl-str)]
     (log/debugf "Pseudo-ddl for table %s describes %s fields, %s enums, and contains %s chars (~%s tokens)."
@@ -341,9 +341,9 @@
                              (or (get-in context kw)
                                  (let [message (format "No value found in context for key path '%s'" kw)]
                                    (throw (ex-info
-                                            message
-                                            {:message     message
-                                             :status-code 400}))))))))]
+                                           message
+                                           {:message     message
+                                            :status-code 400}))))))))]
     (map (fn [prompt] (update prompt :content update-contents)) messages)))
 
 (def ^:private ^:dynamic *prompt-templates*
@@ -351,19 +351,19 @@
   which are objects containing keys 'latest' (the latest template version)
    and 'templates' (all template versions)."
   (memoize/ttl
-    (fn []
-      (log/info "Refreshing metabot prompt templates.")
-      (let [all-templates (-> (metabot-settings/metabot-get-prompt-templates-url)
-                              slurp
-                              (json/parse-string keyword))]
-        (-> (group-by (comp keyword :prompt_template) all-templates)
-            (update-vals
-              (fn [templates]
-                (let [ordered (vec (sort-by :version templates))]
-                  {:latest    (peek ordered)
-                   :templates ordered}))))))
-    ;; Check for updates every hour
-    :ttl/threshold (* 1000 60 60)))
+   (fn []
+     (log/info "Refreshing metabot prompt templates.")
+     (let [all-templates (-> (metabot-settings/metabot-get-prompt-templates-url)
+                             slurp
+                             (json/parse-string keyword))]
+       (-> (group-by (comp keyword :prompt_template) all-templates)
+           (update-vals
+            (fn [templates]
+              (let [ordered (vec (sort-by :version templates))]
+                {:latest    (peek ordered)
+                 :templates ordered}))))))
+   ;; Check for updates every hour
+   :ttl/threshold (* 1000 60 60)))
 
 (defn create-prompt
   "Create a prompt by looking up the latest template for the prompt_task type
@@ -378,9 +378,9 @@
         (log/debugf "Prompt running with %s chars (~%s tokens)." nchars (quot nchars 4)))
       prompt)
     (throw
-      (ex-info
-        (format "No prompt inference template found for prompt type: %s" prompt_task)
-        {:prompt_type prompt_task}))))
+     (ex-info
+      (format "No prompt inference template found for prompt type: %s" prompt_task)
+      {:prompt_type prompt_task}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Results Processing ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -394,14 +394,14 @@
    the supplied message-fn."
   [message-fn {:keys [choices]}]
   (or
-    (some
-      (fn [{:keys [message]}]
-        (when-some [res (message-fn (:content message))]
-          res))
-      choices)
-    (log/infof
-      "Unable to find appropriate result for user prompt in responses:\n\t%s"
-      (str/join "\n\t" (map (fn [m] (get-in m [:message :content])) choices)))))
+   (some
+    (fn [{:keys [message]}]
+      (when-some [res (message-fn (:content message))]
+        res))
+    choices)
+   (log/infof
+    "Unable to find appropriate result for user prompt in responses:\n\t%s"
+    (str/join "\n\t" (map (fn [m] (get-in m [:message :content])) choices)))))
 
 (defn extract-sql
   "Search a provided string for a SQL block"

@@ -65,21 +65,21 @@
                               :type     :query
                               :query    {:source-table (mt/id :people)}}
                              :dataset true}]]
-        (let [{:keys [create_table_ddl inner_query sql_name result_metadata]} (metabot-util/denormalize-model model)]
-          (is (string? create_table_ddl))
-          (is (string? sql_name))
-          (is (string? inner_query))
-          (is
-            (= #{"Affiliate"
-                 "Facebook"
-                 "Google"
-                 "Organic"
-                 "Twitter"}
-               (->> result_metadata
-                    (some (fn [{:keys [sql_name] :as rsmd}] (when (= "SOURCE" sql_name) rsmd)))
-                    :possible_values
-                    set))))
-        (:result_metadata model)))))
+                     (let [{:keys [create_table_ddl inner_query sql_name result_metadata]} (metabot-util/denormalize-model model)]
+                       (is (string? create_table_ddl))
+                       (is (string? sql_name))
+                       (is (string? inner_query))
+                       (is
+                         (= #{"Affiliate"
+                              "Facebook"
+                              "Google"
+                              "Organic"
+                              "Twitter"}
+                            (->> result_metadata
+                                 (some (fn [{:keys [sql_name] :as rsmd}] (when (= "SOURCE" sql_name) rsmd)))
+                                 :possible_values
+                                 set))))
+                     (:result_metadata model)))))
 
 (deftest denormalize-database-test
   (testing "Basic denormalized database test"
@@ -90,22 +90,22 @@
                               :type     :query
                               :query    {:source-table (mt/id :orders)}}
                              :dataset true}]]
-        (let [database (t2/select-one Database :id (mt/id))
-              {:keys [models model_json_summary sql_name]} (metabot-util/denormalize-database database)]
-          (is (=
-                (count (t2/select Card :database_id (mt/id) :dataset true))
-                (count models)))
-          (is (string? model_json_summary))
-          (is (string? sql_name)))))))
+                     (let [database (t2/select-one Database :id (mt/id))
+                           {:keys [models model_json_summary sql_name]} (metabot-util/denormalize-database database)]
+                       (is (=
+                             (count (t2/select Card :database_id (mt/id) :dataset true))
+                             (count models)))
+                       (is (string? model_json_summary))
+                       (is (string? sql_name)))))))
 
 (deftest create-prompt-test
   (testing "We can do prompt lookup and interpolation"
     (with-redefs [metabot-util/*prompt-templates* (constantly metabot-test/test-prompt-templates)]
       (let [prompt (metabot-util/create-prompt
-                     {:model       {:sql_name         "TEST_MODEL"
-                                    :create_table_ddl "CREATE TABLE TEST_MODEL"}
-                      :user_prompt "Find my data"
-                      :prompt_task :infer_sql})]
+                    {:model       {:sql_name         "TEST_MODEL"
+                                   :create_table_ddl "CREATE TABLE TEST_MODEL"}
+                     :user_prompt "Find my data"
+                     :prompt_task :infer_sql})]
         (= {:prompt_template   "infer_sql",
             :version           "0001",
             :messages          [{:role "system", :content "The system prompt"}
@@ -157,15 +157,15 @@
                                :dataset true}]]
           (let [{:keys [inner_query] :as denormalized-model} (metabot-util/denormalize-model model)
                 sql     (metabot-util/bot-sql->final-sql
-                          denormalized-model
-                          (format "SELECT * FROM %s" model-name))
+                         denormalized-model
+                         (format "SELECT * FROM %s" model-name))
                 results (qp/process-query
-                          {:database (mt/id)
-                           :type     "native"
-                           :native   {:query         sql
-                                      :template-tags (update-vals
-                                                       (lib-native/template-tags inner_query)
-                                                       (fn [m] (update m :id str)))}})]
+                         {:database (mt/id)
+                          :type     "native"
+                          :native   {:query         sql
+                                     :template-tags (update-vals
+                                                     (lib-native/template-tags inner_query)
+                                                     (fn [m] (update m :id str)))}})]
             (is (some? (seq (get-in results [:data :rows]))))))))))
 
 (deftest create-database-ddl-test
