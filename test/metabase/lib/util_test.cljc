@@ -23,10 +23,10 @@
                  :source-table 2}
                 {:lib/type :mbql.stage/mbql}
                 {:lib/type :mbql.stage/mbql
-                 :filter   [:=
-                            {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
-                            [:field 3 {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"}]
-                            "wow"]}]}
+                 :filters  [[:=
+                             {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
+                             [:field 3 {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"}]
+                             "wow"]]}]}
 
     ;; native query
     {:database 1
@@ -62,9 +62,9 @@
                        :joins       [{:lib/type    :mbql/join
                                       :lib/options {:lib/uuid string?}
                                       :alias       "CATEGORIES__via__CATEGORY_ID"
-                                      :condition   [:=
-                                                    [:field (meta/id :venues :category-id)]
-                                                    [:field (meta/id :categories :id) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+                                      :conditions  [[:=
+                                                     [:field (meta/id :venues :category-id)]
+                                                     [:field (meta/id :categories :id) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]]
                                       :strategy    :left-join
                                       :fk-field-id (meta/id :venues :category-id)
                                       :stages      [{:lib/type     :mbql.stage/mbql
@@ -306,3 +306,18 @@
       (testing (pr-str (list `lib.util/truncate-alias s max-bytes))
         (is (= expected
                (truncate-alias s max-bytes)))))))
+
+(deftest ^:parallel unique-name-generator-test
+  (let [unique-name-fn (lib.util/unique-name-generator)]
+    (is (= "wow"
+           (unique-name-fn "wow")))
+    (is (= "wow_2"
+           (unique-name-fn "wow")))
+    (testing "should be case-insensitive distinct"
+      (is (= "WOW_3"
+             (unique-name-fn "WOW"))))
+    (testing "should truncate long names"
+      (is (= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_2dc86ef1"
+             (unique-name-fn "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))
+      (is (= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_1380b38f"
+             (unique-name-fn "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))))))

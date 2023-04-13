@@ -34,12 +34,13 @@
   (is (mc/validate ::literal/string.datetime "2023-03-08T03:18"))
   (are [s expected] (= expected
                        (expression/type-of s))
-    ""                 :type/Text
-    "abc"              :type/Text
-    "2023"             :type/Text
-    "2023-03-08"       #{:type/Text :type/Date}
-    "03:18"            #{:type/Text :type/Time}
-    "2023-03-08T03:18" #{:type/Text :type/DateTime}))
+    ""                       :type/Text
+    "abc"                    :type/Text
+    "2023"                   :type/Text
+    "2023-03-08"             #{:type/Text :type/Date}
+    "03:18"                  #{:type/Text :type/Time}
+    "2023-03-08T03:18"       #{:type/Text :type/DateTime}
+    "2023-03-08T03:18-07:00" #{:type/Text :type/DateTime}))
 
 (deftest ^:parallel string-literal-test
   (testing "valid schemas"

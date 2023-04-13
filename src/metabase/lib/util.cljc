@@ -3,11 +3,14 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    #?@(:clj
        ([potemkin :as p]))
@@ -37,7 +40,9 @@
        (map? (second clause))
        (contains? (second clause) :lib/uuid)))
 
-(defn- clause-uuid [clause]
+(defn clause-uuid
+  "Returns the :lib/uuid of `clause`. Returns nil if `clause` is not a clause."
+  [clause]
   (when (clause? clause)
     (get-in clause [1 :lib/uuid])))
 
@@ -47,7 +52,7 @@
    If `location` contains no clause with `target-clause` no replacement happens."
   [stage location target-clause new-clause]
   {:pre [(clause? target-clause)]}
-  (update
+  (m/update-existing
     stage
     location
     #(->> (for [clause %]
@@ -57,21 +62,19 @@
           vec)))
 
 (defn remove-clause
-  "Replace the `target-clause` in `stage` `location`.
+  "Remove the `target-clause` in `stage` `location`.
    If a clause has :lib/uuid equal to the `target-clause` it is removed.
    If `location` contains no clause with `target-clause` no removal happens.
    If the the location is empty, dissoc it from stage."
   [stage location target-clause]
   {:pre [(clause? target-clause)]}
-  (let [target-uuid (clause-uuid target-clause)
-        target (get stage location)
-        result (->> target
-                    (remove (comp #{target-uuid} clause-uuid))
-                    vec
-                    not-empty)]
-    (if result
-      (assoc stage location result)
-      (dissoc stage location))))
+  (if-let [target (get stage location)]
+    (let [target-uuid (clause-uuid target-clause)
+          result (into [] (remove (comp #{target-uuid} clause-uuid)) target)]
+      (if (seq result)
+        (assoc stage location result)
+        (dissoc stage location)))
+    stage))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
 ;;; the near future.
@@ -90,11 +93,22 @@
 
 (declare inner-query->stages)
 
+(defn- update-legacy-boolean-expression->list
+  "Updates m with a legacy boolean expression at `legacy-key` into a list with an implied and for pMBQL at `pMBQL-key`"
+  [m legacy-key pMBQL-key]
+  (cond-> m
+    (contains? m legacy-key) (update legacy-key #(if (and (vector? %)
+                                                       (= (first %) :and))
+                                                   (vec (drop 1 %))
+                                                   [%]))
+    (contains? m legacy-key) (set/rename-keys {legacy-key pMBQL-key})))
+
 (defn- join->pipeline [join]
   (let [source (select-keys join [:source-table :source-query])
         stages (inner-query->stages source)]
     (-> join
         (dissoc :source-table :source-query)
+        (update-legacy-boolean-expression->list :condition :conditions)
         (assoc :lib/type :mbql/join
                :stages stages)
         lib.options/ensure-uuid)))
@@ -125,7 +139,8 @@
                                 {:lib/type stage-type})
                                (dissoc inner-query :source-query :source-metadata))
         this-stage      (cond-> this-stage
-                          (seq (:joins this-stage)) (update :joins joins->pipeline))]
+                          (seq (:joins this-stage)) (update :joins joins->pipeline)
+                          :always (update-legacy-boolean-expression->list :filter :filters))]
     (conj previous-stages this-stage)))
 
 (defn- mbql-query->pipeline
@@ -174,6 +189,15 @@
   (let [stage-number (non-negative-stage-index stages stage-number)]
     (when (pos? stage-number)
       (dec stage-number))))
+
+(defn next-stage-number
+  "The index of the next stage, if there is one. `nil` if there is no next stage."
+  [{:keys [stages], :as _query} stage-number]
+  (let [stage-number (if (neg? stage-number)
+                       (+ (count stages) stage-number)
+                       stage-number)]
+    (when (< (inc stage-number) (count stages))
+      (inc stage-number))))
 
 (mu/defn query-stage :- ::lib.schema/stage
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
@@ -329,7 +353,7 @@
         (recur (str \0 s))
         s))))
 
-(mu/defn truncate-alias :- ::lib.schema.common/non-blank-string
+(mu/defn truncate-alias :- [:string {:min 1, :max 60}]
   "Truncate string `s` if it is longer than [[truncate-alias-max-length-bytes]] and append a hex-encoded CRC-32
   checksum of the original string. Truncated string is truncated to [[truncate-alias-max-length-bytes]]
   minus [[truncated-alias-hash-suffix-length]] characters so the resulting string is
@@ -355,3 +379,24 @@
   (when (string? table-id)
     (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
       (parse-long card-id-str))))
+
+(mu/defn source-table :- [:maybe [:or ::lib.schema.id/table ::lib.schema.id/table-card-id-string]]
+  "If this query has a `:source-table`, return it."
+  [query]
+  (-> query :stages first :source-table))
+
+(defn unique-name-generator
+  "Create a new function with the signature
+
+    (f str) => str
+
+  That takes any sort of string identifier (e.g. a column alias or table/join alias) and returns a guaranteed-unique
+  name truncated to 60 characters (actually 51 characters plus a hash)."
+  []
+  (comp truncate-alias
+        (mbql.u/unique-name-generator
+         ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
+         :name-key-fn     u/lower-case-en
+         ;; truncate alias to 60 characters (actually 51 characters plus a hash).
+         :unique-alias-fn (fn [original suffix]
+                            (truncate-alias (str original \_ suffix))))))
