@@ -1,7 +1,7 @@
 import React from "react";
-
 import userEvent from "@testing-library/user-event";
-import { fireEvent, screen, render, waitFor } from "__support__/ui";
+
+import { screen, render, waitFor } from "__support__/ui";
 import EditableText, { EditableTextProps } from "./EditableText";
 
 const setup = (props?: Partial<EditableTextProps>) => {
@@ -63,7 +63,7 @@ describe("EditableText", () => {
       expect(screen.getByRole("textbox")).toHaveFocus();
     });
 
-    fireEvent.blur(screen.getByRole("textbox"));
+    userEvent.tab();
 
     expect(screen.getByTestId("editable-text")).toHaveTextContent("bold link");
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
