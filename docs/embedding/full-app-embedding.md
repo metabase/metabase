@@ -90,7 +90,7 @@ To make sure that your embedded Metabase works in all browsers (including iOS an
 
 ## Embedding Metabase in a different domain
 
-> You can skip the `SameSite = None modifier` if your Metabase and embedding app are already in the same top-level domain (TLD).
+> You can skip this section if your Metabase and embedding app are already in the same top-level domain (TLD).
 
 If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can set the following [environment variable](../configuring-metabase/environment-variables.md):
 
