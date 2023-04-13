@@ -91,7 +91,9 @@ const DashCardMenu = ({
       canEditQuestion(question) && {
         title: `Edit question`,
         icon: "pencil",
-        link: Urls.question(question.card(), { mode: "notebook" }),
+        link: Urls.question(question.card(), {
+          mode: question.isNative() ? "view" : "notebook",
+        }),
       },
       canDownloadResults(result) && {
         title: loading ? t`Downloading…` : t`Download results`,
