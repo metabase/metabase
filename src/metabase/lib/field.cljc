@@ -304,6 +304,7 @@
      (lib.util/update-query-stage query stage-number assoc :fields xs))))
 
 (defn fields
+  "Fetches the `:fields` for a query."
   ([query]
    (fields query -1))
   ([query stage-number]
