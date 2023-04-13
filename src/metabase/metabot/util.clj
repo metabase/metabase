@@ -163,7 +163,7 @@
                    (assoc rsmd :sql_name (normalize-name display_name))))
                ;; Sort name length (desc) then sql_name.
                ;; We want longer names first so pre-existing conflicts will resolve first
-               ;; e.g. ABC, ABC, ABC_0 should result in ABC_0, ABC_1, ABC_1, not ABC_0, ABC_1, ABC_0_0
+               ;; e.g. ABC, ABC, ABC_0 should result in ABC_0, ABC, ABC_1, not ABC, ABC_0, ABC_0_0
                ;; The remaining sort keys beyond :sql_name aren't that important.
                ;; They are just there for stability.
                (sort-by (juxt (comp - count :sql_name)
