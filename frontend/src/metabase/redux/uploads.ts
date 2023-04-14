@@ -39,13 +39,10 @@ export const uploadFile = createThunkAction(
     async (dispatch: Dispatch, getState: GetState) => {
       const id = Date.now();
 
-      if (file.size > MAX_UPLOAD_SIZE) {
-        uploadError({
-          id,
-          message: t`You cannot upload files larger than ${MAX_UPLOAD_STRING}`,
-        });
-        return;
-      }
+      const clear = () =>
+        setTimeout(() => {
+          dispatch(clearUpload({ id }));
+        }, CLEAR_AFTER_MS);
 
       dispatch(
         uploadStart({
@@ -55,22 +52,23 @@ export const uploadFile = createThunkAction(
         }),
       );
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("collection_id", String(collectionId));
+      if (file.size > MAX_UPLOAD_SIZE) {
+        dispatch(
+          uploadError({
+            id,
+            message: t`You cannot upload files larger than ${MAX_UPLOAD_STRING}`,
+          }),
+        );
+        clear();
+        return;
+      }
 
-      const response = await CardApi.uploadCSV(formData).catch(
-        ({ data: { message } }) => {
-          dispatch(
-            uploadError({
-              id,
-              message,
-            }),
-          );
-        },
-      );
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("collection_id", String(collectionId));
+        const response = await CardApi.uploadCSV(formData);
 
-      if (response) {
         dispatch(
           uploadEnd({
             id,
@@ -79,11 +77,17 @@ export const uploadFile = createThunkAction(
         );
 
         dispatch(Collections.actions.invalidateLists());
+      } catch (err: any) {
+        dispatch(
+          uploadError({
+            id,
+            message:
+              err?.data?.message ?? t`There was an error uploading the file`,
+          }),
+        );
+      } finally {
+        clear();
       }
-
-      setTimeout(() => {
-        dispatch(clearUpload({ id }));
-      }, CLEAR_AFTER_MS);
     },
 );
 
