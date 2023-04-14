@@ -25,12 +25,14 @@ export function orderBys(
 declare function OrderByFn(
   query: Query,
   column: ColumnMetadata | OrderByClause,
+  direction?: OrderByDirection,
 ): Query;
 
 declare function OrderByFn(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata | OrderByClause,
+  direction?: OrderByDirection,
 ): Query;
 
 export const orderBy: typeof OrderByFn = ML.order_by;
