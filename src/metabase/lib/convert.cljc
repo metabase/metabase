@@ -11,20 +11,23 @@
    [metabase.util :as u]))
 
 (defn- clean-location [almost-query error-type error-location]
-  (let [location (if (= :malli.core/missing-key error-type)
+  (let [operate-on-parent? #{:malli.core/missing-key :malli.core/end-of-input}
+        location (if (operate-on-parent? error-type)
                    (drop-last 2 error-location)
                    (drop-last 1 error-location))
-        [location-key] (if (= :malli.core/missing-key error-type)
+        [location-key] (if (operate-on-parent? error-type)
                          (take-last 2 error-location)
                          (take-last 1 error-location))]
-    (update-in almost-query
-               location
-               (fn [error-loc]
-                 (let [result (assoc error-loc location-key nil)]
-                   (cond
-                     (vector? error-loc) (into [] (remove nil?) result)
-                     (map? error-loc) (u/remove-nils result)
-                     :else result))))))
+    (if (seq location)
+      (update-in almost-query
+                 location
+                 (fn [error-loc]
+                   (let [result (assoc error-loc location-key nil)]
+                     (cond
+                       (vector? error-loc) (into [] (remove nil?) result)
+                       (map? error-loc) (u/remove-nils result)
+                       :else result))))
+      (dissoc almost-query location-key))))
 
 (defn- clean [almost-query]
   (loop [almost-query almost-query
@@ -35,11 +38,7 @@
                                               first)]
       (let [next-query (clean-location almost-query error-type error-location)]
         (if (= next-query almost-query)
-          (throw (ex-info (i18n/tru "Cannot clean query")
-                          {:removals removals
-                           :error-type error-type
-                           :error-location error-location
-                           :query almost-query}))
+          almost-query
           (recur next-query (conj removals [error-type error-location]))))
       almost-query)))
 

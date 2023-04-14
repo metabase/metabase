@@ -230,22 +230,29 @@
                 :source-table 4}}))
 
 (deftest ^:parallel clean-test
-  (testing "hopeless queries"
-    (are [query] (thrown-with-msg?
-                   #?(:clj Exception :cljs js/Error)
-                   #"Cannot clean query"
-                   (-> query
-                       lib.convert/->pMBQL))
-      ;; no nothing
-      {:type :query}
-      ;; no query
-      {:type :query
-       :database 1}
-      ;; no source table
-      {:type :query
-       :database 1
-       :query {}}))
-  (testing "cleaning"
+  (testing "irrecoverable queries"
+    ;; Eventually we should get to a place where ->pMBQL throws an exception here,
+    ;; but legacy e2e tests make this impossible right now
+    (is (= {:type :query
+            :query {}}
+           (lib.convert/->legacy-MBQL
+             (lib.convert/->pMBQL
+               {:type :query}))))
+    (is (= {:type :query
+            :database 1
+            :query {}}
+            (lib.convert/->legacy-MBQL
+              (lib.convert/->pMBQL
+                {:type :query
+                 :database 1}))))
+    (is (= {:type :query
+            :database 1
+            :query {}}
+           (lib.convert/->legacy-MBQL
+             (lib.convert/->pMBQL
+               {:type :query
+                :database 1})))))
+  (testing "recoverable queries"
     (is (nil? (->
                 {:database 1
                  :type :query
