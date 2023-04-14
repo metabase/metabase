@@ -42,7 +42,27 @@
      :source-table 1
      :aggregation  [valid-ag-1]
      :fields       [[:aggregation {:lib/uuid (str (random-uuid))} 1]]}
-    ["Invalid :aggregation reference: no aggregation at index 1"]))
+    ["Invalid :aggregation reference: no aggregation at index 1"]
+
+    ;; don't recurse into joins.
+    {:lib/type     :mbql.stage/mbql
+     :source-table 1
+     :joins        [{:lib/type    :mbql/join
+                     :lib/options {:lib/uuid (str (random-uuid))}
+                     :alias       "Q1"
+                     :fields      :all
+                     :conditions  [[:=
+                                    {:lib/uuid (str (random-uuid))}
+                                    [:field {:lib/uuid (str (random-uuid))} 1]
+                                    [:field {:join-alias "Q1", :lib/uuid (str (random-uuid))} 2]]]
+                     :stages      [{:lib/type     :mbql.stage/mbql
+                                    :source-table 3
+                                    :aggregation  [[:count {:lib/uuid (str (random-uuid))}]]
+                                    :order-by     [[:asc
+                                                    {:lib/uuid (str (random-uuid))}
+                                                    [:aggregation {:lib/uuid (str (random-uuid))} 0]]]}
+                                   {:lib/type :mbql.stage/mbql, :lib/options {:lib/uuid (str (random-uuid))}}]}]}
+    nil))
 
 (def ^:private valid-expression
   [:+
@@ -70,7 +90,27 @@
     {:lib/type     :mbql.stage/mbql
      :source-table 1
      :fields       [[:expression {:lib/uuid (str (random-uuid))} "price + 2"]]}
-    ["Invalid :expression reference: no expression named \"price + 2\""]))
+    ["Invalid :expression reference: no expression named \"price + 2\""]
+
+    ;; don't recurse into joins.
+    {:lib/type     :mbql.stage/mbql
+     :source-table 1
+     :joins        [{:lib/type    :mbql/join
+                     :lib/options {:lib/uuid (str (random-uuid))}
+                     :alias       "Q1"
+                     :fields      :all
+                     :conditions  [[:=
+                                    {:lib/uuid (str (random-uuid))}
+                                    [:field {:lib/uuid (str (random-uuid))} 1]
+                                    [:field {:join-alias "Q1", :lib/uuid (str (random-uuid))} 2]]]
+                     :stages      [{:lib/type     :mbql.stage/mbql
+                                    :source-table 3
+                                    :expressions  {"price + 2" valid-expression}
+                                    :order-by     [[:asc
+                                                    {:lib/uuid (str (random-uuid))}
+                                                    [:expression {:lib/uuid (str (random-uuid))} "price + 2"]]]}
+                                   {:lib/type :mbql.stage/mbql, :lib/options {:lib/uuid (str (random-uuid))}}]}]}
+    nil))
 
 (defn- valid-join
   ([join-alias]

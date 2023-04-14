@@ -53,13 +53,13 @@
 
 (defn- expression-ref-error-for-stage [stage]
   (let [expression-names (set (keys (:expressions stage)))]
-    (mbql.u/match-one stage
+    (mbql.u/match-one (dissoc stage :joins :lib/stage-metadata)
       [:expression _opts (expression-name :guard (complement expression-names))]
       (str "Invalid :expression reference: no expression named " (pr-str expression-name)))))
 
 (defn- aggregation-ref-error-for-stage [stage]
   (let [num-aggregations (count (:aggregation stage))]
-    (mbql.u/match-one stage
+    (mbql.u/match-one (dissoc stage :joins :lib/stage-metadata)
       [:aggregation _opts (index :guard #(>= % num-aggregations))]
       (str "Invalid :aggregation reference: no aggregation at index " index))))
 
@@ -162,7 +162,7 @@
   (loop [visible-join-alias? (constantly false), i 0, [stage & more] stages]
     (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
       (or
-       (mbql.u/match-one stage
+       (mbql.u/match-one (dissoc stage :joins :stage/metadata)
          [:field ({:join-alias (join-alias :guard (complement visible-join-alias?))} :guard :join-alias) _id-or-name]
          (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias)))
        (when (seq more)
