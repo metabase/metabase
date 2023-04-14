@@ -44,16 +44,6 @@ Currency columns have all the same options as numbers, plus the following:
 - **Currency label style** allows you to switch between displaying the currency label as a symbol, a code like (USD), or the full name of the currency.
 - **Where to display the unit of currency** lets you toggle between showing the currency label in the column heading or in every cell in the column.
 
-#### Formatting data in charts
-
-While we're talking about formatting, we thought you should also know that you can access formatting options for the columns used in a chart. Just open the visualization settings and select the `Data` tab:
-
-![Chart formatting](../../images/chart-formatting.png)
-
-Then click on the gear icon next to the column that you want to format. Dates, numbers, and currencies tend to have the most useful formatting options.
-
-![Chart formatting options](../../images/chart-formatting-options.png)
-
 #### Conditional table formatting
 
 Sometimes it's helpful to highlight certain rows or columns in your tables when they meet a specific condition. You can set up conditional formatting rules by going to the visualization settings while looking at any table, then clicking on the **Conditional Formatting** tab.
