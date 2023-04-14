@@ -13,7 +13,6 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [Card]]
    [metabase.models.field :refer [Field]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group-membership
@@ -226,7 +225,7 @@
     ;; save the result metadata so we don't have to do it again next time if applicable
     (when (and card-id save?)
       (log/tracef "Saving results metadata for GTAP Card %s" card-id)
-      (t2/update! Card card-id {:result_metadata metadata}))
+      (t2/update! 'Card card-id {:result_metadata metadata}))
     ;; make sure the fetched Fields are present the QP store
     (when-let [field-ids (not-empty (filter some? (map :id metadata)))]
       (qp.store/fetch-and-store-fields! field-ids))
@@ -271,7 +270,7 @@
   [{card-id :card_id :as sandbox}]
   (if card-id
     (qp.store/cached card-id
-      (query-perms/perms-set (t2/select-one-fn :dataset_query Card :id card-id), :throw-exceptions? true))
+      (query-perms/perms-set (t2/select-one-fn :dataset_query 'Card :id card-id), :throw-exceptions? true))
     (set (map perms/table-query-path (sandbox->table-ids sandbox)))))
 
 (defn- sandboxes->perms-set [sandboxes]

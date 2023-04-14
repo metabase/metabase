@@ -29,7 +29,6 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [Card]]
    [metabase.models.persisted-info
     :as persisted-info
     :refer [PersistedInfo]]
@@ -136,7 +135,7 @@
    (card-id->source-query-and-metadata card-id false))
   ([card-id :- su/IntGreaterThanZero log? :- s/Bool]
    (let [;; todo: we need to cache this. We are running this in preprocess, compile, and then again
-         card           (or (t2/select-one Card :id card-id)
+         card           (or (t2/select-one 'Card :id card-id)
                             (throw (ex-info (tru "Card {0} does not exist." card-id)
                                             {:card-id card-id})))
          persisted-info (t2/select-one PersistedInfo :card_id card-id)
@@ -307,7 +306,7 @@
   (fn [query rff context]
     (let [{:keys [query card-id]} (resolve-card-id-source-tables* query)]
       (if card-id
-        (let [dataset? (t2/select-one-fn :dataset Card :id card-id)]
+        (let [dataset? (t2/select-one-fn :dataset 'Card :id card-id)]
           (binding [qp.perms/*card-id* (or card-id qp.perms/*card-id*)]
             (qp query
                 (fn [metadata]
