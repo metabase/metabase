@@ -1,4 +1,8 @@
-### Numbers
+---
+title: Numbers
+---
+
+# Numbers
 
 The **Numbers** option is for displaying a single number, nice and big. The options for numbers include:
 

@@ -1,4 +1,8 @@
-### Tables
+---
+title: Tables
+---
+
+# Tables
 
 The **Table** option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at, as well as modify their formatting. Check out [Everything you can do with the table visualization](https://www.metabase.com/learn/basics/visualizing-data/table.html).
 
@@ -14,7 +18,7 @@ To hide a column, click the X icon on it; that'll send it down to the **More col
 
 To format the display of any column in a table, click on the column heading and choose the `Formatting` option (you can also get there by clicking on the gear on any column when in the `Columns` tab of the visualization settings).
 
-![Column formatting](../images/visualizations/column-header-formatting.png)
+![Column formatting](../../images/column-header-formatting.png)
 
 The options you see will differ depending on the type of column you're viewing:
 
@@ -44,17 +48,17 @@ Currency columns have all the same options as numbers, plus the following:
 
 While we're talking about formatting, we thought you should also know that you can access formatting options for the columns used in a chart. Just open the visualization settings and select the `Data` tab:
 
-![Chart formatting](../images/visualizations/chart-formatting.png)
+![Chart formatting](../../images/chart-formatting.png)
 
 Then click on the gear icon next to the column that you want to format. Dates, numbers, and currencies tend to have the most useful formatting options.
 
-![Chart formatting options](../images/visualizations/chart-formatting-options.png)
+![Chart formatting options](../../images/chart-formatting-options.png)
 
 #### Conditional table formatting
 
 Sometimes it's helpful to highlight certain rows or columns in your tables when they meet a specific condition. You can set up conditional formatting rules by going to the visualization settings while looking at any table, then clicking on the **Conditional Formatting** tab.
 
-![Conditional formatting](../images/visualizations/conditional-formatting.png)
+![Conditional formatting](../../images/conditional-formatting.png)
 
 When you add a new rule, you'll first need to pick which column(s) should be affected. Your columns can be formatted in one of two ways:
 
@@ -67,6 +71,6 @@ You can set as many rules on a table as you want. If two or more rules disagree 
 
 If your table is a result that contains one numeric column and two grouping columns, Metabase will also automatically "pivot" your table, like in the example below. Pivoting takes one of your columns and rotates it 90 degrees ("pivots" it) so that each of its values becomes a column heading. If you open up the visualization settings by clicking the gear icon, you can choose which column to pivot in case Metabase got it wrong; or you can also turn the pivoting behavior off entirely.
 
-![Pivot table](../images/visualizations/pivot.png)
+![Pivot table](../../images/pivot.png)
 
 This auto-pivoting is distinct from the pivot table visualization, which we cover next.

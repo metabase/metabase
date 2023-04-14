@@ -2,7 +2,7 @@
 title: Trend
 ---
 
-## Trend
+# Trend
 
 ![Trend settings](../../images/trend-settings.png)
 

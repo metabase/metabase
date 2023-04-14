@@ -1,4 +1,8 @@
-### Pie or donut charts
+---
+title: Pie or donut charts
+---
+
+# Pie or donut charts
 
 A **pie or donut chart** can be used when breaking out a metric by a single dimension, especially when the number of possible breakouts is small, like users by gender. If you have more than a few breakouts, like users per country, it's usually better to use a bar chart so that your users can more easily compare the relative sizes of each bar.
 
