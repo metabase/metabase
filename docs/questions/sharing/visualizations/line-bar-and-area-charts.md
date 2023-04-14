@@ -1,3 +1,7 @@
+---
+title: Line, bar, and area charts
+---
+
 # Line, bar, and area charts
 
 **Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/basics/visualizing-data/line-charts.html).
