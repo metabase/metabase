@@ -578,7 +578,7 @@ describe("scenarios > dashboard", () => {
     showDashboardCardActions();
     getDashboardCardMenu().click();
     popover().findByText("Edit question").click();
-    cy.findByText("Visualize").should("be.visible");
+    cy.findByRole("button", { name: "Visualize" }).should("be.visible");
   });
 });
 
