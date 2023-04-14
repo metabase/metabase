@@ -1,4 +1,5 @@
 import React from "react";
+import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -6,6 +7,7 @@ import { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
   createMockDataset,
+  createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
@@ -24,6 +26,17 @@ const TEST_CARD = createMockCard({
     database: SAMPLE_DB_ID,
     query: {
       "source-table": ORDERS_ID,
+    },
+  }),
+});
+
+const TEST_CARD_SLUG = `${TEST_CARD.id}-${TEST_CARD.name.toLocaleLowerCase()}`;
+
+const TEST_CARD_NATIVE = createMockCard({
+  dataset_query: createMockNativeDatasetQuery({
+    database: SAMPLE_DB_ID,
+    native: {
+      query: "SELECT * FROM ORDERS",
     },
   }),
 });
@@ -58,18 +71,44 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
 
   setupCardQueryDownloadEndpoint(card, "json");
 
-  renderWithProviders(<DashCardMenu question={question} result={result} />, {
-    storeInitialState,
-  });
+  const { history } = renderWithProviders(
+    <>
+      <Route
+        path="dashboard/:slug"
+        component={() => <DashCardMenu question={question} result={result} />}
+      />
+      <Route path="question/:slug" component={() => <div />} />
+      <Route path="question/:slug/notebook" component={() => <div />} />
+    </>,
+    {
+      storeInitialState,
+      withRouter: true,
+      initialRoute: "/dashboard/1",
+    },
+  );
+
+  return { history };
 };
 
 describe("DashCardMenu", () => {
   it("should display a link to the notebook editor", async () => {
-    setup();
+    const { history } = setup();
 
     userEvent.click(getIcon("ellipsis"));
+    userEvent.click(await screen.findByText("Edit question"));
 
-    expect(await screen.findByText("Edit question")).toBeInTheDocument();
+    const pathname = history?.getCurrentLocation().pathname;
+    expect(pathname).toBe(`/question/${TEST_CARD_SLUG}/notebook`);
+  });
+
+  it("should display a link to the query builder for native questions", async () => {
+    const { history } = setup({ card: TEST_CARD_NATIVE });
+
+    userEvent.click(getIcon("ellipsis"));
+    userEvent.click(await screen.findByText("Edit question"));
+
+    const pathname = history?.getCurrentLocation().pathname;
+    expect(pathname).toBe(`/question/${TEST_CARD_SLUG}`);
   });
 
   it("should not display a link to the notebook editor if the user does not have permissions", async () => {
