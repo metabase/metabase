@@ -39,7 +39,7 @@
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(mu/defn ^:export display-name :- ::lib.schema.common/non-blank-string
+(mu/defn ^:export display-name :- :string
   "Calculate a nice human-friendly display name for something. See [[DisplayNameStyle]] for a the difference between
   different `style`s."
   ([query x]
@@ -237,7 +237,7 @@
 
 (mr/register! ::display-info
   [:map
-   [:display_name ::lib.schema.common/non-blank-string]
+   [:display_name :string]
    ;; For Columns. `base_type` not included here, FE doesn't need to know about that.
    [:effective_type {:optional true} [:maybe [:ref ::lib.schema.common/base-type]]]
    [:semantic_type  {:optional true} [:maybe [:ref ::lib.schema.common/semantic-type]]]
