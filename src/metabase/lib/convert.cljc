@@ -9,7 +9,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
 
-(defn- clean-location [almost-query error-type error-location]
+(defn- clean-location [almost-stage error-type error-location]
   (let [operate-on-parent? #{:malli.core/missing-key :malli.core/end-of-input}
         location (if (operate-on-parent? error-type)
                    (drop-last 2 error-location)
@@ -18,7 +18,7 @@
                          (take-last 2 error-location)
                          (take-last 1 error-location))]
     (if (seq location)
-      (update-in almost-query
+      (update-in almost-stage
                  location
                  (fn [error-loc]
                    (let [result (assoc error-loc location-key nil)]
@@ -26,20 +26,36 @@
                        (vector? error-loc) (into [] (remove nil?) result)
                        (map? error-loc) (u/remove-nils result)
                        :else result))))
-      (dissoc almost-query location-key))))
+      (dissoc almost-stage location-key))))
+
+(defn- clean-last-stage [almost-stage]
+  (reduce
+    (fn [almost-stage top-level-clause]
+      (loop [almost-stage almost-stage
+             removals []]
+        (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/stage.mbql almost-stage)
+                                                  :errors
+                                                  (filter (comp #{top-level-clause} first :in))
+                                                  (map (juxt :type :in))
+                                                  first)]
+          (let [new-stage (clean-location almost-stage error-type error-location)]
+            (if (= new-stage almost-stage)
+              almost-stage
+              (recur new-stage (conj removals [error-type error-location]))))
+          almost-stage)))
+    almost-stage
+    [:joins :filters :fields :expressions :aggregation :breakout :order-by]))
 
 (defn- clean [almost-query]
   (loop [almost-query almost-query
-         removals []]
-    (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/query almost-query)
-                                              :errors
-                                              (map (juxt :type :in))
-                                              first)]
-      (let [next-query (clean-location almost-query error-type error-location)]
-        (if (= next-query almost-query)
+         stage-index (dec (count (:stages almost-query)))]
+    (let [last-stage (nth (:stages almost-query) stage-index)
+          new-stage (clean-last-stage last-stage)]
+      (if (= last-stage new-stage)
+        (if (= stage-index 0)
           almost-query
-          (recur next-query (conj removals [error-type error-location]))))
-      almost-query)))
+          (recur almost-query (dec stage-index)))
+        (recur (update almost-query :stages assoc stage-index new-stage) stage-index)))))
 
 (defmulti ->pMBQL
   "Coerce something to pMBQL (the version of MBQL manipulated by Metabase Lib v2) if it's not already pMBQL."
