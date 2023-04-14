@@ -18,7 +18,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import MetabaseSettings from "metabase/lib/settings";
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
-import { getParameterOptionsForField } from "metabase-lib/parameters/utils/template-tag-options";
 
 import {
   getDefaultParameterWidgetType,
