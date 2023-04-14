@@ -14,6 +14,6 @@ export const TabButton = styled(BaseTabButton.Renameable)`
   padding-bottom: 0.5rem;
 `;
 
-export const Button = styled(BaseButton)`
+export const CreateTabButton = styled(BaseButton)`
   border: none;
 `;
