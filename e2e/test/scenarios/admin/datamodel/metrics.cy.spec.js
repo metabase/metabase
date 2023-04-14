@@ -42,7 +42,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
     cy.findByText("Sort").click();
 
     // Sorts ascending by default
-    popover().contains("Revenue").click();
+    popover().findByText("Revenue").click();
 
     // Let's make sure it's possible to sort descending as well
     cy.icon("arrow_up").click();
