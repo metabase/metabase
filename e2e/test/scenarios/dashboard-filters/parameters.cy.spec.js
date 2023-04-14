@@ -8,6 +8,7 @@ import {
   getDashboardCard,
   selectDashboardFilter,
   saveDashboard,
+  updateDashboardCards,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -25,20 +26,24 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
       // add the same question twice
-      cy.request("POST", `/api/dashboard/${id}/cards`, {
-        cardId: 2, // Orders, count
-        row: 0,
-        col: 0,
-        size_x: 4,
-        size_y: 4,
-      });
-
-      cy.request("POST", `/api/dashboard/${id}/cards`, {
-        cardId: 2,
-        row: 0,
-        col: 4,
-        size_x: 4,
-        size_y: 4,
+      updateDashboardCards({
+        dashboard_id: id,
+        cards: [
+          {
+            card_id: 2,
+            row: 0,
+            col: 0,
+            size_x: 4,
+            size_y: 4,
+          },
+          {
+            card_id: 2,
+            row: 0,
+            col: 4,
+            size_x: 4,
+            size_y: 4,
+          },
+        ],
       });
 
       visitDashboard(id);
