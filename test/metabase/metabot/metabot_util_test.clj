@@ -130,7 +130,8 @@
             :message_templates [{:role "system", :content "The system prompt"}
                                 {:role "assistant", :content "%%MODEL:SQL_NAME%%"}
                                 {:role "assistant", :content "%%MODEL:CREATE_TABLE_DDL%%"}
-                                {:role "user", :content "A '%%USER_PROMPT%%'"}]})))))
+                                {:role "user", :content "A '%%USER_PROMPT%%'"}]}
+           prompt)))))
 
 (deftest extract-sql-test
   (testing "Test that we detect a simple SQL string"
