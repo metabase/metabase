@@ -1,6 +1,7 @@
 import React from "react";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { CollectionId, User } from "metabase-types/api";
+import ErrorBoundary from "metabase/ErrorBoundary";
 import AppBarSmall from "./AppBarSmall";
 import AppBarLarge from "./AppBarLarge";
 import { AppBarRoot } from "./AppBar.styled";
@@ -26,7 +27,13 @@ const AppBar = (props: AppBarProps): JSX.Element => {
 
   return (
     <AppBarRoot data-testid="app-bar">
-      {isSmallScreen ? <AppBarSmall {...props} /> : <AppBarLarge {...props} />}
+      <ErrorBoundary>
+        {isSmallScreen ? (
+          <AppBarSmall {...props} />
+        ) : (
+          <AppBarLarge {...props} />
+        )}
+      </ErrorBoundary>
     </AppBarRoot>
   );
 };
