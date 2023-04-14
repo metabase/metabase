@@ -91,7 +91,7 @@
 
     {::group-type :group-type/main}))
 
-(mu/defn ^:export group-columns :- [:sequential ColumnGroup]
+(mu/defn group-columns :- [:sequential ColumnGroup]
   "Given a group of columns returned by a function like [[metabase.lib.order-by/orderable-columns]], group the columns
   by Table or equivalent (e.g. Saved Question) so that they're in an appropriate shape for showing in the Query
   Builder. e.g a sequence of columns like
@@ -120,7 +120,7 @@
                  ::columns columns))
         (group-by column-group-info column-metadatas)))
 
-(mu/defn ^:export columns-group-columns :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn columns-group-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get the columns associated with a column group"
   [column-group :- ColumnGroup]
   (::columns column-group))
