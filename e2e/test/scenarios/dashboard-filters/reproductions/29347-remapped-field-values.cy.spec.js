@@ -65,7 +65,7 @@ describe("issues 29347, 29346", () => {
       filterOnRemappedValues(filterValue);
       cy.wait("@cardQuery");
 
-      verifyRemapping(filterValue);
+      verifyRemappedValues(filterValue);
     });
 
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
@@ -78,7 +78,7 @@ describe("issues 29347, 29346", () => {
       cy.wait("@dashboard");
       cy.wait("@cardQuery");
 
-      verifyRemapping(filterValue);
+      verifyRemappedValues(filterValue);
     });
   });
 
@@ -102,7 +102,7 @@ describe("issues 29347, 29346", () => {
       filterOnRemappedValues(filterValue);
       cy.wait("@cardQuery");
 
-      verifyRemapping(filterValue);
+      verifyRemappedValues(filterValue);
     });
 
     it("should be able to filter on remapped values in the token (metabase#29347, metabase#29346)", () => {
@@ -137,7 +137,7 @@ describe("issues 29347, 29346", () => {
       cy.wait("@dashboard");
       cy.wait("@cardQuery");
 
-      verifyRemapping(filterValue);
+      verifyRemappedValues(filterValue);
     });
   });
 
@@ -158,7 +158,7 @@ describe("issues 29347, 29346", () => {
       filterOnRemappedValues(filterValue);
       cy.wait("@cardQuery");
 
-      verifyRemapping(filterValue);
+      verifyRemappedValues(filterValue);
     });
 
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
@@ -171,7 +171,7 @@ describe("issues 29347, 29346", () => {
       cy.wait("@dashboard");
       cy.wait("@cardQuery");
 
-      verifyRemapping(filterValue);
+      verifyRemappedValues(filterValue);
     });
   });
 });
@@ -240,7 +240,7 @@ const filterOnRemappedValues = fieldValue => {
   });
 };
 
-const verifyRemapping = fieldValue => {
+const verifyRemappedValues = fieldValue => {
   verifyRemappedFilter(filterValue);
   verifyRemappedCard(fieldValue);
 };
