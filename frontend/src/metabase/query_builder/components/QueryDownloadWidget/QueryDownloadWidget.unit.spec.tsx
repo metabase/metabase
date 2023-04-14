@@ -54,6 +54,8 @@ describe("QueryDownloadWidget", () => {
 
     userEvent.click(getIcon("download"));
 
-    expect(await screen.findByText(/Download/)).toBeInTheDocument();
+    expect(
+      await screen.findByText("Download full results"),
+    ).toBeInTheDocument();
   });
 });

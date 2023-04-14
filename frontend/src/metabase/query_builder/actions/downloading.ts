@@ -158,9 +158,9 @@ const getChartFileName = (question: Question) => {
 
 const openSaveDialog = (fileName: string, fileContent: Blob) => {
   const url = URL.createObjectURL(fileContent);
-  const link = document.createElement(`a`);
+  const link = document.createElement("a");
   link.href = url;
-  link.setAttribute(`download`, fileName);
+  link.setAttribute("download", fileName);
   document.body.appendChild(link);
   link.click();
 
