@@ -2,7 +2,6 @@ import _ from "underscore";
 
 import {
   Parameter,
-  ParameterOptions,
   ParameterValuesConfig,
   TemplateTag,
 } from "metabase-types/api";
@@ -43,23 +42,10 @@ export function getTemplateTagParameter(
     name: tag["display-name"],
     slug: tag.name,
     default: tag.default,
-    options: getTemplateTagParameterOptions(tag),
     values_query_type: config?.values_query_type,
     values_source_type: config?.values_source_type,
     values_source_config: config?.values_source_config,
   };
-}
-
-function getTemplateTagParameterOptions(
-  tag: TemplateTag,
-): ParameterOptions | undefined {
-  switch (tag["widget-type"]) {
-    case "string/contains":
-    case "string/does-not-contain":
-      return { "case-sensitive": false };
-    default:
-      return undefined;
-  }
 }
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
