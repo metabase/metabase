@@ -1,3 +1,4 @@
+import { to_array } from "cljs/cljs.core";
 import * as ML from "cljs/metabase.lib.js";
 import * as ML_ColumnGroup from "cljs/metabase.lib.column_group";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
@@ -40,10 +41,12 @@ export function displayInfo(
   return ML.display_info(query, x);
 }
 
-export function groupColumns(columns: ColumnMetadata[]): ColumnGroup {
-  return ML_ColumnGroup.group_columns(columns);
+export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
+  return to_array(ML_ColumnGroup.group_columns(columns));
 }
 
-export function getColumnsGroupColumns(group: ColumnGroup): ColumnMetadata[] {
-  return ML_ColumnGroup.columns_group_columns(group);
+export function getColumnsFromColumnGroup(
+  group: ColumnGroup,
+): ColumnMetadata[] {
+  return to_array(ML_ColumnGroup.columns_group_columns(group));
 }
