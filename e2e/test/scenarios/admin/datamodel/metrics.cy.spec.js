@@ -166,7 +166,9 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.visit("/reference/metrics/1/questions");
       cy.findByText("Our analysis").should("not.exist");
       cy.findAllByText("Questions about orders < 100");
-      cy.findByText("Orders, orders < 100, Filtered by Total is greater than or equal to 50");
+      cy.findByText(
+        "Orders, orders < 100, Filtered by Total is greater than or equal to 50",
+      );
     });
 
     it("should show the metric detail view for a specific id", () => {

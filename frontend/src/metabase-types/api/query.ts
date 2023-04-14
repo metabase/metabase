@@ -1,11 +1,11 @@
-import type { AggregationClause, TemplateTags } from "../types/Query";
+import type { AggregationClause } from "../types/Query";
 import type { DatabaseId } from "./database";
+import type { TemplateTags } from "./dataset";
 import type { FieldId } from "./field";
 import type { TableId } from "./table";
 
 export interface StructuredQuery {
   "source-table"?: TableId;
-
   aggregation?: AggregationClause;
 }
 
