@@ -28,23 +28,22 @@
                        :else result))))
       (dissoc almost-stage location-key))))
 
+(def ^:private stage-keys-to-clean
+  #{:expressions :joins :filters :order-by :aggregation :fields :breakout})
+
 (defn- clean-stage [almost-stage]
-  (reduce
-    (fn [almost-stage top-level-clause]
-      (loop [almost-stage almost-stage
-             removals []]
-        (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/stage.mbql almost-stage)
-                                                  :errors
-                                                  (filter (comp #{top-level-clause} first :in))
-                                                  (map (juxt :type :in))
-                                                  first)]
-          (let [new-stage (clean-location almost-stage error-type error-location)]
-            (if (= new-stage almost-stage)
-              almost-stage
-              (recur new-stage (conj removals [error-type error-location]))))
-          almost-stage)))
-    almost-stage
-    [:joins :filters :fields :expressions :aggregation :breakout :order-by]))
+  (loop [almost-stage almost-stage
+         removals []]
+    (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/stage.mbql almost-stage)
+                                              :errors
+                                              (filter (comp stage-keys-to-clean first :in))
+                                              (map (juxt :type :in))
+                                              first)]
+      (let [new-stage (clean-location almost-stage error-type error-location)]
+        (if (= new-stage almost-stage)
+          almost-stage
+          (recur new-stage (conj removals [error-type error-location]))))
+      almost-stage)))
 
 (defn- clean [almost-query]
   (loop [almost-query almost-query
