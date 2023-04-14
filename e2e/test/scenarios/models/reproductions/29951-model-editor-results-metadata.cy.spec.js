@@ -39,7 +39,7 @@ describe("issue 29951", () => {
     cy.wait("@dataset");
 
     dragColumn(0, 100);
-    cy.findAllByRole("button", { name: "Get Answer" }).first().click();
+    cy.findAllByRole("button", { name: "play icon" }).first().click();
     cy.wait("@dataset");
     cy.findByText("Showing first 2,000 rows").should("be.visible");
   });
