@@ -240,14 +240,14 @@
                {:type :query}))))
     (is (= {:type :query
             :database 1
-            :query {}}
+            :query nil}
             (lib.convert/->legacy-MBQL
               (lib.convert/->pMBQL
                 {:type :query
                  :database 1}))))
     (is (= {:type :query
             :database 1
-            :query {}}
+            :query nil}
            (lib.convert/->legacy-MBQL
              (lib.convert/->pMBQL
                {:type :query
