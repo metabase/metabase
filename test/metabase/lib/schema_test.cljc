@@ -93,7 +93,7 @@
   (are [stage errors] (= errors
                          (me/humanize (mc/explain ::lib.schema/stages stage)))
     [{:lib/type     :mbql.stage/mbql
-      :source-table "card__1"
+      :source-table 1
       :joins        [(valid-join "Y")]
       :fields       [[:field {:lib/uuid (str (random-uuid)), :join-alias "Y"} 1]]}]
     nil
@@ -127,11 +127,20 @@
     nil
 
     [{:lib/type     :mbql.stage/mbql
-      :source-table "card__1"
+      :source-table 1
       :joins        [(valid-join "X")]}
      {:lib/type :mbql.stage/mbql
       :fields   [[:field {:lib/uuid (str (random-uuid)), :join-alias "Y"} 1]]}]
     ["Invalid :field reference in stage 1: no join named \"Y\""]
+
+    ;; we have no way of knowing what sort of joins are inside a Card, so if we have a Card source query unfortunately
+    ;; we're just going to have to skip validation for now.
+    [{:lib/type     :mbql.stage/mbql
+      :source-table "card__1"
+      :joins        [(valid-join "X")]}
+     {:lib/type :mbql.stage/mbql
+      :fields   [[:field {:lib/uuid (str (random-uuid)), :join-alias "Y"} 1]]}]
+    nil
 
     ;; apparently, this is also allowed for join aliases introduced inside the joins themselves =(
     [{:lib/type     :mbql.stage/mbql

@@ -7,7 +7,7 @@
   copied from [[metabase.mbql.schema]] so this can exist completely independently; hopefully at some point in the
   future we can deprecate that namespace and eventually do away with it entirely."
   (:require
-   [clojure.set :as set]
+   [malli.core :as mc]
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
@@ -131,7 +131,7 @@
 (mr/def ::stage.additional
   ::stage.mbql.without-source)
 
-(defn- visible-join-aliases
+(defn- visible-join-alias?-fn
   "Apparently you're allowed to use a join alias for a join that appeared in any previous stage or the current stage, or
   *inside* any join in any previous stage or the current stage. Why? Who knows, but this is a real thing.
   See [[metabase.driver.sql.query-processor-test/join-source-queries-with-joins-test]] for example.
@@ -139,25 +139,34 @@
   This doesn't really make sense IMO (you should use string field refs to refer to things from a previous
   stage...right?) but for now we'll have to allow it until we can figure out how to go fix all of the old broken queries.
 
-  Anyways, this function finds all of the join aliases that should be 'visible' in a given stage of a query."
+  Also, it's apparently legal to use a join alias to refer to a column that comes from a join in a source Card, and
+  there is no way for us to know what joins exist in the source Card without a metadata provider, so we're just going
+  to have to go ahead and skip validation in that case. Icky! But it's better than being overly strict and rejecting
+  queries that the QP could have fixed.
+
+  Anyways, this function returns a function with the signature:
+
+    (visible-join-alias? <join-alias>) => boolean"
   [stage]
-  (letfn [(join-aliases-in-join [join]
-            (cons
-             (:alias join)
-             (mapcat join-aliases-in-stage (:stages join))))
-          (join-aliases-in-stage [stage]
-            (mapcat join-aliases-in-join (:joins stage)))]
-    (set (join-aliases-in-stage stage))))
+  (if (mc/validate ::id/table-card-id-string (:source-table stage))
+    (constantly true)
+    (letfn [(join-aliases-in-join [join]
+              (cons
+               (:alias join)
+               (mapcat join-aliases-in-stage (:stages join))))
+            (join-aliases-in-stage [stage]
+              (mapcat join-aliases-in-join (:joins stage)))]
+      (set (join-aliases-in-stage stage)))))
 
 (defn- join-ref-error-for-stages [stages]
-  (loop [join-aliases #{}, i 0, [stage & more] stages]
-    (let [join-aliases (set/union join-aliases (visible-join-aliases stage))]
+  (loop [visible-join-alias? (constantly false), i 0, [stage & more] stages]
+    (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
       (or
        (mbql.u/match-one stage
-         [:field ({:join-alias (join-alias :guard (complement join-aliases))} :guard :join-alias) _id-or-name]
+         [:field ({:join-alias (join-alias :guard (complement visible-join-alias?))} :guard :join-alias) _id-or-name]
          (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias)))
        (when (seq more)
-         (recur join-aliases (inc i) more))))))
+         (recur visible-join-alias? (inc i) more))))))
 
 (def ^:private ^{:arglists '([stages])} ref-error-for-stages
   "Like [[ref-error-for-stage]], but validate references in the context of a sequence of several stages; for validations
