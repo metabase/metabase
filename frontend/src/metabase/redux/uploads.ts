@@ -1,4 +1,4 @@
-import { assocIn, updateIn } from "icepick";
+import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
 
 import { CardApi } from "metabase/services";
@@ -15,19 +15,20 @@ import {
 } from "metabase/lib/redux";
 
 export const UPLOAD_FILE_TO_COLLECTION = "metabase/collection/UPLOAD_FILE";
-
 const UPLOAD_FILE_TO_COLLECTION_START = "metabase/collection/UPLOAD_FILE_START";
-
 const UPLOAD_FILE_TO_COLLECTION_END = "metabase/collection/UPLOAD_FILE_END";
-
 const UPLOAD_FILE_TO_COLLECTION_ERROR = "metabase/collection/UPLOAD_FILE_ERROR";
+const UPLOAD_FILE_TO_COLLECTION_CLEAR = "metabase/collection/UPLOAD_FILE_CLEAR";
 
 const MAX_UPLOAD_SIZE = 200 * 1024 * 1024; // 200MB
 const MAX_UPLOAD_STRING = "200MB";
 
+const CLEAR_AFTER_MS = 5000;
+
 const uploadStart = createAction(UPLOAD_FILE_TO_COLLECTION_START);
 const uploadEnd = createAction(UPLOAD_FILE_TO_COLLECTION_END);
 const uploadError = createAction(UPLOAD_FILE_TO_COLLECTION_ERROR);
+const clearUpload = createAction(UPLOAD_FILE_TO_COLLECTION_CLEAR);
 
 export const getAllUploads = (state: State) =>
   Object.keys(state.upload).map(key => state.upload[key]);
@@ -36,16 +37,12 @@ export const uploadFile = createThunkAction(
   UPLOAD_FILE_TO_COLLECTION,
   (file: File, collectionId: CollectionId) =>
     async (dispatch: Dispatch, getState: GetState) => {
-      const uploads = getAllUploads(getState());
-      const id = uploads.length;
+      const id = Date.now();
 
-      if (file.size > MAX_UPLOAD_SIZE) {
-        uploadError({
-          id,
-          message: t`You cannot upload files larger than ${MAX_UPLOAD_STRING}`,
-        });
-        return;
-      }
+      const clear = () =>
+        setTimeout(() => {
+          dispatch(clearUpload({ id }));
+        }, CLEAR_AFTER_MS);
 
       dispatch(
         uploadStart({
@@ -55,33 +52,42 @@ export const uploadFile = createThunkAction(
         }),
       );
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("collection_id", String(collectionId));
-
-      const response = await CardApi.uploadCSV(formData).catch(
-        ({ data: { message } }) => {
-          dispatch(
-            uploadError({
-              id,
-              message,
-            }),
-          );
-        },
-      );
-
-      if (!response) {
+      if (file.size > MAX_UPLOAD_SIZE) {
+        dispatch(
+          uploadError({
+            id,
+            message: t`You cannot upload files larger than ${MAX_UPLOAD_STRING}`,
+          }),
+        );
+        clear();
         return;
       }
 
-      dispatch(
-        uploadEnd({
-          id,
-          modelId: response.model_id,
-        }),
-      );
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("collection_id", String(collectionId));
+        const response = await CardApi.uploadCSV(formData);
 
-      dispatch(Collections.actions.invalidateLists());
+        dispatch(
+          uploadEnd({
+            id,
+            modelId: response.model_id,
+          }),
+        );
+
+        dispatch(Collections.actions.invalidateLists());
+      } catch (err: any) {
+        dispatch(
+          uploadError({
+            id,
+            message:
+              err?.data?.message ?? t`There was an error uploading the file`,
+          }),
+        );
+      } finally {
+        clear();
+      }
     },
 );
 
@@ -122,6 +128,9 @@ const upload = handleActions<
           ...payload,
           status: "error",
         })),
+    },
+    [UPLOAD_FILE_TO_COLLECTION_CLEAR]: {
+      next: (state, { payload: { id } }) => dissocIn(state, [id]),
     },
   },
   {},
