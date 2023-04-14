@@ -1,5 +1,10 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { OrderByClause, Query, ColumnMetadata } from "./types";
+import type {
+  ColumnMetadata,
+  OrderByClause,
+  OrderByDirection,
+  Query,
+} from "./types";
 
 const DEFAULT_STAGE_INDEX = -1;
 
@@ -28,8 +33,6 @@ declare function OrderByFn(
 ): Query;
 
 export const orderBy: typeof OrderByFn = ML.order_by;
-
-type OrderByDirection = "asc" | "desc";
 
 declare function OrderByClauseFn(
   query: Query,
