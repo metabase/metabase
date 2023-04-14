@@ -17,6 +17,7 @@ const Markdown = ({
   className,
   children = "",
   disallowHeading = false,
+  unstyleLinks = false,
   ...rest
 }: MarkdownProps): JSX.Element => {
   const additionalOptions = {
@@ -31,6 +32,7 @@ const Markdown = ({
       className={className}
       remarkPlugins={REMARK_PLUGINS}
       linkTarget={"_blank"}
+      unstyleLinks={unstyleLinks}
       {...additionalOptions}
       {...rest}
     >
