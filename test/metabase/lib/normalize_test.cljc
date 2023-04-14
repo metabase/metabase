@@ -46,21 +46,21 @@
                                       {:lib/uuid "c4984ada-f8fe-4ac2-b6b4-45885527f5b4"}
                                       [:field
                                        {:base-type :type/Integer
-                                        :lib/uuid "5a84d551-ea5f-44f4-952f-2162f05cdcc4"}
+                                        :lib/uuid  "5a84d551-ea5f-44f4-952f-2162f05cdcc4"}
                                        1]
                                       4]]}]}
          (lib/normalize
-           {"lib/type" "mbql/query"
-            "database" 1
-            "type"     "pipeline"
-            "stages"   [{"lib/type"     "mbql.stage/mbql"
-                         "lib/options"  {"lib/uuid" "a8f41095-1e37-4da6-a4e5-51a9c2c3f523"}
-                         "source-table" 1
-                         "aggregation"  [["count" {"lib/uuid" "a6685a7d-62b3-4ceb-a13f-f9db405dcb49"}]]
-                         "filters"      [["="
-                                          {"lib/uuid" "c4984ada-f8fe-4ac2-b6b4-45885527f5b4"}
-                                          ["field"
-                                           {"base-type" "type/Integer"
-                                            "lib/uuid"  "5a84d551-ea5f-44f4-952f-2162f05cdcc4"}
-                                           1]
-                                          4]]}]}))))
+          {"lib/type" "mbql/query"
+           "database" 1
+           "type"     "pipeline"
+           "stages"   [{"lib/type"     "mbql.stage/mbql"
+                        "lib/options"  {"lib/uuid" "a8f41095-1e37-4da6-a4e5-51a9c2c3f523"}
+                        "source-table" 1
+                        "aggregation"  [["count" {"lib/uuid" "a6685a7d-62b3-4ceb-a13f-f9db405dcb49"}]]
+                        "filters"      [["="
+                                         {"lib/uuid" "c4984ada-f8fe-4ac2-b6b4-45885527f5b4"}
+                                         ["field"
+                                          {"base-type" "type/Integer"
+                                           "lib/uuid"  "5a84d551-ea5f-44f4-952f-2162f05cdcc4"}
+                                          1]
+                                         4]]}]}))))

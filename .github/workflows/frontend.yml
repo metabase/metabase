@@ -70,7 +70,7 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: 'cljs'
-    - run: yarn build-quick:cljs
+    - run: yarn build:cljs
       name: Compile CLJS
     - run: yarn type-check
       name: Check types

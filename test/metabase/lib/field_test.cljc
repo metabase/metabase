@@ -1,6 +1,6 @@
 (ns metabase.lib.field-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -61,7 +61,6 @@
             (lib.metadata.calculation/metadata
              {:lib/type     :mbql/query
               :lib/metadata grandparent-parent-child-metadata-provider
-              :type         :pipeline
               :database     (meta/id)
               :stages       [{:lib/type     :mbql.stage/mbql
                               :lib/options  {:lib/uuid (str (random-uuid))}
@@ -90,26 +89,12 @@
              :base_type     :type/Integer
              :semantic_type :type/FK}
             (lib.metadata.calculation/metadata
-             (lib.tu/venues-query-with-last-stage
-              {:lib/type           :mbql.stage/native
-               :lib/stage-metadata {:lib/type :metadata/results
-                                    :columns  [{:lib/type      :metadata/field
-                                                :name          "abc"
-                                                :display_name  "another Field"
-                                                :base_type     :type/Integer
-                                                :semantic_type :type/FK}
-                                               {:lib/type      :metadata/field
-                                                :name          "sum"
-                                                :display_name  "sum of User ID"
-                                                :base_type     :type/Integer
-                                                :semantic_type :type/FK}]}
-               :native             "SELECT whatever"})
+             (lib.tu/native-query)
              -1
              [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "sum"])))))
 
 (deftest ^:parallel joined-field-display-name-test
   (let [query {:lib/type     :mbql/query
-               :type         :pipeline
                :stages       [{:lib/type     :mbql.stage/mbql
                                :lib/options  {:lib/uuid "fdcfaa06-8e65-471d-be5a-f1e821022482"}
                                :source-table (meta/id :venues)
@@ -135,9 +120,11 @@
                {:join-alias "CATEGORIES__via__CATEGORY_ID"
                 :lib/uuid   "8704e09b-496e-4045-8148-1eef28e96b51"}
                (meta/id :categories :name)]]
-    (is (= "Categories → Name"
-           (lib.metadata.calculation/display-name query -1 field)))
-    (is (=? {:display_name "Categories → Name"}
+    (are [style expected] (= expected
+                             (lib/display-name query -1 field style))
+      :default "Name"
+      :long    "Categories → Name")
+    (is (=? {:display_name "Name"}
             (lib.metadata.calculation/metadata query -1 field)))))
 
 (deftest ^:parallel field-with-temporal-unit-test
@@ -188,8 +175,10 @@
     (let [query           (lib/query-for-table-name meta/metadata-provider "VENUES")
           categories-name (m/find-first #(= (:id %) (meta/id :categories :name))
                                         (lib/orderable-columns query))]
-      (is (= "Categories → Name"
-             (lib/display-name query categories-name)))
+      (are [style expected] (= expected
+                               (lib/display-name query -1 categories-name style))
+        :default "Name"
+        :long    "Categories → Name")
       (let [query' (lib/order-by query categories-name)]
         (is (= "Venues, Sorted by Categories → Name ascending"
                (lib/describe-query query')))))))
@@ -221,7 +210,6 @@
           query             {:lib/type     :mbql/query
                              :lib/metadata metadata-provider
                              :database     (meta/id)
-                             :type         :pipeline
                              :stages       [{:lib/type     :mbql.stage/mbql
                                              :source-table (meta/id :checkins)
                                              :joins        [{:lib/type    :mbql/join

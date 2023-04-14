@@ -11,22 +11,27 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def test-prompt-templates
-  {:infer_sql   {:latest {:prompt_template "infer_sql",
-                          :version         "0001",
-                          :messages        [{:role "system", :content "The system prompt"}
-                                            {:role "assistant", :content "%%MODEL:SQL_NAME%%"}
-                                            {:role "assistant", :content "%%MODEL:CREATE_TABLE_DDL%%"}
-                                            {:role "user", :content "A '%%USER_PROMPT%%'"}]}}
-   :infer_model {:latest {:prompt_template "infer_model",
-                          :version         "0001",
-                          :messages        [{:role "system", :content "The system prompt"}
-                                            {:role "assistant", :content "%%DATABASE:MODEL_JSON_SUMMARY%%"}
-                                            {:role "user", :content "A '%%USER_PROMPT%%'"}]}}
-   :infer_viz   {:latest {:prompt_template "infer_viz",
-                          :version         "0001",
-                          :messages        [{:role "system", :content "The system prompt"}
-                                            {:role "assistant", :content "The assistant prompt"}
-                                            {:role "user", :content "The user prompt"}]}}})
+  {:infer_sql        {:latest {:prompt_template "infer_sql",
+                               :version         "0001",
+                               :messages        [{:role "system", :content "The system prompt"}
+                                                 {:role "assistant", :content "%%MODEL:SQL_NAME%%"}
+                                                 {:role "assistant", :content "%%MODEL:CREATE_TABLE_DDL%%"}
+                                                 {:role "user", :content "A '%%USER_PROMPT%%'"}]}}
+   :infer_model      {:latest {:prompt_template "infer_model",
+                               :version         "0001",
+                               :messages        [{:role "system", :content "The system prompt"}
+                                                 {:role "assistant", :content "%%DATABASE:MODEL_JSON_SUMMARY%%"}
+                                                 {:role "user", :content "A '%%USER_PROMPT%%'"}]}}
+   :infer_viz        {:latest {:prompt_template "infer_viz",
+                               :version         "0001",
+                               :messages        [{:role "system", :content "The system prompt"}
+                                                 {:role "assistant", :content "The assistant prompt"}
+                                                 {:role "user", :content "The user prompt"}]}}
+   :infer_native_sql {:latest {:prompt_template "infer_native_sql",
+                               :version         "0001",
+                               :messages        [{:role "system", :content "The system prompt"}
+                                                 {:role "assistant", :content "%%DATABASE:CREATE_DATABASE_DDL%%"}
+                                                 {:role "user", :content "%%USER_PROMPT%%"}]}}})
 
 (defn test-bot-endpoint-single-message [bot-message]
   (fn [_ auth]

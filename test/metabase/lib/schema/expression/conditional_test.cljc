@@ -60,7 +60,6 @@
        ::lib.schema/query
        {:lib/type     :mbql/query
         :lib/metadata meta/metadata-provider
-        :type         :pipeline
         :database     (meta/id)
         :stages       [{:lib/type     :mbql.stage/mbql,
                         :source-table (meta/id :venues)

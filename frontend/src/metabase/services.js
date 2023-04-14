@@ -216,6 +216,10 @@ export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
 };
 
+export const SamlApi = {
+  updateSettings: PUT("/api/saml/settings"),
+};
+
 export const GoogleApi = {
   updateSettings: PUT("/api/google/settings"),
 };
@@ -512,5 +516,6 @@ export const ActionsApi = {
 export const MetabotApi = {
   modelPrompt: POST("/api/metabot/model/:modelId"),
   databasePrompt: POST("/api/metabot/database/:databaseId"),
+  databasePromptQuery: POST("/api/metabot/database/:databaseId/query"),
   sendFeedback: POST("/api/metabot/feedback"),
 };

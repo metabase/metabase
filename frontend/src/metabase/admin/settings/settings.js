@@ -10,6 +10,7 @@ import {
   SlackApi,
   LdapApi,
   GoogleApi,
+  SamlApi,
 } from "metabase/services";
 import { refreshSiteSettings } from "metabase/redux/settings";
 
@@ -140,6 +141,19 @@ export const updateLdapSettings = createThunkAction(
   function (settings) {
     return async function (dispatch) {
       const result = await LdapApi.updateSettings(settings);
+      await dispatch(reloadSettings());
+      return result;
+    };
+  },
+);
+
+export const UPDATE_SAML_SETTINGS =
+  "metabase/admin/settings/UPDATE_SAML_SETTINGS";
+export const updateSamlSettings = createThunkAction(
+  UPDATE_SAML_SETTINGS,
+  function (settings) {
+    return async function (dispatch) {
+      const result = await SamlApi.updateSettings(settings);
       await dispatch(reloadSettings());
       return result;
     };

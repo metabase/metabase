@@ -94,3 +94,25 @@
           ;; one it should be harmless but annoying
           (is (= (json/parse-string query)
                  (json/parse-string weird-formatted-query))))))))
+
+(deftest ^:parallel format-sql-with-params-test
+  (testing "Baseline: format-sql expands metabase params, which is not desired."
+    (is (= "SELECT\n  *\nFROM\n  { { # 1234 } }"
+           (#'mdb.query/format-sql* "SELECT * FROM {{#1234}}" :postgres)))
+    (is (= "SELECT\n  *\nFROM\n  { { #1234}}"
+           (#'mdb.query/format-sql* "SELECT * FROM {{#1234}}" :mysql))))
+  (testing "A compact representation should remain compact (and inner spaces removed, if any)."
+    (is (= "SELECT\n  *\nFROM\n  {{#1234}}"
+           (mdb.query/format-sql "SELECT * FROM {{ #1234 }}" :postgres)))
+    (is (= "SELECT\n  *\nFROM\n  {{#1234}}"
+           (mdb.query/format-sql "SELECT * FROM {{#1234}}" :postgres))))
+  (testing "Symbolic params should also have spaces removed."
+    (is (= "SELECT\n  *\nFROM\n  {{FOO_BAR}}"
+           (mdb.query/format-sql "SELECT * FROM {{FOO_BAR}}" :postgres)))
+    (is (= "SELECT\n  *\nFROM\n  {{FOO_BAR}}"
+           (mdb.query/format-sql "SELECT * FROM {{ FOO_BAR }}" :postgres))))
+  (testing "Dialect-specific versions should work"
+    (is (= "SELECT\n  A\nFROM\n  {{#1234}} WHERE {{STATE}}"
+           (mdb.query/format-sql "SELECT A FROM { { #1234}} WHERE {{ STATE}  }" :mysql)))
+    (is (= "SELECT\n  A\nFROM\n  {{#1234}}\nWHERE\n  {{STATE}}"
+           (mdb.query/format-sql "SELECT A FROM { { #1234}} WHERE {{ STATE}  }" :postgres)))))
