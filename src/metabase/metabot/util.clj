@@ -148,38 +148,29 @@
 (defn- add-create-table-ddl [model]
   (assoc model :create_table_ddl (create-table-ddl model)))
 
+(defn- disambiguate
+  "Given a seq of names that are potentially the same, provide a seq of tuples of
+  original name to a non-ambiguous version of the name."
+  [names]
+  (let [uniquifier (metabase.mbql.util/unique-name-generator)
+        [_ new-names] (reduce
+                        (fn [[taken acc] n]
+                          (let [candidate (uniquifier n)]
+                            (if (taken candidate)
+                              (recur [(conj taken candidate) acc] n)
+                              [(conj taken candidate) (conj acc candidate)])))
+                        [#{} []] names)]
+    (map vector names new-names)))
+
 (defn- add-sql-names
   "Add a distinct SCREAMING_SNAKE_CASE sql name to each field in the result_metadata."
   [{:keys [result_metadata] :as model}]
-  (let [m (->> result_metadata
-               (map
-                 (fn [{:keys [display_name] :as rsmd}]
-                   ;; Add in a baseline name
-                   (assoc rsmd :sql_name (normalize-name display_name))))
-               ;; Sort name length (desc) then sql_name.
-               ;; We want longer names first so pre-existing conflicts will resolve first
-               ;; e.g. ABC, ABC, ABC_0 should result in ABC_0, ABC, ABC_1, not ABC, ABC_0, ABC_0_0
-               ;; The remaining sort keys beyond :sql_name aren't that important.
-               ;; They are just there for stability.
-               (sort-by (juxt (comp - count :sql_name)
-                              :sql_name
-                              :display_name
-                              :name
-                              :id)))]
-    (loop [[{:keys [sql_name] :as f} & r] m
-           reserved-names #{}
-           res            []]
-      (cond
-        (nil? f)
-        (assoc model :result_metadata res)
-        ;; This name is already taken, find a unique one
-        (reserved-names sql_name)
-        (let [sql-names      (map (partial format "%s_%s" sql_name) (range))
-              final-sql-name (first (drop-while reserved-names sql-names))]
-          (recur r (conj reserved-names final-sql-name) (conj res (assoc f :sql_name final-sql-name))))
-        ;; Name is unique, continue
-        :else
-        (recur r (conj reserved-names sql_name) (conj res f))))))
+  (update model :result_metadata
+          #(->> %
+                (map (comp normalize-name :display_name))
+                disambiguate
+                (map (fn [rsmd [_ disambiguated-name]]
+                       (assoc rsmd :sql_name disambiguated-name)) result_metadata))))
 
 (defn denormalize-model
   "Create a 'denormalized' version of the model which is optimized for querying.
