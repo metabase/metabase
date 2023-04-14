@@ -92,6 +92,7 @@ describe("scenarios > dashboard", () => {
     cy.get("main header").within(() => {
       cy.icon("info").click();
     });
+    cy.findByText("How many orders were placed in each year?").click();
     cy.findByDisplayValue("How many orders were placed in each year?");
   });
 
