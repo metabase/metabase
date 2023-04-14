@@ -407,3 +407,16 @@
          ;; truncate alias to 60 characters (actually 51 characters plus a hash).
          :unique-alias-fn (fn [original suffix]
                             (truncate-alias (str original \_ suffix))))))
+
+(def ^:private strip-id-regex
+  #?(:cljs (js/RegExp. " id$" "i")
+     ;; `(?i)` is JVM-specific magic to turn on the `i` case-insensitive flag.
+     :clj  #"(?i) id$"))
+
+(mu/defn strip-id :- :string
+  "Given a display name string like \"Product ID\", this will drop the trailing \"ID\" and trim whitespace.
+  Used to turn a FK field's name into a pseudo table name when implicitly joining."
+  [display-name :- :string]
+  (-> display-name
+      (str/replace strip-id-regex "")
+      str/trim))
