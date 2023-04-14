@@ -135,7 +135,7 @@ A [pie chart or donut chart](./visualizations/pie-or-donut-chart.md) can be used
 
 ## Maps
 
-When you select the [Map](./visualizations/map) visualization, Metabase will automatically try and pick the best kind of map to use based on the table or result set.
+When you select the [Map](./visualizations/map.md) visualization, Metabase will automatically try and pick the best kind of map to use based on the table or result set.
 
 ![Region map](../images/map.png)
 
@@ -143,11 +143,11 @@ When you select the [Map](./visualizations/map) visualization, Metabase will aut
 
 While we're talking about formatting, we thought you should also know that you can access formatting options for the columns used in a chart. Just open the visualization settings and select the `Data` tab:
 
-![Chart formatting](../../images/chart-formatting.png)
+![Chart formatting](../images/chart-formatting.png)
 
 Then click on the gear icon next to the column that you want to format. Dates, numbers, and currencies tend to have the most useful formatting options.
 
-![Chart formatting options](../../images/chart-formatting-options.png)
+![Chart formatting options](../images/chart-formatting-options.png)
 
 ## Further reading
 
