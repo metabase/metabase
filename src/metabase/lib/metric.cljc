@@ -22,10 +22,11 @@
       definition
       ;; legacy; needs conversion
       (->
-       (lib.convert/legacy-query-from-inner-query nil definition)
-       mbql.normalize/normalize
-       lib.convert/->pMBQL
-       (lib.util/query-stage -1)))))
+        ;; database-id cannot be nil, but gets thrown out
+        (lib.convert/legacy-query-from-inner-query #?(:clj Integer/MAX_VALUE :cljs js/Number.MAX_SAFE_INTEGER) definition)
+        mbql.normalize/normalize
+        lib.convert/->pMBQL
+        (lib.util/query-stage -1)))))
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/metric
   [query stage-number metric-metadata]

@@ -18,6 +18,7 @@
                             Table]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
+   [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
@@ -416,9 +417,12 @@
                               clean-entity)))))
 
               (testing "for settings"
-                (is (= (into {} (for [{:keys [key value]} (get @entities "Setting")]
-                                  [key value]))
-                       (yaml/from-file (io/file dump-dir "settings.yaml"))))))))))))
+                (let [settings (get @entities "Setting")]
+                  (is (every? @#'setting/exported-settings
+                              (set (map (comp symbol :key) settings))))
+                  (is (= (into {} (for [{:keys [key value]} settings]
+                                    [key value]))
+                         (yaml/from-file (io/file dump-dir "settings.yaml")))))))))))))
 
 ;; This is a seperate test instead of a `testing` block inside `e2e-storage-ingestion-test`
 ;; because it's quite tricky to set up the generative test to generate parameters with source is card

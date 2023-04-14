@@ -303,64 +303,65 @@
                   :base_type    :type/Text}]
                 (lib/orderable-columns query)))))))
 
-(deftest ^:parallel orderable-columns-source-metadata-test
-  (testing "orderable-columns should use metadata for source query."
-    (let [query (lib.tu/query-with-card-source-table)]
-      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:name                     "USER_ID"
-                  :display_name             "User ID"
-                  :base_type                :type/Integer
-                  :lib/source               :source/card
-                  :lib/desired-column-alias "USER_ID"}
-                 {:name                     "count"
-                  :display_name             "Count"
-                  :base_type                :type/Integer
-                  :lib/source               :source/card
-                  :lib/desired-column-alias "count"}
-                 {:name                     "ID"
-                  :display_name             "ID"
-                  :base_type                :type/BigInteger
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__ID"}
-                 {:name                     "NAME"
-                  :display_name             "Name"
-                  :base_type                :type/Text
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__NAME"}
-                 {:name                     "LAST_LOGIN"
-                  :display_name             "Last Login"
-                  :base_type                :type/DateTime
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"}]
-                (lib/orderable-columns query)))
-        (testing `lib/display-info
-          (is (=? [{:name                   "USER_ID"
-                    :display_name           "User ID"
-                    :table                  {:name "My Card", :display_name "My Card"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable false}
-                   {:name                   "count"
-                    :display_name           "Count"
-                    :table                  {:name "My Card", :display_name "My Card"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable false}
-                   {:name                   "ID"
-                    :display_name           "ID"
-                    :table                  {:name "USERS", :display_name "Users"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable true}
-                   {:name                   "NAME"
-                    :display_name           "Name"
-                    :table                  {:name "USERS", :display_name "Users"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable true}
-                   {:name                   "LAST_LOGIN"
-                    :display_name           "Last Login"
-                    :table                  {:name "USERS", :display_name "Users"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable true}]
-                  (for [col (lib/orderable-columns query)]
-                    (lib/display-info query col)))))))))
+(deftest ^:parallel orderable-columns-source-card-test
+  (doseq [varr [#'lib.tu/query-with-card-source-table
+                #'lib.tu/query-with-card-source-table-with-result-metadata]
+          :let [query (varr)]]
+    (testing (str (pr-str varr) \newline (lib.util/format "Query =\n%s" (u/pprint-to-str query)))
+      (is (=? [{:name                     "USER_ID"
+                :display_name             "User ID"
+                :base_type                :type/Integer
+                :lib/source               :source/card
+                :lib/desired-column-alias "USER_ID"}
+               {:name                     "count"
+                :display_name             "Count"
+                :base_type                :type/Integer
+                :lib/source               :source/card
+                :lib/desired-column-alias "count"}
+               {:name                     "ID"
+                :display_name             "ID"
+                :base_type                :type/BigInteger
+                :lib/source               :source/implicitly-joinable
+                :lib/desired-column-alias "USERS__via__USER_ID__ID"}
+               {:name                     "NAME"
+                :display_name             "Name"
+                :base_type                :type/Text
+                :lib/source               :source/implicitly-joinable
+                :lib/desired-column-alias "USERS__via__USER_ID__NAME"}
+               {:name                     "LAST_LOGIN"
+                :display_name             "Last Login"
+                :base_type                :type/DateTime
+                :lib/source               :source/implicitly-joinable
+                :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"}]
+              (lib/orderable-columns query)))
+      (testing `lib/display-info
+        (is (=? [{:name                   "USER_ID"
+                  :display_name           "User ID"
+                  :table                  {:name "My Card", :display_name "My Card"}
+                  :is_from_previous_stage false
+                  :is_implicitly_joinable false}
+                 {:name                   "count"
+                  :display_name           "Count"
+                  :table                  {:name "My Card", :display_name "My Card"}
+                  :is_from_previous_stage false
+                  :is_implicitly_joinable false}
+                 {:name                   "ID"
+                  :display_name           "ID"
+                  :table                  {:name "USERS", :display_name "Users"}
+                  :is_from_previous_stage false
+                  :is_implicitly_joinable true}
+                 {:name                   "NAME"
+                  :display_name           "Name"
+                  :table                  {:name "USERS", :display_name "Users"}
+                  :is_from_previous_stage false
+                  :is_implicitly_joinable true}
+                 {:name                   "LAST_LOGIN"
+                  :display_name           "Last Login"
+                  :table                  {:name "USERS", :display_name "Users"}
+                  :is_from_previous_stage false
+                  :is_implicitly_joinable true}]
+                (for [col (lib/orderable-columns query)]
+                  (lib/display-info query col))))))))
 
 (deftest ^:parallel orderable-columns-e2e-test
   (testing "Use the metadata returned by `orderable-columns` to add a new order-by to a query."

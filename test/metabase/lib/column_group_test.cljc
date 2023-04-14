@@ -35,8 +35,9 @@
                 :display_name           "Venues"}
                {:is_from_join           false
                 :is_implicitly_joinable true
-                :name                   "CATEGORIES"
-                :display_name           "Categories"}]
+                :name                   "CATEGORY_ID"
+                :display_name           "Category ID"
+                :fk_reference_name      "Category"}]
               (for [group groups]
                 (lib/display-info query group)))))
     (testing `lib/columns-group-columns
@@ -64,6 +65,27 @@
       (is (= columns
              (mapcat lib/columns-group-columns groups))))))
 
+(deftest ^:parallel multi-stage-test
+  (let [query   (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/aggregate (lib/sum (lib/field "VENUES" "ID")))
+                    (lib/breakout (lib/field "VENUES" "NAME"))
+                    (lib/append-stage))
+        columns (lib/orderable-columns query)
+        groups  (lib/group-columns columns)]
+    (is (=? [{::lib.column-group/group-type :group-type/main
+              ::lib.column-group/columns    [{:display_name "Name", :lib/source :source/previous-stage}
+                                             {:display_name "Sum of ID", :lib/source :source/previous-stage}]}]
+            groups))
+    (testing `lib/display-info
+      (is (=? [{:display_name ""
+                :is_from_join false
+                :is_implicitly_joinable false}]
+              (for [group groups]
+                (lib/display-info query group)))))
+    (testing `lib/columns-group-columns
+      (is (= columns
+             (mapcat lib/columns-group-columns groups))))))
+
 (deftest ^:parallel source-card-test
   (let [query   (lib.tu/query-with-card-source-table)
         columns (lib/orderable-columns query)
@@ -72,7 +94,7 @@
               ::lib.column-group/columns    [{:display_name "User ID", :lib/source :source/card}
                                              {:display_name "Count", :lib/source :source/card}]}
              {::lib.column-group/group-type :group-type/join.implicit
-              :table-id                     (meta/id :users)
+              :fk-field-id                  (meta/id :checkins :user-id)
               ::lib.column-group/columns    [{:display_name "ID", :lib/source :source/implicitly-joinable}
                                              {:display_name "Name", :lib/source :source/implicitly-joinable}
                                              {:display_name "Last Login", :lib/source :source/implicitly-joinable}]}]
@@ -82,8 +104,9 @@
                 :display_name           "My Card"
                 :is_from_join           false
                 :is_implicitly_joinable false}
-               {:name                   "USERS"
-                :display_name           "Users"
+               {:name                   "USER_ID"
+                :display_name           "User ID"
+                :fk_reference_name      "User"
                 :is_from_join           false
                 :is_implicitly_joinable true}]
               (for [group groups]
@@ -147,8 +170,9 @@
                 :display_name           "Venues"}
                {:is_from_join           false
                 :is_implicitly_joinable true
-                :name                   "CATEGORIES"
-                :display_name           "Categories"}]
+                :name                   "CATEGORY_ID"
+                :display_name           "Category ID"
+                :fk_reference_name      "Category"}]
               (for [group groups]
                 (lib/display-info query group)))))
     (testing `lib/columns-group-columns
@@ -165,7 +189,7 @@
                                              {:display_name "Count", :lib/source :source/card}
                                              {:display_name "expr", :lib/source :source/expressions}]}
              {::lib.column-group/group-type :group-type/join.implicit
-              :table-id                     (meta/id :users)
+              :fk-field-id                  (meta/id :checkins :user-id)
               ::lib.column-group/columns    [{:display_name "ID", :lib/source :source/implicitly-joinable}
                                              {:display_name "Name", :lib/source :source/implicitly-joinable}
                                              {:display_name "Last Login", :lib/source :source/implicitly-joinable}] }]
@@ -175,8 +199,9 @@
                 :display_name           "My Card"
                 :is_from_join           false
                 :is_implicitly_joinable false}
-               {:name                   "USERS"
-                :display_name           "Users"
+               {:name                   "USER_ID"
+                :display_name           "User ID"
+                :fk_reference_name      "User"
                 :is_from_join           false
                 :is_implicitly_joinable true}]
               (for [group groups]
@@ -208,7 +233,7 @@
                                              {:display_name "sum of User ID", :lib/source :source/previous-stage}]}]
             groups))
     (testing `lib/display-info
-      (is (=? [{:display_name           "Native query"
+      (is (=? [{:display_name           ""
                 :is_from_join           false
                 :is_implicitly_joinable false}]
               (for [group groups]

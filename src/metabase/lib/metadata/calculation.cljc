@@ -39,7 +39,7 @@
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(mu/defn ^:export display-name :- ::lib.schema.common/non-blank-string
+(mu/defn ^:export display-name :- :string
   "Calculate a nice human-friendly display name for something. See [[DisplayNameStyle]] for a the difference between
   different `style`s."
   ([query x]
@@ -237,7 +237,7 @@
 
 (mr/register! ::display-info
   [:map
-   [:display_name ::lib.schema.common/non-blank-string]
+   [:display_name :string]
    ;; For Columns. `base_type` not included here, FE doesn't need to know about that.
    [:effective_type {:optional true} [:maybe [:ref ::lib.schema.common/base-type]]]
    [:semantic_type  {:optional true} [:maybe [:ref ::lib.schema.common/semantic-type]]]
@@ -354,6 +354,12 @@
     (f column-alias-string) => unique-alias-string
 
   Used to generate unique names."
+  ([query]
+   (default-columns query (lib.util/query-stage query -1)))
+
+  ([query x]
+   (default-columns query -1 x))
+
   ([query stage-number x]
    (default-columns query stage-number x (lib.util/unique-name-generator)))
 
@@ -380,6 +386,12 @@
 
   Default implementation is just [[default-columns]]; currently only stages have a specific implementation
   for [[visible-columns-method]], but this might change in the future."
+  ([query]
+   (visible-columns query (lib.util/query-stage query -1)))
+
+  ([query x]
+   (visible-columns query -1 x))
+
   ([query stage-number x]
    (visible-columns query stage-number x (lib.util/unique-name-generator)))
 

@@ -301,13 +301,11 @@
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 
 (defmethod serdes/extract-one "Database"
-  [_model-name {secrets :database/secrets :or {secrets :exclude}} entity]
-  ;; TODO Support alternative encryption of secret database details.
-  ;; There's one optional foreign key: creator_id. Resolve it as an email.
-  (cond-> (serdes/extract-one-basics "Database" entity)
-    true                 (update :creator_id serdes/*export-user*)
-    true                 (dissoc :features) ; This is a synthetic column that isn't in the real schema.
-    (= :exclude secrets) (dissoc :details)))
+  [_model-name {:keys [include-database-secrets]} entity]
+  (-> (serdes/extract-one-basics "Database" entity)
+      (update :creator_id serdes/*export-user*)
+      (dissoc :features) ; This is a synthetic column that isn't in the real schema.
+      (cond-> (not include-database-secrets) (dissoc :details))))
 
 (defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]

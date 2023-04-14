@@ -20,7 +20,7 @@ describe("issue 22473", () => {
       .type(`${nocollection.first_name} ${nocollection.last_name}{enter}`)
       .blur();
     sidebar().within(() => {
-      cy.button("Done").click()
+      cy.button("Done").click();
     });
 
     cy.signIn("nocollection");
@@ -31,8 +31,8 @@ describe("issue 22473", () => {
       cy.findByLabelText("close icon").click();
     });
     modal().within(() => {
-      cy.button("Unsubscribe").click()
+      cy.button("Unsubscribe").click();
     });
     cy.findByText("Orders in a dashboard").should("not.exist");
-  })
-})
+  });
+});

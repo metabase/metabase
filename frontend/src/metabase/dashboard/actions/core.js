@@ -55,8 +55,8 @@ export const onReplaceAllDashCardVisualizationSettings = createAction(
   (id, settings) => ({ id, settings }),
 );
 
-export const UPDATE_DASHCARD_ID = "metabase/dashboard/UPDATE_DASHCARD_ID";
-export const updateDashcardId = createAction(
-  UPDATE_DASHCARD_ID,
-  (oldDashcardId, newDashcardId) => ({ oldDashcardId, newDashcardId }),
+export const UPDATE_DASHCARD_IDS = "metabase/dashboard/UPDATE_DASHCARD_IDS";
+export const updateDashcardIds = createAction(
+  UPDATE_DASHCARD_IDS,
+  (oldDashcardIds, newDashcardIds) => ({ oldDashcardIds, newDashcardIds }),
 );

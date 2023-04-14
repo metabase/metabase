@@ -299,13 +299,13 @@
      (lib.util/update-query-stage query stage-number update :joins (fn [joins]
                                                                      (conj (vec joins) new-join))))))
 
-(mu/defn joins :- ::lib.schema.join/joins
+(mu/defn joins :- [:maybe ::lib.schema.join/joins]
   "Get all joins in a specific `stage` of a `query`. If `stage` is unspecified, returns joins in the final stage of the
   query."
   ([query]
    (joins query -1))
   ([query        :- ::lib.schema/query
-    stage-number :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
+    stage-number :- :int]
    (not-empty (get (lib.util/query-stage query stage-number) :joins))))
 
 (mu/defn implicit-join-name :- ::lib.schema.common/non-blank-string
