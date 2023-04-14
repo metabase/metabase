@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 
-import type { NotebookStepUiComponentProps } from "../types";
-import ClauseStep from "./ClauseStep";
+import type { NotebookStepUiComponentProps } from "../../types";
+import ClauseStep from "../ClauseStep";
 
 const breakoutTetherOptions = {
   attachment: "top left",
