@@ -51,6 +51,9 @@
           ;; that here.
           (when-let [table (lib.metadata/table query table-id)]
             (lib.metadata.calculation/display-info query stage-number table)))
+        ;; for multi-stage queries return an empty string (#30108)
+        (when (next (:stages query))
+          {:display_name ""})
         ;; if this is a native query or something else that doesn't have a source Table or source Card then use the
         ;; stage display name.
         {:display_name (lib.metadata.calculation/display-name query stage-number stage)}))
