@@ -55,7 +55,7 @@ export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
   const cancelQueryDeferred = getCancelQueryDeferred(getState());
   if (getIsQueryRunning(getState())) {
     cancelQueryDeferred?.resolve();
-    dispatch({ type: CANCEL_QUERY });
+    dispatch({ type: CANCEL_QUERY }); 
   }
 };
 
