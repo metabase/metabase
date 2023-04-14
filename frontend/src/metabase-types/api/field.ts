@@ -4,7 +4,7 @@ import { TableId } from "./table";
 export type FieldId = number;
 
 export interface FieldFingerprint {
-  global: FieldGlobalFingerprint;
+  global?: FieldGlobalFingerprint;
   type?: FieldTypeFingerprint;
 }
 

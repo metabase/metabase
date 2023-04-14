@@ -47,7 +47,7 @@ export function getDefaultParameterWidgetType(tag: TemplateTag, field: Field) {
     return widgetType;
   }
 
-  const distinctCount = field.fingerprint?.global["distinct-count"];
+  const distinctCount = field.fingerprint?.global?.["distinct-count"];
   if (
     distinctCount != null &&
     distinctCount > 20 &&
