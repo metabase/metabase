@@ -61,10 +61,6 @@
   [query stage-number [_tag _opts index]]
   (lib.metadata.calculation/display-name query stage-number (resolve-aggregation query stage-number index)))
 
-#_(defmethod lib.metadata.calculation/display-info-method :aggregation
-  [query stage-number [_tag _opts index]]
-  (lib.metadata.calculation/display-info query stage-number (resolve-aggregation query stage-number index)))
-
 (defmethod lib.metadata.calculation/display-name-method :count
   [query stage-number [_count _opts x]]
   ;; x is optional.
