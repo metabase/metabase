@@ -6,7 +6,6 @@
    [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]

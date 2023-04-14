@@ -60,7 +60,6 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [methodical.core :as methodical]
-   [toucan.models :as models]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
