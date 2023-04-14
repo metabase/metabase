@@ -65,8 +65,7 @@ describe("issues 29347, 29346", () => {
       filterOnRemappedValues(filterValue);
       cy.wait("@cardQuery");
 
-      verifyRemappedFilter(filterValue);
-      verifyRemappedCard(filterValue);
+      verifyRemapping(filterValue);
     });
 
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
@@ -79,8 +78,7 @@ describe("issues 29347, 29346", () => {
       cy.wait("@dashboard");
       cy.wait("@cardQuery");
 
-      verifyRemappedFilter(filterValue);
-      verifyRemappedCard(filterValue);
+      verifyRemapping(filterValue);
     });
   });
 
@@ -104,8 +102,7 @@ describe("issues 29347, 29346", () => {
       filterOnRemappedValues(filterValue);
       cy.wait("@cardQuery");
 
-      verifyRemappedFilter(filterValue);
-      verifyRemappedCard(filterValue);
+      verifyRemapping(filterValue);
     });
 
     it("should be able to filter on remapped values in the token (metabase#29347, metabase#29346)", () => {
@@ -122,6 +119,25 @@ describe("issues 29347, 29346", () => {
       cy.wait("@cardQuery");
 
       verifyRemappedCard(filterValue);
+    });
+
+    it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
+      createDashboard();
+      cy.get("@dashboardId").then(dashboardId => {
+        visitEmbeddedPage(
+          {
+            resource: { dashboard: dashboardId },
+            params: {},
+          },
+          {
+            setFilters: `${filterDetails.slug}=${filterValue}`,
+          },
+        );
+      });
+      cy.wait("@dashboard");
+      cy.wait("@cardQuery");
+
+      verifyRemapping(filterValue);
     });
   });
 
@@ -142,8 +158,7 @@ describe("issues 29347, 29346", () => {
       filterOnRemappedValues(filterValue);
       cy.wait("@cardQuery");
 
-      verifyRemappedFilter(filterValue);
-      verifyRemappedCard(filterValue);
+      verifyRemapping(filterValue);
     });
 
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
@@ -156,8 +171,7 @@ describe("issues 29347, 29346", () => {
       cy.wait("@dashboard");
       cy.wait("@cardQuery");
 
-      verifyRemappedFilter(filterValue);
-      verifyRemappedCard(filterValue);
+      verifyRemapping(filterValue);
     });
   });
 });
@@ -224,6 +238,11 @@ const filterOnRemappedValues = fieldValue => {
     cy.findByText(getRemappedValue(fieldValue)).click();
     cy.button("Add filter").click();
   });
+};
+
+const verifyRemapping = fieldValue => {
+  verifyRemappedFilter(filterValue);
+  verifyRemappedCard(fieldValue);
 };
 
 const verifyRemappedFilter = fieldValue => {
