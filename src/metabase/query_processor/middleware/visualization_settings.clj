@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.visualization-settings
   (:require
    [medley.core :as m]
-   [metabase.models.card :refer [Card]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.shared.models.visualization-settings :as mb.viz]
@@ -29,7 +28,7 @@
   [query]
   (or (-> query :viz-settings)
       (when-let [card-id (-> query :info :card-id)]
-        (mb.viz/db->norm (t2/select-one-fn :visualization_settings Card :id card-id)))))
+        (mb.viz/db->norm (t2/select-one-fn :visualization_settings 'Card :id card-id)))))
 
 (defn update-viz-settings
   "Middleware for fetching and processing a table's visualization settings so that they can be incorporated
