@@ -185,7 +185,9 @@ const addFieldRemapping = fieldId => {
   );
 };
 
-const createDashboard = ({ dashboardDetails = editableDashboardDetails }) => {
+const createDashboard = ({
+  dashboardDetails = editableDashboardDetails,
+} = {}) => {
   cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
     ({ body: { id, card_id, dashboard_id } }) => {
       cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
