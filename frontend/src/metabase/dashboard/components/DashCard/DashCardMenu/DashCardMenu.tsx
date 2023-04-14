@@ -127,7 +127,7 @@ interface QueryDownloadWidgetOpts {
 }
 
 const canEditQuestion = (question: Question) => {
-  return question.query().isEditable();
+  return question.query() != null && question.query().isEditable();
 };
 
 const canDownloadResults = (result?: Dataset) => {
