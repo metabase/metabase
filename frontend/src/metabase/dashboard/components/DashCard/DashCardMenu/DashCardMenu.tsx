@@ -4,7 +4,7 @@ import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
-import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
+import Icon from "metabase/components/Icon";
 import {
   downloadQueryResults,
   DownloadQueryResultsOpts,
@@ -110,12 +110,10 @@ const DashCardMenu = ({
       className={SAVING_CHART_IMAGE_HIDDEN_CLASS}
       items={menuItems}
       renderTrigger={({ open, onClick }: TriggerProps) => (
-        <EntityMenuTrigger
-          icon="ellipsis"
-          triggerProps={{
-            className: !open ? "hover-child hover-child--smooth" : undefined,
-            "data-testid": "dashcard-menu",
-          }}
+        <Icon
+          name="ellipsis"
+          className={!open ? "hover-child hover-child--smooth" : undefined}
+          data-testid="dashcard-menu"
           onClick={onClick}
         />
       )}
