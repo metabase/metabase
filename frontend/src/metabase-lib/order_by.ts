@@ -45,3 +45,7 @@ declare function OrderByClauseFn(
 ): OrderByClause;
 
 export const orderByClause: typeof OrderByClauseFn = ML.order_by_clause;
+
+export function changeDirection(query: Query, clause: OrderByClause): Query {
+  return ML.change_direction(query, clause);
+}
