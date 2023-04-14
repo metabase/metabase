@@ -103,4 +103,4 @@
   (deferred-tru "Enumerated field values with cardinality at or below this point are treated as enums in the pseudo-ddl used in some model prompts.")
   :type :integer
   :visibility :internal
-  :default 10)
+  :default 60)
