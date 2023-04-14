@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -77,7 +78,8 @@
           (lib.convert/->pMBQL
            {:database (meta/id)
             :type     :query
-            :query    {:fields [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+            :query    {:source-table (meta/id :categories)
+                       :fields [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                        :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
                                  :source-table (meta/id :venues)
                                  :condition    [:=
@@ -121,6 +123,7 @@
                                        {:lib/uuid string?, :display-name "Revenue"}
                                        [:field {:lib/uuid string?} 1]]]}]}
           (lib.convert/->pMBQL {:type  :query
+                                :database 5
                                 :query {:source-table 1
                                         :aggregation  [[:aggregation-options
                                                         [:sum [:field 1 nil]]
@@ -188,7 +191,8 @@
 
     {:database 23001
      :type     :query
-     :query    {:fields [[:field 23101 {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+     :query    {:source-table 224
+                :fields [[:field 23101 {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                 :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
                           :source-table 23040
                           :condition    [:=
@@ -199,7 +203,8 @@
 
     {:database 1
      :type     :query
-     :query    {:order-by [[:asc [:field 1 nil]]]}}
+     :query    {:source-table 224
+                :order-by [[:asc [:field 1 nil]]]}}
 
     {:database 5
      :type     :query
@@ -209,3 +214,61 @@
                                 :fields       [[:field 1 {:join-alias "Cat"}]]}]
                 :limit        1
                 :source-table 4}}))
+
+(deftest ^:parallel clean-test
+  (testing "irrecoverable queries"
+    ;; Eventually we should get to a place where ->pMBQL throws an exception here,
+    ;; but legacy e2e tests make this impossible right now
+    (is (= {:type :query
+            :query {}}
+           (lib.convert/->legacy-MBQL
+             (lib.convert/->pMBQL
+               {:type :query}))))
+    (is (= {:type :query
+            :database 1
+            :query {}}
+            (lib.convert/->legacy-MBQL
+              (lib.convert/->pMBQL
+                {:type :query
+                 :database 1}))))
+    (is (= {:type :query
+            :database 1
+            :query {}}
+           (lib.convert/->legacy-MBQL
+             (lib.convert/->pMBQL
+               {:type :query
+                :database 1})))))
+  (testing "recoverable queries"
+    (is (nil? (->
+                {:database 1
+                 :type :query
+                 :query {:source-table 224
+                         :order-by [[:asc [:xfield 1 nil]]]}}
+                lib.convert/->pMBQL
+                lib/order-bys)))
+    (is (nil? (->
+                {:database 1
+                 :type :query
+                 :query {:source-table 224
+                         :filter [:and [:= [:xfield 1 nil]]]}}
+                lib.convert/->pMBQL
+                lib/filters)))
+    (is (nil? (->
+                {:database 5
+                 :type :query
+                 :query {:joins [{:source-table 3
+                                  ;; Invalid condition makes the join invalid
+                                  :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
+                         :source-table 4}}
+                 lib.convert/->pMBQL
+                 lib/joins)))
+    (is (nil? (->
+                {:database 5
+                 :type :query
+                 :query {:joins [{:source-table 3
+                                  :condition [:= [:field 2 nil] [:field 2 nil]]
+                                  ;; Invalid field, the join is still valid
+                                  :fields [[:xfield 2 nil]]}]
+                         :source-table 4}}
+                 lib.convert/->pMBQL
+                 (get-in [:stages 0 :joins 0 :fields]))))))

@@ -22,7 +22,7 @@ import {
   REMOVE_PARAMETER,
   FETCH_CARD_DATA,
   CLEAR_CARD_DATA,
-  UPDATE_DASHCARD_ID,
+  UPDATE_DASHCARD_IDS,
   MARK_CARD_AS_SLOW,
   SET_PARAMETER_VALUE,
   FETCH_DASHBOARD_CARD_DATA,
@@ -250,11 +250,16 @@ const dashcardData = handleActions(
       next: (state, { payload: { cardId, dashcardId } }) =>
         assocIn(state, [dashcardId, cardId]),
     },
-    [UPDATE_DASHCARD_ID]: {
-      next: (state, { payload: { oldDashcardId, newDashcardId } }) =>
-        chain(state)
-          .assoc(newDashcardId, state[oldDashcardId])
-          .dissoc(oldDashcardId)
+    [UPDATE_DASHCARD_IDS]: {
+      next: (state, { payload: { oldDashcardIds, newDashcardIds } }) =>
+        oldDashcardIds
+          .reduce(
+            (wrappedState, oldDcId, index) =>
+              wrappedState
+                .dissoc(oldDcId)
+                .assoc(newDashcardIds[index], state[oldDcId]),
+            chain(state),
+          )
           .value(),
     },
     [RESET]: { next: state => ({}) },

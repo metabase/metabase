@@ -10,6 +10,46 @@ export function getDashboardCard(index = 0) {
   return cy.get(".DashCard").eq(index);
 }
 
+function getDashCardApiUrl(dashId) {
+  return `/api/dashboard/${dashId}/cards`;
+}
+
+const DEFAULT_CARD = {
+  id: -1,
+  row: 0,
+  col: 0,
+  size_x: 8,
+  size_y: 8,
+  visualization_settings: {},
+  parameter_mappings: [],
+};
+
+export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
+  return cy
+    .request("PUT", getDashCardApiUrl(dashboard_id), {
+      cards: [
+        {
+          ...DEFAULT_CARD,
+          card_id,
+          ...card,
+        },
+      ],
+    })
+    .then(response => ({
+      ...response,
+      body: response.body[0],
+    }));
+}
+/**
+ * Replaces all the cards on a dashboard with the array given in the `cards` parameter.
+ * Can be used to remove cards (exclude from array), or add/update them.
+ */
+export function updateDashboardCards({ dashboard_id, cards }) {
+  return cy.request("PUT", getDashCardApiUrl(dashboard_id), {
+    cards: cards.map(card => ({ ...DEFAULT_CARD, ...card })),
+  });
+}
+
 export function getDashboardCardMenu(index = 0) {
   return getDashboardCard(index).findByTestId("dashcard-menu");
 }
