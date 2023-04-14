@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 
 import Icon from "metabase/components/Icon";
+import { singularize } from "metabase/lib/formatting";
 
 import * as Lib from "metabase-lib";
 import { getIconForField } from "metabase-lib/metadata/utils/fields";
@@ -50,7 +51,7 @@ function QueryColumnPicker({
         });
 
         return {
-          name: groupInfo.display_name,
+          name: getGroupName(groupInfo),
           icon: getGroupIcon(groupInfo),
           items,
         };
@@ -92,14 +93,20 @@ function renderItemIcon(item: ColumnListItem) {
   return <Icon name={getIconForField(item)} size={18} />;
 }
 
-function getGroupIcon(tableInfo: Lib.TableDisplayInfo) {
-  if (tableInfo.is_source_table) {
+function getGroupName(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
+  const columnInfo = groupInfo as Lib.ColumnDisplayInfo;
+  const tableInfo = groupInfo as Lib.TableDisplayInfo;
+  return columnInfo.fk_reference_name || singularize(tableInfo.display_name);
+}
+
+function getGroupIcon(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
+  if ((groupInfo as Lib.TableDisplayInfo).is_source_table) {
     return "table";
   }
-  if (tableInfo.is_from_join) {
+  if (groupInfo.is_from_join) {
     return "join_left_outer";
   }
-  if (tableInfo.is_implicitly_joinable) {
+  if (groupInfo.is_implicitly_joinable) {
     return "connections";
   }
   return;

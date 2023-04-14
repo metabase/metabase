@@ -34,7 +34,7 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   columnGroup: ColumnGroup,
-): TableDisplayInfo;
+): ColumnDisplayInfo | TableDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   orderByClause: OrderByClause,
