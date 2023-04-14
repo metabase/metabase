@@ -44,13 +44,13 @@ These three charting types have very similar options, which are broken up into t
 
 ### Trend lines
 
-**Trend lines** are another useful option for line, area, bar, and scatter charts. If you have a question where you're grouping by a time field, open up the visualization settings and turn the `Show trend line` toggle on to display a trend line. Metabase will choose the best type of line to fit to the trend of your series. Trend lines will even work if you have multiple metrics selected in your summary. But trend lines won't work if you have any groupings beyond the one time field.
+**Trend lines** are another useful option for line, area, bar, and scatter charts. If you have a question where you're grouping by a time field, open up the visualization settings and turn the **Show trend line** toggle on to display a trend line. Metabase will choose the best type of line to fit to the trend of your series. Trend lines will even work if you have multiple metrics selected in your summary. But trend lines won't work if you have any groupings beyond the one time field.
 
 ![Trend lines](../../images/trend-lines.png)
 
 ### Data
 
-Here's where you can choose the columns you want to plot on your x and y axes. This is mostly useful if your table or result set contains more than two columns, like if you're trying to graph fields from an unaggregated table. You can also add additional metrics to your chart by clicking the `Add another series` link below the y-axis dropdown, or break your current metric out by an additional dimension by clicking the `Add a series breakout` link below the x-axis dropdown (note that you can't add an additional series breakout if you have more than one metric/series).
+Here's where you can choose the columns you want to plot on your x and y axes. This is mostly useful if your table or result set contains more than two columns, like if you're trying to graph fields from an unaggregated table. You can also add additional metrics to your chart by clicking the **Add another series** link below the y-axis dropdown, or break your current metric out by an additional dimension by clicking the **Add a series breakout** link below the x-axis dropdown (note that you can't add an additional series breakout if you have more than one metric/series).
 
 ### Display
 
@@ -59,7 +59,7 @@ There's quite a bit you can do in this tab, but the options available will depen
 - **Set the colors and labels** for the series on your chart.
 - **Change the style of your lines** for Line and Area charts, and choose whether to display dots on the lines.
 - **Specify how to handle missing values**. Use the "Replace missing values with…" setting to change how your chart deals with missing values. You can use linear interpolation, or display those points as zero or as nothing.
-- **Add a goal line**. Goal lines can be used in conjunction with [alerts](15-alerts.md) to send an email or a Slack message when your metric cross this line.
+- **Add a goal line**. Goal lines can be used in conjunction with [alerts](../alerts.md) to send an email or a Slack message when your metric cross this line.
 - **Add a trend line**. If you're looking at a time series chart, you can turn on a trend line to show where things are heading.
 - **Show values on data points**. The default setting will try and fit as many values on your chart as will fit nicely, but you can also force Metabase to show the values for each and every data point, which it will do begrudgingly. Showing values also works with multi-series charts, but be aware that the more data points you add, the more crowded with values the charts will become.
 
