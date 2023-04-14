@@ -26,6 +26,7 @@ declare function OrderByFn(
   query: Query,
   column: ColumnMetadata | OrderByClause,
 ): Query;
+
 declare function OrderByFn(
   query: Query,
   stageIndex: number,
