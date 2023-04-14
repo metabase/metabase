@@ -273,7 +273,7 @@
                  :query {:joins [{:source-table 3
                                   ;; Invalid condition makes the join invalid
                                   :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
-                            :source-table 4}}
+                         :source-table 4}}
                  lib.convert/->pMBQL
                  lib/joins)))
     (is (nil? (->

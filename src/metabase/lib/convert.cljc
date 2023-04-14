@@ -7,7 +7,6 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]))
 
 (defn- clean-location [almost-query error-type error-location]
