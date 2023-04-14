@@ -514,38 +514,37 @@
     (check-parameter-mapping-permissions new-mappings)))
 
 (mu/defn ^:private classify-changes :- [:map
-                                        [:to-create [:sequential [:map [:id neg-int?]]]]
+                                        [:to-create [:sequential [:map [:id ms/NegativeInt]]]]
                                         [:to-update [:sequential [:map [:id ms/PositiveInt]]]]
                                         [:to-delete [:sequential [:map [:id ms/PositiveInt]]]]]
   "Given 2 lists of seq maps changes, where each map an `id` keys,
   return a map of 3 keys, `:to-create`, `:to-update`, `:to-delete`.
 
   Where:
-    :to-create is a list of maps that has negative ids in `new-changes`
-    :to-update is a list of maps that has ids in both `current-changes` and `new-changes`
-    :to delete is a list of maps that has ids only in `current-changes`"
-  [current-changes :- [:sequential [:map [:id ms/PositiveInt]]]
-   new-changes     :- [:sequential [:map [:id int?]]]]
-  (let [current-change-ids (set (map :id current-changes))
-        new-change-ids     (set (map :id new-changes))
-        to-create          (filter #(neg? (:id %)) new-changes)
-        ;; to-update changes are new changes with id in the current changes
-        to-update          (filter #(current-change-ids (:id %)) new-changes)
-        ;; to delete changes in current but not new changes
-        to-delete          (filter #(not (new-change-ids (:id %))) current-changes)]
+    :to-create is a list of maps that has negative ids in `new-items`
+    :to-update is a list of maps that has ids in both `current-items` and `new-items`
+    :to delete is a list of maps that has ids only in `current-items`"
+  [current-items :- [:sequential [:map [:id ms/PositiveInt]]]
+   new-items     :- [:sequential [:map [:id int?]]]]
+  (let [new-change-ids     (set (map :id new-items))
+        to-create          (remove (comp pos? :id) new-items)
+        ;; to-update items are new items with id in the current items
+        to-update          (remove (comp neg? :id) new-items)
+        ;; to delete items in current but not new items
+        to-delete          (remove (comp new-change-ids :id) current-items)]
     {:to-update to-update
      :to-delete to-delete
      :to-create to-create}))
 
-(defn- create-cards!
-  [dashboard cards]
-  (doseq [{:keys [card_id]} cards
+(defn- create-dashcards!
+  [dashboard dashcards]
+  (doseq [{:keys [card_id]} dashcards
           :when  (pos-int? card_id)]
     (api/check-not-archived (api/read-check Card card_id)))
-  (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} cards
+  (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                         (assoc mapping :card-id card_id)))
-  (u/prog1 (api/check-500 (dashboard/add-dashcards! dashboard (map #(assoc % :creator_id @api/*current-user*) cards)))
+  (u/prog1 (api/check-500 (dashboard/add-dashcards! dashboard (map #(assoc % :creator_id @api/*current-user*) dashcards)))
     (events/publish-event! :dashboard-add-cards {:id (:id dashboard) :actor_id api/*current-user-id* :dashcards <>})
     (for [{:keys [card_id]} <>
           :when             (pos-int? card_id)]
@@ -553,17 +552,20 @@
                              api/*current-user-id*
                              {:dashboard-id (:id dashboard) :question-id card_id}))))
 
-(defn- update-cards! [dashboard cards]
-  (check-updated-parameter-mapping-permissions (:id dashboard) cards)
-  ;; transform the card data to the format of the DashboardCard model
-  ;; so update-dashcards! can compare them with existing cards
-  (dashboard/update-dashcards! dashboard (map dashboard-card/from-parsed-json cards))
-  ;; TODO this is ambiguous, we don't know for sure here that the cards are repositioned
-  (events/publish-event! :dashboard-reposition-cards {:id (:id dashboard) :actor_id api/*current-user-id* :dashcards cards}))
+(defn- update-dashcards! [dashboard dashcards]
+  (check-updated-parameter-mapping-permissions (:id dashboard) dashcards)
+  ;; transform the dashcard data to the format of the DashboardCard model
+  ;; so update-dashcards! can compare them with existing dashcards
+  (dashboard/update-dashcards! dashboard (map dashboard-card/from-parsed-json dashcards))
+  ;; TODO this is potentially misleading, we don't know for sure here that the dashcards are repositioned
+  (events/publish-event! :dashboard-reposition-cards {:id (:id dashboard) :actor_id api/*current-user-id* :dashcards dashcards}))
 
-(defn- delete-cards! [dashboard dashcard-ids]
-  (when-let [dashboard-cards (t2/select DashboardCard :id [:in dashcard-ids])]
-    (dashboard-card/delete-dashboard-cards! dashboard-cards (:id dashboard) api/*current-user-id*)))
+(defn- delete-dashcards! [{dashboard-id :id :as _dashboard} dashcard-ids]
+  (when (seq dashcard-ids)
+    (dashboard-card/delete-dashboard-cards!
+      (t2/select DashboardCard :id [:in dashcard-ids])
+      dashboard-id
+      api/*current-user-id*)))
 
 (def ^:private UpdatedDashboardCard
   [:map
@@ -602,11 +604,11 @@
     (api/check-500
       (t2/with-transaction [_conn]
         (when (seq to-delete)
-          (delete-cards! dashboard (map :id to-delete)))
+          (delete-dashcards! dashboard (map :id to-delete)))
         (when (seq to-create)
-          (create-cards! dashboard (map #(dissoc % :id) to-create)))
+          (create-dashcards! dashboard (map #(dissoc % :id) to-create)))
         (when (seq to-update)
-          (update-cards! dashboard to-update))
+          (update-dashcards! dashboard to-update))
         true))
     (t2/hydrate (dashboard/ordered-cards id) :series)))
 
