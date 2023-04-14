@@ -46,14 +46,14 @@ function setup(step = createMockNotebookStep()) {
 }
 
 describe("SortStep", () => {
-  it("should render correctly without a sort", () => {
+  it("should render correctly without an order by", () => {
     setup();
     expect(getIcon("add")).toBeInTheDocument();
     expect(queryIcon("arrow_up")).not.toBeInTheDocument();
     expect(queryIcon("arrow_down")).not.toBeInTheDocument();
   });
 
-  it("should render correctly with asc sort set", () => {
+  it("should render correctly with ascending order by", () => {
     const { query, columnInfo } = createQueryWithOrderBy();
 
     setup(createMockNotebookStep({ topLevelQuery: query }));
@@ -63,7 +63,7 @@ describe("SortStep", () => {
     expect(queryIcon("arrow_down")).not.toBeInTheDocument();
   });
 
-  it("should render correctly with desc sort set", () => {
+  it("should render correctly with descending order by", () => {
     const { query, columnInfo } = createQueryWithOrderBy("desc");
 
     setup(createMockNotebookStep({ topLevelQuery: query }));
@@ -73,7 +73,7 @@ describe("SortStep", () => {
     expect(queryIcon("arrow_up")).not.toBeInTheDocument();
   });
 
-  it("should display sortable columns", () => {
+  it("should display orderable columns", () => {
     setup();
 
     userEvent.click(getIcon("add"));
@@ -91,7 +91,7 @@ describe("SortStep", () => {
     ).toBeInTheDocument();
   });
 
-  it("should add a sort", () => {
+  it("should add an order by", () => {
     const { gerRecentOrderByClause } = setup();
 
     userEvent.click(getIcon("add"));
@@ -102,7 +102,7 @@ describe("SortStep", () => {
     expect(orderBy.direction).toBe("asc");
   });
 
-  it("should toggle sort direction", () => {
+  it("should toggle an order by direction", () => {
     const { query, columnInfo } = createQueryWithOrderBy();
     const { gerRecentOrderByClause } = setup(
       createMockNotebookStep({ topLevelQuery: query }),
@@ -115,7 +115,7 @@ describe("SortStep", () => {
     expect(orderBy.display_name).toBe(columnInfo.display_name);
   });
 
-  it("should change sorting field", () => {
+  it("should change ordered field", () => {
     const { query, columnInfo } = createQueryWithOrderBy();
     const { gerRecentOrderByClause } = setup(
       createMockNotebookStep({ topLevelQuery: query }),
@@ -128,7 +128,7 @@ describe("SortStep", () => {
     expect(orderBy.display_name).toBe("Created At");
   });
 
-  it("should remove sorting", () => {
+  it("should remove an order by", () => {
     const { query } = createQueryWithOrderBy();
     const { getNextQuery } = setup(
       createMockNotebookStep({ topLevelQuery: query }),
