@@ -79,9 +79,9 @@ describe("SortStep", () => {
     userEvent.click(getIcon("add"));
 
     // Tables
-    expect(screen.getByText("Orders")).toBeInTheDocument();
-    expect(screen.getByText("Products")).toBeInTheDocument();
-    expect(screen.getByText("People")).toBeInTheDocument();
+    expect(screen.getByText("Order")).toBeInTheDocument();
+    expect(screen.getByText("Product")).toBeInTheDocument();
+    expect(screen.getByText("User")).toBeInTheDocument();
     // Order columns
     expect(screen.getByRole("option", { name: "ID" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "User ID" })).toBeInTheDocument();

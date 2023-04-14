@@ -39,6 +39,7 @@ type TableInlineDisplayInfo = Pick<
 export type ColumnDisplayInfo = {
   name: string;
   display_name: string;
+  fk_reference_name?: string;
   semantic_type?: string | null;
   effective_type: string;
   is_calculated: boolean;
