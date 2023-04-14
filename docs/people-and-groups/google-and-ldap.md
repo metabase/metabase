@@ -31,9 +31,11 @@ Now existing Metabase users signed into a Google account that matches their Meta
 
 ### Creating Metabase accounts with Google Sign-in
 
-If you’ve added your Google client ID to your Metabase settings, you can also let users sign up on their own without creating accounts for them.
+> On [paid plans](https://www.metabase.com/pricing), you're [charged for each additional account](https://www.metabase.com/docs/latest/cloud/how-billing-works#what-counts-as-a-user-account).
 
-To enable this, go to the Google Sign-In configuration page, and specify the email domain you want to allow. For example, if you work at WidgetCo you could enter "widgetco.com" in the field to let anyone with a company email sign up on their own.
+You can optionally tell Metabase to automatically create an account on someone's first SSO login.
+
+Once you've added your Google Client ID to your Metabase settings, go to the Google Sign-In configuration page, and specify the email domain you want to allow. For example, if you work at WidgetCo you could enter "widgetco.com" in the field to let anyone with a company email sign up on their own.
 
 Note that Metabase accounts created with Google Sign-In do not have passwords and must use Google to sign in to Metabase.
 

@@ -296,9 +296,9 @@ describe("scenarios > question > native", () => {
       ).as("databasePrompt");
 
       openNativeEditor();
-      cy.findByLabelText("Ask a question").click();
+      ensureDatabasePickerIsHidden();
 
-      cy.wait(100);
+      cy.findByLabelText("Ask a question").click();
 
       cy.findByPlaceholderText("Ask anything...")
         .focus()
@@ -322,10 +322,9 @@ describe("scenarios > question > native", () => {
       }).as("databasePrompt");
 
       openNativeEditor();
-      cy.findByLabelText("Ask a question").click();
+      ensureDatabasePickerIsHidden();
 
-      // When the native query editor is being initialized it acquires focus
-      cy.wait(100);
+      cy.findByLabelText("Ask a question").click();
 
       cy.findByPlaceholderText("Ask anything...")
         .focus()
@@ -343,6 +342,7 @@ describe("scenarios > question > native", () => {
       ).as("databasePrompt");
 
       cy.findByDisplayValue(PROMPT).type(" fixed{enter}");
+      cy.wait("@databasePrompt");
 
       runQuery();
       cy.findByText("18,760");
@@ -351,6 +351,12 @@ describe("scenarios > question > native", () => {
 });
 
 const runQuery = () => {
-  cy.get(".NativeQueryEditor .Icon-play").click();
+  cy.findByTestId("native-query-editor-container").within(() => {
+    cy.button("Get Answer").click();
+  });
   cy.wait("@dataset");
 };
+
+function ensureDatabasePickerIsHidden() {
+  cy.get("#DatabasePicker").should("not.exist");
+}

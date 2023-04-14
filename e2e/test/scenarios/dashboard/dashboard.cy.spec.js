@@ -9,7 +9,7 @@ import {
   modal,
   openNewCollectionItemFlowFor,
   visitDashboard,
-  appbar,
+  appBar,
   rightSidebar,
   getDashboardCardMenu,
 } from "e2e/support/helpers";
@@ -93,6 +93,7 @@ describe("scenarios > dashboard", () => {
     cy.get("main header").within(() => {
       cy.icon("info").click();
     });
+    cy.findByText("How many orders were placed in each year?").click();
     cy.findByDisplayValue("How many orders were placed in each year?");
   });
 
@@ -554,7 +555,7 @@ describe("scenarios > dashboard", () => {
 
   it("should show collection breadcrumbs for a dashboard", () => {
     visitDashboard(1);
-    appbar().within(() => cy.findByText("Our analytics").click());
+    appBar().within(() => cy.findByText("Our analytics").click());
 
     cy.findByText("Orders").should("be.visible");
   });

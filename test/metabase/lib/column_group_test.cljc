@@ -10,7 +10,7 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(deftest ^:parallel group-columns-test
+(deftest ^:parallel basic-test
   (let [query   (lib/query-for-table-name meta/metadata-provider "VENUES")
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
@@ -43,7 +43,7 @@
       (is (= columns
              (mapcat lib/columns-group-columns groups))))))
 
-(deftest ^:parallel group-columns-aggregation-and-breakout-test
+(deftest ^:parallel aggregation-and-breakout-test
   (let [query   (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                     (lib/aggregate (lib/sum (lib/field "VENUES" "ID")))
                     (lib/breakout (lib/field "VENUES" "NAME")))
@@ -64,7 +64,7 @@
       (is (= columns
              (mapcat lib/columns-group-columns groups))))))
 
-(deftest ^:parallel group-columns-source-card-test
+(deftest ^:parallel source-card-test
   (let [query   (lib.tu/query-with-card-source-table)
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
@@ -92,7 +92,7 @@
       (is (= columns
              (mapcat lib/columns-group-columns groups))))))
 
-(deftest ^:parallel group-columns-joins-test
+(deftest ^:parallel joins-test
   (let [query   (lib.tu/query-with-join)
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
@@ -105,8 +105,8 @@
                                              {:name "PRICE", :display_name "Price"}]}
              {::lib.column-group/group-type :group-type/join.explicit
               :join-alias                   "Cat"
-              ::lib.column-group/columns    [{:display_name "Categories → ID", :lib/source :source/joins}
-                                             {:display_name "Categories → Name", :lib/source :source/joins}]}]
+              ::lib.column-group/columns    [{:display_name "ID", :lib/source :source/joins}
+                                             {:display_name "Name", :lib/source :source/joins}]}]
             groups))
     (testing `lib/display-info
       (is (=? [{:is_from_join           false
@@ -123,7 +123,7 @@
       (is (= columns
              (mapcat lib/columns-group-columns groups))))))
 
-(deftest ^:parallel group-columns-expressions-test
+(deftest ^:parallel expressions-test
   (let [query   (lib.tu/query-with-expression)
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
@@ -155,7 +155,7 @@
       (is (= columns
              (mapcat lib/columns-group-columns groups))))))
 
-(deftest ^:parallel group-columns-source-card-with-expressions-test
+(deftest ^:parallel source-card-with-expressions-test
   (let [query   (-> (lib.tu/query-with-card-source-table)
                     (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
         columns (lib/orderable-columns query)

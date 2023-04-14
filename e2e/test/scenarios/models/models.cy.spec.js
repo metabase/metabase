@@ -388,7 +388,7 @@ describe("scenarios > models", () => {
       cy.wait("@updateCard");
 
       cy.findByDisplayValue("M1");
-      cy.findByDisplayValue("foo");
+      cy.findByText("foo");
     });
   });
 

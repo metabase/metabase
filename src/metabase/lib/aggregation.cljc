@@ -41,7 +41,7 @@
     (lib.util/join-strings-with-conjunction
      (i18n/tru "and")
      (for [aggregation aggregations]
-       (lib.metadata.calculation/display-name query stage-number aggregation)))))
+       (lib.metadata.calculation/display-name query stage-number aggregation :long)))))
 
 (defmethod lib.metadata.calculation/metadata-method :aggregation
   [query stage-number [_ag opts index, :as _aggregation-ref]]
@@ -57,14 +57,14 @@
 ;;; TODO -- merge this stuff into `defop` somehow.
 
 (defmethod lib.metadata.calculation/display-name-method :aggregation
-  [query stage-number [_tag _opts index]]
-  (lib.metadata.calculation/display-name query stage-number (resolve-aggregation query stage-number index)))
+  [query stage-number [_tag _opts index] style]
+  (lib.metadata.calculation/display-name query stage-number (resolve-aggregation query stage-number index) style))
 
 (defmethod lib.metadata.calculation/display-name-method :count
-  [query stage-number [_count _opts x]]
+  [query stage-number [_count _opts x] style]
   ;; x is optional.
   (if x
-    (i18n/tru "Count of {0}" (lib.metadata.calculation/display-name query stage-number x))
+    (i18n/tru "Count of {0}" (lib.metadata.calculation/display-name query stage-number x style))
     (i18n/tru "Count")))
 
 (defmethod lib.metadata.calculation/column-name-method :count
@@ -76,7 +76,7 @@
 (lib.hierarchy/derive :count ::aggregation)
 
 (defmethod lib.metadata.calculation/display-name-method :case
-  [_query _stage-number _case]
+  [_query _stage-number _case _style]
   (i18n/tru "Case"))
 
 (defmethod lib.metadata.calculation/column-name-method :case
@@ -117,8 +117,8 @@
      arg)))
 
 (defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
-  [query stage-number [tag _opts arg]]
-  (let [arg (lib.metadata.calculation/display-name query stage-number arg)]
+  [query stage-number [tag _opts arg] style]
+  (let [arg (lib.metadata.calculation/display-name query stage-number arg style)]
     (case tag
       :avg       (i18n/tru "Average of {0}"            arg)
       :cum-count (i18n/tru "Cumulative count of {0}"   arg)
@@ -132,8 +132,8 @@
       :var       (i18n/tru "Variance of {0}"           arg))))
 
 (defmethod lib.metadata.calculation/display-name-method :percentile
-  [query stage-number [_percentile _opts x p]]
-  (i18n/tru "{0}th percentile of {1}" p (lib.metadata.calculation/display-name query stage-number x)))
+  [query stage-number [_percentile _opts x p] style]
+  (i18n/tru "{0}th percentile of {1}" p (lib.metadata.calculation/display-name query stage-number x style)))
 
 (defmethod lib.metadata.calculation/column-name-method :percentile
   [query stage-number [_percentile _opts x p]]
@@ -150,8 +150,8 @@
 ;;; TODO : wait a minute, we do have that stuff now!
 
 (defmethod lib.metadata.calculation/display-name-method :sum-where
-  [query stage-number [_sum-where _opts x _pred]]
-  (i18n/tru "Sum of {0} matching condition" (lib.metadata.calculation/display-name query stage-number x)))
+  [query stage-number [_sum-where _opts x _pred] style]
+  (i18n/tru "Sum of {0} matching condition" (lib.metadata.calculation/display-name query stage-number x style)))
 
 (defmethod lib.metadata.calculation/column-name-method :sum-where
   [query stage-number [_sum-where _opts x _pred]]
@@ -160,7 +160,7 @@
 (lib.hierarchy/derive :sum-where ::aggregation)
 
 (defmethod lib.metadata.calculation/display-name-method :share
-  [_query _stage-number _share]
+  [_query _stage-number _share _style]
   (i18n/tru "Share of rows matching condition"))
 
 (defmethod lib.metadata.calculation/column-name-method :share
@@ -170,7 +170,7 @@
 (lib.hierarchy/derive :share ::aggregation)
 
 (defmethod lib.metadata.calculation/display-name-method :count-where
-  [_query _stage-number _count-where]
+  [_query _stage-number _count-where _style]
   (i18n/tru "Count of rows matching condition"))
 
 (defmethod lib.metadata.calculation/column-name-method :count-where

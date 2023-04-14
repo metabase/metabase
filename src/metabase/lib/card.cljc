@@ -9,6 +9,10 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]))
 
+(defmethod lib.metadata.calculation/display-name-method :metadata/card
+  [_query _stage-number card-metadata _style]
+  ((some-fn :display_name :name) card-metadata))
+
 (defmethod lib.metadata.calculation/metadata-method :metadata/card
   [_query _stage-number {card-name :name, display-name :display_name, :as card-metadata}]
   (cond-> card-metadata
@@ -28,11 +32,14 @@
                                  (map? result-metadata)        (:columns result-metadata)
                                  (sequential? result-metadata) result-metadata))]
       (mapv (fn [col]
-              (assoc col
-                     :lib/type                :metadata/field
-                     :lib/source              :source/card
-                     :lib/card-id             (:id card)
-                     :lib/source-column-alias (:name col)))
+              (merge
+               (when-let [field-id (:id col)]
+                 (lib.metadata/field query field-id))
+               col
+               {:lib/type                :metadata/field
+                :lib/source              :source/card
+                :lib/card-id             (:id card)
+                :lib/source-column-alias (:name col)}))
             cols))))
 
 (mu/defn saved-question-metadata :- [:maybe [:sequential {:min 1} lib.metadata.calculation/ColumnMetadataWithSource]]
