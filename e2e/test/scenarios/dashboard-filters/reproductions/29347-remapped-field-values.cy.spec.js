@@ -118,7 +118,7 @@ describe("issues 29347, 29346", () => {
       cy.wait("@dashboard");
       cy.wait("@cardQuery");
 
-      verifyRemappedCard(filterValue);
+      verifyRemappedCardValues(filterValue);
     });
 
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
@@ -241,17 +241,17 @@ const filterOnRemappedValues = fieldValue => {
 };
 
 const verifyRemappedValues = fieldValue => {
-  verifyRemappedFilter(filterValue);
-  verifyRemappedCard(fieldValue);
+  verifyRemappedFilterValues(filterValue);
+  verifyRemappedCardValues(fieldValue);
 };
 
-const verifyRemappedFilter = fieldValue => {
+const verifyRemappedFilterValues = fieldValue => {
   filterWidget().within(() => {
     cy.findByText(getRemappedValue(fieldValue)).should("be.visible");
   });
 };
 
-const verifyRemappedCard = fieldValue => {
+const verifyRemappedCardValues = fieldValue => {
   getDashboardCard().within(() => {
     cy.findAllByText(getRemappedValue(fieldValue)).should("have.length", 2);
   });
