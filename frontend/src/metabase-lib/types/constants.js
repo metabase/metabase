@@ -4,6 +4,7 @@ export const TYPE = cljs_TYPE;
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
+export const INTEGER = "INTEGER";
 export const STRING = "STRING";
 export const STRING_LIKE = "STRING_LIKE";
 export const BOOLEAN = "BOOLEAN";
@@ -33,6 +34,10 @@ export const TYPE_HIERARCHIES = {
     base: [TYPE.Number],
     effective: [TYPE.Number],
     semantic: [TYPE.Number],
+  },
+  [INTEGER]: {
+    base: [TYPE.Integer],
+    effective: [TYPE.Integer],
   },
   [STRING]: {
     base: [TYPE.Text],
