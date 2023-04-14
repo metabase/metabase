@@ -223,6 +223,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
       FieldFilter.mapTo({ table: "Products", field: "Ean" });
+      FieldFilter.setWidgetType("String");
       setFilterQuestionSource({ question: "SQL source", field: "EAN" });
       saveQuestion("SQL filter");
 
@@ -304,6 +305,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
       FieldFilter.mapTo({ table: "Products", field: "Ean" });
+      FieldFilter.setWidgetType("String");
       setFilterListSource({ values: ["1018947080336", "7663515285824"] });
       saveQuestion("SQL filter");
 
