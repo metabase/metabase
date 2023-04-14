@@ -53,6 +53,7 @@
 
 ;;; You can read/write a Card if you can read/write its parent Collection
 (doto :model/Card
+  (derive :metabase/model)
   (derive ::perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))

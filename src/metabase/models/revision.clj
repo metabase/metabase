@@ -1,6 +1,7 @@
 (ns metabase.models.revision
   (:require
    [clojure.data :as data]
+   [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision.diff :refer [diff-string]]
    [metabase.models.user :refer [User]]
