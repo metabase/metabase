@@ -163,7 +163,7 @@
                :message      nil
                :user         @rasta-revision-info
                :diff         nil
-               :description  "rearranged the cards."}]
+               :description  "rearranged the cards and set auto apply filters to true."}]
              (->> (get-revisions :dashboard id)
                   (mapv (fn [rev]
                           (if-not (:diff rev)
