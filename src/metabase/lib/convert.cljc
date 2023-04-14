@@ -28,7 +28,7 @@
                        :else result))))
       (dissoc almost-stage location-key))))
 
-(defn- clean-last-stage [almost-stage]
+(defn- clean-stage [almost-stage]
   (reduce
     (fn [almost-stage top-level-clause]
       (loop [almost-stage almost-stage
@@ -48,13 +48,13 @@
 
 (defn- clean [almost-query]
   (loop [almost-query almost-query
-         stage-index (dec (count (:stages almost-query)))]
-    (let [last-stage (nth (:stages almost-query) stage-index)
-          new-stage (clean-last-stage last-stage)]
-      (if (= last-stage new-stage)
-        (if (= stage-index 0)
+         stage-index 0]
+    (let [current-stage (nth (:stages almost-query) stage-index)
+          new-stage (clean-stage current-stage)]
+      (if (= current-stage new-stage)
+        (if (= stage-index (dec (count (:stages almost-query))))
           almost-query
-          (recur almost-query (dec stage-index)))
+          (recur almost-query (inc stage-index)))
         (recur (update almost-query :stages assoc stage-index new-stage) stage-index)))))
 
 (defmulti ->pMBQL
