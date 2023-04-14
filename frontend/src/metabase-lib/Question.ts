@@ -210,6 +210,7 @@ class QuestionInner {
       }
     }
 
+    // `dataset_query` is null for questions on a dashboard the user don't have access to
     console.warn("Unknown query type: " + datasetQuery?.type);
   }
 
