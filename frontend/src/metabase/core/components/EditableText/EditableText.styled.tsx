@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-
 import { color } from "metabase/lib/colors";
+import MarkdownBase from "../Markdown";
 
 export interface EditableTextRootProps {
   isEditing?: boolean;
@@ -57,4 +57,8 @@ export const EditableTextArea = styled.textarea`
   &:focus {
     cursor: text;
   }
+`;
+
+export const Markdown = styled(MarkdownBase)`
+  position: absolute;
 `;

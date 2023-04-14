@@ -275,7 +275,7 @@ function QueryBuilder(props) {
   );
 
   const handleSave = useCallback(
-    async (updatedQuestion, { rerunQuery = false } = {}) => {
+    async (updatedQuestion, { rerunQuery } = {}) => {
       await apiUpdateQuestion(updatedQuestion, { rerunQuery });
       if (!rerunQuery) {
         await updateUrl(updatedQuestion, { dirty: false });

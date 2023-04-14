@@ -10,7 +10,7 @@ import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavi
 
 import { getDashboardBeforeEditing } from "../selectors";
 
-import { updateDashcardId } from "./core";
+import { updateDashcardIds } from "./core";
 import { fetchDashboard } from "./data-fetching";
 import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
 
@@ -67,18 +67,6 @@ export const saveDashboardAndCards = createThunkAction(
         return card;
       });
 
-      // remove isRemoved dashboards
-      await Promise.all(
-        dashboard.ordered_cards
-          .filter(dc => dc.isRemoved && !dc.isAdded)
-          .map(dc =>
-            DashboardApi.removeCard({
-              dashId: dashboard.id,
-              dashcardId: dc.id,
-            }),
-          ),
-      );
-
       // update parameter mappings
       dashboard.ordered_cards = dashboard.ordered_cards.map(dc => ({
         ...dc,
@@ -96,32 +84,6 @@ export const saveDashboardAndCards = createThunkAction(
         ),
       }));
 
-      // add new cards to dashboard
-      const updatedDashcards = await Promise.all(
-        dashboard.ordered_cards
-          .filter(dc => !dc.isRemoved)
-          .map(async dc => {
-            if (dc.isAdded) {
-              const result = await DashboardApi.addCard({
-                dashId: dashboard.id,
-                cardId: dc.card_id,
-                col: dc.col,
-                row: dc.row,
-                size_x: dc.size_x,
-                size_y: dc.size_y,
-                series: dc.series,
-                parameter_mappings: dc.parameter_mappings,
-                visualization_settings: dc.visualization_settings,
-                action_id: dc.action_id,
-              });
-              dispatch(updateDashcardId(dc.id, result.id));
-              return result;
-            } else {
-              return dc;
-            }
-          }),
-      );
-
       // update modified cards
       await Promise.all(
         dashboard.ordered_cards
@@ -138,8 +100,12 @@ export const saveDashboardAndCards = createThunkAction(
       }
 
       // update the dashboard cards
-      if (_.some(updatedDashcards, dc => dc.isDirty)) {
-        const cards = updatedDashcards.map(dc => ({
+      const dashcardsToUpdate = dashboard.ordered_cards.filter(
+        dc => !dc.isRemoved,
+      );
+      const updatedDashCards = await DashboardApi.updateCards({
+        dashId: dashboard.id,
+        cards: dashcardsToUpdate.map(dc => ({
           id: dc.id,
           card_id: dc.card_id,
           action_id: dc.action_id,
@@ -150,15 +116,14 @@ export const saveDashboardAndCards = createThunkAction(
           series: dc.series,
           visualization_settings: dc.visualization_settings,
           parameter_mappings: dc.parameter_mappings,
-        }));
-        const result = await DashboardApi.updateCards({
-          dashId: dashboard.id,
-          cards,
-        });
-        if (result.status !== "ok") {
-          throw new Error(result.status);
-        }
-      }
+        })),
+      });
+      dispatch(
+        updateDashcardIds(
+          dashcardsToUpdate.map(dc => dc.id),
+          updatedDashCards.map(dc => dc.id),
+        ),
+      );
 
       await dispatch(Dashboards.actions.update(dashboard));
 

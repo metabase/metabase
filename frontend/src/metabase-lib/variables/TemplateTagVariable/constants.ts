@@ -1,4 +1,4 @@
-import { TemplateTagType } from "metabase-types/types/Query";
+import { TemplateTagType } from "metabase-types/api";
 
 export const VARIABLE_ICONS: Record<TemplateTagType, string | null> = {
   text: "string",

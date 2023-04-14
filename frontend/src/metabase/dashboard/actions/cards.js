@@ -18,8 +18,9 @@ import { loadMetadataForDashboard } from "./metadata";
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 
+let tempId = -1;
 function generateTemporaryDashcardId() {
-  return Math.random();
+  return tempId--;
 }
 
 export const addCardToDashboard =

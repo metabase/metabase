@@ -2,8 +2,9 @@ import { FC, ReactElement } from "react";
 import ReactMarkdown from "react-markdown";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import type { MarkdownProps } from "./Markdown";
 
-export const MarkdownRoot = styled(getComponent(ReactMarkdown))`
+export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
   p {
     margin: 0;
     line-height: 1.57em;
@@ -16,11 +17,11 @@ export const MarkdownRoot = styled(getComponent(ReactMarkdown))`
   a {
     cursor: pointer;
     text-decoration: none;
-    color: ${color("brand")};
+    color: ${props => (props.unstyleLinks ? color("white") : color("brand"))};
   }
 
   a:hover {
-    text-decoration: underline;
+    text-decoration: ${props => (props.unstyleLinks ? "none" : "underline")};
   }
 
   img {

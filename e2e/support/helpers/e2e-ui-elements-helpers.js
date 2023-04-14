@@ -14,10 +14,6 @@ export function sidebar() {
   return cy.get("main aside");
 }
 
-export function appbar() {
-  return cy.findByTestId("app-bar");
-}
-
 export function rightSidebar() {
   return cy.findAllByTestId("sidebar-right");
 }
@@ -31,7 +27,7 @@ export function navigationSidebar() {
 }
 
 export function appBar() {
-  return cy.get("#root header").first();
+  return cy.findByLabelText("Navigation bar");
 }
 
 export function openNavigationSidebar() {

@@ -52,7 +52,6 @@
   ;; this as part of what it does
   (is (=? {:lib/type :mbql/query
            :stages   [{:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}
                        :fields      [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                        :joins       [{:lib/type    :mbql/join
                                       :lib/options {:lib/uuid string?}
@@ -63,7 +62,6 @@
                                       :strategy    :left-join
                                       :fk-field-id (meta/id :venues :category-id)
                                       :stages      [{:lib/type     :mbql.stage/mbql
-                                                     :lib/options  {:lib/uuid string?}
                                                      :source-table (meta/id :venues)}]}]}]
            :database (meta/id)}
           (lib.util/pipeline
@@ -309,3 +307,11 @@
              (unique-name-fn "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))
       (is (= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_1380b38f"
              (unique-name-fn "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))))))
+
+(deftest ^:parallel strip-id-test
+  (are [exp in] (= exp (lib.util/strip-id in))
+    "foo"            "foo"
+    "Fancy Name"     "Fancy Name"
+    "Customer"       "Customer ID"
+    "Customer"       "Customer id"
+    "some id number" "some id number"))
