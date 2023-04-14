@@ -1352,31 +1352,34 @@
                       :name         "New tab"
                       :position     2}]
                     (:ordered_tabs resp)))
-            (is (nil? (t2/select-one :model/DashboardTab :id dashtab-id-3))))
+            (testing "dashtab 3 got deleted"
+              (is (nil? (t2/select-one :model/DashboardTab :id dashtab-id-3)))))
 
-          (testing "cards got updated correctly"
+          (testing "dashcards got updated correctly"
             (let [new-tab-id (t2/select-one-pk :model/DashboardTab :name "New tab" :dashboard_id dashboard-id)]
-              (is (=? [{:id      dashcard-id-1
-                        :card_id card-id-1
-                        :size_x 4
-                        :size_y 4
-                        :col    1
-                        :row    1}
-                       {:id     dashcard-id-2
+              (is (=? [{:id               dashcard-id-1
+                        :card_id          card-id-1
                         :dashboard_tab_id dashtab-id-2
-                        :size_x 2
-                        :size_y 2
-                        :col    2
-                        :row    2}
-                       {:id     #hawk/schema (s/pred pos-int?)
-                        :size_x 1
-                        :size_y 1
-                        :col    3
-                        :row    3
+                        :size_x           4
+                        :size_y           4
+                        :col              1
+                        :row              1}
+                       {:id               dashcard-id-2
+                        :dashboard_tab_id dashtab-id-2
+                        :size_x           2
+                        :size_y           2
+                        :col              2
+                        :row              2}
+                       {:id               #hawk/schema (s/pred pos-int?)
+                        :size_x           1
+                        :size_y           1
+                        :col              3
+                        :row              3
                         :dashboard_tab_id new-tab-id
-                        :card_id card-id-2}]
-                      (:cards resp)))
-              (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))))))))
+                        :card_id           card-id-2}]
+                      (:cards resp))))
+            (testing "dashcard 3 got deleted"
+             (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))))))))
 
 (deftest e2e-update-cards-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
@@ -1467,6 +1470,67 @@
                   tabs))
           ;; dashtab 2 is deleted
           (is (nil? (t2/select-one :model/DashboardTab :id dashtab-id-2))))))))
+
+(deftest upgrade-from-non-tab-dashboard-to-has-tabs
+  (testing "we introduced tabs in 47 but there are dashboards without tabs before this
+           this test check the flow to upgrade a dashboard pre-47 to have tabs"
+    (t2.with-temp/with-temp
+      [Dashboard     {dashboard-id :id}  {}
+       Card          {card-id-1 :id}     {}
+       Card          {card-id-2 :id}     {}
+       DashboardCard {dashcard-1-id :id} {:card_id      card-id-1
+                                          :dashboard_id dashboard-id}]
+      ;; create 2 tabs, assign the existing dashcard to the 1st tab
+      ;; create 2 new dashcards, 1 for each tab
+      (let [resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                  {:ordered_tabs  [{:id       -1
+                                                    :name     "New Tab 1"}
+                                                   {:id       -2
+                                                    :name     "New Tab 2"}]
+                                   :cards [{:id               dashcard-1-id
+                                            :size_x           4
+                                            :size_y           4
+                                            :col              1
+                                            :row              1
+                                            :dashboard_tab_id -1
+                                            :card_id          card-id-1}
+                                           {:id               -2
+                                            :size_x           4
+                                            :size_y           4
+                                            :col              1
+                                            :row              1
+                                            :dashboard_tab_id -1
+                                            :card_id          card-id-1}
+                                           {:id               -1
+                                            :size_x           4
+                                            :size_y           4
+                                            :col              1
+                                            :row              1
+                                            :dashboard_tab_id -2
+                                            :card_id          card-id-2}]})
+            tab-1-id (t2/select-one-pk :model/DashboardTab :name "New Tab 1" :dashboard_id dashboard-id)
+            tab-2-id (t2/select-one-pk :model/DashboardTab :name "New Tab 2" :dashboard_id dashboard-id)]
+        (is (=? {:cards [{:id               dashcard-1-id
+                          :card_id          card-id-1
+                          :dashboard_id     dashboard-id
+                          :dashboard_tab_id tab-1-id}
+                         {:id               #hawk/schema (s/pred pos-int?)
+                          :card_id          card-id-1
+                          :dashboard_id     dashboard-id
+                          :dashboard_tab_id tab-1-id}
+                         {:id               #hawk/schema (s/pred pos-int?)
+                          :card_id          card-id-2
+                          :dashboard_id     dashboard-id
+                          :dashboard_tab_id tab-2-id}]
+                 :ordered_tabs [{:id           tab-1-id
+                                 :dashboard_id dashboard-id
+                                 :name         "New Tab 1"
+                                 :position     0}
+                                {:id           tab-2-id
+                                 :dashboard_id dashboard-id
+                                 :name         "New Tab 2"
+                                 :position     1}]}
+               resp))))))
 
 ;;; -------------------------------------- Create dashcards tests ---------------------------------------
 
@@ -1743,18 +1807,17 @@
 
 (deftest update-tabs-test
   (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
-    (is (=? [{:id       dashtab-id-2
-              :name     "Tab 2"
-              :position 0}
-             {:id       dashtab-id-1
-              :name     "Tab 1 edited"
-              :position 1}]
-            (:ordered_tabs (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                         {:ordered_tabs [{:id   dashtab-id-1
-                                                          :name "Tab 1 edited"}
-                                                         {:id   dashtab-id-2
-                                                          :name "Tab 2"}]
-                                          :cards (current-cards dashboard-id)}))))))
+    (testing "change tab name and change the position"
+      (is (=? [{:id       dashtab-id-2
+                :name     "Tab 2"}
+               {:id       dashtab-id-1
+                :name     "Tab 1 edited"}]
+              (:ordered_tabs (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                                   {:ordered_tabs [{:id   dashtab-id-2
+                                                                    :name "Tab 2"}
+                                                                   {:id   dashtab-id-1
+                                                                    :name "Tab 1 edited"}]
+                                                    :cards (current-cards dashboard-id)})))))))
 
 ;;; -------------------------------------- Delete dashcards tests ---------------------------------------
 
