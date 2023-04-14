@@ -410,7 +410,7 @@ export const UserApi = {
   current: GET("/api/user/current"),
   // get:                         GET("/api/user/:userId"),
   update: PUT("/api/user/:id"),
-  update_password: PUT("/api/user/:id/password"),
+  update_password: POST("/api/user/:id/password"),
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
   delete: DELETE("/api/user/:userId"),
   reactivate: PUT("/api/user/:userId/reactivate"),
