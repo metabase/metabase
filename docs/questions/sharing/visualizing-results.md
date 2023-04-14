@@ -75,39 +75,27 @@ Pivot tables allow you swap rows and columns, group data, and include subtotals 
 
 ## Line charts
 
-Line charts are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/basics/visualizing-data/line-charts.html) and [Time series analysis](https://www.metabase.com/learn/time-series) tutorials.
+[Line charts](./visualizations/line-bar-and-area-charts.md) are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/basics/visualizing-data/line-charts.html) and [Time series analysis](https://www.metabase.com/learn/time-series) tutorials.
 
 ![Trend lines](../images/trend-lines.png)
 
 ## Bar charts
 
-Bar charts are great for displaying a number grouped by a category (e.g., the number of users you have by country). Bar charts can also be useful for showing a number over time if you have a smaller number of x-axis values (like orders per month this year). Learn more about [bar charts](https://www.metabase.com/learn/basics/visualizing-data/bar-charts.html).
+[Bar charts](./visualizations/line-bar-and-area-charts.md) are great for displaying a number grouped by a category (e.g., the number of users you have by country).
 
 ![Bar chart](../images/bar.png)
 
 ## Area charts
 
-Area charts are useful when comparing the proportions of two metrics over time. Both bar and area charts can be stacked.
+[Area charts](./visualizations/line-bar-and-area-charts.md) are useful when comparing the proportions of two metrics over time. Both bar and area charts can be stacked.
 
 ![Stacked area chart](../images/area.png)
 
 ## Combo charts
 
-Combo charts let you combine bars and lines (or areas) on the same chart.
+[Combo charts](./visualizations/combo-chart.md) let you combine bars and lines (or areas) on the same chart.
 
 ![Line + bar](../images/combo-chart.png)
-
-Metabase will pick one of your series to display as a line, and another to display as a bar by default. Open up the visualization settings to change which series are lines, bars, or areas, as well as to change per-series settings like colors. Click the down arrow icon on the right of a series to see additional options:
-
-![Line + bar](../images/combo-chart-settings.png)
-
-To use a Combo chart you'll either need to have two or more metrics selected in the Summarize By section of your question, with one or two grouping columns, like this:
-
-![Data for Line + Bar chart](../images/combo-chart-data-1.png)
-
-Or you'll need a question with a single metric and two grouping columns, like this:
-
-![Data for Line + Bar chart](../images/combo-chart-data-2.png)
 
 ## Histograms
 
