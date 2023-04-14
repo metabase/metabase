@@ -1,12 +1,20 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { OrderByClause, Query, ColumnMetadata } from "./types";
 
-export function orderableColumns(query: Query): ColumnMetadata[] {
-  return ML.orderable_columns(query);
+const DEFAULT_STAGE_INDEX = -1;
+
+export function orderableColumns(
+  query: Query,
+  stageIndex = DEFAULT_STAGE_INDEX,
+): ColumnMetadata[] {
+  return ML.orderable_columns(query, stageIndex);
 }
 
-export function orderBys(query: Query): OrderByClause[] {
-  return ML.order_bys(query);
+export function orderBys(
+  query: Query,
+  stageIndex = DEFAULT_STAGE_INDEX,
+): OrderByClause[] {
+  return ML.order_bys(query, stageIndex);
 }
 
 declare function OrderByFn(
