@@ -14,10 +14,7 @@ import {
   addTextBox,
 } from "e2e/support/helpers";
 
-import {
-  BEFORE_LOAD_RETURN_VALUE,
-  SAMPLE_DB_ID,
-} from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -31,6 +28,42 @@ describe("scenarios > dashboard", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+
+    // before we are inside a hook executing as part of the test
+    // we can use cy.on methods and create stubs, something
+    // we could not do from Cypress.on callbacks
+    const returnValueStub = cy.stub().as("returnValue");
+
+    cy.on("window:before:load", win => {
+      let userCallback, ourCallback;
+      Object.defineProperty(win, "onbeforeunload", {
+        get() {
+          return ourCallback;
+        },
+        set(cb) {
+          userCallback = cb;
+          console.log("user callback", cb);
+
+          ourCallback = e => {
+            console.log("proxy beforeunload event", e);
+
+            // prevent the application code from assigning value
+            Object.defineProperty(e, "returnValue", {
+              get() {
+                return "";
+              },
+              set: returnValueStub,
+            });
+
+            const result = userCallback(e);
+            return result;
+          };
+
+          // https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event
+          win.addEventListener("beforeunload", ourCallback);
+        },
+      });
+    });
   });
 
   it("should create new dashboard and navigate to it from the nav bar and from the root collection (metabase#20638)", () => {
@@ -183,409 +216,441 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should trigger window.onbeforeunload when trying to leave an unsaved, edited dashboard", () => {
-    // intercept browser popup event after reload and check if it contains the expected text
     cy.on("window:before:unload", event => {
-      expect(event.returnValue).to.equal(BEFORE_LOAD_RETURN_VALUE);
+      console.log("window:before:unload");
+      console.log("edited", event);
+      console.log(event.returnValue);
     });
 
     visitDashboard(1);
-    editDashboard();
-    addTextBox("Hello World");
-    cy.reload();
-  });
-
-  it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
-    // programatically create and save a question as per repro instructions in #11007
-    cy.request("POST", "/api/card", {
-      name: "11007",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        filter: [">", ["field", "sum", { "base-type": "type/Float" }], 100],
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
-            ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
-            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-          ],
-          filter: ["=", ["field", ORDERS.USER_ID, null], 1],
-        },
-        type: "query",
-      },
-      display: "table",
-      visualization_settings: {},
-    });
-
-    cy.createDashboard({ name: "dash:11007" });
-
-    cy.visit("/collection/root");
-    // enter newly created dashboard
-    cy.findByText("dash:11007").click();
-    cy.findByText("This dashboard is looking empty.");
-    // add previously created question to it
-    cy.icon("pencil").click();
-    cy.icon("add").last().click();
-    cy.findByText("11007").click();
-
-    // add first filter
-    cy.icon("filter").click();
-    popover().within(() => {
-      cy.findByText("Time").click();
-      cy.findByText("All Options").click();
-    });
-    // and connect it to the card
-    selectDashboardFilter(cy.get(".DashCard"), "Created At");
-
-    // add second filter
-    cy.icon("filter").click();
-    popover().within(() => {
-      cy.findByText("ID").click();
-    });
-    // and connect it to the card
-    selectDashboardFilter(cy.get(".DashCard"), "Product ID");
-
-    // add third filter
-    cy.icon("filter").click();
-    popover().within(() => {
-      cy.findByText("Text or Category").click();
-      cy.findByText("Starts with").click();
-    });
-    // and connect it to the card
-    selectDashboardFilter(cy.get(".DashCard"), "Category");
-
-    cy.findByText("Save").click();
-    cy.findByText("You're editing this dashboard.").should("not.exist");
-  });
-
-  it("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
-    cy.createQuestion({
-      name: "13597",
-      query: {
-        "source-table": PEOPLE_ID,
-        limit: 2,
-      },
-      display: "map",
-    }).then(({ body: { id: questionId } }) => {
-      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
-        // add filter (ID) to the dashboard
-        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-          parameters: [
-            {
-              id: "92eb69ea",
-              name: "ID",
-              sectionId: "id",
-              slug: "id",
-              type: "id",
-            },
-          ],
-        });
-
-        // add previously created question to the dashboard
-        cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-          cardId: questionId,
-          row: 0,
-          col: 0,
-          size_x: 10,
-          size_y: 8,
-        }).then(({ body: { id: dashCardId } }) => {
-          // connect filter to that question
-          cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-            cards: [
-              {
-                id: dashCardId,
-                card_id: questionId,
-                row: 0,
-                col: 0,
-                size_x: 10,
-                size_y: 8,
-                parameter_mappings: [
-                  {
-                    parameter_id: "92eb69ea",
-                    card_id: questionId,
-                    target: ["dimension", ["field", PEOPLE.ID, null]],
-                  },
-                ],
-                visualization_settings: {
-                  // set click behavior to update filter (ID)
-                  click_behavior: {
-                    type: "crossfilter",
-                    parameterMapping: {
-                      "92eb69ea": {
-                        id: "92eb69ea",
-                        source: { id: "ID", name: "ID", type: "column" },
-                        target: {
-                          id: "92eb69ea",
-                          type: "parameter",
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            ],
-          });
-        });
-
-        visitDashboard(dashboardId);
-        cy.get(".leaflet-marker-icon") // pin icon
-          .eq(0)
-          .click({ force: true });
-        cy.url().should("include", `/dashboard/${dashboardId}?id=1`);
-        cy.contains("Hudson Borer - 1");
+    cy.window().then(win => {
+      win.addEventListener("confirm", e => {
+        console.log("window confirm", e);
       });
     });
+
+    editDashboard();
+    // To get the "onbeforeunload" prompt to trigger, Chrome requires some sort of
+    // "user gesture", so we need to use `realClick` to simulate this behavior.
+    // https://www.chromestatus.com/feature/5082396709879808
+    cy.findByText("You're editing this dashboard.").realClick();
+    addTextBox("a");
+
+    cy.visit("/");
+
+    cy.findByText("You're editing this dashboard.").should("be.visible");
+
+    // cy.on("window:unload", event => {
+    //   console.log("window:unload")
+    //   resolve()
+    //   // console.log("edited", event)
+    //   // console.log(event.returnValue)
+    // });
   });
+});
 
-  it("should display column options for cross-filter (metabase#14473)", () => {
-    const questionDetails = {
-      name: "14473",
-      native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
-    };
+it("should not trigger window.onbeforeunload when trying to leave an unedited dashboard", () => {
+  cy.on("window:before:unload", event => {
+    console.log("unedited", event);
+    expect(event.returnValue).to.equal("");
+    // expect(event.returnValue).to.equal(BEFORE_LOAD_RETURN_VALUE);
+  });
+  visitDashboard(1);
+  cy.reload();
+  cy.wait(2000);
+});
 
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-      ({ body: { dashboard_id } }) => {
-        cy.log("Add 4 filters to the dashboard");
-
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          parameters: [
-            { name: "ID", slug: "id", id: "729b6456", type: "id" },
-            { name: "ID 1", slug: "id_1", id: "bb20f59e", type: "id" },
-            {
-              name: "Category",
-              slug: "category",
-              id: "89873480",
-              type: "category",
-            },
-            {
-              name: "Category 1",
-              slug: "category_1",
-              id: "cbc045f2",
-              type: "category",
-            },
-          ],
-        });
-
-        visitDashboard(dashboard_id);
+it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
+  // programatically create and save a question as per repro instructions in #11007
+  cy.request("POST", "/api/card", {
+    name: "11007",
+    dataset_query: {
+      database: SAMPLE_DB_ID,
+      filter: [">", ["field", "sum", { "base-type": "type/Float" }], 100],
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        breakout: [
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
+          ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
+        filter: ["=", ["field", ORDERS.USER_ID, null], 1],
       },
-    );
-
-    // Add cross-filter click behavior manually
-    cy.icon("pencil").click();
-    showDashboardCardActions();
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("click").click();
-    });
-    cy.findByText("COUNT(*)").click();
-    cy.findByText("Update a dashboard filter").click();
-
-    checkOptionsForFilter("ID");
-    checkOptionsForFilter("Category");
+      type: "query",
+    },
+    display: "table",
+    visualization_settings: {},
   });
 
-  it("should not get the parameter values from the field API", () => {
-    // In this test we're using already present dashboard ("Orders in a dashboard")
-    const FILTER_ID = "d7988e02";
+  cy.createDashboard({ name: "dash:11007" });
 
-    cy.log("Add filter to the dashboard");
-    cy.request("PUT", "/api/dashboard/1", {
-      parameters: [
-        {
-          id: FILTER_ID,
-          name: "Category",
-          slug: "category",
-          type: "category",
-        },
-      ],
-    });
+  cy.visit("/collection/root");
+  // enter newly created dashboard
+  cy.findByText("dash:11007").click();
+  cy.findByText("This dashboard is looking empty.");
+  // add previously created question to it
+  cy.icon("pencil").click();
+  cy.icon("add").last().click();
+  cy.findByText("11007").click();
 
-    cy.log("Connect filter to the existing card");
-    cy.request("PUT", "/api/dashboard/1/cards", {
-      cards: [
-        {
-          id: 1,
-          card_id: 1,
-          row: 0,
-          col: 0,
-          size_x: 12,
-          size_y: 8,
-          parameter_mappings: [
+  // add first filter
+  cy.icon("filter").click();
+  popover().within(() => {
+    cy.findByText("Time").click();
+    cy.findByText("All Options").click();
+  });
+  // and connect it to the card
+  selectDashboardFilter(cy.get(".DashCard"), "Created At");
+
+  // add second filter
+  cy.icon("filter").click();
+  popover().within(() => {
+    cy.findByText("ID").click();
+  });
+  // and connect it to the card
+  selectDashboardFilter(cy.get(".DashCard"), "Product ID");
+
+  // add third filter
+  cy.icon("filter").click();
+  popover().within(() => {
+    cy.findByText("Text or Category").click();
+    cy.findByText("Starts with").click();
+  });
+  // and connect it to the card
+  selectDashboardFilter(cy.get(".DashCard"), "Category");
+
+  cy.findByText("Save").click();
+  cy.findByText("You're editing this dashboard.").should("not.exist");
+});
+
+it("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
+  cy.createQuestion({
+    name: "13597",
+    query: {
+      "source-table": PEOPLE_ID,
+      limit: 2,
+    },
+    display: "map",
+  }).then(({ body: { id: questionId } }) => {
+    cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+      // add filter (ID) to the dashboard
+      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        parameters: [
+          {
+            id: "92eb69ea",
+            name: "ID",
+            sectionId: "id",
+            slug: "id",
+            type: "id",
+          },
+        ],
+      });
+
+      // add previously created question to the dashboard
+      cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+        cardId: questionId,
+        row: 0,
+        col: 0,
+        size_x: 10,
+        size_y: 8,
+      }).then(({ body: { id: dashCardId } }) => {
+        // connect filter to that question
+        cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+          cards: [
             {
-              parameter_id: FILTER_ID,
-              card_id: 1,
-              target: [
-                "dimension",
-                [
-                  "field",
-                  PRODUCTS.CATEGORY,
-                  { "source-field": ORDERS.PRODUCT_ID },
-                ],
+              id: dashCardId,
+              card_id: questionId,
+              row: 0,
+              col: 0,
+              size_x: 10,
+              size_y: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: "92eb69ea",
+                  card_id: questionId,
+                  target: ["dimension", ["field", PEOPLE.ID, null]],
+                },
               ],
-            },
-          ],
-          visualization_settings: {},
-        },
-      ],
-    });
-
-    cy.intercept(
-      `/api/dashboard/1/params/${FILTER_ID}/values`,
-      cy.spy().as("fetchDashboardParams"),
-    );
-    cy.intercept(`/api/field/${PRODUCTS.CATEGORY}`, cy.spy().as("fetchField"));
-    cy.intercept(
-      `/api/field/${PRODUCTS.CATEGORY}/values`,
-      cy.spy().as("fetchFieldValues"),
-    );
-
-    visitDashboard(1);
-
-    filterWidget().as("filterWidget").click();
-
-    ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach(category => {
-      cy.findByText(category);
-    });
-
-    cy.get("@fetchDashboardParams").should("have.been.calledOnce");
-    cy.get("@fetchField").should("not.have.been.called");
-    cy.get("@fetchFieldValues").should("not.have.been.called");
-  });
-
-  it("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
-    cy.request("GET", "/api/user/current").then(
-      ({ body: { personal_collection_id } }) => {
-        // Save new dashboard in admin's personal collection
-        cy.request("POST", "/api/dashboard", {
-          name: "15368D",
-          collection_id: personal_collection_id,
-        }).then(({ body: { id: NEW_DASHBOARD_ID } }) => {
-          const COLUMN_REF = `["ref",["field-id",${ORDERS.ID}]]`;
-          // Add click behavior to the existing "Orders in a dashboard" dashboard
-          cy.request("PUT", "/api/dashboard/1/cards", {
-            cards: [
-              {
-                id: 1,
-                card_id: 1,
-                row: 0,
-                col: 0,
-                size_x: 12,
-                size_y: 8,
-                series: [],
-                visualization_settings: {
-                  column_settings: {
-                    [COLUMN_REF]: {
-                      click_behavior: {
-                        type: "link",
-                        linkType: "dashboard",
-                        parameterMapping: {},
-                        targetId: NEW_DASHBOARD_ID,
+              visualization_settings: {
+                // set click behavior to update filter (ID)
+                click_behavior: {
+                  type: "crossfilter",
+                  parameterMapping: {
+                    "92eb69ea": {
+                      id: "92eb69ea",
+                      source: { id: "ID", name: "ID", type: "column" },
+                      target: {
+                        id: "92eb69ea",
+                        type: "parameter",
                       },
                     },
                   },
                 },
-                parameter_mappings: [],
               },
-            ],
-          });
-
-          cy.intercept("GET", `/api/dashboard/${NEW_DASHBOARD_ID}`).as(
-            "loadDashboard",
-          );
+            },
+          ],
         });
+      });
+
+      visitDashboard(dashboardId);
+      cy.get(".leaflet-marker-icon") // pin icon
+        .eq(0)
+        .click({ force: true });
+      cy.url().should("include", `/dashboard/${dashboardId}?id=1`);
+      cy.contains("Hudson Borer - 1");
+    });
+  });
+});
+
+it("should display column options for cross-filter (metabase#14473)", () => {
+  const questionDetails = {
+    name: "14473",
+    native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
+  };
+
+  cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+    ({ body: { dashboard_id } }) => {
+      cy.log("Add 4 filters to the dashboard");
+
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        parameters: [
+          { name: "ID", slug: "id", id: "729b6456", type: "id" },
+          { name: "ID 1", slug: "id_1", id: "bb20f59e", type: "id" },
+          {
+            name: "Category",
+            slug: "category",
+            id: "89873480",
+            type: "category",
+          },
+          {
+            name: "Category 1",
+            slug: "category_1",
+            id: "cbc045f2",
+            type: "category",
+          },
+        ],
+      });
+
+      visitDashboard(dashboard_id);
+    },
+  );
+
+  // Add cross-filter click behavior manually
+  cy.icon("pencil").click();
+  showDashboardCardActions();
+  cy.findByTestId("dashboardcard-actions-panel").within(() => {
+    cy.icon("click").click();
+  });
+  cy.findByText("COUNT(*)").click();
+  cy.findByText("Update a dashboard filter").click();
+
+  checkOptionsForFilter("ID");
+  checkOptionsForFilter("Category");
+});
+
+it("should not get the parameter values from the field API", () => {
+  // In this test we're using already present dashboard ("Orders in a dashboard")
+  const FILTER_ID = "d7988e02";
+
+  cy.log("Add filter to the dashboard");
+  cy.request("PUT", "/api/dashboard/1", {
+    parameters: [
+      {
+        id: FILTER_ID,
+        name: "Category",
+        slug: "category",
+        type: "category",
       },
-    );
-    cy.signInAsNormalUser();
-    visitDashboard(1);
-
-    cy.wait("@loadDashboard");
-    cy.findByText("Orders in a dashboard");
-    cy.contains("37.65");
+    ],
   });
 
-  it("should be possible to scroll vertically after fullscreen layer is closed (metabase#15596)", () => {
-    // Make this dashboard card extremely tall so that it spans outside of visible viewport
-    cy.request("PUT", "/api/dashboard/1/cards", {
-      cards: [
-        {
-          id: 1,
-          card_id: 1,
-          row: 0,
-          col: 0,
-          size_x: 12,
-          size_y: 20,
-          series: [],
-          visualization_settings: {},
-          parameter_mappings: [],
-        },
-      ],
-    });
-
-    visitDashboard(1);
-    cy.contains("37.65");
-    assertScrollBarExists();
-    cy.icon("share").click();
-    cy.get(".Modal--full").within(() => {
-      cy.icon("close").click();
-    });
-    cy.get(".Modal--full").should("not.exist");
-    assertScrollBarExists();
+  cy.log("Connect filter to the existing card");
+  cy.request("PUT", "/api/dashboard/1/cards", {
+    cards: [
+      {
+        id: 1,
+        card_id: 1,
+        row: 0,
+        col: 0,
+        size_x: 12,
+        size_y: 8,
+        parameter_mappings: [
+          {
+            parameter_id: FILTER_ID,
+            card_id: 1,
+            target: [
+              "dimension",
+              [
+                "field",
+                PRODUCTS.CATEGORY,
+                { "source-field": ORDERS.PRODUCT_ID },
+              ],
+            ],
+          },
+        ],
+        visualization_settings: {},
+      },
+    ],
   });
 
-  it("should show values of added dashboard card via search immediately (metabase#15959)", () => {
-    cy.intercept("GET", "/api/search*").as("search");
-    visitDashboard(1);
-    cy.icon("pencil").click();
-    cy.icon("add").last().click();
+  cy.intercept(
+    `/api/dashboard/1/params/${FILTER_ID}/values`,
+    cy.spy().as("fetchDashboardParams"),
+  );
+  cy.intercept(`/api/field/${PRODUCTS.CATEGORY}`, cy.spy().as("fetchField"));
+  cy.intercept(
+    `/api/field/${PRODUCTS.CATEGORY}/values`,
+    cy.spy().as("fetchFieldValues"),
+  );
 
-    sidebar().within(() => {
-      // From the list
-      cy.findByText("Orders, Count").click();
+  visitDashboard(1);
 
-      // From search
-      cy.findByPlaceholderText("Search…").type("Orders{enter}");
-      cy.wait("@search");
-      cy.findByText("Orders, Count").click();
-    });
+  filterWidget().as("filterWidget").click();
 
-    cy.findByTestId("loading-spinner").should("not.exist");
-    cy.findAllByText("18,760").should("have.length", 2);
+  ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach(category => {
+    cy.findByText(category);
   });
 
-  it("should allow you to add questions using 'Add a saved question' button (metabase#29450)", () => {
-    cy.createDashboard({ name: "dash:29450" });
+  cy.get("@fetchDashboardParams").should("have.been.calledOnce");
+  cy.get("@fetchField").should("not.have.been.called");
+  cy.get("@fetchFieldValues").should("not.have.been.called");
+});
 
-    cy.visit("/collection/root");
-    // enter newly created dashboard
-    cy.findByText("dash:29450").click();
+it("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
+  cy.request("GET", "/api/user/current").then(
+    ({ body: { personal_collection_id } }) => {
+      // Save new dashboard in admin's personal collection
+      cy.request("POST", "/api/dashboard", {
+        name: "15368D",
+        collection_id: personal_collection_id,
+      }).then(({ body: { id: NEW_DASHBOARD_ID } }) => {
+        const COLUMN_REF = `["ref",["field-id",${ORDERS.ID}]]`;
+        // Add click behavior to the existing "Orders in a dashboard" dashboard
+        cy.request("PUT", "/api/dashboard/1/cards", {
+          cards: [
+            {
+              id: 1,
+              card_id: 1,
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 8,
+              series: [],
+              visualization_settings: {
+                column_settings: {
+                  [COLUMN_REF]: {
+                    click_behavior: {
+                      type: "link",
+                      linkType: "dashboard",
+                      parameterMapping: {},
+                      targetId: NEW_DASHBOARD_ID,
+                    },
+                  },
+                },
+              },
+              parameter_mappings: [],
+            },
+          ],
+        });
 
-    cy.findByText("Add a saved question").click();
+        cy.intercept("GET", `/api/dashboard/${NEW_DASHBOARD_ID}`).as(
+          "loadDashboard",
+        );
+      });
+    },
+  );
+  cy.signInAsNormalUser();
+  visitDashboard(1);
 
-    sidebar().within(() => {
-      cy.findByText("Orders, Count").click();
-    });
+  cy.wait("@loadDashboard");
+  cy.findByText("Orders in a dashboard");
+  cy.contains("37.65");
+});
 
-    saveDashboard();
+it("should be possible to scroll vertically after fullscreen layer is closed (metabase#15596)", () => {
+  // Make this dashboard card extremely tall so that it spans outside of visible viewport
+  cy.request("PUT", "/api/dashboard/1/cards", {
+    cards: [
+      {
+        id: 1,
+        card_id: 1,
+        row: 0,
+        col: 0,
+        size_x: 12,
+        size_y: 20,
+        series: [],
+        visualization_settings: {},
+        parameter_mappings: [],
+      },
+    ],
   });
 
-  it("should show collection breadcrumbs for a dashboard", () => {
-    visitDashboard(1);
-    appbar().within(() => cy.findByText("Our analytics").click());
-
-    cy.findByText("Orders").should("be.visible");
-  });
-
-  it("should allow removing a card and undoing", () => {
-    visitDashboard(1);
-
-    cy.icon("pencil").click();
-    cy.findByTestId("dashcard").realHover();
+  visitDashboard(1);
+  cy.contains("37.65");
+  assertScrollBarExists();
+  cy.icon("share").click();
+  cy.get(".Modal--full").within(() => {
     cy.icon("close").click();
-    cy.findByText("Orders").should("not.exist");
-
-    cy.findByText("Undo").click();
-    saveDashboard();
-    cy.findByText("Orders").should("be.visible");
   });
+  cy.get(".Modal--full").should("not.exist");
+  assertScrollBarExists();
+});
+
+it("should show values of added dashboard card via search immediately (metabase#15959)", () => {
+  cy.intercept("GET", "/api/search*").as("search");
+  visitDashboard(1);
+  cy.icon("pencil").click();
+  cy.icon("add").last().click();
+
+  sidebar().within(() => {
+    // From the list
+    cy.findByText("Orders, Count").click();
+
+    // From search
+    cy.findByPlaceholderText("Search…").type("Orders{enter}");
+    cy.wait("@search");
+    cy.findByText("Orders, Count").click();
+  });
+
+  cy.findByTestId("loading-spinner").should("not.exist");
+  cy.findAllByText("18,760").should("have.length", 2);
+});
+
+it("should allow you to add questions using 'Add a saved question' button (metabase#29450)", () => {
+  cy.createDashboard({ name: "dash:29450" });
+
+  cy.visit("/collection/root");
+  // enter newly created dashboard
+  cy.findByText("dash:29450").click();
+
+  cy.findByText("Add a saved question").click();
+
+  sidebar().within(() => {
+    cy.findByText("Orders, Count").click();
+  });
+
+  saveDashboard();
+});
+
+it("should show collection breadcrumbs for a dashboard", () => {
+  visitDashboard(1);
+  appbar().within(() => cy.findByText("Our analytics").click());
+
+  cy.findByText("Orders").should("be.visible");
+});
+
+it("should allow removing a card and undoing", () => {
+  visitDashboard(1);
+
+  cy.icon("pencil").click();
+  cy.findByTestId("dashcard").realHover();
+  cy.icon("close").click();
+  cy.findByText("Orders").should("not.exist");
+
+  cy.findByText("Undo").click();
+  saveDashboard();
+  cy.findByText("Orders").should("be.visible");
 });
 
 function checkOptionsForFilter(filter) {

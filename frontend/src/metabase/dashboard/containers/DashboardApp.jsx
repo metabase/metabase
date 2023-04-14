@@ -134,7 +134,13 @@ const DashboardApp = props => {
 
   // most browsers don't use a custom message anymore, just putting here to retain compatibility
   // https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event#compatibility_notes
-  useBeforeUnload(isEditing && isDirty, t`You have unsaved changes.`);
+  useBeforeUnload(() => {
+    console.log(
+      "%cDashboardApp onBeforeUnload",
+      "font-weight:800; font-size:1.2rem; color: purple;",
+    );
+    return isEditing && isDirty;
+  }, t`You have unsaved changes.`);
 
   useEffect(() => {
     if (isLoadingComplete) {
