@@ -12,7 +12,7 @@ type EntityMenuTriggerProps = {
   open?: boolean;
   tooltip?: string;
   triggerProps?: EntityMenuIconButtonProps;
-  trigger: React.ReactElement;
+  trigger?: React.ReactElement;
   ariaLabel?: string;
 };
 

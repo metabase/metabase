@@ -37,7 +37,7 @@ const EntityMenuItem = ({
 
   const content = (
     <MenuItemContent disabled={disabled}>
-      {icon && <MenuItemIcon name={icon} />}
+      {icon && <MenuItemIcon name={icon} size={16} />}
       <MenuItemTitle>{title}</MenuItemTitle>
     </MenuItemContent>
   );
