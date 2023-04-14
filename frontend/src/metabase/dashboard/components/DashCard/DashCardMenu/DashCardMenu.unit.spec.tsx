@@ -46,19 +46,21 @@ interface SetupOpts {
 }
 
 const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
-  const state = createMockState({
+  const storeInitialState = createMockState({
     entities: createEntitiesState({
       databases: [createSampleDatabase()],
       questions: [card],
     }),
   });
 
-  const metadata = getMetadata(state);
+  const metadata = getMetadata(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
 
   setupCardQueryDownloadEndpoint(card, "json");
 
-  renderWithProviders(<DashCardMenu question={question} result={result} />);
+  renderWithProviders(<DashCardMenu question={question} result={result} />, {
+    storeInitialState,
+  });
 };
 
 describe("DashCardMenu", () => {
