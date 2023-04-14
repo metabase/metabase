@@ -94,7 +94,12 @@
   and prompt engineering. Add in enumerated values (if a low-cardinality field),
   and remove fields unused in prompt engineering."
   [{:keys [id base_type] :as field}]
-  (let [field-vals (when (not= :type/Boolean base_type)
+  (let [field-vals (when
+                     (and
+                       (not= :type/Boolean base_type)
+                       (< 0
+                          (get-in field [:fingerprint :global :distinct-count] 0)
+                          (inc (metabot-settings/enum-cardinality-threshold))))
                      (t2/select-one-fn :values FieldValues :field_id id))]
     (-> (cond-> field
           (seq field-vals)
@@ -106,9 +111,7 @@
   [{:keys [result_metadata]}]
   (into {}
         (for [{:keys [display_name sql_name possible_values]} result_metadata
-              :when (and (seq possible_values)
-                         (<= (count possible_values)
-                             (metabot-settings/enum-cardinality-threshold)))
+              :when (seq possible_values)
               :let [ddl-str (format "create type %s_t as enum %s;"
                                     sql_name
                                     (str/join ", " (map (partial format "'%s'") possible_values)))
@@ -219,8 +222,8 @@
   [{table-name :name} {field-name :name field-id :id :keys [base_type]}]
   (when-let [values (and
                      (not= :type/Boolean base_type)
-                     (:values (t2/select-one FieldValues :field_id field-id)))]
-    (when (< (count values) (metabot-settings/enum-cardinality-threshold))
+                     (t2/select-one-fn :values FieldValues :field_id field-id))]
+    (when (<= (count values) (metabot-settings/enum-cardinality-threshold))
       (let [ddl-str (format "create type %s_%s_t as enum %s;"
                             table-name
                             field-name
@@ -304,7 +307,9 @@
                 (quot nchars 4))
     ddl-str))
 
-(defn- add-pseudo-database-ddl [database]
+(defn add-pseudo-database-ddl
+  "Add a create_database_ddl entry to the denormalized database suitable for raw sql inference input."
+  [database]
   (assoc database :create_database_ddl (database->pseudo-ddl database)))
 
 (defn denormalize-database
@@ -316,8 +321,7 @@
     (-> database
         (assoc :sql_name (normalize-name database-name))
         (assoc :models (mapv denormalize-model models))
-        add-model-json-summary
-        add-pseudo-database-ddl)))
+        add-model-json-summary)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Prompt Input ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

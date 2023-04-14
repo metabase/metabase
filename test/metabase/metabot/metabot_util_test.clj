@@ -44,17 +44,33 @@
                                      {:display_name    "Sizes"
                                       :base_type       :type/Integer
                                       :possible_values [1 2 3]}
-                                     ;; Despite being enumerated, when the cardinality is too high,
-                                     ;; we will skip the enumeration here to prevent using too many tokens.
                                      {:display_name    "BigCardinality"
-                                      :base_type       :type/Integer
-                                      :possible_values (range (inc (metabot-settings/enum-cardinality-threshold)))}])}]
+                                      :base_type       :type/Integer}])}]
       (is (= (mdb.query/format-sql
                (str
                  "create type SIZES_t as enum '1', '2', '3';"
                  "CREATE TABLE \"TABLE\" ('NAME' TEXT,'FROOBY' BOOLEAN, 'AGE' INTEGER, 'SIZES' 'SIZES_t','BIGCARDINALITY' INTEGER)"))
              (mdb.query/format-sql
                (#'metabot-util/create-table-ddl model)))))))
+
+(deftest denormalize-field-cardinality-test
+  (testing "Ensure enum-cardinality-threshold is respected in model denormalization"
+    (mt/dataset sample-dataset
+      (mt/with-temp* [Card [model
+                            {:dataset_query
+                             {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (mt/id :people)}}
+                             :dataset true}]]
+        (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
+          (let [{:keys [result_metadata]} (metabot-util/denormalize-model model)]
+            (zero? (count (filter :possible_values result_metadata)))))
+        (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 10]
+          (let [{:keys [result_metadata]} (metabot-util/denormalize-model model)]
+            (= 1 (count (filter :possible_values result_metadata)))))
+        (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 50]
+          (let [{:keys [result_metadata]} (metabot-util/denormalize-model model)]
+            (= 2 (count (filter :possible_values result_metadata)))))))))
 
 (deftest denormalize-model-test
   (testing "Basic denormalized model test"
@@ -78,8 +94,7 @@
                             (->> result_metadata
                                  (some (fn [{:keys [sql_name] :as rsmd}] (when (= "SOURCE" sql_name) rsmd)))
                                  :possible_values
-                                 set))))
-                     (:result_metadata model)))))
+                                 set))))))))
 
 (deftest denormalize-database-test
   (testing "Basic denormalized database test"
@@ -115,8 +130,7 @@
             :message_templates [{:role "system", :content "The system prompt"}
                                 {:role "assistant", :content "%%MODEL:SQL_NAME%%"}
                                 {:role "assistant", :content "%%MODEL:CREATE_TABLE_DDL%%"}
-                                {:role "user", :content "A '%%USER_PROMPT%%'"}]}
-           prompt)))))
+                                {:role "user", :content "A '%%USER_PROMPT%%'"}]})))))
 
 (deftest extract-sql-test
   (testing "Test that we detect a simple SQL string"
@@ -172,7 +186,8 @@
   (testing "Ensure the generated pseudo-ddl contains the expected tables and enums."
     (mt/dataset sample-dataset
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 50]
-        (let [{:keys [create_database_ddl]} (metabot-util/denormalize-database {:id (mt/id)})]
+        (let [{:keys [create_database_ddl]} (->> (metabot-util/denormalize-database {:id (mt/id)})
+                                                 metabot-util/add-pseudo-database-ddl)]
           (is (str/includes? create_database_ddl "create type PRODUCTS_CATEGORY_t as enum 'Doohickey', 'Gadget', 'Gizmo', 'Widget';"))
           (is (str/includes? create_database_ddl "create type PEOPLE_STATE_t as enum 'AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT',"))
           (is (str/includes? create_database_ddl "create type PEOPLE_SOURCE_t as enum 'Affiliate', 'Facebook', 'Google', 'Organic', 'Twitter';"))
