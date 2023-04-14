@@ -6,10 +6,14 @@ import type { DatabaseId } from "metabase-types/api";
 import type Metadata from "./metadata/Metadata";
 import type {
   Clause,
-  MetadataProvider,
-  Query,
-  ColumnMetadata,
+  ColumnDisplayInfo,
   ColumnGroup,
+  ColumnMetadata,
+  MetadataProvider,
+  OrderByClause,
+  OrderByClauseDisplayInfo,
+  TableDisplayInfo,
+  Query,
 } from "./types";
 
 export function metadataProvider(
@@ -23,23 +27,22 @@ export function displayName(query: Query, clause: Clause): string {
   return ML_MetadataCalculation.display_name(query, clause);
 }
 
-export type DisplayInfo = {
-  display_name: string;
-  name?: string;
-  table?: {
-    name: string;
-    display_name: string;
-  };
-};
+declare function DisplayInfoFn(
+  query: Query,
+  columnMetadata: ColumnMetadata,
+): ColumnDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  columnGroup: ColumnGroup,
+): TableDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  orderByClause: OrderByClause,
+): OrderByClauseDisplayInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
-export function displayInfo(
-  query: Query,
-  x: Clause | ColumnMetadata | ColumnGroup,
-): DisplayInfo {
-  return ML.display_info(query, x);
-}
+export const displayInfo: typeof DisplayInfoFn = ML.display_info;
 
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
   return to_array(ML_ColumnGroup.group_columns(columns));
