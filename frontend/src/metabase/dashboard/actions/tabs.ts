@@ -1,122 +1,206 @@
 import type { Action } from "redux-actions";
 
 import {
-  CardId,
-  DashboardId,
+  DashboardOrderedCard,
   DashboardOrderedTab,
   DashboardTabId,
 } from "metabase-types/api";
-import { Dispatch, State } from "metabase-types/store";
+import { DashboardState } from "metabase-types/store";
 import { createAction, handleActions } from "metabase/lib/redux";
 
 import { INITIAL_DASHBOARD_STATE } from "../constants";
-import { setMultipleDashCardAttributes, removeCardFromDashboard } from "./core";
 
-// TODO consider reorgnaizing this file, e.g. have all action type strings in one place, all types, etc
-
-const ADD_TAB_TO_DASH = "metabase/dashboard/ADD_TAB_TO_DASH";
-
-type AddTabToDashPayload = { tab: DashboardOrderedTab };
-export const addTabToDash = createAction<AddTabToDashPayload>(ADD_TAB_TO_DASH);
-
-const REMOVE_TAB_FROM_DASH = "metabase/dashboard/REMOVE_TAB_FROM_DASH";
-
-type RemoveTabFromDashPayload = { tabId: DashboardTabId; dashId: DashboardId };
-export function removeTabFromDash(tabId: DashboardTabId) {
-  return (dispatch: Dispatch, getState: () => State) => {
-    // step 1: get all the card ids on the current dashboard that have the tab id
-    const state = getState();
-    const cardIds = state.dashboard.dashboards[
-      state.dashboard.dashboardId ?? 0
-    ].ordered_cards.filter(
-      id => state.dashboard.dashcards[id].dashboardtab_id === tabId,
-    );
-
-    // step 2: remove them all
-    // TODO create bulk removal action
-    cardIds.forEach(dashcardId =>
-      dispatch(removeCardFromDashboard({ dashcardId })),
-    );
-
-    // step 3: dispatch REMOVE_TAB_FROM_DASH
-    const action = createAction<RemoveTabFromDashPayload>(REMOVE_TAB_FROM_DASH);
-    // todo fix 0 null check
-    dispatch(action({ tabId, dashId: state.dashboard.dashboardId ?? 0 }));
-  };
-}
-
-export function addCardsToTab({
-  cardIds,
-  tabId,
-}: {
-  cardIds: CardId[];
-  tabId: DashboardTabId;
-}) {
-  return (dispatch: Dispatch) =>
-    dispatch(
-      setMultipleDashCardAttributes({
-        dashcards: cardIds.map(id => ({
-          id,
-          attributes: { dashboardtab_id: tabId },
-        })),
-      }),
-    );
-}
-
-const SELECT_TAB = "metabase/dashboard/SELECT_TAB";
-
+type CreateNewTabPayload = { tabId: DashboardTabId };
+type DeleteTabPayload = { tabId: DashboardTabId };
 type SelectTabPayload = { tabId: DashboardTabId | null };
+type SaveCardsAndTabsPayload = {
+  cards: DashboardOrderedCard[];
+  tabs: DashboardOrderedTab[];
+};
+type TabsReducerPayload = CreateNewTabPayload &
+  DeleteTabPayload &
+  SelectTabPayload &
+  SaveCardsAndTabsPayload;
+
+const CREATE_NEW_TAB = "metabase/dashboard/CREATE_NEW_TAB";
+const DELETE_TAB = "metabase/dashboard/DELETE_TAB";
+const SELECT_TAB = "metabase/dashboard/SELECT_TAB";
+const SAVE_CARDS_AND_TABS = "metabase/dashboard/SAVE_CARDS_AND_TABS";
+const INIT_TABS = "metabase/dashboard/INIT_TABS";
+
+let tempNewTabId = -1;
+export function createNewTab() {
+  const action = createAction<CreateNewTabPayload>(CREATE_NEW_TAB);
+  return action({ tabId: tempNewTabId-- });
+}
+
+export const deleteTab = createAction<DeleteTabPayload>(DELETE_TAB);
+
 export const selectTab = createAction<SelectTabPayload>(SELECT_TAB);
 
-export const tabsReducer = handleActions<
-  State["dashboard"],
-  AddTabToDashPayload & RemoveTabFromDashPayload & SelectTabPayload
->(
+export const saveCardsAndTabs =
+  createAction<SaveCardsAndTabsPayload>(SAVE_CARDS_AND_TABS);
+
+export const initTabs = createAction(INIT_TABS);
+
+function getPrevDashAndTabs(state: DashboardState) {
+  const dashId = state.dashboardId;
+  const prevDash = dashId ? state.dashboards[dashId] : null;
+  const prevTabs = prevDash?.ordered_tabs ?? [];
+
+  return { dashId, prevDash, prevTabs };
+}
+
+export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
   {
-    [ADD_TAB_TO_DASH]: (
+    [CREATE_NEW_TAB]: (
       state,
-      { payload: { tab } }: Action<AddTabToDashPayload>,
+      { payload: { tabId } }: Action<CreateNewTabPayload>,
     ) => {
-      const dashId = tab.dashboard_id;
-      const prevDash = state.dashboards[dashId];
+      const { dashId, prevDash, prevTabs } = getPrevDashAndTabs(state);
+      if (!dashId || !prevDash) {
+        // TODO consider throwing error
+        return state;
+      }
+
+      // 1. Create new tab, add to dashboard
+      const newTab: DashboardOrderedTab = {
+        id: tabId,
+        dashboard_id: dashId,
+        name: `Page ${prevTabs.length + 1}`,
+        position:
+          prevTabs.length > 0
+            ? Math.max(...prevTabs.map(t => t.position)) + 1
+            : 0,
+        entity_id: "",
+        created_at: "",
+        updated_at: "",
+      };
+      const dashboards: DashboardState["dashboards"] = {
+        ...state.dashboards,
+        [dashId]: {
+          ...prevDash,
+          ordered_tabs: [...prevTabs, newTab],
+        },
+      };
+
+      // 2. Select new tab
+      const selectedTabId = tabId;
+
+      // 3. Update tab id on existing dashcards if this is the first tab added
+      // TODO Can we simply this and just set dashcards to updatedDashcards?
+      const updatedDashcards: DashboardState["dashcards"] = {};
+      if (prevTabs.length === 0) {
+        prevDash.ordered_cards.forEach(id => {
+          updatedDashcards[id] = {
+            ...state.dashcards[id],
+            isDirty: true,
+            dashboardtab_id: tabId,
+          };
+        });
+      }
+      const dashcards: DashboardState["dashcards"] = {
+        ...state.dashcards,
+        ...updatedDashcards,
+      };
 
       return {
         ...state,
-        dashboards: {
-          ...state.dashboards,
-          [dashId]: {
-            ...prevDash,
-            ordered_tabs: [...(prevDash.ordered_tabs ?? []), tab],
-          },
-        },
+        dashboards,
+        selectedTabId,
+        dashcards,
       };
     },
-    [REMOVE_TAB_FROM_DASH]: (
-      state,
-      { payload: { tabId, dashId } }: Action<RemoveTabFromDashPayload>,
-    ) => {
-      const prevDash = state.dashboards[dashId];
+    [DELETE_TAB]: (state, { payload: { tabId } }: Action<DeleteTabPayload>) => {
+      const { dashId, prevDash, prevTabs } = getPrevDashAndTabs(state);
+      const tabToRemove = prevTabs.find(({ id }) => id === tabId);
+      if (!dashId || !prevDash || !tabToRemove) {
+        return state;
+      }
 
-      return {
-        ...state,
-        dashboards: {
-          ...state.dashboards,
-          [dashId]: {
-            ...prevDash,
-            ordered_tabs: (prevDash.ordered_tabs ?? []).filter(
-              ({ id }) => id !== tabId,
-            ),
-          },
+      // 1. Select a different tab if needed
+      let selectedTabId = state.selectedTabId;
+      if (selectedTabId === tabToRemove.id) {
+        const targetPosition =
+          tabToRemove.position === 0 ? 1 : tabToRemove.position - 1;
+        selectedTabId =
+          prevTabs.find(({ position }) => position === targetPosition)?.id ??
+          null;
+      }
+
+      // 2. Remove the tab
+      const filteredTabs = prevTabs.filter(({ id }) => id !== tabId);
+
+      // 3. Update position on remaining tabs
+      const newTabs = filteredTabs.map(tab =>
+        tab.position > tabToRemove.position
+          ? { ...tab, position: tab.position - 1 }
+          : tab,
+      );
+      const dashboards: DashboardState["dashboards"] = {
+        ...state.dashboards,
+        [dashId]: {
+          ...prevDash,
+          ordered_tabs: newTabs,
         },
       };
+
+      // 4. Remove dashcards that were on the deleted tab
+      const removedCardIds = prevDash.ordered_cards.filter(
+        id => state.dashcards[id].dashboardtab_id === tabId,
+      );
+      const removedDashcards: DashboardState["dashcards"] = {};
+      removedCardIds.forEach(id => {
+        removedDashcards[id] = {
+          ...state.dashcards[id],
+          isRemoved: true,
+        };
+      });
+      const dashcards = { ...state.dashcards, ...removedDashcards };
+
+      return { ...state, selectedTabId, dashboards, dashcards };
     },
     [SELECT_TAB]: (
       state,
       { payload: { tabId } }: Action<SelectTabPayload>,
-    ): State["dashboard"] => ({
+    ): DashboardState => ({
       ...state,
       selectedTabId: tabId,
     }),
+    [SAVE_CARDS_AND_TABS]: (
+      state,
+      {
+        payload: { cards: newCards, tabs: newTabs },
+      }: Action<SaveCardsAndTabsPayload>,
+    ) => {
+      const { prevDash, prevTabs } = getPrevDashAndTabs(state);
+      if (!prevDash) {
+        return state;
+      }
+
+      // 1. Replace temporary with real dashcard ids
+      const dashcardData: DashboardState["dashcardData"] = {};
+      const prevCards = prevDash.ordered_cards.filter(
+        id => !state.dashcards[id].isRemoved,
+      );
+      prevCards.forEach((oldId, index) => {
+        dashcardData[newCards[index].id] = state.dashcardData[oldId];
+      });
+
+      // 2. Re-select the currently selected tab with its real id
+      const selectedTabIndex = prevTabs.findIndex(
+        tab => tab.id === state.selectedTabId,
+      );
+      const selectedTabId = newTabs[selectedTabIndex]?.id ?? null;
+
+      return { ...state, dashcardData, selectedTabId };
+    },
+    [INIT_TABS]: state => {
+      const { prevTabs } = getPrevDashAndTabs(state);
+      const selectedTabId = prevTabs.find(t => t.position === 0)?.id ?? null;
+
+      return { ...state, selectedTabId };
+    },
   },
   INITIAL_DASHBOARD_STATE,
 );

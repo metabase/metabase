@@ -174,7 +174,13 @@ class Dashboard extends Component {
         this.setEditing(this.props.dashboard);
       }
       if (addCardOnLoad != null) {
-        addCardToDashboard({ dashId: dashboardId, cardId: addCardOnLoad });
+        addCardToDashboard({
+          dashId: dashboardId,
+          cardId: addCardOnLoad,
+          tabId:
+            this.props.dashboard.ordered_tabs.find(t => t.position === 0)?.id ??
+            null,
+        });
       }
     } catch (error) {
       if (error.status === 404) {
