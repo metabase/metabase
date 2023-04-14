@@ -63,7 +63,7 @@ const QueryDownloadWidget = ({
       triggerContent={
         loading ? (
           <Tooltip tooltip={t`Downloading…`}>
-            <LoadingSpinner className={className} size={18} />
+            <LoadingSpinner size={18} />
           </Tooltip>
         ) : (
           <Tooltip tooltip={t`Download full results`}>
