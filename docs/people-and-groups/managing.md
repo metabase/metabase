@@ -22,7 +22,7 @@ If you’ve already [configured Metabase to use email](../configuring-metabase/e
 
 ## Editing an account
 
-You can edit someone's name and email address by clicking the three dots icon and choosing **Edit Details**.
+You can edit someone's name and email address by clicking the three dots icon and choosing **Edit user**.
 
 > Be careful: changing an account's email address _will change the address the person will use to log in to Metabase_.
 
