@@ -389,7 +389,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/password"
+(api/defendpoint-schema PUT "/:id/password"
   "Update a user's password."
   [id :as {{:keys [password old_password]} :body, :as request}]
   {password su/ValidPassword}
