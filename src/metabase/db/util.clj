@@ -13,10 +13,7 @@
   "Check if `model` is a toucan model.
   In toucan2 any keywords can be a model so it's always true for keyword."
   [model]
-  (if (keyword? model)
-    true
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (models/model? model)))
+  (or (keyword? model) (models/model? model)))
 
 (defn primary-key
   "Replacement of [[mdb.u/primary-key]], this is used to make the transition to toucan 2 easier.

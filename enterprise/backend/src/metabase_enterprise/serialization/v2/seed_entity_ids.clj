@@ -40,7 +40,6 @@
   []
   (into {}
         (for [model (toucan-models)
-              :when (mdb.u/toucan-model? model)
               :let  [table-name (some-> model t2/table-name name)]
               :when table-name
               ;; ignore any models defined in test namespaces.
