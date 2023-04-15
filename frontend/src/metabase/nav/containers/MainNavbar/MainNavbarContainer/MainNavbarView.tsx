@@ -213,7 +213,7 @@ function CollectionSectionHeading({
       <CollectionsMoreIconContainer>
         <TippyPopoverWithTrigger
           renderTrigger={({ onClick }) => (
-            <CollectionsMoreIcon name="ellipsis" onClick={onClick} size={12} />
+            <CollectionsMoreIcon name="ellipsis" onClick={onClick} />
           )}
           popoverContent={renderMenu}
         />
