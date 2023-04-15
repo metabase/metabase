@@ -30,15 +30,20 @@
                                                          (:mysql :postgres) "entity_id"))]
         (into #{} (map (comp u/lower-case-en :table_name)) (resultset-seq rset))))))
 
+(defn toucan-models
+  "Return a list of all toucan models."
+  []
+  (concat (descendants :toucan1/model) (descendants :metabase/model)))
+
 (defn- make-table-name->model
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."
   []
   (into {}
-        (for [model (concat (descendants :toucan1/model) (descendants :metabase/models))
+        (for [model (toucan-models)
               :when (mdb.u/toucan-model? model)
               :let  [table-name (some-> model t2/table-name name)]
               :when table-name
-             ;; ignore any models defined in test namespaces.
+              ;; ignore any models defined in test namespaces.
               :when (not (str/includes? (namespace model) "test"))]
          [table-name model])))
 
@@ -49,7 +54,10 @@
         table-name->model           (make-table-name->model)
         entity-id-table-name->model (into {}
                                           (map (fn [table-name]
-                                                 [table-name (table-name->model table-name)]))
+                                                 (if-let [model (table-name->model table-name)]
+                                                  [table-name model]
+                                                  (throw (ex-info (trs "Model not found for table {0}" table-name)
+                                                                  {:table-name table-name})))))
                                           entity-id-table-names)
         entity-id-models            (set (vals entity-id-table-name->model))]
     ;; make sure we've resolved all of the tables that have entity_id to their corresponding models.

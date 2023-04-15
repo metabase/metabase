@@ -1,5 +1,5 @@
 (ns metabase.lib.schema
-  "Malli schema for the `:pipeline` MBQL query type, the version of MBQL produced and manipulated by the new Cljc
+  "Malli schema for the pMBQL query type, the version of MBQL produced and manipulated by the new Cljc
   Metabase lib. Currently this is a little different from the version of MBQL consumed by the QP, specified
   in [[metabase.mbql.schema]]. Hopefully these versions will converge in the future.
 
@@ -8,7 +8,6 @@
   future we can deprecate that namespace and eventually do away with it entirely."
   (:require
    [metabase.lib.schema.aggregation :as aggregation]
-   [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
    [metabase.lib.schema.expression.conditional]
@@ -20,6 +19,7 @@
    [metabase.lib.schema.literal]
    [metabase.lib.schema.order-by :as order-by]
    [metabase.lib.schema.ref :as ref]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.util.malli.registry :as mr]))
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
@@ -32,7 +32,6 @@
 (mr/def ::stage.native
   [:map
    [:lib/type [:= :mbql.stage/native]]
-   [:lib/options ::common/options]
    [:native any?]
    [:args {:optional true} [:sequential any?]]])
 
@@ -41,6 +40,9 @@
 
 (mr/def ::fields
   [:sequential {:min 1} [:ref ::ref/ref]])
+
+(mr/def ::filters
+  [:sequential {:min 1} [:ref ::expression/boolean]])
 
 (mr/def ::source-table
   [:or
@@ -51,13 +53,12 @@
   [:and
    [:map
     [:lib/type     [:= :mbql.stage/mbql]]
-    [:lib/options  ::common/options]
     [:joins        {:optional true} [:ref ::join/joins]]
     [:expressions  {:optional true} [:ref ::expression/expressions]]
     [:breakout     {:optional true} ::breakouts]
     [:aggregation  {:optional true} [:ref ::aggregation/aggregations]]
     [:fields       {:optional true} ::fields]
-    [:filter       {:optional true} [:ref ::expression/boolean]]
+    [:filters      {:optional true} ::filters]
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
     [:source-table {:optional true} [:ref ::source-table]]]
    ;; `:source-query` is not allowed in `:pipeline` (pMBQL) queries!
@@ -105,8 +106,11 @@
    [:* ::stage.additional]])
 
 (mr/def ::query
-  [:map
-   [:lib/type [:= :mbql/query]]
-   [:database ::id/database]
-   [:type [:= :pipeline]]
-   [:stages ::stages]])
+  [:and
+   [:map
+    [:lib/type [:= :mbql/query]]
+    [:database [:or
+                ::id/database
+                ::id/saved-questions-virtual-database]]
+    [:stages ::stages]]
+   lib.schema.util/UniqueUUIDs])

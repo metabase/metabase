@@ -1,7 +1,6 @@
 (ns metabase.models.revision
   (:require
    [clojure.data :as data]
-   [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision.diff :refer [diff-string]]
    [metabase.models.user :refer [User]]
@@ -9,7 +8,8 @@
    [metabase.util.i18n :refer [tru]]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model]))
 
 (def ^:const max-revisions
   "Maximum number of revisions to keep for each individual object. After this limit is surpassed, the oldest revisions
@@ -68,7 +68,7 @@
   [{:keys [model], :as revision}]
   ;; in some cases (such as tests) we have 'fake' models that cannot be resolved normally; don't fail entirely in
   ;; those cases
-  (let [model (u/ignore-exceptions (mdb.u/resolve-model (symbol model)))]
+  (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol model)))]
     (cond-> revision
       model (update :object (partial models/do-post-select model)))))
 

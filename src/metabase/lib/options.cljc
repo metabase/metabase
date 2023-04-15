@@ -3,6 +3,8 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
+;;; TODO -- not 100% sure we actually need all of this stuff anymore.
+
 (defn- mbql-clause? [x]
   (and (vector? x)
        (keyword? (first x))))
@@ -49,7 +51,7 @@
     (assoc x :lib/options new-options)
 
     (mbql-clause? x)
-    (if (map? (second x))
+    (if ((some-fn nil? map?) (second x))
       (assoc (vec x) 1 new-options)
       (into [(first x) new-options] (rest x)))
 

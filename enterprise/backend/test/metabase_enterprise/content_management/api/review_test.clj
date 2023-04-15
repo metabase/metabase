@@ -5,7 +5,6 @@
    [metabase.models.moderation-review :as moderation-review :refer [ModerationReview]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- normalized-response
@@ -67,13 +66,13 @@
                                :moderated_item_id card-id
                                :moderated_item_type "card"))))))
             (testing "Ensures we never have more than `modreview/max-moderation-reviews`"
-              (db/insert-many! ModerationReview (repeat (* 2 moderation-review/max-moderation-reviews)
-                                                        {:moderated_item_id   card-id
-                                                         :moderated_item_type "card"
-                                                         :moderator_id        (mt/user->id :crowberto)
-                                                         :most_recent         false
-                                                         :status              "verified"
-                                                         :text                "old review"}))
+              (t2/insert! ModerationReview (repeat (* 2 moderation-review/max-moderation-reviews)
+                                                   {:moderated_item_id   card-id
+                                                    :moderated_item_type "card"
+                                                    :moderator_id        (mt/user->id :crowberto)
+                                                    :most_recent         false
+                                                    :status              "verified"
+                                                    :text                "old review"}))
               ;; manually inserted many
 
               (is (> (review-count) moderation-review/max-moderation-reviews))

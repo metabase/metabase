@@ -53,19 +53,26 @@ class EntityMenu extends Component {
       className,
       tooltip,
       trigger,
+      renderTrigger,
       targetOffsetY,
+      triggerAriaLabel,
     } = this.props;
     const { open, menuItemContent } = this.state;
     return (
       <Container className={className} open={open} ref={this.rootRef}>
-        <EntityMenuTrigger
-          trigger={trigger}
-          icon={triggerIcon}
-          onClick={this.toggleMenu}
-          open={open}
-          tooltip={tooltip}
-          triggerProps={triggerProps}
-        />
+        {renderTrigger ? (
+          renderTrigger({ open, onClick: this.toggleMenu })
+        ) : (
+          <EntityMenuTrigger
+            ariaLabel={triggerAriaLabel}
+            trigger={trigger}
+            icon={triggerIcon}
+            onClick={this.toggleMenu}
+            open={open}
+            tooltip={tooltip}
+            triggerProps={triggerProps}
+          />
+        )}
         <Popover
           target={this.rootRef.current}
           isOpen={open}

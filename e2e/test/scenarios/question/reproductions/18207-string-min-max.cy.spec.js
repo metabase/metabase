@@ -55,7 +55,9 @@ describe("issue 18207", () => {
     popover().contains("Custom Expression").click();
     popover().within(() => {
       enterCustomColumnDetails({ formula: "Max([Vendor])" });
-      cy.findByPlaceholderText("Name (required)").type("LastVendor");
+      cy.findByPlaceholderText("Something nice and descriptive").type(
+        "LastVendor",
+      );
       cy.findByText("Done").click();
     });
 

@@ -7,7 +7,7 @@
   will not be reflected here, for example if we add new information to the metadata. We'll have to manually update
   these things if that happens and Metabase lib is meant to consume it."
   (:require
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
+   [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]))
 
 (defonce ^:private ^{:doc "Generate a random prefix to add to all of the [[id]]s below, so that they change between
   test runs to catch places where people are hardcoding IDs rather than using [[id]]."}
@@ -47,7 +47,11 @@
         :categories 10
         :checkins   20
         :users      30
-        :venues     40)))
+        :venues     40
+        :products   50
+        :orders     60
+        :people     70
+        :reviews    80)))
 
   ([table-name field-name]
    (+ random-id-offset
@@ -71,7 +75,47 @@
                       :category-id 402
                       :latitude    403
                       :longitude   404
-                      :price       405)))))
+                      :price       405)
+        :products   (case field-name
+                      :id         500
+                      :rating     501
+                      :category   502
+                      :price      503
+                      :title      504
+                      :created-at 505
+                      :vendor     506
+                      :ean        507)
+        :orders     (case field-name
+                      :id         600
+                      :subtotal   601
+                      :total      602
+                      :tax        603
+                      :discount   604
+                      :quantity   605
+                      :created-at 606
+                      :product-id 607
+                      :user-id    608)
+        :people     (case field-name
+                      :id         700
+                      :state      701
+                      :city       702
+                      :address    703
+                      :name       704
+                      :source     705
+                      :zip        706
+                      :latitude   707
+                      :password   708
+                      :birth-date 709
+                      :longitude  710
+                      :email      711
+                      :created-at 712)
+        :reviews    (case field-name
+                      :id         800
+                      :created-at 801
+                      :rating     802
+                      :reviewer   803
+                      :body       804
+                      :product-id 805)))))
 
 (defmulti table-metadata
   "Get Table metadata for a one of the `test-data` Tables in the test metadata, e.g. `:venues`. This is here so you can
@@ -677,7 +721,7 @@
    :name                "PRICE"
    :fingerprint_version 5
    :has_field_values    :list
-   :settings            nil
+   :settings            {:is_priceless true}
    :caveats             nil
    :fk_target_field_id  nil
    :custom_position     0
@@ -731,6 +775,1373 @@
    :points_of_interest      nil
    :lib/type                :metadata/table})
 
+ (defmethod field-metadata [:products :id]
+  [_table-name _field-name]
+   {:description                nil
+    :database_type              "BIGINT"
+    :semantic_type              :type/PK
+    :table_id                   (id :products)
+    :coercion_strategy          nil
+    :name                       "ID"
+    :fingerprint_version        0
+    :has_field_values           nil
+    :settings                   nil
+    :caveats                    nil
+    :fk_target_field_id         nil
+    :custom_position            0
+    :effective_type             :type/BigInteger
+    :active                     true
+    :nfc_path                   nil
+    :parent_id                  nil
+    :id                         (id :products :id)
+    :database_is_auto_increment true
+    :position                   0
+    :visibility_type            :normal
+    :preview_display            true
+    :display_name               "ID"
+    :database_position          0
+    :database_required          false
+    :fingerprint                nil
+    :base_type                  :type/BigInteger
+    :points_of_interest         nil
+    :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:products :rating]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "DOUBLE PRECISION"
+   :semantic_type              :type/Score
+   :table_id                   (id :products)
+   :coercion_strategy          nil
+   :name                       "RATING"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Float
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :products :rating)
+   :database_is_auto_increment false
+   :position                   6
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Rating"
+   :database_position          6
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 23, :nil% 0.0}
+                                :type   {:type/Number {:min 0.0
+                                                       :q1  3.5120465053408525
+                                                       :q3  4.216124969497314
+                                                       :max 5.0
+                                                       :sd  1.3605488657451452
+                                                       :avg 3.4715}}}
+   :base_type                  :type/Float
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+ (defmethod field-metadata [:products :category]
+   [_table-name _field-name]
+   {:description                nil
+    :database_type              "CHARACTER VARYING"
+    :semantic_type              :type/Category
+    :table_id                   (id :products)
+    :coercion_strategy          nil
+    :name                       "CATEGORY"
+    :fingerprint_version        5
+    :has_field_values           :auto-list
+    :settings                   nil
+    :caveats                    nil
+    :fk_target_field_id         nil
+    :custom_position            0
+    :effective_type             :type/Text
+    :active                     true
+    :nfc_path                   nil
+    :parent_id                  nil
+    :id                         (id :products :category)
+    :database_is_auto_increment false
+    :position                   3
+    :visibility_type            :normal
+    :preview_display            true
+    :display_name               "Category"
+    :database_position          3
+    :database_required          false
+    :fingerprint                {:global {:distinct-count 4, :nil% 0.0}
+                                 :type   {:type/Text {:percent-json   0.0
+                                                      :percent-url    0.0
+                                                      :percent-email  0.0
+                                                      :percent-state  0.0
+                                                      :average-length 6.375}}}
+    :base_type                  :type/Text
+    :points_of_interest         nil
+    :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:products :price]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "DOUBLE PRECISION"
+   :semantic_type              nil
+   :table_id                   (id :products)
+   :coercion_strategy          nil
+   :name                       "PRICE"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Float
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :products :price)
+   :database_is_auto_increment false
+   :position                   5
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Price"
+   :database_position          5
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 168, :nil% 0.0}
+                                :type   {:type/Number {:min 15.69
+                                                       :q1  37.139492751669884
+                                                       :q3  75.46063889947193
+                                                       :max 98.82
+                                                       :sd  21.711152906916283
+                                                       :avg 55.746399999999994}}}
+   :base_type                  :type/Float
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+ (defmethod field-metadata [:products :title]
+   [_table-name _field-name]
+   {:description                nil
+    :database_type              "CHARACTER VARYING"
+    :semantic_type              :type/Title
+    :table_id                   (id :products)
+    :coercion_strategy          nil
+    :name                       "TITLE"
+    :fingerprint_version        5
+    :has_field_values           :auto-list
+    :settings                   nil
+    :caveats                    nil
+    :fk_target_field_id         nil
+    :custom_position            0
+    :effective_type             :type/Text
+    :active                     true
+    :nfc_path                   nil
+    :parent_id                  nil
+    :id                         (id :products :title)
+    :database_is_auto_increment false
+    :position                   2
+    :visibility_type            :normal
+    :preview_display            true
+    :display_name               "Title"
+    :database_position          2
+    :database_required          false
+    :fingerprint                {:global {:distinct-count 199, :nil% 0.0}
+                                 :type   {:type/Text {:percent-json   0.0
+                                                      :percent-url    0.0
+                                                      :percent-email  0.0
+                                                      :percent-state  0.0
+                                                      :average-length 21.495}}}
+    :base_type                  :type/Text
+    :points_of_interest         nil
+    :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:products :created-at]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "TIMESTAMP WITH TIME ZONE"
+   :semantic_type              :type/CreationTimestamp
+   :table_id                   (id :products)
+   :coercion_strategy          nil
+   :name                       "CREATED_AT"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/DateTimeWithLocalTZ
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :products :created-at)
+   :database_is_auto_increment false
+   :position                   7
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Created At"
+   :database_position          7
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.0}
+                                :type   {:type/DateTime {:earliest "2016-04-26T19:29:55.147Z"
+                                                         :latest   "2019-04-15T13:34:19.931Z"}}}
+   :base_type                  :type/DateTimeWithLocalTZ
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:products :vendor]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "CHARACTER VARYING"
+   :semantic_type              :type/Company
+   :table_id                   (id :products)
+   :coercion_strategy          nil
+   :name                       "VENDOR"
+   :fingerprint_version        5
+   :has_field_values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Text
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :products :vendor)
+   :database_is_auto_increment false
+   :position                   4
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Vendor"
+   :database_position          4
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 20.6}}}
+   :base_type                  :type/Text
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:products :ean]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "CHARACTER VARYING"
+   :semantic_type              nil
+   :table_id                   (id :products)
+   :coercion_strategy          nil
+   :name                       "EAN"
+   :fingerprint_version        5
+   :has_field_values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Text
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :products :ean)
+   :database_is_auto_increment false
+   :position                   1
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Ean"
+   :database_position          1
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 13.0}}}
+   :base_type                  :type/Text
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod table-metadata :products
+  [_table-name]
+  {:description             nil
+   :entity_type             :entity/ProductTable
+   :schema                  "PUBLIC"
+   :show_in_getting_started false
+   :name                    "PRODUCTS"
+   :caveats                 nil
+   :active                  true
+   :id                      (id :products)
+   :db_id                   (id)
+   :visibility_type         nil
+   :field_order             :database
+   :initial_sync_status     "complete"
+   :display_name            "Products"
+   :points_of_interest      nil
+   :lib/type                :metadata/table
+   :fields                  [(field-metadata :products :id)
+                             (field-metadata :products :rating)
+                             (field-metadata :products :category)
+                             (field-metadata :products :price)
+                             (field-metadata :products :title)
+                             (field-metadata :products :created-at)
+                             (field-metadata :products :vendor)
+                             (field-metadata :products :ean)]})
+
+(defmethod field-metadata [:orders :id]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "BIGINT"
+   :semantic_type              :type/PK
+   :table_id                   (id :orders)
+   :coercion_strategy          nil
+   :name                       "ID"
+   :fingerprint_version        0
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/BigInteger
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :orders :id)
+   :database_is_auto_increment true
+   :position                   0
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "ID"
+   :database_position          0
+   :database_required          false
+   :fingerprint                nil
+   :base_type                  :type/BigInteger
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:orders :subtotal]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "DOUBLE PRECISION"
+   :semantic_type              nil
+   :table_id                   (id :orders)
+   :coercion_strategy          nil
+   :name                       "SUBTOTAL"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Float
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :orders :subtotal)
+   :database_is_auto_increment false
+   :position                   3
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Subtotal"
+   :database_position          3
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 334, :nil% 0.0}
+                                :type   {:type/Number
+                                         {:min 15.69
+                                          :q1  49.74982947753719
+                                          :q3  105.42859575924612
+                                          :max 148.23
+                                          :sd  32.536819823931104
+                                          :avg 77.012717}}}
+   :base_type                  :type/Float
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:orders :total]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "DOUBLE PRECISION"
+   :semantic_type              nil
+   :table_id                   (id :orders)
+   :coercion_strategy          nil
+   :name                       "TOTAL"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Float
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :orders :total)
+   :database_is_auto_increment false
+   :position                   5
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Total"
+   :database_position          5
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 3710, :nil% 0.0}
+                                :type   {:type/Number
+                                         {:min 8.94
+                                          :q1  51.34487926008301
+                                          :q3  110.29697257770795
+                                          :max 159.35
+                                          :sd  34.264752087910324
+                                          :avg 80.35850400000001}}}
+   :base_type                  :type/Float
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:orders :tax]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "DOUBLE PRECISION"
+   :semantic_type              nil
+   :table_id                   (id :orders)
+   :coercion_strategy          nil
+   :name                       "TAX"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Float
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :orders :tax)
+   :database_is_auto_increment false
+   :position                   4
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Tax"
+   :database_position          4
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 797, :nil% 0.0}
+                                :type   {:type/Number
+                                         {:min 0.0
+                                          :q1  2.273340386603857
+                                          :q3  5.337275338216307
+                                          :max 11.12
+                                          :sd  2.3206651358900316
+                                          :avg 3.8722100000000004}}}
+   :base_type                  :type/Float
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:orders :discount]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "DOUBLE PRECISION"
+   :semantic_type              :type/Discount
+   :table_id                   (id :orders)
+   :coercion_strategy          nil
+   :name                       "DISCOUNT"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Float
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :orders :discount)
+   :database_is_auto_increment false
+   :position                   6
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Discount"
+   :database_position          6
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 479, :nil% 0.898}
+                                :type   {:type/Number {:min 0.17
+                                                       :q1  2.978591571097236
+                                                       :q3  7.337323315325942
+                                                       :max 61.7
+                                                       :sd  3.053736975739119
+                                                       :avg 5.161009803921569}}}
+   :base_type                  :type/Float
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:orders :quantity]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "INTEGER"
+   :semantic_type              :type/Quantity
+   :table_id                   (id :orders)
+   :coercion_strategy          nil
+   :name                       "QUANTITY"
+   :fingerprint_version        5
+   :has_field_values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Integer
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :orders :quantity)
+   :database_is_auto_increment false
+   :position                   8
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Quantity"
+   :database_position          8
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 62, :nil% 0.0}
+                                :type   {:type/Number {:min 0.0
+                                                       :q1  1.755882607764982
+                                                       :q3  4.882654507928044
+                                                       :max 100.0
+                                                       :sd  4.214258386403798
+                                                       :avg 3.7015}}}
+   :base_type                  :type/Integer
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:orders :created-at]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "TIMESTAMP WITH TIME ZONE"
+   :semantic_type              :type/CreationTimestamp
+   :table_id                   (id :orders)
+   :coercion_strategy          nil
+   :name                       "CREATED_AT"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/DateTimeWithLocalTZ
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :orders :created-at)
+   :database_is_auto_increment false
+   :position                   7
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Created At"
+   :database_position          7
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 10000, :nil% 0.0}
+                                :type   {:type/DateTime {:earliest "2016-04-30T18:56:13.352Z"
+                                                         :latest   "2020-04-19T14:07:15.657Z"}}}
+   :base_type                  :type/DateTimeWithLocalTZ
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:orders :product-id]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "INTEGER"
+   :semantic_type              :type/FK
+   :table_id                   (id :orders)
+   :coercion_strategy          nil
+   :name                       "PRODUCT_ID"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         (id :products :id)
+   :custom_position            0
+   :effective_type             :type/Integer
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :orders :product-id)
+   :database_is_auto_increment false
+   :position                   2
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Product ID"
+   :database_position          2
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.0}}
+   :base_type                  :type/Integer
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:orders :user-id]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "INTEGER"
+   :semantic_type              :type/FK
+   :table_id                   (id :orders)
+   :coercion_strategy          nil
+   :name                       "USER_ID"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         (id :people :id)
+   :custom_position            0
+   :effective_type             :type/Integer
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :orders :user-id)
+   :database_is_auto_increment false
+   :position                   1
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "User ID"
+   :database_position          1
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 929, :nil% 0.0}}
+   :base_type                  :type/Integer
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod table-metadata :orders
+  [_table-name]
+  {:description             nil
+   :entity_type             :entity/TransactionTable
+   :schema                  "PUBLIC"
+   :show_in_getting_started false
+   :name                    "ORDERS"
+   :caveats                 nil
+   :active                  true
+   :id                      (id :orders)
+   :db_id                   (id)
+   :visibility_type         nil
+   :field_order             :database
+   :initial_sync_status     "complete"
+   :display_name            "Orders"
+   :points_of_interest      nil
+   :lib/type                :metadata/table
+   :fields                  [(field-metadata :orders :id)
+                             (field-metadata :orders :subtotal)
+                             (field-metadata :orders :total)
+                             (field-metadata :orders :tax)
+                             (field-metadata :orders :discount)
+                             (field-metadata :orders :quantity)
+                             (field-metadata :orders :created-at)
+                             (field-metadata :orders :product-id)
+                             (field-metadata :orders :user-id)]})
+
+(defmethod field-metadata [:people :id]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "BIGINT"
+   :semantic_type              :type/PK
+   :table_id                   (id :people)
+   :coercion_strategy          nil
+   :name                       "ID"
+   :fingerprint_version        0
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/BigInteger
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :people :id)
+   :database_is_auto_increment true
+   :position                   0
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "ID"
+   :database_position          0
+   :database_required          false
+   :fingerprint                nil
+   :base_type                  :type/BigInteger
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:people :state]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "CHARACTER VARYING"
+   :semantic_type              :type/State
+   :table_id                   (id :people)
+   :coercion_strategy          nil
+   :name                       "STATE"
+   :fingerprint_version        5
+   :has_field_values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Text
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :people :state)
+   :database_is_auto_increment false
+   :position                   7
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "State"
+   :database_position          7
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 49, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  1.0
+                                                     :average-length 2.0}}}
+   :base_type                  :type/Text
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:people :city]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "CHARACTER VARYING"
+   :semantic_type              :type/City
+   :table_id                   (id :people)
+   :coercion_strategy          nil
+   :name                       "CITY"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Text
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :people :city)
+   :database_is_auto_increment false
+   :position                   5
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "City"
+   :database_position          5
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 1966, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.002
+                                                     :average-length 8.284}}}
+   :base_type                  :type/Text
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:people :address]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "CHARACTER VARYING"
+   :semantic_type              nil
+   :table_id                   (id :people)
+   :coercion_strategy          nil
+   :name                       "ADDRESS"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Text
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :people :address)
+   :database_is_auto_increment false
+   :position                   1
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Address"
+   :database_position          1
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 2490, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 20.85}}}
+   :base_type                  :type/Text
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:people :name]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "CHARACTER VARYING"
+   :semantic_type              :type/Name
+   :table_id                   (id :people)
+   :coercion_strategy          nil
+   :name                       "NAME"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Text
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :people :name)
+   :database_is_auto_increment false
+   :position                   4
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Name"
+   :database_position          4
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 2499, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 13.532}}}
+   :base_type                  :type/Text
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:people :source]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "CHARACTER VARYING"
+   :semantic_type              :type/Source
+   :table_id                   (id :people)
+   :coercion_strategy          nil
+   :name                       "SOURCE"
+   :fingerprint_version        5
+   :has_field_values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Text
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :people :source)
+   :database_is_auto_increment false
+   :position                   8
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Source"
+   :database_position          8
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 5, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 7.4084}}}
+   :base_type                  :type/Text
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:people :zip]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "CHARACTER VARYING"
+   :semantic_type              nil
+   :table_id                   (id :people)
+   :coercion_strategy          nil
+   :name                       "ZIP"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Text
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :people :zip)
+   :database_is_auto_increment false
+   :position                   10
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Zip"
+   :database_position          10
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 2234, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 5.0}}}
+   :base_type                  :type/Text
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:people :latitude]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "DOUBLE PRECISION"
+   :semantic_type              :type/Latitude
+   :table_id                   (id :people)
+   :coercion_strategy          nil
+   :name                       "LATITUDE"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Float
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :people :latitude)
+   :database_is_auto_increment false
+   :position                   11
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Latitude"
+   :database_position          11
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 2491, :nil% 0.0}
+                                :type   {:type/Number {:min 25.775827
+                                                       :q1  35.302705923023126
+                                                       :q3  43.773802584662
+                                                       :max 70.6355001
+                                                       :sd  6.390832341883712
+                                                       :avg 39.87934670484002}}}
+   :base_type                  :type/Float
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:people :password]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "CHARACTER VARYING"
+   :semantic_type              nil
+   :table_id                   (id :people)
+   :coercion_strategy          nil
+   :name                       "PASSWORD"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Text
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :people :password)
+   :database_is_auto_increment false
+   :position                   3
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Password"
+   :database_position          3
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 2500, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 36.0}}}
+   :base_type                  :type/Text
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:people :birth-date]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "DATE"
+   :semantic_type              nil
+   :table_id                   (id :people)
+   :coercion_strategy          nil
+   :name                       "BIRTH_DATE"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Date
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :people :birth-date)
+   :database_is_auto_increment false
+   :position                   9
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Birth Date"
+   :database_position          9
+   :database_required          false
+   :fingerprint
+   {:global {:distinct-count 2308, :nil% 0.0}
+    :type   {:type/DateTime {:earliest "1958-04-26", :latest "2000-04-03"}}}
+   :base_type                  :type/Date
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:people :longitude]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "DOUBLE PRECISION"
+   :semantic_type              :type/Longitude
+   :table_id                   (id :people)
+   :coercion_strategy          nil
+   :name                       "LONGITUDE"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Float
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :people :longitude)
+   :database_is_auto_increment false
+   :position                   6
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Longitude"
+   :database_position          6
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 2491, :nil% 0.0}
+                                :type   {:type/Number {:min -166.5425726
+                                                       :q1  -101.58350792373135
+                                                       :q3  -84.65289348288829
+                                                       :max -67.96735199999999
+                                                       :sd  15.399698968175663
+                                                       :avg -95.18741780363999}}}
+   :base_type                  :type/Float
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:people :email]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "CHARACTER VARYING"
+   :semantic_type              :type/Email
+   :table_id                   (id :people)
+   :coercion_strategy          nil
+   :name                       "EMAIL"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Text
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :people :email)
+   :database_is_auto_increment false
+   :position                   2
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Email"
+   :database_position          2
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 2500, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  1.0
+                                                     :percent-state  0.0
+                                                     :average-length 24.1824}}}
+   :base_type                  :type/Text
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:people :created-at]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "TIMESTAMP WITH TIME ZONE"
+   :semantic_type              :type/CreationTimestamp
+   :table_id                   (id :people)
+   :coercion_strategy          nil
+   :name                       "CREATED_AT"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/DateTimeWithLocalTZ
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :people :created-at)
+   :database_is_auto_increment false
+   :position                   12
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Created At"
+   :database_position          12
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 2499, :nil% 0.0}
+                                :type   {:type/DateTime {:earliest "2016-04-19T21:35:18.752Z"
+                                                         :latest   "2019-04-19T14:06:27.3Z"}}}
+   :base_type                  :type/DateTimeWithLocalTZ
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod table-metadata :people
+  [_table-name]
+  {:description             nil
+   :entity_type             :entity/UserTable
+   :schema                  "PUBLIC"
+   :show_in_getting_started false
+   :name                    "PEOPLE"
+   :caveats                 nil
+   :active                  true
+   :id                      (id :people)
+   :db_id                   (id)
+   :visibility_type         nil
+   :field_order             :database
+   :initial_sync_status     "complete"
+   :display_name            "People"
+   :points_of_interest      nil
+   :lib/type                :metadata/table
+   :fields                  [(field-metadata :people :id)
+                             (field-metadata :people :state)
+                             (field-metadata :people :city)
+                             (field-metadata :people :address)
+                             (field-metadata :people :name)
+                             (field-metadata :people :source)
+                             (field-metadata :people :zip)
+                             (field-metadata :people :latitude)
+                             (field-metadata :people :password)
+                             (field-metadata :people :birth-date)
+                             (field-metadata :people :longitude)
+                             (field-metadata :people :email)
+                             (field-metadata :people :created-at)]})
+
+(defmethod field-metadata [:reviews :id]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "BIGINT"
+   :semantic_type              :type/PK
+   :table_id                   (id :reviews)
+   :coercion_strategy          nil
+   :name                       "ID"
+   :fingerprint_version        0
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/BigInteger
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :reviews :id)
+   :database_is_auto_increment true
+   :position                   0
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "ID"
+   :database_position          0
+   :database_required          false
+   :fingerprint                nil
+   :base_type                  :type/BigInteger
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:reviews :created-at]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "TIMESTAMP WITH TIME ZONE"
+   :semantic_type              :type/CreationTimestamp
+   :table_id                   (id :reviews)
+   :coercion_strategy          nil
+   :name                       "CREATED_AT"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/DateTimeWithLocalTZ
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :reviews :created-at)
+   :database_is_auto_increment false
+   :position                   5
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Created At"
+   :database_position          5
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 1112, :nil% 0.0}
+                                :type   {:type/DateTime {:earliest "2016-06-03T00:37:05.818Z"
+                                                         :latest   "2020-04-19T14:15:25.677Z"}}}
+   :base_type                  :type/DateTimeWithLocalTZ
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:reviews :rating]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "INTEGER"
+   :semantic_type              :type/Score
+   :table_id                   (id :reviews)
+   :coercion_strategy          nil
+   :name                       "RATING"
+   :fingerprint_version        5
+   :has_field_values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Integer
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :reviews :rating)
+   :database_is_auto_increment false
+   :position                   3
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Rating"
+   :database_position          3
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 5, :nil% 0.0}
+                                :type   {:type/Number {:min 1.0
+                                                       :q1  3.54744353181696
+                                                       :q3  4.764807071650455
+                                                       :max 5.0
+                                                       :sd  1.0443899855660577
+                                                       :avg 3.987410071942446}}}
+   :base_type                  :type/Integer
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:reviews :reviewer]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "CHARACTER VARYING"
+   :semantic_type              nil
+   :table_id                   (id :reviews)
+   :coercion_strategy          nil
+   :name                       "REVIEWER"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Text
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :reviews :reviewer)
+   :database_is_auto_increment false
+   :position                   2
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Reviewer"
+   :database_position          2
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 1076, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.001798561151079137
+                                                     :average-length 9.972122302158274}}}
+   :base_type                  :type/Text
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:reviews :body]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "CHARACTER VARYING"
+   :semantic_type              nil
+   :table_id                   (id :reviews)
+   :coercion_strategy          nil
+   :name                       "BODY"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Text
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :reviews :body)
+   :database_is_auto_increment false
+   :position                   4
+   :visibility_type            :normal
+   :preview_display            false
+   :display_name               "Body"
+   :database_position          4
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 1112, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 177.41996402877697}}}
+   :base_type                  :type/Text
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod field-metadata [:reviews :product-id]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "INTEGER"
+   :semantic_type              :type/FK
+   :table_id                   (id :reviews)
+   :coercion_strategy          nil
+   :name                       "PRODUCT_ID"
+   :fingerprint_version        5
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         (id :products :id)
+   :custom_position            0
+   :effective_type             :type/Integer
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :reviews :product-id)
+   :database_is_auto_increment false
+   :position                   1
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Product ID"
+   :database_position          1
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 176, :nil% 0.0}}
+   :base_type                  :type/Integer
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
+
+(defmethod table-metadata :reviews
+  [_table-name]
+  {:description             nil
+   :entity_type             :entity/GenericTable
+   :schema                  "PUBLIC"
+   :show_in_getting_started false
+   :name                    "REVIEWS"
+   :caveats                 nil
+   :active                  true
+   :id                      (id :reviews)
+   :db_id                   (id)
+   :visibility_type         nil
+   :field_order             :database
+   :initial_sync_status     "complete"
+   :display_name            "Reviews"
+   :points_of_interest      nil
+   :lib/type                :metadata/table
+   :fields                  [(field-metadata :reviews :id)
+                             (field-metadata :reviews :created-at)
+                             (field-metadata :reviews :rating)
+                             (field-metadata :reviews :reviewer)
+                             (field-metadata :reviews :body)
+                             (field-metadata :reviews :product-id)]})
+
 (def metadata
   "Complete Database metadata for testing, captured from a call to `GET /api/database/:id/metadata`. For the H2 version
   of `test-data`. This is a representative example of the metadata the FE Query Builder would have available to it.
@@ -769,7 +2180,11 @@
    :tables                      [(table-metadata :categories)
                                  (table-metadata :checkins)
                                  (table-metadata :users)
-                                 (table-metadata :venues)]
+                                 (table-metadata :venues)
+                                 (table-metadata :products)
+                                 (table-metadata :orders)
+                                 (table-metadata :people)
+                                 (table-metadata :reviews)]
    :creator_id                  nil
    :is_full_sync                true
    :cache_ttl                   nil
@@ -786,7 +2201,7 @@
 
 (def metadata-provider
   "[[metabase.lib.metadata.protocols/MetadataProvider]] using the test [[metadata]]."
-  (lib.metadata.protocols/->SimpleGraphMetadataProvider metadata))
+  (meta.graph-provider/->SimpleGraphMetadataProvider metadata))
 
 (def results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
@@ -801,7 +2216,6 @@
   {:lib/type :metadata/results
    :columns  [{:lib/type       :metadata/field
                :display_name   "ID"
-               :field_ref      [:field "ID" {:base-type :type/BigInteger}]
                :name           "ID"
                :base_type      :type/BigInteger
                :effective_type :type/BigInteger
@@ -809,7 +2223,6 @@
                :fingerprint    nil}
               {:lib/type       :metadata/field
                :display_name   "NAME" ; TODO -- these display names are icky
-               :field_ref      [:field "NAME" {:base-type :type/Text}]
                :name           "NAME"
                :base_type      :type/Text
                :effective_type :type/Text
@@ -822,17 +2235,20 @@
                                                      :average-length 15.63}}}}
               {:lib/type       :metadata/field
                :display_name   "CATEGORY_ID"
-               :field_ref      [:field "CATEGORY_ID" {:base-type :type/Integer}]
                :name           "CATEGORY_ID"
                :base_type      :type/Integer
                :effective_type :type/Integer
                :semantic_type  nil
                :fingerprint    {:global {:distinct-count 28, :nil% 0.0}
                                 :type   {:type/Number
-                                         {:min 2.0, :q1 6.89564392373896, :q3 49.240253073352044, :max 74.0, :sd 23.058108414099443, :avg 29.98}}}}
+                                         {:min 2.0
+                                          :q1  6.89564392373896
+                                          :q3  49.240253073352044
+                                          :max 74.0
+                                          :sd  23.058108414099443
+                                          :avg 29.98}}}}
               {:lib/type       :metadata/field
                :display_name   "LATITUDE"
-               :field_ref      [:field "LATITUDE" {:base-type :type/Float}]
                :name           "LATITUDE"
                :base_type      :type/Float
                :effective_type :type/Float
@@ -847,7 +2263,6 @@
                                        :avg 35.505891999999996}}}}
               {:lib/type       :metadata/field
                :display_name   "LONGITUDE"
-               :field_ref      [:field "LONGITUDE" {:base-type :type/Float}]
                :name           "LONGITUDE"
                :base_type      :type/Float
                :effective_type :type/Float
@@ -862,7 +2277,6 @@
                                           :avg -115.99848699999998}}}}
               {:lib/type       :metadata/field
                :display_name   "PRICE"
-               :field_ref      [:field "PRICE" {:base-type :type/Integer}]
                :name           "PRICE"
                :base_type      :type/Integer
                :effective_type :type/Integer

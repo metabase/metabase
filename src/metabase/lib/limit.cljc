@@ -7,12 +7,12 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-(defmethod lib.metadata.calculation/describe-top-level-key :limit
+(defmethod lib.metadata.calculation/describe-top-level-key-method :limit
   [query stage-number _k]
   (when-let [limit (:limit (lib.util/query-stage query stage-number))]
     (str limit \space (i18n/trun "row" "rows" limit))))
 
-(mu/defn limit :- ::lib.schema/query
+(mu/defn ^:export limit :- ::lib.schema/query
   "Set the maximum number of rows to be returned by a stage of a query to `n`. If `n` is `nil`, remove the limit."
   ([query n]
    (limit query -1 n))
@@ -25,7 +25,7 @@
                                                        (assoc stage :limit n)
                                                        (dissoc stage :limit))))))
 
-(mu/defn current-limit :- [:maybe ::lib.schema.common/int-greater-than-zero]
+(mu/defn ^:export current-limit :- [:maybe ::lib.schema.common/int-greater-than-zero]
   "Get the maximum number of rows to be returned by a stage of a query. `nil` indicates there is no limit"
   ([query :- ::lib.schema/query]
    (current-limit query -1))

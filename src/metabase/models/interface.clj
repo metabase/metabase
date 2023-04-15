@@ -26,6 +26,7 @@
    [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]
+   [toucan2.model :as t2.model]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.util :as t2.u])
@@ -453,6 +454,16 @@
     (when (simple-symbol? symb)
       (let [metabase-models-keyword (keyword "m" (name symb))]
         (when (isa? metabase-models-keyword :metabase/models)
+          metabase-models-keyword)))
+    (next-method symb)))
+
+(methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
+  "Handle models deriving from :metabase/model."
+  [symb]
+  (or
+    (when (simple-symbol? symb)
+      (let [metabase-models-keyword (keyword "model" (name symb))]
+        (when (isa? metabase-models-keyword :metabase/model)
           metabase-models-keyword)))
     (next-method symb)))
 

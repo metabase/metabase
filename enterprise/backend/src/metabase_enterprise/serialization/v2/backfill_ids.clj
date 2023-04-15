@@ -12,7 +12,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model]))
 
 (defn backfill-ids-for
   "Updates all rows of a particular model to have `:entity_id` set, based on the [[serdes/identity-hash]]."
@@ -26,7 +27,9 @@
                     eid    (u/generate-nano-id hashed)]]
         (t2/update! model (get entity pk) {:entity_id eid})))))
 
-(defn- has-entity-id? [model]
+(defn has-entity-id?
+  "Returns true if the model has an `:entity_id` column."
+  [model]
   (or
     ;; toucan1 models
     (isa? model ::mi/entity-id)
@@ -38,7 +41,7 @@
   `entity_id` set. If the `entity_id` is NULL, it is set based on the [[serdes/identity-hash]] for that
   row."
   []
-  (doseq [model (concat serdes.models/exported-models serdes.models/inlined-models)
-          :let [model (mdb.u/resolve-model (symbol model))]
+  (doseq [model-name (concat serdes.models/exported-models serdes.models/inlined-models)
+          :let [model (t2.model/resolve-model (symbol model-name))]
           :when (has-entity-id? model)]
     (backfill-ids-for model)))

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { compose } from "redux";
+import { compose } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import User from "metabase/entities/users";

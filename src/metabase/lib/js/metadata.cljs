@@ -5,6 +5,7 @@
    [goog]
    [goog.object :as gobject]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -25,26 +26,35 @@
   (when obj
     (gobject/get obj k)))
 
-(defn- obj->clj [xform obj]
-  (if-let [plain-object (some-> (object-get obj "_plainObject")
-                                js->clj
-                                not-empty)]
-    (into {} xform plain-object)
-    (into {}
-          (comp
-           (map (fn [k]
-                  [k (object-get obj k)]))
-           ;; ignore values that are functions
-           (remove (fn [[_k v]]
-                     (= (goog/typeOf v) "function")))
-           xform)
-          (gobject/getKeys obj))))
+(defn- obj->clj
+  "Convert a JS object of *any* class to a ClojureScript object."
+  [xform obj]
+  (if (map? obj)
+    ;; already a ClojureScript object.
+    (into {} xform obj)
+    ;; has a plain-JavaScript `_plainObject` attached: apply `xform` to it and call it a day
+    (if-let [plain-object (some-> (object-get obj "_plainObject")
+                                  js->clj
+                                  not-empty)]
+      (into {} xform plain-object)
+      ;; otherwise do things the hard way and convert an arbitrary object into a Cljs map. (`js->clj` doesn't work on
+      ;; arbitrary classes other than `Object`)
+      (into {}
+            (comp
+             (map (fn [k]
+                    [k (object-get obj k)]))
+             ;; ignore values that are functions
+             (remove (fn [[_k v]]
+                       (= (goog/typeOf v) "function")))
+             xform)
+            (gobject/getKeys obj)))))
 
-(defmulti ^:private excluded-fields
+;;; this intentionally does not use the lib hierarchy since it's not dealing with MBQL/lib keys
+(defmulti ^:private excluded-keys
   {:arglists '([object-type])}
   keyword)
 
-(defmethod excluded-fields :default
+(defmethod excluded-keys :default
   [_]
   nil)
 
@@ -64,22 +74,27 @@
   nil)
 
 (defmulti ^:private lib-type
+  "The metadata type that should be attached the sorts of metadatas with the `:lib/type` key, e.g. `:metadata/table`."
   {:arglists '([object-type])}
   keyword)
 
 (defn- parse-object-xform [object-type]
-  (let [excluded-fields-set (excluded-fields object-type)
-        parse-field         (parse-field-fn object-type)]
-    (comp (map (fn [[k v]]
-                 [(keyword k) v]))
-          (if (empty? excluded-fields-set)
-            identity
-            (remove (fn [[k _v]]
-                      (contains? excluded-fields-set k))))
-          (if-not parse-field
-            identity
-            (map (fn [[k v]]
-                   [k (parse-field k v)]))))))
+  (let [excluded-keys-set (excluded-keys object-type)
+        parse-field       (parse-field-fn object-type)]
+    (comp
+     ;; convert keys to keywords
+     (map (fn [[k v]]
+            [(keyword k) v]))
+     ;; remove [[excluded-keys]]
+     (if (empty? excluded-keys-set)
+       identity
+       (remove (fn [[k _v]]
+                 (contains? excluded-keys-set k))))
+     ;; parse each key with its [[parse-field-fn]]
+     (if-not parse-field
+       identity
+       (map (fn [[k v]]
+              [k (parse-field k v)]))))))
 
 (defn- parse-object-fn [object-type]
   (let [xform         (parse-object-xform object-type)
@@ -87,7 +102,7 @@
     (fn [object]
       (try
         (let [parsed (assoc (obj->clj xform object) :lib/type lib-type-name)]
-          (log/infof "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
+          (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
           parsed)
         (catch js/Error e
           (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
@@ -115,7 +130,7 @@
   [_object-type]
   :metadata/database)
 
-(defmethod excluded-fields :database
+(defmethod excluded-keys :database
   [_object-type]
   #{:tables :fields})
 
@@ -136,7 +151,7 @@
   [_object-type]
   :metadata/table)
 
-(defmethod excluded-fields :table
+(defmethod excluded-keys :table
   [_object-type]
   #{:database :fields :segments :metrics :dimension_options})
 
@@ -163,7 +178,7 @@
   [_object-type]
   :metadata/field)
 
-(defmethod excluded-fields :field
+(defmethod excluded-keys :field
   [_object-type]
   #{:_comesFromEndpoint
     :database
@@ -194,27 +209,44 @@
   [_object-type]
   :metadata/card)
 
-(defmethod excluded-fields :card
+(defmethod excluded-keys :card
   [_object-type]
   #{:database
     :dimension_options
     :table})
 
+(defn- parse-fields [fields]
+  (mapv (parse-object-fn :field) fields))
+
 (defmethod parse-field-fn :card
   [_object-type]
-  (fn [_k v]
-    v))
+  (fn [k v]
+    (case k
+      :result_metadata (if ((some-fn sequential? array?) v)
+                         (parse-fields v)
+                         (js->clj v :keywordize-keys true))
+      :fields          (parse-fields v)
+      :visibility_type (keyword v)
+      :dataset_query   (js->clj v :keywordize-keys true)
+      ;; this is not complete, add more stuff as needed.
+      v)))
+
+(defn- unwrap-card
+  "Sometimes a card is stored in the metadata as some sort of weird object where the thing we actually want is under the
+  key `_card` (not sure why), but if it is just unwrap it and then parse it normally."
+  [obj]
+  (or (object-get obj "_card")
+      obj))
 
 (defmethod parse-objects :card
   [object-type metadata]
-  (let [parse-card (parse-object-fn object-type)]
+  (let [parse-card (comp (parse-object-fn object-type) unwrap-card)]
     (merge
      (obj->clj (comp (filter (fn [[k _v]]
                                (str/starts-with? k "card__")))
                      (map (fn [[s v]]
-                            (when-let [[_ id-str] (re-find #"^card__(\d+)$" s)]
-                              (let [id (parse-long id-str)]
-                                [id (delay (assoc (parse-card v) :id id))])))))
+                            (when-let [id (lib.util/string-table-id->card-id s)]
+                              [id (delay (assoc (parse-card v) :id id))]))))
                (object-get metadata "tables"))
      (obj->clj (comp (map (fn [[k v]]
                             [(parse-long k) (delay (parse-card v))])))
@@ -224,7 +256,7 @@
   [_object-type]
   :metadata/metric)
 
-(defmethod excluded-fields :metric
+(defmethod excluded-keys :metric
   [_object-type]
   #{:database :table})
 
@@ -241,7 +273,7 @@
   [_object-type]
   :metadata/segment)
 
-(defmethod excluded-fields :segment
+(defmethod excluded-keys :segment
   [_object-type]
   #{:database :table})
 
@@ -288,23 +320,23 @@
 (defn- segment [metadata segment-id]
   (some-> metadata :segments deref (get segment-id) deref))
 
-(defn- tables [database-id metadata]
-  (for [dlay  @(:tables metadata)
-        :let  [a-table @dlay]
-        :when (= (:db_id a-table) database-id)]
+(defn- tables [metadata database-id]
+  (for [[_id table-delay]  (some-> metadata :tables deref)
+        :let               [a-table (some-> table-delay deref)]
+        :when              (and a-table (= (:db_id a-table) database-id))]
     a-table))
 
 (defn- fields [metadata table-id]
-  (for [dlay  @(:fields metadata)
-        :let  [a-field @dlay]
-        :when (= (:table_id a-field) table-id)]
+  (for [[_id field-delay]  (some-> metadata :fields deref)
+        :let               [a-field (some-> field-delay deref)]
+        :when              (and a-field (= (:table_id a-field) table-id))]
     a-field))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
   [database-id metadata]
   (let [metadata (parse-metadata metadata)]
-    (log/info "Created metadata provider for metadata")
+    (log/debug "Created metadata provider for metadata")
     (reify lib.metadata.protocols/MetadataProvider
       (database [_this]            (database metadata database-id))
       (table    [_this table-id]   (table    metadata table-id))
@@ -312,5 +344,5 @@
       (metric   [_this metric-id]  (metric   metadata metric-id))
       (segment  [_this segment-id] (segment  metadata segment-id))
       (card     [_this card-id]    (card     metadata card-id))
-      (tables   [_this]            (tables   database-id metadata))
+      (tables   [_this]            (tables   metadata database-id))
       (fields   [_this table-id]   (fields   metadata table-id)))))

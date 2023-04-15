@@ -50,7 +50,7 @@
 
 (defmethod expression/type-of* :field
   [[_tag opts _id-or-name]]
-  (or (:base-type opts)
+  (or ((some-fn :effective-type :base-type) opts)
       ::expression/type.unknown))
 
 (mbql-clause/define-tuple-mbql-clause :expression
@@ -58,7 +58,7 @@
 
 (defmethod expression/type-of* :expression
   [[_tag opts _expression-name]]
-  (or (:base-type opts)
+  (or ((some-fn :effective-type :base-type) opts)
       ::expression/type.unknown))
 
 (mr/def ::aggregation-options
@@ -76,7 +76,7 @@
 
 (defmethod expression/type-of* :aggregation
   [[_tag opts _index]]
-  (or (:base-type opts)
+  (or ((some-fn :effective-type :base-type) opts)
       ::expression/type.unknown))
 
 (mr/def ::ref

@@ -165,7 +165,9 @@ describe("scenarios > question > summarize sidebar", () => {
     popover().contains("Custom Expression").click();
     popover().within(() => {
       enterCustomColumnDetails({ formula: "2 * Max([Total])" });
-      cy.findByPlaceholderText("Name (required)").type("twice max total");
+      cy.findByPlaceholderText("Something nice and descriptive").type(
+        "twice max total",
+      );
       cy.findByText("Done").click();
     });
 

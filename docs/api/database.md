@@ -150,7 +150,7 @@ Return a list of Tables for a Database whose `schema` is `nil` or an empty strin
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/database/:id/schema/:schema`
 
@@ -158,7 +158,7 @@ Returns a list of Tables for the given Database `id` and `schema`.
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
 *  **`schema`**
 

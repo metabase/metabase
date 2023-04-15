@@ -133,6 +133,25 @@ export function visitQuestion(id) {
 }
 
 /**
+ * Visit a model and wait for its query to load.
+ *
+ * @param {number} id
+ */
+export function visitModel(id, { hasDataAccess = true } = {}) {
+  const alias = "modelQuery" + id;
+
+  if (hasDataAccess) {
+    cy.intercept("POST", `/api/dataset`).as(alias);
+  } else {
+    cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
+  }
+
+  cy.visit(`/model/${id}`);
+
+  cy.wait("@" + alias);
+}
+
+/**
  * Visit a dashboard and wait for the related queries to load.
  *
  * @param {number} dashboard_id
@@ -266,15 +285,4 @@ export function visitPublicDashboard(id, { params = {} } = {}) {
       });
     },
   );
-}
-
-/**
- * Returns a matcher function to find text content that is broken up by multiple elements
- *
- * @param {string} textToFind
- * @example
- * cy.findByText(getBrokenUpTextMatcher("my text with a styled word"))
- */
-export function getBrokenUpTextMatcher(textToFind) {
-  return (content, element) => element?.textContent === textToFind;
 }
