@@ -35,8 +35,9 @@
                 :display_name           "Venues"}
                {:is_from_join           false
                 :is_implicitly_joinable true
-                :name                   "CATEGORIES"
-                :display_name           "Categories"}]
+                :name                   "CATEGORY_ID"
+                :display_name           "Category ID"
+                :fk_reference_name      "Category"}]
               (for [group groups]
                 (lib/display-info query group)))))
     (testing `lib/columns-group-columns
@@ -72,7 +73,7 @@
               ::lib.column-group/columns    [{:display_name "User ID", :lib/source :source/card}
                                              {:display_name "Count", :lib/source :source/card}]}
              {::lib.column-group/group-type :group-type/join.implicit
-              :table-id                     (meta/id :users)
+              :fk-field-id                  (meta/id :checkins :user-id)
               ::lib.column-group/columns    [{:display_name "ID", :lib/source :source/implicitly-joinable}
                                              {:display_name "Name", :lib/source :source/implicitly-joinable}
                                              {:display_name "Last Login", :lib/source :source/implicitly-joinable}]}]
@@ -82,8 +83,9 @@
                 :display_name           "My Card"
                 :is_from_join           false
                 :is_implicitly_joinable false}
-               {:name                   "USERS"
-                :display_name           "Users"
+               {:name                   "USER_ID"
+                :display_name           "User ID"
+                :fk_reference_name      "User"
                 :is_from_join           false
                 :is_implicitly_joinable true}]
               (for [group groups]
@@ -147,8 +149,9 @@
                 :display_name           "Venues"}
                {:is_from_join           false
                 :is_implicitly_joinable true
-                :name                   "CATEGORIES"
-                :display_name           "Categories"}]
+                :name                   "CATEGORY_ID"
+                :display_name           "Category ID"
+                :fk_reference_name      "Category"}]
               (for [group groups]
                 (lib/display-info query group)))))
     (testing `lib/columns-group-columns
@@ -165,7 +168,7 @@
                                              {:display_name "Count", :lib/source :source/card}
                                              {:display_name "expr", :lib/source :source/expressions}]}
              {::lib.column-group/group-type :group-type/join.implicit
-              :table-id                     (meta/id :users)
+              :fk-field-id                  (meta/id :checkins :user-id)
               ::lib.column-group/columns    [{:display_name "ID", :lib/source :source/implicitly-joinable}
                                              {:display_name "Name", :lib/source :source/implicitly-joinable}
                                              {:display_name "Last Login", :lib/source :source/implicitly-joinable}] }]
@@ -175,8 +178,9 @@
                 :display_name           "My Card"
                 :is_from_join           false
                 :is_implicitly_joinable false}
-               {:name                   "USERS"
-                :display_name           "Users"
+               {:name                   "USER_ID"
+                :display_name           "User ID"
+                :fk_reference_name      "User"
                 :is_from_join           false
                 :is_implicitly_joinable true}]
               (for [group groups]

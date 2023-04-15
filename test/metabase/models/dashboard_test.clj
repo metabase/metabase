@@ -149,7 +149,7 @@
                                :series  true}]}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
-        (dashboard-card/delete-dashboard-card! dashboard-card (test.users/user->id :rasta))
+        (dashboard-card/delete-dashboard-cards! [dashboard-card] dashboard-id (test.users/user->id :rasta))
         (t2/update! Dashboard dashboard-id
                     {:name        "Revert Test"
                      :description "something"})
@@ -205,10 +205,11 @@
              (t2/select-one-fn :collection_id Pulse :id pulse-id))))
     (testing "PulseCard syncing"
       (tt/with-temp Card [{new-card-id :id}]
-        (dashboard/add-dashcard! dashboard-id new-card-id {:row    0
-                                                           :col    0
-                                                           :size_x 4
-                                                           :size_y 4})
+        (dashboard/add-dashcards! dashboard-id [{:card_id new-card-id
+                                                 :row     0
+                                                 :col     0
+                                                 :size_x  4
+                                                 :size_y  4}])
         (t2/update! Dashboard dashboard-id {:name "Lucky's Close Shaves"})
         (is (not (nil? (t2/select-one PulseCard :card_id new-card-id))))))))
 
