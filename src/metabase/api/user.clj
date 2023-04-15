@@ -22,15 +22,12 @@
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2]
-   [ring.util.response :as response]
-   [metabase.lib.schema.id :as id]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
