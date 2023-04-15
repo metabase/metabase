@@ -172,8 +172,9 @@
   "Like [[ref-error-for-stage]], but validate references in the context of a sequence of several stages; for validations
   that can't be done on the basis of just a single stage. For example join alias validation needs to take into account
   previous stages."
-  ;; this is redundant now but I'm leaving it open so we can add more stuff in the future as we validate more things.
-  (some-fn join-ref-error-for-stages))
+  ;; this var is ultimately redundant for now since it just points to one function but I'm leaving it here so we can
+  ;; add more stuff to it the future as we validate more things.
+  join-ref-error-for-stages)
 
 (mr/def ::stages.valid-refs
   [:fn
