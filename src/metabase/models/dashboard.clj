@@ -55,6 +55,12 @@
                            [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
               :order-by  [[:dashcard.created_at :asc]]}))
 
+(mi/define-simple-hydration-method ordered-tabs
+  :ordered_tabs
+  "Return the ordered DashboardTabs associated with `dashboard-or-id`, sorted by tab position."
+  [dashboard-or-id]
+  (t2/select :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id) {:order-by [[:position :asc]]}))
+
 (mi/define-batched-hydration-method collections-authority-level
   :collection_authority_level
   "Efficiently hydrate the `:collection_authority_level` of a sequence of dashboards."
