@@ -10,7 +10,7 @@
 
 (def ^:dynamic *create-chat-completion-endpoint*
   "The endpoint used to invoke the remote LLM"
-  (fn [params options]
+  (fn default-chat-completion-endpoint [params options]
     (openai.api/create-chat-completion
      (select-keys params [:model :n :messages])
      options)))
@@ -65,8 +65,8 @@
 (def ^:dynamic *create-embedding-endpoint*
   "Default embeddings endpoint is both dynamic and memoized."
   (memoize/ttl
-    ^{::memoize/args-fn (fn [{:keys [model input]} _options] [model input])}
-    (fn [params options]
+    ^{::memoize/args-fn (fn create-embeddings-memoize-fn [[{:keys [model input]} _options]] [model input])}
+    (fn default-embedding-endpoint [params options]
       (openai.api/create-embedding
         (select-keys params [:model :input])
         options))
