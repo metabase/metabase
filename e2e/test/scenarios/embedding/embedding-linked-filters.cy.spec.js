@@ -89,7 +89,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       popover()
         .last()
         .within(() => {
-          cy.findByPlaceholderText("Search by City").type("An");
+          cy.findByPlaceholderText("Search the list").type("An");
           cy.findByText("Kiana");
           cy.findByText("Anacoco").should("not.exist");
           cy.findByText("Anchorage").click();
@@ -132,7 +132,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       popover()
         .last()
         .within(() => {
-          cy.findByPlaceholderText("Search by City").type("An");
+          cy.findByPlaceholderText("Search the list").type("An");
           cy.findByText("Kiana");
           cy.findByText("Anacoco").should("not.exist");
           cy.findByText("Anchorage").click();
@@ -174,7 +174,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       popover()
         .last()
         .within(() => {
-          cy.findByPlaceholderText("Search by City").type("An");
+          cy.findByPlaceholderText("Search the list").type("An");
           cy.findByText("Kiana");
           cy.findByText("Anacoco").should("not.exist");
           cy.findByText("Anchorage").click();
@@ -213,7 +213,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       popover()
         .last()
         .within(() => {
-          cy.findByPlaceholderText("Search by City").type("An");
+          cy.findByPlaceholderText("Search the list").type("An");
           cy.findByText("Kiana");
           cy.findByText("Anacoco").should("not.exist");
           cy.findByText("Anchorage").click();
