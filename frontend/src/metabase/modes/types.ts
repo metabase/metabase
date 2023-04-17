@@ -18,15 +18,15 @@ export type ClickObject = {
   value?: RowValue;
   column?: DatasetColumn;
   dimensions?: DimensionValue[];
-  settings?: Record<string, unknown>;
-  extraData?: Record<string, unknown>;
+  event?: MouseEvent;
+  element?: HTMLElement;
   seriesIndex?: number;
+  settings?: Record<string, unknown>;
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];
   };
-  event?: MouseEvent;
-  element?: HTMLElement;
+  extraData?: Record<string, unknown>;
 };
 
 type Dispatcher = (dispatch: Dispatch) => void;

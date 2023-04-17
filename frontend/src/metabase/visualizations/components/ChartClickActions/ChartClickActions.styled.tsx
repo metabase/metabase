@@ -11,7 +11,7 @@ export type ClickActionButtonType =
   | "token-filter"
   | "info";
 export interface ClickActionButtonProps {
-  type: ClickActionButtonType;
+  type: ClickActionButtonType | undefined;
 }
 
 // TODO: refactor this to be a button
@@ -47,6 +47,9 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
       align-items: center;
       padding: 0.5rem;
       color: ${color("text-dark")};
+
+      font-weight: 700;
+      line-height: 17px;
 
       &:hover {
         color: ${color("white")};
