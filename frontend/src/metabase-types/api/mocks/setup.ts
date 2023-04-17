@@ -13,7 +13,7 @@ export const createMockSetupCheckListTask = (
 ): SetupCheckListTask => ({
   title: "Setup",
   group: "Setup",
-  description: "Setup",
+  description: "",
   link: "/",
   completed: false,
   triggered: true,
