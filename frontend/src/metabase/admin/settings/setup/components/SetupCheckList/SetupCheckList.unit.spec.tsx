@@ -71,5 +71,6 @@ describe("SetupCheckList", () => {
 
     const link = screen.getByRole("link", { name: SWITCH_DB_TASK.title });
     expect(link).toHaveAttribute("href", SWITCH_DB_TASK.link);
+    expect(link).toHaveAttribute("target", "_blank");
   });
 });
