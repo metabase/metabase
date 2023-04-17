@@ -60,10 +60,11 @@ describe("SetupCheckList", () => {
   it("should render relative links correctly", async () => {
     const { history } = await setup();
 
-    userEvent.click(screen.getByRole("link", { name: ADD_DB_TASK.title }));
+    const link = screen.getByRole("link", { name: ADD_DB_TASK.title });
+    expect(link).not.toHaveAttribute("target");
 
-    const pathname = history?.getCurrentLocation().pathname;
-    expect(pathname).toBe(ADD_DB_TASK.link);
+    userEvent.click(link);
+    expect(history?.getCurrentLocation().pathname).toBe(ADD_DB_TASK.link);
   });
 
   it("should render absolute links correctly", async () => {
