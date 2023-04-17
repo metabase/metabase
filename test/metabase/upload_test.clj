@@ -244,7 +244,8 @@
                          "2022-01-01T00:00:00"]))
         (testing "Fields exists after sync"
           (sync/sync-database! (mt/db))
-          (let [table (t2/select-one Table :name "upload_test" :db_id (mt/id))]
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
             (testing "Check the datetime column the correct base_type"
               (is (=? {:name      #"(?i)datetime"
                        :base_type :type/DateTime}
