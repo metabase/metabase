@@ -248,7 +248,9 @@ class Dashboard extends Component {
       <SyncedParametersList
         parameters={getValuePopulatedParameters(
           parameters,
-          draftParameterValues ?? parameterValues,
+          _.isEmpty(draftParameterValues)
+            ? parameterValues
+            : draftParameterValues,
         )}
         editingParameter={editingParameter}
         dashboard={dashboard}
