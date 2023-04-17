@@ -54,15 +54,20 @@ const ALL_MODELS = [
 const itemKeyFn = item => `${item.id}:${item.model}`;
 
 function mapStateToProps(state, props) {
+  const uploadDbId = getSetting(state, "uploads-database-id");
+  const canAccessUploadsDb =
+    getSetting(state, "uploads-enabled") &&
+    uploadDbId &&
+    !!Databases.selectors.getObject(state, {
+      entityId: uploadDbId,
+    });
+
   return {
     isAdmin: getUserIsAdmin(state),
     isBookmarked: getIsBookmarked(state, props),
     metadata: getMetadata(state),
     isNavbarOpen: getIsNavbarOpen(state),
-    uploadsEnabled: !!(
-      getSetting(state, "uploads-enabled") &&
-      !!getSetting(state, "uploads-database-id")
-    ),
+    uploadsEnabled: canAccessUploadsDb,
   };
 }
 
