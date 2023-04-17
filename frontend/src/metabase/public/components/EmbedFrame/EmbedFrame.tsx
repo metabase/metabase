@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import type { ReactNode } from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -32,6 +31,7 @@ import {
   ParametersWidgetContainer,
   Footer,
   ActionButtonsContainer,
+  ApplyButton,
 } from "./EmbedFrame.styled";
 import "./EmbedFrame.css";
 
@@ -47,17 +47,20 @@ interface OwnProps {
   footerVariant?: FooterVariant;
   parameters?: Parameter[];
   parameterValues?: ParameterValues;
-  draftParameterValues?: ParameterValues;
-  applyFilterButton: ReactNode | null;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
   children: React.ReactNode;
+  // Auto-apply filters
+  draftParameterValues?: ParameterValues;
+  shouldRenderApplyButton: boolean;
+  isApplyButtonVisible: boolean;
+  onClickApplyButton: () => void;
 }
 
 interface StateProps {
   hasEmbedBranding: boolean;
 }
 
-type Props = OwnProps &
+type EmbedFrameProps = OwnProps &
   StateProps & {
     location: Location;
   };
@@ -89,10 +92,13 @@ function EmbedFrame({
   hasEmbedBranding,
   parameters,
   parameterValues,
-  draftParameterValues,
-  applyFilterButton,
   setParameterValue,
-}: Props) {
+  // Auto-apply filters
+  draftParameterValues,
+  shouldRenderApplyButton,
+  isApplyButtonVisible,
+  onClickApplyButton,
+}: EmbedFrameProps) {
   const [hasInnerScroll, setInnerScroll] = useState(true);
 
   useMount(() => {
@@ -115,6 +121,16 @@ function EmbedFrame({
   const hasParameters = Array.isArray(parameters) && parameters.length > 0;
 
   const hasHeader = Boolean(finalName || hasParameters);
+
+  const applyFilterButton = shouldRenderApplyButton ? (
+    <ApplyButton
+      primary
+      isVisible={isApplyButtonVisible}
+      onClick={onClickApplyButton}
+    >
+      Apply
+    </ApplyButton>
+  ) : null;
 
   return (
     <Root

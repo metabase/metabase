@@ -108,10 +108,13 @@ class PublicDashboard extends Component {
       dashboard,
       parameters,
       parameterValues,
-      draftParameterValues,
-      applyFilterButton,
       isFullscreen,
       isNightMode,
+      // Auto-apply filters
+      draftParameterValues,
+      shouldShowApplyButton,
+      isApplyButtonVisible,
+      onClickApplyButton,
     } = this.props;
     const buttons = !isWithinIframe()
       ? getDashboardActions(this, { ...this.props, isPublic: true })
@@ -124,12 +127,15 @@ class PublicDashboard extends Component {
         dashboard={dashboard}
         parameters={parameters}
         parameterValues={parameterValues}
-        draftParameterValues={draftParameterValues}
-        applyFilterButton={applyFilterButton}
         setParameterValue={this.props.setParameterValue}
         actionButtons={
           buttons.length > 0 && <div className="flex">{buttons}</div>
         }
+        // Auto-apply filters
+        draftParameterValues={draftParameterValues}
+        shouldShowApplyButton={shouldShowApplyButton}
+        isApplyButtonVisible={isApplyButtonVisible}
+        onClickApplyButton={onClickApplyButton}
       >
         <LoadingAndErrorWrapper
           className={cx("Dashboard p1 flex-full", {

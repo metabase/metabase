@@ -9,6 +9,7 @@ import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Button from "metabase/core/components/Button/Button";
 import {
   APP_BAR_HEIGHT,
   APP_BAR_EXTENDED_HEIGHT,
@@ -138,4 +139,16 @@ export const CardsContainer = styled(FullWidthContainer)`
     css`
       margin-top: ${space(2)};
     `}
+`;
+
+export const ApplyButton = styled(Button)`
+  margin-left: auto;
+
+  opacity: ${({ isVisible }) => (isVisible ? 1 : 0)};
+  visibility: ${({ isVisible }) => (isVisible ? "visible" : "hidden")};
+
+  &,
+  &:hover {
+    transition-property: opacity, visibility;
+  }
 `;
