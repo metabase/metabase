@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
 
+import { useBeforeUnload } from "react-use";
 import Modal from "metabase/components/Modal";
 
 import Actions, {
@@ -84,6 +85,7 @@ function ActionCreator({
   onUpdateAction,
   onSubmit,
   onClose,
+  initialAction,
 }: Props) {
   const {
     action,
@@ -95,6 +97,13 @@ function ActionCreator({
     handleFormSettingsChange,
     renderEditorBody,
   } = useActionContext();
+
+  const isDirty = useMemo(
+    () => !_.isEqual(action, initialAction),
+    [action, initialAction],
+  );
+
+  useBeforeUnload(isDirty, t`You have unsaved changes.`);
 
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
