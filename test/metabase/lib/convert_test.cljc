@@ -166,6 +166,10 @@
 
     [:value nil {:base_type :type/Number}]
 
+    [:aggregation 0 {:effective-type "type/Integer"}]
+
+    [:expression "expr" {:effective-type "type/Integer"}]
+
     [:case [[[:< [:field 1 nil] 10] [:value nil {:base_type :type/Number}]] [[:> [:field 2 nil] 2] 10]]]
 
     {:database 67

@@ -5,6 +5,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
@@ -65,7 +66,8 @@
 (defmulti ->pMBQL
   "Coerce something to pMBQL (the version of MBQL manipulated by Metabase Lib v2) if it's not already pMBQL."
   {:arglists '([x])}
-  lib.dispatch/dispatch-value)
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defn- default-MBQL-clause->pMBQL [mbql-clause]
   (let [[clause-type options & args] (lib.options/ensure-uuid mbql-clause)]
@@ -141,6 +143,13 @@
                                              :type/*))]
     (lib.options/ensure-uuid [:value opts value])))
 
+(doseq [tag [:aggregation :expression]]
+  (lib.hierarchy/derive tag ::aggregation-or-expression-ref))
+
+(defmethod ->pMBQL ::aggregation-or-expression-ref
+  [[tag value opts]]
+  (lib.options/ensure-uuid [tag opts value]))
+
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
   (let [[tag opts & args] (->pMBQL aggregation)]
@@ -159,7 +168,8 @@
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's
   not already legacy MBQL."
   {:arglists '([x])}
-  lib.dispatch/dispatch-value)
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defn- lib-key? [x]
   (and (qualified-keyword? x)
@@ -196,23 +206,28 @@
                                    (update-vals ->legacy-MBQL))
     :else x))
 
-(doseq [clause [;; Aggregations
-                :count :avg :count-where :distinct
-                :max :median :min :percentile
-                :share :stddev :sum :sum-where
+(doseq [tag [::aggregation ::expression]]
+  (lib.hierarchy/derive tag ::aggregation-or-expression))
 
-                ;; Expressions
-                :+ :- :* :/
-                :case :coalesce
-                :abs :log :exp :sqrt :ceil :floor :round :power :interval
-                :relative-datetime :time :absolute-datetime :now :convert-timezone
-                :get-week :get-year :get-month :get-day :get-hour
-                :get-minute :get-second :get-quarter
-                :datetime-add :datetime-subtract
-                :concat :substring :replace :regexextract :length
-                :trim :ltrim :rtrim :upper :lower]]
-  (defmethod ->legacy-MBQL clause [input]
-    (aggregation->legacy-MBQL input)))
+(doseq [tag [:count :avg :count-where :distinct
+             :max :median :min :percentile
+             :share :stddev :sum :sum-where]]
+  (lib.hierarchy/derive tag ::aggregation))
+
+(doseq [tag [:+ :- :* :/
+             :case :coalesce
+             :abs :log :exp :sqrt :ceil :floor :round :power :interval
+             :relative-datetime :time :absolute-datetime :now :convert-timezone
+             :get-week :get-year :get-month :get-day :get-hour
+             :get-minute :get-second :get-quarter
+             :datetime-add :datetime-subtract
+             :concat :substring :replace :regexextract :length
+             :trim :ltrim :rtrim :upper :lower]]
+  (lib.hierarchy/derive tag ::expression))
+
+(defmethod ->legacy-MBQL ::aggregation-or-expression
+  [input]
+  (aggregation->legacy-MBQL input))
 
 (defn- chain-stages [{:keys [stages]}]
   ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
