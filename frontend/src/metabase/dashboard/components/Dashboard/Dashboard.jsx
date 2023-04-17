@@ -7,6 +7,7 @@ import { getMainElement } from "metabase/lib/dom";
 
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import FilterApplyButton from "metabase/parameters/components/FilterApplyButton";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
@@ -59,7 +60,6 @@ class Dashboard extends Component {
     parameterValues: PropTypes.object,
     draftParameterValues: PropTypes.object,
     editingParameter: PropTypes.object,
-    applyFilterButton: PropTypes.element,
 
     editingOnLoad: PropTypes.bool,
     addCardOnLoad: PropTypes.number,
@@ -231,7 +231,6 @@ class Dashboard extends Component {
       setEditingParameter,
       isHeaderVisible,
       embedOptions,
-      applyFilterButton,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -318,7 +317,7 @@ class Dashboard extends Component {
                     topNav={embedOptions?.top_nav}
                   >
                     {parametersWidget}
-                    {applyFilterButton}
+                    <FilterApplyButton />
                   </ParametersWidgetContainer>
                 )}
 

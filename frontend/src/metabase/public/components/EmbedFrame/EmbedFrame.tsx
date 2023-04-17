@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import type { ReactNode } from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -14,6 +13,7 @@ import { isWithinIframe, initializeIframeResizer } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
 
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import FilterApplyButton from "metabase/parameters/components/FilterApplyButton";
 
 import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
@@ -48,7 +48,6 @@ interface OwnProps {
   parameters?: Parameter[];
   parameterValues?: ParameterValues;
   draftParameterValues?: ParameterValues;
-  applyFilterButton: ReactNode | null;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
   children: React.ReactNode;
 }
@@ -90,7 +89,6 @@ function EmbedFrame({
   parameters,
   parameterValues,
   draftParameterValues,
-  applyFilterButton,
   setParameterValue,
 }: Props) {
   const [hasInnerScroll, setInnerScroll] = useState(true);
@@ -150,7 +148,7 @@ function EmbedFrame({
                   setParameterValue={setParameterValue}
                   hideParameters={hide_parameters}
                 />
-                {applyFilterButton}
+                {dashboard && <FilterApplyButton />}
               </ParametersWidgetContainer>
             )}
           </Header>

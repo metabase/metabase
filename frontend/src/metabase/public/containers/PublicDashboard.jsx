@@ -109,7 +109,6 @@ class PublicDashboard extends Component {
       parameters,
       parameterValues,
       draftParameterValues,
-      applyFilterButton,
       isFullscreen,
       isNightMode,
     } = this.props;
@@ -125,7 +124,6 @@ class PublicDashboard extends Component {
         parameters={parameters}
         parameterValues={parameterValues}
         draftParameterValues={draftParameterValues}
-        applyFilterButton={applyFilterButton}
         setParameterValue={this.props.setParameterValue}
         actionButtons={
           buttons.length > 0 && <div className="flex">{buttons}</div>
