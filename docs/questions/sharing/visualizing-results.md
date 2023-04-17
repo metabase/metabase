@@ -67,7 +67,7 @@ The [Table](./visualizations/table.md) option is good for looking at tabular dat
 
 ![Conditional formatting](../images/conditional-formatting.png)
 
-## Pivot table
+## Pivot tables
 
 [Pivot tables](./visualizations/pivot-table.md) allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
 
