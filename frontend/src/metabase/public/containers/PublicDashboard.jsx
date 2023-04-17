@@ -112,6 +112,10 @@ class PublicDashboard extends Component {
       applyFilterButton,
       isFullscreen,
       isNightMode,
+      // Auto-apply filters
+      shouldShowApplyButton,
+      isApplyButtonVisible,
+      onClickApplyButton,
     } = this.props;
     const buttons = !isWithinIframe()
       ? getDashboardActions(this, { ...this.props, isPublic: true })
@@ -130,6 +134,10 @@ class PublicDashboard extends Component {
         actionButtons={
           buttons.length > 0 && <div className="flex">{buttons}</div>
         }
+        // Auto-apply filters
+        shouldShowApplyButton={shouldShowApplyButton}
+        isApplyButtonVisible={isApplyButtonVisible}
+        onClickApplyButton={onClickApplyButton}
       >
         <LoadingAndErrorWrapper
           className={cx("Dashboard p1 flex-full", {

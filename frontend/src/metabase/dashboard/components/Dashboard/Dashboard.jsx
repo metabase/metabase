@@ -23,6 +23,7 @@ import {
   HeaderContainer,
   ParametersAndCardsContainer,
   ParametersWidgetContainer,
+  ApplyButton,
 } from "./Dashboard.styled";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
@@ -59,7 +60,11 @@ class Dashboard extends Component {
     parameterValues: PropTypes.object,
     draftParameterValues: PropTypes.object,
     editingParameter: PropTypes.object,
-    applyFilterButton: PropTypes.element,
+
+    // Auto-apply filters
+    shouldRenderApplyButton: PropTypes.bool.isRequired,
+    isApplyButtonVisible: PropTypes.bool.isRequired,
+    onClickApplyButton: PropTypes.func.isRequired,
 
     editingOnLoad: PropTypes.bool,
     addCardOnLoad: PropTypes.number,
@@ -231,7 +236,6 @@ class Dashboard extends Component {
       setEditingParameter,
       isHeaderVisible,
       embedOptions,
-      applyFilterButton,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -266,6 +270,21 @@ class Dashboard extends Component {
     const cardsContainerShouldHaveMarginTop =
       !shouldRenderParametersWidgetInViewMode &&
       (!isEditing || isEditingParameter);
+
+    const {
+      shouldRenderApplyButton,
+      isApplyButtonVisible,
+      onClickApplyButton,
+    } = this.props;
+    const applyFilterButton = shouldRenderApplyButton ? (
+      <ApplyButton
+        primary
+        isVisible={isApplyButtonVisible}
+        onClick={onClickApplyButton}
+      >
+        Apply
+      </ApplyButton>
+    ) : null;
 
     return (
       <DashboardLoadingAndErrorWrapper

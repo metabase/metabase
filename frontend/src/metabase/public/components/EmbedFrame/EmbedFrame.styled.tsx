@@ -6,6 +6,7 @@ import {
   breakpointMinLarge,
   breakpointMinMedium,
 } from "metabase/styled-components/theme";
+import Button from "metabase/core/components/Button/Button";
 
 export const Root = styled.div<{
   hasScroll: boolean;
@@ -106,5 +107,17 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
 
   ${breakpointMinLarge} {
     padding: 1.5rem;
+  }
+`;
+
+export const ApplyButton = styled(Button)<{ isVisible: boolean }>`
+  margin-left: auto;
+
+  opacity: ${({ isVisible }) => (isVisible ? 1 : 0)};
+  visibility: ${({ isVisible }) => (isVisible ? "visible" : "hidden")};
+
+  &,
+  &:hover {
+    transition-property: opacity, visibility;
   }
 `;

@@ -9,7 +9,6 @@ import screenfull from "screenfull";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { isNotNull } from "metabase/core/utils/types";
-import { ApplyButton } from "./DashboardControls.styled";
 
 const TICK_PERIOD = 1; // seconds
 
@@ -222,6 +221,9 @@ export default ComposedComponent =>
           draftParameterValues,
           setParameterValues,
         } = this.props;
+
+        const shouldRenderApplyButton = !dashboard?.auto_apply_filters;
+
         const hasUnappliedFilters =
           isNotNull(draftParameterValues) &&
           !_.isEqual(parameterValues, draftParameterValues);
@@ -230,15 +232,15 @@ export default ComposedComponent =>
           setParameterValues(draftParameterValues);
         };
 
-        const applyFilterButton = !dashboard?.auto_apply_filters ? (
-          <ApplyButton
-            primary
-            isVisible={hasUnappliedFilters}
-            onClick={handleApplyFilters}
-          >
-            Apply
-          </ApplyButton>
-        ) : null;
+        // const applyFilterButton = !dashboard?.auto_apply_filters ? (
+        //   <ApplyButton
+        //     primary
+        //     isVisible={hasUnappliedFilters}
+        //     onClick={handleApplyFilters}
+        //   >
+        //     Apply
+        //   </ApplyButton>
+        // ) : null;
         return (
           <ComposedComponent
             {...this.props}
@@ -251,7 +253,9 @@ export default ComposedComponent =>
             onNightModeChange={this.setNightMode}
             onFullscreenChange={this.setFullscreen}
             onRefreshPeriodChange={this.setRefreshPeriod}
-            applyFilterButton={applyFilterButton}
+            shouldRenderApplyButton={shouldRenderApplyButton}
+            isApplyButtonVisible={hasUnappliedFilters}
+            onClickApplyButton={handleApplyFilters}
           />
         );
       }
