@@ -944,7 +944,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     function setFilterValue(filterName) {
       filterWidget().contains(filterName).click();
-      cy.findByPlaceholderText("Search the list").type("1,2,");
+      cy.findByPlaceholderText("Enter an ID").type("1,2,");
       cy.button("Add filter").click();
       cy.findByText("2 selections");
     }
