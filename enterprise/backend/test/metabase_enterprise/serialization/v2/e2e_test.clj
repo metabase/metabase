@@ -336,8 +336,8 @@
                               clean-entity)))))
 
               (testing "for Databases"
-                (doseq [{:keys [name] :as coll} (get @entities "Database")]
-                  (is (= (clean-entity coll)
+                (doseq [{:keys [name] :as db} (get @entities "Database")]
+                  (is (= (assoc (clean-entity db) :initial_sync_status "complete")
                          (->> (t2/select-one 'Database :name name)
                               (serdes/extract-one "Database" {})
                               clean-entity)))))

@@ -205,11 +205,12 @@
                            :existing-engine existing-engine
                            :new-engine      new-engine})))))))
 
-(defn- pre-insert [{:keys [details], :as database}]
-  (-> (cond-> database
-        (not details) (assoc :details {}))
-      handle-secrets-changes
-      (assoc :initial_sync_status "incomplete")))
+(defn- pre-insert [{:keys [details initial_sync_status], :as database}]
+   (-> database
+       (cond->
+        (not details)             (assoc :details {})
+        (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
+       handle-secrets-changes))
 
 (defmethod mi/perms-objects-set Database
   [{db-id :id} read-or-write]
@@ -323,7 +324,8 @@
   [database]
   (-> database
       serdes/load-xform-basics
-      (update :creator_id serdes/*import-user*)))
+      (update :creator_id serdes/*import-user*)
+      (assoc :initial_sync_status "complete")))
 
 (defmethod serdes/load-insert! "Database" [_ ingested]
   (let [m (get-method serdes/load-insert! :default)]
