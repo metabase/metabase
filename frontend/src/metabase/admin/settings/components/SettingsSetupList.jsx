@@ -5,8 +5,10 @@ import { t } from "ttag";
 import { SetupApi } from "metabase/services";
 import { color } from "metabase/lib/colors";
 import MetabaseSettings from "metabase/lib/settings";
+import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 
 import Icon from "metabase/components/Icon";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 import { SetupListRoot } from "metabase/admin/settings/components/SettingsSetupList.styled";
@@ -57,9 +59,9 @@ const CompletionBadge = ({ completed }) => (
   </div>
 );
 
-export const Task = ({ title, description, completed, link }) => (
-  <Link
-    to={link}
+const Task = ({ title, description, completed, link }) => (
+  <TaskLink
+    link={link}
     className="bordered border-brand-hover rounded transition-border flex align-center p2 no-decoration"
   >
     <CompletionBadge completed={completed} />
@@ -70,8 +72,24 @@ export const Task = ({ title, description, completed, link }) => (
       />
       {!completed ? <TaskDescription description={description} /> : null}
     </div>
-  </Link>
+  </TaskLink>
 );
+
+const TaskLink = ({ className, link, children }) => {
+  if (isSameOrSiteUrlOrigin(link)) {
+    return (
+      <Link className={className} to={link}>
+        {children}
+      </Link>
+    );
+  } else {
+    return (
+      <ExternalLink className={className} href={link}>
+        {children}
+      </ExternalLink>
+    );
+  }
+};
 
 export default class SettingsSetupList extends Component {
   constructor(props, context) {
