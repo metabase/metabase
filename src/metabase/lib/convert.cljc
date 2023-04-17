@@ -1,5 +1,6 @@
 (ns metabase.lib.convert
   (:require
+   [clojure.data :as data]
    [clojure.set :as set]
    [malli.core :as mc]
    [medley.core :as m]
@@ -7,7 +8,8 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn- clean-location [almost-stage error-type error-location]
   (let [operate-on-parent? #{:malli.core/missing-key :malli.core/end-of-input}
@@ -40,6 +42,10 @@
                                               (map (juxt :type :in))
                                               first)]
       (let [new-stage (clean-location almost-stage error-type error-location)]
+        (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
+                   (u/colorize :yellow (pr-str error-location))
+                   (u/colorize :yellow (pr-str error-type))
+                   (u/colorize :red (u/pprint-to-str (first (data/diff almost-stage new-stage)))))
         (if (= new-stage almost-stage)
           almost-stage
           (recur new-stage (conj removals [error-type error-location]))))
@@ -122,7 +128,18 @@
 
 (defmethod ->pMBQL :value
   [[_tag value opts]]
-  (lib.options/ensure-uuid [:value opts value]))
+  ;; `:value` uses `:snake_case` keys in legacy MBQL for some insane reason (actually this was to match the shape of
+  ;; the keys in Field metadata), at least for the three type keys enumerated below.
+  ;; See [[metabase.mbql.schema/ValueTypeInfo]].
+  (let [opts (set/rename-keys opts {:base_type     :base-type
+                                    :semantic_type :semantic-type
+                                    :database_type :database-type})
+        ;; in pMBQL, `:effective-type` is a required key for `:value`. `:value` SHOULD have always had `:base-type`,
+        ;; but on the off chance it did not give this `:type/*` so the schema doesn't fail entirely.
+        opts (assoc opts :effective-type (or (:effective-type opts)
+                                             (:base-type opts)
+                                             :type/*))]
+    (lib.options/ensure-uuid [:value opts value])))
 
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
@@ -148,11 +165,13 @@
   (and (qualified-keyword? x)
        (= (namespace x) "lib")))
 
-(defn- disqualify [x]
-  (->> x
+(defn- disqualify
+  "Remove any keys starting with the `:lib/` namespace from map `m`."
+  [m]
+  (->> m
        keys
        (remove lib-key?)
-       (select-keys x)))
+       (select-keys m)))
 
 (defn- aggregation->legacy-MBQL [[tag options & args]]
   (let [inner (into [tag] (map ->legacy-MBQL args))]
@@ -231,9 +250,19 @@
 
 (defmethod ->legacy-MBQL :value
   [[_tag opts value]]
-  (if-let [opts (not-empty (disqualify opts))]
-    [:value value opts]
-    [:value value]))
+  (let [opts (-> opts
+                 ;; as mentioned above, `:value` in legacy MBQL expects `snake_case` keys for type info keys.
+                 (set/rename-keys  {:base-type     :base_type
+                                    :semantic-type :semantic_type
+                                    :database-type :database_type})
+                 ;; remove `:effective-type`, which is not used for `:value` in legacy MBQL and is just going to
+                 ;; confuse things.
+                 (dissoc :effective-type)
+                 disqualify
+                 not-empty)]
+    ;; in legacy MBQL, `:value` has to be three args; `opts` has to be present, but it should can be `nil` if it is
+    ;; empty.
+    [:value value opts]))
 
 (defn- update-list->legacy-boolean-expression
   [m pMBQL-key legacy-key]

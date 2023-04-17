@@ -215,6 +215,31 @@
                 :limit        1
                 :source-table 4}}))
 
+(deftest ^:parallel value-test
+  (testing "For some crazy person reason legacy `:value` has `snake_case` options."
+    (let [original [:value
+                    3
+                    {:base_type     :type/Integer
+                     :semantic_type :type/Quantity
+                     :database_type "INTEGER"
+                     :name          "QUANTITY"
+                     :unit          :quarter}]
+          pMBQL    (lib.convert/->pMBQL original)]
+      (testing "Normalize keys when converting to pMBQL. Add `:effective-type`."
+        (is (=? [:value
+                 {:lib/uuid       string?
+                  :effective-type :type/Integer
+                  :base-type      :type/Integer
+                  :semantic-type  :type/Quantity
+                  :database-type  "INTEGER"
+                  :name           "QUANTITY"
+                  :unit           :quarter}
+                 3]
+                pMBQL)))
+      (testing "Round trip: make sure we convert back to `snake_case` when converting back."
+        (is (= original
+               (lib.convert/->legacy-MBQL pMBQL)))))))
+
 (deftest ^:parallel clean-test
   (testing "irrecoverable queries"
     ;; Eventually we should get to a place where ->pMBQL throws an exception here,
