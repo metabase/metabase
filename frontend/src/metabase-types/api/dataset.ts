@@ -5,6 +5,7 @@ import { DatabaseId } from "./database";
 import { FieldId } from "./field";
 import { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import { DownloadPermission } from "./permissions";
+import { ParameterOptions } from "./parameters";
 
 export type RowValue = string | number | null | boolean;
 export type RowValues = RowValue[];
@@ -86,6 +87,7 @@ export interface TemplateTag {
   "widget-type"?: ParameterType;
   required?: boolean;
   default?: string;
+  options?: ParameterOptions;
 
   // Card template specific
   "card-id"?: number;

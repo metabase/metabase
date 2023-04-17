@@ -20,6 +20,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 
 import {
+  getDefaultParameterOptions,
   getDefaultParameterWidgetType,
   getParameterOptionsForField,
 } from "metabase-lib/parameters/utils/template-tag-options";
@@ -73,7 +74,9 @@ export class TagEditorParam extends Component {
     const { tag, setTemplateTag, setParameterValue } = this.props;
 
     if (tag["widget-type"] !== widgetType) {
-      setTemplateTag({ ...this.props.tag, "widget-type": widgetType });
+      const newTag = { ...this.props.tag, "widget-type": widgetType };
+      const options = getDefaultParameterOptions(newTag);
+      setTemplateTag({ ...newTag, options });
       setParameterValue(tag.id, null);
     }
   }
