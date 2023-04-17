@@ -105,6 +105,7 @@
                   (setting/set-value-of-type! :json :user-recent-views views)
                   views)))))
 
+;; TODO: remove this setting as part of Audit V2 project.
 (defsetting most-recently-viewed-dashboard
   (deferred-tru "The Dashboard that the user has most recently viewed within the last 24 hours.")
   :user-local :only
