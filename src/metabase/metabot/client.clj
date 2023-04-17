@@ -1,13 +1,14 @@
 (ns metabase.metabot.client
   (:require
-   [cheshire.core :as json]
-   [metabase.metabot.settings :as metabot-settings]
-   [metabase.util.log :as log]
-   [wkok.openai-clojure.api :as openai.api]))
+    [cheshire.core :as json]
+    [clojure.core.memoize :as memoize]
+    [metabase.metabot.settings :as metabot-settings]
+    [metabase.util.log :as log]
+    [wkok.openai-clojure.api :as openai.api]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *bot-endpoint*
+(def ^:dynamic *create-chat-completion-endpoint*
   "The endpoint used to invoke the remote LLM"
   (fn [params options]
     (openai.api/create-chat-completion
@@ -20,7 +21,7 @@
   [{:keys [messages] :as prompt}]
   {:pre [messages]}
   (try
-    (*bot-endpoint*
+    (*create-chat-completion-endpoint*
      (merge
       {:model (metabot-settings/openai-model)
        :n     (metabot-settings/num-metabot-choices)}
@@ -60,3 +61,32 @@
             (ex-message e)
             {:exception-data (ex-data e)
              :status-code    400}))))))
+
+(def ^:dynamic *create-embedding-endpoint*
+  "Default embeddings endpoint is both dynamic and memoized."
+  (memoize/ttl
+    ^{::memoize/args-fn (fn [{:keys [model input]} _options] [model input])}
+    (fn [params options]
+      (openai.api/create-embedding
+        (select-keys params [:model :input])
+        options))
+    ;; 24-hour ttl
+    :ttl/threshold (* 1000 60 60 24)))
+
+(defn create-embedding
+  "Create an embedding vector from the given prompt.
+  This response with the original prompt, the embedding vector, and the token count of the embeddings.
+  The token count can be used to provide best fit queries for prompts requiring large amounts of data."
+  ([model prompt]
+   (log/info "Creating embedding...")
+   (let [{[{:keys [embedding]}]   :data
+          {:keys [prompt_tokens]} :usage} (*create-embedding-endpoint*
+                                            {:model model
+                                             :input prompt}
+                                            {:api-key      (metabot-settings/openai-api-key)
+                                             :organization (metabot-settings/openai-organization)})]
+     {:prompt    prompt
+      :embedding embedding
+      :tokens    prompt_tokens}))
+  ([prompt]
+   (create-embedding "text-embedding-ada-002" prompt)))
