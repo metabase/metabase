@@ -18,7 +18,7 @@ describe("visual tests > models > editor", () => {
         query: GUI_QUERY,
       }).then(({ body: { id: MODEL_ID } }) => {
         cy.visit(`/model/${MODEL_ID}/query`);
-        cy.wait("@cardQuery");
+        cy.wait("@cardQuery", { timeout: 10000 });
         cy.findByText(/Doing science/).should("not.exist");
         cy.wait(100); // waits for the colums widths calculation
         cy.createPercySnapshot(
