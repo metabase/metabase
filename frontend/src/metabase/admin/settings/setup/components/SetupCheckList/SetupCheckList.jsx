@@ -75,21 +75,16 @@ const Task = ({ title, description, completed, link }) => (
   </TaskLink>
 );
 
-const TaskLink = ({ className, link, children }) => {
-  if (isSameOrSiteUrlOrigin(link)) {
-    return (
-      <Link className={className} to={link}>
-        {children}
-      </Link>
-    );
-  } else {
-    return (
-      <ExternalLink className={className} href={link}>
-        {children}
-      </ExternalLink>
-    );
-  }
-};
+const TaskLink = ({ className, link, children }) =>
+  isSameOrSiteUrlOrigin(link) ? (
+    <Link className={className} to={link}>
+      {children}
+    </Link>
+  ) : (
+    <ExternalLink className={className} href={link}>
+      {children}
+    </ExternalLink>
+  );
 
 export default class SetupCheckList extends Component {
   constructor(props, context) {
