@@ -21,9 +21,8 @@
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/field` column metadata for an expression, construct an `:expression` reference."
   [metadata :- lib.metadata/ColumnMetadata]
-  (let [options {:lib/uuid       (str (random-uuid))
-                 :base-type      (:base_type metadata)
-                 :effective-type ((some-fn :effective_type :base_type) metadata)}]
+  (let [options {:lib/uuid  (str (random-uuid))
+                 :base-type (:base_type metadata)}]
     [:expression options (:name metadata)]))
 
 (mu/defn resolve-expression :- ::lib.schema.expression/expression

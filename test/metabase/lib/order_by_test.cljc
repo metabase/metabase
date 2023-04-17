@@ -643,9 +643,9 @@
             query' (lib/order-by query ag-ref)]
         (is (=? {:stages
                  [{:aggregation [[:avg {} [:+ {} [:field {} (meta/id :venues :price)] 1]]]
-                   :order-by    [[:asc {} [:aggregation {:effective-type :type/Float} 0]]]}]}
+                   :order-by    [[:asc {} [:aggregation {} 0]]]}]}
                 query'))
-        (is (=? [[:asc {} [:aggregation {:effective-type :type/Float} 0]]]
+        (is (=? [[:asc {} [:aggregation {} 0]]]
                (lib/order-bys query')))
         (is (=? [{:display_name "Average of Price + 1"
                   :direction    :asc}]

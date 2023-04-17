@@ -16,8 +16,7 @@
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
   "Given `:metadata/field` column metadata for an aggregation, construct an `:aggregation` reference."
   [metadata :- lib.metadata/ColumnMetadata]
-  (let [options {:lib/uuid       (str (random-uuid))
-                 :effective-type ((some-fn :effective_type :base_type) metadata)}
+  (let [options {:lib/uuid (str (random-uuid))}
         index   (::aggregation-index metadata)]
     (assert (integer? index) "Metadata for an aggregation reference should include ::aggregation-index")
     [:aggregation options index]))

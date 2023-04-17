@@ -172,7 +172,7 @@
                   (lib.metadata.calculation/metadata query')))
           (testing "Should be able to convert the metadata back into a reference"
             (let [[id-plus-1] (lib.metadata.calculation/metadata query')]
-              (is (=? [:expression {:base-type :type/Integer, :effective-type :type/Integer} "ID + 1"]
+              (is (=? [:expression {:base-type :type/Integer} "ID + 1"]
                       (lib/ref id-plus-1))))))))))
 
 (deftest ^:parallel query-with-source-card-include-implicit-columns-test
