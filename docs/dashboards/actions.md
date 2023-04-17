@@ -54,4 +54,4 @@ You can add as many buttons as you want, and wire them up to one or more filters
 ## Further reading
 
 - [Actions](../actions/start.md)
-
+- [Build a basic CRUD app with actions](https://www.metabase.com/learn/actions/dashboard)
