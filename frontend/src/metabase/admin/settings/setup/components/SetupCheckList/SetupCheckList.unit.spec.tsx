@@ -1,4 +1,6 @@
 import React from "react";
+import { Route } from "react-router";
+import userEvent from "@testing-library/user-event";
 import { SetupCheckListItem } from "metabase-types/api";
 import {
   createMockSetupCheckListItem,
@@ -12,29 +14,26 @@ import {
 } from "__support__/ui";
 import SetupCheckList from "./SetupCheckList";
 
-const TEST_H2_LINK =
-  "https://metabase.test//docs/latest/installation-and-operation/migrating-from-h2";
+const ADD_DB_TASK = createMockSetupCheckListTask({
+  title: "Add a database",
+  group: "Get connected",
+  link: "/admin/databases/create",
+});
+
+const SWITCH_DB_TASK = createMockSetupCheckListTask({
+  title: "Switch to a production-ready app database",
+  group: "Productionize",
+  link: "https://metabase.test//docs/latest/installation-and-operation/migrating-from-h2",
+});
 
 const TEST_ITEMS = [
   createMockSetupCheckListItem({
     name: "Get connected",
-    tasks: [
-      createMockSetupCheckListTask({
-        title: "Add a database",
-        group: "Get connected",
-        link: "/admin/databases/create",
-      }),
-    ],
+    tasks: [ADD_DB_TASK],
   }),
   createMockSetupCheckListItem({
     name: "Productionize",
-    tasks: [
-      createMockSetupCheckListTask({
-        title: "Switch to a production-ready app database",
-        group: "Productionize",
-        link: TEST_H2_LINK,
-      }),
-    ],
+    tasks: [SWITCH_DB_TASK],
   }),
 ];
 
@@ -44,18 +43,33 @@ interface SetupOpts {
 
 const setup = async ({ items = TEST_ITEMS }: SetupOpts = {}) => {
   setupAdminCheckListEndpoint(items);
-  renderWithProviders(<SetupCheckList />);
+
+  const { history } = renderWithProviders(
+    <Route path="*" component={SetupCheckList} />,
+    {
+      withRouter: true,
+    },
+  );
+
   await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+
+  return { history };
 };
 
 describe("SetupCheckList", () => {
+  it("should render relative links correctly", async () => {
+    const { history } = await setup();
+
+    userEvent.click(screen.getByRole("link", { name: ADD_DB_TASK.title }));
+
+    const pathname = history?.getCurrentLocation().pathname;
+    expect(pathname).toBe(ADD_DB_TASK.link);
+  });
+
   it("should render absolute links correctly", async () => {
     await setup();
 
-    const link = screen.getByRole("link", {
-      name: /Switch to a production-ready app database/,
-    });
-
-    expect(link).toHaveAttribute("href", TEST_H2_LINK);
+    const link = screen.getByRole("link", { name: SWITCH_DB_TASK.title });
+    expect(link).toHaveAttribute("href", SWITCH_DB_TASK.link);
   });
 });
