@@ -203,7 +203,7 @@ const QuestionActions = ({
   if (!question.query().readOnly()) {
     extraButtons.push({
       title: t`Duplicate`,
-      icon: "segment",
+      icon: "clone",
       action: () => onOpenModal(MODAL_TYPES.CLONE),
       testId: CLONE_TESTID,
     });
@@ -212,7 +212,7 @@ const QuestionActions = ({
   if (canWrite) {
     extraButtons.push({
       title: t`Archive`,
-      icon: "view_archive",
+      icon: "archive",
       action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
       testId: ARCHIVE_TESTID,
     });
