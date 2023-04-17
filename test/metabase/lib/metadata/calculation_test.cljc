@@ -1,11 +1,14 @@
 (ns metabase.lib.metadata.calculation-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is are testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]))
 
 (deftest ^:parallel basic-isa-test
+  (testing "nil doesn't belong to any type"
+    (are [typ] (false? (lib.metadata.calculation/isa nil typ))
+      :type/* :Relation/* :Semantic/* :type/Text :type/Address))
   (testing "effective type passes"
     (is (lib.metadata.calculation/isa
          {:effective_type :type/Text, :semantic_type :type/Address}
