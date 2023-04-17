@@ -11,7 +11,7 @@ import Icon from "metabase/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
-import { SetupListRoot } from "./SettingsSetupList.styled";
+import { SetupListRoot } from "./SetupTaskList.styled";
 
 const TaskList = ({ tasks }) => (
   <ol>
@@ -91,7 +91,7 @@ const TaskLink = ({ className, link, children }) => {
   }
 };
 
-export default class SettingsSetupList extends Component {
+export default class SetupTaskList extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {

@@ -1,1 +1,1 @@
-export { default } from "./SettingsSetupList";
+export { default } from "./SetupTaskList";
