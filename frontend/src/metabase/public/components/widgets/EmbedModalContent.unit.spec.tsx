@@ -25,7 +25,7 @@ describe("EmbedModalContent", () => {
 
   it("should render parameters", () => {
     const parameters = [
-      { name: "My param", slug: "my_param", type: "string/=" },
+      { name: "My param", slug: "my_param", type: "category" },
     ];
 
     renderWithConfiguredProviders(
