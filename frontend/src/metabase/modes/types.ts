@@ -89,7 +89,7 @@ type AlwaysDefaultClickAction = Omit<
   defaultAlways: true;
 };
 
-// TODO: unify this and frontend/src/metabase-types/types/Visualization.ts
+// TODO [#26836]: unify this and frontend/src/metabase-types/types/Visualization.ts
 export type ClickAction = RegularClickAction | AlwaysDefaultClickAction;
 
 export type DrillOptions = {

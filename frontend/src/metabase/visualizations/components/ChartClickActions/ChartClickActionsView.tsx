@@ -2,21 +2,22 @@ import cx from "classnames";
 import { t } from "ttag";
 import { Link } from "react-router";
 import React from "react";
-import _ from "underscore";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Tooltip from "metabase/core/components/Tooltip";
-import Icon from "metabase/components/Icon/Icon";
 import { ClickAction } from "metabase-types/types/Visualization";
 import {
+  ActionIcon,
   ClickActionButton,
-  ClickActionButtonType,
+  Container,
+  Section,
 } from "./ChartClickActions.styled";
-import { getGALabelForAction, SECTIONS } from "./config";
+import {
+  getGALabelForAction,
+  getGroupedAndSortedActions,
+  SECTIONS,
+} from "./utils";
 
-type ClickActionWithButtonType = ClickAction & {
-  buttonType?: ClickActionButtonType;
-};
 interface Props {
   clickActions: ClickAction[];
 
@@ -27,43 +28,16 @@ const ChartClickActionsView = ({
   clickActions,
   onClick,
 }: Props): JSX.Element => {
-  const groupedClickActions: Record<string, ClickActionWithButtonType[]> =
-    _.groupBy(clickActions, "section");
-
-  if (groupedClickActions?.["sum"]?.length === 1) {
-    // if there's only one "sum" click action, merge it into "summarize" and change its button type and icon
-    if (!groupedClickActions?.["summarize"]) {
-      groupedClickActions["summarize"] = [];
-    }
-    groupedClickActions["summarize"].push({
-      ...groupedClickActions["sum"][0],
-      buttonType: "horizontal",
-      icon: "number",
-    });
-    delete groupedClickActions["sum"];
-  }
-  const hasOnlyOneSortAction = groupedClickActions["sort"]?.length === 1;
-  if (hasOnlyOneSortAction) {
-    // restyle the Formatting action when there is only one option
-    groupedClickActions["sort"][0] = {
-      ...groupedClickActions["sort"][0],
-      buttonType: "horizontal",
-    };
-  }
-  const sections = _.chain(groupedClickActions)
-    .pairs()
-    .sortBy(([key]) => (SECTIONS[key] ? SECTIONS[key].index : 99))
-    .value();
-
+  const sections = getGroupedAndSortedActions(clickActions);
   const hasOnlyOneSection = sections.length === 1;
 
   return (
-    <div className="text-bold px2 pt2 pb1">
+    <Container>
       {sections.map(([key, actions]) => (
-        <div
+        <Section
           key={key}
+          type={key}
           className={cx(
-            "pb1",
             { pb2: SECTIONS[key].icon === "bolt" },
             {
               ml1:
@@ -116,11 +90,13 @@ const ChartClickActionsView = ({
                 "formatting-button": action.buttonType === "formatting",
                 "horizontal-button": action.buttonType === "horizontal",
               });
+              const key = action.name;
               const isLastItem = index === actions.length - 1;
 
               if (action.url) {
                 return (
                   <div
+                    key={key}
                     className={cx({
                       full: action.buttonType === "horizontal",
                     })}
@@ -129,7 +105,7 @@ const ChartClickActionsView = ({
                       as={Link}
                       className={className}
                       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                      // @ts-ignore // TODO: remove this after styled component is done
+                      // @ts-ignore // TODO [#26836]: remove this after styled component is done
                       to={action.url()}
                       type={action.buttonType}
                       onClick={() =>
@@ -149,15 +125,15 @@ const ChartClickActionsView = ({
                 action.buttonType === "formatting"
               ) {
                 return (
-                  <Tooltip tooltip={action.tooltip}>
+                  <Tooltip key={key} tooltip={action.tooltip}>
                     <ClickActionButton
                       className={cx(className, "flex flex-row align-center")}
                       type={action.buttonType}
                       onClick={() => onClick(action)}
                     >
                       {action.icon && (
-                        <Icon
-                          className={cx("flex mr1", {
+                        <ActionIcon
+                          className={cx({
                             "text-brand text-white-hover":
                               action.buttonType !== "formatting",
                           })}
@@ -171,6 +147,7 @@ const ChartClickActionsView = ({
               } else {
                 return (
                   <ClickActionButton
+                    key={key}
                     className={cx(className, {
                       mb1: action.buttonType === "horizontal" && !isLastItem,
                     })}
@@ -178,8 +155,8 @@ const ChartClickActionsView = ({
                     onClick={() => onClick(action)}
                   >
                     {action.icon && (
-                      <Icon
-                        className="flex mr1 text-brand text-white-hover"
+                      <ActionIcon
+                        className="text-brand text-white-hover"
                         size={action.buttonType === "horizontal" ? 14 : 12}
                         name={action.icon}
                       />
@@ -190,9 +167,9 @@ const ChartClickActionsView = ({
               }
             })}
           </div>
-        </div>
+        </Section>
       ))}
-    </div>
+    </Container>
   );
 };
 

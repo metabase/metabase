@@ -1,20 +1,45 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { alpha, color } from "metabase/lib/colors";
+import type { ClickActionButtonType } from "metabase/modes/types";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import Icon from "metabase/components/Icon/Icon";
 
-export type ClickActionButtonType =
-  | "sort"
-  | "formatting"
-  | "horizontal"
-  | "token"
-  | "token-filter"
-  | "info";
+export type SectionType = "records" | string;
+
 export interface ClickActionButtonProps {
   type: ClickActionButtonType | undefined;
 }
 
-// TODO: refactor this to be a button
+export const Container = styled.div`
+  padding: 1rem;
+
+  font-weight: 700;
+`;
+
+export const Section = styled.div<{ type: SectionType }>`
+  padding-bottom: 1rem;
+
+  ${({ type }) =>
+    type === "records" &&
+    css`
+      padding-bottom: 0;
+
+      &:after {
+        content: "";
+        height: 1px;
+        background-color: ${color("border")};
+        margin: 1rem -1.5rem 1rem;
+        display: block;
+      }
+    `}
+`;
+
+export const ActionIcon = styled(Icon)`
+  margin-right: 0.75rem;
+`;
+
+// TODO [#26836]: refactor this to be a button
 export const ClickActionButton = styled.div<ClickActionButtonProps>`
   ${({ type }) =>
     type === "sort" &&

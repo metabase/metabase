@@ -14,7 +14,7 @@ import { Series } from "metabase-types/api";
 
 import "./ChartClickActions.css";
 import ChartClickActionsView from "./ChartClickActionsView";
-import { getGALabelForAction } from "./config";
+import { getGALabelForAction } from "./utils";
 import { FlexTippyPopover } from "./ChartClickActions.styled";
 
 interface ChartClickActionsProps {
@@ -151,7 +151,6 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
         placement="bottom-start"
         offset={[0, 8]}
         popperOptions={{
-          // flip: true, // TODO: check if this has an effect
           modifiers: [
             {
               name: "preventOverflow",
