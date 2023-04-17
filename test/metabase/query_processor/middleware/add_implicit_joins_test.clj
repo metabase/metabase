@@ -605,19 +605,13 @@
     (testing "`:join-alias` is correctly updated in metadata fields containing `:source-field`"
       ;; Used metadata are simplified (invalid) for testing purposes. To the best of my knowledge only `:field_ref`
       ;;   could contain field with `:source-field` option that should be updated.
-      ;;
       (testing "With `:source-field` field in the `:source-metadata` and not in the`:source-query`, query should be left intact"
-        (is (query= (mt/mbql-query products
+        (let [query (mt/mbql-query products
                       {:source-query {:source-table $$orders
                                       :fields [$id]}
-                       :source-metadata [{:field_ref $orders.product_id->category}]})
-                    (add-implicit-joins
-                     (mt/mbql-query products
-                       {:source-query {:source-table $$orders
-                                       :fields [$id]}
-                        :source-metadata [{:field_ref $orders.product_id->category}]})))))
-      ;; #26631 Case 1
-      (testing "Join query with implicit join into query with nested query with implicit join as source"
+                       :source-metadata [{:field_ref $orders.product_id->category}]})]
+          (is (query= query (add-implicit-joins query)))))
+      (testing "#26631 Case 1: Join query with implicit join into query with nested query with implicit join as source"
         (is (= (mt/mbql-query products
                  {:source-query {:source-table $$orders
                                  :aggregation [[:count]]
@@ -657,8 +651,7 @@
                                            :aggregation [[:count]]
                                            :breakout [$reviews.product_id->category]}
                             :source-metadata [{:field_ref $reviews.product_id->category}]}]})))))
-      ;; #26631 Case 3
-      (testing "Join query with implicit join into a query with a table as source"
+      (testing "#26631 Case 3: Join query with implicit join into a query with a table as source"
         (is (query= (mt/mbql-query products
                       {:source-table $$products
                        :joins [{:join-alias "Q2"

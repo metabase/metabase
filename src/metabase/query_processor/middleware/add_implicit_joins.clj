@@ -25,7 +25,7 @@
   [[metabase.models.params.custom-values-test/with-mbql-card-test]]."
   [x]
   (set (mbql.u/match x [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))]
-                     (when-not ((set &parents) :source-metadata)
+                     (when-not (some #{:source-metadata} &parents)
                        &match))))
 
 (defn- join-alias [dest-table-name source-fk-field-name]
@@ -83,7 +83,7 @@
 (defn- distinct-fields [fields]
   (m/distinct-by mbql.u/remove-namespaced-options fields))
 
-(defn- fk-field-id->join-alias--of-form
+(defn- construct-fk-field-id->join-alias
   [form]
   ;; Build a map of FK Field ID -> alias used for IMPLICIT joins. Only implicit joins have `:fk-field-id`
   (reduce
@@ -101,7 +101,7 @@
   found. For examaple during remaps, metadata contain fields with `:source-field`, that are not used further in their
   `:source-query`."
   [{:keys [source-query] :as query}]
-  (let [fk-field-id->join-alias (fk-field-id->join-alias--of-form source-query)]
+  (let [fk-field-id->join-alias (construct-fk-field-id->join-alias source-query)]
     (update query :source-metadata
             #(mbql.u/replace %
                [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
@@ -113,10 +113,10 @@
 (defn- add-join-alias-to-fields-with-source-field
   "Add `:field` `:join-alias` to `:field` clauses with `:source-field` in `form`. Ignore `:source-metadata`."
   [form]
-  (let [fk-field-id->join-alias (fk-field-id->join-alias--of-form form)]
+  (let [fk-field-id->join-alias (construct-fk-field-id->join-alias form)]
     (cond-> (mbql.u/replace form
               [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
-              (if-not ((set &parents) :source-metadata)
+              (if-not (some #{:source-metadata} &parents)
                 (let [join-alias (or (fk-field-id->join-alias (:source-field opts))
                                      (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
                                                           (fk-field-id->join-alias (:source-field opts)))
@@ -240,17 +240,13 @@
       (seq required-joins) (update :joins topologically-sort-joins))))
 
 (defn- resolve-implicit-joins [query]
-  (letfn [(has-source-query-and-metadata? [form]
-            ((every-pred map? :source-query :source-metadata) form))
-          (query? [form]
-            (and (map? form)
-                 ((some-fn :source-query :source-table) form)
-                 (not (:condition form))))]
+  (let [has-source-query-and-metadata? (every-pred map? :source-query :source-metadata)
+        query? (every-pred map? (some-fn :source-query :source-table) #(not (contains? % :condition)))]
     (walk/postwalk
      (fn [form]
        (cond-> form
          ;; `:source-metadata` of `:source-query` in this `form` are on this level. This `:source-query` has already
-         ;; it's implicit joins resolved due to use of `postwalk`. Following code updates also it's metadata.
+         ;;   its implicit joins resolved by `postwalk`. The following code updates its metadata too.
          (has-source-query-and-metadata? form)
          add-implicit-joins-aliases-to-metadata
 
