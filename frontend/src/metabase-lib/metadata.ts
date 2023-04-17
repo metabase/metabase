@@ -1,6 +1,4 @@
-import { to_array } from "cljs/cljs.core";
 import * as ML from "cljs/metabase.lib.js";
-import * as ML_ColumnGroup from "cljs/metabase.lib.column_group";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
 import type { DatabaseId } from "metabase-types/api";
 import type Metadata from "./metadata/Metadata";
@@ -45,11 +43,11 @@ declare function DisplayInfoFn(
 export const displayInfo: typeof DisplayInfoFn = ML.display_info;
 
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
-  return to_array(ML_ColumnGroup.group_columns(columns));
+  return ML.group_columns(columns);
 }
 
 export function getColumnsFromColumnGroup(
   group: ColumnGroup,
 ): ColumnMetadata[] {
-  return to_array(ML_ColumnGroup.columns_group_columns(group));
+  return ML.columns_group_columns(group);
 }
