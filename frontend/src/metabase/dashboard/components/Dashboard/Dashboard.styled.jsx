@@ -90,7 +90,7 @@ export const ParametersAndCardsContainer = styled.div`
 `;
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)`
-  align-items: baseline;
+  align-items: flex-start;
   background-color: ${color("bg-light")};
   border-bottom: 1px solid ${color("bg-light")};
   display: flex;
