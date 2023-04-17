@@ -2,13 +2,14 @@
   (:require
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
+   [flatland.ordered.set :as ordered-set]
    [java-time :as t]
    [metabase.driver :as driver]
    [metabase.search.util :as search-util]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -16,23 +17,53 @@
 ;;;; | Schema detection |
 ;;;; +------------------+
 
-;;           text
-;;            |
-;;            |
-;;       varchar_255
-;;            |
-;;            |
-;;          float
-;;            |
-;;            |
-;;           int
-;;            |
-;;            |
-;;         boolean
-(derive ::boolean     ::int)
-(derive ::int         ::float)
-(derive ::float       ::varchar_255)
-(derive ::varchar_255 ::text)
+;;              text
+;;               |
+;;               |
+;;          varchar_255
+;;              / \
+;;             /   \
+;;            /     \
+;;         float   datetime
+;;           |       |
+;;           |       |
+;;          int    date
+;;           |
+;;           |
+;;        boolean
+
+(def ^:private type->parent
+  ;; listed in depth-first order
+  {::varchar_255 ::text
+   ::float       ::varchar_255
+   ::int         ::float
+   ::boolean     ::int
+   ::datetime    ::varchar_255
+   ::date        ::datetime})
+
+(def ^:private types
+  (set/union (set (keys type->parent))
+             (set (vals type->parent))))
+
+(def ^:private type->ancestors
+  (into {} (for [type types]
+             [type (loop [ret (ordered-set/ordered-set)
+                          type type]
+                     (if-let [parent (type->parent type)]
+                       (recur (conj ret parent) parent)
+                       ret))])))
+
+(defn- date-string? [s]
+  (try (t/local-date s)
+       true
+       (catch Exception _
+         false)))
+
+(defn- datetime-string? [s]
+  (try (t/local-date-time s)
+       true
+       (catch Exception _
+         false)))
 
 (defn value->type
   "The most-specific possible type for a given value. Possibilities are:
@@ -52,6 +83,8 @@
     (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" value) ::boolean
     (re-matches #"-?[\d,]+"                          value) ::int
     (re-matches #"-?[\d,]*\.\d+"                     value) ::float
+    (datetime-string?                                value) ::datetime
+    (date-string?                                    value) ::date
     (re-matches #".{1,255}"                          value) ::varchar_255
     :else                                                   ::text))
 
@@ -59,20 +92,25 @@
   [row]
   (map (comp value->type search-util/normalize) row))
 
-(defn coalesce
-  "Returns the 'parent' type (the most general)."
-  [type-a type-b]
+(defn- lowest-common-member [[x & xs :as all-xs] ys]
   (cond
-    (nil? type-a)        type-b
-    (nil? type-b)        type-a
-    (isa? type-a type-b) type-b
-    (isa? type-b type-a) type-a
-    :else (throw (Exception. (trs "Unexpected type combination in the same column: {0} and {1}" type-a type-b)))))
+    (empty? all-xs)  (throw (IllegalArgumentException. (format "%s and %s must have a common member" xs ys)))
+    (contains? ys x) x
+    :else            (recur xs ys)))
+
+(defn- lowest-common-ancestor [type-a type-b]
+  (cond
+    (nil? type-a) type-b
+    (nil? type-b) type-a
+    (= type-a type-b) type-a
+    (contains? (type->ancestors type-a) type-b) type-b
+    (contains? (type->ancestors type-b) type-a) type-a
+    :else (lowest-common-member (type->ancestors type-a) (type->ancestors type-b))))
 
 (defn- coalesce-types
   [types-so-far new-types]
   (->> (map vector types-so-far new-types)
-       (mapv (partial apply coalesce))))
+       (mapv (partial apply lowest-common-ancestor))))
 
 (defn- pad
   "Lengthen `values` until it is of length `n` by filling it with nils."
@@ -101,12 +139,24 @@
     (re-matches #"(?i)true|t|yes|y|1" s) true
     (re-matches #"(?i)false|f|no|n|0" s) false))
 
+(defn- parse-date
+  [s]
+  (t/local-date s))
+
+(defn- parse-datetime
+  [s]
+  (cond
+    (date-string? s) (t/local-date-time (t/local-date s) (t/local-time "00:00:00"))
+    (datetime-string? s) (t/local-date-time s)))
+
 (def ^:private upload-type->parser
   {::varchar_255 identity
    ::text        identity
    ::int         #(Integer/parseInt (str/trim %))
    ::float       #(parse-double (str/trim %))
-   ::boolean     #(parse-bool (str/trim %))})
+   ::boolean     #(parse-bool (str/trim %))
+   ::date        #(parse-date (str/trim %))
+   ::datetime    #(parse-datetime (str/trim %))})
 
 (defn- parsed-rows
   "Returns a vector of parsed rows from a `csv-file`.
@@ -140,6 +190,8 @@
     - ::boolean
     - ::varchar_255
     - ::text
+    - ::date
+    - ::datetime
 
   A column that is completely blank is assumed to be of type ::text."
   [csv-file]

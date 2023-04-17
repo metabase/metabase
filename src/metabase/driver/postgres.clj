@@ -761,4 +761,6 @@
     ::upload/text        "TEXT"
     ::upload/int         "INTEGER"
     ::upload/float       "FLOAT"
-    ::upload/boolean     "BOOLEAN"))
+    ::upload/boolean     "BOOLEAN"
+    ::upload/date        "DATE"
+    ::upload/datetime    "TIMESTAMP"))
