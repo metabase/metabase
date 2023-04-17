@@ -189,6 +189,14 @@
              :source-table 224}
      :type :query}
 
+    {:database 1,
+     :type :query,
+     :query
+     {:source-table 2,
+      :aggregation [[:count]],
+      :breakout [[:field 14 {:temporal-unit :month}]],
+      :order-by [[:asc [:aggregation 0]]]}}
+
     {:database 23001
      :type     :query
      :query    {:source-table 224
