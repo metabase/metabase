@@ -92,11 +92,11 @@
   [row]
   (map (comp value->type search-util/normalize) row))
 
-(defn- lowest-common-member [xs ys]
+(defn- lowest-common-member [[x & xs :as all-xs] ys]
   (cond
-    (empty? xs) (throw (IllegalArgumentException. (str "{0} and {1} must have a common member" xs ys)))
-    (contains? ys (first xs)) (first xs)
-    :else (lowest-common-member (rest xs) ys)))
+    (empty? all-xs)  (throw (IllegalArgumentException. (format "%s and %s must have a common member" xs ys)))
+    (contains? ys x) x
+    :else            (recur xs ys)))
 
 (defn- lowest-common-ancestor [type-a type-b]
   (cond

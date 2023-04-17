@@ -58,7 +58,7 @@
                                     [bool-type     int-type      int-type]
                                     [bool-type     date-type     vchar-type]
                                     [bool-type     datetime-type vchar-type]
-                                    [bool-type     vchar-type    vchar-type] ;; ensure arg order doesn't matter
+                                    [bool-type     vchar-type    vchar-type]
                                     [bool-type     text-type     text-type]
                                     [int-type      bool-type     int-type]
                                     [int-type      float-type    float-type]
@@ -74,7 +74,8 @@
                                     [date-type     vchar-type    vchar-type]
                                     [date-type     text-type     text-type]
                                     [datetime-type vchar-type    vchar-type]
-                                    [datetime-type text-type     text-type]]]
+                                    [datetime-type text-type     text-type]
+                                    [vchar-type    text-type     text-type]]]
     (is (= expected (#'upload/lowest-common-ancestor type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
