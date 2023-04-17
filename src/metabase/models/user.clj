@@ -141,7 +141,7 @@
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
   fetching themselves. Needed to power the admin page."
-  (into default-user-columns [:google_auth :ldap_auth :sso_source :is_active :updated_at :login_attributes :locale]))
+  (into default-user-columns [:ldap_auth :sso_source :is_active :updated_at :login_attributes :locale]))
 
 (def non-admin-or-self-visible-columns
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
@@ -287,7 +287,6 @@
    :email                                  su/Email
    (schema/optional-key :password)         (schema/maybe su/NonBlankString)
    (schema/optional-key :login_attributes) (schema/maybe LoginAttributes)
-   (schema/optional-key :google_auth)      schema/Bool
    (schema/optional-key :ldap_auth)        schema/Bool})
 
 (def DefaultUser
@@ -330,7 +329,7 @@
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- NewUser]
-  (u/prog1 (insert-new-user! (assoc new-user :google_auth true))
+  (u/prog1 (insert-new-user! (assoc new-user :sso_source "google"))
     ;; send an email to everyone including the site admin if that's set
     (when (integrations.common/send-new-sso-user-admin-email?)
       (classloader/require 'metabase.email.messages)

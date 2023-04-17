@@ -210,9 +210,9 @@
   (testing "User login method takes into account both the google_auth and sso_source columns"
     (mt/with-test-user :crowberto
       (premium-features-test/with-premium-features #{:audit-app}
-        (mt/with-temp* [User [a {:email "a@metabase.com" :sso_source nil    :google_auth false}]
-                        User [b {:email "b@metabase.com" :sso_source nil    :google_auth true}]
-                        User [c {:email "c@metabase.com" :sso_source "SAML" :google_auth false}]]
+        (mt/with-temp* [User [a {:email "a@metabase.com" :sso_source nil}]
+                        User [b {:email "b@metabase.com" :sso_source "google"}]
+                        User [c {:email "c@metabase.com" :sso_source "SAML"}]]
           (is (= ["Email" "Google Sign-In" "SAML"]
                  (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
                                                     {:type :internal
