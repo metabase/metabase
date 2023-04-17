@@ -474,17 +474,13 @@
           (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
             (is (= ["Get connected" "Productionize" "Curate your data"]
                    (map :name checklist))))))
-      (testing "is omitted if pg, mysql, or hosted"
-        (doseq [alterations [{:db-type :postgres}
-                             {:db-type :mysql}
-                             {:hosted? true}]]
-          (with-redefs [api.setup/state-for-checklist (constantly
-                                                       (merge default-checklist-state
-                                                              alterations))]
-            (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
-              (testing (apply format "When %s is %s" (first alterations))
-                (is (= ["Get connected" "Curate your data"]
-                       (map :name checklist)))))))))
+      (testing "is omitted if hosted"
+        (with-redefs [api.setup/state-for-checklist (constantly
+                                                     (merge default-checklist-state
+                                                            {:hosted? true}))]
+          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+            (is (= ["Get connected" "Curate your data"]
+                   (map :name checklist)))))))
 
     (testing "require superusers"
       (is (= "You don't have permissions to do that."

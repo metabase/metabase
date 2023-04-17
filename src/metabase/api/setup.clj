@@ -299,11 +299,9 @@
   (remove nil?
           [{:name  (tru "Get connected")
             :tasks (get-connected-tasks info)}
-           (let [tasks (productionize-tasks info)]
-             ;; don't show task to upgrade to mysql/pg if not triggered
-             (when (-> tasks first :triggered)
-               {:name  (tru "Productionize")
-                :tasks (productionize-tasks info)}))
+           (when-not (:hosted? info)
+             {:name  (tru "Productionize")
+              :tasks (productionize-tasks info)})
            {:name  (tru "Curate your data")
             :tasks (curate-tasks info)}]))
 
