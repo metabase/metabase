@@ -120,7 +120,7 @@
      {:aggregation aggregations}
      (mbql.u/match-one aggregations
        :metric
-       "#28689"))
+       "#29936"))
    ;; #29941 : metadata resolution for query with a `card__` source-table does not work correctly for `:field` <name>
    ;; #clauses
    (mbql.u/match-one legacy-query
