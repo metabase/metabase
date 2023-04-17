@@ -15,10 +15,14 @@ import {
 } from "metabase/lib/redux";
 
 export const UPLOAD_FILE_TO_COLLECTION = "metabase/collection/UPLOAD_FILE";
-const UPLOAD_FILE_TO_COLLECTION_START = "metabase/collection/UPLOAD_FILE_START";
-const UPLOAD_FILE_TO_COLLECTION_END = "metabase/collection/UPLOAD_FILE_END";
-const UPLOAD_FILE_TO_COLLECTION_ERROR = "metabase/collection/UPLOAD_FILE_ERROR";
-const UPLOAD_FILE_TO_COLLECTION_CLEAR = "metabase/collection/UPLOAD_FILE_CLEAR";
+export const UPLOAD_FILE_TO_COLLECTION_START =
+  "metabase/collection/UPLOAD_FILE_START";
+export const UPLOAD_FILE_TO_COLLECTION_END =
+  "metabase/collection/UPLOAD_FILE_END";
+export const UPLOAD_FILE_TO_COLLECTION_ERROR =
+  "metabase/collection/UPLOAD_FILE_ERROR";
+export const UPLOAD_FILE_TO_COLLECTION_CLEAR =
+  "metabase/collection/UPLOAD_FILE_CLEAR";
 
 const MAX_UPLOAD_SIZE = 200 * 1024 * 1024; // 200MB
 const MAX_UPLOAD_STRING = "200MB";
