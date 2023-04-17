@@ -19,6 +19,7 @@ import { revertToRevision } from "metabase/dashboard/actions";
 
 import Toggle from "metabase/core/components/Toggle";
 import FormField from "metabase/core/components/FormField";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
@@ -83,6 +84,8 @@ const DashboardInfoSidebar = ({
     [revisions, currentUser, canWrite],
   );
 
+  const autoApplyFilterToggleId = useUniqueId();
+
   return (
     <DashboardInfoSidebarRoot data-testid="sidebar-right">
       <ContentSection>
@@ -99,9 +102,13 @@ const DashboardInfoSidebar = ({
       </ContentSection>
 
       <ContentSection>
-        <FormField title={t`Auto-apply filters`} orientation="horizontal">
+        <FormField
+          title={t`Auto-apply filters`}
+          orientation="horizontal"
+          htmlFor={autoApplyFilterToggleId}
+        >
           <Toggle
-            aria-label={t`Auto-apply filters`}
+            id={autoApplyFilterToggleId}
             value={dashboard.auto_apply_filters}
             onChange={handleToggleAutoApplyFilters}
           />
