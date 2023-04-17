@@ -26,7 +26,7 @@
   (a/chan))
 
 
-;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
+;;; ## ---------------------------------------- PER-USER VIEWS ----------------------------------------
 
 (defn- bookmarks-query
   [user-id]
@@ -105,6 +105,21 @@
                   (setting/set-value-of-type! :json :user-recent-views views)
                   views)))))
 
+(defsetting most-recently-viewed-dashboard
+  (deferred-tru "The Dashboard that the user has most recently viewed within the last 24 hours.")
+  :user-local :only
+  :type :json
+  :getter (fn []
+            (let [{:keys [id timestamp] :as value} (setting/get-value-of-type :json :most-recently-viewed-dashboard)
+                  yesterday                        (t/minus (t/zoned-date-time) (t/hours 24))]
+              ;; If the latest view is older than 24 hours, return 'nil'
+              (when (and value (t/after? (t/zoned-date-time timestamp) yesterday))
+                id)))
+  :setter (fn [id]
+            (when id
+              ;; given a dashboard's ID, save it with a timestamp of 'now', for comparing later in the getter
+              (setting/set-value-of-type! :json :most-recently-viewed-dashboard {:id id :timestamp (t/zoned-date-time)}))))
+
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
 
 (defn- record-view!
@@ -123,6 +138,7 @@
     (let [view        {:model    (name model)
                        :model_id model-id}
           prior-views (remove #{view} (user-recent-views))]
+      (when (= model :dashboard) (most-recently-viewed-dashboard! model-id))
       (when-not ((set prior-views) view)
         (let [new-views (vec (take 10 (conj prior-views view)))]
           (user-recent-views! new-views))))))
