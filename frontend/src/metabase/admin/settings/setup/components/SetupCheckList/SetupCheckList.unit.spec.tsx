@@ -26,7 +26,7 @@ const SWITCH_DB_TASK = createMockSetupCheckListTask({
   link: "https://metabase.test//docs/latest/installation-and-operation/migrating-from-h2",
 });
 
-const TEST_ITEMS = [
+const CHECK_LIST_ITEMS = [
   createMockSetupCheckListItem({
     name: "Get connected",
     tasks: [ADD_DB_TASK],
@@ -41,7 +41,7 @@ interface SetupOpts {
   items?: SetupCheckListItem[];
 }
 
-const setup = async ({ items = TEST_ITEMS }: SetupOpts = {}) => {
+const setup = async ({ items = CHECK_LIST_ITEMS }: SetupOpts = {}) => {
   setupAdminCheckListEndpoint(items);
 
   const { history } = renderWithProviders(
