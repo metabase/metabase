@@ -217,7 +217,14 @@
                                 :condition    [:= [:field 2 nil] [:field 2 nil]]
                                 :fields       [[:field 1 {:join-alias "Cat"}]]}]
                 :limit        1
-                :source-table 4}}))
+                :source-table 4}}
+
+    {:type :native,
+     :native
+     {:query
+      "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", \"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", \"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575",
+      :params nil}
+     :database 2360}))
 
 (deftest ^:parallel clean-test
   (testing "irrecoverable queries"
