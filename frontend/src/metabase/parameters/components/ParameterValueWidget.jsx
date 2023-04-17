@@ -155,7 +155,7 @@ class ParameterValueWidget extends Component {
                 [S.selected]: hasValue,
               })}
               role="button"
-              aria-label={hasValue ? value : placeholder}
+              aria-label={placeholder}
             >
               {showTypeIcon && (
                 <Icon
