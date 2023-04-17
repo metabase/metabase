@@ -17,6 +17,8 @@
 (def int-type       :metabase.upload/int)
 (def float-type     :metabase.upload/float)
 (def vchar-type     :metabase.upload/varchar_255)
+(def date-type      :metabase.upload/date)
+(def datetime-type  :metabase.upload/datetime)
 (def text-type      :metabase.upload/text)
 
 (deftest type-detection-test
@@ -43,22 +45,38 @@
                             [(apply str (repeat 255 "x")) vchar-type]
                             [(apply str (repeat 256 "x")) text-type]
                             ["86 is my favorite number"   vchar-type]
-                            ["My favorite number is 86"   vchar-type]]]
+                            ["My favorite number is 86"   vchar-type]
+                            ["2022-01-01"                 date-type]
+                            ["2022-01-01T01:00:00"        datetime-type]
+                            ["2022-01-01T01:00:00.00"     datetime-type]
+                            ["2022-01-01T01:00:00.000000000" datetime-type]]]
     (testing (format "\"%s\" is a %s" value expected)
       (is (= expected (upload/value->type value))))))
 
 (deftest type-coalescing-test
-  (doseq [[type-a type-b expected] [[bool-type  int-type   int-type]
-                                    [int-type   bool-type  int-type] ;; ensure arg order doesn't matter
-                                    [int-type   float-type float-type]
-                                    [bool-type  vchar-type vchar-type]
-                                    [bool-type  text-type  text-type]
-                                    [int-type   vchar-type vchar-type]
-                                    [int-type   text-type  text-type]
-                                    [float-type vchar-type vchar-type]
-                                    [float-type text-type  text-type]
-                                    [vchar-type text-type  text-type]]]
-    (is (= expected (upload/coalesce type-a type-b))
+  (doseq [[type-a type-b expected] [[bool-type     bool-type     bool-type]
+                                    [bool-type     int-type      int-type]
+                                    [bool-type     date-type     vchar-type]
+                                    [bool-type     datetime-type vchar-type]
+                                    [bool-type     vchar-type    vchar-type]
+                                    [bool-type     text-type     text-type]
+                                    [int-type      bool-type     int-type]
+                                    [int-type      float-type    float-type]
+                                    [int-type      date-type     vchar-type]
+                                    [int-type      datetime-type vchar-type]
+                                    [int-type      vchar-type    vchar-type]
+                                    [int-type      text-type     text-type]
+                                    [float-type    vchar-type    vchar-type]
+                                    [float-type    text-type     text-type]
+                                    [float-type    date-type     vchar-type]
+                                    [float-type    datetime-type vchar-type]
+                                    [date-type     datetime-type datetime-type]
+                                    [date-type     vchar-type    vchar-type]
+                                    [date-type     text-type     text-type]
+                                    [datetime-type vchar-type    vchar-type]
+                                    [datetime-type text-type     text-type]
+                                    [vchar-type    text-type     text-type]]]
+    (is (= expected (#'upload/lowest-common-ancestor type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
 (defn csv-file-with
@@ -139,6 +157,17 @@
                             ;; comma, but blank column
                             "Sebulba, 112,"]))))))
 
+(deftest detect-schema-dates-test
+  (testing "Dates"
+    (is (= {"date"         date-type
+            "not_date"     vchar-type
+            "datetime"     datetime-type
+            "not_datetime" vchar-type}
+           (upload/detect-schema
+            (csv-file-with ["Date      ,Not Date  ,Datetime           ,Not datetime       "
+                            "2022-01-01,2023-02-28,2022-01-01T00:00:00,2023-02-28T00:00:00"
+                            "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"]))))))
+
 (deftest unique-table-name-test
   (testing "File name is slugified"
     (is (=? #"my_file_name_\d+" (#'upload/unique-table-name "my file name"))))
@@ -164,9 +193,9 @@
          driver/*driver*
          (mt/id)
          "upload_test"
-         (csv-file-with ["id,nulls,string,bool,number"
-                         "2\t,,string,true,1.1\t,1\t"
-                         "   3,,string,false,    1.1"]))
+         (csv-file-with ["id,nulls,string,bool,number,date,datetime"
+                         "2\t ,,string,true ,1.1\t  ,2022-01-01,2022-01-01T00:00:00"
+                         "   3,,string,false,    1.1,2022-02-01,2022-02-01T00:00:00"]))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]
@@ -189,12 +218,39 @@
             (is (=? {:name      #"(?i)number"
                      :base_type :type/Float}
                     (t2/select-one Field :database_position 4 :table_id (:id table))))
+            (is (=? {:name      #"(?i)date"
+                     :base_type :type/Date}
+                    (t2/select-one Field :database_position 5 :table_id (:id table))))
+            (is (=? {:name      #"(?i)datetime"
+                     :base_type :type/DateTime}
+                    (t2/select-one Field :database_position 6 :table_id (:id table))))
             (testing "Check the data was uploaded into the table"
               (is (= [[2]] (-> (mt/process-query {:database (mt/id)
                                                   :type :query
                                                   :query {:source-table (:id table)
                                                           :aggregation [[:count]]}})
                                mt/rows))))))))))
+
+(deftest load-from-csv-date-test
+  (testing "Upload a CSV file with a datetime column"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["datetime"
+                         "2022-01-01"
+                         "2022-01-01T00:00:00"]))
+        (testing "Fields exists after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the datetime column the correct base_type"
+              (is (=? {:name      #"(?i)datetime"
+                       :base_type :type/DateTime}
+                      (t2/select-one Field :database_position 0 :table_id (:id table)))))
+            (is (some? table))))))))
 
 (deftest load-from-csv-boolean-test
   (testing "Upload a CSV file"
