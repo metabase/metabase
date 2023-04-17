@@ -25,6 +25,6 @@ export const EntityMenuIconButton = styled(Button)<EntityMenuIconButtonProps>`
 `;
 
 EntityMenuIconButton.defaultProps = {
-  iconSize: 16,
+  iconSize: 20,
   onlyIcon: true,
 };
