@@ -256,8 +256,8 @@
 (defmethod lib.ref/ref-method :metadata/field
   [metadata]
   (case (:lib/source metadata)
-    :source/aggregation (lib.aggregation/column-metadata->aggregation-ref metadata)
-    :source/expressions (lib.expression/column-metadata->expression-ref metadata)
+    :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
+    :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
     (let [options          (merge
                             {:lib/uuid       (str (random-uuid))
                              :base-type      (:base_type metadata)
