@@ -47,6 +47,7 @@ const ChartClickActionsView = ({
                 (SECTIONS[key].icon === "funnel_outline" && !hasOnlyOneSection),
             },
           )}
+          data-testid="drill-through-section"
         >
           {SECTIONS[key].icon === "sum" && (
             <p className="mt0 text-medium text-small">{t`Summarize`}</p>
