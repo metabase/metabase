@@ -411,6 +411,7 @@ function DatasetEditor(props) {
   return (
     <>
       <DatasetEditBar
+        data-testid="dataset-edit-bar"
         title={dataset.displayName()}
         center={
           <EditorTabs
