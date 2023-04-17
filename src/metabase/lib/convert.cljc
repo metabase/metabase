@@ -120,9 +120,10 @@
                                [x y])]
     (lib.options/ensure-uuid [:field options id-or-name])))
 
-(defmethod ->pMBQL :value
-  [[_tag value opts]]
-  (lib.options/ensure-uuid [:value opts value]))
+(doseq [tag [:value :aggregation :expression]]
+  (defmethod ->pMBQL tag
+    [[tag value opts]]
+    (lib.options/ensure-uuid [tag opts value])))
 
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
