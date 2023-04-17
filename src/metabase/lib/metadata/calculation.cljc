@@ -238,9 +238,6 @@
 (mr/register! ::display-info
   [:map
    [:display_name :string]
-   ;; For Columns. `base_type` not included here, FE doesn't need to know about that.
-   [:effective_type {:optional true} [:maybe [:ref ::lib.schema.common/base-type]]]
-   [:semantic_type  {:optional true} [:maybe [:ref ::lib.schema.common/semantic-type]]]
    ;; for things that have a Table, e.g. a Field
    [:table {:optional true} [:maybe [:ref ::display-info]]]
    ;; these are derived from the `:lib/source`/`:metabase.lib.metadata/column-source`, but instead of using that value
@@ -400,3 +397,10 @@
     x
     unique-name-fn :- fn?]
    (visible-columns-method query stage-number x unique-name-fn)))
+
+(defn isa
+  "Decide if `_column` is a subtype of the type denoted by the keyword `type-kw`.
+  Both effective and semantic types are taken into account."
+  [{:keys [effective_type semantic_type] :as _column} type-kw]
+  (or (isa? effective_type type-kw)
+      (isa? semantic_type type-kw)))

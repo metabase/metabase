@@ -219,3 +219,9 @@
   "Get the columns associated with a column group"
   [column-group]
   (to-array (lib.core/columns-group-columns column-group)))
+
+(defn ^:export isa
+  "Decide if (the opaque) `column` is a subtype of the type with the name `type-name`.
+  Both effective and semantic types are taken into account."
+  [column type-name]
+  (lib.core/isa column (keyword type-name)))
