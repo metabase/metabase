@@ -918,10 +918,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     it("should correctly drill-through on Orders filter (metabase#11503-1)", () => {
-      filterWidget().contains(ordersIdFilter.name).click();
-      cy.findByPlaceholderText("Search the list").type("1,2,");
-      cy.button("Add filter").click();
-      cy.findByText("2 selections");
+      setFilterValue(ordersIdFilter.name);
 
       drillThroughCardTitle("Orders");
 
