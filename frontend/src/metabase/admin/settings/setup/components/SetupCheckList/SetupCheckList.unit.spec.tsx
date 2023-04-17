@@ -46,9 +46,7 @@ const setup = async ({ items = CHECK_LIST_ITEMS }: SetupOpts = {}) => {
 
   const { history } = renderWithProviders(
     <Route path="*" component={SetupCheckList} />,
-    {
-      withRouter: true,
-    },
+    { withRouter: true },
   );
 
   await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
