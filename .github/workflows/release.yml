@@ -268,7 +268,7 @@ jobs:
       timeout-minutes: 3
 
   publish-elastic-beanstalk-artifacts:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: containerize
     timeout-minutes: 15
     env:
