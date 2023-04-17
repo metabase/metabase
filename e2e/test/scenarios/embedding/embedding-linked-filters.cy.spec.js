@@ -331,7 +331,11 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.findByText("2 selections").click();
 
         // Remove one of the previously set filter values
-        popover().findByText("29").closest("li").find(".Icon-close").click();
+        popover()
+          .findByText("29")
+          .closest("li")
+          .find("input[type=checkbox]")
+          .click();
         cy.button("Update filter").click();
 
         cy.findByTestId("table-row")
