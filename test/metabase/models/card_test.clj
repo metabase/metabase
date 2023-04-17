@@ -596,6 +596,25 @@
       (is (= #{["Card" (:id card1)]}
              (serdes/descendants "Card" (:id card2)))))))
 
+(deftest extract-test
+  (let [metadata (qp/query->expected-cols (mt/mbql-query venues))
+        query    (mt/mbql-query venues)]
+    (testing "normal cards omit result_metadata"
+      (mt/with-temp Card [{card-id :id} {:dataset_query   query
+                                         :result_metadata metadata}]
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one Card :id card-id))]
+          (is (not (:dataset extracted)))
+          (is (nil? (:result_metadata extracted))))))
+    (testing "dataset cards (models) retain result_metadata"
+      (mt/with-temp Card [{card-id :id} {:dataset         true
+                                         :dataset_query   query
+                                         :result_metadata metadata}]
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one Card :id card-id))]
+          (is (:dataset extracted))
+          (is (string? (:display_name (first (:result_metadata extracted)))))
+          ;; this is a quick comparison, since the actual stored metadata is quite complex
+          (is (= (map :display_name metadata)
+                 (map :display_name (:result_metadata extracted)))))))))
 
 ;;; ------------------------------------------ Viz Settings Tests  ------------------------------------------
 
