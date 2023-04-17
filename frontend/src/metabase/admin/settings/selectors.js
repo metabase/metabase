@@ -30,7 +30,7 @@ import ModelCachingScheduleWidget from "./components/widgets/ModelCachingSchedul
 import SectionDivider from "./components/widgets/SectionDivider";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
-import SettingsSetupList from "./components/SettingsSetupList";
+import SetupTaskList from "./setup/components/SetupTaskList";
 import SlackSettings from "./slack/containers/SlackSettings";
 import { trackTrackingPermissionChanged } from "./analytics";
 
@@ -64,7 +64,7 @@ const SECTIONS = updateSectionsWithPlugins({
     name: t`Setup`,
     order: 1,
     settings: [],
-    component: SettingsSetupList,
+    component: SetupTaskList,
     adminOnly: true,
   },
   general: {
