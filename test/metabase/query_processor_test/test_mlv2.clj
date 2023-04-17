@@ -45,10 +45,6 @@
      (mbql.u/match-one joins
        {:fields (join-fields :guard (partial not= :none))}
        "#29904"))
-   ;; #29895: `:value` is not supported
-   (mbql.u/match-one legacy-query
-     :value
-     "#29895")
    ;; #29908: native queries do not round trip correctly
    (when (:native legacy-query)
      "#29908")
