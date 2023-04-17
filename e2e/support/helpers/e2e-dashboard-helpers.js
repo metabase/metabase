@@ -50,6 +50,10 @@ export function updateDashboardCards({ dashboard_id, cards }) {
   });
 }
 
+export function getDashboardCardMenu(index = 0) {
+  return getDashboardCard(index).findByTestId("dashcard-menu");
+}
+
 export function showDashboardCardActions(index = 0) {
   getDashboardCard(index).realHover();
 }

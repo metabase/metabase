@@ -11,6 +11,7 @@ import {
   visitDashboard,
   appBar,
   rightSidebar,
+  getDashboardCardMenu,
   addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
@@ -555,6 +556,14 @@ describe("scenarios > dashboard", () => {
     cy.findByText("Undo").click();
     saveDashboard();
     cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should allow navigating to the notebook editor for a question on the dashboard", () => {
+    visitDashboard(1);
+    showDashboardCardActions();
+    getDashboardCardMenu().click();
+    popover().findByText("Edit question").click();
+    cy.findByRole("button", { name: "Visualize" }).should("be.visible");
   });
 });
 

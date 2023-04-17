@@ -45,7 +45,16 @@ export function getDefaultParameterWidgetType(tag: TemplateTag, field: Field) {
     options.some(option => option.type === widgetType)
   ) {
     return widgetType;
-  } else {
-    return options[0].type;
   }
+
+  const distinctCount = field.fingerprint?.global?.["distinct-count"];
+  if (
+    distinctCount != null &&
+    distinctCount > 20 &&
+    options.some(option => option.type === "string/contains")
+  ) {
+    return "string/contains";
+  }
+
+  return options[0].type;
 }

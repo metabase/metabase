@@ -65,6 +65,27 @@
       (is (= columns
              (mapcat lib/columns-group-columns groups))))))
 
+(deftest ^:parallel multi-stage-test
+  (let [query   (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/aggregate (lib/sum (lib/field "VENUES" "ID")))
+                    (lib/breakout (lib/field "VENUES" "NAME"))
+                    (lib/append-stage))
+        columns (lib/orderable-columns query)
+        groups  (lib/group-columns columns)]
+    (is (=? [{::lib.column-group/group-type :group-type/main
+              ::lib.column-group/columns    [{:display_name "Name", :lib/source :source/previous-stage}
+                                             {:display_name "Sum of ID", :lib/source :source/previous-stage}]}]
+            groups))
+    (testing `lib/display-info
+      (is (=? [{:display_name ""
+                :is_from_join false
+                :is_implicitly_joinable false}]
+              (for [group groups]
+                (lib/display-info query group)))))
+    (testing `lib/columns-group-columns
+      (is (= columns
+             (mapcat lib/columns-group-columns groups))))))
+
 (deftest ^:parallel source-card-test
   (let [query   (lib.tu/query-with-card-source-table)
         columns (lib/orderable-columns query)
@@ -212,7 +233,7 @@
                                              {:display_name "sum of User ID", :lib/source :source/previous-stage}]}]
             groups))
     (testing `lib/display-info
-      (is (=? [{:display_name           "Native query"
+      (is (=? [{:display_name           ""
                 :is_from_join           false
                 :is_implicitly_joinable false}]
               (for [group groups]
