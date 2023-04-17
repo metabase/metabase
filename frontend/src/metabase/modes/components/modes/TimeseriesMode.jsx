@@ -29,7 +29,6 @@ const TimeseriesModeFooter = props => {
 
 const TimeseriesMode = {
   name: "timeseries",
-  // TODO: should we move "UnderlyingRecordsDrill" to be the first one here?
   drills: [PivotByCategoryDrill, PivotByLocationDrill, ...DefaultMode.drills],
   ModeFooter: TimeseriesModeFooter,
 };
