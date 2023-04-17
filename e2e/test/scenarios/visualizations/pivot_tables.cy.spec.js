@@ -878,7 +878,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findByTextEnsureVisible("Sort").click();
 
-    popover().findByText("Count").click();
+    popover().contains("Count").click();
 
     cy.wait("@pivotDataset");
 
