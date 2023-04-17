@@ -973,7 +973,7 @@
   (testing "PUT /api/user/:id/password"
     (testing "Test that we return a session if we are changing our own password"
       (mt/with-temp User [user {:password "def", :is_superuser false}]
-        (let [creds           {:username (:email user), :password "def"}]
+        (let [creds {:username (:email user), :password "def"}]
           (is (schema= {:session_id (s/pred mt/is-uuid-string? "session")
                         :success    (s/eq true)}
                        (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
