@@ -1026,6 +1026,7 @@ saved later when it is ready."
   "Create a table and model populated with the values from the attached CSV."
   [:as {raw-params :params}]
   ;; parse-long returns nil with "root", which is what we want anyway
+  (println "RAW-PARAMS: " raw-params)
   (upload-csv! (parse-long (get raw-params "collection_id"))
                (get-in raw-params ["file" :filename])
                (get-in raw-params ["file" :tempfile]))

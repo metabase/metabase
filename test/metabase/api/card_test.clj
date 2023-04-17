@@ -2652,3 +2652,14 @@
                      java.lang.Exception
                      #"^You do not have curate permissions for this Collection\.$"
                      (upload-example-csv! nil)))))))))))
+
+(deftest file-upload-works
+  (let [file (upload-test/csv-file-with
+              ["id, name"
+               "1, Luke Skywalker"
+               "2, Darth Vader"]
+              "example")]
+    (testing "I can do it!"
+      (mt/user-http-request :rasta :post 200 "card/from-csv" {:request-options
+                                                              {:multipart [{:name "Content/type" :content "text/csv"}
+                                                                           {:name "file" :content file}]}}))))
