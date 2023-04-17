@@ -159,7 +159,9 @@ function EmbedFrame({
                   dashboard={dashboard}
                   parameters={getValuePopulatedParameters(
                     parameters,
-                    draftParameterValues ?? parameterValues,
+                    _.isEmpty(draftParameterValues)
+                      ? parameterValues
+                      : draftParameterValues,
                   )}
                   setParameterValue={setParameterValue}
                   hideParameters={hide_parameters}

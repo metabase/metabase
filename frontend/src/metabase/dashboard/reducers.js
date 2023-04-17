@@ -307,7 +307,7 @@ const parameterValues = handleActions(
 
 const draftParameterValues = handleActions(
   {
-    [INITIALIZE]: { next: _state => null }, // reset values
+    [INITIALIZE]: { next: _state => ({}) }, // reset values
     [SET_PARAMETER_VALUE]: {
       next: (state, { payload: { id, value, isDraft } }) => {
         if (isDraft) {
@@ -317,18 +317,18 @@ const draftParameterValues = handleActions(
         return state;
       },
     },
-    [RESET]: { next: _state => null },
+    [RESET]: { next: _state => ({}) },
     [Dashboards.actionTypes.UPDATE]: {
       next: (state, { payload }) => {
         if (payload.dashboard.auto_apply_filters) {
-          return null;
+          return {};
         }
 
         return state;
       },
     },
   },
-  null,
+  {},
 );
 
 const loadingDashCards = handleActions(
