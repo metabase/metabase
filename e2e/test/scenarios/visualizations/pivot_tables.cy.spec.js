@@ -88,7 +88,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     // open drill-through menu
     cy.findByText("783").click();
     // drill through to orders list
-    cy.findByText("View these Orders").click();
+    cy.findByText("See these Orders").click();
     // filters are applied
     cy.findByText("Source is Affiliate");
     cy.findByText("Category is Doohickey");
