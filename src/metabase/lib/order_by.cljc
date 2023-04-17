@@ -12,8 +12,8 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
-   [metabase.lib.stage :as lib.stage]
    [metabase.lib.util :as lib.util]
+   [metabase.mbql.util.match :as mbql.u.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -160,8 +160,21 @@
          aggregations       (not-empty (lib.aggregation/aggregations query stage-number))
          columns            (if (or breakouts aggregations)
                               (concat breakouts aggregations)
-                              (lib.stage/visible-columns query stage-number))]
-     (into []
-           (comp (filter orderable-column?)
-                 (remove existing-order-by?))
-           columns))))
+                              (let [stage (lib.util/query-stage query stage-number)]
+                                (lib.metadata.calculation/visible-columns query stage-number stage)))]
+     (some->> (not-empty columns)
+              (into [] (comp (filter orderable-column?)
+                             (remove existing-order-by?)))))))
+
+(def ^:private opposite-direction
+  {:asc :desc
+   :desc :asc})
+
+(mu/defn change-direction :- ::lib.schema/query
+  "Flip the direction of `current-order-by` in `query`."
+  ([query :- ::lib.schema/query
+    current-order-by :- ::lib.schema.order-by/order-by]
+   (let [lib-uuid (lib.util/clause-uuid current-order-by)]
+     (mbql.u.match/replace query
+       [direction (_ :guard #(= (:lib/uuid %) lib-uuid)) _]
+       (assoc &match 0 (opposite-direction direction))))))

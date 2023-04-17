@@ -240,17 +240,16 @@
 (lib.common/defop upper [s])
 (lib.common/defop lower [s])
 
-(mu/defn expressions :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn expressions :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Get metadata about the expressions in a given stage of a `query`."
   ([query]
    (expressions query -1))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (for [[expression-name expression-definition] (:expressions (lib.util/query-stage query stage-number))]
-     (let [metadata (lib.metadata.calculation/metadata query stage-number expression-definition)]
-       (merge
-        metadata
-        {:lib/source   :source/expressions
-         :name         expression-name
-         :display_name expression-name})))))
+   (some->> (not-empty (:expressions (lib.util/query-stage query stage-number)))
+            (mapv (fn [[expression-name expression-definition]]
+                    (-> (lib.metadata.calculation/metadata query stage-number expression-definition)
+                        (assoc :lib/source   :source/expressions
+                               :name         expression-name
+                               :display_name expression-name)))))))

@@ -90,20 +90,7 @@
              :base_type     :type/Integer
              :semantic_type :type/FK}
             (lib.metadata.calculation/metadata
-             (lib.tu/venues-query-with-last-stage
-              {:lib/type           :mbql.stage/native
-               :lib/stage-metadata {:lib/type :metadata/results
-                                    :columns  [{:lib/type      :metadata/field
-                                                :name          "abc"
-                                                :display_name  "another Field"
-                                                :base_type     :type/Integer
-                                                :semantic_type :type/FK}
-                                               {:lib/type      :metadata/field
-                                                :name          "sum"
-                                                :display_name  "sum of User ID"
-                                                :base_type     :type/Integer
-                                                :semantic_type :type/FK}]}
-               :native             "SELECT whatever"})
+             (lib.tu/native-query)
              -1
              [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "sum"])))))
 
@@ -120,10 +107,10 @@
                                :joins        [{:lib/type    :mbql/join
                                                :lib/options {:lib/uuid "490a5abb-54c2-4e62-9196-7e9e99e8d291"}
                                                :alias       "CATEGORIES__via__CATEGORY_ID"
-                                               :condition   [:=
-                                                             {:lib/uuid "cc5f6c43-1acb-49c2-aeb5-e3ff9c70541f"}
-                                                             (lib.tu/field-clause :venues :category-id)
-                                                             (lib.tu/field-clause :categories :id {:join-alias "CATEGORIES__via__CATEGORY_ID"})]
+                                               :conditions  [[:=
+                                                              {:lib/uuid "cc5f6c43-1acb-49c2-aeb5-e3ff9c70541f"}
+                                                              (lib.tu/field-clause :venues :category-id)
+                                                              (lib.tu/field-clause :categories :id {:join-alias "CATEGORIES__via__CATEGORY_ID"})]]
                                                :strategy    :left-join
                                                :fk-field-id (meta/id :venues :category-id)
                                                :stages      [{:lib/type     :mbql.stage/mbql
@@ -158,9 +145,9 @@
                                :query    {:source-table (meta/id :venues)
                                           :joins        [{:fields       :all
                                                           :source-table (meta/id :categories)
-                                                          :condition    [:=
-                                                                         [:field (meta/id :venues :category-id) nil]
-                                                                         [:field (meta/id :categories :id) {:join-alias "Cat"}]]
+                                                          :conditions   [[:=
+                                                                          [:field (meta/id :venues :category-id) nil]
+                                                                          [:field (meta/id :categories :id) {:join-alias "Cat"}]]]
                                                           :alias        "Cat"}]}}}
         query (lib/saved-question-query
                meta/metadata-provider
@@ -229,16 +216,16 @@
                                                              :stages      [{:lib/type     :mbql.stage/mbql
                                                                             :source-table "card__1"}]
                                                              :alias       "checkins_by_user"
-                                                             :condition   [:=
-                                                                           {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
-                                                                           [:field
-                                                                            {:lib/uuid "a2eb96a0-420b-4465-817d-f3c9f789eff4"}
-                                                                            (meta/id :users :id)]
-                                                                           [:field
-                                                                            {:base-type  :type/Integer
-                                                                             :join-alias "checkins_by_user"
-                                                                             :lib/uuid   "b23a769d-774a-4eb5-8fb8-1f6a33c9a8d5"}
-                                                                            "USER_ID"]]
+                                                             :conditions  [[:=
+                                                                            {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
+                                                                            [:field
+                                                                             {:lib/uuid "a2eb96a0-420b-4465-817d-f3c9f789eff4"}
+                                                                             (meta/id :users :id)]
+                                                                            [:field
+                                                                             {:base-type  :type/Integer
+                                                                              :join-alias "checkins_by_user"
+                                                                              :lib/uuid   "b23a769d-774a-4eb5-8fb8-1f6a33c9a8d5"}
+                                                                             "USER_ID"]]]
                                                              :fields      :all}]
                                              :breakout     [[:field
                                                              {:temporal-unit :month, :lib/uuid "90c646e8-ed1c-42d3-b50c-c51b21286852"}

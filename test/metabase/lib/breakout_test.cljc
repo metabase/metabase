@@ -25,3 +25,9 @@
            (lib/display-name query query)
            (lib/describe-query query)
            (lib/suggested-name query)))))
+
+(deftest ^:parallel current-breakouts-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "CHECKINS")
+                  (lib/breakout (lib/field (meta/id :checkins :date))))]
+    (is (=? [[:field {} (meta/id :checkins :date)]]
+            (lib/current-breakouts query)))))
