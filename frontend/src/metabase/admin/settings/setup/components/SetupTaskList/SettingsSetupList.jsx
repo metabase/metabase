@@ -11,7 +11,7 @@ import Icon from "metabase/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
-import { SetupListRoot } from "metabase/admin/settings/components/SettingsSetupList.styled";
+import { SetupListRoot } from "./SettingsSetupList.styled";
 
 const TaskList = ({ tasks }) => (
   <ol>
