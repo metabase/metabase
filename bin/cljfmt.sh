@@ -1,5 +1,8 @@
 #! /usr/bin/env bash
 
+# Reformat only staged files OR all files if --all is passed.
+# If neither of the above are true, will report what needs to happen and do nothing else.
+
 set -euxo pipefail
 
 ARG=${1:-}
