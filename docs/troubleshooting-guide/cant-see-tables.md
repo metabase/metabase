@@ -4,7 +4,7 @@ title: I can't see my tables
 
 # I can't see my tables
 
-You have connected Metabase to a database, but:
+You've connected Metabase to a database, but:
 
 - you don't see the tables in the [Data Model](../data-modeling/metadata-editing.md) section of the Admin Panel,
 - the tables don't appear in the [Data Browser](https://www.metabase.com/learn/getting-started/data-browser),
@@ -39,27 +39,33 @@ Something may have changed on the database side (if you were previously connecte
 
 ## Check table access
 
-To test that the table you are trying to query actually exists and that you have permission to access it:
+To make sure that your table is actually queryable by Metabase:
 
 1. Go to the Metabase [SQL editor](../questions/native-editor/writing-sql.md).
 2. Look for your table:
     ```
     SELECT * 
-    FROM SOMEWHERE
+    FROM your_table
     ```
 
-where `SOMEWHERE` is the table you think you should be able to see. If there's a problem with your table name or access, you'll get an error message like:
+If there's a problem with your table name or database permissions, you'll get an error message like:
 
 - [Table not found](https://www.metabase.com/learn/debugging-sql/sql-syntax#column-or-table-name-is-not-found-or-not-recognized)
 - [Permission denied](./data-permissions.md#getting-a-permission-denied-error-message)
 
+For less common errors, try searching or asking the [Metabase community](https://discourse.metabase.com/).
+
+**Explanation**
+
+Something might have changed on database side: your table could've been renamed or dropped, or the permissions revoked.
+
 ## Metabase permissions
 
-If there's only a few people who can't view tables out of all your Metabase accounts, see [A user group has the wrong access to a table or schema](./data-permissions.md#a-user-group-has-the-wrong-access-to-a-table-or-schema).
+If there are only a few people who can't view tables, see [A user group has the wrong access to a table or schema](./data-permissions.md#a-user-group-has-the-wrong-access-to-a-table-or-schema).
 
-**Explanation** 
+**Explanation**
 
-Metabase uses a group-based permission model: people belong to groups, and administrators can set permissions so that some groups cannot see all of the tables.
+Metabase uses a group-based permission model: people belong to groups, and admins can set permissions to hide tables from groups.
 
 ## MongoDB
 
@@ -68,8 +74,9 @@ MongoDB lets you "successfully connect" to any collection name, even if the coll
 - you have the correct collection name, and
 - the collection is non-empty.
 
-## Related problems
+## Related topics
 
+- [Table visibility](../data-modeling/metadata-editing.md#table-visibility).
 - [My data sandboxes aren't working](./sandboxing.md).
 - [I can't view or edit a question or dashboard](./cant-view-or-edit.md).
 - [My visualizations are wrong](./visualization.md).
