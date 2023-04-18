@@ -21,7 +21,7 @@ export const PlaceholderTab = () => (
   <_PlaceholderTab label={t`Page 1`} disabled />
 );
 
-// Manually styling this component becuase `styled` doesn't work with generics
+// Manually styling this component because `styled` doesn't work with generics
 export const Tab = <T,>(props: RenameableTabButtonProps<T>) => (
   <BaseTabButton.Renameable<T>
     style={{ paddingTop: 0, paddingBottom: "0.5rem" }}
