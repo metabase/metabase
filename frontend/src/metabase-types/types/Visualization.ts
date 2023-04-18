@@ -3,9 +3,13 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import { DatasetData, Column, Row, Value } from "metabase-types/types/Dataset";
+import { DatasetData } from "metabase-types/types/Dataset";
+import type {
+  DatasetColumn,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { Card } from "metabase-types/types/Card";
-import { VisualizationSettings } from "metabase-types/api/card";
 import { ReduxAction } from "metabase-types/types/redux";
 import { ClickActionPopoverProps } from "metabase/modes/types";
 
@@ -20,7 +24,7 @@ export type QueryMode = {
   fallback?: ActionCreator;
 };
 
-export type HoverData = Array<{ key: string; value: any; col?: Column }>;
+export type HoverData = Array<{ key: string; value: any; col?: DatasetColumn }>;
 
 export type HoverObject = {
   index?: number;
@@ -31,23 +35,23 @@ export type HoverObject = {
 };
 
 export type DimensionValue = {
-  value: Value;
-  column: Column;
+  value: RowValue;
+  column: DatasetColumn;
 };
 
 export type ClickObject = {
-  value?: Value;
-  column?: Column;
+  value?: RowValue;
+  column?: DatasetColumn;
   dimensions?: DimensionValue[];
   event?: MouseEvent;
   element?: HTMLElement;
   seriesIndex?: number;
-  settings?: Record<string, any>;
+  settings?: Record<string, unknown>;
   origin?: {
-    row: Row;
-    cols: Column[];
+    row: RowValue;
+    cols: DatasetColumn[];
   };
-  extraData?: Record<string, any>;
+  extraData?: Record<string, unknown>;
 };
 
 export type ClickAction = {
