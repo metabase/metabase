@@ -58,8 +58,6 @@ export const saveDashboardPdf = async (
   pdf.addImage(canvas, "JPEG", 0, 0, canvasWidth, canvasHeight, "", "FAST", 0);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(color("text-dark"));
-  console.log(pdf.getFont());
-  console.log(pdf.getFontList());
   pdf.text(dashboardName, 32, 40);
   pdf.setDrawColor(color("border"));
   pdf.line(32, 52, canvasWidth - 32, 52, "S");
