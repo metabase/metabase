@@ -228,7 +228,7 @@ class DashboardHeader extends Component {
           : t`Add questions`;
 
       buttons.push(
-        <Tooltip key="add-dash-question" tooltip={addQuestionButtonHint}>
+        <Tooltip tooltip={addQuestionButtonHint}>
           <DashboardHeaderButton
             icon="add"
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
