@@ -19,6 +19,7 @@ export * from "./query";
 export * from "./revision";
 export * from "./segment";
 export * from "./settings";
+export * from "./setup";
 export * from "./slack";
 export * from "./snippets";
 export * from "./store";

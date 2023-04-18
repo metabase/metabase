@@ -7,10 +7,8 @@
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.setup :as api.setup]
-   [metabase.email :as email]
    [metabase.events :as events]
    [metabase.http-client :as client]
-   [metabase.integrations.slack :as slack]
    [metabase.models :refer [Activity Database Table User]]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
@@ -409,55 +407,135 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; basic sanity check
+
+(def ^:private default-checklist-state
+  {:db-type    :h2
+   :hosted?    false
+   :configured {:email true
+                :slack false}
+   :counts     {:user  5
+                :card  5
+                :table 5}
+   :exists     {:non-sample-db true
+                :dashboard     true
+                :pulse         true
+                :hidden-table  false
+                :collection    true
+                :metric        true
+                :segment       true}})
+
 (deftest admin-checklist-test
   (testing "GET /api/setup/admin_checklist"
-    (with-redefs [db/exists?              (constantly true)
-                  db/count                (constantly 5)
-                  email/email-configured? (constantly true)
-                  slack/slack-configured? (constantly false)]
-      (is (= [{:name  "Get connected"
-               :tasks [{:title        "Add a database"
-                        :completed    true
-                        :triggered    true
-                        :is_next_step false}
-                       {:title        "Set up email"
-                        :completed    true
-                        :triggered    true
-                        :is_next_step false}
-                       {:title        "Set Slack credentials"
-                        :completed    false
-                        :triggered    true
-                        :is_next_step true}
-                       {:title        "Invite team members"
-                        :completed    true
-                        :triggered    true
-                        :is_next_step false}]}
-              {:name  "Curate your data"
-               :tasks [{:title        "Hide irrelevant tables"
-                        :completed    true
-                        :triggered    false
-                        :is_next_step false}
-                       {:title        "Organize questions"
-                        :completed    true
-                        :triggered    false
-                        :is_next_step false}
-                       {:title        "Create metrics"
-                        :completed    true
-                        :triggered    false
-                        :is_next_step false}
-                       {:title        "Create segments"
-                        :completed    true
-                        :triggered    false
-                        :is_next_step false}]}]
-             (for [{group-name :name, tasks :tasks} (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
-               {:name  (str group-name)
-                :tasks (for [task tasks]
-                         (-> (select-keys task [:title :completed :triggered :is_next_step])
-                             (update :title str)))}))))
+    (with-redefs [api.setup/state-for-checklist (constantly default-checklist-state)]
+      (is (partial= [{:name  "Get connected"
+                      :tasks [{:title        "Add a database"
+                               :completed    true
+                               :triggered    true
+                               :is_next_step false}
+                              {:title        "Set up email"
+                               :completed    true
+                               :triggered    true
+                               :is_next_step false}
+                              {:title        "Set Slack credentials"
+                               :completed    false
+                               :triggered    true
+                               :is_next_step true}
+                              {:title        "Invite team members"
+                               :completed    true
+                               :triggered    true
+                               :is_next_step false}]}
+                     {:name  "Productionize"
+                      :tasks [{:title "Switch to a production-ready app database"}]}
+                     {:name  "Curate your data"
+                      :tasks [{:title        "Hide irrelevant tables"
+                               :completed    false
+                               :triggered    false
+                               :is_next_step false}
+                              {:title        "Organize questions"
+                               :completed    true
+                               :triggered    false
+                               :is_next_step false}
+                              {:title        "Create metrics"
+                               :completed    true
+                               :triggered    false
+                               :is_next_step false}
+                              {:title        "Create segments"
+                               :completed    true
+                               :triggered    false
+                               :is_next_step false}]}]
+                    (for [{group-name :name, tasks :tasks} (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+                      {:name  (str group-name)
+                       :tasks (for [task tasks]
+                                (-> (select-keys task [:title :completed :triggered :is_next_step])
+                                    (update :title str)))}))))
+    (testing "info about switching to postgres or mysql"
+      (testing "is included when h2 and not hosted"
+        (with-redefs [api.setup/state-for-checklist (constantly default-checklist-state)]
+          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+            (is (= ["Get connected" "Productionize" "Curate your data"]
+                   (map :name checklist))))))
+      (testing "is omitted if hosted"
+        (with-redefs [api.setup/state-for-checklist (constantly
+                                                     (merge default-checklist-state
+                                                            {:hosted? true}))]
+          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+            (is (= ["Get connected" "Curate your data"]
+                   (map :name checklist)))))))
 
     (testing "require superusers"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "setup/admin_checklist"))))))
+
+(deftest annotate-test
+  (testing "identifies next step"
+    (is (partial= [{:group "first"
+                    :tasks [{:title "t1", :is_next_step false}]}
+                   {:group "second"
+                    :tasks [{:title "t2", :is_next_step true}
+                            {:title "t3", :is_next_step false}]}]
+                  (#'api.setup/annotate
+                   [{:group "first"
+                     :tasks [{:title "t1" :triggered true :completed true}]}
+                    {:group "second"
+                     :tasks [{:title "t2" :triggered true :completed false}
+                             {:title "t3" :triggered true :completed false}]}]))))
+  (testing "If all steps are completed none are marked as next"
+    (is (every? false?
+                (->> (#'api.setup/annotate
+                      [{:group "first"
+                        :tasks [{:title "t1" :triggered true :completed true}]}
+                       {:group "second"
+                        :tasks [{:title "t2" :triggered true :completed true}
+                                {:title "t3" :triggered true :completed true}]}])
+                     (mapcat :tasks)
+                     (map :is_next_step)))))
+  (testing "First step is"
+    (letfn [(first-step [checklist]
+              (->> checklist
+                   (mapcat :tasks)
+                   (filter (every-pred :triggered (complement :completed)))
+                   first
+                   :title))]
+      (let [scenarios [{:update-fn identity
+                        :case      :default
+                        :expected  "Set Slack credentials"}
+                       {:update-fn #(update % :configured merge {:slack true})
+                        :case      :configure-slack
+                        :expected  "Switch to a production-ready app database"}
+                       {:update-fn #(assoc % :db-type :postgres)
+                        :case      :migrate-to-postgres
+                        :expected  nil}
+                       {:update-fn #(update % :counts merge {:table 25})
+                        :case      :add-more-tables
+                        :expected  "Hide irrelevant tables"}]]
+        (reduce (fn [checklist-state {:keys [update-fn expected] :as scenario}]
+                  (let [checklist-state' (update-fn checklist-state)]
+                    (testing (str "when " (:case scenario))
+                      (is (= expected
+                             (first-step (#'api.setup/admin-checklist checklist-state')))))
+                    checklist-state'))
+                default-checklist-state
+                scenarios)))))
 
 (deftest user-defaults-test
   (testing "with no user defaults configured"
