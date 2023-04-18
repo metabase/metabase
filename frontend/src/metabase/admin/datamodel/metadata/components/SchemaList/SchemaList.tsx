@@ -9,7 +9,7 @@ import { State } from "metabase-types/store";
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
   selectedSchemaId: SchemaId | undefined;
-  onChangeSchema: (schema: Schema) => void;
+  onSelectSchema: (schema: Schema) => void;
 }
 
 interface SchemaLoaderProps {
@@ -21,7 +21,7 @@ type SchemaListProps = OwnProps & SchemaLoaderProps;
 const SchemaList = ({
   schemas,
   selectedSchemaId,
-  onChangeSchema,
+  onSelectSchema,
 }: SchemaListProps) => {
   const [searchText, setSearchText] = useState("");
 
@@ -56,7 +56,7 @@ const SchemaList = ({
             key={schema.id}
             schema={schema}
             isSelected={schema.id === selectedSchemaId}
-            onChangeSchema={onChangeSchema}
+            onSelectSchema={onSelectSchema}
           />
         ))}
       </ul>
@@ -67,13 +67,13 @@ const SchemaList = ({
 interface SchemaRowProps {
   schema: Schema;
   isSelected: boolean;
-  onChangeSchema: (schema: Schema) => void;
+  onSelectSchema: (schema: Schema) => void;
 }
 
-const SchemaRow = ({ schema, isSelected, onChangeSchema }: SchemaRowProps) => {
-  const handleClick = useCallback(() => {
-    onChangeSchema(schema);
-  }, [schema, onChangeSchema]);
+const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
+  const handleSelect = useCallback(() => {
+    onSelectSchema(schema);
+  }, [schema, onSelectSchema]);
 
   return (
     <li key={schema.id}>
@@ -82,7 +82,7 @@ const SchemaRow = ({ schema, isSelected, onChangeSchema }: SchemaRowProps) => {
           "AdminList-item flex align-center no-decoration text-wrap",
           { selected: isSelected },
         )}
-        onClick={handleClick}
+        onClick={handleSelect}
       >
         {schema}
       </a>

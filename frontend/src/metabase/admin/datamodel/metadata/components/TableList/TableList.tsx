@@ -4,33 +4,77 @@ import cx from "classnames";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import { Table, TableVisibilityType } from "metabase-types/api";
 import Tooltip from "metabase/core/components/Tooltip";
+import { Table, TableVisibilityType } from "metabase-types/api";
+
+interface TableRowProps {
+  table: Table;
+  isSelected: boolean;
+  onSelectTable: (table: Table) => void;
+  onUpdateTableVisibility: (
+    tables: Table[],
+    visibility: TableVisibilityType,
+  ) => void;
+}
+
+const TableRow = ({
+  table,
+  isSelected,
+  onSelectTable,
+  onUpdateTableVisibility,
+}: TableRowProps) => {
+  const handleSelect = useCallback(() => {
+    onSelectTable(table);
+  }, [table, onSelectTable]);
+
+  const handleUpdateVisibility = useCallback(
+    async (visibility: TableVisibilityType) => {
+      await onUpdateTableVisibility([table], visibility);
+    },
+    [table, onUpdateTableVisibility],
+  );
+
+  return (
+    <li className="hover-parent hover--visibility">
+      <a
+        className={cx(
+          "AdminList-item flex align-center no-decoration text-wrap justify-between",
+          { selected: isSelected },
+        )}
+        onClick={handleSelect}
+      >
+        {table.display_name}
+        <div className="hover-child float-right">
+          <ToggleVisibilityButton
+            visibility={table.visibility_type}
+            onUpdateTableVisibility={handleUpdateVisibility}
+          />
+        </div>
+      </a>
+    </li>
+  );
+};
 
 interface ToggleVisibilityButtonProps {
-  tables: Table[];
-  visibilityType: TableVisibilityType;
-  onChangeTableVisibility: (
-    tables: Table[],
-    visibilityType: TableVisibilityType,
-  ) => Promise<void>;
+  visibility: TableVisibilityType;
+  hasMultipleTables?: boolean;
+  onUpdateTableVisibility: (visibility: TableVisibilityType) => Promise<void>;
 }
 
 const ToggleVisibilityButton = ({
-  tables,
-  visibilityType,
-  onChangeTableVisibility,
+  hasMultipleTables,
+  visibility,
+  onUpdateTableVisibility,
 }: ToggleVisibilityButtonProps) => {
-  const isHidden = visibilityType != null;
-  const hasMultipleTables = tables.length > 1;
-  const [{ loading }, handleChange] = useAsyncFn(onChangeTableVisibility);
+  const isHidden = visibility != null;
+  const [{ loading }, handleUpdate] = useAsyncFn(onUpdateTableVisibility);
 
   const handleClick = useCallback(
     (event: MouseEvent) => {
       event.stopPropagation();
-      handleChange(tables, isHidden ? null : "hidden");
+      handleUpdate(isHidden ? null : "hidden");
     },
-    [tables, isHidden, handleChange],
+    [isHidden, handleUpdate],
   );
 
   return (
@@ -49,7 +93,7 @@ const ToggleVisibilityButton = ({
   );
 };
 
-const getToggleTooltip = (isHidden: boolean, hasMultipleTables: boolean) => {
+const getToggleTooltip = (isHidden: boolean, hasMultipleTables?: boolean) => {
   if (hasMultipleTables) {
     return isHidden ? t`Unhide all` : t`Hide all`;
   } else {
@@ -57,4 +101,4 @@ const getToggleTooltip = (isHidden: boolean, hasMultipleTables: boolean) => {
   }
 };
 
-export default ToggleVisibilityButton;
+export default TableRow;
