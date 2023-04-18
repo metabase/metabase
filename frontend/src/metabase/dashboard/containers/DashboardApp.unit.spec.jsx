@@ -15,9 +15,9 @@ import { createMockDashboardState } from "metabase-types/store/mocks";
 
 const mockDashboard = createMockDashboard({
   id: 1,
-  name: "old name",
+  name: "Example",
   parameters: [
-    { id: "1", name: "old name", type: "type/Text", slug: "my_param" },
+    { id: "1", name: "Example", type: "type/Text", slug: "my_param" },
   ],
 });
 
@@ -41,7 +41,7 @@ async function setup(user = createMockUser()) {
       { addEventListener: jest.fn(), removeEventListener: jest.fn() },
     ]);
 
-  const { resetEvents, mockEvent, events } = createMockEventListener();
+  const { mockEvent, events } = createMockEventListener();
 
   renderWithProviders(
     <Route path="/dashboard/:slug" component={DashboardApp} />,
@@ -59,7 +59,7 @@ async function setup(user = createMockUser()) {
     screen.queryAllByTestId("loading-spinner"),
   );
 
-  return { resetEvents, mockEvent, events };
+  return { mockEvent, events };
 }
 
 function createMockEventListener() {
@@ -69,7 +69,6 @@ function createMockEventListener() {
     returnValue: undefined,
   };
 
-  // Define the addEventListener method with a Jest mock function
   window.addEventListener = jest.fn((event, callback) => {
     events[event] = () => callback(mockEvent);
   });

@@ -124,19 +124,17 @@ const DashboardHeader = ({
     <div>
       {isEditing && (
         <EditBar
-          key="edit-bar"
           title={editingTitle}
           subtitle={editingSubtitle}
           buttons={editingButtons}
         />
       )}
       {editWarning && (
-        <EditWarning key="edit-warning" className="wrapper">
+        <EditWarning className="wrapper">
           <span>{editWarning}</span>
         </EditWarning>
       )}
       <HeaderModal
-        key="header-modal"
         isOpen={!!headerModalMessage}
         height={headerHeight}
         title={headerModalMessage}
@@ -144,7 +142,6 @@ const DashboardHeader = ({
         onCancel={onHeaderModalCancel}
       />
       <HeaderRoot
-        key="header-root"
         isNavBarOpen={isNavBarOpen}
         className={cx("QueryBuilder-section", headerClassName)}
         ref={header}
