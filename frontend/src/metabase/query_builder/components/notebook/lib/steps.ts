@@ -196,6 +196,12 @@ function getStageSteps(
     );
   };
 
+  const getTestId = (step: NotebookStepDef, itemIndex: number | null) => {
+    const isValidItemIndex = itemIndex != null && itemIndex > 0;
+    const finalItemIndex = isValidItemIndex ? itemIndex : 0;
+    return `step-${step.type}-${_stageIndex}-${finalItemIndex}`;
+  };
+
   function getStep(STEP: NotebookStepDef, itemIndex: number | null = null) {
     const id = getId(STEP, itemIndex);
     const stageIndex = getMLv2StageIndex(_stageIndex, STEP.type, isLastStage);
@@ -214,6 +220,7 @@ function getStageSteps(
           STEP.active(stageQuery, itemIndex, topLevelQuery, stageIndex) ||
           openSteps[id]
         ),
+      testID: getTestId(STEP, itemIndex),
       revert: STEP.revert
         ? (query: StructuredQuery) =>
             STEP.revert
