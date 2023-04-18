@@ -150,15 +150,16 @@
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
     (when-let [{topic :topic object :item} event]
-      (let [model    (events/topic->model topic)
-            model-id (events/object->model-id topic object)
-            user-id  (events/object->user-id object)]
-        (when (#{:card-read :dashboard-read :table-read} topic)
+      (let [model                          (events/topic->model topic)
+            model-id                       (events/object->model-id topic object)
+            user-id                        (events/object->user-id object)
+            {:keys [context] :as metadata} (events/object->metadata object)]
+        (when (and (#{:card-read :dashboard-read :table-read} topic)
+                   (not= (name context) "collection")) ;; we don't want to count pinned card views
           (update-users-recent-views! user-id model model-id))
-        (record-view! model model-id user-id (events/object->metadata object))))
+        (record-view! model model-id user-id metadata)))
     (catch Throwable e
       (log/warn (format "Failed to process activity event. %s" (:topic event)) e))))
-
 
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
