@@ -1,4 +1,8 @@
-import { restore, visitDashboard } from "e2e/support/helpers";
+import {
+  addOrUpdateDashboardCard,
+  restore,
+  visitDashboard,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -116,12 +120,9 @@ function setup() {
         cy.wrap(dashboardId).as("sourceDashboardId");
 
         // Add the question to the dashboard
-        cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-          cardId: questionId,
-          row: 0,
-          col: 0,
-          size_x: 12,
-          size_y: 10,
+        addOrUpdateDashboardCard({
+          dashboard_id: dashboardId,
+          card_id: questionId,
         }).then(({ body: { id: dashCardId } }) => {
           // Add dashboard filter
           cy.request("PUT", `/api/dashboard/${dashboardId}`, {

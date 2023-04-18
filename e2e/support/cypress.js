@@ -2,14 +2,14 @@
 // Needs to sit at the top of this file to catch all exceptions!
 import "@deploysentinel/cypress-debugger/support";
 import registerCypressGrep from "@cypress/grep";
+registerCypressGrep();
+
 import addContext from "mochawesome/addContext";
 import "@testing-library/cypress/add-commands";
 import "cypress-real-events/support";
 import "@cypress/skip-test/support";
 import "@percy/cypress";
 import "./commands";
-
-registerCypressGrep();
 
 require("cy-verify-downloads").addCustomCommand();
 
@@ -39,8 +39,3 @@ Cypress.on("test:after:run", (test, runnable) => {
     );
   }
 });
-
-// Cypress.on("window:before:unload", evt => {
-//   console.log(evt.returnValue)
-//   evt.returnValue = BEFORE_LOAD_RETURN_VALUE;
-// });

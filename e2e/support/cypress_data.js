@@ -200,5 +200,3 @@ export const WEBMAIL_CONFIG = {
   WEB_PORT: 1080,
   SMTP_PORT: 1025,
 };
-
-export const BEFORE_LOAD_RETURN_VALUE = "You have unsaved changes.";

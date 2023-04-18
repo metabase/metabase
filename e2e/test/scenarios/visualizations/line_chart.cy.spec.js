@@ -5,6 +5,7 @@ import {
   visitDashboard,
   openSeriesSettings,
   queryBuilderMain,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -416,32 +417,18 @@ describe("scenarios > visualizations > line chart", () => {
       secondCardId,
     } = {}) {
       // Add the first question to the dashboard
-      cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-        cardId: firstCardId,
-        row: 0,
-        col: 0,
-        size_x: 18,
-        size_y: 12,
-      }).then(({ body: { id: dashCardId } }) => {
-        // Combine the second question with the first one as the second series
-        cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-          cards: [
+      addOrUpdateDashboardCard({
+        dashboard_id: dashboardId,
+        card_id: firstCardId,
+        card: {
+          size_x: 18,
+          size_y: 12,
+          series: [
             {
-              id: dashCardId,
-              card_id: firstCardId,
-              row: 0,
-              col: 0,
-              size_x: 18,
-              size_y: 12,
-              series: [
-                {
-                  id: secondCardId,
-                },
-              ],
-              parameter_mappings: [],
+              id: secondCardId,
             },
           ],
-        });
+        },
       });
     }
 
