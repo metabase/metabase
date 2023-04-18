@@ -10,7 +10,7 @@ By default, Metabase sessions are valid for two weeks after a user last authenti
 
 ## Session age
 
-The session age is the maximum duration that a person stays logged in (even if they close their browser).
+The session age is the maximum time that a person stays logged in (even if the browser is closed).
 
 You can set the environment variable [`MAX_SESSION_AGE`](../configuring-metabase/environment-variables.md#max_session_age):
 
@@ -31,7 +31,7 @@ java -DMAX_SESSION_AGE=1440 -jar metabase.jar
 
 {% include plans-blockquote.html feature="Session timeout" %}
 
-The session timeout is the maximum duration that a person is inactive before being logged out (even if the browser is left open).
+The session timeout is the maximum time that a person can be inactive in Metabase (for example, if the browser is left open).
 
 You can toggle this setting from **Admin** > **Authentication**, or set the environment variable [`MB_SESSION_TIMEOUT`](../configuring-metabase/environment-variables.md#mb_session_timeout).
 
