@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import Schemas from "metabase/entities/schemas";
@@ -25,6 +25,12 @@ const SchemaList = ({
 }: SchemaListProps) => {
   const [searchText, setSearchText] = useState("");
 
+  const filteredSchemas = useMemo(() => {
+    return schemas.filter(({ name }) =>
+      name.toLowerCase().includes(searchText.toLowerCase()),
+    );
+  }, [schemas, searchText]);
+
   return (
     <div className="MetadataEditor-table-list AdminList flex-no-shrink">
       <div className="AdminList-search">
@@ -43,7 +49,7 @@ const SchemaList = ({
             schemas.length,
           )}
         </li>
-        {schemas.map(schema => (
+        {filteredSchemas.map(schema => (
           <li key={schema.id}>
             <a
               className={cx(
