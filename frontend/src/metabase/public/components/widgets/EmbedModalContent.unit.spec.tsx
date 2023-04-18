@@ -78,10 +78,9 @@ describe("EmbedModalContent", () => {
     );
 
     openEmbedModal();
-    const parametersSection = screen
-      .getByRole("heading", { name: "Parameters" })
-      // eslint-disable-next-line testing-library/no-node-access
-      .closest("div") as HTMLElement;
+    const parametersSection = screen.getByRole("region", {
+      name: "Parameters",
+    });
     expect(within(parametersSection).getByText("My param")).toBeInTheDocument();
     expect(
       within(parametersSection).getByLabelText("My param"),
