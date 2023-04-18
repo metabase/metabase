@@ -3,7 +3,11 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-describe("visual tests > models > editor", () => {
+// The card query is fairly complex one and it takes a long time to complete
+// on slow machines, like the ones used in CI.
+// We've seen timeouts with the Cypress default `requestTimeout` of 5,000ms
+// for the `cardQuery` route. Hence, why we need to increase it to 30,000ms.
+describe("visual tests > models > editor", { requestTimeout: 30000 }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

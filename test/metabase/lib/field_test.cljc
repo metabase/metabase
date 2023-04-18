@@ -180,6 +180,11 @@
         :default "Name"
         :long    "Categories → Name")
       (let [query' (lib/order-by query categories-name)]
+        (testing "Implicitly joinable columns should NOT be given a join alias"
+          (is (=? {:stages [{:order-by [[:asc {} [:field
+                                                  (complement :join-alias)
+                                                  (meta/id :categories :name)]]]}]}
+                  query')))
         (is (= "Venues, Sorted by Categories → Name ascending"
                (lib/describe-query query')))))))
 
