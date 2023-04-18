@@ -38,7 +38,7 @@ export type DashCardId = EntityId;
 export type BaseDashboardOrderedCard = {
   id: DashCardId;
   dashboard_id: DashboardId;
-  dashboardtab_id?: DashboardTabId;
+  dashboard_tab_id?: DashboardTabId;
   size_x: number;
   size_y: number;
   col: number;

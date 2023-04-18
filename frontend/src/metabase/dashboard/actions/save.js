@@ -108,7 +108,7 @@ export const saveDashboardAndCards = createThunkAction(
         cards: dashcardsToUpdate.map(dc => ({
           id: dc.id,
           card_id: dc.card_id,
-          dashboardtab_id: dc.dashboardtab_id,
+          dashboard_tab_id: dc.dashboard_tab_id,
           action_id: dc.action_id,
           row: dc.row,
           col: dc.col,
@@ -118,10 +118,9 @@ export const saveDashboardAndCards = createThunkAction(
           visualization_settings: dc.visualization_settings,
           parameter_mappings: dc.parameter_mappings,
         })),
-        tabs: (dashboard.ordered_tabs ?? []).map(({ id, name, position }) => ({
+        ordered_tabs: (dashboard.ordered_tabs ?? []).map(({ id, name }) => ({
           id,
           name,
-          position,
         })),
       });
       dispatch(saveCardsAndTabs(updatedCardsAndTabs));
