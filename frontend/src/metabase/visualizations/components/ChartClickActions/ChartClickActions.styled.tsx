@@ -1,12 +1,45 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { alpha, color } from "metabase/lib/colors";
+import type { ClickActionButtonType } from "metabase/modes/types";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import Icon from "metabase/components/Icon/Icon";
 
-export interface ClickActionButtonProps {
-  type: "sort" | "formatting" | "horizontal" | "token" | "token-filter";
+export type SectionType = "records" | string;
+
+interface ClickActionButtonProps {
+  type?: ClickActionButtonType;
 }
 
+export const Container = styled.div`
+  padding: 1rem;
+
+  font-weight: 700;
+`;
+
+export const Section = styled.div<{ type: SectionType }>`
+  padding-bottom: 1rem;
+
+  ${({ type }) =>
+    type === "records" &&
+    css`
+      padding-bottom: 0;
+
+      &:after {
+        content: "";
+        height: 1px;
+        background-color: ${color("border")};
+        margin: 1rem -1.5rem 1rem;
+        display: block;
+      }
+    `}
+`;
+
+export const ActionIcon = styled(Icon)`
+  margin-right: 0.75rem;
+`;
+
+// TODO [#26836]: refactor this to be a button
 export const ClickActionButton = styled.div<ClickActionButtonProps>`
   ${({ type }) =>
     type === "sort" &&
@@ -39,6 +72,9 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
       align-items: center;
       padding: 0.5rem;
       color: ${color("text-dark")};
+
+      font-weight: 700;
+      line-height: 17px;
 
       &:hover {
         color: ${color("white")};

@@ -16,7 +16,7 @@ describe("issue 6010", () => {
       .then(({ body: { id } }) => visitQuestion(id));
 
     cy.get(".dot").eq(0).click({ force: true });
-    cy.findByText(/View these Orders/).click();
+    cy.findByText(/See these Orders/).click();
     cy.wait("@dataset");
 
     cy.findByText("Created At is January, 2018").should("be.visible");
