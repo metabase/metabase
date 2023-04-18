@@ -19,6 +19,24 @@ type NotebookStepDef = Pick<NotebookStep, "type" | "clean" | "revert"> & {
   subSteps?: (query: StructuredQuery) => number;
 };
 
+// Notebook build around MLv1 (metabase-lib v2) creates stage steps upfront.
+// I.e. it's possible to have a sort step for stage 2 even though stage 2 doesn't exist yet.
+// MLv2 is more strict about that and it throws when trying to reference a stage that doesn't exist.
+// So for the last stage index, we should prefer using `-1` which instructs MLv2 to use the last stage.
+const MLV2_STEPS = ["limit", "sort"];
+
+function getMLv2StageIndex(
+  index: number,
+  stepType: string,
+  isLastStage: boolean,
+) {
+  const isMLv2Step = MLV2_STEPS.includes(stepType);
+  if (isMLv2Step && isLastStage) {
+    return -1;
+  }
+  return index;
+}
+
 const STEPS: NotebookStepDef[] = [
   {
     type: "data",
@@ -103,7 +121,10 @@ const STEPS: NotebookStepDef[] = [
       const revertedLegacyQuery = Lib.toLegacyQuery(reverted);
       const revertedStructuredQuery =
         legacyQuery.setDatasetQuery(revertedLegacyQuery);
-      return revertedStructuredQuery.queries()[stageIndex];
+      const stagedQueries = revertedStructuredQuery.queries();
+      const safeStageIndex =
+        stageIndex === -1 ? stagedQueries.length - 1 : stageIndex;
+      return stagedQueries[safeStageIndex];
     },
     clean: query => query,
   },
@@ -117,6 +138,9 @@ export function getQuestionSteps(question: Question, openSteps = {}) {
 
   if (question.isStructured()) {
     let query = question.query() as StructuredQuery;
+
+    const topLevelQuery = query.rootQuery().question()._getMLv2Query();
+
     const database = question.database();
     const allowsNesting = database && database.hasFeature("nested-queries");
 
@@ -128,13 +152,14 @@ export function getQuestionSteps(question: Question, openSteps = {}) {
       query = query.nest();
     }
 
-    const topLevelQuery = query.question()._getMLv2Query();
-
-    for (const [stageIndex, stageQuery] of query.queries().entries()) {
+    const stagedQueries = query.queries();
+    for (const [stageIndex, stageQuery] of stagedQueries.entries()) {
+      const isLastStage = stageIndex === stagedQueries.length - 1;
       const { steps, actions } = getStageSteps(
         topLevelQuery,
         stageQuery,
         stageIndex,
+        isLastStage,
         openSteps,
       );
       // append actions to last step of previous stage
@@ -160,18 +185,20 @@ export function getQuestionSteps(question: Question, openSteps = {}) {
 function getStageSteps(
   topLevelQuery: Query,
   stageQuery: StructuredQuery,
-  stageIndex: number,
+  _stageIndex: number,
+  isLastStage: boolean,
   openSteps: OpenSteps,
 ) {
   const getId = (step: NotebookStepDef, itemIndex: number | null) => {
     const isValidItemIndex = itemIndex != null && itemIndex > 0;
     return (
-      `${stageIndex}:${step.type}` + (isValidItemIndex ? `:${itemIndex}` : "")
+      `${_stageIndex}:${step.type}` + (isValidItemIndex ? `:${itemIndex}` : "")
     );
   };
 
   function getStep(STEP: NotebookStepDef, itemIndex: number | null = null) {
     const id = getId(STEP, itemIndex);
+    const stageIndex = getMLv2StageIndex(_stageIndex, STEP.type, isLastStage);
     const step: NotebookStep = {
       id: id,
       type: STEP.type,
