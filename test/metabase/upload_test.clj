@@ -296,12 +296,34 @@
                     alternating (map even? (range (count bool-column)))]
                 (is (= alternating bool-column))))))))))
 
+(deftest load-from-csv-empty-header-test
+  (testing "Upload a CSV file with a blank column name"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with [",ship name,"
+                         "1,Serenity,Malcolm Reynolds"
+                         "2,Millennium Falcon, Han Solo"]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (let [col-names (->> (mt/run-mbql-query upload_test)
+                                   (mt/cols)
+                                   (map :name))]
+                (is (= ["unnamed_column_1", "ship_name", "unnamed_column_3"]
+                       col-names))))))))))
+
 (deftest load-from-csv-failed-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-empty-db
       (testing "Can't upload a CSV with missing values"
         (is (thrown-with-msg?
-              clojure.lang.ExceptionInfo #"Error executing write query: "
+             clojure.lang.ExceptionInfo #"Error executing write query: "
              (upload/load-from-csv
               driver/*driver*
               (mt/id)
