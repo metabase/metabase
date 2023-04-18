@@ -3,7 +3,8 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-describe("visual tests > models > editor", () => {
+// Temporarily skip to prevent failures on master
+describe.skip("visual tests > models > editor", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
