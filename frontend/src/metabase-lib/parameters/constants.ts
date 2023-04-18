@@ -105,7 +105,7 @@ export const PARAMETER_OPERATOR_TYPES = {
       description: t`Contains all of the above`,
     },
   ],
-};
+} as const;
 
 export const OPTIONS_WITH_OPERATOR_SUBTYPES = [
   {
@@ -120,19 +120,19 @@ export const OPTIONS_WITH_OPERATOR_SUBTYPES = [
     type: "number",
     typeName: t`Number`,
   },
-];
+] as const;
 
 export const ID_OPTION = {
   type: "id",
   name: t`ID`,
-};
+} as const;
 
 export const TYPE_SUPPORTS_LINKED_FILTERS = [
   "string",
   "category",
   "id",
   "location",
-];
+] as const;
 
 export const SINGLE_OR_MULTI_SELECTABLE_TYPES: Record<
   string,

@@ -15,7 +15,7 @@
     (i18n/tru "Grouped by {0}"
               (str/join (str \space (i18n/tru "and") \space)
                         (for [breakout breakouts]
-                          (lib.metadata.calculation/display-name query stage-number breakout))))))
+                          (lib.metadata.calculation/display-name query stage-number breakout :long))))))
 
 (mu/defn breakout :- ::lib.schema/query
   "Add a new breakout on an expression, presumably a Field reference."

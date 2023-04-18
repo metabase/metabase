@@ -15,10 +15,20 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
+(def DisplayNameStyle
+  "Schema for valid values of `display-name-style` as passed to [[display-name-method]].
+
+  * `:default`: normal style used for 99% of FE stuff. For example a column that comes from a joined table might return
+    \"Price\".
+
+  * `:long`: Slightly longer style that includes a little bit of extra context, used for stuff like query suggested
+    name generation. For a joined column, this might look like \"Venues → Price\"."
+  [:enum :default :long])
+
 (defmulti display-name-method
   "Calculate a nice human-friendly display name for something."
-  {:arglists '([query stage-number x])}
-  (fn [_query _stage-number x]
+  {:arglists '([query stage-number x display-name-style])}
+  (fn [_query _stage-number x _display-name-style]
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
@@ -29,21 +39,24 @@
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(mu/defn ^:export display-name :- ::lib.schema.common/non-blank-string
-  "Calculate a nice human-friendly display name for something."
+(mu/defn ^:export display-name :- :string
+  "Calculate a nice human-friendly display name for something. See [[DisplayNameStyle]] for a the difference between
+  different `style`s."
   ([query x]
    (display-name query -1 x))
 
+  ([query stage-number x]
+   (display-name query stage-number x :default))
+
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    x]
+    x
+    style        :- DisplayNameStyle]
    (or
     ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
     (:display-name (lib.options/options x))
     (try
-      (display-name-method query stage-number x)
-      ;; if this errors, just catch the error and return something like `Unknown :field`. We shouldn't blow up the
-      ;; whole Query Builder if there's a bug
+      (display-name-method query stage-number x style)
       (catch #?(:clj Throwable :cljs js/Error) e
         (throw (ex-info (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e))
                         {:query query, :x x}
@@ -70,7 +83,7 @@
                         e)))))))
 
 (defmethod display-name-method :default
-  [_query _stage-number x]
+  [_query _stage-number x _stage]
   ;; hopefully this is dev-facing only, so not i18n'ed.
   (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
              (pr-str x)
@@ -101,7 +114,9 @@
 
 (defmulti describe-top-level-key-method
   "Implementation for [[describe-top-level-key]]. Describe part of a stage of a query, e.g. the `:filters` part or the
-  `:aggregation` part. Return `nil` if there is nothing to describe."
+  `:aggregation` part. Return `nil` if there is nothing to describe.
+
+  Implementations that call [[display-name]] should specify the `:long` display name style."
   {:arglists '([query stage-number top-level-key])}
   (fn [_query _stage-number top-level-key]
     top-level-key)
@@ -155,7 +170,7 @@
   (type-of query stage-number expr))
 
 (defmulti metadata-method
-  "Impl for [[metadata]]."
+  "Impl for [[metadata]]. Implementations that call [[display-name]] should use the `:default` display name style."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x))
@@ -213,7 +228,8 @@
         nil))))
 
 (defmulti display-info-method
-  "Implementation for [[display-info]]."
+  "Implementation for [[display-info]]. Implementations that call [[display-name]] should use the `:default` display
+  name style."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x))
@@ -221,7 +237,7 @@
 
 (mr/register! ::display-info
   [:map
-   [:display_name ::lib.schema.common/non-blank-string]
+   [:display_name :string]
    ;; For Columns. `base_type` not included here, FE doesn't need to know about that.
    [:effective_type {:optional true} [:maybe [:ref ::lib.schema.common/base-type]]]
    [:semantic_type  {:optional true} [:maybe [:ref ::lib.schema.common/semantic-type]]]
@@ -253,33 +269,33 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     x]
-   (display-info-method query stage-number x)))
+   (try
+     (display-info-method query stage-number x)
+     (catch #?(:clj Throwable :cljs js/Error) e
+       (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}" (lib.dispatch/dispatch-value x) (ex-message e))
+                       {:query query, :stage-number stage-number, :x x}
+                       e))))))
 
 (defn default-display-info
   "Default implementation of [[display-info-method]], available in case you want to use this in a different
   implementation and add additional information to it."
   [query stage-number x]
-  (try
-    (let [x-metadata (metadata query stage-number x)]
-      (merge
-       ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display_name`
-       ;; everywhere? Determine whether or not this is the case.
-       (select-keys x-metadata [:name :display_name :semantic_type])
-       ;; don't return `:base_type`, FE should just use `:effective_type` everywhere and not even need to know
-       ;; `:base_type` exists.
-       (when-let [effective-type ((some-fn :effective_type :base_type) x-metadata)]
-         {:effective_type effective-type})
-       (when-let [table-id (:table_id x-metadata)]
-         {:table (display-info query stage-number (lib.metadata/table query table-id))})
-       (when-let [source (:lib/source x-metadata)]
-         {:is_from_previous_stage (= source :source/previous-stage)
-          :is_from_join           (= source :source/joins)
-          :is_calculated          (= source :source/expressions)
-          :is_implicitly_joinable (= source :source/implicitly-joinable)})))
-    (catch #?(:clj Throwable :cljs js/Error) e
-      (throw (ex-info (i18n/tru "Error calculating display info: {0}" (ex-message e))
-                      {:query query, :stage-number stage-number, :x x}
-                      e)))))
+  (let [x-metadata (metadata query stage-number x)]
+    (merge
+     ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display_name`
+     ;; everywhere? Determine whether or not this is the case.
+     (select-keys x-metadata [:name :display_name :semantic_type])
+     ;; don't return `:base_type`, FE should just use `:effective_type` everywhere and not even need to know
+     ;; `:base_type` exists.
+     (when-let [effective-type ((some-fn :effective_type :base_type) x-metadata)]
+       {:effective_type effective-type})
+     (when-let [table-id (:table_id x-metadata)]
+       {:table (display-info query stage-number (lib.metadata/table query table-id))})
+     (when-let [source (:lib/source x-metadata)]
+       {:is_from_previous_stage (= source :source/previous-stage)
+        :is_from_join           (= source :source/joins)
+        :is_calculated          (= source :source/expressions)
+        :is_implicitly_joinable (= source :source/implicitly-joinable)}))))
 
 (defmethod display-info-method :default
   [query stage-number x]
@@ -338,6 +354,12 @@
     (f column-alias-string) => unique-alias-string
 
   Used to generate unique names."
+  ([query]
+   (default-columns query (lib.util/query-stage query -1)))
+
+  ([query x]
+   (default-columns query -1 x))
+
   ([query stage-number x]
    (default-columns query stage-number x (lib.util/unique-name-generator)))
 
@@ -364,6 +386,12 @@
 
   Default implementation is just [[default-columns]]; currently only stages have a specific implementation
   for [[visible-columns-method]], but this might change in the future."
+  ([query]
+   (visible-columns query (lib.util/query-stage query -1)))
+
+  ([query x]
+   (visible-columns query -1 x))
+
   ([query stage-number x]
    (visible-columns query stage-number x (lib.util/unique-name-generator)))
 

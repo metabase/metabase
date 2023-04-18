@@ -105,7 +105,7 @@
        (assoc metadata
               :lib/source               source
               :lib/source-column-alias  (lib.metadata.calculation/column-name query stage-number metadata)
-              :lib/desired-column-alias (unique-name-fn (lib.field/desired-alias metadata)))))))
+              :lib/desired-column-alias (unique-name-fn (lib.field/desired-alias query metadata)))))))
 
 (mu/defn ^:private breakout-ags-fields-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
@@ -227,7 +227,7 @@
   (stage-metadata query stage-number))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/native
-  [_query _stage-number _stage]
+  [_query _stage-number _stage _style]
   (i18n/tru "Native query"))
 
 (def ^:private display-name-parts
@@ -239,14 +239,17 @@
    :limit])
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/mbql
-  [query stage-number _stage]
+  [query stage-number _stage style]
   (or
    (not-empty
     (let [descriptions (for [k display-name-parts]
                          (lib.metadata.calculation/describe-top-level-key query stage-number k))]
       (str/join ", " (remove str/blank? descriptions))))
    (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-     (lib.metadata.calculation/display-name query previous-stage-number (lib.util/query-stage query previous-stage-number)))))
+     (lib.metadata.calculation/display-name query
+                                            previous-stage-number
+                                            (lib.util/query-stage query previous-stage-number)
+                                            style))))
 
 (defn- implicitly-joinable-columns
   "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to
@@ -271,20 +274,14 @@
                 (remove #(contains? existing-table-ids (:table_id %)))
                 (m/distinct-by :table_id)
                 (mapcat (fn [{table-id :table_id, ::keys [source-field-id]}]
-                          (let [table-metadata       (lib.metadata/table query table-id)
-                                table-name           (:name table-metadata)
-                                source-field-id-name (:name (lib.metadata/field query source-field-id))
-                                ;; make sure the implicit join name is unique.
-                                source-alias         (unique-name-fn
-                                                      (lib.join/implicit-join-name table-name source-field-id-name))]
+                          (let [table-metadata (lib.metadata/table query table-id)]
                             (for [field (lib.metadata.calculation/default-columns query stage-number table-metadata unique-name-fn)
                                   :let  [field (assoc field
                                                       :fk_field_id              source-field-id
                                                       :lib/source               :source/implicitly-joinable
-                                                      :lib/source-column-alias  (:name field))
-                                         field (lib.join/with-join-alias field source-alias)]]
+                                                      :lib/source-column-alias  (:name field))]]
                               (assoc field :lib/desired-column-alias (unique-name-fn
-                                                                      (lib.field/desired-alias field))))))))
+                                                                      (lib.field/desired-alias query field))))))))
           column-metadatas)))
 
 (defmethod lib.metadata.calculation/visible-columns-method ::stage

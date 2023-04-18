@@ -484,7 +484,7 @@ export function isEventOverElement(event, element) {
 }
 
 export function isReducedMotionPreferred() {
-  const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const mediaQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   return mediaQuery && mediaQuery.matches;
 }
 

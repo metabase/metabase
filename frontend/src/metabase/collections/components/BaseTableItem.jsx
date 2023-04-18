@@ -128,7 +128,11 @@ export function BaseTableItem({
               <DescriptionIcon
                 name="info"
                 size={16}
-                tooltip={<Markdown>{item.description}</Markdown>}
+                tooltip={
+                  <Markdown disallowHeading unstyleLinks>
+                    {item.description}
+                  </Markdown>
+                }
               />
             )}
           </ItemLink>

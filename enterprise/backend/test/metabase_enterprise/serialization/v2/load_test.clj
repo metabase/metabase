@@ -163,6 +163,7 @@
             (reset! db2d (t2/select-one Database :name (:name @db2s)))
 
             (is (= 3 (t2/count Database)))
+            (is (every? #(= "complete" (:initial_sync_status %)) (t2/select Database)))
             (is (= #{"db1" "db2" "test-data"}
                    (t2/select-fn-set :name Database)))
             (is (= #{(:id @db1d) (:id @db2d)}

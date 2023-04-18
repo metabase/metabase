@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -9,12 +10,9 @@
 
 (deftest ^:parallel ->pMBQL-test
   (is (=? {:lib/type :mbql/query
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
-                       :lib/options  {:lib/uuid string?}
                        :source-table 1}
                       {:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}
                        :fields      [[:field {:lib/uuid string?} 2]
                                      [:field {:lib/uuid string?, :temporal-unit :month} 3]]
                        :aggregation [[:count {:lib/uuid string?}]]}]
@@ -34,12 +32,9 @@
 
 (deftest ^:parallel ->pMBQL-idempotency-test
   (is (=? {:lib/type :mbql/query
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
-                       :lib/options  {:lib/uuid string?}
                        :source-table 1}
                       {:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}
                        :fields      [[:field {:lib/uuid string?} 2]
                                      [:field {:lib/uuid string?, :temporal-unit :month} 3]]
                        :aggregation [[:count {:lib/uuid string?}]]}]
@@ -61,9 +56,7 @@
 (deftest ^:parallel ->pMBQL-joins-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}
                        :fields      [[:field
                                       {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
                                       (meta/id :categories :name)]]
@@ -81,12 +74,12 @@
                                       :strategy    :left-join
                                       :fk-field-id (meta/id :venues :category-id)
                                       :stages      [{:lib/type     :mbql.stage/mbql
-                                                     :lib/options  {:lib/uuid string?}
                                                      :source-table (meta/id :venues)}]}]}]}
           (lib.convert/->pMBQL
            {:database (meta/id)
             :type     :query
-            :query    {:fields [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+            :query    {:source-table (meta/id :categories)
+                       :fields [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                        :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
                                  :source-table (meta/id :venues)
                                  :condition    [:=
@@ -98,9 +91,7 @@
 (deftest ^:parallel ->pMBQL-join-fields-test
   (testing "#29898"
     (is (=? {:lib/type :mbql/query
-             :type     :pipeline
              :stages   [{:lib/type     :mbql.stage/mbql
-                         :lib/options  {:lib/uuid string?}
                          :joins        [{:alias       "Cat"
                                          :fields      [[:field {:lib/uuid string?, :join-alias "Cat"} 1]]
                                          :conditions  [[:=
@@ -109,7 +100,6 @@
                                                         [:field {:lib/uuid string?} 2]]]
                                          :lib/type    :mbql/join
                                          :stages      [{:lib/type     :mbql.stage/mbql
-                                                        :lib/options  {:lib/uuid string?}
                                                         :source-table 3}]
                                          :lib/options {:lib/uuid string?}}]
                          :limit        1
@@ -127,14 +117,13 @@
 
 (deftest ^:parallel aggregation-options-test
   (is (=? {:lib/type :mbql/query
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
-                       :lib/options  {:lib/uuid string?}
                        :source-table 1
                        :aggregation  [[:sum
                                        {:lib/uuid string?, :display-name "Revenue"}
                                        [:field {:lib/uuid string?} 1]]]}]}
           (lib.convert/->pMBQL {:type  :query
+                                :database 5
                                 :query {:source-table 1
                                         :aggregation  [[:aggregation-options
                                                         [:sum [:field 1 nil]]
@@ -177,6 +166,10 @@
 
     [:value nil {:base_type :type/Number}]
 
+    [:aggregation 0 {:effective-type "type/Integer"}]
+
+    [:expression "expr" {:effective-type "type/Integer"}]
+
     [:case [[[:< [:field 1 nil] 10] [:value nil {:base_type :type/Number}]] [[:> [:field 2 nil] 2] 10]]]
 
     {:database 67
@@ -202,7 +195,8 @@
 
     {:database 23001
      :type     :query
-     :query    {:fields [[:field 23101 {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+     :query    {:source-table 224
+                :fields [[:field 23101 {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                 :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
                           :source-table 23040
                           :condition    [:=
@@ -213,7 +207,8 @@
 
     {:database 1
      :type     :query
-     :query    {:order-by [[:asc [:field 1 nil]]]}}
+     :query    {:source-table 224
+                :order-by [[:asc [:field 1 nil]]]}}
 
     {:database 5
      :type     :query
@@ -223,3 +218,61 @@
                                 :fields       [[:field 1 {:join-alias "Cat"}]]}]
                 :limit        1
                 :source-table 4}}))
+
+(deftest ^:parallel clean-test
+  (testing "irrecoverable queries"
+    ;; Eventually we should get to a place where ->pMBQL throws an exception here,
+    ;; but legacy e2e tests make this impossible right now
+    (is (= {:type :query
+            :query {}}
+           (lib.convert/->legacy-MBQL
+             (lib.convert/->pMBQL
+               {:type :query}))))
+    (is (= {:type :query
+            :database 1
+            :query {}}
+            (lib.convert/->legacy-MBQL
+              (lib.convert/->pMBQL
+                {:type :query
+                 :database 1}))))
+    (is (= {:type :query
+            :database 1
+            :query {}}
+           (lib.convert/->legacy-MBQL
+             (lib.convert/->pMBQL
+               {:type :query
+                :database 1})))))
+  (testing "recoverable queries"
+    (is (nil? (->
+                {:database 1
+                 :type :query
+                 :query {:source-table 224
+                         :order-by [[:asc [:xfield 1 nil]]]}}
+                lib.convert/->pMBQL
+                lib/order-bys)))
+    (is (nil? (->
+                {:database 1
+                 :type :query
+                 :query {:source-table 224
+                         :filter [:and [:= [:xfield 1 nil]]]}}
+                lib.convert/->pMBQL
+                lib/filters)))
+    (is (nil? (->
+                {:database 5
+                 :type :query
+                 :query {:joins [{:source-table 3
+                                  ;; Invalid condition makes the join invalid
+                                  :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
+                         :source-table 4}}
+                 lib.convert/->pMBQL
+                 lib/joins)))
+    (is (nil? (->
+                {:database 5
+                 :type :query
+                 :query {:joins [{:source-table 3
+                                  :condition [:= [:field 2 nil] [:field 2 nil]]
+                                  ;; Invalid field, the join is still valid
+                                  :fields [[:xfield 2 nil]]}]
+                         :source-table 4}}
+                 lib.convert/->pMBQL
+                 (get-in [:stages 0 :joins 0 :fields]))))))

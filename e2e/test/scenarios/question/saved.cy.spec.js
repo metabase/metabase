@@ -8,7 +8,7 @@ import {
   openQuestionActions,
   questionInfoButton,
   rightSidebar,
-  appbar,
+  appBar,
   getCollectionIdFromSlug,
 } from "e2e/support/helpers";
 
@@ -158,7 +158,7 @@ describe("scenarios > question > saved", () => {
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {
     visitQuestion(1);
-    appbar().within(() => cy.findByText("Our analytics").click());
+    appBar().within(() => cy.findByText("Our analytics").click());
 
     cy.findByText("Orders").should("be.visible");
   });
@@ -169,7 +169,7 @@ describe("scenarios > question > saved", () => {
     });
 
     visitQuestion(1);
-    appbar().within(() => cy.findByText("Second collection").click());
+    appBar().within(() => cy.findByText("Second collection").click());
 
     cy.findByText("Orders").should("be.visible");
   });
@@ -183,7 +183,7 @@ describe("scenarios > question > saved", () => {
       cy.button("Done").click();
     });
 
-    appbar().within(() => {
+    appBar().within(() => {
       cy.findByText("Started from").should("be.visible");
       cy.findByText("Orders").click();
       cy.findByText("Started from").should("not.exist");

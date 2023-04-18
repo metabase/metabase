@@ -41,8 +41,8 @@
 (mu/defn ^:private resolve-field-id :- lib.metadata/ColumnMetadata
   "Integer Field ID: get metadata from the metadata provider. This is probably not 100% the correct thing to do if
   this isn't the first stage of the query, but we can fix that behavior in a follow-on"
-  [query         :- ::lib.schema/query
-   field-id      :- ::lib.schema.id/field]
+  [query     :- ::lib.schema/query
+   field-id  :- ::lib.schema.id/field]
   (lib.metadata/field query field-id))
 
 (mu/defn ^:private resolve-column-name-in-metadata :- [:maybe lib.metadata/ColumnMetadata]
@@ -160,16 +160,17 @@
                        join-alias         :source_alias
                        fk-field-id        :fk_field_id
                        table-id           :table_id
-                       :as                _field-metadata}]
+                       :as                _field-metadata} style]
   (let [field-display-name (or field-display-name
                                (u.humanization/name->human-readable-name :simple field-name))
-        join-display-name  (or
-                            (when fk-field-id
-                              (let [table (lib.metadata/table query table-id)]
-                                (lib.metadata.calculation/display-name query stage-number table)))
-                            (when join-alias
-                              (let [join (lib.join/resolve-join query stage-number join-alias)]
-                                (lib.metadata.calculation/display-name query stage-number join))))
+        join-display-name  (when (= style :long)
+                             (or
+                              (when fk-field-id
+                                (let [table (lib.metadata/table query table-id)]
+                                  (lib.metadata.calculation/display-name query stage-number table style)))
+                              (when join-alias
+                                (let [join (lib.join/resolve-join query stage-number join-alias)]
+                                  (lib.metadata.calculation/display-name query stage-number join style)))))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)]
@@ -178,12 +179,15 @@
       display-name)))
 
 (defmethod lib.metadata.calculation/display-name-method :field
-  [query stage-number [_tag {:keys [join-alias temporal-unit source-field], :as _opts} _id-or-name, :as field-clause]]
+  [query
+   stage-number
+   [_tag {:keys [join-alias temporal-unit source-field], :as _opts} _id-or-name, :as field-clause]
+   style]
   (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
                             join-alias    (assoc :source_alias join-alias)
                             temporal-unit (assoc :unit temporal-unit)
                             source-field  (assoc :fk_field_id source-field))]
-    (lib.metadata.calculation/display-name query stage-number field-metadata)
+    (lib.metadata.calculation/display-name query stage-number field-metadata style)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))
 
@@ -250,10 +254,10 @@
   field-clause)
 
 (defmethod lib.ref/ref-method :metadata/field
-  [metadata]
-  (case (:lib/source metadata)
-    :source/aggregation (lib.aggregation/column-metadata->aggregation-ref metadata)
-    :source/expressions (lib.expression/column-metadata->expression-ref metadata)
+  [{source :lib/source, :as metadata}]
+  (case source
+    :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
+    :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
     (let [options          (merge
                             {:lib/uuid       (str (random-uuid))
                              :base-type      (:base_type metadata)
@@ -271,6 +275,13 @@
                         (:name metadata)
                         (or (:id metadata) (:name metadata)))])))
 
+(defn- implicit-join-name [query {fk-field-id :fk_field_id, table-id :table_id, :as _field-metadata}]
+  (when (and fk-field-id table-id)
+    (when-let [table-metadata (lib.metadata/table query table-id)]
+      (let [table-name           (:name table-metadata)
+            source-field-id-name (:name (lib.metadata/field query fk-field-id))]
+        (lib.join/implicit-join-name table-name source-field-id-name)))))
+
 (mu/defn desired-alias :- ::lib.schema.common/non-blank-string
   "Desired alias for a Field e.g.
 
@@ -281,8 +292,10 @@
     MyJoin__my_field
 
   You should pass the results thru a unique name function."
-  [field-metadata :- lib.metadata/ColumnMetadata]
-  (if-let [join-alias (lib.join/current-join-alias field-metadata)]
+  [query          :- ::lib.schema/query
+   field-metadata :- lib.metadata/ColumnMetadata]
+  (if-let [join-alias (or (lib.join/current-join-alias field-metadata)
+                          (implicit-join-name query field-metadata))]
     (lib.join/joined-field-desired-alias join-alias (:name field-metadata))
     (:name field-metadata)))
 

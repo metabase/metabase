@@ -3,6 +3,7 @@ import {
   popover,
   visitDashboard,
   saveDashboard,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -423,33 +424,17 @@ function setup({ question, addedSeriesQuestion }) {
 
 function setupDashboard(cardId, addedSeriesCardId) {
   return cy.createDashboard().then(({ body: { id: dashboardId } }) => {
-    return cy
-      .request("POST", `/api/dashboard/${dashboardId}/cards`, {
-        cardId,
-        row: 0,
-        col: 0,
+    return addOrUpdateDashboardCard({
+      dashboard_id: dashboardId,
+      card_id: cardId,
+      card: {
         size_x: 18,
         size_y: 12,
-      })
-      .then(({ body: { id: dashCardId } }) => {
-        return cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-          cards: [
-            {
-              id: dashCardId,
-              card_id: cardId,
-              row: 0,
-              col: 0,
-              size_x: 18,
-              size_y: 12,
-              parameter_mappings: [],
-              series: addedSeriesCardId ? [{ id: addedSeriesCardId }] : [],
-            },
-          ],
-        });
-      })
-      .then(() => {
-        return dashboardId;
-      });
+        series: addedSeriesCardId ? [{ id: addedSeriesCardId }] : [],
+      },
+    }).then(() => {
+      return dashboardId;
+    });
   });
 }
 

@@ -194,7 +194,8 @@
    Options:
 
     --collections [collection-id-list] - a comma-separated list of IDs of collection to export
-    --include-field-values             - flag, default false, controls export of field values"
+    --include-field-values             - flag, default false, controls export of field values
+    --include-database-secrets         - flag, default false, include database connection details"
   [path & options]
   (let [opts (-> options cmd-args->map (update :collections parse-int-list))]
     (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump path opts)))

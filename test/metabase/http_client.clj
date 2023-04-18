@@ -36,11 +36,10 @@
   (str *url-prefix* url (when (seq query-parameters)
                           (str "?" (str/join \& (letfn [(url-encode [s]
                                                           (cond-> s
-                                                            (keyword? s) u/qualified-name
-                                                            true         codec/url-encode))]
+                                                            (keyword? s)       u/qualified-name
+                                                            true               codec/url-encode))]
                                                   (for [[k v] query-parameters]
                                                     (str (url-encode k) \= (url-encode v)))))))))
-
 
 ;;; parse-response
 
@@ -249,7 +248,7 @@
   {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & query-parameters])}
   [& args]
   (let [parsed (parse-http-client-args args)]
-    (log/trace (pr-str (parse-http-client-args args)))
+    (log/trace parsed)
     (u/with-timeout response-timeout-ms
       (-client parsed))))
 

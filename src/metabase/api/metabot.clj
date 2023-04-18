@@ -108,7 +108,9 @@
    question)
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
         _       (check-database-support (:id database))
-        context {:database    (metabot-util/denormalize-database database)
+        context {:database    (->> database
+                                   metabot-util/denormalize-database
+                                   metabot-util/add-pseudo-database-ddl)
                  :user_prompt question
                  :prompt_task :infer_native_sql}]
     (metabot/infer-native-sql-query context)))

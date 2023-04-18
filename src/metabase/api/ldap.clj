@@ -100,7 +100,7 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/settings"
-  "Update LDAP related settings. You must be a superuser or have `setting` permission to do this."
+  "Update LDAP related settings. You must be a superuser to do this."
   [:as {settings :body}]
   {settings su/Map}
   (api/check-superuser)

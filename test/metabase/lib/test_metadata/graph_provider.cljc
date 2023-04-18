@@ -1,6 +1,8 @@
-(ns metabase.lib.metadata.graph-provider
-  (:require [medley.core :as m]
-            [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
+(ns metabase.lib.test-metadata.graph-provider
+  (:require
+   [clojure.core.protocols]
+   [medley.core :as m]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
 (defn- graph-database [metadata-graph]
   (dissoc metadata-graph :tables))
@@ -53,4 +55,8 @@
   (segment  [_this segment-id] (graph-segment  metadata-graph segment-id))
   (card     [_this card-id]    (graph-card     metadata-graph card-id))
   (tables   [_this]            (graph-tables   metadata-graph))
-  (fields   [_this table-id]   (graph-fields   metadata-graph table-id)))
+  (fields   [_this table-id]   (graph-fields   metadata-graph table-id))
+
+  clojure.core.protocols/Datafiable
+  (datafy [_this]
+    (list `->SimpleGraphMetadataProvider metadata-graph)))
