@@ -33,12 +33,7 @@ java -DMAX_SESSION_AGE=1440 -jar metabase.jar
 
 The session timeout is the maximum duration that a person is inactive before being logged out (even if the browser is left open).
 
-Set the environment variable [`MB_SESSION_TIMEOUT`](../configuring-metabase/environment-variables.md#mb_session_timeout). For example:
-
-```
-# Change session timeout to 1 hour
-MAX_SESSION_TIMEOUT="{:amount 1 :unit 'hour'}" java -jar metabase.jar
-```
+You can toggle this setting from **Admin** > **Authentication**, or set the environment variable [`MB_SESSION_TIMEOUT`](../configuring-metabase/environment-variables.md#mb_session_timeout).
 
 Session timeout is null by default. You can use a session timeout to log people out earlier than the max [session age](#session-age).
 
