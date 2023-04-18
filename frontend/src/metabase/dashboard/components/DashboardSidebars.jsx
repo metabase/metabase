@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
-import { useSelector } from "react-redux";
+import { useSelector } from "metabase/lib/redux";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";

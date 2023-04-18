@@ -11,7 +11,7 @@ import { createAction, handleActions } from "metabase/lib/redux";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 
 type CreateNewTabPayload = { tabId: DashboardTabId };
-type DeleteTabPayload = { tabId: DashboardTabId };
+type DeleteTabPayload = { tabId: DashboardTabId | null };
 type SelectTabPayload = { tabId: DashboardTabId | null };
 type SaveCardsAndTabsPayload = {
   cards: DashboardOrderedCard[];
@@ -59,8 +59,9 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
     ) => {
       const { dashId, prevDash, prevTabs } = getPrevDashAndTabs(state);
       if (!dashId || !prevDash) {
-        // TODO consider throwing error
-        return state;
+        throw Error(
+          `CREATE_NEW_TAB was dispatched but either dashId (${dashId}) or prevDash (${prevDash}) are null`,
+        );
       }
 
       // 1. Create new tab, add to dashboard
@@ -84,21 +85,16 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
       const selectedTabId = tabId;
 
       // 3. Update tab id on existing dashcards if this is the first tab added
-      // TODO Can we simply this and just set dashcards to updatedDashcards?
-      const updatedDashcards: DashboardState["dashcards"] = {};
+      const dashcards: DashboardState["dashcards"] = { ...state.dashcards };
       if (prevTabs.length === 0) {
         prevDash.ordered_cards.forEach(id => {
-          updatedDashcards[id] = {
+          dashcards[id] = {
             ...state.dashcards[id],
             isDirty: true,
             dashboard_tab_id: tabId,
           };
         });
       }
-      const dashcards: DashboardState["dashcards"] = {
-        ...state.dashcards,
-        ...updatedDashcards,
-      };
 
       return {
         ...state,
@@ -111,7 +107,9 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
       const { dashId, prevDash, prevTabs } = getPrevDashAndTabs(state);
       const tabToRemove = prevTabs.find(({ id }) => id === tabId);
       if (!dashId || !prevDash || !tabToRemove) {
-        return state;
+        throw Error(
+          `DELETE_TAB was dispatched but either dashId (${dashId}), prevDash (${prevDash}), or tabToRemove (${tabToRemove}) are null/undefined`,
+        );
       }
 
       // 1. Select a different tab if needed
@@ -169,7 +167,9 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
     ) => {
       const { prevDash, prevTabs } = getPrevDashAndTabs(state);
       if (!prevDash) {
-        return state;
+        throw Error(
+          `SAVE_CARDS_AND_TABS was dispatched but prevDash (${prevDash}) is null`,
+        );
       }
 
       // 1. Replace temporary with real dashcard ids
