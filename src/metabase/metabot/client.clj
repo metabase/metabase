@@ -8,12 +8,17 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *create-chat-completion-endpoint*
+(defn- default-chat-completion-endpoint
+  "OpenAI is the default completion endpoint"
+  [params options]
+  (openai.api/create-chat-completion
+   (select-keys params [:model :n :messages])
+   options))
+
+(def ^:dynamic ^{:arglists '([params options])}
+  *create-chat-completion-endpoint*
   "The endpoint used to invoke the remote LLM"
-  (fn default-chat-completion-endpoint [params options]
-    (openai.api/create-chat-completion
-     (select-keys params [:model :n :messages])
-     options)))
+  default-chat-completion-endpoint)
 
 (defn invoke-metabot
   "Call the bot and return the response.
@@ -62,14 +67,19 @@
             {:exception-data (ex-data e)
              :status-code    400}))))))
 
-(def ^:dynamic *create-embedding-endpoint*
+(defn- default-embedding-endpoint
+  "OpenAI is the default completion endpoint\""
+  [params options]
+  (openai.api/create-embedding
+   (select-keys params [:model :input])
+   options))
+
+(def ^:dynamic ^{:arglists '([params options])}
+  *create-embedding-endpoint*
   "Default embeddings endpoint is both dynamic and memoized."
   (memoize/ttl
     ^{::memoize/args-fn (fn create-embeddings-memoize-fn [[{:keys [model input]} _options]] [model input])}
-    (fn default-embedding-endpoint [params options]
-      (openai.api/create-embedding
-        (select-keys params [:model :input])
-        options))
+    default-embedding-endpoint
     ;; 24-hour ttl
     :ttl/threshold (* 1000 60 60 24)))
 

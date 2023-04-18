@@ -22,10 +22,10 @@
       ;; More interesting SQL merits a more interesting display
       (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)]
         {:template                (metabot-util/find-result
-                                    (fn [message]
-                                      (metabot-util/response->viz
-                                        (json/parse-string message keyword)))
-                                    (metabot-client/invoke-metabot prompt))
+                                   (fn [message]
+                                     (metabot-util/response->viz
+                                      (json/parse-string message keyword)))
+                                   (metabot-client/invoke-metabot prompt))
          :prompt_template_version (format "%s:%s" prompt_template version)}))
     (log/warn "Metabot is not enabled")))
 
@@ -37,8 +37,8 @@
     (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)
           {:keys [database_id inner_query]} model]
       (if-some [bot-sql (metabot-util/find-result
-                          metabot-util/extract-sql
-                          (metabot-client/invoke-metabot prompt))]
+                         metabot-util/extract-sql
+                         (metabot-client/invoke-metabot prompt))]
         (let [final-sql     (metabot-util/bot-sql->final-sql model bot-sql)
               _             (log/infof "Inferred sql for model '%s' with prompt '%s':\n%s"
                                        (:id model)
@@ -53,9 +53,9 @@
                              :visualization_settings {}}]
           {:card                     dataset
            :prompt_template_versions (vec
-                                       (conj
-                                         (:prompt_template_versions model)
-                                         (format "%s:%s" prompt_template version)))
+                                      (conj
+                                       (:prompt_template_versions model)
+                                       (format "%s:%s" prompt_template version)))
            :bot-sql                  bot-sql})
         (log/infof "No sql inferred for model '%s' with prompt '%s'." (:id model) user_prompt)))
     (log/warn "Metabot is not enabled")))
