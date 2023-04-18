@@ -126,9 +126,7 @@ export function generateTimeFilterValuesDescriptions(filter) {
     return [ML_TemporalBucket.time_interval_description(n, unit)];
   } else if (isStartingFrom(filter)) {
     const [interval, unit] = getRelativeDatetimeInterval(filter);
-    const [prefix] = [
-      ML_TemporalBucket.time_interval_description(interval, unit),
-    ];
+    const prefix = ML_TemporalBucket.time_interval_description(interval, unit);
     const startingFrom = getStartingFrom(filter);
     if (!startingFrom) {
       return [prefix];
@@ -156,32 +154,16 @@ function generateTimeValueDescription(value, bucketing, isExclude) {
       return m.format("MMMM D, YYYY");
     }
   } else if (isRelativeDatetime(value)) {
-    let n = value[1];
-    let unit = value[2];
+    let [n, unit] = value;
 
     if (n === "current") {
       n = 0;
       unit = bucketing;
     }
 
-    if (bucketing === unit) {
-      return [ML_TemporalBucket.time_interval_description(n, unit)];
-    } else {
-      // FIXME: what to do if the bucketing and unit don't match?
-      if (n === 0) {
-        return t`Now`;
-      } else {
-        return n < 0
-          ? t`${-n} ${ML_TemporalBucket.format_bucketing(
-              unit,
-              -n,
-            ).toLowerCase()} ago`
-          : t`${n} ${ML_TemporalBucket.format_bucketing(
-              unit,
-              n,
-            ).toLowerCase()} from now`;
-      }
-    }
+    return bucketing === unit
+      ? ML_TemporalBucket.time_interval_description(n, unit)
+      : ML_TemporalBucket.relative_datetime_description(n, unit);
   } else {
     console.warn("Unknown datetime format", value);
     return `[${t`Unknown`}]`;

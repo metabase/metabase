@@ -139,15 +139,18 @@
          (update (vec <>) 0 str/capitalize)
          (str/join \space <>))))))
 
+(defn- interval-n->int [n]
+  (if (number? n)
+    n
+    (condp = (keyword n)
+      :current 0
+      :next    1
+      0)))
+
 (defn ^:export time-interval-description
   "Temporal bucketing formatting logic ported from `frontend/src/metabase-lib/queries/utils/query-time.js`."
   [n unit]
-  (let [n    (if (number? n)
-               n
-               (condp = (keyword n)
-                 :current 0
-                 :next    1
-                 0))
+  (let [n    (interval-n->int n)
         unit (keyword unit)]
     (cond
       (zero? n) (cond
@@ -162,3 +165,24 @@
                   (i18n/tru "Previous {0}" (format-bucketing unit)))
       (neg? n)  (i18n/tru "Previous {0} {1}" (- n) (format-bucketing unit (- n)))
       (pos? n)  (i18n/tru "Next {0} {1}" n (format-bucketing unit n)))))
+
+(defn ^:export relative-datetime-description
+  "Relative datetime formatting logic ported from `frontend/src/metabase-lib/queries/utils/query-time.js`.
+
+  e.g. if the relative interval is `-1 days`, then `n` = `-1` and `unit` = `:days`."
+  [n unit]
+  (let [n    (interval-n->int n)
+        unit (keyword unit)]
+    (cond
+      (zero? n)
+      (i18n/tru "Now")
+
+      (neg? n)
+      ;; this should legitimately be lowercasing in the user locale. I know system locale isn't necessarily the same
+      ;; thing, but it might be. This will have to do until we have some sort of user-locale lower-case functionality
+      #_ {:clj-kondo/ignore [:discouraged-var]}
+      (i18n/tru "{0} {1} ago" (- n) (str/lower-case (format-bucketing unit (- n))))
+
+      :else
+      #_ {:clj-kondo/ignore [:discouraged-var]}
+      (i18n/tru "{0} {1} from now" n (str/lower-case (format-bucketing unit n))))))
