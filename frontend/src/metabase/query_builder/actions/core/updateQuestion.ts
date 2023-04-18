@@ -161,9 +161,9 @@ export const updateQuestion = (
     const wasPivot = currentQuestion?.display() === "pivot";
 
     if (wasPivot || isPivot) {
-      const query = newQuestion.query();
       const hasBreakouts =
-        query instanceof StructuredQuery && query.rootQuery().hasBreakouts();
+        newQuestion.isStructured() &&
+        (newQuestion.query() as StructuredQuery).hasBreakouts();
 
       // compute the pivot setting now so we can query the appropriate data
       if (isPivot && hasBreakouts) {
