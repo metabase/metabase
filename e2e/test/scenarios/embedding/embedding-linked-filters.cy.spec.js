@@ -4,6 +4,7 @@ import {
   filterWidget,
   popover,
   visitDashboard,
+  getDashboardCard,
 } from "e2e/support/helpers";
 
 import {
@@ -53,7 +54,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       });
 
       cy.findByRole("heading", { name: nativeDashboardDetails.name });
-      cy.get(".Card").contains(nativeQuestionDetails.name);
+      getDashboardCard().contains(nativeQuestionDetails.name);
 
       cy.get(".bar").should("have.length", 49);
 
@@ -123,7 +124,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       });
 
       cy.findByRole("heading", { name: nativeDashboardDetails.name });
-      cy.get(".Card").contains(nativeQuestionDetails.name);
+      getDashboardCard().contains(nativeQuestionDetails.name);
 
       cy.get(".bar").should("have.length", 49);
 
