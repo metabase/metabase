@@ -28,15 +28,15 @@
                        :else result))))
       (dissoc almost-stage location-key))))
 
-(def ^:private stage-keys-to-clean
-  #{:expressions :joins :filters :order-by :aggregation :fields :breakout})
+(def ^:private stage-keys
+  #{:aggregation :breakout :expressions :fields :filters :order-by :joins})
 
 (defn- clean-stage [almost-stage]
   (loop [almost-stage almost-stage
          removals []]
     (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/stage.mbql almost-stage)
                                               :errors
-                                              (filter (comp stage-keys-to-clean first :in))
+                                              (filter (comp stage-keys first :in))
                                               (map (juxt :type :in))
                                               first)]
       (let [new-stage (clean-location almost-stage error-type error-location)]
@@ -75,9 +75,6 @@
 (defmethod ->pMBQL :mbql/query
   [query]
   query)
-
-(def ^:private stage-keys
-  [:aggregation :breakout :expressions :fields :filters :order-by :joins])
 
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
@@ -145,14 +142,15 @@
   {:arglists '([x])}
   lib.dispatch/dispatch-value)
 
-(defn- lib-key? [x]
-  (and (qualified-keyword? x)
-       (= (namespace x) "lib")))
+(defn- drop-option? [x]
+  (or (and (qualified-keyword? x)
+           (= (namespace x) "lib"))
+      (#{:effective-type} x)))
 
 (defn- disqualify [x]
   (->> x
        keys
-       (remove lib-key?)
+       (remove drop-option?)
        (select-keys x)))
 
 (defn- aggregation->legacy-MBQL [[tag options & args]]
