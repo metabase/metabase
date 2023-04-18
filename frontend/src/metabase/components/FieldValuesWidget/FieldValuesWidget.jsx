@@ -607,15 +607,20 @@ export function isSearchable({
   disablePKRemappingForSearch,
   valuesMode,
 }) {
+  let ret;
   if (disableSearch) {
-    return false;
+    ret = false;
   } else if (valuesMode === "search") {
-    return true;
+    ret = true;
   } else if (parameter) {
-    return canSearchParameterValues(parameter, disablePKRemappingForSearch);
+    console.log("checking canSearchParameterValues");
+    ret = canSearchParameterValues(parameter, disablePKRemappingForSearch);
   } else {
-    return canSearchFieldValues(fields, disablePKRemappingForSearch);
+    console.log("checking canSearchFieldValues");
+    ret = canSearchFieldValues(fields, disablePKRemappingForSearch);
   }
+  console.log(`is searchable: ${ret}`);
+  return ret;
 }
 
 function getTokenFieldPlaceholder({
