@@ -89,12 +89,6 @@
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
 
-(defn dashboard
-  "Return the Dashboard associated with the DashboardCard."
-  [{:keys [dashboard_id]}]
-  {:pre [(integer? dashboard_id)]}
-  (t2/select-one 'Dashboard, :id dashboard_id))
-
 (mi/define-simple-hydration-method series
   :series
   "Return the `Cards` associated as additional series on this DashboardCard."
