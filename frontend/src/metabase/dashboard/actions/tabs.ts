@@ -13,6 +13,7 @@ import { INITIAL_DASHBOARD_STATE } from "../constants";
 type CreateNewTabPayload = { tabId: DashboardTabId };
 type DeleteTabPayload = { tabId: DashboardTabId | null };
 type SelectTabPayload = { tabId: DashboardTabId | null };
+type RenameTabPayload = { tabId: DashboardTabId | null; name: string };
 type SaveCardsAndTabsPayload = {
   cards: DashboardOrderedCard[];
   ordered_tabs: DashboardOrderedTab[];
@@ -20,10 +21,12 @@ type SaveCardsAndTabsPayload = {
 type TabsReducerPayload = CreateNewTabPayload &
   DeleteTabPayload &
   SelectTabPayload &
+  RenameTabPayload &
   SaveCardsAndTabsPayload;
 
 const CREATE_NEW_TAB = "metabase/dashboard/CREATE_NEW_TAB";
 const DELETE_TAB = "metabase/dashboard/DELETE_TAB";
+const RENAME_TAB = "metabase/dashboard/RENAME_TAB";
 const SELECT_TAB = "metabase/dashboard/SELECT_TAB";
 const SAVE_CARDS_AND_TABS = "metabase/dashboard/SAVE_CARDS_AND_TABS";
 const INIT_TABS = "metabase/dashboard/INIT_TABS";
@@ -37,6 +40,8 @@ export function createNewTab() {
 export const deleteTab = createAction<DeleteTabPayload>(DELETE_TAB);
 
 export const selectTab = createAction<SelectTabPayload>(SELECT_TAB);
+
+export const renameTab = createAction<RenameTabPayload>(RENAME_TAB);
 
 export const saveCardsAndTabs =
   createAction<SaveCardsAndTabsPayload>(SAVE_CARDS_AND_TABS);
@@ -108,7 +113,7 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
       const tabToRemove = prevTabs.find(({ id }) => id === tabId);
       if (!dashId || !prevDash || !tabToRemove) {
         throw Error(
-          `DELETE_TAB was dispatched but either dashId (${dashId}), prevDash (${prevDash}), or tabToRemove (${tabToRemove}) are null/undefined`,
+          `DELETE_TAB was dispatched but either dashId (${dashId}), prevDash (${prevDash}), or tabToRemove (${tabToRemove}) is null/undefined`,
         );
       }
 
@@ -151,6 +156,34 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
       const dashcards = { ...state.dashcards, ...removedDashcards };
 
       return { ...state, selectedTabId, dashboards, dashcards };
+    },
+    [RENAME_TAB]: (
+      state,
+      { payload: { tabId, name } }: Action<RenameTabPayload>,
+    ) => {
+      const { dashId, prevDash, prevTabs } = getPrevDashAndTabs(state);
+      const tabToRename = prevTabs.find(({ id }) => id === tabId);
+      if (!dashId || !prevDash || !tabToRename) {
+        throw Error(
+          `RENAME_TAB was dispatched but either dashId (${dashId}), prevDash (${prevDash}), or tabToRename (${tabToRename}) is null/undefined`,
+        );
+      }
+
+      const tabToRenameIndex = prevTabs.findIndex(
+        ({ id }) => id === tabToRename.id,
+      );
+      const newTabs = [...prevTabs];
+      newTabs[tabToRenameIndex] = { ...tabToRename, name };
+
+      const dashboards: DashboardState["dashboards"] = {
+        ...state.dashboards,
+        [dashId]: {
+          ...prevDash,
+          ordered_tabs: newTabs,
+        },
+      };
+
+      return { ...state, dashboards };
     },
     [SELECT_TAB]: (
       state,

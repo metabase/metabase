@@ -88,15 +88,11 @@ const TabButton = forwardRef(function TabButton<T>(
   const handleInputKeyPress: KeyboardEventHandler<HTMLInputElement> =
     useCallback(
       event => {
-        if (event.key !== "Enter") {
-          return;
-        }
-        if (typeof inputRef === "object") {
+        if (event.key === "Enter" && typeof inputRef === "object") {
           inputRef?.current?.blur();
         }
-        onFinishEditing?.();
       },
-      [onFinishEditing, inputRef],
+      [inputRef],
     );
 
   return (
@@ -161,17 +157,21 @@ export interface RenameableTabButtonProps<T>
 }
 
 export function RenameableTabButton<T>({
-  label: originalLabel,
+  label: labelProp,
   menuItems: originalMenuItems = [],
   onRename,
   renameMenuLabel = t`Rename`,
   renameMenuIndex = 0,
   ...props
 }: RenameableTabButtonProps<T>) {
-  const [label, setLabel] = useState(originalLabel);
+  const [label, setLabel] = useState(labelProp);
   const [prevLabel, setPrevLabel] = useState(label);
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setLabel(labelProp);
+  }, [labelProp]);
 
   useEffect(() => {
     if (isEditing) {

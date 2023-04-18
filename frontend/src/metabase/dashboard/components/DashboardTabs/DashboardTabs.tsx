@@ -17,7 +17,7 @@ interface DashboardTabsProps {
 }
 
 export function DashboardTabs({ isEditing }: DashboardTabsProps) {
-  const { tabs, createNewTab, deleteTab, selectTab, selectedTabId } =
+  const { tabs, createNewTab, deleteTab, renameTab, selectTab, selectedTabId } =
     useDashboardTabs();
   const showPlaceholder = tabs.length === 0 && isEditing;
 
@@ -30,8 +30,7 @@ export function DashboardTabs({ isEditing }: DashboardTabsProps) {
             key={tab.id}
             value={tab.id}
             label={tab.name}
-            // TODO update this
-            onRename={newName => console.log(`Renamed tab to ${newName}`)}
+            onRename={name => renameTab(tab.id, name)}
             showMenu={isEditing}
             menuItems={[
               {
