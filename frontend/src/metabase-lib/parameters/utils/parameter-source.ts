@@ -73,8 +73,15 @@ export const getSourceConfigForType = (
 export const canListParameterValues = (parameter: Parameter) => {
   const queryType = getQueryType(parameter);
   const sourceType = getSourceType(parameter);
+  const canListFields = canListFieldValues(getFields(parameter));
 
-  return sourceType ? queryType === "list" : queryType !== "none";
+  console.log(`canListParameterValues > canListFields = ${canListFields}`);
+  console.log(`canListParameterValues > queryType = ${queryType}`);
+  console.log(`canListParameterValues > sourceType = ${sourceType}`);
+
+  const ret = sourceType ? queryType === "list" : queryType !== "none"; // && canListFields
+  console.log(`canListParameterValues returns: ${ret}`);
+  return ret;
 };
 
 export const canListFieldValues = (fields: Field[]) => {
