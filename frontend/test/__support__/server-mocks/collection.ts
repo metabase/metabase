@@ -1,7 +1,8 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { Card, Collection, CollectionItem } from "metabase-types/api";
+import { Card, Collection } from "metabase-types/api";
+import { createMockCollectionItem } from "metabase-types/api/mocks";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaName,
@@ -60,17 +61,52 @@ export function setupCollectionVirtualSchemaEndpoints(
 }
 
 export function setupCollectionItemsEndpoint(
-  collectionItems: CollectionItem[] = [],
-  models = ["card"],
-  limit = collectionItems.length,
-  offset = 0,
+  collection: Collection,
   opts: Record<string, unknown> = {},
 ) {
-  fetchMock.get("path:/api/collection/root/items", {
-    total: collectionItems.length,
-    data: collectionItems,
-    models,
-    limit,
-    offset,
+  const collectionItems = [
+    createMockCollectionItem({
+      id: 1,
+      collection,
+      name: "a",
+      model: "card",
+    }),
+    createMockCollectionItem({
+      id: 2,
+      collection,
+      name: "b",
+      model: "dataset",
+    }),
+    createMockCollectionItem({
+      id: 3,
+      collection,
+      name: "c",
+      model: "dashboard",
+    }),
+    createMockCollectionItem({
+      id: 4,
+      collection,
+      name: "d",
+      model: "collection",
+    }),
+  ];
+
+  fetchMock.get("path:/api/collection/root/items", uri => {
+    const url = new URL(uri);
+    const models = url.searchParams.getAll("models");
+    const matchedItems = collectionItems.filter(({ model }) =>
+      models.includes(model),
+    );
+
+    const limit = Number(url.searchParams.get("limit")) || matchedItems.length;
+    const offset = Number(url.searchParams.get("offset")) || 0;
+
+    return {
+      data: matchedItems.slice(offset, offset + limit),
+      total: matchedItems.length,
+      models,
+      limit,
+      offset,
+    };
   });
 }

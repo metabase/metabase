@@ -90,7 +90,11 @@ const DashboardHeader = ({
         className="Header-buttonSection"
         isNavBarOpen={isNavBarOpen}
       >
-        {headerButtons}
+        {headerButtons.map((headerButton, index) => (
+          <div style={{ display: "contents" }} key={index}>
+            {headerButton}
+          </div>
+        ))}
       </HeaderButtonSection>
     ),
     [headerButtons, isNavBarOpen],

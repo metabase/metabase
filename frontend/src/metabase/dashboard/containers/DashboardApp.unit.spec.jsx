@@ -5,7 +5,11 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { renderWithProviders, waitForElementToBeRemoved } from "__support__/ui";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
-import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockDashboard,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
@@ -22,10 +26,12 @@ const mockDashboard = createMockDashboard({
   ],
 });
 
+const mockCollection = createMockCollection();
+
 async function setup(user = createMockUser()) {
   setupDashboardEndpoints(createMockDashboard(mockDashboard));
   setupCollectionsEndpoints([]);
-  setupCollectionItemsEndpoint();
+  setupCollectionItemsEndpoint(mockCollection);
 
   fetchMock.get("path:/api/bookmark", []);
 
@@ -47,7 +53,7 @@ async function setup(user = createMockUser()) {
   renderWithProviders(
     <Route path="/dashboard/:slug" component={DashboardApp} />,
     {
-      initialRoute: "/dashboard/1",
+      initialRoute: `/dashboard/${mockDashboard.id}`,
       currentUser: user,
       withRouter: true,
       storeInitialState: {
@@ -70,11 +76,13 @@ function createMockEventListener() {
     returnValue: undefined,
   };
 
-  window.addEventListener = jest.fn((event, callback) => {
-    events[event] = () => callback(mockEvent);
-  });
+  jest
+    .spyOn(window, "addEventListener")
+    .mockImplementation((event, callback) => {
+      events[event] = () => callback(mockEvent);
+    });
 
-  window.removeEventListener = jest.fn((event, _) => {
+  jest.spyOn(window, "removeEventListener").mockImplementation((event, _) => {
     delete events[event];
   });
 
@@ -82,6 +90,10 @@ function createMockEventListener() {
 }
 
 describe("DashboardApp", function () {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   it("should have a beforeunload event when the user tries to leave a dirty dashboard", async function () {
     const { events, mockEvent } = await setup();
 
