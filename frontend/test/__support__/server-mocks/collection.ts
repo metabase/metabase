@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { Card, Collection } from "metabase-types/api";
+import { Card, Collection, CollectionItem } from "metabase-types/api";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaName,
@@ -57,4 +57,20 @@ export function setupCollectionVirtualSchemaEndpoints(
 
   fetchMock.get(urls.questions, questionVirtualTables);
   fetchMock.get(urls.models, modelVirtualTables);
+}
+
+export function setupCollectionItemsEndpoint(
+  collectionItems: CollectionItem[] = [],
+  models = ["card"],
+  limit = collectionItems.length,
+  offset = 0,
+  opts: Record<string, unknown> = {},
+) {
+  fetchMock.get("path:/api/collection/root/items", {
+    total: collectionItems.length,
+    data: collectionItems,
+    models,
+    limit,
+    offset,
+  });
 }

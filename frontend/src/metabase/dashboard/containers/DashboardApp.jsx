@@ -107,6 +107,10 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
+// most browsers don't use a custom message anymore, just putting here to retain compatibility
+// https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event#compatibility_notes
+const UNSAVED_CHANGE_MESSAGE = t`You have unsaved changes.`;
+
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
   const { isRunning, isLoadingComplete, dashboard, isEditing, isDirty } = props;
@@ -132,15 +136,7 @@ const DashboardApp = props => {
 
   useUnmount(props.reset);
 
-  // most browsers don't use a custom message anymore, just putting here to retain compatibility
-  // https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event#compatibility_notes
-  useBeforeUnload(() => {
-    console.log(
-      "%cDashboardApp onBeforeUnload",
-      "font-weight:800; font-size:1.2rem; color: purple;",
-    );
-    return isEditing && isDirty;
-  }, t`You have unsaved changes.`);
+  useBeforeUnload(isEditing && isDirty, UNSAVED_CHANGE_MESSAGE);
 
   useEffect(() => {
     if (isLoadingComplete) {

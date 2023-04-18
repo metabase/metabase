@@ -90,7 +90,14 @@ const DashboardHeader = ({
         className="Header-buttonSection"
         isNavBarOpen={isNavBarOpen}
       >
-        {headerButtons}
+        {/* Reminder to change these keys to something useful, since we need them for the tests to actually work
+         and also just for good practice (and to avoid the ultra annoying React warning)
+        */}
+        {headerButtons.map((headerButton, index) => (
+          <div key={index} style={{ display: "contents" }}>
+            {headerButton}
+          </div>
+        ))}
       </HeaderButtonSection>
     ),
     [headerButtons, isNavBarOpen],
@@ -117,17 +124,19 @@ const DashboardHeader = ({
     <div>
       {isEditing && (
         <EditBar
+          key="edit-bar"
           title={editingTitle}
           subtitle={editingSubtitle}
           buttons={editingButtons}
         />
       )}
       {editWarning && (
-        <EditWarning className="wrapper">
+        <EditWarning key="edit-warning" className="wrapper">
           <span>{editWarning}</span>
         </EditWarning>
       )}
       <HeaderModal
+        key="header-modal"
         isOpen={!!headerModalMessage}
         height={headerHeight}
         title={headerModalMessage}
@@ -135,6 +144,7 @@ const DashboardHeader = ({
         onCancel={onHeaderModalCancel}
       />
       <HeaderRoot
+        key="header-root"
         isNavBarOpen={isNavBarOpen}
         className={cx("QueryBuilder-section", headerClassName)}
         ref={header}
