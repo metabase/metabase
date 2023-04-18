@@ -3,7 +3,6 @@ import {
   visitEmbeddedPage,
   filterWidget,
   popover,
-  visitDashboard,
   getDashboardCard,
 } from "e2e/support/helpers";
 
@@ -119,7 +118,6 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           auto_apply_filters: false,
         });
 
-        visitDashboard(dashboard_id);
         visitEmbeddedPage(payload);
       });
 
