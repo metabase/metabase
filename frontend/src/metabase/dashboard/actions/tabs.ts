@@ -15,7 +15,7 @@ type DeleteTabPayload = { tabId: DashboardTabId };
 type SelectTabPayload = { tabId: DashboardTabId | null };
 type SaveCardsAndTabsPayload = {
   cards: DashboardOrderedCard[];
-  tabs: DashboardOrderedTab[];
+  ordered_tabs: DashboardOrderedTab[];
 };
 type TabsReducerPayload = CreateNewTabPayload &
   DeleteTabPayload &
@@ -95,7 +95,7 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
           updatedDashcards[id] = {
             ...state.dashcards[id],
             isDirty: true,
-            dashboardtab_id: tabId,
+            dashboard_tab_id: tabId,
           };
         });
       }
@@ -147,7 +147,7 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
 
       // 4. Remove dashcards that were on the deleted tab
       const removedCardIds = prevDash.ordered_cards.filter(
-        id => state.dashcards[id].dashboardtab_id === tabId,
+        id => state.dashcards[id].dashboard_tab_id === tabId,
       );
       const removedDashcards: DashboardState["dashcards"] = {};
       removedCardIds.forEach(id => {
@@ -170,7 +170,7 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
     [SAVE_CARDS_AND_TABS]: (
       state,
       {
-        payload: { cards: newCards, tabs: newTabs },
+        payload: { cards: newCards, ordered_tabs: newTabs },
       }: Action<SaveCardsAndTabsPayload>,
     ) => {
       const { prevDash, prevTabs } = getPrevDashAndTabs(state);
