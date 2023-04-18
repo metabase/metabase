@@ -68,10 +68,6 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
         id: tabId,
         dashboard_id: dashId,
         name: `Page ${prevTabs.length + 1}`,
-        position:
-          prevTabs.length > 0
-            ? Math.max(...prevTabs.map(t => t.position)) + 1
-            : 0,
         entity_id: "",
         created_at: "",
         updated_at: "",
@@ -120,23 +116,21 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
 
       // 1. Select a different tab if needed
       let selectedTabId = state.selectedTabId;
-      if (selectedTabId === tabToRemove.id) {
-        const targetPosition =
-          tabToRemove.position === 0 ? 1 : tabToRemove.position - 1;
-        selectedTabId =
-          prevTabs.find(({ position }) => position === targetPosition)?.id ??
-          null;
+
+      const noTabsRemaining = prevTabs.length === 1;
+      const deletingSelectedTab = selectedTabId === tabToRemove.id;
+      if (noTabsRemaining) {
+        selectedTabId = null;
+      } else if (deletingSelectedTab) {
+        const tabToRemoveIndex = prevTabs.findIndex(
+          ({ id }) => id === tabToRemove.id,
+        );
+        const targetIndex = tabToRemoveIndex === 0 ? 1 : tabToRemoveIndex - 1;
+        selectedTabId = prevTabs[targetIndex].id;
       }
 
       // 2. Remove the tab
-      const filteredTabs = prevTabs.filter(({ id }) => id !== tabId);
-
-      // 3. Update position on remaining tabs
-      const newTabs = filteredTabs.map(tab =>
-        tab.position > tabToRemove.position
-          ? { ...tab, position: tab.position - 1 }
-          : tab,
-      );
+      const newTabs = prevTabs.filter(({ id }) => id !== tabId);
       const dashboards: DashboardState["dashboards"] = {
         ...state.dashboards,
         [dashId]: {
@@ -145,7 +139,7 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
         },
       };
 
-      // 4. Remove dashcards that were on the deleted tab
+      // 3. Remove dashcards that were on the deleted tab
       const removedCardIds = prevDash.ordered_cards.filter(
         id => state.dashcards[id].dashboard_tab_id === tabId,
       );
@@ -197,7 +191,7 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
     },
     [INIT_TABS]: state => {
       const { prevTabs } = getPrevDashAndTabs(state);
-      const selectedTabId = prevTabs.find(t => t.position === 0)?.id ?? null;
+      const selectedTabId = prevTabs[0]?.id ?? null;
 
       return { ...state, selectedTabId };
     },

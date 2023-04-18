@@ -74,7 +74,7 @@ export type DashboardOrderedTab = {
   dashboard_id: DashboardId;
   entity_id: string;
   name: string;
-  position: number;
+  position?: number;
   created_at: string;
   updated_at: string;
 };
