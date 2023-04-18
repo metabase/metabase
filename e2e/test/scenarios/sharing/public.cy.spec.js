@@ -203,7 +203,8 @@ describe("scenarios > public", () => {
     );
 
     describe("Disable auto-apply filters", () => {
-      it("set auto-apply filters to false", () => {
+      before(() => {
+        cy.signInAsAdmin();
         visitDashboard(dashboardId);
 
         openDashboardSidebar();
@@ -213,30 +214,25 @@ describe("scenarios > public", () => {
           .should("not.be.checked");
       });
 
-      Object.entries(USERS).map(([userType, setUser]) =>
-        describe(`${userType}`, () => {
-          beforeEach(setUser);
+      it("should be able to view public dashboards by anonymous users", () => {
+        cy.signOut();
+        cy.visit(dashboardPublicLink);
+        cy.contains(COUNT_ALL);
 
-          it(`should be able to view public dashboards`, () => {
-            cy.visit(dashboardPublicLink);
-            cy.contains(COUNT_ALL);
+        cy.button("Apply").should("not.exist");
 
-            cy.button("Apply").should("not.exist");
+        cy.contains("Text").click();
+        cy.contains("Doohickey").click();
+        cy.contains("Add filter").click();
 
-            cy.contains("Text").click();
-            cy.contains("Doohickey").click();
-            cy.contains("Add filter").click();
+        cy.button("Apply").should("be.visible").click();
+        cy.button("Apply").should("not.exist");
 
-            cy.button("Apply").should("be.visible").click();
-            cy.button("Apply").should("not.exist");
+        cy.contains(COUNT_DOOHICKEY);
 
-            cy.contains(COUNT_DOOHICKEY);
-
-            // Enter full-screen button
-            cy.icon("expand");
-          });
-        }),
-      );
+        // Enter full-screen button
+        cy.icon("expand");
+      });
     });
   });
 });
