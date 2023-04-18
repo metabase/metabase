@@ -3,6 +3,7 @@ import { render, screen } from "__support__/ui";
 import DefaultMode from "metabase/modes/components/modes/DefaultMode";
 import { QueryMode } from "metabase-types/types/Visualization";
 import { Column } from "metabase-types/types/Dataset";
+import { checkNotNull } from "metabase/core/utils/types";
 import Mode from "metabase-lib/Mode";
 import { getAdHocQuestion } from "metabase-lib/mocks";
 import ChartClickActionsView from "./ChartClickActionsView";
@@ -22,11 +23,9 @@ function setup(queryMode: QueryMode = DefaultMode as QueryMode) {
   const question = getAdHocQuestion();
   const mode = new Mode(question, queryMode);
 
-  const questionTable = question.table();
+  const maybeTable = question.table();
 
-  if (!questionTable) {
-    throw new Error("Mock question does not contain a table");
-  }
+  const questionTable = checkNotNull(maybeTable);
 
   const clicked = {
     column: questionTable.fields[0].column() as Column,

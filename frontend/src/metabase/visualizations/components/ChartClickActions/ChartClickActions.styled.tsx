@@ -7,8 +7,8 @@ import Icon from "metabase/components/Icon/Icon";
 
 export type SectionType = "records" | string;
 
-export interface ClickActionButtonProps {
-  type: ClickActionButtonType | undefined;
+interface ClickActionButtonProps {
+  type?: ClickActionButtonType;
 }
 
 export const Container = styled.div`

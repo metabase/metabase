@@ -164,10 +164,6 @@ describe("UnderlyingRecordsDrill", () => {
       expect(actions).toHaveLength(1);
 
       const [action] = actions;
-      if (!("title" in action)) {
-        throw new Error("Received unexpected action type");
-      }
-
       expect(action.title).toEqual("See these SomeTitles");
     });
   });
