@@ -130,8 +130,7 @@
     (mt/with-temporary-setting-values [is-metabot-enabled true]
       (mt/dataset sample-dataset
         (let [user_prompt "Show me all of my reviews data"
-              db          (t2/select-one Database :id (mt/id))
-              context     {:database    (->> db
+              context     {:database    (->> (mt/db)
                                              metabot-util/denormalize-database
                                              metabot-util/add-pseudo-table-ddls)
                            :user_prompt user_prompt
