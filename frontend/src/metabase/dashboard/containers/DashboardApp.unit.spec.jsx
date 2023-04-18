@@ -81,7 +81,7 @@ function createMockEventListener() {
 }
 
 describe("DashboardApp", function () {
-  it("should fire an event when the user tries to leave a dirty dashboard", async function () {
+  it("should have a beforeunload event when the user tries to leave a dirty dashboard", async function () {
     const { events, mockEvent } = await setup();
 
     userEvent.click(screen.getByLabelText("Edit dashboard"));
@@ -95,7 +95,7 @@ describe("DashboardApp", function () {
     expect(mockEvent.returnValue).toEqual("You have unsaved changes.");
   });
 
-  it("should not fire an event when the dashboard is unedited", async function () {
+  it("should not have a beforeunload event when the dashboard is unedited", async function () {
     const { events, mockEvent } = await setup();
 
     userEvent.click(screen.getByLabelText("Edit dashboard"));
