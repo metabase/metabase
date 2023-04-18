@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
+import _ from "underscore";
 import Schemas from "metabase/entities/schemas";
 import Icon from "metabase/components/Icon/Icon";
 import { DatabaseId, Schema, SchemaId } from "metabase-types/api";
@@ -26,9 +27,12 @@ const SchemaList = ({
   const [searchText, setSearchText] = useState("");
 
   const filteredSchemas = useMemo(() => {
-    return schemas.filter(({ name }) =>
-      name.toLowerCase().includes(searchText.toLowerCase()),
-    );
+    const searchValue = searchText.toLowerCase();
+
+    return _.chain(schemas)
+      .filter(schema => schema.name.toLowerCase().includes(searchValue))
+      .sortBy(schema => schema.name)
+      .value();
   }, [schemas, searchText]);
 
   return (
