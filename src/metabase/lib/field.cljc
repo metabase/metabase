@@ -12,13 +12,14 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref]
+   [metabase.lib.schema.temporal-bucketing
+    :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]))
+   [metabase.util.malli :as mu]))
 
 (comment metabase.lib.schema.ref/keep-me)
 
