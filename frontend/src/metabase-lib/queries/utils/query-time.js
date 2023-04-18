@@ -1,15 +1,14 @@
 import _ from "underscore";
 import moment from "moment-timezone";
 import { assoc } from "icepick";
-import inflection from "inflection";
 import { t, ngettext, msgid } from "ttag";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 
-import { FieldDimension } from "metabase-lib/Dimension";
-
 import * as ML_TemporalBucket from "cljs/metabase.lib.temporal_bucket";
+
+import { FieldDimension } from "metabase-lib/Dimension";
 
 export const DATETIME_UNITS = [
   "minute",

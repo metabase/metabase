@@ -5,8 +5,7 @@
       {
         "patterns": [
           "metabase-enterprise",
-          "metabase-enterprise/*",
-          "cljs/metabase.lib*"
+          "metabase-enterprise/*"
         ]
       }
     ]

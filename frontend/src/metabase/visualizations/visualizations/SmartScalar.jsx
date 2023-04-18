@@ -15,8 +15,8 @@ import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
-import { isDate } from "metabase-lib/types/utils/isa";
 import * as ML_TemporalBucket from "cljs/metabase.lib.temporal_bucket";
+import { isDate } from "metabase-lib/types/utils/isa";
 
 import {
   PreviousValueContainer,

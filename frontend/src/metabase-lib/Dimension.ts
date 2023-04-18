@@ -13,10 +13,10 @@ import {
 } from "metabase-types/types/Query";
 import { VariableTarget } from "metabase-types/types/Parameter";
 import { IconName } from "metabase-types/types";
+import * as ML_TemporalBucket from "cljs/metabase.lib.temporal_bucket";
 import { infer, MONOTYPE } from "metabase-lib/expressions/typeinferencer";
 import { TYPE } from "metabase-lib/types/constants";
 import { DATETIME_UNITS } from "metabase-lib/queries/utils/query-time";
-import * as ML_TemporalBucket from "cljs/metabase.lib.temporal_bucket";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import Field from "metabase-lib/metadata/Field";
 import {
