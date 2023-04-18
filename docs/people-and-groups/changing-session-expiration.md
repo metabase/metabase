@@ -6,6 +6,8 @@ redirect_from:
 
 # Session expiration
 
+{% include plans-blockquote.html feature="Session expiration" %}
+
 By default, Metabase sessions are valid for two weeks after a user last authenticated (e.g. by entering their email
 address/password or via an SSO provider). For example, even if you visit your Metabase instance every day, you'll
 still have to log in again every two weeks.
