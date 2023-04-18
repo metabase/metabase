@@ -30,7 +30,7 @@ import {
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
-import { saveDashboardPdf } from "metabase/visualizations/lib/save-chart-image";
+import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
