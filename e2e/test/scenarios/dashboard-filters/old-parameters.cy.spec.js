@@ -3,6 +3,7 @@ import {
   popover,
   visitDashboard,
   rightSidebar,
+  filterWidget,
 } from "e2e/support/helpers";
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -80,13 +81,9 @@ describe("scenarios > dashboard > OLD parameters", () => {
       // test prevent auto-apply filters in slow dashboards metabase#29267
       openDashboardSidebar();
 
-      const dashboardParameters = cy.findByTestId(
-        "dashboard-parameters-widget-container",
-      );
-
-      dashboardParameters.findByText("Gadget").should("be.visible");
+      filterWidget().findByText("Gadget").should("be.visible");
       rightSidebar().findByLabelText("Auto-apply filters").click();
-      dashboardParameters.button("Apply").should("not.exist");
+      filterWidget().button("Apply").should("not.exist");
 
       cy.button("Category").click();
       popover().within(() => {
@@ -95,7 +92,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
       });
 
       cy.findByText("Rows 1-6 of 200").should("be.visible");
-      dashboardParameters.button("Apply").click();
+      cy.button("Apply").click();
       cy.findByText("Rows 1-6 of 53").should("be.visible");
     });
   });
