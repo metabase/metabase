@@ -764,3 +764,8 @@
     ::upload/boolean     "BOOLEAN"
     ::upload/date        "DATE"
     ::upload/datetime    "TIMESTAMP"))
+
+(defmethod driver/table-name-length-limit :postgres
+  [_driver]
+  ;; https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
+  63)

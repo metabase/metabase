@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.models :refer [Field Table]]
+   [metabase.query-processor :as qp]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.upload :as upload]
@@ -296,6 +297,33 @@
                     alternating (map even? (range (count bool-column)))]
                 (is (= alternating bool-column))))))))))
 
+(deftest load-from-csv-length-test
+  (testing "Upload a CSV file with a long name"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (let [length-limit (driver/table-name-length-limit driver/*driver*)
+            long-name  (apply str (repeat 33 "abcdefgh")) ; 33×8 = 264. Max is H2 at 256
+            short-name (subs long-name 0 (- length-limit (count "_yyyyMMddHHmmss")))]
+        (is (pos? length-limit) "driver/table-name-length-limit has been set")
+        (mt/with-empty-db
+          (upload/load-from-csv
+           driver/*driver*
+           (mt/id)
+           (upload/unique-table-name driver/*driver* long-name)
+           (csv-file-with ["id,bool"
+                           "1,true"
+                           "2,false"]))
+          (testing "It truncates it to the right number of characters, allowing for the timestamp"
+            (sync/sync-database! (mt/db))
+            (let [table    (t2/select-one Table :db_id (mt/id) :%lower.name [:like (str short-name "%")])
+                  table-re (re-pattern (str "(?i)" short-name "_\\d{14}"))]
+              (is (re-matches table-re (:name table)))
+              (testing "Check the data was uploaded into the table correctly"
+                (let [rows (->> (qp/process-query {:database (:db_id table)
+                                                   :type     :query
+                                                   :query    {:source-table (:id table)}})
+                                mt/rows)]
+                  (is (= [[1 true] [2 false]] rows)))))))))))
+
 (deftest load-from-csv-empty-header-test
   (testing "Upload a CSV file with a blank column name"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -316,6 +344,28 @@
                                    (mt/cols)
                                    (map :name))]
                 (is (= ["unnamed_column_1", "ship_name", "unnamed_column_3"]
+                       col-names))))))))))
+
+(deftest load-from-csv-duplicate-names-test
+  (testing "Upload a CSV file with duplicate column names"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["unknown,unknown,unknown"
+                         "1,Serenity,Malcolm Reynolds"
+                         "2,Millennium Falcon, Han Solo"]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (let [col-names (->> (mt/run-mbql-query upload_test)
+                                   (mt/cols)
+                                   (map :name))]
+                (is (= ["unknown", "unknown_duplicate_1", "unknown_duplicate_2"]
                        col-names))))))))))
 
 (deftest load-from-csv-failed-test

@@ -620,3 +620,8 @@
     ::upload/boolean     "BOOLEAN"
     ::upload/date        "DATE"
     ::upload/datetime    "TIMESTAMP"))
+
+(defmethod driver/table-name-length-limit :mysql
+  [_driver]
+  ;; https://dev.mysql.com/doc/refman/8.0/en/identifier-length.html
+  64)

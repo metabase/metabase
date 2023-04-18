@@ -1001,14 +1001,14 @@ saved later when it is ready."
         schema-name       (setting/get :uploads-schema-name)
         filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                               filename)
-        table-name        (-> (str (setting/get :uploads-table-prefix) filename-prefix)
-                              upload/unique-table-name)
-        schema+table-name (if (str/blank? schema-name)
-                            table-name
-                            (str schema-name "." table-name))
         driver            (driver.u/database->driver database)
         _                 (or (driver/database-supports? driver :uploads nil)
                               (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
+        table-name        (->> (str (setting/get :uploads-table-prefix) filename-prefix)
+                               (upload/unique-table-name driver))
+        schema+table-name (if (str/blank? schema-name)
+                            table-name
+                            (str schema-name "." table-name))
         _                 (upload/load-from-csv driver db-id schema+table-name csv-file)
         _                 (sync/sync-database! database)
         table-id          (t2/select-one-fn :id Table :db_id db-id :%lower.name table-name)]
