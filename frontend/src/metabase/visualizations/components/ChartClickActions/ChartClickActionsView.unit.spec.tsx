@@ -2,6 +2,7 @@ import React from "react";
 import { render, screen } from "__support__/ui";
 import DefaultMode from "metabase/modes/components/modes/DefaultMode";
 import { QueryMode } from "metabase-types/types/Visualization";
+import { Column } from "metabase-types/types/Dataset";
 import Mode from "metabase-lib/Mode";
 import { getAdHocQuestion } from "metabase-lib/mocks";
 import ChartClickActionsView from "./ChartClickActionsView";
@@ -28,11 +29,11 @@ function setup(queryMode: QueryMode = DefaultMode as QueryMode) {
   }
 
   const clicked = {
-    column: questionTable.fields[0].column(),
+    column: questionTable.fields[0].column() as Column,
     value: 42,
     dimensions: [
       {
-        column: questionTable.fields[0].column(),
+        column: questionTable.fields[0].column() as Column,
         value: 42,
       },
     ],
