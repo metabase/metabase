@@ -2,12 +2,12 @@
   "The core metabot namespace. Consists primarily of functions named infer-X,
   where X is the thing we want to extract from the bot response."
   (:require
-    [cheshire.core :as json]
-    [metabase.lib.native :as lib-native]
-    [metabase.metabot.client :as metabot-client]
-    [metabase.metabot.settings :as metabot-settings]
-    [metabase.metabot.util :as metabot-util]
-    [metabase.util.log :as log]))
+   [cheshire.core :as json]
+   [metabase.lib.native :as lib-native]
+   [metabase.metabot.client :as metabot-client]
+   [metabase.metabot.settings :as metabot-settings]
+   [metabase.metabot.util :as metabot-util]
+   [metabase.util.log :as log]))
 
 (defn infer-viz
   "Determine an 'interesting' visualization for this data."
