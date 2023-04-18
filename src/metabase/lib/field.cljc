@@ -254,8 +254,8 @@
   field-clause)
 
 (defmethod lib.ref/ref-method :metadata/field
-  [metadata]
-  (case (:lib/source metadata)
+  [{source :lib/source, :as metadata}]
+  (case source
     :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
     :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
     (let [options          (merge
@@ -275,6 +275,13 @@
                         (:name metadata)
                         (or (:id metadata) (:name metadata)))])))
 
+(defn- implicit-join-name [query {fk-field-id :fk_field_id, table-id :table_id, :as _field-metadata}]
+  (when (and fk-field-id table-id)
+    (when-let [table-metadata (lib.metadata/table query table-id)]
+      (let [table-name           (:name table-metadata)
+            source-field-id-name (:name (lib.metadata/field query fk-field-id))]
+        (lib.join/implicit-join-name table-name source-field-id-name)))))
+
 (mu/defn desired-alias :- ::lib.schema.common/non-blank-string
   "Desired alias for a Field e.g.
 
@@ -285,8 +292,10 @@
     MyJoin__my_field
 
   You should pass the results thru a unique name function."
-  [field-metadata :- lib.metadata/ColumnMetadata]
-  (if-let [join-alias (lib.join/current-join-alias field-metadata)]
+  [query          :- ::lib.schema/query
+   field-metadata :- lib.metadata/ColumnMetadata]
+  (if-let [join-alias (or (lib.join/current-join-alias field-metadata)
+                          (implicit-join-name query field-metadata))]
     (lib.join/joined-field-desired-alias join-alias (:name field-metadata))
     (:name field-metadata)))
 
