@@ -447,8 +447,7 @@
     ring.adapter.jetty9.servlet                                     servlet
     saml20-clj.core                                                 saml
     toucan.db                                                       db
-    toucan.models                                                   models}}
-
+    toucan.models                                                   models}}}
 
  :lint-as
  {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
