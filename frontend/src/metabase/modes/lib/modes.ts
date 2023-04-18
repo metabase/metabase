@@ -24,6 +24,7 @@ export function getMode(question: Question): Mode | null {
   return queryMode ? new Mode(question, queryMode) : null;
 }
 
+// TODO [#26836]: remove "any"
 export function getQueryMode(question: Question): QueryMode | any | null {
   const mode = getModeType(question);
   if (!mode) {

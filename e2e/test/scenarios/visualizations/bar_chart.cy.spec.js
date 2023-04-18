@@ -298,7 +298,7 @@ describe("scenarios > visualizations > bar chart", () => {
       });
 
       cy.findAllByTestId("legend-item").findByText("Doohickey").click();
-      cy.findByText("View these Products").click();
+      cy.findByText("See these Products").click();
 
       cy.findByText("Category is Doohickey").should("be.visible");
     });
