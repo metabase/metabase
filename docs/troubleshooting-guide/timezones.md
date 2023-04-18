@@ -30,7 +30,7 @@ Once you have these answers, look for cases like these:
 Once you think you have identified a problem, drill down to understand exactly what time zone conversion is causing the underlying problem. For example, suppose you're looking at a time series with daily values; if your error is happening with weekly totals, you can:
 
 1. Pick a specific day where you know the number is incorrect.
-2. Click on the data point in a chart, or a cell in a result table, and select "View these X."
+2. Click on the data point in a chart, or a cell in a result table, and select "See these X."
 3. Open this question in two other tabs in your browser. Change the date filters so that one tab has the rows in the underlying table from the _previous_ day, and the other table has the rows in the underlying table from the _next_ day.
 4. Check that the date field being used to group the result in the underlying display is correct. If it is different from what you have stored in the database, or what you have in another tool, then the timestamp is being transformed incorrectly across the board. This often happens when you use a date or time lacking an explicit time zone.
 5. If the underlying timestamps are correct (which they should if they have explicit time zones), the individual times are probably being grouped into days in a different time zone than the one you want.
