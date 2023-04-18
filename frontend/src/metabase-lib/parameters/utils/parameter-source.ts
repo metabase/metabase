@@ -7,7 +7,11 @@ import {
 import Field from "metabase-lib/metadata/Field";
 import { ParameterWithTemplateTagTarget } from "../types";
 import { getFields } from "./parameter-fields";
-import { getParameterSubType, getParameterType } from "./parameter-type";
+import {
+  getParameterSubType,
+  getParameterType,
+  isStringParameter,
+} from "./parameter-type";
 
 export const getQueryType = (
   parameter: ParameterWithTemplateTagTarget,
@@ -75,11 +79,15 @@ export const canListParameterValues = (parameter: Parameter) => {
   const sourceType = getSourceType(parameter);
   const canListFields = canListFieldValues(getFields(parameter));
 
+  // TODO see what isStringParameter does:
+  const isStringParam = isStringParameter(parameter);
+  console.log("--------------------------------------------------");
+  console.log(`canListParameterValues > isStringParam = ${isStringParam}`);
   console.log(`canListParameterValues > canListFields = ${canListFields}`);
   console.log(`canListParameterValues > queryType = ${queryType}`);
   console.log(`canListParameterValues > sourceType = ${sourceType}`);
 
-  const ret = sourceType ? queryType === "list" : queryType !== "none"; // && canListFields
+  const ret = sourceType ? queryType === "list" : queryType !== "none"; // && canListFields;
   console.log(`canListParameterValues returns: ${ret}`);
   return ret;
 };
