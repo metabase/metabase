@@ -117,9 +117,16 @@
   [n values]
   (first (partition n n (repeat nil) values)))
 
+(defn- normalize-column-name
+  [[raw-name index]]
+  (let [normalized (u/slugify (str/trim raw-name))]
+    (if-not (str/blank? normalized)
+      normalized
+      (format "unnamed-column-%s" (inc index)))))
+
 (defn- rows->schema
   [header rows]
-  (let [normalized-header (map (comp u/slugify str/trim) header)
+  (let [normalized-header (map normalize-column-name (map vector header (range)))
         column-count      (count normalized-header)]
     (->> rows
          (map row->types)
