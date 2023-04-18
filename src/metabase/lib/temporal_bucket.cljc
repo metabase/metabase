@@ -2,12 +2,12 @@
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   [metabase.lib.schema :as lib.schema]))
+   [metabase.util.malli :as mu]))
 
 (defn unit->i18n
   "Get a translated description of a temporal bucketing unit."

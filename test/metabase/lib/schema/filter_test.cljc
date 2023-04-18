@@ -3,9 +3,9 @@
    [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
    [malli.core :as mc]
+   [malli.error :as me]
    [metabase.lib.schema]
-   [metabase.lib.schema.expression :as expression]
-   [malli.error :as me]))
+   [metabase.lib.schema.expression :as expression]))
 
 (comment metabase.lib.schema/keep-me)
 

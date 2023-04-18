@@ -8,13 +8,14 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expresssion]
+   [metabase.lib.schema.temporal-bucketing
+    :as lib.schema.temporal-bucketing]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]))
+   [metabase.util.malli.registry :as mr]))
 
 (def DisplayNameStyle
   "Schema for valid values of `display-name-style` as passed to [[display-name-method]].
