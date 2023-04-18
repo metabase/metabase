@@ -15,6 +15,7 @@ import { isActionDashCard } from "metabase/actions/utils";
 import {
   getDashboard,
   getDraftParameterValues,
+  getIsAutoApplyFilters,
   getParameterValues,
   getParameters,
 } from "../selectors";
@@ -181,8 +182,7 @@ export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => (_dispatch, getState) => {
-    const isSettingDraftParameterValues = !getDashboard(getState())
-      .auto_apply_filters;
+    const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
     return { id: parameterId, value, isDraft: isSettingDraftParameterValues };
   },
 );
