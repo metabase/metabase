@@ -15,5 +15,7 @@ export const createMockEntitiesState = (
   snippets: {},
   users: {},
   questions: {},
+  modelIndexes: {},
+  indexedEntities: {},
   ...opts,
 });

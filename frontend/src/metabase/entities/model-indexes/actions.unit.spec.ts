@@ -19,8 +19,7 @@ import {
 } from "./actions";
 
 const createMockField = (options?: Partial<FieldWithMaybeIndex>): Field => {
-  // @ts-expect-error we're shoving FieldWithMaybeIndex into Field
-  return createBaseMockField(options);
+  return createBaseMockField(options as Partial<Field>);
 };
 
 const createModelWithResultMetadata = (fields: Field[]) => {
