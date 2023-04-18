@@ -7,8 +7,7 @@
     [metabase.metabot.client :as metabot-client]
     [metabase.metabot.settings :as metabot-settings]
     [metabase.metabot.util :as metabot-util]
-    [metabase.util.log :as log]
-    [toucan2.core :as t2]))
+    [metabase.util.log :as log]))
 
 (defn infer-viz
   "Determine an 'interesting' visualization for this data."
@@ -95,14 +94,14 @@
                                    :tokens    tokens}))
                               create_table_ddls)
           ddl            (metabot-util/generate-prompt prompt-objects user_prompt)
-          context        (assoc-in context [:database :create_database_ddl] ddl)]
-      (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)]
-        (if-some [sql (metabot-util/find-result
-                        metabot-util/extract-sql
-                        (metabot-client/invoke-metabot prompt))]
-          {:sql                      sql
-           :prompt_template_versions (conj
-                                       (vec prompt_template_versions)
-                                       (format "%s:%s" prompt_template version))}
-          (log/infof "No sql inferred for database '%s' with prompt '%s'." database-id user_prompt))))
+          context        (assoc-in context [:database :create_database_ddl] ddl)
+          {:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)]
+      (if-some [sql (metabot-util/find-result
+                     metabot-util/extract-sql
+                     (metabot-client/invoke-metabot prompt))]
+        {:sql                      sql
+         :prompt_template_versions (conj
+                                    (vec prompt_template_versions)
+                                    (format "%s:%s" prompt_template version))}
+        (log/infof "No sql inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))
