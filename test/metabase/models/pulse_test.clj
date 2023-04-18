@@ -18,7 +18,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
@@ -472,5 +472,5 @@
       (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/" :created_at now}]
                       Pulse       [pulse {:name "my pulse" :collection_id (:id coll) :created_at now}]]
         (is (= "82553101"
-               (serdes.hash/raw-hash ["my pulse" (serdes.hash/identity-hash coll) now])
-               (serdes.hash/identity-hash pulse)))))))
+               (serdes/raw-hash ["my pulse" (serdes/identity-hash coll) now])
+               (serdes/identity-hash pulse)))))))

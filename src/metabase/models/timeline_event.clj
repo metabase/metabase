@@ -1,9 +1,7 @@
 (ns metabase.models.timeline-event
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [schema.core :as s]
@@ -96,16 +94,16 @@
  TimelineEvent
  {:properties (constantly {::mi/timestamped? true})})
 
-(defmethod serdes.hash/identity-hash-fields TimelineEvent
+(defmethod serdes/hash-fields TimelineEvent
   [_timeline-event]
-  [:name :timestamp (serdes.hash/hydrated-hash :timeline) :created_at])
+  [:name :timestamp (serdes/hydrated-hash :timeline) :created_at])
 
 ;;;; serialization
 ;; TimelineEvents are inlined under their Timelines, but we can reuse the [[load-one!]] logic using [[load-xform]].
-(defmethod serdes.base/load-xform "TimelineEvent" [event]
+(defmethod serdes/load-xform "TimelineEvent" [event]
   (-> event
-      serdes.base/load-xform-basics
-      (update :timeline_id serdes.util/import-fk 'Timeline)
-      (update :creator_id  serdes.util/import-user)
+      serdes/load-xform-basics
+      (update :timeline_id serdes/*import-fk* 'Timeline)
+      (update :creator_id  serdes/*import-user*)
       (update :timestamp   u.date/parse)
       (update :created_at  #(if (string? %) (u.date/parse %) %))))

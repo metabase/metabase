@@ -7,9 +7,7 @@
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan.db :as db]
@@ -42,9 +40,9 @@
                            ::mi/entity-id    true})
   :pre-update pre-update})
 
-(defmethod serdes.hash/identity-hash-fields Metric
+(defmethod serdes/hash-fields Metric
   [_metric]
-  [:name (serdes.hash/hydrated-hash :table "<none>") :created_at])
+  [:name (serdes/hydrated-hash :table) :created_at])
 
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
@@ -72,30 +70,28 @@
 
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
-(defmethod serdes.base/extract-one "Metric"
+(defmethod serdes/extract-one "Metric"
   [_model-name _opts metric]
-  (-> (serdes.base/extract-one-basics "Metric" metric)
-      (update :table_id   serdes.util/export-table-fk)
-      (update :creator_id serdes.util/export-user)
-      (update :definition serdes.util/export-mbql)))
+  (-> (serdes/extract-one-basics "Metric" metric)
+      (update :table_id   serdes/*export-table-fk*)
+      (update :creator_id serdes/*export-user*)
+      (update :definition serdes/export-mbql)))
 
-(defmethod serdes.base/load-xform "Metric" [metric]
+(defmethod serdes/load-xform "Metric" [metric]
   (-> metric
-      serdes.base/load-xform-basics
-      (update :table_id   serdes.util/import-table-fk)
-      (update :creator_id serdes.util/import-user)
-      (update :definition serdes.util/import-mbql)))
+      serdes/load-xform-basics
+      (update :table_id   serdes/*import-table-fk*)
+      (update :creator_id serdes/*import-user*)
+      (update :definition serdes/import-mbql)))
 
-(defmethod serdes.base/serdes-dependencies "Metric" [{:keys [definition table_id]}]
-  (into [] (set/union #{(serdes.util/table->path table_id)}
-                      (serdes.util/mbql-deps definition))))
+(defmethod serdes/dependencies "Metric" [{:keys [definition table_id]}]
+  (into [] (set/union #{(serdes/table->path table_id)}
+                      (serdes/mbql-deps definition))))
 
-(defmethod serdes.base/storage-path "Metric" [metric _ctx]
-  (let [{:keys [id label]} (-> metric serdes.base/serdes-path last)]
+(defmethod serdes/storage-path "Metric" [metric _ctx]
+  (let [{:keys [id label]} (-> metric serdes/path last)]
     (-> metric
         :table_id
-        serdes.util/table->path
-        serdes.util/storage-table-path-prefix
-        (concat ["metrics" (serdes.base/storage-leaf-file-name id label)]))))
-
-(serdes.base/register-ingestion-path! "Metric" (serdes.base/ingestion-matcher-collected "databases" "Metric"))
+        serdes/table->path
+        serdes/storage-table-path-prefix
+        (concat ["metrics" (serdes/storage-leaf-file-name id label)]))))

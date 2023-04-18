@@ -9,9 +9,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.secret :as secret :refer [Secret]]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -207,11 +205,12 @@
                             :existing-engine existing-engine
                             :new-engine      new-engine})))))))
 
-(defn- pre-insert [{:keys [details], :as database}]
-  (-> (cond-> database
-        (not details) (assoc :details {}))
-      handle-secrets-changes
-      (assoc :initial_sync_status "incomplete")))
+(defn- pre-insert [{:keys [details initial_sync_status], :as database}]
+   (-> database
+       (cond->
+        (not details)             (assoc :details {})
+        (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
+       handle-secrets-changes))
 
 (defmethod mi/perms-objects-set Database
   [{db-id :id} read-or-write]
@@ -236,7 +235,7 @@
   :pre-update     pre-update
   :pre-delete     pre-delete})
 
-(defmethod serdes.hash/identity-hash-fields Database
+(defmethod serdes/hash-fields Database
   [_database]
   [:name :engine])
 
@@ -302,55 +301,45 @@
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 
-(defmethod serdes.base/extract-one "Database"
-  [_model-name {secrets :database/secrets :or {secrets :exclude}} entity]
-  ;; TODO Support alternative encryption of secret database details.
-  ;; There's one optional foreign key: creator_id. Resolve it as an email.
-  (cond-> (serdes.base/extract-one-basics "Database" entity)
-    true                 (update :creator_id serdes.util/export-user)
-    true                 (dissoc :features) ; This is a synthetic column that isn't in the real schema.
-    (= :exclude secrets) (dissoc :details)))
+(defmethod serdes/extract-one "Database"
+  [_model-name {:keys [include-database-secrets]} entity]
+  (-> (serdes/extract-one-basics "Database" entity)
+      (update :creator_id serdes/*export-user*)
+      (dissoc :features) ; This is a synthetic column that isn't in the real schema.
+      (cond-> (not include-database-secrets) (dissoc :details))))
 
-(defmethod serdes.base/serdes-entity-id "Database"
+(defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]
   name)
 
-(defmethod serdes.base/serdes-generate-path "Database"
+(defmethod serdes/generate-path "Database"
   [_ {:keys [name]}]
   [{:model "Database" :id name}])
 
-(defmethod serdes.base/load-find-local "Database"
+(defmethod serdes/load-find-local "Database"
   [[{:keys [id]}]]
   (db/select-one Database :name id))
 
-(defmethod serdes.base/load-xform "Database"
+(defmethod serdes/load-xform "Database"
   [database]
   (-> database
-      serdes.base/load-xform-basics
-      (update :creator_id serdes.util/import-user)))
+      serdes/load-xform-basics
+      (update :creator_id serdes/*import-user*)
+      (assoc :initial_sync_status "complete")))
 
-(defmethod serdes.base/load-insert! "Database" [_ ingested]
-  (let [m (get-method serdes.base/load-insert! :default)]
+(defmethod serdes/load-insert! "Database" [_ ingested]
+  (let [m (get-method serdes/load-insert! :default)]
     (m "Database"
        (if (:details ingested)
          ingested
          (assoc ingested :details {})))))
 
-(defmethod serdes.base/load-update! "Database" [_ ingested local]
-  (let [m (get-method serdes.base/load-update! :default)]
+(defmethod serdes/load-update! "Database" [_ ingested local]
+  (let [m (get-method serdes/load-update! :default)]
     (m "Database"
        (update ingested :details #(or % (:details local) {}))
        local)))
 
-(defmethod serdes.base/storage-path "Database" [{:keys [name]} _]
+(defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
-
-(serdes.base/register-ingestion-path!
-  "Database"
-  ;; ["databases" "my-db" "my-db"]
-  (fn [[a b c :as path]]
-    (when (and (= (count path) 3)
-               (= a "databases")
-               (= b c))
-      [{:model "Database" :id c}])))

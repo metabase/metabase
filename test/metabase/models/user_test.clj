@@ -21,7 +21,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-test :as perms-test]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -480,8 +480,8 @@
   (testing "User hashes are based on the email address"
     (mt/with-temp User  [user  {:email "fred@flintston.es"}]
       (is (= "e8d63472"
-             (serdes.hash/raw-hash ["fred@flintston.es"])
-             (serdes.hash/identity-hash user))))))
+             (serdes/raw-hash ["fred@flintston.es"])
+             (serdes/identity-hash user))))))
 
 (deftest hash-password-on-update-test
   (testing "Setting `:password` with [[db/update!]] should hash the password, just like [[db/insert!]]"

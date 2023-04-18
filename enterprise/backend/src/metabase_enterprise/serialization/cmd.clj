@@ -4,10 +4,10 @@
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
-   [metabase-enterprise.serialization.v2.ingest.yaml :as v2.ingest]
+   [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase-enterprise.serialization.v2.seed-entity-ids :as v2.seed-entity-ids]
-   [metabase-enterprise.serialization.v2.storage.yaml :as v2.storage]
+   [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.db :as mdb]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
@@ -18,6 +18,7 @@
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
+   [metabase.models.serialization :as serdes]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
    [metabase.plugins :as plugins]
@@ -26,7 +27,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -71,15 +73,18 @@
         (throw e)))))
 
 (defn v2-load
-  "SerDes v2 load entry point"
-  [path]
+  "SerDes v2 load entry point.
+
+   opts are passed to load-metabase"
+  [path opts]
   (plugins/load-plugins!)
   (mdb/setup-db!)
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
   ;(when-not (load/compatible? path)
   ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
   (log/info (trs "Loading serialized Metabase files from {0}" path))
-  (v2.load/load-metabase (v2.ingest/ingest-yaml path)))
+  (serdes/with-cache
+    (v2.load/load-metabase (v2.ingest/ingest-yaml path) opts)))
 
 (defn- select-entities-in-collections
   ([model collections]
@@ -193,9 +198,10 @@
   [path opts]
   (log/info (trs "Exporting Metabase to {0}" path) (u/emoji "🏭 🚛💨"))
   (mdb/setup-db!)
-  (db/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
-  (-> (v2-extract opts)
-      (v2.storage/store! path))
+  (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
+  (serdes/with-cache
+    (-> (v2-extract opts)
+        (v2.storage/store! path)))
   (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦")))
 
 (defn seed-entity-ids

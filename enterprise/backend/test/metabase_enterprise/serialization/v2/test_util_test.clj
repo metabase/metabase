@@ -1,9 +1,9 @@
-(ns metabase-enterprise.serialization.v2.util-test
+(ns metabase-enterprise.serialization.v2.test-util-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase.models :refer [Database Field Table]]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]))
 
 (deftest mbql-deserialize-test
@@ -22,7 +22,7 @@
                          :aggregation  [["cum-count"]]
                          :breakout     [["datetime-field" [:field created-id] "week"]]
                          :filter       ["<" [:field nps-id] 9]}}
-             (#'serdes.util/mbql-fully-qualified-names->ids
+             (#'serdes/mbql-fully-qualified-names->ids
                {:database "Metabase Store",
                 :type     "query",
                 :query    {:source-table ["Metabase Store" "public" "crm_survey_response"],

@@ -10,9 +10,7 @@
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse-card :refer [PulseCard]]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -76,10 +74,10 @@
                    (m/update-existing :parameter_mappings mi/normalize-parameters-list)
                    (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
-(defmethod serdes.hash/identity-hash-fields DashboardCard
+(defmethod serdes/hash-fields DashboardCard
   [_dashboard-card]
-  [(serdes.hash/hydrated-hash :card "<none>") ; :card is optional, eg. text cards
-   (comp serdes.hash/identity-hash
+  [(serdes/hydrated-hash :card) ; :card is optional, eg. text cards
+   (comp serdes/identity-hash
          #(db/select-one 'Dashboard :id %)
          :dashboard_id)
    :visualization_settings
@@ -303,12 +301,12 @@
          col]))))
 
 (def ^:private link-card-models
-  (set (keys serdes.util/link-card-model->toucan-model)))
+  (set (keys serdes/link-card-model->toucan-model)))
 
 (defn- link-card-info-query-for-model
   [[model ids]]
   {:select (select-clause-for-link-card-model model)
-   :from   (t2/table-name (serdes.util/link-card-model->toucan-model model))
+   :from   (t2/table-name (serdes/link-card-model->toucan-model model))
    :where  [:in :id ids]})
 
 (defn- link-card-info-query
@@ -341,7 +339,7 @@
             model-and-id->info
             (-> (m/index-by (juxt :model :id) (t2/query (link-card-info-query model-and-ids)))
                 (update-vals (fn [{model :model :as instance}]
-                               (if (mi/can-read? (t2/instance (serdes.util/link-card-model->toucan-model model) instance))
+                               (if (mi/can-read? (t2/instance (serdes/link-card-model->toucan-model model) instance))
                                  instance
                                  {:restricted true}))))]
 
@@ -358,17 +356,17 @@
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 ;; DashboardCards are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
 ;; However, we can reuse some of the serdes machinery (especially load-one!) by implementing a few serdes methods.
-(defmethod serdes.base/serdes-generate-path "DashboardCard" [_ dashcard]
-  [(serdes.base/infer-self-path "Dashboard" (db/select-one 'Dashboard :id (:dashboard_id dashcard)))
-   (serdes.base/infer-self-path "DashboardCard" dashcard)])
+(defmethod serdes/generate-path "DashboardCard" [_ dashcard]
+  [(serdes/infer-self-path "Dashboard" (db/select-one 'Dashboard :id (:dashboard_id dashcard)))
+   (serdes/infer-self-path "DashboardCard" dashcard)])
 
-(defmethod serdes.base/load-xform "DashboardCard"
+(defmethod serdes/load-xform "DashboardCard"
   [dashcard]
   (-> dashcard
       (dissoc :serdes/meta)
-      (update :card_id                serdes.util/import-fk 'Card)
-      (update :action_id              serdes.util/import-fk 'Action)
-      (update :dashboard_id           serdes.util/import-fk 'Dashboard)
+      (update :card_id                serdes/*import-fk* 'Card)
+      (update :action_id              serdes/*import-fk* 'Action)
+      (update :dashboard_id           serdes/*import-fk* 'Dashboard)
       (update :created_at             #(if (string? %) (u.date/parse %) %))
-      (update :parameter_mappings     serdes.util/import-parameter-mappings)
-      (update :visualization_settings serdes.util/import-visualization-settings)))
+      (update :parameter_mappings     serdes/import-parameter-mappings)
+      (update :visualization_settings serdes/import-visualization-settings)))

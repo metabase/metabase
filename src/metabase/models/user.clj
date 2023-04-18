@@ -10,7 +10,7 @@
    [metabase.models.permissions-group-membership
     :as perms-group-membership
     :refer [PermissionsGroupMembership]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.session :refer [Session]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
@@ -164,7 +164,7 @@
   :types          (constantly {:login_attributes :json-no-keywordization
                                :settings         :encrypted-json})})
 
-(defmethod serdes.hash/identity-hash-fields User
+(defmethod serdes/hash-fields User
   [_user]
   [:email])
 

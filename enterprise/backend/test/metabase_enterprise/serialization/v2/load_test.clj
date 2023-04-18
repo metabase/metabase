@@ -7,27 +7,16 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.models
-    :refer [Action
-            Card
-            Collection
-            Dashboard
-            DashboardCard
-            Database
-            Field
-            FieldValues
-            Metric
-            NativeQuerySnippet
-            Segment
-            Table
-            Timeline
-            TimelineEvent
-            User]]
+    :refer [Action Card Collection Dashboard DashboardCard Database Field
+            FieldValues Metric NativeQuerySnippet Segment Table Timeline
+            TimelineEvent User]]
    [metabase.models.action :as action]
-   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
 
@@ -45,7 +34,7 @@
 
 (defn- ingestion-in-memory [extractions]
   (let [mapped (into {} (for [entity (into [] extractions)]
-                          [(no-labels (serdes.base/serdes-path entity))
+                          [(no-labels (serdes/path entity))
                            entity]))]
     (reify
       serdes.ingest/Ingestable
@@ -174,7 +163,8 @@
             (reset! db1d (db/select-one Database :name (:name @db1s)))
             (reset! db2d (db/select-one Database :name (:name @db2s)))
 
-            (is (= 3 (db/count Database)))
+            (is (= 3 (t2/count Database)))
+            (is (every? #(= "complete" (:initial_sync_status %)) (t2/select Database)))
             (is (= #{"db1" "db2" "test-data"}
                    (db/select-field :name Database)))
             (is (= #{(:id @db1d) (:id @db2d)}
@@ -790,7 +780,7 @@
           (reset! fv2s     (ts/create! FieldValues :field_id (:id @field2s)
                                        :values ["CONSTRUCTION" "DAYLIGHTING" "DELIVERY" "HAULING"]))
 
-          (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+          (reset! serialized (into [] (serdes.extract/extract-metabase {:include-field-values true})))
 
           (testing "the expected fields are serialized"
             (is (= 1
@@ -813,7 +803,7 @@
                         {:model "Field"       :id "CATEGORY"}
                         {:model "FieldValues" :id "0"}]}
                      (->> fvs
-                          (map serdes.base/serdes-path)
+                          (map serdes/path)
                           (filter #(-> % first :id (= "my-db")))
                           set)))))))
 
@@ -927,7 +917,7 @@
         (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
 
         (testing "on extraction"
-          (reset! extracted (serdes.base/extract-one "Card" {} @card1s))
+          (reset! extracted (serdes/extract-one "Card" {} @card1s))
           (is (= (:entity_id @snippet1s)
                  (-> @extracted :dataset_query :native :template-tags (get "snippet: things") :snippet-id))))
 

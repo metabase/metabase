@@ -15,9 +15,7 @@
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -918,10 +916,10 @@
                       (hydrate :parent_id)
                       :parent_id)]
     (if parent-id
-      (serdes.hash/identity-hash (db/select-one Collection :id parent-id))
+      (serdes/identity-hash (db/select-one Collection :id parent-id))
       "ROOT")))
 
-(defmethod serdes.hash/identity-hash-fields Collection
+(defmethod serdes/hash-fields Collection
   [_collection]
   [:name :namespace parent-identity-hash :created_at])
 
@@ -936,12 +934,12 @@
   :pre-update     pre-update
   :pre-delete     pre-delete})
 
-(defmethod serdes.base/extract-query "Collection" [_model {:keys [collection-set]}]
+(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set]}]
   (if (seq collection-set)
     (db/select-reducible Collection :id [:in collection-set])
     (db/select-reducible Collection :personal_owner_id nil)))
 
-(defmethod serdes.base/extract-one "Collection"
+(defmethod serdes/extract-one "Collection"
   ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.
   ;; Also transform :personal_owner_id from a database ID to the email string, if it's defined.
   ;; Use the :slug as the human-readable label.
@@ -955,35 +953,35 @@
                                  :parent_id
                                  fetch-collection)
         parent-id        (when parent
-                           (or (:entity_id parent) (serdes.hash/identity-hash parent)))
+                           (or (:entity_id parent) (serdes/identity-hash parent)))
         owner-email      (when (:personal_owner_id coll)
                            (db/select-one-field :email 'User :id (:personal_owner_id coll)))]
-    (-> (serdes.base/extract-one-basics "Collection" coll)
+    (-> (serdes/extract-one-basics "Collection" coll)
         (dissoc :location)
         (assoc :parent_id parent-id :personal_owner_id owner-email)
         (assoc-in [:serdes/meta 0 :label] (:slug coll)))))
 
-(defmethod serdes.base/load-xform "Collection" [{:keys [parent_id] :as contents}]
+(defmethod serdes/load-xform "Collection" [{:keys [parent_id] :as contents}]
   (let [loc        (if parent_id
-                     (let [{:keys [id location]} (serdes.base/lookup-by-id Collection parent_id)]
+                     (let [{:keys [id location]} (serdes/*lookup-by-id* Collection parent_id)]
                        (str location id "/"))
                      "/")]
     (-> contents
-        serdes.base/load-xform-basics
+        serdes/load-xform-basics
         (dissoc :parent_id)
         (assoc :location loc)
-        (update :personal_owner_id serdes.util/import-user))))
+        (update :personal_owner_id serdes/*import-user*))))
 
-(defmethod serdes.base/serdes-dependencies "Collection"
+(defmethod serdes/dependencies "Collection"
   [{:keys [parent_id]}]
   (if parent_id
     [[{:model "Collection" :id parent_id}]]
     []))
 
-(defmethod serdes.base/serdes-generate-path "Collection" [_ coll]
-  (serdes.base/maybe-labeled "Collection" coll :slug))
+(defmethod serdes/generate-path "Collection" [_ coll]
+  (serdes/maybe-labeled "Collection" coll :slug))
 
-(defmethod serdes.base/serdes-descendants "Collection" [_model-name id]
+(defmethod serdes/descendants "Collection" [_model-name id]
   (let [location    (db/select-one-field :location Collection :id id)
         child-colls (set (for [child-id (db/select-ids Collection {:where [:like :location (str location id "/%")]})]
                            ["Collection" child-id]))
@@ -993,20 +991,9 @@
                            ["Card" card-id]))]
     (set/union child-colls dashboards cards)))
 
-(defmethod serdes.base/storage-path "Collection" [coll {:keys [collections]}]
+(defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [parental (get collections (:entity_id coll))]
     (concat ["collections"] parental [(last parental)])))
-
-(serdes.base/register-ingestion-path!
-  "Collection"
-  ;; Collections' paths are ["collections" "grandparent" "parent" "me" "me"]
-  (fn [path]
-    (when-let [[id slug] (and (= (first path) "collections")
-                              (apply = (take-last 2 path))
-                              (serdes.base/split-leaf-file-name (last path)))]
-      (cond-> {:model "Collection" :id id}
-        slug (assoc :label slug)
-        true vector))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |

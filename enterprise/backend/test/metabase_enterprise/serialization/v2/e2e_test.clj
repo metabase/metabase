@@ -1,13 +1,13 @@
-(ns ^:mb/once metabase-enterprise.serialization.v2.e2e.yaml-test
+(ns ^:mb/once metabase-enterprise.serialization.v2.e2e-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
-   [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
+   [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
-   [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
+   [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models :refer [Card
                             Collection
                             Dashboard
@@ -17,7 +17,8 @@
                             Field
                             Table]]
    [metabase.models.action :as action]
-   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization :as serdes]
+   [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [reifyhealth.specmonstah.core :as rs]
@@ -171,8 +172,10 @@
                                                 {:table_id      [:t    10]
                                                  :collection_id [:coll 10]
                                                  :creator_id    [:u    10]}))
-               :dashboard               (many-random-fks 100 {} {:collection_id [:coll 100]
-                                                                 :creator_id    [:u    10]})
+               :dashboard               (concat (many-random-fks 100 {} {:collection_id [:coll 100]
+                                                                         :creator_id    [:u    10]})
+                                                ;; create some root collection dashboards
+                                                (many-random-fks 50 {} {:creator_id    [:u 10]}))
                :dashboard-card          (many-random-fks 300 {} {:card_id      [:c 100]
                                                                  :dashboard_id [:d 100]})
                :dimension               (vec (concat
@@ -223,7 +226,7 @@
           (is (= 100 (count (db/select-field :email 'User))))
 
           (testing "extraction"
-            (reset! extraction (into [] (extract/extract-metabase {})))
+            (reset! extraction (serdes/with-cache (into [] (extract/extract-metabase {}))))
             (reset! entities   (reduce (fn [m entity]
                                          (update m (-> entity :serdes/meta last :model)
                                                  (fnil conj []) entity))
@@ -231,7 +234,7 @@
             (is (= 110 (-> @entities (get "Collection") count))))
 
           (testing "storage"
-            (storage.yaml/store! (seq @extraction) dump-dir)
+            (storage/store! (seq @extraction) dump-dir)
 
             (testing "for Actions"
               (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
@@ -271,7 +274,7 @@
                               (reduce +)))))
 
             (testing "for dashboards"
-              (is (= 100 (->> (io/file dump-dir "collections")
+              (is (= 150 (->> (io/file dump-dir "collections")
                               collections
                               (map (comp count dir->file-set #(io/file % "dashboards")))
                               (reduce +)))))
@@ -308,14 +311,14 @@
           (testing "ingest and load"
             (ts/with-dest-db
               (testing "ingested set matches extracted set"
-                (let [extracted-set (set (map (comp #'ingest.yaml/strip-labels serdes.base/serdes-path) @extraction))]
+                (let [extracted-set (set (map (comp #'ingest/strip-labels serdes/path) @extraction))]
                   (is (= (count extracted-set)
                          (count @extraction)))
                   (is (= extracted-set
-                         (set (keys (#'ingest.yaml/ingest-all (io/file dump-dir))))))))
+                         (set (ingest/ingest-list (ingest/ingest-yaml dump-dir)))))))
 
               (testing "doing ingestion"
-                (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
+                (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
                     "successful"))
 
               (testing "for Actions"
@@ -323,21 +326,21 @@
                   (is (= (clean-entity coll)
                          (->> (db/select-one 'Action :entity_id entity_id)
                               (@#'action/hydrate-subtype)
-                              (serdes.base/extract-one "Action" {})
+                              (serdes/extract-one "Action" {})
                               clean-entity)))))
 
               (testing "for Collections"
                 (doseq [{:keys [entity_id] :as coll} (get @entities "Collection")]
                   (is (= (clean-entity coll)
                          (->> (db/select-one 'Collection :entity_id entity_id)
-                              (serdes.base/extract-one "Collection" {})
+                              (serdes/extract-one "Collection" {})
                               clean-entity)))))
 
               (testing "for Databases"
-                (doseq [{:keys [name] :as coll} (get @entities "Database")]
-                  (is (= (clean-entity coll)
-                         (->> (db/select-one 'Database :name name)
-                              (serdes.base/extract-one "Database" {})
+                (doseq [{:keys [name] :as db} (get @entities "Database")]
+                  (is (= (assoc (clean-entity db) :initial_sync_status "complete")
+                         (->> (t2/select-one 'Database :name name)
+                              (serdes/extract-one "Database" {})
                               clean-entity)))))
 
               (testing "for Tables"
@@ -345,7 +348,7 @@
                   (is (= (clean-entity coll)
                          (->> (db/select-one-field :id 'Database :name db_id)
                               (db/select-one 'Table :name name :db_id)
-                              (serdes.base/extract-one "Table" {})
+                              (serdes/extract-one "Table" {})
                               clean-entity)))))
 
               (testing "for Fields"
@@ -355,69 +358,72 @@
                          (->> (db/select-one-field :id 'Database :name db)
                               (db/select-one-field :id 'Table :schema schema :name table :db_id)
                               (db/select-one 'Field :name name :table_id)
-                              (serdes.base/extract-one "Field" {})
+                              (serdes/extract-one "Field" {})
                               clean-entity)))))
 
               (testing "for cards"
                 (doseq [{:keys [entity_id] :as card} (get @entities "Card")]
                   (is (= (clean-entity card)
                          (->> (db/select-one 'Card :entity_id entity_id)
-                              (serdes.base/extract-one "Card" {})
+                              (serdes/extract-one "Card" {})
                               clean-entity)))))
 
               (testing "for dashboards"
                 (doseq [{:keys [entity_id] :as dash} (get @entities "Dashboard")]
                   (is (= (clean-entity dash)
                          (->> (db/select-one 'Dashboard :entity_id entity_id)
-                              (serdes.base/extract-one "Dashboard" {})
+                              (serdes/extract-one "Dashboard" {})
                               clean-entity)))))
 
               (testing "for dashboard cards"
                 (doseq [{:keys [entity_id] :as dashcard} (get @entities "DashboardCard")]
                   (is (= (clean-entity dashcard)
                          (->> (db/select-one 'DashboardCard :entity_id entity_id)
-                              (serdes.base/extract-one "DashboardCard" {})
+                              (serdes/extract-one "DashboardCard" {})
                               clean-entity)))))
 
               (testing "for dimensions"
                 (doseq [{:keys [entity_id] :as dim} (get @entities "Dimension")]
                   (is (= (clean-entity dim)
                          (->> (db/select-one 'Dimension :entity_id entity_id)
-                              (serdes.base/extract-one "Dimension" {})
+                              (serdes/extract-one "Dimension" {})
                               clean-entity)))))
 
               (testing "for metrics"
                 (doseq [{:keys [entity_id] :as metric} (get @entities "Metric")]
                   (is (= (clean-entity metric)
                          (->> (db/select-one 'Metric :entity_id entity_id)
-                              (serdes.base/extract-one "Metric" {})
+                              (serdes/extract-one "Metric" {})
                               clean-entity)))))
 
               (testing "for segments"
                 (doseq [{:keys [entity_id] :as segment} (get @entities "Segment")]
                   (is (= (clean-entity segment)
                          (->> (db/select-one 'Segment :entity_id entity_id)
-                              (serdes.base/extract-one "Segment" {})
+                              (serdes/extract-one "Segment" {})
                               clean-entity)))))
 
               (testing "for native query snippets"
                 (doseq [{:keys [entity_id] :as snippet} (get @entities "NativeQuerySnippet")]
                   (is (= (clean-entity snippet)
                          (->> (db/select-one 'NativeQuerySnippet :entity_id entity_id)
-                              (serdes.base/extract-one "NativeQuerySnippet" {})
+                              (serdes/extract-one "NativeQuerySnippet" {})
                               clean-entity)))))
 
               (testing "for timelines and events"
                 (doseq [{:keys [entity_id] :as timeline} (get @entities "Timeline")]
                   (is (= (clean-entity timeline)
                          (->> (db/select-one 'Timeline :entity_id entity_id)
-                              (serdes.base/extract-one "Timeline" {})
+                              (serdes/extract-one "Timeline" {})
                               clean-entity)))))
 
               (testing "for settings"
-                (is (= (into {} (for [{:keys [key value]} (get @entities "Setting")]
-                                  [key value]))
-                       (yaml/from-file (io/file dump-dir "settings.yaml"))))))))))))
+                (let [settings (get @entities "Setting")]
+                  (is (every? @#'setting/exported-settings
+                              (set (map (comp symbol :key) settings))))
+                  (is (= (into {} (for [{:keys [key value]} settings]
+                                    [key value]))
+                         (yaml/from-file (io/file dump-dir "settings.yaml")))))))))))))
 
 ;; This is a seperate test instead of a `testing` block inside `e2e-storage-ingestion-test`
 ;; because it's quite tricky to set up the generative test to generate parameters with source is card
@@ -461,7 +467,7 @@
               (is (= 2 (db/count ParameterCard))))
 
             (testing "extract and store"
-              (let [extraction (into [] (extract/extract-metabase {}))]
+              (let [extraction (serdes/with-cache (into [] (extract/extract-metabase {})))]
                 (is (= [{:id                   "abc",
                          :name                 "CATEGORY",
                          :type                 :category,
@@ -482,13 +488,13 @@
                          :values_source_type "card"}]
                        (:parameters (first (by-model extraction "Card")))))
 
-                (storage.yaml/store! (seq extraction) dump-dir)))
+                (storage/store! (seq extraction) dump-dir)))
 
             (testing "ingest and load"
               (ts/with-dest-db
                 ;; ingest
                 (testing "doing ingestion"
-                  (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
+                  (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
                       "successful"))
 
                 (let [dash1d (db/select-one Dashboard :name (:name dash1s))
@@ -570,7 +576,7 @@
              DashboardCard _                         {:dashboard_id           dashboard-id
                                                       :visualization_settings (link-card-viz-setting "dataset" model-id)}]
             (testing "extract and store"
-              (let [extraction          (into [] (extract/extract-metabase {}))
+              (let [extraction          (serdes/with-cache (into [] (extract/extract-metabase {})))
                     extracted-dashboard (first (filter #(= (:name %) "Test Dashboard") (by-model extraction "Dashboard")))]
                 (is (= [{:model "collection" :id coll-eid}
                         {:model "database"   :id "Linked database"}
@@ -588,15 +594,15 @@
                         [{:model "Database" :id "Linked database"}
                          {:model "Schema"   :id "Public"}
                          {:model "Table"    :id "Linked table"}]}
-                    (set (serdes.base/serdes-dependencies extracted-dashboard))))
+                    (set (serdes/dependencies extracted-dashboard))))
 
-               (storage.yaml/store! (seq extraction) dump-dir)))
+               (storage/store! (seq extraction) dump-dir)))
 
             (testing "ingest and load"
               ;; ingest
               (ts/with-dest-db
                 (testing "doing ingestion"
-                  (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
+                  (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
                       "successful"))
 
                 (doseq [[name model]

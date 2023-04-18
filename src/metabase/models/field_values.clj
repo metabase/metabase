@@ -19,12 +19,9 @@
     Normally these FieldValues will be deleted after [[advanced-field-values-max-age]] days by the scanning process.
     But they will also be automatically deleted when the Full FieldValues of the same Field got updated."
   (:require
-   [clojure.string :as str]
    [java-time :as t]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
@@ -175,9 +172,9 @@
   :pre-update  pre-update
   :post-select post-select})
 
-(defmethod serdes.hash/identity-hash-fields FieldValues
+(defmethod serdes/hash-fields FieldValues
   [_field-values]
-  [(serdes.hash/hydrated-hash :field)])
+  [(serdes/hydrated-hash :field)])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Utils fns                                                     |
@@ -450,70 +447,50 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Serialization                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-(defmethod serdes.base/serdes-generate-path "FieldValues" [_ {:keys [field_id]}]
+(defmethod serdes/generate-path "FieldValues" [_ {:keys [field_id]}]
   (let [field (db/select-one 'Field :id field_id)]
-    (conj (serdes.base/serdes-generate-path "Field" field)
+    (conj (serdes/generate-path "Field" field)
           {:model "FieldValues" :id "0"})))
 
-(defmethod serdes.base/serdes-dependencies "FieldValues" [fv]
+(defmethod serdes/dependencies "FieldValues" [fv]
   ;; Take the path, but drop the FieldValues section at the end, to get the parent Field's path instead.
-  [(pop (serdes.base/serdes-path fv))])
+  [(pop (serdes/path fv))])
 
-(defmethod serdes.base/extract-one "FieldValues" [_model-name _opts fv]
-  (-> (serdes.base/extract-one-basics "FieldValues" fv)
+(defmethod serdes/extract-one "FieldValues" [_model-name _opts fv]
+  (-> (serdes/extract-one-basics "FieldValues" fv)
       (dissoc :field_id)))
 
-(defmethod serdes.base/load-xform "FieldValues" [fv]
-  (let [[db schema table field :as field-ref] (map :id (pop (serdes.base/serdes-path fv)))
+(defmethod serdes/load-xform "FieldValues" [fv]
+  (let [[db schema table field :as field-ref] (map :id (pop (serdes/path fv)))
         field-ref (if field
                     field-ref
                     ;; It's too short, so no schema. Shift them over and add a nil schema.
                     [db nil schema table])]
-    (-> (serdes.base/load-xform-basics fv)
-        (assoc :field_id (serdes.util/import-field-fk field-ref))
+    (-> (serdes/load-xform-basics fv)
+        (assoc :field_id (serdes/*import-field-fk* field-ref))
         (update :type keyword))))
 
-(defmethod serdes.base/load-find-local "FieldValues" [path]
+(defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
-  (let [field (serdes.base/load-find-local (pop path))]
+  (let [field (serdes/load-find-local (pop path))]
     (db/select-one FieldValues :field_id (:id field))))
 
-(defmethod serdes.base/load-update! "FieldValues" [_ ingested local]
+(defmethod serdes/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.
   ;; This drops those keys from the incoming FieldValues iff they match the local one. If they are actually different,
   ;; this preserves the new value so the normal error is produced.
   (let [ingested (cond-> ingested
                    (= (:type ingested)     (:type local))     (dissoc :type)
                    (= (:hash_key ingested) (:hash_key local)) (dissoc :hash_key))]
-    ((get-method serdes.base/load-update! "") "FieldValues" ingested local)))
+    ((get-method serdes/load-update! "") "FieldValues" ingested local)))
 
 (def ^:private field-values-slug "___fieldvalues")
 
-(defmethod serdes.base/storage-path "FieldValues" [fv _]
+(defmethod serdes/storage-path "FieldValues" [fv _]
   ;; [path to table "fields" "field-name___fieldvalues"] since there's zero or one FieldValues per Field, and Fields
   ;; don't have their own directories.
-  (let [hierarchy    (serdes.base/serdes-path fv)
+  (let [hierarchy    (serdes/path fv)
         field        (last (drop-last hierarchy))
-        table-prefix (serdes.util/storage-table-path-prefix (drop-last 2 hierarchy))]
+        table-prefix (serdes/storage-table-path-prefix (drop-last 2 hierarchy))]
     (concat table-prefix
             ["fields" (str (:id field) field-values-slug)])))
-
-(serdes.base/register-ingestion-path!
-  "FieldValues"
-  ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "fields" "customer_id___fieldvalues"]
-  ;; ["databases" "my-db" "tables" "customers" "fields" "customer_id___fieldvalues"]
-  (fn [path]
-    (when-let [{db     "databases"
-                schema "schemas"
-                table  "tables"
-                field  "fields"}   (and (#{6 8} (count path))
-                                        (str/ends-with? (last path) field-values-slug)
-                                        (serdes.base/ingestion-matcher-pairs
-                                          path [["databases" "schemas" "tables" "fields"]
-                                                ["databases" "tables" "fields"]]))]
-      (filterv identity [{:model "Database" :id db}
-                         (when schema {:model "Schema" :id schema})
-                         {:model "Table" :id table}
-                         {:model "Field" :id (subs field 0 (- (count field) (count field-values-slug)))}
-                         ;; FieldValues is always just ID 0, since there's at most one as part of the field.
-                         {:model "FieldValues" :id "0"}]))))

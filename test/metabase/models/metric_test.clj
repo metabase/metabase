@@ -4,7 +4,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.metric :as metric :refer [Metric]]
    [metabase.models.revision :as revision]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
    [toucan.db :as db])
@@ -122,5 +122,5 @@
                       Table    [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
                       Metric   [metric {:name "measurement" :table_id (:id table) :created_at now}]]
         (is (= "a2318866"
-               (serdes.hash/raw-hash ["measurement" (serdes.hash/identity-hash table) now])
-               (serdes.hash/identity-hash metric)))))))
+               (serdes/raw-hash ["measurement" (serdes/identity-hash table) now])
+               (serdes/identity-hash metric)))))))

@@ -82,8 +82,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -146,21 +145,64 @@
  {:types       (constantly {:value :encrypted-text})
   :primary-key (constantly :key)})
 
-(defmethod serdes.hash/identity-hash-fields Setting
+(defmethod serdes/hash-fields Setting
   [_setting]
   [:key])
 
-(defmethod serdes.base/extract-all "Setting" [_model _opts]
+(def ^:private exported-settings
+  '#{application-colors
+     application-favicon-url
+     application-font
+     application-font-files
+     application-logo-url
+     application-name
+     available-fonts
+     available-locales
+     available-timezones
+     breakout-bins-num
+     custom-formatting
+     custom-geojson
+     custom-geojson-enabled
+     enable-content-management?
+     enable-embedding
+     enable-nested-queries
+     enable-sandboxes?
+     enable-whitelabeling?
+     enable-xrays
+     hide-embed-branding?
+     humanization-strategy
+     landing-page
+     loading-message
+     max-results-bare-rows
+     native-query-autocomplete-match-style
+     persisted-models-enabled
+     report-timezone
+     report-timezone-long
+     report-timezone-short
+     search-typeahead-enabled
+     show-homepage-data
+     show-homepage-pin-message
+     show-homepage-xrays
+     show-lighthouse-illustration
+     show-metabot
+     site-locale
+     site-name
+     source-address-header
+     start-of-week
+     subscription-allowed-domains})
+
+(defmethod serdes/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings
-                             :getter (partial get-value-of-type :string))]
+                             :getter (partial get-value-of-type :string))
+        :when (contains? exported-settings (symbol key))]
     {:serdes/meta [{:model "Setting" :id (name key)}]
      :key key
      :value value}))
 
-(defmethod serdes.base/load-find-local "Setting" [[{:keys [id]}]]
+(defmethod serdes/load-find-local "Setting" [[{:keys [id]}]]
   (get-value-of-type :string (keyword id)))
 
-(defmethod serdes.base/load-one! "Setting" [{:keys [key value]} _]
+(defmethod serdes/load-one! "Setting" [{:keys [key value]} _]
   (set-value-of-type! :string key value))
 
 (def ^:private Type

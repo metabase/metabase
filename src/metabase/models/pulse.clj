@@ -25,9 +25,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.schema :as su]
@@ -153,9 +151,9 @@
   :pre-update     pre-update
   :types          (constantly {:parameters :json})})
 
-(defmethod serdes.hash/identity-hash-fields Pulse
+(defmethod serdes/hash-fields Pulse
   [_pulse]
-  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
+  [:name (serdes/hydrated-hash :collection) :created_at])
 
 (def ^:private ^:dynamic *automatically-archive-when-last-channel-is-deleted*
   "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
@@ -590,19 +588,19 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes.base/extract-one "Pulse"
+(defmethod serdes/extract-one "Pulse"
   [_model-name _opts pulse]
-  (cond-> (serdes.base/extract-one-basics "Pulse" pulse)
-    (:collection_id pulse) (update :collection_id serdes.util/export-fk 'Collection)
-    (:dashboard_id  pulse) (update :dashboard_id  serdes.util/export-fk 'Dashboard)
-    true                   (update :creator_id    serdes.util/export-user)))
+  (cond-> (serdes/extract-one-basics "Pulse" pulse)
+    (:collection_id pulse) (update :collection_id serdes/*export-fk* 'Collection)
+    (:dashboard_id  pulse) (update :dashboard_id  serdes/*export-fk* 'Dashboard)
+    true                   (update :creator_id    serdes/*export-user*)))
 
-(defmethod serdes.base/load-xform "Pulse" [pulse]
-  (cond-> (serdes.base/load-xform-basics pulse)
-      true                   (update :creator_id    serdes.util/import-user)
-      (:collection_id pulse) (update :collection_id serdes.util/import-fk 'Collection)
-      (:dashboard_id  pulse) (update :dashboard_id  serdes.util/import-fk 'Dashboard)))
+(defmethod serdes/load-xform "Pulse" [pulse]
+  (cond-> (serdes/load-xform-basics pulse)
+      true                   (update :creator_id    serdes/*import-user*)
+      (:collection_id pulse) (update :collection_id serdes/*import-fk* 'Collection)
+      (:dashboard_id  pulse) (update :dashboard_id  serdes/*import-fk* 'Dashboard)))
 
-(defmethod serdes.base/serdes-dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
+(defmethod serdes/dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
   (filterv some? [(when collection_id [{:model "Collection" :id collection_id}])
                   (when dashboard_id  [{:model "Dashboard"  :id dashboard_id}])]))

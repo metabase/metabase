@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -43,7 +43,7 @@
     (mt/with-temp* [Database [db    {:name "field-db" :engine :h2}]
                     Table    [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
                     Field    [field {:name "sku" :table_id (:id table)}]]
-      (let [table-hash (serdes.hash/identity-hash table)]
+      (let [table-hash (serdes/identity-hash table)]
         (is (= "dfd77225"
-               (serdes.hash/raw-hash ["sku" table-hash])
-               (serdes.hash/identity-hash field)))))))
+               (serdes/raw-hash ["sku" table-hash])
+               (serdes/identity-hash field)))))))

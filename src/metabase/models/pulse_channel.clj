@@ -5,9 +5,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.models.user :as user :refer [User]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -201,9 +199,9 @@
   :pre-insert     validate-email-domains
   :pre-update     validate-email-domains})
 
-(defmethod serdes.hash/identity-hash-fields PulseChannel
+(defmethod serdes/hash-fields PulseChannel
   [_pulse-channel]
-  [(serdes.hash/hydrated-hash :pulse) :channel_type :details :created_at])
+  [(serdes/hydrated-hash :pulse) :channel_type :details :created_at])
 
 (defn will-delete-recipient
   "This function is called by [[metabase.models.pulse-channel-recipient/pre-delete]] when a `PulseChannelRecipient` is
@@ -356,25 +354,25 @@
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes.base/serdes-generate-path "PulseChannel"
+(defmethod serdes/generate-path "PulseChannel"
   [_ {:keys [pulse_id] :as channel}]
-  [(serdes.base/infer-self-path "Pulse" (db/select-one 'Pulse :id pulse_id))
-   (serdes.base/infer-self-path "PulseChannel" channel)])
+  [(serdes/infer-self-path "Pulse" (db/select-one 'Pulse :id pulse_id))
+   (serdes/infer-self-path "PulseChannel" channel)])
 
-(defmethod serdes.base/extract-one "PulseChannel"
+(defmethod serdes/extract-one "PulseChannel"
   [_model-name _opts channel]
   (let [recipients (mapv :email (mdb.query/query {:select [:user.email]
                                                   :from   [[:pulse_channel_recipient :pcr]]
                                                   :join   [[:core_user :user] [:= :user.id :pcr.user_id]]
                                                   :where  [:= :pcr.pulse_channel_id (:id channel)]}))]
-    (-> (serdes.base/extract-one-basics "PulseChannel" channel)
-        (update :pulse_id   serdes.util/export-fk 'Pulse)
+    (-> (serdes/extract-one-basics "PulseChannel" channel)
+        (update :pulse_id   serdes/*export-fk* 'Pulse)
         (assoc  :recipients recipients))))
 
-(defmethod serdes.base/load-xform "PulseChannel" [channel]
+(defmethod serdes/load-xform "PulseChannel" [channel]
   (-> channel
-      serdes.base/load-xform-basics
-      (update :pulse_id serdes.util/import-fk 'Pulse)))
+      serdes/load-xform-basics
+      (update :pulse_id serdes/*import-fk* 'Pulse)))
 
 (defn- import-recipients [channel-id emails]
   (let [incoming-users (set (for [email emails
@@ -387,18 +385,18 @@
       (update-recipients! channel-id combined))))
 
 ;; Customized load-insert! and load-update! to handle the embedded recipients field - it's really a separate table.
-(defmethod serdes.base/load-insert! "PulseChannel" [_ ingested]
+(defmethod serdes/load-insert! "PulseChannel" [_ ingested]
   (let [;; Call through to the default load-insert!
-        chan ((get-method serdes.base/load-insert! "") "PulseChannel" (dissoc ingested :recipients))]
+        chan ((get-method serdes/load-insert! "") "PulseChannel" (dissoc ingested :recipients))]
     (import-recipients (:id chan) (:recipients ingested))
     chan))
 
-(defmethod serdes.base/load-update! "PulseChannel" [_ ingested local]
+(defmethod serdes/load-update! "PulseChannel" [_ ingested local]
   ;; Call through to the default load-update!
-  (let [chan ((get-method serdes.base/load-update! "") "PulseChannel" (dissoc ingested :recipients) local)]
+  (let [chan ((get-method serdes/load-update! "") "PulseChannel" (dissoc ingested :recipients) local)]
     (import-recipients (:id local) (:recipients ingested))
     chan))
 
 ;; Depends on the Pulse.
-(defmethod serdes.base/serdes-dependencies "PulseChannel" [{:keys [pulse_id]}]
+(defmethod serdes/dependencies "PulseChannel" [{:keys [pulse_id]}]
   [[{:model "Pulse" :id pulse_id}]])

@@ -11,7 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.secret :as secret :refer [Secret]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
    [metabase.server.middleware.session :as mw.session]
    [metabase.task :as task]
@@ -303,9 +303,9 @@
   (testing "Database hashes are composed of the name and engine"
     (mt/with-temp Database [db {:engine :mysql :name "hashmysql"}]
       (is (= (Integer/toHexString (hash ["hashmysql" :mysql]))
-             (serdes.hash/identity-hash db)))
+             (serdes/identity-hash db)))
       (is (= "b6f1a9e8"
-             (serdes.hash/identity-hash db))))))
+             (serdes/identity-hash db))))))
 
 (deftest create-database-with-null-details-test
   (testing "Details should get a default value of {} if unspecified"

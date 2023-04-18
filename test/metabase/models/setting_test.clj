@@ -5,7 +5,7 @@
    [environ.core :as env]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
@@ -859,8 +859,8 @@
     (mt/with-temporary-setting-values [test-setting-1 "123"
                                        test-setting-2 "123"]
       (is (= "5f7f150c"
-             (serdes.hash/raw-hash ["test-setting-1"])
-             (serdes.hash/identity-hash (db/select-one Setting :key "test-setting-1")))))))
+             (serdes/raw-hash ["test-setting-1"])
+             (serdes/identity-hash (db/select-one Setting :key "test-setting-1")))))))
 
 (deftest enabled?-test
   (testing "Settings can be disabled"

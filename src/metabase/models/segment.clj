@@ -6,9 +6,7 @@
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan.db :as db]
@@ -42,9 +40,9 @@
   :hydration-keys (constantly [:segment])
   :pre-update     pre-update})
 
-(defmethod serdes.hash/identity-hash-fields Segment
+(defmethod serdes/hash-fields Segment
   [_segment]
-  [:name (serdes.hash/hydrated-hash :table) :created_at])
+  [:name (serdes/hydrated-hash :table) :created_at])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -72,30 +70,28 @@
 
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
-(defmethod serdes.base/extract-one "Segment"
+(defmethod serdes/extract-one "Segment"
   [_model-name _opts segment]
-  (-> (serdes.base/extract-one-basics "Segment" segment)
-      (update :table_id   serdes.util/export-table-fk)
-      (update :creator_id serdes.util/export-user)
-      (update :definition serdes.util/export-mbql)))
+  (-> (serdes/extract-one-basics "Segment" segment)
+      (update :table_id   serdes/*export-table-fk*)
+      (update :creator_id serdes/*export-user*)
+      (update :definition serdes/export-mbql)))
 
-(defmethod serdes.base/load-xform "Segment" [segment]
+(defmethod serdes/load-xform "Segment" [segment]
   (-> segment
-      serdes.base/load-xform-basics
-      (update :table_id   serdes.util/import-table-fk)
-      (update :creator_id serdes.util/import-user)
-      (update :definition serdes.util/import-mbql)))
+      serdes/load-xform-basics
+      (update :table_id   serdes/*import-table-fk*)
+      (update :creator_id serdes/*import-user*)
+      (update :definition serdes/import-mbql)))
 
-(defmethod serdes.base/serdes-dependencies "Segment" [{:keys [definition table_id]}]
-  (into [] (set/union #{(serdes.util/table->path table_id)}
-                      (serdes.util/mbql-deps definition))))
+(defmethod serdes/dependencies "Segment" [{:keys [definition table_id]}]
+  (into [] (set/union #{(serdes/table->path table_id)}
+                      (serdes/mbql-deps definition))))
 
-(defmethod serdes.base/storage-path "Segment" [segment _ctx]
-  (let [{:keys [id label]} (-> segment serdes.base/serdes-path last)]
+(defmethod serdes/storage-path "Segment" [segment _ctx]
+  (let [{:keys [id label]} (-> segment serdes/path last)]
     (-> segment
         :table_id
-        serdes.util/table->path
-        serdes.util/storage-table-path-prefix
-        (concat ["segments" (serdes.base/storage-leaf-file-name id label)]))))
-
-(serdes.base/register-ingestion-path! "Segment" (serdes.base/ingestion-matcher-collected "databases" "Segment"))
+        serdes/table->path
+        serdes/storage-table-path-prefix
+        (concat ["segments" (serdes/storage-leaf-file-name id label)]))))

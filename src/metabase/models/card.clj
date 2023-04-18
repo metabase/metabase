@@ -15,9 +15,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
    [metabase.models.revision :as revision]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
@@ -428,90 +426,90 @@
   :pre-delete     pre-delete
   :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
-(defmethod serdes.hash/identity-hash-fields Card
+(defmethod serdes/hash-fields Card
   [_card]
-  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
+  [:name (serdes/hydrated-hash :collection) :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes.base/extract-query "Card" [_ opts]
-  (serdes.base/extract-query-collections Card opts))
+(defmethod serdes/extract-query "Card" [_ opts]
+  (serdes/extract-query-collections Card opts))
 
-(defn- export-result-metadata [metadata]
-  (when metadata
+(defn- export-result-metadata [card metadata]
+  (when (and (:dataset card) metadata)
     (for [m metadata]
       (-> m
-          (m/update-existing :table_id  serdes.util/export-table-fk)
-          (m/update-existing :id        serdes.util/export-field-fk)
-          (m/update-existing :field_ref serdes.util/export-mbql)))))
+          (m/update-existing :table_id  serdes/*export-table-fk*)
+          (m/update-existing :id        serdes/*export-field-fk*)
+          (m/update-existing :field_ref serdes/export-mbql)))))
 
 (defn- import-result-metadata [metadata]
   (when metadata
     (for [m metadata]
       (-> m
-          (m/update-existing :table_id  serdes.util/import-table-fk)
-          (m/update-existing :id        serdes.util/import-field-fk)
-          (m/update-existing :field_ref serdes.util/import-mbql)))))
+          (m/update-existing :table_id  serdes/*import-table-fk*)
+          (m/update-existing :id        serdes/*import-field-fk*)
+          (m/update-existing :field_ref serdes/import-mbql)))))
 
 (defn- result-metadata-deps [metadata]
   (when (seq metadata)
     (reduce set/union (for [m (seq metadata)]
-                        (reduce set/union (serdes.util/mbql-deps (:field_ref m))
-                                [(when (:table_id m) #{(serdes.util/table->path (:table_id m))})
-                                 (when (:id m)       #{(serdes.util/field->path (:id m))})])))))
+                        (reduce set/union (serdes/mbql-deps (:field_ref m))
+                                [(when (:table_id m) #{(serdes/table->path (:table_id m))})
+                                 (when (:id m)       #{(serdes/field->path (:id m))})])))))
 
-(defmethod serdes.base/extract-one "Card"
+(defmethod serdes/extract-one "Card"
   [_model-name _opts card]
   ;; Cards have :table_id, :database_id, :collection_id, :creator_id that need conversion.
   ;; :table_id and :database_id are extracted as just :table_id [database_name schema table_name].
   ;; :collection_id is extracted as its entity_id or identity-hash.
   ;; :creator_id as the user's email.
   (try
-    (-> (serdes.base/extract-one-basics "Card" card)
-        (update :database_id            serdes.util/export-fk-keyed 'Database :name)
-        (update :table_id               serdes.util/export-table-fk)
-        (update :collection_id          serdes.util/export-fk 'Collection)
-        (update :creator_id             serdes.util/export-user)
-        (update :made_public_by_id      serdes.util/export-user)
-        (update :dataset_query          serdes.util/export-mbql)
-        (update :parameters             serdes.util/export-parameters)
-        (update :parameter_mappings     serdes.util/export-parameter-mappings)
-        (update :visualization_settings serdes.util/export-visualization-settings)
-        (update :result_metadata        export-result-metadata))
+    (-> (serdes/extract-one-basics "Card" card)
+        (update :database_id            serdes/*export-fk-keyed* 'Database :name)
+        (update :table_id               serdes/*export-table-fk*)
+        (update :collection_id          serdes/*export-fk* 'Collection)
+        (update :creator_id             serdes/*export-user*)
+        (update :made_public_by_id      serdes/*export-user*)
+        (update :dataset_query          serdes/export-mbql)
+        (update :parameters             serdes/export-parameters)
+        (update :parameter_mappings     serdes/export-parameter-mappings)
+        (update :visualization_settings serdes/export-visualization-settings)
+        (update :result_metadata        (partial export-result-metadata card)))
     (catch Exception e
       (throw (ex-info "Failed to export Card" {:card card} e)))))
 
-(defmethod serdes.base/load-xform "Card"
+(defmethod serdes/load-xform "Card"
   [card]
   (-> card
-      serdes.base/load-xform-basics
-      (update :database_id            serdes.util/import-fk-keyed 'Database :name)
-      (update :table_id               serdes.util/import-table-fk)
-      (update :creator_id             serdes.util/import-user)
-      (update :made_public_by_id      serdes.util/import-user)
-      (update :collection_id          serdes.util/import-fk 'Collection)
-      (update :dataset_query          serdes.util/import-mbql)
-      (update :parameters             serdes.util/import-parameters)
-      (update :parameter_mappings     serdes.util/import-parameter-mappings)
-      (update :visualization_settings serdes.util/import-visualization-settings)
+      serdes/load-xform-basics
+      (update :database_id            serdes/*import-fk-keyed* 'Database :name)
+      (update :table_id               serdes/*import-table-fk*)
+      (update :creator_id             serdes/*import-user*)
+      (update :made_public_by_id      serdes/*import-user*)
+      (update :collection_id          serdes/*import-fk* 'Collection)
+      (update :dataset_query          serdes/import-mbql)
+      (update :parameters             serdes/import-parameters)
+      (update :parameter_mappings     serdes/import-parameter-mappings)
+      (update :visualization_settings serdes/import-visualization-settings)
       (update :result_metadata        import-result-metadata)))
 
-(defmethod serdes.base/serdes-dependencies "Card"
+(defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
            result_metadata table_id visualization_settings]}]
-  (->> (map serdes.util/mbql-deps parameter_mappings)
+  (->> (map serdes/mbql-deps parameter_mappings)
        (reduce set/union)
-       (set/union (serdes.util/parameters-deps parameters))
+       (set/union (serdes/parameters-deps parameters))
        (set/union #{[{:model "Database" :id database_id}]})
        ; table_id and collection_id are nullable.
-       (set/union (when table_id #{(serdes.util/table->path table_id)}))
+       (set/union (when table_id #{(serdes/table->path table_id)}))
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
        (set/union (result-metadata-deps result_metadata))
-       (set/union (serdes.util/mbql-deps dataset_query))
-       (set/union (serdes.util/visualization-settings-deps visualization_settings))
+       (set/union (serdes/mbql-deps dataset_query))
+       (set/union (serdes/visualization-settings-deps visualization_settings))
        vec))
 
-(defmethod serdes.base/serdes-descendants "Card" [_model-name id]
+(defmethod serdes/descendants "Card" [_model-name id]
   (let [card               (db/select-one Card :id id)
         source-table       (some->  card :dataset_query :query :source-table)
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
@@ -530,5 +528,3 @@
       (when (seq snippets)
         (set (for [snippet-id snippets]
                ["NativeQuerySnippet" snippet-id]))))))
-
-(serdes.base/register-ingestion-path! "Card" (serdes.base/ingestion-matcher-collected "collections" "Card"))

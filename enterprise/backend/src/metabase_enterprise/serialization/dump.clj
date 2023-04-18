@@ -32,10 +32,11 @@
              (encode [data]
                (u.date/format data)))
 
-(defn- spit-yaml
+(defn spit-yaml
+  "Writes obj to filename and creates parent directories if necessary"
   [filename obj]
   (io/make-parents filename)
-  (spit filename (yaml/generate-string obj :dumper-options {:flow-style :block})))
+  (spit filename (yaml/generate-string obj :dumper-options {:flow-style :block, :split-lines false})))
 
 (defn- as-file?
   [instance]
