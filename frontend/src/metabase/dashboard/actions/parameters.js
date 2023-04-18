@@ -12,7 +12,12 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { isActionDashCard } from "metabase/actions/utils";
-import { getDashboard, getParameterValues, getParameters } from "../selectors";
+import {
+  getDashboard,
+  getDraftParameterValues,
+  getParameterValues,
+  getParameters,
+} from "../selectors";
 
 import { isVirtualDashCard } from "../utils";
 
@@ -184,6 +189,17 @@ export const setParameterValue = createThunkAction(
 
 export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
 export const setParameterValues = createAction(SET_PARAMETER_VALUES);
+
+// Auto-apply filters
+const APPLY_DRAFT_PARAMETER_VALUES =
+  "metabase/dashboard/APPLY_DRAFT_PARAMETER_VALUES";
+export const applyDraftParameterValues = createThunkAction(
+  APPLY_DRAFT_PARAMETER_VALUES,
+  () => (dispatch, getState) => {
+    const draftParameterValues = getDraftParameterValues(getState());
+    dispatch(setParameterValues(draftParameterValues));
+  },
+);
 
 export const SET_PARAMETER_DEFAULT_VALUE =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";

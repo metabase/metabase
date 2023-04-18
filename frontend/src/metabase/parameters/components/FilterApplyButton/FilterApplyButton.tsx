@@ -1,14 +1,12 @@
 import React, { useCallback, useRef } from "react";
-import _ from "underscore";
 import { CSSTransition } from "react-transition-group";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
 import {
-  getDashboardComplete,
-  getDraftParameterValues,
-  getParameterValues,
+  getHasUnappliedParameterValues,
+  getIsAutoApplyFilters,
 } from "metabase/dashboard/selectors";
-import { setParameterValues } from "metabase/dashboard/actions";
+import { applyDraftParameterValues } from "metabase/dashboard/actions";
 import {
   ApplyButton,
   BUTTON_TRANSITION_DURATION,
@@ -16,22 +14,14 @@ import {
 } from "./FilterApplyButton.styled";
 
 export default function FilterApplyButton() {
-  const isAutoApplyFilters = useSelector(
-    state => getDashboardComplete(state).auto_apply_filters,
+  const isAutoApplyFilters = useSelector(getIsAutoApplyFilters);
+  const hasUnappliedParameterValues = useSelector(
+    getHasUnappliedParameterValues,
   );
-
-  const hasUnappliedParameterValues = useSelector(state => {
-    const draftParameterValues = getDraftParameterValues(state);
-    const parameterValues = getParameterValues(state);
-    return !_.isEqual(draftParameterValues, parameterValues);
-  });
 
   const dispatch = useDispatch();
   const handleApplyFilters = useCallback(() => {
-    dispatch((_, getState) => {
-      const draftParameterValues = getDraftParameterValues(getState());
-      dispatch(setParameterValues(draftParameterValues));
-    });
+    dispatch(applyDraftParameterValues());
   }, [dispatch]);
 
   const applyButtonRef = useRef(null);
