@@ -17,7 +17,7 @@ import {
 } from "metabase/visualizations";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
-import ChartClickActions from "metabase/visualizations/components/ChartClickActions/ChartClickActions";
+import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
 
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import {
