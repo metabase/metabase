@@ -2,6 +2,7 @@
   (:require
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -19,3 +20,12 @@
   (let [dashboard (or (:dashboard dashtab)
                       (t2/select-one Dashboard :id (:dashboard_id dashtab)))]
     (mi/perms-objects-set dashboard read-or-write)))
+
+(defmethod serdes/hash-fields :model/DashboardTab
+  [_dashboard-tab]
+  [:name
+   (comp serdes/identity-hash
+        #(t2/select-one Dashboard :id %)
+        :dashboard_id)
+   :position
+   :created_at])

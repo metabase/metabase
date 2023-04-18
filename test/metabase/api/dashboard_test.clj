@@ -321,6 +321,7 @@
                                                                                        :entity_id              (:entity_id card)
                                                                                        :visualization_settings {}
                                                                                        :result_metadata        nil})
+                                                   :dashboard_tab_id           nil
                                                    :series                     []}]})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
 
@@ -411,6 +412,7 @@
                                                                                              :query_type             nil
                                                                                              :visualization_settings {}
                                                                                              :result_metadata        nil})
+                                                         :dashboard_tab_id           nil
                                                          :series                     []}]})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
     (testing "fetch a dashboard from an official collection includes the collection type"
@@ -1335,6 +1337,7 @@
                   :col                        4
                   :row                        4
                   :series                     []
+                  :dashboard_tab_id           nil
                   :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
                   :visualization_settings     {}
                   :created_at                 true
