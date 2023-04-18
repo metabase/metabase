@@ -1,10 +1,10 @@
 (ns metabase.metabot.client
   (:require
-    [cheshire.core :as json]
-    [clojure.core.memoize :as memoize]
-    [metabase.metabot.settings :as metabot-settings]
-    [metabase.util.log :as log]
-    [wkok.openai-clojure.api :as openai.api]))
+   [cheshire.core :as json]
+   [clojure.core.memoize :as memoize]
+   [metabase.metabot.settings :as metabot-settings]
+   [metabase.util.log :as log]
+   [wkok.openai-clojure.api :as openai.api]))
 
 (set! *warn-on-reflection* true)
 
@@ -99,4 +99,4 @@
       :embedding embedding
       :tokens    prompt_tokens}))
   ([prompt]
-   (create-embedding "text-embedding-ada-002" prompt)))
+   (create-embedding (metabot-settings/metabot-default-embedding-model) prompt)))

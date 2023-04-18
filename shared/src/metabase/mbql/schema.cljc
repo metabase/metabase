@@ -781,7 +781,7 @@
    Field))
 
 (def ^:private EqualityComparable
-  "Schema for things things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality."
+  "Schema for things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality."
   (s/maybe
    (s/cond-pre
     s/Bool

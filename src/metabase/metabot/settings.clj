@@ -20,6 +20,11 @@
   (deferred-tru "The OpenAI Organization ID.")
   :visibility :settings-manager)
 
+(defsetting metabot-default-embedding-model
+  (deferred-tru "The default embeddings model to be used for metabot.")
+  :visibility :internal
+  :default "text-embedding-ada-002")
+
 (defsetting metabot-get-prompt-templates-url
   (deferred-tru "The URL in which metabot versioned prompt templates are stored.")
   :visibility :settings-manager
