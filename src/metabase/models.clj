@@ -11,6 +11,7 @@
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-card-series :as dashboard-card-series]
+   [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.database :as database]
    [metabase.models.dimension :as dimension]
    [metabase.models.field :as field]
@@ -56,6 +57,7 @@
          dashboard/keep-me
          dashboard-card/keep-me
          dashboard-card-series/keep-me
+         dashboard-tab/keep-me
          database/keep-me
          dimension/keep-me
          field/keep-me
