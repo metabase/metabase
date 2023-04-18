@@ -1,7 +1,6 @@
 (ns metabase.lib.query
   (:refer-clojure :exclude [remove])
   (:require
-   [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -13,45 +12,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
-
-(mu/defn replace-clause :- :metabase.lib.schema/query
-  "Replaces the `target-clause` with `new-clause` in the `query` stage."
-  ([query :- :metabase.lib.schema/query
-    target-clause
-    new-clause]
-   (replace-clause query -1 target-clause new-clause))
-  ([query :- :metabase.lib.schema/query
-    stage-number :- :int
-    target-clause
-    new-clause]
-   (let [replacement (lib.common/->op-arg query stage-number new-clause)]
-     ;; Right now, this works for clauses that cannot have dependents.
-     ;; This will change and have different logic depending on `location`
-     ;; `location` should probably be "found" first before iterating.
-     (reduce
-       (fn [query location]
-         (lib.util/update-query-stage query stage-number
-                                      lib.util/replace-clause location target-clause replacement))
-       query
-       [:order-by]))))
-
-(mu/defn remove-clause :- :metabase.lib.schema/query
-  "Removes the `target-clause` in the filter of the `query`."
-  ([query :- :metabase.lib.schema/query
-    target-clause]
-   (remove-clause query -1 target-clause))
-  ([query :- :metabase.lib.schema/query
-    stage-number :- :int
-    target-clause]
-   ;; Right now, this works for clauses that cannot have dependents.
-   ;; This will change and have different logic depending on `location`
-   ;; `location` should probably be "found" first before iterating.
-   (reduce
-     (fn [query location]
-       (lib.util/update-query-stage query stage-number
-                                    lib.util/remove-clause location target-clause))
-     query
-     [:order-by])))
 
 (defmethod lib.normalize/normalize :mbql/query
   [query]
@@ -66,8 +26,8 @@
   (lib.metadata.calculation/metadata query stage-number (lib.util/query-stage x stage-number)))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/query
-  [query stage-number x]
-  (lib.metadata.calculation/display-name query stage-number (lib.util/query-stage x stage-number)))
+  [query stage-number x style]
+  (lib.metadata.calculation/display-name query stage-number (lib.util/query-stage x stage-number) style))
 
 (defn query-with-stages
   "Create a query from a sequence of stages."
@@ -78,7 +38,6 @@
    {:lib/type     :mbql/query
     :lib/metadata metadata-provider
     :database     database-id
-    :type         :pipeline
     :stages       (mapv lib.options/ensure-uuid stages)}))
 
 (defn query-with-stage
@@ -128,7 +87,7 @@
 (mu/defn native-query :- ::lib.schema/query
   "Create a new native query.
 
-  Native in this sense means a pMBQL `:pipeline` query with a first stage that is a native query."
+  Native in this sense means a pMBQL query with a first stage that is a native query."
   ([metadata-provider :- lib.metadata/MetadataProvider
     inner-query]
    (native-query metadata-provider nil inner-query))

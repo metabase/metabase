@@ -1180,82 +1180,8 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         POST /api/dashboard/:id/cards                                          |
+;;; |                                          PUT /api/dashboard/:id/cards                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest simple-creation-with-no-additional-series-test
-  (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                  Card      [{card-id :id}]]
-    (with-dashboards-in-writeable-collection [dashboard-id]
-      (api.card-test/with-cards-in-readable-collection [card-id]
-        (is (= {:size_x                 4
-                :size_y                 4
-                :col                    4
-                :row                    4
-                :series                 []
-                :parameter_mappings     [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
-                :visualization_settings {}
-                :created_at             true
-                :updated_at             true}
-               (-> (mt/user-http-request :rasta :post 200 (format "dashboard/%d/cards" dashboard-id)
-                                         {:cardId                 card-id
-                                          :row                    4
-                                          :col                    4
-                                          :size_x                 4
-                                          :size_y                 4
-                                          :parameter_mappings     [{:parameter_id "abc"
-                                                                    :card_id 123
-                                                                    :hash "abc"
-                                                                    :target "foo"}]
-                                          :visualization_settings {}})
-                   (dissoc :id :dashboard_id :action_id :card_id :entity_id)
-                   (update :created_at boolean)
-                   (update :updated_at boolean))))
-        (is (= [{:size_x                 4
-                 :size_y                 4
-                 :col                    4
-                 :row                    4
-                 :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
-                 :visualization_settings {}}]
-               (map (partial into {})
-                    (t2/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
-                      :dashboard_id dashboard-id))))))))
-
-(deftest new-dashboard-card-with-additional-series-test
-  (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                  Card      [{card-id :id}]
-                  Card      [{series-id-1 :id} {:name "Series Card"}]]
-    (with-dashboards-in-writeable-collection [dashboard-id]
-      (api.card-test/with-cards-in-readable-collection [card-id series-id-1]
-        (let [dashboard-card (mt/user-http-request :rasta :post 200 (format "dashboard/%d/cards" dashboard-id)
-                                                   {:cardId card-id
-                                                    :row     4
-                                                    :col     4
-                                                    :size_x  4
-                                                    :size_y  4
-                                                    :series [{:id series-id-1}]})]
-          (is (= {:row                    4
-                  :col                    4
-                  :size_x                 4
-                  :size_y                 4
-                  :parameter_mappings     []
-                  :visualization_settings {}
-                  :series                 [{:name                   "Series Card"
-                                            :description            nil
-                                            :dataset_query          (:dataset_query api.card-test/card-defaults)
-                                            :display                "table"
-                                            :visualization_settings {}}]
-                  :created_at             true
-                  :updated_at             true}
-                 (remove-ids-and-booleanize-timestamps dashboard-card)))
-          (is (= [{:size_x 4
-                   :size_y 4
-                   :col    4
-                   :row    4}]
-                 (map (partial into {})
-                      (t2/select [DashboardCard :size_x :size_y :col :row], :dashboard_id dashboard-id))))
-          (is (= #{0}
-                 (t2/select-fn-set :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
 
 (defn do-with-add-card-parameter-mapping-permissions-fixtures [f]
   (mt/with-temp-copy-of-db
@@ -1275,47 +1201,19 @@
             :mappings     mappings
             :add-card!    (fn [expected-status-code]
                             (mt/user-http-request :rasta
-                                                  :post expected-status-code (format "dashboard/%d/cards" dashboard-id)
-                                                  {:cardId             card-id
-                                                   :row                0
-                                                   :col                0
-                                                   :size_x             4
-                                                   :size_y             4
-                                                   :parameter_mappings mappings}))
+                                                  :put expected-status-code (format "dashboard/%d/cards" dashboard-id)
+                                                  {:cards [{:id                 -1
+                                                            :card_id            card-id
+                                                            :row                0
+                                                            :col                0
+                                                            :size_x             4
+                                                            :size_y             4
+                                                            :parameter_mappings mappings}]}))
             :dashcards    (fn [] (t2/select DashboardCard :dashboard_id dashboard-id))})))))
 
-(deftest add-card-parameter-mapping-permissions-test
-  (testing "POST /api/dashboard/:id/cards"
-    (testing "Should check current user's data permissions for the `parameter_mapping`"
-      (do-with-add-card-parameter-mapping-permissions-fixtures
-       (fn [{:keys [card-id mappings add-card! dashcards]}]
-         (is (schema= {:message  (s/eq "You must have data permissions to add a parameter referencing the Table \"VENUES\".")
-                       s/Keyword s/Any}
-                (add-card! 403)))
-         (is (= []
-                (dashcards)))
-         (testing "Permissions for a different table in the same DB should not count"
-           (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :categories)))
-           (is (schema= {:message  (s/eq "You must have data permissions to add a parameter referencing the Table \"VENUES\".")
-                         s/Keyword s/Any}
-                        (add-card! 403)))
-           (is (= []
-                  (dashcards))))
-         (testing "If they have data permissions, it should be ok"
-           (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :venues)))
-           (is (schema= {:card_id            (s/eq card-id)
-                         :parameter_mappings [(s/one
-                                               {:parameter_id (s/eq "_CATEGORY_ID_")
-                                                :target       (s/eq ["dimension" ["field" (mt/id :venues :category_id) nil]])
-                                                s/Keyword     s/Any}
-                                               "mapping")]
-                         s/Keyword           s/Any}
-                        (add-card! 200)))
-           (is (schema= [(s/one {:card_id            (s/eq card-id)
-                                 :parameter_mappings (s/eq mappings)
-                                 s/Keyword           s/Any}
-                                "DashboardCard")]
-                        (dashcards)))))))))
+(defn- dashcard-like-response
+  [id]
+  (t2/hydrate (t2/select-one DashboardCard :id id) :series))
 
 (defn do-with-update-cards-parameter-mapping-permissions-fixtures [f]
   (do-with-add-card-parameter-mapping-permissions-fixtures
@@ -1342,57 +1240,236 @@
                                                              (format "dashboard/%d/cards" dashboard-id)
                                                              {:cards [new-dashcard-info]}))}))))))
 
-(deftest update-cards-parameter-mapping-permissions-test
+(deftest e2e-update-cards-test
+  (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
+    (t2.with-temp/with-temp
+      [Dashboard           {dashboard-id :id}  {}
+       Card                {card-id-1 :id}     {}
+       Card                {card-id-2 :id}     {}
+       DashboardCard       {dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id-1}
+       DashboardCard       {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id-1}
+       DashboardCard       {dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id-1}
+       Card                {series-id-1 :id}   {:name "Series Card 1"}
+       Card                {series-id-2 :id}   {:name "Series Card 2"}
+       DashboardCardSeries _                   {:dashboardcard_id dashcard-id-1, :card_id series-id-1
+                                                :position         0}]
+      (let [resp (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                       {:cards [{:id     dashcard-id-1
+                                                 :size_x 4
+                                                 :size_y 4
+                                                 :col    1
+                                                 :row    1
+                                                 ;; update series for card 1
+                                                 :series  [{:id series-id-2}]
+                                                 :card_id card-id-1}
+                                                {:id     dashcard-id-2
+                                                 :size_x 2
+                                                 :size_y 2
+                                                 :col    2
+                                                 :row    2}
+                                                ;; remove the dashcard3 and create a new card using negative numbers
+                                                {:id     -1
+                                                 :size_x 1
+                                                 :size_y 1
+                                                 :col    3
+                                                 :row    3
+                                                 :card_id card-id-2
+                                                 :series  [{:id series-id-1}]}]})
+            updated-card-1 {:id           dashcard-id-1
+                            :card_id      card-id-1
+                            :dashboard_id dashboard-id
+                            :size_x       4
+                            :size_y       4
+                            :action_id    nil
+                            :row          1
+                            :col          1
+                            :series       [{:name "Series Card 2"}]}
+            updated-card-2 {:id           dashcard-id-2
+                            :card_id      card-id-1
+                            :dashboard_id dashboard-id
+                            :size_x       2
+                            :size_y       2
+                            :action_id    nil
+                            :row          2
+                            :col          2
+                            :series       []}
+            new-card       {:card_id      card-id-2
+                            :dashboard_id dashboard-id
+                            :size_x       1
+                            :size_y       1
+                            :action_id    nil
+                            :row          3
+                            :col          3
+                            :series       [{:name "Series Card 1"}]}]
+        (is (=? [updated-card-1
+                 updated-card-2
+                 new-card]
+                resp))
+       ;; dashcard 3 is deleted
+       (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))))))
+
+;;; -------------------------------------- Create dashcards only tests ---------------------------------------
+
+(deftest simple-creation-with-no-additional-series-test
+  (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                  Card      [{card-id :id}]]
+    (with-dashboards-in-writeable-collection [dashboard-id]
+      (api.card-test/with-cards-in-readable-collection [card-id]
+        (let [resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                         {:cards [{:id                     -1
+                                                   :card_id                card-id
+                                                   :row                    4
+                                                   :col                    4
+                                                   :size_x                 4
+                                                   :size_y                 4
+                                                   :parameter_mappings     [{:parameter_id "abc"
+                                                                             :card_id 123
+                                                                             :hash "abc"
+                                                                             :target "foo"}]
+                                                   :visualization_settings {}}]})]
+          ;; extra sure here because the dashcard we given has a negative id
+          (testing "the inserted dashcards has ids auto-generated"
+            (is (pos? (:id (first resp)))))
+          (is (= {:size_x                     4
+                  :size_y                     4
+                  :col                        4
+                  :row                        4
+                  :series                     []
+                  :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
+                  :visualization_settings     {}
+                  :created_at                 true
+                  :updated_at                 true
+                  :collection_authority_level nil}
+                 (-> resp
+                     first
+                     (dissoc :id :dashboard_id :action_id :card_id :entity_id)
+                     (update :created_at boolean)
+                     (update :updated_at boolean))))
+          (is (= [{:size_x                 4
+                   :size_y                 4
+                   :col                    4
+                   :row                    4
+                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
+                   :visualization_settings {}}]
+                 (map (partial into {})
+                      (t2/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
+                                 :dashboard_id dashboard-id)))))))))
+
+(deftest new-dashboard-card-with-additional-series-test
+  (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                  Card      [{card-id :id}]
+                  Card      [{series-id-1 :id} {:name "Series Card"}]]
+    (with-dashboards-in-writeable-collection [dashboard-id]
+      (api.card-test/with-cards-in-readable-collection [card-id series-id-1]
+        (let [dashboard-cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                                    {:cards [{:id      -1
+                                                              :card_id card-id
+                                                              :row     4
+                                                              :col     4
+                                                              :size_x  4
+                                                              :size_y  4
+                                                              :series [{:id series-id-1}]}]})]
+          (is (=? [{:row                    4
+                    :col                    4
+                    :size_x                 4
+                    :size_y                 4
+                    :parameter_mappings     []
+                    :visualization_settings {}
+                    :series                 [{:name                   "Series Card"
+                                              :description            nil
+                                              :dataset_query          (:dataset_query api.card-test/card-defaults)
+                                              :display                "table"
+                                              :visualization_settings {}}]
+                    :created_at             true
+                    :updated_at             true}]
+                 (remove-ids-and-booleanize-timestamps dashboard-cards)))
+          (is (= [{:size_x 4
+                   :size_y 4
+                   :col    4
+                   :row    4}]
+                 (map (partial into {})
+                      (t2/select [DashboardCard :size_x :size_y :col :row], :dashboard_id dashboard-id))))
+          (is (= #{0}
+                 (t2/select-fn-set :position DashboardCardSeries, :dashboardcard_id (:id (first dashboard-cards))))))))))
+
+(deftest dashcard-action-create-update-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-and-actions-enabled
+      (doseq [action-type [:http :implicit :query]]
+        (mt/with-actions [{:keys [action-id]} {:type action-type :visualization_settings {:hello true}}]
+          (testing (str "Creating dashcard with action: " action-type)
+            (mt/with-temp* [Dashboard [{dashboard-id :id}]]
+              (is (partial= [{:visualization_settings {:label "Update"}
+                              :action_id              action-id
+                              :card_id                nil}]
+                            (mt/user-http-request :crowberto :put 200 (format "dashboard/%s/cards" dashboard-id)
+                                                  {:cards [{:id                     -1
+                                                            :size_x                 1
+                                                            :size_y                 1
+                                                            :row                    1
+                                                            :col                    1
+                                                            :card_id                nil
+                                                            :action_id              action-id
+                                                            :visualization_settings {:label "Update"}}]})))
+              (is (partial= {:ordered_cards [{:action (cond-> {:visualization_settings {:hello true}
+                                                               :type (name action-type)
+                                                               :parameters [{:id "id"}]}
+                                                              (#{:query :implicit} action-type)
+                                                              (assoc :database_id (mt/id)))}]}
+                            (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))
+
+(deftest add-card-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id/cards"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
-      (do-with-update-cards-parameter-mapping-permissions-fixtures
-       (fn [{:keys [dashboard-id card-id original-mappings update-mappings! update-size! new-dashcard-info new-mappings]}]
-         (testing "Should *NOT* be allowed to update the `:parameter_mappings` without proper data permissions"
+      (do-with-add-card-parameter-mapping-permissions-fixtures
+       (fn [{:keys [card-id mappings add-card! dashcards]}]
+         (is (schema= {:message  (s/eq "You must have data permissions to add a parameter referencing the Table \"VENUES\".")
+                       s/Keyword s/Any}
+                (add-card! 403)))
+         (is (= []
+                (dashcards)))
+         (testing "Permissions for a different table in the same DB should not count"
+           (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :categories)))
            (is (schema= {:message  (s/eq "You must have data permissions to add a parameter referencing the Table \"VENUES\".")
                          s/Keyword s/Any}
-                        (update-mappings! 403)))
-           (is (= original-mappings
-                  (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
-         (testing "Changing another column should be ok even without data permissions."
-           (is (= {:status "ok"}
-                  (update-size!)))
-           (is (= (:size_x new-dashcard-info)
-                  (t2/select-one-fn :size_x DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
-         (testing "Should be able to update `:parameter_mappings` *with* proper data permissions."
+                        (add-card! 403)))
+           (is (= []
+                  (dashcards))))
+         (testing "If they have data permissions, it should be ok"
            (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :venues)))
-           (is (= {:status "ok"}
-                  (update-mappings! 200)))
-           (is (= new-mappings
-                  (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
+           (is (schema= [{:card_id            (s/eq card-id)
+                          :parameter_mappings [(s/one
+                                                {:parameter_id (s/eq "_CATEGORY_ID_")
+                                                 :target       (s/eq ["dimension" ["field" (mt/id :venues :category_id) nil]])
+                                                 s/Keyword     s/Any}
+                                                "mapping")]
+                           s/Keyword           s/Any}]
+                        (add-card! 200)))
+           (is (schema= [(s/one {:card_id            (s/eq card-id)
+                                 :parameter_mappings (s/eq mappings)
+                                 s/Keyword           s/Any}
+                                "DashboardCard")]
+                        (dashcards)))))))))
 
+(deftest adding-archived-cards-to-dashboard-is-not-allowed
+  (t2.with-temp/with-temp
+    [Dashboard {dashboard-id :id} {}
+     Card      {card-id :id}      {:archived true}]
+    (is (= "The object has been archived."
+           (:message (mt/user-http-request :rasta :put 404 (format "dashboard/%d/cards" dashboard-id)
+                                           {:cards [{:id                     -1
+                                                     :card_id                card-id
+                                                     :row                    4
+                                                     :col                    4
+                                                     :size_x                 4
+                                                     :size_y                 4
+                                                     :parameter_mappings     [{:parameter_id "abc"
+                                                                               :card_id 123
+                                                                               :hash "abc"
+                                                                               :target "foo"}]
+                                                     :visualization_settings {}}]}))))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                        DELETE /api/dashboard/:id/cards                                         |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest delete-cards-test
-  (testing "DELETE /api/dashboard/id/:cards"
-    ;; fetch a dashboard WITH a dashboard card on it
-    (mt/with-temp* [Dashboard           [{dashboard-id :id}]
-                    Card                [{card-id :id}]
-                    Card                [{series-id-1 :id}]
-                    Card                [{series-id-2 :id}]
-                    DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
-                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
-      (with-dashboards-in-writeable-collection [dashboard-id]
-        (is (= 1
-               (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
-        (is (= nil
-               (mt/user-http-request :rasta :delete 204
-                                     (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)))
-        (is (= 0
-               (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          PUT /api/dashboard/:id/cards                                          |
-;;; +----------------------------------------------------------------------------------------------------------------+
+;;; -------------------------------------- Update dashcards only tests ---------------------------------------
 
 (deftest update-cards-test
   (testing "PUT /api/dashboard/:id/cards"
@@ -1423,19 +1500,19 @@
                 :created_at             true
                 :updated_at             true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))
-        (is (= {:status "ok"}
-               (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                     {:cards [{:id     dashcard-id-1
-                                               :size_x 4
-                                               :size_y 2
-                                               :col    0
-                                               :row    0
-                                               :series [{:id series-id-1}]}
-                                              {:id     dashcard-id-2
-                                               :size_x 1
-                                               :size_y 1
-                                               :col    1
-                                               :row    3}]})))
+        ;; TODO adds tests for return
+        (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                              {:cards [{:id     dashcard-id-1
+                                        :size_x 4
+                                        :size_y 2
+                                        :col    0
+                                        :row    0
+                                        :series [{:id series-id-1}]}
+                                       {:id     dashcard-id-2
+                                        :size_x 1
+                                        :size_y 1
+                                        :col    1
+                                        :row    3}]})
         (is (= {:size_x                 4
                 :size_y                 2
                 :col                    0
@@ -1461,6 +1538,27 @@
                 :updated_at             true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))))))
 
+(deftest update-cards-parameter-mapping-permissions-test
+  (testing "PUT /api/dashboard/:id/cards"
+    (testing "Should check current user's data permissions for the `parameter_mapping`"
+      (do-with-update-cards-parameter-mapping-permissions-fixtures
+       (fn [{:keys [dashboard-id card-id original-mappings update-mappings! update-size! new-dashcard-info new-mappings]}]
+         (testing "Should *NOT* be allowed to update the `:parameter_mappings` without proper data permissions"
+           (is (schema= {:message  (s/eq "You must have data permissions to add a parameter referencing the Table \"VENUES\".")
+                         s/Keyword s/Any}
+                        (update-mappings! 403)))
+           (is (= original-mappings
+                  (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
+         (testing "Changing another column should be ok even without data permissions."
+           (update-size!)
+           (is (= (:size_x new-dashcard-info)
+                  (t2/select-one-fn :size_x DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
+         (testing "Should be able to update `:parameter_mappings` *with* proper data permissions."
+           (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :venues)))
+           (update-mappings! 200)
+           (is (= new-mappings
+                  (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
+
 (deftest update-action-cards-test
   (mt/with-actions-enabled
     (testing "PUT /api/dashboard/:id/cards"
@@ -1474,14 +1572,62 @@
                                                   :card_id model-id}]
                       DashboardCard [question-card {:dashboard_id dashboard-id, :card_id model-id}]]
         (with-dashboards-in-writeable-collection [dashboard-id]
-          (is (= {:status "ok"}
-                 (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+          ;; TODO adds test for return
+          (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
                                        {:cards [(assoc action-card :card_id model-id-2)
-                                                (assoc question-card :card_id model-id-2)]})))
+                                                (assoc question-card :card_id model-id-2)]})
           ;; Only action card should change
           (is (partial= [{:card_id model-id-2}
                          {:card_id model-id}]
                         (t2/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]}))))))))
+
+;;; -------------------------------------- Delete dashcards only tests ---------------------------------------
+
+(deftest delete-cards-test
+  (testing "PUT /api/dashboard/id/:cards to delete"
+    (testing "partial delete"
+      ;; fetch a dashboard WITH a dashboard card on it
+      (mt/with-temp* [Dashboard           [{dashboard-id :id}]
+                      Card                [{card-id :id}]
+                      Card                [{series-id-1 :id}]
+                      Card                [{series-id-2 :id}]
+                      DashboardCard       [{dashcard-id-1 :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+                      DashboardCard       [{_dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                      DashboardCard       [{dashcard-id-3 :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+                      DashboardCardSeries [_                    {:dashboardcard_id dashcard-id-1, :card_id series-id-1, :position 0}]
+                      DashboardCardSeries [_                    {:dashboardcard_id dashcard-id-1, :card_id series-id-2, :position 1}]
+                      DashboardCardSeries [_                    {:dashboardcard_id dashcard-id-3, :card_id series-id-1, :position 0}]]
+        (with-dashboards-in-writeable-collection [dashboard-id]
+          (is (= 3
+                 (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
+          (is (=? [{:id     dashcard-id-3
+                    :series [{:id series-id-1}]}]
+                  (mt/user-http-request :rasta :put 200
+                                        (format "dashboard/%d/cards" dashboard-id) {:cards [(dashcard-like-response dashcard-id-3)]})))
+          (is (= 1
+                 (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))
+    (testing "prune"
+      (mt/with-temp* [Dashboard           [{dashboard-id :id}]
+                      Card                [{card-id :id}]
+                      DashboardCard       [_ {:dashboard_id dashboard-id, :card_id card-id}]
+                      DashboardCard       [_ {:dashboard_id dashboard-id, :card_id card-id}]]
+        (with-dashboards-in-writeable-collection [dashboard-id]
+          (is (= 2
+                 (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
+          (is (=? []
+                  (mt/user-http-request :rasta :put 200
+                                        (format "dashboard/%d/cards" dashboard-id) {:cards []})))
+          (is (= 0
+                 (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))))
+
+(deftest classify-changes-test
+  (testing "classify correctly"
+    (is (= {:to-update [{:id 2 :name "c3"} {:id 4 :name "c4"}]
+            :to-delete [{:id 1 :name "c1"} {:id 3 :name "c3"}]
+            :to-create [{:id -1 :name "-c1"}]}
+           (#'api.dashboard/classify-changes
+             [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
+             [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        GET /api/dashboard/:id/revisions                                        |
@@ -2347,7 +2493,7 @@
       ;; card with agggregation and binning columns
       [Card [{mbql-card-id :id}
              (merge (mt/card-with-source-metadata-for-query
-                      (mt/mbql-query-no-test venues
+                      (mt/mbql-query venues
                         {:limit 5
                          :aggregation [:count]
                          :breakout [[:field %latitude {:binning {:strategy :num-bins :num-bins 10}}]]}))
@@ -2562,31 +2708,6 @@
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
-
-(deftest dashcard-action-create-update-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (mt/with-actions-test-data-and-actions-enabled
-      (doseq [action-type [:http :implicit :query]]
-        (mt/with-actions [{:keys [action-id]} {:type action-type :visualization_settings {:hello true}}]
-          (testing (str "Creating dashcard with action: " action-type)
-            (mt/with-temp* [Dashboard [{dashboard-id :id}]]
-              (is (partial= {:visualization_settings {:label "Update"}
-                             :action_id              action-id
-                             :card_id                nil}
-                            (mt/user-http-request :crowberto :post 200 (format "dashboard/%s/cards" dashboard-id)
-                                                  {:size_x                 1
-                                                   :size_y                 1
-                                                   :row                    1
-                                                   :col                    1
-                                                   :cardId                 nil
-                                                   :action_id              action-id
-                                                   :visualization_settings {:label "Update"}})))
-              (is (partial= {:ordered_cards [{:action (cond-> {:visualization_settings {:hello true}
-                                                               :type (name action-type)
-                                                               :parameters [{:id "id"}]}
-                                                              (#{:query :implicit} action-type)
-                                                              (assoc :database_id (mt/id)))}]}
-                            (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))
 
 (defn- has-valid-action-execution-error-message? [response]
   (string? (:message response)))

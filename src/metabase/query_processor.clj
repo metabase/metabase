@@ -101,12 +101,12 @@
 ;;; |                                                QUERY PROCESSOR                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(u/ignore-exceptions
- (classloader/require '[metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.perms]
-                      '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
-                      '[metabase-enterprise.sandbox.query-processor.middleware
-                        [column-level-perms-check :as ee.sandbox.columns]
-                        [row-level-restrictions :as ee.sandbox.rows]]))
+(when config/ee-available?
+  (classloader/require '[metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.perms]
+                       '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
+                       '[metabase-enterprise.sandbox.query-processor.middleware
+                         [column-level-perms-check :as ee.sandbox.columns]
+                         [row-level-restrictions :as ee.sandbox.rows]]))
 
 (def ^:private pre-processing-middleware
   "Pre-processing middleware. Has the form
@@ -185,6 +185,7 @@
 
     (f metadata) -> rf"
   [#'results-metadata/record-and-return-metadata!
+   (resolve 'metabase.query-processor-test.test-mlv2/post-processing-middleware)
    #'limit/limit-result-rows
    (resolve 'ee.perms/limit-download-result-rows)
    #'qp.add-rows-truncated/add-rows-truncated
@@ -219,13 +220,20 @@
   Where `qp` has the form
 
     (f query rff context)"
+  ;; think of the direction stuff happens in as if you were throwing a ball up in the air; as the query-ball goes up the
+  ;; around middleware pre-processing stuff happens; then the query is executed, as the "ball of results" comes back
+  ;; down any post-processing these around middlewares might do happens in reversed order.
+  ;;
+  ;; ↓↓↓ POST-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
   [#'qp.resolve-database-and-driver/resolve-database-and-driver
    #'fetch-source-query/resolve-card-id-source-tables
    #'store/initialize-store
    ;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
    ;; It doesn't really need to be 'around' middleware tho.
+   (resolve 'metabase.query-processor-test.test-mlv2/around-middleware)
    #'normalize/normalize
    (resolve 'ee.audit/handle-internal-queries)])
+;; ↑↑↑ PRE-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
 ;; query -> preprocessed = around + pre-process
 ;; query -> native       = around + pre-process + compile

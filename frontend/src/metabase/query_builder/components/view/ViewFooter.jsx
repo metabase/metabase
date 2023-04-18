@@ -123,6 +123,7 @@ const ViewFooter = ({
               key="download"
               className="mx1 hide sm-show"
               card={question.card()}
+              question={question}
               visualizationSettings={visualizationSettings}
               result={result}
               dashcardId={question.card().dashcardId}

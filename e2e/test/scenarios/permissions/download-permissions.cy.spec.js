@@ -9,6 +9,7 @@ import {
   sidebar,
   visitQuestion,
   visitDashboard,
+  popover,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -122,7 +123,12 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
 
     cy.findByTestId("dashcard").within(() => {
       cy.findByTestId("legend-caption").realHover();
-      cy.icon("ellipsis").should("not.exist");
+      cy.findByTestId("dashcard-menu").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Edit question").should("be.visible");
+      cy.findByText("Download results").should("not.exist");
     });
   });
 

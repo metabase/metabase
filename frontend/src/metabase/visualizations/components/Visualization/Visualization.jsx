@@ -483,7 +483,7 @@ class Visualization extends React.PureComponent {
             <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
           ) : (
             <div
-              data-card-key={getCardKey(series[0].card)}
+              data-card-key={getCardKey(series[0].card?.id)}
               className="flex flex-column flex-full"
             >
               <CardVisualization

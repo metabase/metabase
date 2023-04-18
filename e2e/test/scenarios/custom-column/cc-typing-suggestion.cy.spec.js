@@ -1,6 +1,5 @@
 import {
   enterCustomColumnDetails,
-  getBrokenUpTextMatcher,
   openProductsTable,
   restore,
 } from "e2e/support/helpers";
@@ -53,7 +52,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   it("should show expression function helper if a proper function is typed", () => {
     enterCustomColumnDetails({ formula: "lower(" });
 
-    cy.findByText(getBrokenUpTextMatcher("lower(text)")).should("be.visible");
+    cy.contains("lower(text)");
     cy.findByText("Returns the string of text in all lower case.").should(
       "be.visible",
     );

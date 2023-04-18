@@ -93,8 +93,9 @@
    ;; the alias that should be used to this clause on the LHS of a `SELECT <lhs> AS <rhs>` or equivalent, i.e. the
    ;; name of this clause as exported by the previous stage, source table, or join.
    [:lib/source-column-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   ;; the name we should export this column as, i.e. the RHS of a `SELECT <lhs> AS <rhs>` or equivalent.
-   [:lib/desired-column-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+   ;; the name we should export this column as, i.e. the RHS of a `SELECT <lhs> AS <rhs>` or equivalent. This is
+   ;; guaranteed to be unique in each stage of the query.
+   [:lib/desired-column-alias {:optional true} [:maybe [:string {:min 1, :max 60}]]]])
 
 (def ^:private CardMetadata
   [:map
@@ -230,7 +231,7 @@
   like
 
     {:database 1
-     :type     :pipeline
+     :lib/type :mbql/query
      :stages   [{:lib/type :mbql.stage/mbql
                  :native   \"SELECT id, name FROM VENUES;\"}]}
 
