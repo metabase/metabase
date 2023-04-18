@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import Schemas from "metabase/entities/schemas";
@@ -8,7 +8,7 @@ import { State } from "metabase-types/store";
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
-  selectedSchemaId?: SchemaId;
+  selectedSchemaId: SchemaId | undefined;
   onChangeSchema: (schema: Schema) => void;
 }
 
@@ -45,27 +45,48 @@ const SchemaList = ({
       </div>
       <ul className="AdminList-items">
         <li className="AdminList-section">
-          {(n => ngettext(msgid`${n} schema`, `${n} schemas`, n))(
+          {ngettext(
+            msgid`${schemas.length} schema`,
+            `${schemas.length} schemas`,
             schemas.length,
           )}
         </li>
         {filteredSchemas.map(schema => (
-          <li key={schema.id}>
-            <a
-              className={cx(
-                "AdminList-item flex align-center no-decoration text-wrap",
-                {
-                  selected: schema.id === selectedSchemaId,
-                },
-              )}
-              onClick={() => onChangeSchema(schema)}
-            >
-              {schema}
-            </a>
-          </li>
+          <SchemaRow
+            key={schema.id}
+            schema={schema}
+            isSelected={schema.id === selectedSchemaId}
+            onChangeSchema={onChangeSchema}
+          />
         ))}
       </ul>
     </div>
+  );
+};
+
+interface SchemaRowProps {
+  schema: Schema;
+  isSelected: boolean;
+  onChangeSchema: (schema: Schema) => void;
+}
+
+const SchemaRow = ({ schema, isSelected, onChangeSchema }: SchemaRowProps) => {
+  const handleClick = useCallback(() => {
+    onChangeSchema(schema);
+  }, [schema, onChangeSchema]);
+
+  return (
+    <li key={schema.id}>
+      <a
+        className={cx(
+          "AdminList-item flex align-center no-decoration text-wrap",
+          { selected: isSelected },
+        )}
+        onClick={handleClick}
+      >
+        {schema}
+      </a>
+    </li>
   );
 };
 
